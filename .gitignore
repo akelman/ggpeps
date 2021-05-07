@@ -1,2 +1,37 @@
+# We never commit object files
+*.o
+*.so
+*.a
+# We never commit pdfs
+*.pdf
+#Do not add Python helper files
 *.pyc
+*.npy
+*.npz
+__cache__
 __pycache__
+#Ignore all latex files
+*.aux
+*.bcf
+*.log
+*.run.xml
+*.nav
+*.out
+*.snm
+*.toc
+#Ignore the vscode files
+.vscode
+#
+#We do not commit performance data
+perf.data
+*.scorep_init.*
+#Ignore the data that we stored
+cache
+inputfile_*
+*.pkl
+*.pkl.gz
+#
+# We do not store checkpoints of jupyter notebooks
+.ipynb_checkpoints
+
+convergence_test
