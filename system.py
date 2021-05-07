@@ -66,18 +66,22 @@ class U1MultilayerSystem2D:
 
     @property
     def gamma_dirac(self):
+        #TODO: Implement
         pass
 
     @property
     def gamma_maj(self):
+        #TODO: Implement
         pass
 
     @property
     def gamma_maj_sys(self):
+        #TODO: Implement
         pass
 
     @property
     def gamma_in_sys(self):
+        #TODO: Implement
         pass
 
 ################### U1MultilayerSystem3D ###################
@@ -111,6 +115,7 @@ class Z2System2D:
         self.gamma_maj_sys_ = None
 
         # Management of the gaugefields
+        self.gamma_neutral_gauge = self.generate_gamma_gauge_neutral()
         self.gamma_in_sys_ = None
         self.gaugefields_ = None
         self.gaugemgr_ = None
@@ -124,7 +129,7 @@ class Z2System2D:
         """Initialization function. 
         This is a good spot to copy essential data from the configuration.
         """
-        self.gamma_neutral_gauge = self.generate_gamma_gauge_neutral()
+        return None
 
     @property
     def tmat(self):

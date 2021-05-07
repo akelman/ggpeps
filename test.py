@@ -27,7 +27,7 @@ class TestZ2SystemMethods(unittest.TestCase):
     def setUp(self):
         lat=lattice.Lattice2D(2,2)
         paramdict={"t":0.3,"y":0.5,"z":0.8}
-        cfg=system.Z2System2DConfig(paramdict,lat)
+        cfg=system.Z2System2DConfig(paramdict,lat,0,0,0)
         self.system_z2_2_2=system.Z2System2D(cfg)
     
     def test_tmat_numeric(self):

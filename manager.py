@@ -115,8 +115,6 @@ if __name__ == "__main__":
     parser.add_argument("mode", type=str, help="Mode of the program")
     parser.add_argument(
         "L", type=int, help="Size of the square system (one side)")
-    parser.add_argument("--PBC", action="store_true",
-                        default=False, help="Use periodic boundary conditions")
     parser.add_argument("--g2", type=float, default=1.0,
                         help="coupling constant")
     parser.add_argument("--g_mag", type=float, help="coupling constant")
@@ -127,50 +125,16 @@ if __name__ == "__main__":
                         default=int(1e5), help="Number of warmup steps")
     parser.add_argument("--meas_steps", type=int,
                         default=int(1e4), help="Number of run steps")
-    parser.add_argument("--use_single_update", action="store_true", default=False,
-                        help="Use a single update schemem instead of a heatbath")
-    parser.add_argument("--use_efficient", action="store_true",
-                        default=False, help="Use efficient t-dependent measurement")
     parser.add_argument("--level", default="info", help="logging level")
-    parser.add_argument("--xivec", type=str,
-                        help="Fermionic parameters for the simulation")
-    parser.add_argument("--alphavec", type=str,
-                        help=" Quadratic gauge parameters for the simulation")
-    parser.add_argument("--betavec", type=str,
-                        help="Linear gauge parameters for the simulation")
-    parser.add_argument("--static_elfield", default=None, type=str,
-                        help="static electric field configuration (loaded from provided file or constant)")
     parser.add_argument("--binsize", default=1, type=int,
                         help="Binsize used in the MC computation")
-    parser.add_argument("--trans_invar_alphavec", default=False,
-                        action="store_true", help="assume alphamat transl. invariant")
-    parser.add_argument("--trans_invar_betavec", default=False,
-                        action="store_true", help="assume abetavec transl. invariant")
-    parser.add_argument("--trans_invar_xivec", default=False,
-                        action="store_true", help="assume ximat transl. invariant")
-    parser.add_argument("--alpha_imag_zero", default=False,
-                        action="store_true", help="fix imaginary part of alphamat to zero")
-    parser.add_argument("--beta_imag_zero", default=False,
-                        action="store_true", help="fix imaginary part of betavec to zero")
-    parser.add_argument("--number_flavors", default=1,
-                        type=int, help="number of fermion flavors")
-    parser.add_argument("--different_flavors", default=False, action="store_true",
-                        help="different variational parameters for different flavors")
-    parser.add_argument("--half_filling", default=False, action="store_true",
-                        help="distribute charges evenly over even and odd sites")
-    parser.add_argument("--measure_spin", default=False,
-                        action="store_true", help="measure spin correlation function")
-    parser.add_argument("--trans_invar_xivec_eo", default=False,
-                        action="store_true", help="assume trans. invar. up to even odd sites")
-    parser.add_argument("--double_update", default=False,
-                        action="store_true", help="update two sites at the same time")
     #Arguments for the minimizer
     parser.add_argument("--method", type=str,
                         default="custom", help="Minimization method")
     parser.add_argument("--maxiter", type=int, default=100,
                         help="Number of steps for the minimizer (if custom is used)")
     #Arguments for ray
-    parser.add_argument("--nrunner", type=int, default=1,
+    parser.add_argument("--nrunner", type=int, default=0,
                         help="Number of parallel MC runners")
     args = parser.parse_args()
 
