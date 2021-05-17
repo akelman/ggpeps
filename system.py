@@ -109,21 +109,21 @@ class Z2System2D:
         self.cfg = cfg
 
         # Parameter dependent quantities
-        self.tmat_ = None
-        self.gamma_dirac_ = None
-        self.gamma_maj_ = None
-        self.gamma_maj_sys_ = None
+        self._tmat = None
+        self._gamma_dirac = None
+        self._gamma_maj = None
+        self._gamma_maj_sys = None
 
         # Management of the gaugefields
         self.gamma_neutral_gauge = self.generate_gamma_gauge_neutral()
-        self.gamma_in_sys_ = None
-        self.gaugefields_ = None
-        self.gaugemgr_ = None
+        self._gamma_in_sys = None
+        self._gaugefields = None
+        self._gaugemgr = None
 
         #Observables
-        self.energy_ = None
-        self.el_energy_ = None
-        self.mag_energy_ = None
+        self._energy = None
+        self._el_energy = None
+        self._mag_energy = None
 
     def initialize(self):
         """Initialization function. 
@@ -145,19 +145,19 @@ class Z2System2D:
         Returns:
             [np.array]: parameter matrix T
         """
-        if self.tmat_ is None:
+        if self._tmat is None:
             paramdict = self.cfg.paramdict
             t = paramdict["t"]
             y = paramdict["y"]
             z = paramdict["z"]
-            self.tmat_ = np.array([
+            self._tmat = np.array([
                 [0, -1.j*t, 1.j*t, t, -t],
                 [1.j*t, 0, 1.j*y, z, 1.j*z],
                 [-1.j*t, -1.j*y, 0, -1.j*z, -z],
                 [-t, -z, 1.j*z, 0, -y],
                 [t, -1.j*z, z, y, 0]],
                 dtype=complex)
-        return self.tmat_
+        return self._tmat
 
     @property
     def gamma_dirac(self):
@@ -167,23 +167,23 @@ class Z2System2D:
         Returns:
             [np.array]: Covariance matrix in Dirac modes
         """
-        if self.gamma_dirac_ is None:
+        if self._gamma_dirac is None:
             tmat = self.tmat
-            self.gamma_dirac_ = utils.tmat_to_covariance_matrix(tmat)
-        return self.gamma_dirac_
+            self._gamma_dirac = utils.tmat_to_covariance_matrix(tmat)
+        return self._gamma_dirac
 
     @property
     def gamma_maj(self):
-        if self.gamma_maj_ is None:
+        if self._gamma_maj is None:
             gamma_dirac = self.gamma_dirac
             m, _ = self.gamma_dirac.shape
             smat = utils.generate_smat(m)
-            self.gamma_maj_ = smat@gamma_dirac@np.transpose(smat)
-        return self.gamma_maj_
+            self._gamma_maj = smat@gamma_dirac@np.transpose(smat)
+        return self._gamma_maj
 
     @property
     def gamma_maj_sys(self):
-        if self.gamma_maj_sys_ is None:
+        if self._gamma_maj_sys is None:
             gamma_maj = self.gamma_maj
             amat = gamma_maj[:2, :2]
             bmat = gamma_maj[:2, 2:]
@@ -193,18 +193,18 @@ class Z2System2D:
             amat_sys = np.kron(id, amat)
             bmat_sys = np.kron(id, bmat)
             dmat_sys = np.kron(id, dmat)
-            self.gamma_maj_sys_ = np.block(
+            self._gamma_maj_sys = np.block(
                 [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
-        return self.gamma_maj_sys_
+        return self._gamma_maj_sys
 
     @property
     def gamma_in_sys(self):
-        if self.gamma_in_sys_ is None:
+        if self._gamma_in_sys is None:
             nlinks = self.cfg.lattice.nlinks
             id = np.eye(nlinks)
             neutral_gauge = self.gamma_neutral_gauge
-            self.gamma_in_sys_ = np.kron(id, neutral_gauge)
-        return self.gamma_in_sys_
+            self._gamma_in_sys = np.kron(id, neutral_gauge)
+        return self._gamma_in_sys
 
     def generate_gamma_gauge_neutral(self):
         return np.real_if_close(1.j*np.kron(utils.pauliy, utils.paulix))
@@ -212,21 +212,21 @@ class Z2System2D:
     # Observables
     @property
     def energy(self):
-        if self.energy_ is None:
-            self.energy_ = self.el_energy+self.mag_energy
-        return self.energy_
+        if self._energy is None:
+            self._energy = self.el_energy+self.mag_energy
+        return self._energy
 
     @property
     def mag_energy(self):
-        if self.mag_energy_ is None:
-            self.mag_energy_ = self.compute_mag_energy()
-        return self.mag_energy_
+        if self._mag_energy is None:
+            self._mag_energy = self.compute_mag_energy()
+        return self._mag_energy
 
     @property
     def el_energy(self):
-        if self.el_energy_ is None:
-            self.el_energy_ = self.compute_el_energy()
-        return self.el_energy_
+        if self._el_energy is None:
+            self._el_energy = self.compute_el_energy()
+        return self._el_energy
 
     def compute_el_energy(self):
         #TODO: Implement electric energy
