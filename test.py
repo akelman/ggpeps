@@ -26,19 +26,34 @@ class TestUtils(unittest.TestCase):
 class TestLattice(unittest.TestCase):
 
     def setUp(self):
-        self.lat=lattice.Lattice2D(8,8)
+        self.lat2d=lattice.Lattice2D(8,8)
+        self.lat3d=lattice.Lattice3D(8,8,8)
     
-    def test_ind2coord(self):
+    def test_ind2coord_2d(self):
         ref=(3,4)
-        ind=self.lat.coord2ind(ref)
-        coord=self.lat.ind2coord(ind)
+        ind=self.lat2d.coord2ind(ref)
+        coord=self.lat2d.ind2coord(ind)
         self.assertEqual(ref,coord)
 
-    def test_ind2coord_dir(self):
+    def test_ind2coord_dir_2d(self):
         coord_ref=(2,3)
         for dir_ref in lattice.Direction:
-            ind=self.lat.coord2ind_dir(coord_ref,dir_ref)
-            coord,dir=self.lat.ind2coord_dir(ind)
+            ind=self.lat2d.coord2ind_dir(coord_ref,dir_ref)
+            coord,dir=self.lat2d.ind2coord_dir(ind)
+            self.assertEqual(coord_ref,coord)
+            self.assertEqual(dir_ref,dir)
+
+    def test_ind2coord_3d(self):
+        ref=(3,4,2)
+        ind=self.lat3d.coord2ind(ref)
+        coord=self.lat3d.ind2coord(ind)
+        self.assertEqual(ref,coord)
+
+    def test_ind2coord_dir_3d(self):
+        coord_ref=(2,3,3)
+        for dir_ref in lattice.Direction:
+            ind=self.lat3d.coord2ind_dir(coord_ref,dir_ref)
+            coord,dir=self.lat3d.ind2coord_dir(ind)
             self.assertEqual(coord_ref,coord)
             self.assertEqual(dir_ref,dir)
 
