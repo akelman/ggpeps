@@ -22,6 +22,26 @@ class TestUtils(unittest.TestCase):
         res=smat@np.conjugate(np.transpose(smat))
         ref=2.*np.eye(N)
         self.assertTrue(np.allclose(ref,res))
+    
+class TestLattice(unittest.TestCase):
+
+    def setUp(self):
+        self.lat=lattice.Lattice2D(8,8)
+    
+    def test_ind2coord(self):
+        ref=(3,4)
+        ind=self.lat.coord2ind(ref)
+        coord=self.lat.ind2coord(ind)
+        self.assertEqual(ref,coord)
+
+    def test_ind2coord_dir(self):
+        coord_ref=(2,3)
+        for dir_ref in lattice.Direction:
+            ind=self.lat.coord2ind_dir(coord_ref,dir_ref)
+            coord,dir=self.lat.ind2coord_dir(ind)
+            self.assertEqual(coord_ref,coord)
+            self.assertEqual(dir_ref,dir)
+
 
 class TestZ2SystemMethods(unittest.TestCase):
     def setUp(self):

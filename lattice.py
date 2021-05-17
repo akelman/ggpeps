@@ -35,6 +35,20 @@ class Lattice2D:
     def get_size(self):
         """Returns number of sites on the lattice"""
         return self.nx*self.ny
+    
+    def ind2coord(self,ind):
+        return (ind % self.nx, ind//self.nx)
+
+    def coord2ind(self, coord):
+        x, y = coord
+        return self.nx * y + x
+
+    def ind2coord_dir(self,ind):
+        return ((ind%(self.nx*self.ny)) % self.nx, (ind%(self.nx*self.ny))//self.nx), Direction(ind//(self.nx*self.ny))
+
+    def coord2ind_dir(self, coord, dir):
+        x, y = coord
+        return self.nx*self.ny*dir.value + self.nx * y + x
 
 
 class Lattice3D:
