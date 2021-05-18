@@ -92,3 +92,65 @@ class Lattice3D:
     def coord2ind_dir(self, coord, dir):
         x, y, z = coord
         return self.nx * self.ny * self.nz * dir.value + self.nx*self.ny*z + self.nx * y + x
+
+
+class PermutationBuilderGMS2D:
+    """Build a permutation matrix for gamma_maj_sys
+    """
+    def __init__(self, lat, nmodes_per_link):
+        self.lattice = lat
+        self.nmodes_per_link = nmodes_per_link
+
+    def _perm_lr(self):
+        #Number of Majoranas per link (2 per mode)
+        maj_per_link = 2*self.nmodes_per_link
+        # left and right Majoranas: 2 * maj_per_link
+        single_block = np.eye(maj_per_link)
+        double_block = np.eye(2*maj_per_link)
+        # pad right for the down and up modes
+        mode_block = np.hstack([double_block, np.zeros((2*maj_per_link, 2*maj_per_link))])
+        # This is the main part for all modes in the chain (w/o periodic boundary conditions)
+        matrix_body = np.kron(np.eye(self.lattice.nx - 1), mode_block)
+        # Pad the matrix body by one block on the top and the bottom
+        matrix_body = np.pad(matrix_body,[[maj_per_link,maj_per_link],[0,0]])
+        # Prepare the block for the periodic boundary conditions
+        # We want the first left and the first right mode of the row as padding on the left
+        block_pbc = np.zeros((2*self.lattice.nx*maj_per_link, 4*maj_per_link))
+        block_pbc[:maj_per_link, maj_per_link:2*maj_per_link] = single_block
+        block_pbc[-maj_per_link:, :maj_per_link] = single_block
+        dest = np.block([block_pbc, matrix_body])
+        return dest
+
+    def _perm_du(self):
+        #Number of Majoranas per link (2 per mode)
+        maj_per_link = 2*self.nmodes_per_link
+        # left and right Majoranas: 2 * maj_per_link
+        single_block = np.eye(maj_per_link)
+        double_block = np.eye(2*maj_per_link)
+        # pad left for all the modes in a row 
+        mode_block = np.hstack([np.zeros((2*maj_per_link, (4*self.lattice.nx-2)*maj_per_link)),double_block])
+        matrix_body = np.kron(np.eye(self.lattice.ny-1), mode_block)
+        # Pad the matrix body by one block on the top and the bottom
+        matrix_body = np.pad(matrix_body,[[maj_per_link,maj_per_link],[0,0]])
+        # Prepare the block for the periodic boundary conditions
+        # We want the first left and the first right mode of the row as padding on the left
+        block_pbc = np.zeros((2*self.lattice.ny*maj_per_link, 4*maj_per_link))
+        block_pbc[:maj_per_link, -maj_per_link:] = single_block
+        block_pbc[-maj_per_link:, -2*maj_per_link:-maj_per_link] = single_block
+        dest = np.block([block_pbc, matrix_body])
+        return dest
+
+    def perm(self):
+        perm_lr=self._perm_lr()
+        perm_du=self._perm_du()
+        #Permutation of the lr modes
+        top_perm=np.kron(np.eye(self.lattice.ny),perm_lr)
+        #Permutation for the ud modes
+        m_du,n_du=perm_du.shape
+        maj_per_link=2*self.nmodes_per_link
+        bottom_perm=np.zeros_like(top_perm)
+        for y in range(self.lattice.nx):
+            offset = 4*y*maj_per_link  # One vertex has 4 links to other vertices
+            bottom_perm[y*m_du:y*m_du+m_du,offset:offset+n_du]=perm_du
+        dest = np.block([[top_perm], [bottom_perm]])
+        return dest

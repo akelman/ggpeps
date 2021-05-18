@@ -90,6 +90,18 @@ def is_symmetric(mat):
     else:
         return np.allclose(np.transpose(mat), mat)
 
+def is_permutation(mat):
+    """Returns true if the matrix is a permutation matrix. """
+    n, m = mat.shape
+    if issparse(mat):
+        pass
+    else:
+        square = n == m
+        id = np.allclose(np.eye(n), mat@np.transpose(mat))
+        sum_rows = np.all(np.sum(mat, axis=0) == 1)
+        sum_cols = np.all(np.sum(mat, axis=1) == 1)
+        return square and id and sum_rows and sum_cols
+
 
 def is_antisymmetric(mat):
     """Returns true if the matrix is symmetric. """
