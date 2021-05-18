@@ -2,6 +2,7 @@ import numpy as np
 import utils
 import os
 import sys
+import lattice as lat
 
 ################### U1MultilayerSystem2D ###################
 
@@ -117,7 +118,7 @@ class Z2System2D:
         # Management of the gaugefields
         self.gamma_neutral_gauge = self.generate_gamma_gauge_neutral()
         self._gamma_in_sys = None
-        self._gaugefields = None
+        self._gaugefields = np.zeros(self.cfg.lattice.nlinks)
         self._gaugemgr = None
 
         #Observables
@@ -188,13 +189,17 @@ class Z2System2D:
             amat = gamma_maj[:2, :2]
             bmat = gamma_maj[:2, 2:]
             dmat = gamma_maj[2:, 2:]
-            nsites = self.cfg.lattice.get_size()
+            nsites = self.cfg.lattice.size
             id = np.eye(nsites)
+            # Extract the parts of the covariance matrix
             amat_sys = np.kron(id, amat)
             bmat_sys = np.kron(id, bmat)
             dmat_sys = np.kron(id, dmat)
-            self._gamma_maj_sys = np.block(
-                [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
+            # Order the modes of the covariance matrix according to gamma_in_sys
+            permbuilder = lat.PermutationBuilderGMS2D(self.cfg.lattice, nmodes_per_link=1)
+            mat_perm = permbuilder.perm()
+            self._gamma_maj_sys = mat_perm@np.block(
+                [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])@np.transpose(mat_perm)
         return self._gamma_maj_sys
 
     @property
@@ -209,7 +214,28 @@ class Z2System2D:
     def generate_gamma_gauge_neutral(self):
         return np.real_if_close(1.j*np.kron(utils.pauliy, utils.paulix))
 
+    #Gauging
+
+    def generate_rotmat(self,gauge):
+        #TODO: Rotation matrix for the modes
+        pass
+
+    def update_theta(self,coord,theta):
+        pass
+
+    # Calculating the norm
+
+    def calculate_lognorm(self):
+        # This is still the plain formula, without any update mechanism
+        pass
+
+    # Calculate gradients
+
+    # Update the parameters
+
+
     # Observables
+
     @property
     def energy(self):
         if self._energy is None:

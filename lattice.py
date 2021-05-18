@@ -5,6 +5,7 @@ import utils
 import os
 import sys
 import logging
+from scipy.linalg import block_diag
 
 
 class Direction(Enum):
@@ -14,7 +15,6 @@ class Direction(Enum):
 
     def __str__(self):
         return self.name
-
 
 class Lattice2D:
     """
@@ -26,16 +26,17 @@ class Lattice2D:
         self.ny = ny
         self.nlinks = 2*nx*ny
         self.nplaquettes = nx*ny
+        self.size=nx*ny
 
     def __str__(self):
-        arr = np.arange(self.get_size())
-        arr = np.reshape(arr, (self.nx, self.ny))
-        return str(arr)
+        dest=""
+        for ind in range(self.nplaquettes):
+            x,y=self.ind2coord(ind)
+            x_ind=self.coord2ind_dir((x,y),Direction.X)
+            y_ind=self.coord2ind_dir((x,y),Direction.Y)
+            dest+=("{:02d}, ({:02d},{:02d}): {:02d},{:02d}\n".format(ind,x,y,x_ind,y_ind))
+        return dest
 
-    def get_size(self):
-        """Returns number of sites on the lattice"""
-        return self.nx*self.ny
-    
     def ind2coord(self,ind):
         return (ind % self.nx, ind//self.nx)
 
@@ -50,7 +51,7 @@ class Lattice2D:
         elif dir == Direction.Y:
             return (((ind%(self.nx*self.ny)) // self.ny, (ind%(self.nx*self.ny)) % self.ny),dir)
         else:
-            print("coord2ind_dir: There are only X and Y as directions",file=sys.stderr)
+            print("ind2coord_dir: There are only X and Y as directions",file=sys.stderr)
             return None
 
     def coord2ind_dir(self, coord, dir):
@@ -63,13 +64,57 @@ class Lattice2D:
             print("coord2ind_dir: There are only X and Y as directions",file=sys.stderr)
             return None
     
-    def __str__(self):
-        dest=""
-        for ind in range(self.nplaquettes):
-            x,y=self.ind2coord(ind)
-            x_ind=self.coord2ind_dir((x,y),Direction.X)
-            y_ind=self.coord2ind_dir((x,y),Direction.Y)
-            dest+=("{:02d}, ({:02d},{:02d}): {:02d},{:02d}\n".format(ind,x,y,x_ind,y_ind))
+    def get_neighbor(self,coord,orient):
+        # We assume periodic boundary conditions 
+        x, y = coord
+        if dir==Direction.X:
+            xn = (x+orient.value+self.nx) % self.nx
+            yn=y 
+        elif dir==Direction.Y:
+            xn=x
+            yn = (y+orient.value+self.ny) % self.ny
+        return (xn,yn)
+
+    def generate_polyakov_loop(self,coord,dir,use_indices=True):
+        x, y = coord
+        dest=[]
+        if dir==Direction.X:
+            #Build polyakov loop in X direction
+            for i in range(self.nx):
+                coord_link = ((i, y), dir)
+                dest.append((coord_link,False))
+        elif dir==Direction.Y:
+            #Build polyakov loop in Y direction
+            for i in range(self.ny):
+                coord_link = ((x, i), dir)
+                dest.append((coord_link, False))
+        else:
+            print("generate_polyakov_loop: There are only X and Y as directions",file=sys.stderr)
+            return None
+        if use_indices:
+            #Transform the coordinates to indices
+            dest=[(self.coord2ind_dir(*coorddir),conj) for (coorddir,conj) in dest]
+        return dest
+
+    def generate_wilson_loop(self,coord,size,use_indices=True):
+        ext_x, ext_y = size
+        x, y = coord
+        dest=[]
+        for i in range(ext_x):
+            coord_link = ((x+i) % self.nx, y)
+            dest.append(((coord_link, Direction.X), False))
+        for i in range(ext_y):
+            coord_link = ((x+ext_x) % self.nx, (y+i) % self.ny)
+            dest.append(((coord_link, Direction.Y), False))
+        for i in range(ext_x):
+            coord_link = ((x+ext_x-i-1) % self.nx, (y+ext_y) % self.ny)
+            dest.append(((coord_link, Direction.X), True))
+        for i in range(ext_y):
+            coord_link = (x, (y+ext_y-i-1) % self.ny)
+            dest.append(((coord_link, Direction.Y), True))
+        if use_indices:
+            #Transform the coordinates to indices
+            dest=[(self.coord2ind_dir(*coorddir),conj) for (coorddir,conj) in dest]
         return dest
 
 
@@ -174,7 +219,11 @@ class PermutationBuilderGMS2D:
         for y in range(self.lattice.nx):
             offset = 4*y*maj_per_link  # One vertex has 4 links to other vertices
             bottom_perm[y*m_du:y*m_du+m_du,offset:offset+n_du]=perm_du
-        dest = np.block([[top_perm], [bottom_perm]])
+        # Add the physical modes to the matrix. They do not get permuted.
+        # We assume that there is one physical mode per site
+        phys_block = np.eye(self.lattice.nx*self.lattice.ny*2)
+        perm_virt = np.block([[top_perm], [bottom_perm]])
+        dest = block_diag(phys_block,perm_virt)
         return dest
 
 

@@ -43,6 +43,61 @@ class TestLattice(unittest.TestCase):
             self.assertEqual(coord_ref,coord)
             self.assertEqual(dir_ref,dir)
 
+    def test_wilson_loop_1x1(self):
+        ref=[(((0,0),lattice.Direction.X),False),
+            (((1,0),lattice.Direction.Y),False),
+            (((0,1),lattice.Direction.X),True),
+            (((0,0),lattice.Direction.Y),True)
+            ]
+        path=self.lat2d.generate_wilson_loop((0,0),(1,1),False)
+        self.assertEqual(ref,path)
+
+    def test_wilson_loop_2x1(self):
+        ref=[(((0,0),lattice.Direction.X),False),
+            (((1,0),lattice.Direction.X),False),
+            (((2,0),lattice.Direction.Y),False),
+            (((1,1),lattice.Direction.X),True),
+            (((0,1),lattice.Direction.X),True),
+            (((0,0),lattice.Direction.Y),True)
+            ]
+        path=self.lat2d.generate_wilson_loop((0,0),(2,1),False)
+        self.assertEqual(ref,path)
+
+    def test_wilson_loop_1x1_periodic(self):
+        ref=[(((7,7),lattice.Direction.X),False),
+            (((0,7),lattice.Direction.Y),False),
+            (((7,0),lattice.Direction.X),True),
+            (((7,7),lattice.Direction.Y),True)
+            ]
+        path=self.lat2d.generate_wilson_loop((7,7),(1,1),False)
+        self.assertEqual(ref,path)
+
+    def test_polyakov_loop_hor(self):
+        ref=[(((0,0),lattice.Direction.X),False),
+            (((1,0),lattice.Direction.X),False),
+            (((2,0),lattice.Direction.X),False),
+            (((3,0),lattice.Direction.X),False),
+            (((4,0),lattice.Direction.X),False),
+            (((5,0),lattice.Direction.X),False),
+            (((6,0),lattice.Direction.X),False),
+            (((7,0),lattice.Direction.X),False),
+            ]
+        path=self.lat2d.generate_polyakov_loop((0,0),lattice.Direction.X, use_indices=False)
+        self.assertEqual(ref,path)
+
+    def test_polyakov_loop_vert(self):
+        ref=[(((0,0),lattice.Direction.Y),False),
+            (((0,1),lattice.Direction.Y),False),
+            (((0,2),lattice.Direction.Y),False),
+            (((0,3),lattice.Direction.Y),False),
+            (((0,4),lattice.Direction.Y),False),
+            (((0,5),lattice.Direction.Y),False),
+            (((0,6),lattice.Direction.Y),False),
+            (((0,7),lattice.Direction.Y),False),
+            ]
+        path=self.lat2d.generate_polyakov_loop((0,0),lattice.Direction.Y, use_indices=False)
+        self.assertEqual(ref,path)
+
     def test_ind2coord_3d(self):
         ref=(3,4,2)
         ind=self.lat3d.coord2ind(ref)
