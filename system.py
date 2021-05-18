@@ -114,6 +114,9 @@ class Z2System2D:
         self._gamma_dirac = None
         self._gamma_maj = None
         self._gamma_maj_sys = None
+        self._mat_a = None
+        self._mat_b = None
+        self._mat_d = None
 
         # Management of the gaugefields
         self.gamma_neutral_gauge = self.generate_gamma_gauge_neutral()
@@ -210,6 +213,33 @@ class Z2System2D:
             neutral_gauge = self.gamma_neutral_gauge
             self._gamma_in_sys = np.kron(id, neutral_gauge)
         return self._gamma_in_sys
+    
+    @property
+    def mat_a(self):
+        if self._mat_a is None:
+            self._mat_a, self._mat_b, self._mat_d = self.extract_partial_covmats()
+        return self._mat_a
+
+    @property
+    def mat_b(self):
+        if self._mat_b is None:
+            self._mat_a, self._mat_b, self._mat_d = self.extract_partial_covmats()
+        return self._mat_b
+
+    @property
+    def mat_d(self):
+        if self._mat_d is None:
+            self._mat_a, self._mat_b, self._mat_d = self.extract_partial_covmats()
+        return self._mat_d
+    
+    def extract_partial_covmats(self):
+        gamma_maj_sys=self.gamma_maj_sys
+        nsites=self.cfg.lattice.size
+        #We are assuming one physical mode per site
+        mat_a = gamma_maj_sys[:2*nsites, :2*nsites]
+        mat_b = gamma_maj_sys[:2*nsites, 2*nsites:]
+        mat_d = gamma_maj_sys[2*nsites:, 2*nsites:]
+        return mat_a, mat_b, mat_d
 
     def generate_gamma_gauge_neutral(self):
         return np.real_if_close(1.j*np.kron(utils.pauliy, utils.paulix))
@@ -227,7 +257,11 @@ class Z2System2D:
 
     def calculate_lognorm(self):
         # This is still the plain formula, without any update mechanism
-        pass
+        gamma_in_sys=self.gamma_in_sys
+        mat_d=self.mat_d
+        sign,logval=np.linalg.slogdet((np.eye(mat_d.shape[0])-gamma_in_sys@mat_d)/2.)
+        #The factor 1/2 is the square-root
+        return logval/2
 
     # Calculate gradients
 

@@ -187,6 +187,18 @@ class TestZ2SystemMethods(unittest.TestCase):
         self.assertTrue(utils.is_antisymmetric(gamma_in))
         self.assertTrue(np.allclose(gamma_in@gamma_in,-np.eye(m)))
         self.assertTrue(np.allclose(gamma_in@np.transpose(gamma_in),np.eye(m)))
+    
+    def test_part_d_covmat(self):
+        #If t=0, then mat_d must be a valid covariance matrix
+        lat=lattice.Lattice2D(2,2)
+        paramdict={"t":0.0,"y":0.5,"z":0.8}
+        cfg=system.Z2System2DConfig(paramdict,lat,0,0,0)
+        system_z2_2_2=system.Z2System2D(cfg)
+        mat=system_z2_2_2.mat_d
+        m, _ = mat.shape
+        self.assertTrue(utils.is_antisymmetric(mat))
+        self.assertTrue(np.allclose(mat@mat,-np.eye(m)))
+        self.assertTrue(np.allclose(mat@np.transpose(mat),np.eye(m)))
 
 class TestU1MultilayerSystemMethods(unittest.TestCase):
 
