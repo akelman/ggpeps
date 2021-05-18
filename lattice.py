@@ -44,11 +44,33 @@ class Lattice2D:
         return self.nx * y + x
 
     def ind2coord_dir(self,ind):
-        return ((ind%(self.nx*self.ny)) % self.nx, (ind%(self.nx*self.ny))//self.nx), Direction(ind//(self.nx*self.ny))
+        dir=Direction(ind//(self.nx*self.ny))
+        if dir == Direction.X:
+            return (((ind%(self.nx*self.ny)) % self.nx, (ind%(self.nx*self.ny))//self.nx),dir)
+        elif dir == Direction.Y:
+            return (((ind%(self.nx*self.ny)) // self.ny, (ind%(self.nx*self.ny)) % self.ny),dir)
+        else:
+            print("coord2ind_dir: There are only X and Y as directions",file=sys.stderr)
+            return None
 
     def coord2ind_dir(self, coord, dir):
         x, y = coord
-        return self.nx*self.ny*dir.value + self.nx * y + x
+        if dir == Direction.X:
+            return self.nx*self.ny*dir.value + self.nx * y + x
+        elif dir == Direction.Y:
+            return self.nx*self.ny*dir.value + self.ny * x + y
+        else:
+            print("coord2ind_dir: There are only X and Y as directions",file=sys.stderr)
+            return None
+    
+    def __str__(self):
+        dest=""
+        for ind in range(self.nplaquettes):
+            x,y=self.ind2coord(ind)
+            x_ind=self.coord2ind_dir((x,y),Direction.X)
+            y_ind=self.coord2ind_dir((x,y),Direction.Y)
+            dest+=("{:02d}, ({:02d},{:02d}): {:02d},{:02d}\n".format(ind,x,y,x_ind,y_ind))
+        return dest
 
 
 class Lattice3D:
@@ -154,3 +176,9 @@ class PermutationBuilderGMS2D:
             bottom_perm[y*m_du:y*m_du+m_du,offset:offset+n_du]=perm_du
         dest = np.block([[top_perm], [bottom_perm]])
         return dest
+
+
+if __name__ == "__main__":
+    print("Lattice 2d, 3x2")
+    lat_3x2=Lattice2D(3,2)
+    print(lat_3x2)

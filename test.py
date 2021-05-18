@@ -37,7 +37,7 @@ class TestLattice(unittest.TestCase):
 
     def test_ind2coord_dir_2d(self):
         coord_ref=(2,3)
-        for dir_ref in lattice.Direction:
+        for dir_ref in [lattice.Direction.X, lattice.Direction.Y]:
             ind=self.lat2d.coord2ind_dir(coord_ref,dir_ref)
             coord,dir=self.lat2d.ind2coord_dir(ind)
             self.assertEqual(coord_ref,coord)
