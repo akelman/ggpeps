@@ -112,6 +112,7 @@ class MonteCarloEstimator:
         self.obsdict["energy"] = Measurement("Energy", binsize)
         self.obsdict["wilson_00_11"] = Measurement("Wilson (0,0) 1x1", binsize)
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
+        self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
 
     def measure(self):
         """Measure the corresponding observables in the dictionary"""
@@ -123,6 +124,7 @@ class MonteCarloEstimator:
         self.obsdict["energy"].append(self.system.energy)
         self.obsdict["wilson_00_11"].append(np.real(self.system.compute_path(wilson_loop)))
         self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
+        self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
 
     def warmup(self):
         """Warm up phase without measurement"""

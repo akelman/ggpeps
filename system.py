@@ -351,3 +351,8 @@ class Z2System2D:
             else:
                 theta_sum+=self.gaugefieldvec[ind]
         return np.exp(1.j*theta_sum)
+
+    def compute_ferm_cov(self):
+        """Compute the covariance matrix of the fermions in the system """
+        # TODO: Track the inverse in the formula
+        return self.mat_a + self.mat_b@np.linalg.inv(self.mat_d - self.gamma_in_sys)@np.transpose(self.mat_b)
