@@ -4,6 +4,7 @@ import os
 import sys
 import lattice as lat
 import gauge
+import logging
 from scipy.linalg import block_diag
 
 ################### U1MultilayerSystem2D ###################
@@ -13,8 +14,7 @@ class U1MultilayerSystem2DConfig:
     def __init__(self, paramdict, lattice):
         self.paramdict = paramdict
         if not self.check_paramdict(paramdict):
-            print("Different number of copies in parameters. Aborting",
-                  file=sys.stderr)
+            logging.error("Different number of copies in parameters. Aborting")
             sys.exit(1)
         self.lattice = lattice
 

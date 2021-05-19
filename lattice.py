@@ -51,7 +51,7 @@ class Lattice2D:
         elif dir == Direction.Y:
             return (((ind%(self.nx*self.ny)) // self.ny, (ind%(self.nx*self.ny)) % self.ny),dir)
         else:
-            print("ind2coord_dir: There are only X and Y as directions",file=sys.stderr)
+            logging.error("ind2coord_dir: There are only X and Y as directions")
             return None
 
     def coord2ind_dir(self, coord, dir):
@@ -61,7 +61,7 @@ class Lattice2D:
         elif dir == Direction.Y:
             return self.nx*self.ny*dir.value + self.ny * x + y
         else:
-            print("coord2ind_dir: There are only X and Y as directions",file=sys.stderr)
+            logging.error("coord2ind_dir: There are only X and Y as directions",file=sys.stderr)
             return None
     
     def get_neighbor(self,coord,orient):
@@ -89,7 +89,7 @@ class Lattice2D:
                 coord_link = ((x, i), dir)
                 dest.append((coord_link, False))
         else:
-            print("generate_polyakov_loop: There are only X and Y as directions",file=sys.stderr)
+            logging.error("generate_polyakov_loop: There are only X and Y as directions")
             return None
         if use_indices:
             #Transform the coordinates to indices
