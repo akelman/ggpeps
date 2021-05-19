@@ -97,6 +97,23 @@ class TestLattice(unittest.TestCase):
             ]
         path=self.lat2d.generate_polyakov_loop((0,0),lattice.Direction.Y, use_indices=False)
         self.assertEqual(ref,path)
+    
+    def test_2d_covering(self):
+        nx=13
+        ny=7
+        lat=lattice.Lattice2D(nx,ny)
+        linkvec=np.zeros(lat.nlinks)
+        sitevec=np.zeros(lat.size)
+        for x in range(nx):
+            for y in range(ny):
+                ind_site=lat.coord2ind((x,y))
+                ind_link_x=lat.coord2ind_dir((x,y),lattice.Direction.X)
+                ind_link_y=lat.coord2ind_dir((x,y),lattice.Direction.Y)
+                linkvec[ind_link_x]=1
+                linkvec[ind_link_y]=1
+                sitevec[ind_site]=1
+        self.assertEqual(np.sum(linkvec),lat.nlinks)
+        self.assertEqual(np.sum(sitevec),lat.size)
 
     def test_ind2coord_3d(self):
         ref=(3,4,2)
