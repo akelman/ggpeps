@@ -8,6 +8,7 @@ import gzip
 import utils
 import copy
 import ray
+import lattice
 from measurement import Measurement
 
 ################################### Multiprocessing layer #######################
@@ -100,16 +101,28 @@ class MonteCarloEstimator:
         self.init_measurements()
         self.step = 0
 
+        #This might change in the future if we implement different updates
+        self.update=self.update_single_site
+
     def init_measurements(self):
         """Add empty measurement vectors to the measurement dictionary"""
         binsize = self.cfg.binsize
         self.obsdict["acceptance_prob"] = Measurement(
             "Acceptance Probablity", binsize)
         self.obsdict["energy"] = Measurement("Energy", binsize)
+        self.obsdict["wilson_00_11"] = Measurement("Wilson (0,0) 1x1", binsize)
+        self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
 
     def measure(self):
         """Measure the corresponding observables in the dictionary"""
+        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
+            (0, 0), lattice.Direction.X)
+        wilson_loop = self.system.cfg.lattice.generate_wilson_loop(
+            (0, 0), (1,1))
+
         self.obsdict["energy"].append(self.system.energy)
+        self.obsdict["wilson_00_11"].append(np.real(self.system.compute_path(wilson_loop)))
+        self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
 
     def warmup(self):
         """Warm up phase without measurement"""
@@ -128,9 +141,28 @@ class MonteCarloEstimator:
             self.measure()
             self.step += 1
 
-    def update(self):
-        #TODO: Implement Update
-        pass
+    def update_single_site(self):
+        # Pick a site to update
+        lattice=self.system.cfg.lattice
+        nlinks=lattice.nlinks
+        link_ind=np.random.randint(0,nlinks)
+        # Uniformly pick a gauge to replace
+        gauge_new=self.system.gaugemgr.get_random_gauge_value()
+        # Store the old values
+        weight_old=self.system.weight
+        gauge_old=self.system.gaugefieldvec[link_ind]
+        self.system.update_gauge_ind(link_ind,gauge_new)
+        weight=self.system.weight
+        #TODO: Use incremental updates here
+        if np.exp(weight - weight_old) > np.random.rand():
+            # Accept
+            self.obsdict["acceptance_prob"].append(1)
+        else:
+            # Reject
+            self.obsdict["acceptance_prob"].append(0)
+            # Reverse the update
+            self.system.update_gauge_ind(link_ind,gauge_old)
+
 
     def simulate(self):
         self.warmup()

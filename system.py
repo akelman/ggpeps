@@ -3,6 +3,8 @@ import utils
 import os
 import sys
 import lattice as lat
+import gauge
+from scipy.linalg import block_diag
 
 ################### U1MultilayerSystem2D ###################
 
@@ -37,7 +39,7 @@ class U1MultilayerSystem2D:
         self.gamma_in_ = None
         self.gamma_in_sys_ = None
 
-        self.gaugefields_ = None
+        self.gaugefieldvec_ = None
         self.gaugemgr_ = None
 
     def generate_tmat(self, t, y, z):
@@ -121,13 +123,16 @@ class Z2System2D:
         # Management of the gaugefields
         self.gamma_neutral_gauge = self.generate_gamma_gauge_neutral()
         self._gamma_in_sys = None
-        self._gaugefields = np.zeros(self.cfg.lattice.nlinks)
-        self._gaugemgr = None
+        self._gaugefieldvec = np.zeros(self.cfg.lattice.nlinks)
+        self.gaugemgr = gauge.ZNGauge(2)
 
         #Observables
         self._energy = None
         self._el_energy = None
         self._mag_energy = None
+
+        #Weight
+        self._weight = None
 
     def initialize(self):
         """Initialization function. 
@@ -232,6 +237,21 @@ class Z2System2D:
             self._mat_a, self._mat_b, self._mat_d = self.extract_partial_covmats()
         return self._mat_d
     
+    @property
+    def gaugefieldvec(self):
+        return self._gaugefieldvec
+    
+    @gaugefieldvec.setter
+    def gaugefieldvec(self,val):
+        print(
+            "Do not set the gaugefieldvec explicitly. Use 'update_gauge'.", file=sys.stderr)
+    
+    @property
+    def weight(self):
+        if self._weight is None:
+            self._weight=self.calculate_lognorm()
+        return self._weight
+    
     def extract_partial_covmats(self):
         gamma_maj_sys=self.gamma_maj_sys
         nsites=self.cfg.lattice.size
@@ -246,12 +266,34 @@ class Z2System2D:
 
     #Gauging
 
-    def generate_rotmat(self,gauge):
-        #TODO: Rotation matrix for the modes
-        pass
+    def generate_rotmat(self,theta):
+        # TODO: Do we want to stagger here?
+        # We are only rotating the right modes. 
+        # Thus, we leave an identity matrix for the left modes.
+        rot_right=np.array([[np.cos(theta),np.sin(theta)],[-np.sin(theta),np.cos(theta)]])
+        # We have only one left mode => 2 Majorana modes
+        rot_left=np.eye(2)
+        # The mode order is lr (horizontally) or du (vertically).
+        dest=block_diag(rot_left,rot_right)
+        return dest
 
-    def update_theta(self,coord,theta):
-        pass
+    def update_gauge_ind(self,ind,theta):
+        #Update the gaugefield
+        self.gaugefieldvec[ind]=theta
+        #We have two directions per vertex and two Majoranas per link
+        ind_mat=4*ind
+        rotmat=self.generate_rotmat(theta)
+        gamma_in_subst=rotmat@self.gamma_neutral_gauge@np.transpose(rotmat)
+        # We get the matrix corresponding to the property
+        gamma_in_sys=self.gamma_in_sys
+        # and substitute in the array
+        gamma_in_sys[ind_mat:ind_mat+4,ind_mat:ind_mat+4]=gamma_in_subst
+        # Set the weight to None to recompute it
+        self._weight = None
+
+    def update_gauge_coord(self,coord,dir,theta):
+        ind=self.cfg.lattice.coord2ind_dir(coord,dir)
+        self.update_gauge_ind(ind,theta)
 
     # Calculating the norm
 
@@ -266,7 +308,6 @@ class Z2System2D:
     # Calculate gradients
 
     # Update the parameters
-
 
     # Observables
 
@@ -295,3 +336,18 @@ class Z2System2D:
     def compute_mag_energy(self):
         #TODO: Implement magnetic energy
         return 0
+
+    def compute_path(self,path):
+        """Compute the observable corresponding the path given as an argument
+
+        Args:
+            path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
+            This is the case if the link is traversed from right to left or from top to bottom.
+        """
+        theta_sum=0.
+        for ind, conj in path:
+            if conj:
+                theta_sum+=self.gaugefieldvec[ind]
+            else:
+                theta_sum+=self.gaugefieldvec[ind]
+        return np.exp(1.j*theta_sum)
