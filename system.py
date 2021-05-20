@@ -99,7 +99,7 @@ class Z2System2DConfig:
 
         #Parameters of the Hamiltonian
         self.g2 = g2
-        self.g_el = g2/2
+        self.g_el = g2
         if g_mag is None:
             self.g_mag = 1./g2
         else:
@@ -277,6 +277,12 @@ class Z2System2D:
         dest=block_diag(rot_left,rot_right)
         return dest
 
+    def invalidate_gauge_update(self):
+        self._energy = None
+        self._mag_energy = None
+        self._el_energy = None
+        self._weight = None
+
     def update_gauge_ind(self,ind,theta):
         #Update the gaugefield
         self.gaugefieldvec[ind]=theta
@@ -289,7 +295,7 @@ class Z2System2D:
         # and substitute in the array
         gamma_in_sys[ind_mat:ind_mat+4,ind_mat:ind_mat+4]=gamma_in_subst
         # Set the weight to None to recompute it
-        self._weight = None
+        self.invalidate_gauge_update()
 
     def update_gauge_coord(self,coord,dir,theta):
         ind=self.cfg.lattice.coord2ind_dir(coord,dir)
@@ -320,22 +326,56 @@ class Z2System2D:
     @property
     def mag_energy(self):
         if self._mag_energy is None:
-            self._mag_energy = self.compute_mag_energy()
+            self._mag_energy = self._compute_mag_energy()
         return self._mag_energy
 
     @property
     def el_energy(self):
         if self._el_energy is None:
-            self._el_energy = self.compute_el_energy()
+            self._el_energy = self._compute_el_energy()
         return self._el_energy
 
-    def compute_el_energy(self):
-        #TODO: Implement electric energy
-        return 0
+    def _compute_el_energy(self, use_trans_inv=True):
+        if use_trans_inv:
+            nlinks=self.cfg.lattice.nlinks
+            #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
+            gamma_maj_sys = self.gamma_maj_sys
+            gamma_in_sys = self.gamma_in_sys
+            # Number of fermions = # of sites
+            single_site_offset = 4
+            offset = 2*self.cfg.lattice.size+single_site_offset
+            mat_a = gamma_maj_sys[:offset, :offset]
+            mat_b = gamma_maj_sys[:offset, offset:]
+            mat_d = gamma_maj_sys[offset:, offset:]
+            # We have to cut one link from gamma_in_sys as well
+            gamma_in_sys_tilde = gamma_in_sys[single_site_offset:,
+                                              single_site_offset:]
+            covmat_out = mat_a + \
+                mat_b @ np.linalg.inv(mat_d -
+                                      gamma_in_sys_tilde) @ np.transpose(mat_b)
+            covmat_out_virt = covmat_out[-single_site_offset:, -
+                                         single_site_offset:]
+            el_energy_bare=0.5j*(covmat_out_virt[0,2]-covmat_out_virt[0,3]-1.j*covmat_out_virt[0,1]-1.j*covmat_out_virt[2,3])
+            el_energy = nlinks*self.cfg.g2*(1-np.real(el_energy_bare))
+        else:
+            # Evaluate every link of the system
+            logging.error("compute_el_energy: not implemented yet")
+            el_energy = None
+        return el_energy
 
-    def compute_mag_energy(self):
-        #TODO: Implement magnetic energy
-        return 0
+    def _compute_mag_energy(self, use_trans_inv=True):
+        if use_trans_inv:
+            # Evaluate one plaquette and multiply by number of plaquettes
+            nplaq = self.cfg.lattice.nplaquettes
+            wilson_plaquette = self.cfg.lattice.generate_wilson_loop(
+                (0, 0), (1, 1))
+            bare_energy = np.real(self.compute_path(wilson_plaquette))
+            mag_energy = nplaq*self.cfg.g_mag*(1-bare_energy)
+        else:
+            # Evaluate every plaquette of the system
+            logging.error("compute_mag_energy: not implemented yet")
+            mag_energy = None
+        return mag_energy
 
     def compute_path(self,path):
         """Compute the observable corresponding the path given as an argument

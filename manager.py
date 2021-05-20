@@ -18,9 +18,12 @@ np.set_printoptions(linewidth=200)
 def args2logname(args):
     shorthands = {"min": "min", "minimize": "min", "eval": "eval"}
     if args.g_mag == None:
-        return "log_{}_L_{:02d}_g2_{:.3f}_gm_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(shorthands[args.mode], args.L, args.g2, args.g_gm, args.warmup_steps, args.meas_steps)
+        fname = "log_{}_L_{:02d}_g2_{:.3f}_gm_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(
+            shorthands[args.mode], args.L, args.g2, args.g_gm, args.t, args.y, args.z, args.warmup_steps, args.meas_steps)
     else:
-        return "log_{}_L_{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(shorthands[args.mode], args.L, args.g2, args.g_gm, args.g_mag, args.warmup_steps, args.meas_steps)
+        fname = "log_{}_L_{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(
+            shorthands[args.mode], args.L, args.g2, args.g_gm, args.g_mag, args.t, args.y, args.z, args.warmup_steps, args.meas_steps)
+    return fname
 
 
 def main():
@@ -63,12 +66,19 @@ def main():
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 
-    paramdict = {"t": 0.2, "y": 0.3, "z": 0.5}
+    paramdict = {"t": args.t, "y": args.y, "z": args.z}
+    # TODO: This is now a specialized version that runs only Z2 System 2D.
+    # We will have to make this more general at some point.
     system_cfg = Z2System2DConfig(paramdict, lattice, g2, g_gm, g_mag)
 
     logging.info("======= SYSTEM INFO ========")
     logging.info("L: {}".format(L))
+    logging.info("t: {}".format(args.t))
+    logging.info("y: {}".format(args.y))
+    logging.info("z: {}".format(args.z))
     logging.info("g^2: {}".format(g2))
+    logging.info("g_mag: {}".format(g_mag))
+    logging.info("g_gm: {}".format(g_gm))
     #logging.info("Method: {}".format(method_str))
     logging.info("============================")
 
@@ -118,7 +128,7 @@ if __name__ == "__main__":
     parser.add_argument("--g2", type=float, default=1.0,
                         help="coupling constant")
     parser.add_argument("--g_mag", type=float, help="coupling constant")
-    parser.add_argument("--g_gm", type=float, default=1.0,
+    parser.add_argument("--g_gm", type=float, default=0.0,
                         help="gauge matter coupling")
     parser.add_argument("--seed", type=int, help="Seed for the MC simulation")
     parser.add_argument("--warmup_steps", type=int,
@@ -128,6 +138,9 @@ if __name__ == "__main__":
     parser.add_argument("--level", default="info", help="logging level")
     parser.add_argument("--binsize", default=1, type=int,
                         help="Binsize used in the MC computation")
+    parser.add_argument("--y", default=0.5, type=float, help="initial y parameter")
+    parser.add_argument("--z", default=0.5, type=float, help="initial z parameter")
+    parser.add_argument("--t", default=0.0, type=float, help="initial t parameter: coupling to physical fermions")
     #Arguments for the minimizer
     parser.add_argument("--method", type=str,
                         default="custom", help="Minimization method")

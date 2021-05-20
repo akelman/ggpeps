@@ -110,9 +110,11 @@ class MonteCarloEstimator:
         self.obsdict["acceptance_prob"] = Measurement(
             "Acceptance Probablity", binsize)
         self.obsdict["energy"] = Measurement("Energy", binsize)
+        self.obsdict["mag_energy"] = Measurement("Magnetic Energy", binsize)
+        self.obsdict["el_energy"] = Measurement("Electric Energy", binsize)
         self.obsdict["wilson_00_11"] = Measurement("Wilson (0,0) 1x1", binsize)
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
-        self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
+        #self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
 
     def measure(self):
         """Measure the corresponding observables in the dictionary"""
@@ -124,7 +126,9 @@ class MonteCarloEstimator:
         self.obsdict["energy"].append(self.system.energy)
         self.obsdict["wilson_00_11"].append(np.real(self.system.compute_path(wilson_loop)))
         self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
-        self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
+        #self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
+        self.obsdict["mag_energy"].append(self.system.mag_energy)
+        self.obsdict["el_energy"].append(self.system.el_energy)
 
     def warmup(self):
         """Warm up phase without measurement"""
@@ -214,10 +218,16 @@ class MonteCarloEstimator:
             pickle.dump(data_full, outfile)
 
     def save(self):
-        fname_full = "data_L_{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl.gz".format(
-            self.system.cfg.lattice.nx, self.system.cfg.g_el, self.system.cfg.g_gm, self.system.cfg.g_mag, self.cfg.warmup_steps, self.cfg.meas_steps)
-        fname_summary = "summary_L_{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl".format(
-            self.system.cfg.lattice.nx, self.system.cfg.g_el, self.system.cfg.g_gm, self.system.cfg.g_mag, self.cfg.warmup_steps, self.cfg.meas_steps)
+        syscfg=self.system.cfg
+        meas_steps=self.cfg.meas_steps
+        warmup_steps=self.cfg.warmup_steps
+        t=syscfg.paramdict["t"]
+        y=syscfg.paramdict["y"]
+        z=syscfg.paramdict["z"]
+        fname_full = "data_L_{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl.gz".format(
+            syscfg.lattice.nx, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z, warmup_steps, meas_steps)
+        fname_summary = "summary_L_{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl".format(
+            syscfg.lattice.nx, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z, warmup_steps, meas_steps)
         self.save_full(fname_full)
         self.save_summary(fname_summary)
 
@@ -234,13 +244,16 @@ class MonteCarloEstimator:
                 print("<{}>".format(key), self.obsdict[key].mean())
 
     def summary(self):
-        dest = {"name": [], "g_el": [], "g_gm": [], "g_mag": [], "warmup_steps": [
+        dest = {"name": [], "t": [], "y": [], "z": [], "g_el": [], "g_gm": [], "g_mag": [], "warmup_steps": [
         ], "meas_steps": [], "seed": [], "mean": [], "err": []}
         for key in self.obsdict.keys():
             dest['name'].append(key)
             dest['g_el'].append(self.system.cfg.g_el)
             dest['g_gm'].append(self.system.cfg.g_gm)
             dest['g_mag'].append(self.system.cfg.g_mag)
+            dest['t'].append(self.system.cfg.paramdict["t"])
+            dest['y'].append(self.system.cfg.paramdict["y"])
+            dest['z'].append(self.system.cfg.paramdict["z"])
             dest['seed'].append(self.cfg.seed)
             dest['warmup_steps'].append(self.cfg.warmup_steps)
             dest['meas_steps'].append(self.cfg.meas_steps)
