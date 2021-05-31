@@ -187,7 +187,7 @@ class Z2System2D:
             gamma_dirac = self.gamma_dirac
             m, _ = self.gamma_dirac.shape
             smat = utils.generate_smat(m)
-            self._gamma_maj = smat@gamma_dirac@np.transpose(smat)
+            self._gamma_maj = np.real(smat@gamma_dirac@np.transpose(smat))
         return self._gamma_maj
 
     @property
