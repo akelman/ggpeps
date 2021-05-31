@@ -8,8 +8,8 @@ from timeit import default_timer as timer
 import ray
 import utils
 import logging
-from minimizer import Minimizer
-from mc import MonteCarloEstimator, MonteCarloEstimatorConfig, MonteCarloManager
+#from minimizer import Minimizer
+from mc import MonteCarloEstimatorConfig, MonteCarloManager
 import lattice as lat
 import numpy as np
 np.set_printoptions(linewidth=200)
@@ -100,16 +100,16 @@ def main():
         logging.info("Method: {}".format(args.method))
         logging.info("============================")
 
-        minimizer = Minimizer(mc)
-        #Set the parameters of the minimizer according to the command line
-        minimizer.method = args.method
-        minimizer.max_it = args.maxiter
+        #minimizer = Minimizer(mc)
+        ##Set the parameters of the minimizer according to the command line
+        #minimizer.method = args.method
+        #minimizer.max_it = args.maxiter
 
-        start = timer()
-        result = minimizer.minimize()
-        stop = timer()
-        print(result)
-        minimizer.save()
+        #start = timer()
+        #result = minimizer.minimize()
+        #stop = timer()
+        #print(result)
+        #minimizer.save()
 
     logging.info("========== TIME ============")
     logging.info("The simulation took {}s".format(stop-start))
