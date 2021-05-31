@@ -154,7 +154,7 @@ def tmat_to_covariance_matrix(tmat):
     id = np.eye(m)
     idinv = np.linalg.inv(id-tmat@np.conjugate(tmat))
     lt = -idinv@tmat
-    rt = -0.5*idinv@(id+tmat@np.conjugate(tmat))
+    rt = 0.5*idinv@(id+tmat@np.conjugate(tmat))
     lb = -np.conjugate(rt)
     rb = -np.conjugate(lt)
     return 1.j*np.block([[lt, rt], [lb, rb]])
