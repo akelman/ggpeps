@@ -6,7 +6,7 @@ class ZNGauge:
         self.n = n
 
     def get_random_gauge_value(self):
-        return np.random.rand() * 2 * np.pi / self.n
+        return np.random.randint(0,self.n) * 2 * np.pi / self.n
 
     def get_neutral_gauge_value(self):
         return 0
@@ -16,7 +16,7 @@ class ZNGauge:
         dest = np.zeros(self.n)
         for i in range(self.n):
             dest[i] = i*prefactor
-            return dest
+        return dest
 
     def get_increment(self):
         return 2.*np.pi / self.n

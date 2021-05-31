@@ -2,8 +2,9 @@ import unittest
 import numpy as np
 import utils
 import system
-import lattice 
+import lattice
 from measurement import Measurement
+import gauge
 import copy
 
 def compare_array_elementwise(testcase,ref,res,print_vals=True):
@@ -14,6 +15,26 @@ def compare_array_elementwise(testcase,ref,res,print_vals=True):
                 if not np.isclose(ref[i, j] , res[i, j]):
                     print("{},{}: ref: {},res:{}".format(i,j,ref[i,j],res[i,j]))
     testcase.assertTrue(np.allclose(ref,res))
+
+class TestGauge(unittest.TestCase):
+
+    def setUp(self):
+        self.gaugeZ3=gauge.ZNGauge(3)
+        self.gaugeZ8=gauge.ZNGauge(8)
+
+    def test_possble_gauges(self):
+        poss_gauges_z3=self.gaugeZ3.get_possible_gauge_values()
+        poss_gauges_z8=self.gaugeZ8.get_possible_gauge_values()
+        self.assertEqual(len(poss_gauges_z3),3)
+        self.assertEqual(len(poss_gauges_z8),8)
+
+    def test_random_values(self):
+        for gauge in [self.gaugeZ3, self.gaugeZ8]:
+            poss_gauges = gauge.get_possible_gauge_values()
+            for _ in range(100):
+                val = gauge.get_random_gauge_value()
+                self.assertTrue(np.any(np.isclose(val,poss_gauges)))
+
 
 class TestMCMethods(unittest.TestCase):
 
@@ -31,13 +52,13 @@ class TestUtils(unittest.TestCase):
         res=smat@np.conjugate(np.transpose(smat))
         ref=2.*np.eye(N)
         self.assertTrue(np.allclose(ref,res))
-    
+
 class TestLattice(unittest.TestCase):
 
     def setUp(self):
         self.lat2d=lattice.Lattice2D(8,8)
         self.lat3d=lattice.Lattice3D(8,8,8)
-    
+
     def test_ind2coord_2d(self):
         ref=(3,4)
         ind=self.lat2d.coord2ind(ref)
@@ -106,7 +127,7 @@ class TestLattice(unittest.TestCase):
             ]
         path=self.lat2d.generate_polyakov_loop((0,0),lattice.Direction.Y, use_indices=False)
         self.assertEqual(ref,path)
-    
+
     def test_2d_covering(self):
         nx=13
         ny=7
@@ -137,7 +158,7 @@ class TestLattice(unittest.TestCase):
             coord,dir=self.lat3d.ind2coord_dir(ind)
             self.assertEqual(coord_ref,coord)
             self.assertEqual(dir_ref,dir)
-    
+
 class TestPermutationBuilder2D(unittest.TestCase):
 
     def setUp(self):
@@ -166,7 +187,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramdict={"t":0.3,"y":0.5,"z":0.8}
         cfg=system.Z2System2DConfig(paramdict,lat,0,0,0)
         self.system_z2_2_2=system.Z2System2D(cfg)
-    
+
     def test_tmat_numeric(self):
         #Test numeric equivalent with Mathematica
         tmat=self.system_z2_2_2.tmat
@@ -176,7 +197,7 @@ class TestZ2SystemMethods(unittest.TestCase):
                         [-0.3, -0.8, 0.8*1.j, 0, -0.5],
                         [0.3, -0.8*1.j, 0.8, 0.5, 0]])
         self.assertTrue(np.allclose(tmat,ref))
-    
+
     def test_tmat_antisymmetric(self):
         tmat=self.system_z2_2_2.tmat
         self.assertTrue(utils.is_antisymmetric(tmat))
@@ -229,7 +250,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         self.assertTrue(utils.is_antisymmetric(gamma_maj))
         self.assertTrue(np.allclose(gamma_maj@gamma_maj,-np.eye(m)))
         self.assertTrue(np.allclose(gamma_maj@np.transpose(gamma_maj),np.eye(m)))
-    
+
     def test_gamma_maj_numeric(self):
         # We are comparing to Mathematica.
         # This check is useful for the mode-ordering.
@@ -277,7 +298,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         self.assertTrue(utils.is_antisymmetric(gamma_in))
         self.assertTrue(np.allclose(gamma_in@gamma_in,-np.eye(m)))
         self.assertTrue(np.allclose(gamma_in@np.transpose(gamma_in),np.eye(m)))
-    
+
     def test_part_d_covmat(self):
         #If t=0, then mat_d must be a valid covariance matrix
         lat=lattice.Lattice2D(2,2)
@@ -289,7 +310,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         self.assertTrue(utils.is_antisymmetric(mat))
         self.assertTrue(np.allclose(mat@mat,-np.eye(m)))
         self.assertTrue(np.allclose(mat@np.transpose(mat),np.eye(m)))
-    
+
     def test_derivative_y(self):
 
         #This is comparison with Mathematica
@@ -392,6 +413,10 @@ class TestZ2SystemMethods(unittest.TestCase):
 
         compare_array_elementwise(self,deriv_num,deriv_ana,print_vals=True)
 
+    def test_incremental_update(self):
+        # Test that the incremental update is equivalent to the re-calculation of the norm
+        pass
+
 class TestU1MultilayerSystemMethods(unittest.TestCase):
 
     def setUp(self):
@@ -399,7 +424,7 @@ class TestU1MultilayerSystemMethods(unittest.TestCase):
         paramdict={"t":[0.3,0.4],"y":[0.5,0.2],"z":[0.8,0.3]}
         cfg=system.U1MultilayerSystem2DConfig(paramdict,lat)
         self.system_u1_2_2=system.U1MultilayerSystem2D(cfg)
-    
+
     def test_tmat_numeric(self):
         #Test numeric equivalent with Mathematica
         tmat=self.system_u1_2_2.tmat
@@ -411,7 +436,7 @@ class TestU1MultilayerSystemMethods(unittest.TestCase):
         self.assertEqual(m,5)
         self.assertEqual(n,4)
         #for ind in range(ncopy):
-            #self.assertTrue(utils.is_antisymmetric(tmat[ind,1:,:]))
+        #self.assertTrue(utils.is_antisymmetric(tmat[ind,1:,:]))
 
 #    def test_gamma_dirac_covariance(self):
 #        gamma_dirac=self.system_u1_2_2.gamma_dirac
@@ -446,7 +471,7 @@ class TestU1MultilayerSystemMethods(unittest.TestCase):
 #        self.assertTrue(np.allclose(gamma_in@gamma_in,-np.eye(m)))
 #        self.assertTrue(np.allclose(gamma_in@np.transpose(gamma_in),np.eye(m)))
 
-class TestMeasurements(unittest.TestCase): 
+class TestMeasurements(unittest.TestCase):
     def testAdd(self):
         meas1=Measurement("meas1",1)
         meas2=Measurement("meas2",2)
@@ -481,7 +506,7 @@ class TestMeasurements(unittest.TestCase):
         self.assertTrue(np.allclose(meas1.mean(),meas2.mean()))
 
 # ======================= WoodburyInverter Test =========================================
-class TestWoodburyInverter(unittest.TestCase): 
+class TestWoodburyInverter(unittest.TestCase):
     def setUp(self):
         self.n=10
         self.ident=np.eye(self.n)
@@ -510,7 +535,7 @@ class TestWoodburyInverter(unittest.TestCase):
         inv_wb=wi.inv()
         inv=np.linalg.inv(mat)
         self.assertTrue(np.allclose(inv,inv_wb))
-        
+
 
     def test_pos_update(self):
         n=10
