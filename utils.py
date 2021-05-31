@@ -299,7 +299,7 @@ class IncLogAbsDeterminant:
                 self.detval = dest
         return dest
 
-    def update_index(self, ainv, m, indi, indj, converged, store=True):
+    def update_index(self, ainv, m, indi, indj, store=True):
         #Construct two matrices to shift M to the correct position in A
         if not np.allclose(m, 0):
             # We cannot update if m is zero because we cannot invert it
