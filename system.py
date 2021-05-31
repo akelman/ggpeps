@@ -119,6 +119,7 @@ class Z2System2D:
         self._mat_a = None
         self._mat_b = None
         self._mat_d = None
+        self._mat_d_inv = None
 
         # Management of the gaugefields
         self.gamma_neutral_gauge = self.generate_gamma_gauge_neutral()
@@ -126,13 +127,17 @@ class Z2System2D:
         self._gaugefieldvec = np.zeros(self.cfg.lattice.nlinks)
         self.gaugemgr = gauge.ZNGauge(2)
 
-        #Observables
+        # Observables
         self._energy = None
         self._el_energy = None
         self._mag_energy = None
 
-        #Weight
+        # Weight
         self._weight = None
+
+        # Woodbury Update and Matrix Inversion
+        self._wi_gamma_in=None
+        self._incdet=None
 
     def initialize(self):
         """Initialization function. 
@@ -183,6 +188,15 @@ class Z2System2D:
 
     @property
     def gamma_maj(self):
+        """Return the covariance matrix in Majorana modes.
+        The mode order of this matrix is {p_1,p_2,l_1,l_2,r_1,r_2,d_1,d_2,u_1,u_2}.
+        The definition of Majorana modes used is
+            \gamma_1=c+c^\dagger
+            \gamma_2=i(c-c^\dagger)
+
+        Returns:
+            [np.array]: Covariance matrix in Majorana modes
+        """
         if self._gamma_maj is None:
             gamma_dirac = self.gamma_dirac
             m, _ = self.gamma_dirac.shape
@@ -192,6 +206,13 @@ class Z2System2D:
 
     @property
     def gamma_maj_sys(self):
+        """Return the covariance matrix of the full system in Majorana modes.
+        The mode order is changed to fit the mode order of gamma_in.
+        See documentation of gamma_in for details.
+
+        Returns:
+            [np.array]: Covariance matrix of the full system
+        """
         if self._gamma_maj_sys is None:
             gamma_maj = self.gamma_maj
             amat = gamma_maj[:2, :2]
@@ -210,48 +231,97 @@ class Z2System2D:
                 [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])@np.transpose(mat_perm)
         return self._gamma_maj_sys
 
+    def initialize_gamma_in_sys(self):
+        nlinks = self.cfg.lattice.nlinks
+        id = np.eye(nlinks)
+        neutral_gauge = self.gamma_neutral_gauge
+        gamma_in_sys = np.kron(id, neutral_gauge)
+        diff = self.mat_d_inv - gamma_in_sys
+        wi_gamma_in=utils.WoodburyInverter(diff)
+        incdet=utils.IncLogAbsDeterminant(diff)
+        return gamma_in_sys, wi_gamma_in, incdet
+
     @property
     def gamma_in_sys(self):
+        #TODO: Details about mode order
         if self._gamma_in_sys is None:
-            nlinks = self.cfg.lattice.nlinks
-            id = np.eye(nlinks)
-            neutral_gauge = self.gamma_neutral_gauge
-            self._gamma_in_sys = np.kron(id, neutral_gauge)
+            self._gamma_in_sys, self._wi_gamma_in, self._incdet=self.initialize_gamma_in_sys()
         return self._gamma_in_sys
-    
+
+    @property
+    def incdet(self):
+        if self._incdet is None:
+            self._gamma_in_sys, self._wi_gamma_in, self._incdet=self.initialize_gamma_in_sys()
+        return self._incdet
+
+    @property
+    def wi_gamma_in(self):
+        if self._wi_gamma_in is None:
+            self._gamma_in_sys, self._wi_gamma_in, self._incdet=self.initialize_gamma_in_sys()
+        return self._wi_gamma_in
+
     @property
     def mat_a(self):
+        """Extract the matrix for physical-physical correlations.
+        The mode ordering of this matrix is (p_1(0,0),p_2(0,0),p_1(1,0),p_2(1,0)....).
+        The mode ordering of the sites is identical to the site convention defined in the lattice class.
+
+        Returns:
+            [np.array]: Correlations of the physcial modes for the full system.
+        """
         if self._mat_a is None:
             self._mat_a, self._mat_b, self._mat_d = self.extract_partial_covmats()
         return self._mat_a
 
     @property
     def mat_b(self):
+        """Extract the matrix for physical-virtual correlations.
+
+        Returns:
+            [np.array]: Correlations of the physcial modes with the virtual modes for the full system.
+        """
         if self._mat_b is None:
             self._mat_a, self._mat_b, self._mat_d = self.extract_partial_covmats()
         return self._mat_b
 
     @property
     def mat_d(self):
+        """Extract the matrix for virtual-virtual correlations.
+
+        Returns:
+            [np.array]: Correlations of the virtual modes for the full system.
+        """
         if self._mat_d is None:
             self._mat_a, self._mat_b, self._mat_d = self.extract_partial_covmats()
         return self._mat_d
-    
+
+    @property
+    def mat_d_inv(self):
+        if self._mat_d_inv is None:
+            self._mat_d_inv = np.linalg.inv(self.mat_d)
+        return self._mat_d_inv
+
     @property
     def gaugefieldvec(self):
         return self._gaugefieldvec
-    
+
     @gaugefieldvec.setter
     def gaugefieldvec(self,val):
         print(
-            "Do not set the gaugefieldvec explicitly. Use 'update_gauge'.", file=sys.stderr)
-    
+            "Do not set the gaugefieldvec explicitly. Use 'update_gauge_ind'.", file=sys.stderr)
+
     @property
     def weight(self):
         if self._weight is None:
-            self._weight=self.calculate_lognorm()
+            self._weight = 0.5 * self.incdet.det()
+            print("Weight recalculated!")
         return self._weight
-    
+
+    @weight.setter
+    def weight(self,val):
+        self._weight = val
+
+
     def extract_partial_covmats(self):
         gamma_maj_sys=self.gamma_maj_sys
         nsites=self.cfg.lattice.size
@@ -268,7 +338,7 @@ class Z2System2D:
 
     def generate_rotmat(self,theta):
         # TODO: Do we want to stagger here?
-        # We are only rotating the right modes. 
+        # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
         rot_right=np.array([[np.cos(theta),np.sin(theta)],[-np.sin(theta),np.cos(theta)]])
         # We have only one left mode => 2 Majorana modes
@@ -281,21 +351,42 @@ class Z2System2D:
         self._energy = None
         self._mag_energy = None
         self._el_energy = None
-        self._weight = None
 
-    def update_gauge_ind(self,ind,theta):
-        #Update the gaugefield
-        self.gaugefieldvec[ind]=theta
-        #We have two directions per vertex and two Majoranas per link
-        ind_mat=4*ind
+    def calculate_update_gamma_in(self,offset,update_mat):
+        m_up,n_up=update_mat.shape
+        gamma_in_old=self.gamma_in_sys[offset:offset+m_up,offset:offset+n_up]
+        return -(update_mat-gamma_in_old)
+
+    def update_gauge_ind(self, ind, theta):
+        # Update the gaugefield
+        self._gaugefieldvec[ind] = theta
+        # There are two directions per vertex and two Majoranas per link
+        ind_mat = 4 * ind
+        rotmat = self.generate_rotmat(theta)
+        gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(
+            rotmat)
+        update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
+        # Update the determinant
+        mat_inv = self.wi_gamma_in.inv()
+        detval = self.incdet.update_index(mat_inv, update, ind_mat, ind_mat)
+        # Update the weight
+        self.weight = 0.5 * detval
+        # Update the matrix inversion
+        self.wi_gamma_in.update_index(update, ind_mat, ind_mat)
+        # Substitute in the array
+        self.gamma_in_sys[ind_mat:ind_mat + 4,
+                          ind_mat:ind_mat + 4] = gamma_in_subst
+        # Invalidate gauge dependent quantities
+        self.invalidate_gauge_update()
+
+    def calculate_weight_attempt(self, link_ind, theta, all_factors=False):
+        # There are two directions per vertex and two Majoranas per link
+        ind_mat=4*link_ind
         rotmat=self.generate_rotmat(theta)
         gamma_in_subst=rotmat@self.gamma_neutral_gauge@np.transpose(rotmat)
-        # We get the matrix corresponding to the property
-        gamma_in_sys=self.gamma_in_sys
-        # and substitute in the array
-        gamma_in_sys[ind_mat:ind_mat+4,ind_mat:ind_mat+4]=gamma_in_subst
-        # Set the weight to None to recompute it
-        self.invalidate_gauge_update()
+        update=self.calculate_update_gamma_in(ind_mat,gamma_in_subst)
+        return self.calculate_lognorm_inc(ind_mat,update,all_factors)
+
 
     def update_gauge_coord(self,coord,dir,theta):
         ind=self.cfg.lattice.coord2ind_dir(coord,dir)
@@ -303,13 +394,27 @@ class Z2System2D:
 
     # Calculating the norm
 
-    def calculate_lognorm(self):
+    def calculate_lognorm(self,all_factors=False):
         # This is still the plain formula, without any update mechanism
         gamma_in_sys=self.gamma_in_sys
         mat_d=self.mat_d
-        sign,logval=np.linalg.slogdet((np.eye(mat_d.shape[0])-gamma_in_sys@mat_d)/2.)
+        if all_factors:
+            sign,logval=np.linalg.slogdet((np.eye(mat_d.shape[0])-gamma_in_sys@mat_d)/2)
+        else:
+            # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
+            sign,logval=np.linalg.slogdet((np.eye(mat_d.shape[0])-gamma_in_sys@mat_d))
         #The factor 1/2 is the square-root
         return logval/2
+
+    def calculate_lognorm_inc(self, offset, update, all_factors=False):
+        detval = self.incdet.update_index(self.wi_gamma_in.inv(), update,
+                                          offset, offset, store=False)
+        if all_factors:
+            detval-=np.log(2**self.gamma_in_sys.shape[0])
+            detval+=np.linalg.slogdet(self.mat_d)[1]
+        # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
+        return 0.5 * detval
+
 
     # Calculate gradients
 
@@ -389,7 +494,7 @@ class Z2System2D:
         dest[8,9]=(-2*(alpha + 2*t**2*alpha))/d**2 - (2*beta)/b**2
 
         return dest-np.transpose(dest)
-    
+
     def gamma_maj_deriv_z(self):
         dest=np.zeros((10, 10))
         t=self.cfg.paramdict["t"]
@@ -475,7 +580,7 @@ class Z2System2D:
         dest[8, 9] = (2*(y - 2*z))/b**2 - (2*(eta + 2*t**2*eta))/d**2
 
         return dest-np.transpose(dest)
-    
+
     # Update the parameters
 
     # Observables

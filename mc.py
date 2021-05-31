@@ -70,10 +70,10 @@ class MonteCarloEstimatorConfig:
     """Monte Carlo Configuration"""
 
     def __init__(self):
-       self.warmup_steps = None
-       self._seed = None
-       self.meas_steps = None
-       self.binsize = 1
+        self.warmup_steps = None
+        self._seed = None
+        self.meas_steps = None
+        self.binsize = 1
 
     @property
     def seed(self):
@@ -103,6 +103,7 @@ class MonteCarloEstimator:
 
         #This might change in the future if we implement different updates
         self.update=self.update_single_site
+
 
     def init_measurements(self):
         """Add empty measurement vectors to the measurement dictionary"""
@@ -153,22 +154,25 @@ class MonteCarloEstimator:
         nlinks=lattice.nlinks
         link_ind=np.random.randint(0,nlinks)
         # Uniformly pick a gauge to replace
-        gauge_new=self.system.gaugemgr.get_random_gauge_value()
+        theta=self.system.gaugemgr.get_random_gauge_value()
         # Store the old values
         weight_old=self.system.weight
-        gauge_old=self.system.gaugefieldvec[link_ind]
-        self.system.update_gauge_ind(link_ind,gauge_new)
-        weight=self.system.weight
-        #TODO: Use incremental updates here
-        if np.exp(weight - weight_old) > np.random.rand():
+        weight_new=self.system.calculate_weight_attempt(link_ind,theta)
+        if np.exp(weight_new - weight_old) > np.random.rand():
             # Accept
             self.obsdict["acceptance_prob"].append(1)
+            self.system.update_gauge_ind(link_ind,theta)
+            print(
+                "link: {:02d}, theta: {:.3f}, weight old: {:.3f}, weight new: {:.3f}, weight delta: {:.3f}, accept"
+                .format(link_ind, theta, weight_old, weight_new,
+                        weight_new - weight_old))
         else:
             # Reject
             self.obsdict["acceptance_prob"].append(0)
-            # Reverse the update
-            self.system.update_gauge_ind(link_ind,gauge_old)
-
+            print(
+                "link: {:02d}, theta: {:.3f}, weight old: {:.3f}, weight new: {:.3f}, weight delta: {:.3f}, decline"
+                .format(link_ind, theta, weight_old, weight_new,
+                        weight_new - weight_old))
 
     def simulate(self):
         self.warmup()

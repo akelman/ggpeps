@@ -413,9 +413,39 @@ class TestZ2SystemMethods(unittest.TestCase):
 
         compare_array_elementwise(self,deriv_num,deriv_ana,print_vals=True)
 
-    def test_incremental_update(self):
+    def test_norm_minimal(self):
+        # This update is a nullop since we initialize the gauge-field with 0
+        zeroarr = np.zeros((1, 1))
+        #The factor of 2 compensates for the
+        logdet_inc = 2*self.system_z2_2_2.calculate_lognorm_inc(
+            0, zeroarr, all_factors=False)
+        # This is equivalent to
+        #logdet_inc = self.system_z2_2_2.incdet.det()
+        diff = self.system_z2_2_2.mat_d_inv - self.system_z2_2_2.gamma_in_sys
+        sign, logdet = np.linalg.slogdet(diff)
+        self.assertGreater(sign,0)
+        self.assertAlmostEqual(logdet_inc, logdet)
+
+    def test_norm_incremental(self):
         # Test that the incremental update is equivalent to the re-calculation of the norm
-        pass
+        # This update is a nullop since we initialize the gauge-field with 0
+        zeroarr = np.zeros((1, 1))
+        weight_inc = self.system_z2_2_2.calculate_lognorm_inc(0,
+                                                              zeroarr,
+                                                              all_factors=True)
+        weight_recalc = self.system_z2_2_2.calculate_lognorm(all_factors=True)
+        self.assertAlmostEqual(weight_inc, weight_recalc)
+
+    def test_norm_incremental_update(self):
+        # Test that the incremental update is equivalent to the re-calculation of the norm
+        ind = 0
+        theta = np.pi
+        weight_inc = self.system_z2_2_2.calculate_weight_attempt(
+            ind, theta, all_factors=True)
+        self.system_z2_2_2.update_gauge_ind(ind, theta)
+        weight_recalc = self.system_z2_2_2.calculate_lognorm(all_factors=True)
+        self.assertAlmostEqual(weight_inc, weight_recalc)
+
 
 class TestU1MultilayerSystemMethods(unittest.TestCase):
 
