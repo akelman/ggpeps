@@ -24,7 +24,7 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
-            "args": ["eval","2","--level","debug", "--warmup", "1000"],
+            "args": ["eval","2","--level","debug", "--warmup", "1000","--seed","42"],
             "console": "integratedTerminal"
         }
     ]
