@@ -314,7 +314,6 @@ class Z2System2D:
     def weight(self):
         if self._weight is None:
             self._weight = 0.5 * self.incdet.det()
-            print("Weight recalculated!")
         return self._weight
 
     @weight.setter

@@ -162,17 +162,9 @@ class MonteCarloEstimator:
             # Accept
             self.obsdict["acceptance_prob"].append(1)
             self.system.update_gauge_ind(link_ind,theta)
-            print(
-                "link: {:02d}, theta: {:.3f}, weight old: {:.3f}, weight new: {:.3f}, weight delta: {:.3f}, accept"
-                .format(link_ind, theta, weight_old, weight_new,
-                        weight_new - weight_old))
         else:
             # Reject
             self.obsdict["acceptance_prob"].append(0)
-            print(
-                "link: {:02d}, theta: {:.3f}, weight old: {:.3f}, weight new: {:.3f}, weight delta: {:.3f}, decline"
-                .format(link_ind, theta, weight_old, weight_new,
-                        weight_new - weight_old))
 
     def simulate(self):
         self.warmup()
