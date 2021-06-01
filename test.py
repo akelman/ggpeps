@@ -336,7 +336,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramdict = {"y": 0.35, "z": 0.56, "t": 0.17}
         cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
         system_z2_2_2 = system.Z2System2D(cfg)
-        res = system_z2_2_2.gamma_maj_deriv_y()
+        res = system_z2_2_2.compute_gamma_maj_deriv_y()
         self.assertTrue(np.allclose(ref, res))
 
     def test_derivative_z(self):
@@ -364,7 +364,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramdict = {"y": 0.35, "z": 0.56, "t": 0.17}
         cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
         system_z2_2_2 = system.Z2System2D(cfg)
-        res = system_z2_2_2.gamma_maj_deriv_z()
+        res = system_z2_2_2.compute_gamma_maj_deriv_z()
         compare_array_elementwise(self,ref,res)
 
     def test_derivative_y_numeric(self):
@@ -383,7 +383,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_left= system.Z2System2D(cfg_left)
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
-        deriv_ana=system_z2_2_2.gamma_maj_deriv_y()
+        deriv_ana=system_z2_2_2.compute_gamma_maj_deriv_y()
         gamma_left=system_z2_2_2_left.gamma_maj
         gamma_right=system_z2_2_2_right.gamma_maj
         deriv_num=(gamma_right-gamma_left)/(2*eps)
@@ -406,12 +406,28 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_left= system.Z2System2D(cfg_left)
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
-        deriv_ana=system_z2_2_2.gamma_maj_deriv_z()
+        deriv_ana=system_z2_2_2.compute_gamma_maj_deriv_z()
         gamma_left=system_z2_2_2_left.gamma_maj
         gamma_right=system_z2_2_2_right.gamma_maj
         deriv_num=(gamma_right-gamma_left)/(2*eps)
 
         compare_array_elementwise(self,deriv_num,deriv_ana,print_vals=True)
+
+    def test_derivative_y_sys(self):
+        lat = lattice.Lattice2D(2, 2)
+        paramdict = {"y": 0.35, "z": 0.56, "t": 0.17}
+        cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
+        system_z2_2_2 = system.Z2System2D(cfg)
+        res = system_z2_2_2.gamma_maj_sys_deriv_y
+        self.assertTrue(utils.is_antisymmetric(res))
+
+    def test_derivative_z_sys(self):
+        lat = lattice.Lattice2D(2, 2)
+        paramdict = {"y": 0.35, "z": 0.56, "t": 0.17}
+        cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
+        system_z2_2_2 = system.Z2System2D(cfg)
+        res = system_z2_2_2.gamma_maj_sys_deriv_z
+        self.assertTrue(utils.is_antisymmetric(res))
 
     def test_norm_minimal(self):
         # This update is a nullop since we initialize the gauge-field with 0

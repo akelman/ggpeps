@@ -135,6 +135,10 @@ class Z2System2D:
         # Weight
         self._weight = None
 
+        # Gradients
+        self._gamma_maj_sys_deriv_y = None
+        self._gamma_maj_sys_deriv_z = None
+
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in=None
         self._incdet=None
@@ -417,7 +421,29 @@ class Z2System2D:
 
     # Calculate gradients
 
-    def gamma_maj_deriv_y(self):
+    @property
+    def gamma_maj_sys_deriv_y(self):
+        if self._gamma_maj_sys_deriv_y is None:
+            permbuilder = lat.PermutationBuilderGMS2D(self.cfg.lattice, nmodes_per_link=1)
+            mat_perm = permbuilder.perm()
+            gamma_maj_deriv_y = self.compute_gamma_maj_deriv_y()
+            nsites=self.cfg.lattice.size
+            gamma_maj_deriv_y_sys_unsorted=np.kron(np.eye(nsites),gamma_maj_deriv_y)
+            self._gamma_maj_sys_deriv_y=mat_perm@gamma_maj_deriv_y_sys_unsorted@np.transpose(mat_perm)
+        return self._gamma_maj_sys_deriv_y
+
+    @property
+    def gamma_maj_sys_deriv_z(self):
+        if self._gamma_maj_sys_deriv_z is None:
+            permbuilder = lat.PermutationBuilderGMS2D(self.cfg.lattice, nmodes_per_link=1)
+            mat_perm = permbuilder.perm()
+            gamma_maj_deriv_z = self.compute_gamma_maj_deriv_z()
+            nsites=self.cfg.lattice.size
+            gamma_maj_deriv_z_sys_unsorted=np.kron(np.eye(nsites),gamma_maj_deriv_z)
+            self._gamma_maj_sys_deriv_z=mat_perm@gamma_maj_deriv_z_sys_unsorted@np.transpose(mat_perm)
+        return self._gamma_maj_sys_deriv_z
+
+    def compute_gamma_maj_deriv_y(self):
         t=self.cfg.paramdict["t"]
         y=self.cfg.paramdict["y"]
         z=self.cfg.paramdict["z"]
@@ -494,7 +520,7 @@ class Z2System2D:
 
         return dest-np.transpose(dest)
 
-    def gamma_maj_deriv_z(self):
+    def compute_gamma_maj_deriv_z(self):
         dest=np.zeros((10, 10))
         t=self.cfg.paramdict["t"]
         y=self.cfg.paramdict["y"]
