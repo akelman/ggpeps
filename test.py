@@ -418,7 +418,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramdict = {"y": 0.35, "z": 0.56, "t": 0.17}
         cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
         system_z2_2_2 = system.Z2System2D(cfg)
-        res = system_z2_2_2.gamma_maj_sys_deriv_y
+        res = system_z2_2_2.gamma_maj_sys_deriv("y")
         self.assertTrue(utils.is_antisymmetric(res))
 
     def test_derivative_z_sys(self):
@@ -426,7 +426,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramdict = {"y": 0.35, "z": 0.56, "t": 0.17}
         cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
         system_z2_2_2 = system.Z2System2D(cfg)
-        res = system_z2_2_2.gamma_maj_sys_deriv_z
+        res = system_z2_2_2.gamma_maj_sys_deriv("z")
         self.assertTrue(utils.is_antisymmetric(res))
 
     def test_norm_minimal(self):
@@ -462,6 +462,33 @@ class TestZ2SystemMethods(unittest.TestCase):
         weight_recalc = self.system_z2_2_2.calculate_lognorm(all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
+    def test_grad_over_norm(self):
+        #This is comparison of the analytic derivative against the numeric derivative
+        eps=1e-5
+        lat = lattice.Lattice2D(2, 2)
+        paramdict = {"y": 0.35, "z": 0.56, "t": 0.17}
+        paramdict_left = {"y": 0.35, "z": 0.56-eps, "t": 0.17}
+        paramdict_right = {"y": 0.35, "z": 0.56+eps, "t": 0.17}
+
+        cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
+        cfg_left = system.Z2System2DConfig(paramdict_left, lat, 0, 0, 0)
+        cfg_right = system.Z2System2DConfig(paramdict_right, lat, 0, 0, 0)
+
+        system_z2_2_2 = system.Z2System2D(cfg)
+        system_z2_2_2_left= system.Z2System2D(cfg_left)
+        system_z2_2_2_right = system.Z2System2D(cfg_right)
+
+        deriv_ana = system_z2_2_2.compute_grad_over_norm(
+            "z") * np.exp(system_z2_2_2.calculate_lognorm(all_factors=True))
+        norm_left = np.exp(system_z2_2_2_left.calculate_lognorm(all_factors=True))
+        norm_right = np.exp(system_z2_2_2_right.calculate_lognorm(all_factors=True))
+        deriv_num = (norm_right - norm_left) / (2 * eps)
+
+        self.assertAlmostEqual(deriv_ana, deriv_num)
+
+    def test_grad_mag_energy(self):
+        pass
+    
 
 class TestU1MultilayerSystemMethods(unittest.TestCase):
 

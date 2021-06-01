@@ -421,6 +421,37 @@ class Z2System2D:
 
     # Calculate gradients
 
+    def gamma_maj_sys_deriv(self,var):
+        if var=="y":
+            return self.gamma_maj_sys_deriv_y
+        elif var=="z":
+            return self.gamma_maj_sys_deriv_z
+        elif var=="t":
+            print("gamma_maj_sys_deriv: Not implemented yet",sys.stderr)
+            return None
+        print("gamma_maj_sys_deriv: Invalid variable name",sys.stderr)
+        return None
+
+    def compute_grad_over_norm(self,var):
+        """Compute the quotient of derivative of the norm over the norm itself.
+        We can avoid a lot of factors by computing the quotient directly.
+
+        Args:
+            var (str): Name of the variable (t,y,z)
+
+        Returns:
+            float: Value of the gradient divided by the norm of the state
+        """
+        diff = self.wi_gamma_in.inv()
+        # 2 phys. Majorana modes per vertex
+        offset = 2 * self.cfg.lattice.size
+        # Extract only the part of the virtual-virtual correlations
+        deriv_d = self.gamma_maj_sys_deriv(var)[offset:, offset:]
+        dest = -0.5 * np.trace(
+            np.linalg.multi_dot(
+                [self.gamma_in_sys, deriv_d, self.mat_d_inv, diff]))
+        return dest
+
     @property
     def gamma_maj_sys_deriv_y(self):
         if self._gamma_maj_sys_deriv_y is None:
