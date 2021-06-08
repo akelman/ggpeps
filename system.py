@@ -93,8 +93,13 @@ class U1MultilayerSystem2D:
 
 
 class Z2System2DConfig:
-    def __init__(self, paramdict, lattice, g2, g_gm, g_mag):
-        self.paramdict = paramdict
+    def __init__(self, params, lattice, g2, g_gm, g_mag):
+        if type(params) is dict:
+            self._paramdict = params
+            self._paramvec = None
+        elif type(params) is np.ndarray or type(params) is list:
+            self._paramdict = None
+            self._paramvec = params
         self.lattice = lattice
 
         #Parameters of the Hamiltonian
@@ -105,6 +110,49 @@ class Z2System2DConfig:
         else:
             self.g_mag = g_mag
         self.g_gm = g_gm
+
+    def nvarparams(self):
+        return 3
+
+    @property
+    def paramdict (self):
+        if self._paramdict is None:
+            dest={}
+            dest["t"]=self.paramvec[0]
+            dest["y"]=self.paramvec[1]
+            dest["z"]=self.paramvec[2]
+            self._paramdict=dest
+        return self._paramdict
+
+    @paramdict.setter
+    def paramvec(self,val):
+        #Check the number of parameters
+        if len(val)==3:
+            self._paramdict=val
+            self._paramvec=np.array([val["t"],val["y"],val["z"]])
+        else:
+            print("Invalid length of parameter vector: '{}'".format(len(val)),
+                  file=sys.stderr)
+
+    @property
+    def paramvec(self):
+        if self._paramvec is None:
+            pdict=self.paramdict
+            self._paramvec=np.array([pdict["t"],pdict["y"],pdict["z"]])
+        return self._paramvec
+
+    @paramvec.setter
+    def paramvec(self,val):
+        #Check the number of parameters
+        if len(val)==3:
+            self._paramvec=val
+            self._paramdict["t"]=val[0]
+            self._paramdict["y"]=val[1]
+            self._paramdict["z"]=val[2]
+        else:
+            print("Invalid length of parameter vector: '{}'".format(len(val)),
+                  file=sys.stderr)
+
 
 
 class Z2System2D:
