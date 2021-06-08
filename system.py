@@ -188,8 +188,9 @@ class Z2System2D:
         self._gamma_maj_sys_deriv_z = None
 
         # Woodbury Update and Matrix Inversion
-        self._wi_gamma_in=None
-        self._incdet=None
+        self._wi_gamma_in = None   #Tracks (D^-1 - gammain)^-1
+        self._wi_gamma_out = None  #Tracks (D - gammain)^-1
+        self._incdet = None        #Tracks det(D^-1 - gammain)
 
     def initialize(self):
         """Initialization function. 
@@ -290,27 +291,34 @@ class Z2System2D:
         gamma_in_sys = np.kron(id, neutral_gauge)
         diff = self.mat_d_inv - gamma_in_sys
         wi_gamma_in=utils.WoodburyInverter(diff)
+        wi_gamma_out=utils.WoodburyInverter(self.mat_d - gamma_in_sys)
         incdet=utils.IncLogAbsDeterminant(diff)
-        return gamma_in_sys, wi_gamma_in, incdet
+        return gamma_in_sys, wi_gamma_in, wi_gamma_out, incdet
 
     @property
     def gamma_in_sys(self):
         #TODO: Details about mode order
         if self._gamma_in_sys is None:
-            self._gamma_in_sys, self._wi_gamma_in, self._incdet=self.initialize_gamma_in_sys()
+            self._gamma_in_sys, self._wi_gamma_in, self._wi_gamma_out, self._incdet = self.initialize_gamma_in_sys()
         return self._gamma_in_sys
 
     @property
     def incdet(self):
         if self._incdet is None:
-            self._gamma_in_sys, self._wi_gamma_in, self._incdet=self.initialize_gamma_in_sys()
+            self._gamma_in_sys, self._wi_gamma_in, self._wi_gamma_out, self._incdet=self.initialize_gamma_in_sys()
         return self._incdet
 
     @property
     def wi_gamma_in(self):
         if self._wi_gamma_in is None:
-            self._gamma_in_sys, self._wi_gamma_in, self._incdet=self.initialize_gamma_in_sys()
+            self._gamma_in_sys, self._wi_gamma_in, self._wi_gamma_out, self._incdet=self.initialize_gamma_in_sys()
         return self._wi_gamma_in
+
+    @property
+    def wi_gamma_out(self):
+        if self._wi_gamma_out is None:
+            self._gamma_in_sys, self._wi_gamma_in, self._wi_gamma_out, self._incdet=self.initialize_gamma_in_sys()
+        return self._wi_gamma_out
 
     @property
     def mat_a(self):
@@ -424,6 +432,7 @@ class Z2System2D:
         self.weight = 0.5 * detval
         # Update the matrix inversion
         self.wi_gamma_in.update_index(update, ind_mat, ind_mat)
+        self.wi_gamma_out.update_index(update, ind_mat, ind_mat)
         # Substitute in the array
         self.gamma_in_sys[ind_mat:ind_mat + 4,
                           ind_mat:ind_mat + 4] = gamma_in_subst
@@ -793,5 +802,4 @@ class Z2System2D:
 
     def compute_ferm_cov(self):
         """Compute the covariance matrix of the fermions in the system """
-        # TODO: Track the inverse in the formula
-        return self.mat_a + self.mat_b@np.linalg.inv(self.mat_d - self.gamma_in_sys)@np.transpose(self.mat_b)
+        return self.mat_a + self.mat_b@self.wi_gamma_out.inv()@np.transpose(self.mat_b)
