@@ -370,6 +370,35 @@ class TestZ2SystemMethods(unittest.TestCase):
         res = system_z2_2_2.compute_gamma_maj_deriv_z()
         compare_array_elementwise(self,ref,res)
 
+    def test_derivative_t(self):
+        #This is comparison with Mathematica
+        ref = np.array([[0, -1.1432704475880655, -0.3499169542672254, -0.7236918826890345, 1.2406146560383449, -0.7236918826890345, 0.4453488508855597, 0.07157392246375063, 0.4453488508855597, -1.5189576878418198],
+                       [1.1432704475880655, 0, 0.7236918826890345, 1.2406146560383449, 0.7236918826890345, -
+                           0.3499169542672254, 1.5189576878418198, 0.4453488508855597, -0.07157392246375063, 0.4453488508855597],
+                       [0.3499169542672254, -0.7236918826890345, 0, 0.01891037755325542, -0.24288558325282242,
+                           0.13634956066451026, -0.18016238318203856, -0.04381282251752838, -0.06272320007078382, 0.19907276073529406],
+                       [0.7236918826890345, -1.2406146560383449, -0.01891037755325542, 0, -0.4352856631295225,
+                        0.24288558325282242, -0.3485408119678002, -0.08674485116172226, -0.10565522871497779, 0.32963043441454465],
+                       [-1.2406146560383449, -0.7236918826890345, 0.24288558325282242, 0.4352856631295225, 0,
+                        0.01891037755325542, 0.32963043441454465, 0.10565522871497779, -0.08674485116172226, 0.3485408119678002],
+                       [0.7236918826890345, 0.3499169542672254, -0.13634956066451026, -0.24288558325282242, -0.01891037755325542,
+                        0, -0.19907276073529406, -0.06272320007078382, 0.04381282251752838, -0.18016238318203856],
+                       [-0.4453488508855597, -1.5189576878418198, 0.18016238318203856, 0.3485408119678002, -0.32963043441454476,
+                        0.19907276073529406, 0, 0.01891037755325542, -0.14946805123250612, 0.5287031951498388],
+                       [-0.07157392246375063, -0.4453488508855597, 0.04381282251752838, 0.08674485116172226, -0.10565522871497779,
+                        0.06272320007078391, -0.01891037755325542, 0, -0.04293202864419393, 0.14946805123250612],
+                       [-0.4453488508855597, 0.07157392246375063, 0.06272320007078391, 0.10565522871497779, 0.08674485116172226, -
+                        0.04381282251752838, 0.14946805123250612, 0.04293202864419393, 0, 0.01891037755325542],
+                       [1.5189576878418198, -0.4453488508855597, -0.19907276073529406, -0.32963043441454476, -0.3485408119678002, 0.18016238318203856, -0.5287031951498388, -0.14946805123250612, -0.01891037755325542, 0]])
+
+        lat = lattice.Lattice2D(2, 2)
+        paramdict = {"y": 0.35, "z": 0.56, "t": 0.17}
+        cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
+        system_z2_2_2 = system.Z2System2D(cfg)
+        res = system_z2_2_2.compute_gamma_maj_deriv_t()
+        compare_array_elementwise(self,ref,res)
+
+
     def test_derivative_y_numeric(self):
         #This is comparison of the analytic derivative against the numeric derivative
         eps=1e-5
@@ -469,9 +498,12 @@ class TestZ2SystemMethods(unittest.TestCase):
         #This is comparison of the analytic derivative against the numeric derivative
         eps=1e-5
         lat = lattice.Lattice2D(2, 2)
-        paramdict = {"y": 0.35, "z": 0.56, "t": 0.17}
-        paramdict_left = {"y": 0.35, "z": 0.56-eps, "t": 0.17}
-        paramdict_right = {"y": 0.35, "z": 0.56+eps, "t": 0.17}
+        t=0.17
+        y=0.35
+        z=0.56
+        paramdict = {"y": y, "z": z, "t": t}
+        paramdict_left = {"y": y, "z": z-eps, "t": t}
+        paramdict_right = {"y": y, "z": z+eps, "t": t}
 
         cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
         cfg_left = system.Z2System2DConfig(paramdict_left, lat, 0, 0, 0)
@@ -481,8 +513,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_left= system.Z2System2D(cfg_left)
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
-        deriv_ana = system_z2_2_2.compute_grad_over_norm(
-            "z") * np.exp(system_z2_2_2.calculate_lognorm(all_factors=True))
+        deriv_ana = system_z2_2_2.compute_grad_over_norm("z") * np.exp(system_z2_2_2.calculate_lognorm(all_factors=True))
         norm_left = np.exp(system_z2_2_2_left.calculate_lognorm(all_factors=True))
         norm_right = np.exp(system_z2_2_2_right.calculate_lognorm(all_factors=True))
         deriv_num = (norm_right - norm_left) / (2 * eps)
@@ -549,37 +580,72 @@ class TestMinimizerZ2(unittest.TestCase):
     def test_derivative_mag_energy_exact(self):
         eps = 1e-5
         paramdict = {"t": 0.0, "y": 0.5, "z": 0.5}
-        for ind in range(1,3):
-            print(ind)
-            lat_2x2 = lattice.Lattice2D(2, 2)
-            system_cfg = system.Z2System2DConfig(paramdict, lat_2x2, 1.0, None,
-                                                None)
-            paramvec=system_cfg.paramvec
-            paramvec_left=np.copy(paramvec)
-            paramvec_right=np.copy(paramvec)
-            paramvec_left[ind]-=eps
-            paramvec_right[ind]+=eps
-            system_cfg_left = system.Z2System2DConfig(paramvec_left, lat_2x2, 1.0,
-                                                    None, None)
-            system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
-                                                    1.0, None, None)
+        for ind in range(3):
+            with self.subTest(ind=ind):
+                lat_2x2 = lattice.Lattice2D(2, 2)
+                system_cfg = system.Z2System2DConfig(paramdict, lat_2x2, 1.0, None,
+                                                    None)
+                paramvec=system_cfg.paramvec
+                paramvec_left=np.copy(paramvec)
+                paramvec_right=np.copy(paramvec)
+                paramvec_left[ind]-=eps
+                paramvec_right[ind]+=eps
+                system_cfg_left = system.Z2System2DConfig(paramvec_left, lat_2x2, 1.0,
+                                                        None, None)
+                system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
+                                                        1.0, None, None)
 
-            sys = system.Z2System2D(system_cfg)
-            sys_left = system.Z2System2D(system_cfg_left)
-            sys_right = system.Z2System2D(system_cfg_right)
+                sys = system.Z2System2D(system_cfg)
+                sys_left = system.Z2System2D(system_cfg_left)
+                sys_right = system.Z2System2D(system_cfg_right)
 
-            exact_ev=ExactEvaluator(sys)
-            exact_ev_left=ExactEvaluator(sys_left)
-            exact_ev_right=ExactEvaluator(sys_right)
+                exact_ev=ExactEvaluator(sys)
+                exact_ev_left=ExactEvaluator(sys_left)
+                exact_ev_right=ExactEvaluator(sys_right)
 
-            res=exact_ev.evaluate()
-            res_left=exact_ev_left.evaluate()
-            res_right=exact_ev_right.evaluate()
+                res=exact_ev.evaluate()
+                res_left=exact_ev_left.evaluate()
+                res_right=exact_ev_right.evaluate()
 
-            mag_energy_deriv_num = (res_right["mag_energy"] - res_left["mag_energy"]) / (2 * eps)
-            mag_energy_deriv_ana = res["mag_energy_grad"][ind]
+                mag_energy_deriv_num = (res_right["mag_energy"] - res_left["mag_energy"]) / (2 * eps)
+                mag_energy_deriv_ana = res["mag_energy_grad"][ind]
 
-            self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
+                self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
+
+    def test_derivative_el_el_energy_exact(self):
+        eps = 1e-5
+        paramdict = {"t": 0.0, "y": 0.5, "z": 0.5}
+        for ind in range(3):
+            with self.subTest(ind=ind):
+                lat_2x2 = lattice.Lattice2D(2, 2)
+                system_cfg = system.Z2System2DConfig(paramdict, lat_2x2, 1.0, None,
+                                                    None)
+                paramvec=system_cfg.paramvec
+                paramvec_left=np.copy(paramvec)
+                paramvec_right=np.copy(paramvec)
+                paramvec_left[ind]-=eps
+                paramvec_right[ind]+=eps
+                system_cfg_left = system.Z2System2DConfig(paramvec_left, lat_2x2, 1.0,
+                                                        None, None)
+                system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
+                                                        1.0, None, None)
+
+                sys = system.Z2System2D(system_cfg)
+                sys_left = system.Z2System2D(system_cfg_left)
+                sys_right = system.Z2System2D(system_cfg_right)
+
+                exact_ev=ExactEvaluator(sys)
+                exact_ev_left=ExactEvaluator(sys_left)
+                exact_ev_right=ExactEvaluator(sys_right)
+
+                res=exact_ev.evaluate()
+                res_left=exact_ev_left.evaluate()
+                res_right=exact_ev_right.evaluate()
+
+                el_energy_deriv_num = (res_right["el_energy"] - res_left["el_energy"]) / (2 * eps)
+                el_energy_deriv_ana = res["el_energy_grad"][ind]
+
+                self.assertAlmostEqual(el_energy_deriv_num, el_energy_deriv_ana)
 
     @skip("Too long")
     def test_derivative_mag_energy_y(self):

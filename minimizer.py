@@ -112,16 +112,20 @@ class Minimizer():
 
     def energy_gradient(self,mc):
         # Compute the energy gradient from the MC results
+        meas_grad_over_norm = mc.obsdict["grad_norm"]
         # Gradient of the magnetic energy
         meas_mag_energy_op = mc.obsdict["mag_energy_op"]
-        meas_grad_over_norm = mc.obsdict["grad_norm"]
         prod_mag_energy_grad = meas_mag_energy_op * meas_grad_over_norm
-        mag_energy_op_grad = prod_mag_energy_grad.mean() - meas_mag_energy_op.mean()*meas_grad_over_norm.mean()
+        mag_energy_op_grad = prod_mag_energy_grad.mean() - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
         # Add the constants back into the expression of the magnetic energy
         mag_energy_grad = - mc.system.cfg.g_mag * mag_energy_op_grad
         # Gradient of the electric energy
-        # TODO: Implement electric gradient
-        el_energy_grad = 0
+        meas_el_energy_op = mc.obsdict["el_energy_op"]
+        meas_el_energy_op_grad = mc.obsdict["el_energy_op_grad"]
+        prod_el_energy_grad = meas_el_energy_op * meas_grad_over_norm
+        el_energy_op_grad = prod_el_energy_grad.mean() - meas_el_energy_op.mean()*meas_grad_over_norm.mean() + meas_el_energy_op_grad.mean()
+        # Add the constants back into the expression of the magnetic energy
+        el_energy_grad = - mc.system.cfg.g_el * el_energy_op_grad
         # TODO: Implement stochastic reconfiguration
         return mag_energy_grad + el_energy_grad
 

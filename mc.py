@@ -114,6 +114,7 @@ class MonteCarloEstimator:
         self.obsdict["el_energy"] = Measurement("Electric Energy", binsize)
         self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
         self.obsdict["el_energy_op"] = Measurement("Electric Energy Operator (bare)", binsize)
+        self.obsdict["el_energy_op_grad"] = Measurement("Electric Energy Operator Gradient", binsize)
         self.obsdict["wilson_00_11"] = Measurement("Wilson (0,0) 1x1", binsize)
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x",
                                                     binsize)
@@ -141,6 +142,7 @@ class MonteCarloEstimator:
         self.obsdict["energy"].append(self.system.energy)
         self.obsdict["el_energy"].append(self.system.el_energy)
         self.obsdict["mag_energy"].append(self.system.mag_energy)
+        self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad)
 
     def warmup(self):
         """Warm up phase without measurement"""

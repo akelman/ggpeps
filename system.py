@@ -7,6 +7,23 @@ import gauge
 import logging
 from scipy.linalg import block_diag
 
+################## Utility Functions ######################
+
+def extract_partial_covmats(mat,corner):
+    """Extract the partial covariance matrices from a gaussian mapping
+
+    Args:
+        mat (np.ndarray): Full covariance matrix
+        corner (int): Index of the top left element of the bottom right matrix
+
+    Returns:
+        tuple: Matrices (A,B,D)
+    """
+    mat_a = mat[:corner, :corner]
+    mat_b = mat[:corner, corner:]
+    mat_d = mat[corner:, corner:]
+    return mat_a, mat_b, mat_d
+
 ################### U1MultilayerSystem2D ###################
 
 
@@ -154,7 +171,6 @@ class Z2System2DConfig:
                   file=sys.stderr)
 
 
-
 class Z2System2D:
     def __init__(self, cfg):
         self.cfg = cfg
@@ -186,6 +202,8 @@ class Z2System2D:
         # Gradients
         self._gamma_maj_sys_deriv_y = None
         self._gamma_maj_sys_deriv_z = None
+        self._gamma_maj_sys_deriv_t = None
+        self._el_energy_op_grad = None
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in = None   #Tracks (D^-1 - gammain)^-1
@@ -330,7 +348,9 @@ class Z2System2D:
             [np.array]: Correlations of the physcial modes for the full system.
         """
         if self._mat_a is None:
-            self._mat_a, self._mat_b, self._mat_d = self.extract_partial_covmats()
+            nsites=self.cfg.lattice.size
+            #We are assuming one physical mode per site
+            self._mat_a, self._mat_b, self._mat_d = extract_partial_covmats(self.gamma_maj_sys, 2*nsites)
         return self._mat_a
 
     @property
@@ -341,7 +361,9 @@ class Z2System2D:
             [np.array]: Correlations of the physcial modes with the virtual modes for the full system.
         """
         if self._mat_b is None:
-            self._mat_a, self._mat_b, self._mat_d = self.extract_partial_covmats()
+            nsites=self.cfg.lattice.size
+            #We are assuming one physical mode per site
+            self._mat_a, self._mat_b, self._mat_d = extract_partial_covmats(self.gamma_maj_sys, 2*nsites)
         return self._mat_b
 
     @property
@@ -352,7 +374,9 @@ class Z2System2D:
             [np.array]: Correlations of the virtual modes for the full system.
         """
         if self._mat_d is None:
-            self._mat_a, self._mat_b, self._mat_d = self.extract_partial_covmats()
+            nsites=self.cfg.lattice.size
+            #We are assuming one physical mode per site
+            self._mat_a, self._mat_b, self._mat_d = extract_partial_covmats(self.gamma_maj_sys, 2*nsites)
         return self._mat_d
 
     @property
@@ -381,14 +405,7 @@ class Z2System2D:
         self._weight = val
 
 
-    def extract_partial_covmats(self):
-        gamma_maj_sys=self.gamma_maj_sys
-        nsites=self.cfg.lattice.size
-        #We are assuming one physical mode per site
-        mat_a = gamma_maj_sys[:2*nsites, :2*nsites]
-        mat_b = gamma_maj_sys[:2*nsites, 2*nsites:]
-        mat_d = gamma_maj_sys[2*nsites:, 2*nsites:]
-        return mat_a, mat_b, mat_d
+
 
     def generate_gamma_gauge_neutral(self):
         return np.real_if_close(1.j*np.kron(utils.pauliy, utils.paulix))
@@ -410,6 +427,7 @@ class Z2System2D:
         self._energy = None
         self._mag_energy_op = None
         self._el_energy_op = None
+        self._el_energy_grad = None
 
     def calculate_update_gamma_in(self,offset,update_mat):
         m_up,n_up=update_mat.shape
@@ -485,8 +503,7 @@ class Z2System2D:
     def compute_grad_norm(self):
         #The parameter order is t, y, z
         dest=np.zeros(3)
-        #TODO: Implement derivative for t
-        #dest[0]=self.compute_grad_over_norm("t")
+        dest[0]=self.compute_grad_over_norm("t")
         dest[1]=self.compute_grad_over_norm("y")
         dest[2]=self.compute_grad_over_norm("z")
         return dest
@@ -497,8 +514,7 @@ class Z2System2D:
         elif var=="z":
             return self.gamma_maj_sys_deriv_z
         elif var=="t":
-            print("gamma_maj_sys_deriv: Not implemented yet",sys.stderr)
-            return None
+            return self.gamma_maj_sys_deriv_t
         print("gamma_maj_sys_deriv: Invalid variable name",sys.stderr)
         return None
 
@@ -521,6 +537,40 @@ class Z2System2D:
             np.linalg.multi_dot(
                 [self.gamma_in_sys, deriv_d, self.mat_d_inv, diff]))
         return dest
+    
+    def _compute_el_energy_op_grad(self):
+        """The electric energy depends explicitly on the parameters of the Ansatz. 
+        Thus, we have to build the explicit derivative of the electric energy with respect to the parameters.
+
+        Args:
+            var (str): Name of the variable (t,y,z)
+
+        Returns:
+            list: List of the gradients of the electric energy wrt [t,y,z]
+        """
+        single_site_offset = 4
+        offset = 2*self.cfg.lattice.size+single_site_offset
+        nlinks = self.cfg.lattice.nlinks
+        dest = np.zeros(self.cfg.nvarparams())
+        _, mat_b, mat_d = extract_partial_covmats(self.gamma_maj_sys, offset)
+        # We have to cut one link from gamma_in_sys as well
+        gamma_in_sys_tilde = self.gamma_in_sys[single_site_offset:,
+                                            single_site_offset:]
+        diff_d_inv = np.linalg.inv(mat_d - gamma_in_sys_tilde)
+        for ind,var in enumerate(["t","y","z"]):
+            deriv_gamma_maj_sys= self.gamma_maj_sys_deriv(var)
+            d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
+            gamma_out = d_mat_a + d_mat_b@diff_d_inv@np.transpose(mat_b) + mat_b@diff_d_inv@np.transpose(
+                d_mat_b)-mat_b@diff_d_inv@d_mat_d@diff_d_inv@np.transpose(mat_b)
+            covmat_out_virt = gamma_out[-single_site_offset:, -
+                                         single_site_offset:]
+            d_el_energy = nlinks* np.real(
+                0.5j *
+                (covmat_out_virt[0, 2] - covmat_out_virt[0, 3] -
+                 1.j * covmat_out_virt[0, 1] - 1.j * covmat_out_virt[2, 3]))
+            dest[ind] = d_el_energy
+        return dest
+            
 
     @property
     def gamma_maj_sys_deriv_y(self):
@@ -543,6 +593,17 @@ class Z2System2D:
             gamma_maj_deriv_z_sys_unsorted=np.kron(np.eye(nsites),gamma_maj_deriv_z)
             self._gamma_maj_sys_deriv_z=mat_perm@gamma_maj_deriv_z_sys_unsorted@np.transpose(mat_perm)
         return self._gamma_maj_sys_deriv_z
+
+    @property
+    def gamma_maj_sys_deriv_t(self):
+        if self._gamma_maj_sys_deriv_t is None:
+            permbuilder = lat.PermutationBuilderGMS2D(self.cfg.lattice, nmodes_per_link=1)
+            mat_perm = permbuilder.perm()
+            gamma_maj_deriv_t = self.compute_gamma_maj_deriv_t()
+            nsites=self.cfg.lattice.size
+            gamma_maj_deriv_t_sys_unsorted=np.kron(np.eye(nsites),gamma_maj_deriv_t)
+            self._gamma_maj_sys_deriv_t=mat_perm@gamma_maj_deriv_t_sys_unsorted@np.transpose(mat_perm)
+        return self._gamma_maj_sys_deriv_t
 
     def compute_gamma_maj_deriv_y(self):
         t=self.cfg.paramdict["t"]
@@ -707,6 +768,78 @@ class Z2System2D:
 
         return dest-np.transpose(dest)
 
+    def compute_gamma_maj_deriv_t(self):
+        dest=np.zeros((10, 10))
+        t=self.cfg.paramdict["t"]
+        y=self.cfg.paramdict["y"]
+        z=self.cfg.paramdict["z"]
+
+        d = 1 + 4*t**2 + y**2 + 2*y*z + 2*z**2
+        b = 1+y**2 - 2*y*z + 2*z**2
+        alpha=y+z
+        gamma=1+z
+        delta=1+y
+        eta=y+2*z
+        beta = d - 8*t**2
+
+        dest[0,1]= (-16*t*(d - 4*t**2))/d**2
+        dest[0,2]= (2*(-1 + z)*beta)/d**2
+        dest[0,3]= (-2*alpha*beta)/d**2
+        dest[0,4]= (2*beta*gamma)/d**2
+        dest[0,5]= (-2*alpha*beta)/d**2
+        dest[0,6]= (2*z*beta)/d**2
+        dest[0,7]= (-2*(-1 + alpha)*beta)/d**2
+        dest[0,8]= (2*z*beta)/d**2
+        dest[0,9]= (-2*(1 + alpha)*beta)/d**2
+
+        dest[1,2]= (2*alpha*beta)/d**2
+        dest[1,3]= (2*beta*gamma)/d**2
+        dest[1,4]= (2*alpha*beta)/d**2
+        dest[1,5]= (2*(-1 + z)*beta)/d**2
+        dest[1,6]= (2*(1 + alpha)*beta)/d**2
+        dest[1,7]= (2*z*beta)/d**2
+        dest[1,8]= (2*(-1 + alpha)*beta)/d**2
+        dest[1,9]= (2*z*beta)/d**2
+
+        dest[2,3]=(4*t*(-2 + d - 4*t**2))/d**2
+        dest[2,4]=(-8*t*alpha)/d**2
+        dest[2,5]=(4*t*(d - 2*(2*t**2 + z)))/d**2
+        dest[2,6]=(-4*t*(d - 4*(t**2 + y*z))*delta)/(b*d**2)
+        dest[2,7]=(-4*t*(-d + 4*t**2 + 2*z + delta))/d**2
+        dest[2,8]=(-4*t*(-1 + eta))/d**2
+        dest[2,9]= (4*t*(-1 + d - 4*t**2 + y))/d**2
+
+        dest[3,4]=(-4*t*(d - 4*t**2 + 2*z))/d**2
+        dest[3,5]=(8*t*alpha)/d**2
+        dest[3,6]=(-4*t*(-1 + d - 4*t**2 + eta))/d**2
+        dest[3,7]=(4*t*(-1 + y)*(d - 4*(t**2 + y*z)))/(b*d**2)
+        dest[3,8]=(4*t*(-d + 4*t**2 + delta))/d**2
+        dest[3,9]= (4*t*(-2*(-2 + d - 4*t**2 + 2*y)*z + 8*z**3 + (d - 4*t**2)*delta))/(b*d**2)
+
+        dest[4,5]=(4*t*(-2 + d - 4*t**2))/d**2
+        dest[4,6]=(4*t*(-2*(-2 + d - 4*t**2 + 2*y)*z + 8*z**3 + (d - 4*t**2)*delta))/(b*d**2)
+        dest[4,7]=   (4*t*(d - 4*t**2 - delta))/d**2
+        dest[4,8]=(4*t*(-1 + y)*(d - 4*(t**2 + y*z)))/(b*d**2)
+        dest[4,9]=(4*t*(-1 + d - 4*t**2 + eta))/d**2
+
+        dest[5,6]=(-4*t*(-1 + d - 4*t**2 + y))/d**2
+        dest[5,7]=(-4*t*(-1 + eta))/d**2
+        dest[5,8]=(4*t*(-d + 4*t**2 + 2*z + delta))/d**2
+        dest[5,9]=(-4*t*(d - 4*(t**2 + y*z))*delta)/(b*d**2)
+
+        dest[6,7]=(4*t*(-2 + d - 4*t**2))/d**2
+        dest[6,8]=(-8*t*z)/d**2
+        dest[6,9]=(4*t*(d - 4*t**2 + 2*alpha))/d**2
+
+        dest[7,8]=(-4*t*(d - 2*(2*t**2 + alpha)))/d**2
+        dest[7,9]=(8*t*z)/d**2
+
+        dest[8,9]=(4*t*(-2 + d - 4*t**2))/d**2
+
+        return dest-np.transpose(dest)
+
+
+
     # Update the parameters
 
     # Observables
@@ -741,6 +874,13 @@ class Z2System2D:
         el_energy = self.cfg.g_el * (nlinks - self.el_energy_op)
         return el_energy
 
+    @property
+    def el_energy_op_grad(self):
+        if self._el_energy_op_grad is None:
+            self._el_energy_op_grad = self._compute_el_energy_op_grad()
+        return self._el_energy_op_grad
+
+
     def _compute_el_energy_op(self, use_trans_inv=True):
         if use_trans_inv:
             nlinks=self.cfg.lattice.nlinks
@@ -750,9 +890,7 @@ class Z2System2D:
             # Number of fermions = # of sites
             single_site_offset = 4
             offset = 2*self.cfg.lattice.size+single_site_offset
-            mat_a = gamma_maj_sys[:offset, :offset]
-            mat_b = gamma_maj_sys[:offset, offset:]
-            mat_d = gamma_maj_sys[offset:, offset:]
+            mat_a, mat_b, mat_d = extract_partial_covmats(gamma_maj_sys, offset)
             # We have to cut one link from gamma_in_sys as well
             gamma_in_sys_tilde = gamma_in_sys[single_site_offset:,
                                               single_site_offset:]
