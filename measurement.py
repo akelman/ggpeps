@@ -44,3 +44,30 @@ class Measurement:
 
     def __len__(self):
         return len(self.datavec)
+
+    def __mul__(self,other):
+        if type(other) is Measurement:
+            if other.counter==self.counter:
+                dest=Measurement(self.name+"_x_"+other.name,self.binsize)
+                dest.datavec=[x*y for (x,y) in zip(self.datavec,other.datavec)]
+                return dest
+        else:
+            return NotImplemented
+
+    def __add__(self,other):
+        if type(other) is Measurement:
+            if other.counter==self.counter:
+                dest=Measurement(self.name+"_+_"+other.name,self.binsize)
+                dest.datavec=[x+y for (x,y) in zip(self.datavec,other.datavec)]
+                return dest
+        else:
+            return NotImplemented
+
+    def __sub__(self,other):
+        if type(other) is Measurement:
+            if other.counter==self.counter:
+                dest=Measurement(self.name+"_-_"+other.name,self.binsize)
+                dest.datavec=[x-y for (x,y) in zip(self.datavec,other.datavec)]
+                return dest
+        else:
+            return NotImplemented
