@@ -4,8 +4,9 @@ import utils
 import system
 import lattice
 from measurement import Measurement
+from mc import MonteCarloEstimatorConfig, MonteCarloEstimator, MonteCarloManager
+from minimizer import Minimizer
 import gauge
-import copy
 
 def compare_array_elementwise(testcase,ref,res,print_vals=True):
     testcase.assertEqual(ref.shape,res.shape)
@@ -486,9 +487,6 @@ class TestZ2SystemMethods(unittest.TestCase):
 
         self.assertAlmostEqual(deriv_ana, deriv_num)
 
-    def test_grad_mag_energy(self):
-        pass
-    
 
 class TestU1MultilayerSystemMethods(unittest.TestCase):
 
@@ -543,6 +541,82 @@ class TestU1MultilayerSystemMethods(unittest.TestCase):
 #        self.assertTrue(utils.is_antisymmetric(gamma_in))
 #        self.assertTrue(np.allclose(gamma_in@gamma_in,-np.eye(m)))
 #        self.assertTrue(np.allclose(gamma_in@np.transpose(gamma_in),np.eye(m)))
+
+class TestMinimizerZ2(unittest.TestCase):
+
+    def test_derivative_mag_energy_exact(self):
+        eps = 1e-5
+        paramdict = {"t": 0.0, "y": 0.5, "z": 0.5}
+        for ind in range(1,3):
+            print(ind)
+            lat_2x2 = lattice.Lattice2D(2, 2)
+            system_cfg = system.Z2System2DConfig(paramdict, lat_2x2, 1.0, None,
+                                                None)
+            paramvec=system_cfg.paramvec
+            paramvec_left=np.copy(paramvec)
+            paramvec_right=np.copy(paramvec)
+            paramvec_left[ind]-=eps
+            paramvec_right[ind]+=eps
+            system_cfg_left = system.Z2System2DConfig(paramvec_left, lat_2x2, 1.0,
+                                                    None, None)
+            system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
+                                                    1.0, None, None)
+
+            sys = system.Z2System2D(system_cfg)
+            sys_left = system.Z2System2D(system_cfg_left)
+            sys_right = system.Z2System2D(system_cfg_right)
+
+            exact_ev=ExactEvaluator(sys)
+            exact_ev_left=ExactEvaluator(sys_left)
+            exact_ev_right=ExactEvaluator(sys_right)
+
+            res=exact_ev.evaluate()
+            res_left=exact_ev_left.evaluate()
+            res_right=exact_ev_right.evaluate()
+
+            mag_energy_deriv_num = (res_right["mag_energy"] - res_left["mag_energy"]) / (2 * eps)
+            mag_energy_deriv_ana = res["mag_energy_grad"][ind]
+
+            self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
+
+    @skip("Too long")
+    def test_derivative_mag_energy_y(self):
+        eps = 1e-4
+        paramdict = {"t": 0.1, "y": 0.3, "z": 1.4}
+        paramdict_left = {"t": 0.1, "y": 0.3-eps, "z": 1.4}
+        paramdict_right = {"t": 0.1, "y": 0.3+eps, "z": 1.4}
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.Z2System2DConfig(paramdict, lat_2x2, 1.0, None,
+                                             None)
+        system_cfg_left = system.Z2System2DConfig(paramdict_left, lat_2x2, 1.0,
+                                                  None, None)
+        system_cfg_right = system.Z2System2DConfig(paramdict_right, lat_2x2,
+                                                   1.0, None, None)
+        sys_left = system.Z2System2D(system_cfg_left)
+        sys_right = system.Z2System2D(system_cfg_right)
+
+        mc_config = MonteCarloEstimatorConfig()
+        mc_config.warmup_steps = 1000
+        mc_config.meas_steps = 10000
+        mc_config.binsize = 1
+
+        mc_mgr = MonteCarloManager(mc_config, system.Z2System2D, system_cfg, 0)
+        minimizer = Minimizer(mc_mgr)
+        mc_left = MonteCarloEstimator(mc_config, sys_left)
+        mc_right = MonteCarloEstimator(mc_config, sys_right)
+
+        minimizer.last_mcresult=minimizer.mc_mgr.simulate()
+        mc_left.simulate()
+        mc_right.simulate()
+
+        mag_energy_deriv = minimizer.energy_gradient(minimizer.last_mcresult)
+        mag_energy_left = mc_left.get_obs_mean("mag_energy")
+        mag_energy_right = mc_right.get_obs_mean("mag_energy")
+
+        mag_energy_deriv_num = (mag_energy_right - mag_energy_left) / (2 * eps)
+
+        self.assertAlmostEqual(mag_energy_deriv[1],mag_energy_deriv_num)
+
 
 class TestMeasurements(unittest.TestCase):
     def test_add(self):

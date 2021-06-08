@@ -469,6 +469,15 @@ class Z2System2D:
 
     # Calculate gradients
 
+    def compute_grad_norm(self):
+        #The parameter order is t, y, z
+        dest=np.zeros(3)
+        #TODO: Implement derivative for t
+        #dest[0]=self.compute_grad_over_norm("t")
+        dest[1]=self.compute_grad_over_norm("y")
+        dest[2]=self.compute_grad_over_norm("z")
+        return dest
+
     def gamma_maj_sys_deriv(self,var):
         if var=="y":
             return self.gamma_maj_sys_deriv_y

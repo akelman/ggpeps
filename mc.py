@@ -117,6 +117,8 @@ class MonteCarloEstimator:
         self.obsdict["wilson_00_11"] = Measurement("Wilson (0,0) 1x1", binsize)
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x",
                                                     binsize)
+        self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm",
+                                                    binsize)
         #self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
 
     def measure(self):
@@ -133,6 +135,7 @@ class MonteCarloEstimator:
         #self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
+        self.obsdict["grad_norm"].append(self.system.compute_grad_norm())
 
         # These values could be calculated in a post-processing step
         self.obsdict["energy"].append(self.system.energy)
