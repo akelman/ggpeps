@@ -430,6 +430,10 @@ class Z2System2D:
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
 
+    def update_gauge_full_system(self,config):
+        for ind,gauge in enumerate(config):
+            self.update_gauge_ind(ind,gauge)
+
     def calculate_weight_attempt(self, link_ind, theta, all_factors=False):
         # There are two directions per vertex and two Majoranas per link
         ind_mat=4*link_ind

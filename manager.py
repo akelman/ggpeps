@@ -8,15 +8,21 @@ from timeit import default_timer as timer
 import ray
 import utils
 import logging
-#from minimizer import Minimizer
+from minimizer import Minimizer
 from mc import MonteCarloEstimatorConfig, MonteCarloManager
+import exacteval
 import lattice as lat
 import numpy as np
 np.set_printoptions(linewidth=200)
 
 
 def args2logname(args):
-    shorthands = {"min": "min", "minimize": "min", "eval": "eval"}
+    shorthands = {
+        "min": "min",
+        "minimize": "min",
+        "eval": "eval",
+        "exact": "exact"
+    }
     if args.g_mag == None:
         fname = "log_{}_L_{:02d}_g2_{:.3f}_gm_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(
             shorthands[args.mode], args.L, args.g2, args.g_gm, args.t, args.y, args.z, args.warmup_steps, args.meas_steps)
@@ -100,16 +106,26 @@ def main():
         logging.info("Method: {}".format(args.method))
         logging.info("============================")
 
-        #minimizer = Minimizer(mc)
-        ##Set the parameters of the minimizer according to the command line
-        #minimizer.method = args.method
-        #minimizer.max_it = args.maxiter
+        minimizer = Minimizer(mc)
+        #Set the parameters of the minimizer according to the command line
+        minimizer.method = args.method
+        minimizer.max_it = args.maxiter
 
-        #start = timer()
-        #result = minimizer.minimize()
-        #stop = timer()
-        #print(result)
-        #minimizer.save()
+        start = timer()
+        result = minimizer.minimize()
+        stop = timer()
+        print(result)
+        minimizer.save()
+    elif args.mode == "exact":
+        system=Z2System2D(system_cfg)
+        start = timer()
+        ex_eval=exacteval.ExactEvaluator(system)
+        stop = timer()
+        dest_dict=ex_eval.evaluate()
+        for key,val in dest_dict.items():
+            print("{}: {}".format(key,val))
+    else:
+        logging.error("Mode '{}' unkown.".format(args.mode))
 
     logging.info("========== TIME ============")
     logging.info("The simulation took {}s".format(stop-start))
@@ -120,9 +136,12 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        epilog="""Possible modes: eval, minimize (min). Possible logging levels are critical, error, warning, info, debug."""
+        epilog="""Possible modes: eval, minimize (min), exact. Possible logging levels are critical, error, warning, info, debug."""
     )
-    parser.add_argument("mode", type=str, help="Mode of the program")
+    parser.add_argument("mode",
+                        type=str,
+                        choices=["eval", "min", "exact"],
+                        help="Mode of the program")
     parser.add_argument(
         "L", type=int, help="Size of the square system (one side)")
     parser.add_argument("--g2", type=float, default=1.0,

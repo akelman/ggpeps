@@ -5,6 +5,7 @@
     "version": "0.2.0",
     "configurations": [
 
+
         {
             "name": "Python: Current File",
             "type": "python",
@@ -25,6 +26,14 @@
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "args": ["eval","2","--level","debug", "--warmup", "1000","--seed","42"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Exact L=2",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "args": ["exact","2"],
             "console": "integratedTerminal"
         }
     ]
