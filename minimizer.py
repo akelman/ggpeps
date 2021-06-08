@@ -25,7 +25,7 @@ class Minimizer():
     def __init__(self,mc):
         self.mc_mgr=mc
         self.method="CG"
-        self.last_parametervec=None
+        self.last_paramvec=None
         self.last_mcresult=None
         self.min_result=None
 
@@ -55,7 +55,8 @@ class Minimizer():
             energy = mc_result.get_obs_mean("energy")
             grad_paramvec = self.energy_gradient(mc_result)
             max_grad_paramvec = max(abs(grad_paramvec))
-            logging.info("It: {:03d}, Energy: {:.5f}, Max grad xivec: {:.5f}, Max grad alphavec: {:.5f}, Max grad betavec: {:.5f}, acceptance prob: {:.5f} ".format(ind,energy,max_grad_xivec,max_grad_alphavec,max_grad_betavec,acceptance_prob))
+            acceptance_prob = mc_result.get_obs_mean("acceptance_prob")
+            logging.info("It: {:03d}, Energy: {:.5f}, Max grad paramvec: {:.5f} acceptance prob: {:.5f} ".format(ind,energy,max_grad_paramvec,acceptance_prob))
 
             #Check if the maximum of the gradient is smaller than min_grad
             if max_grad_paramvec < abs(self.min_grad):
@@ -73,9 +74,9 @@ class Minimizer():
     def minimize_scipy(self):
         def energy_wrapper(parametervec):
             #Energy wrapper
-            if self.last_parametervec is None or not np.allclose(self.last_parametervec,parametervec):
+            if self.last_paramvec is None or not np.allclose(self.last_paramvec,parametervec):
                 #We only set the xivec and start the simulation if the xivec is new
-                self.last_parametervec=parametervec
+                self.last_paramvec=parametervec
                 self.mc_mgr.system_cfg.parametervec=parametervec
                 self.last_mcresult=self.mc_mgr.simulate()
                 print("simulate energy")
@@ -84,9 +85,9 @@ class Minimizer():
 
         def gradient_wrapper(parametervec):
             #Jacobian wrapper
-            if self.last_parametervec is None or not np.allclose(self.last_parametervec,parametervec):
+            if self.last_paramvec is None or not np.allclose(self.last_paramvec,parametervec):
                 #We only set the xivec and start the simulation if the xivec is new
-                self.last_parametervec=parametervec
+                self.last_paramvec=parametervec
                 self.mc_mgr.system_cfg.parametervec=parametervec
                 self.last_mcresult=self.mc_mgr.simulate()
                 print("simulate gradient")
@@ -144,5 +145,5 @@ def print_callback(x,minimizer):
     acceptance_prob=mc.get_obs_mean("acceptance_prob")
     energy=mc.get_obs_mean("energy")
     grad_parametervec=minimizer.energy_gradient(mc)
-    max_grad_xivec=max(abs(grad_parametervec))
-    logging.info("Energy: {:.5f}, Max grad xivec: {:.5f}, Max grad alphavec: {:.5f}, Max grad betavec: {:.5f}, acceptance prob: {:.5f} ".format(energy,max_grad_xivec,max_grad_alphavec,max_grad_betavec,acceptance_prob))
+    max_grad_paramvec=max(abs(grad_parametervec))
+    logging.info("Energy: {:.5f}, Max grad paramvec: {:.5f} acceptance prob: {:.5f} ".format(energy,max_grad_paramvec,acceptance_prob))

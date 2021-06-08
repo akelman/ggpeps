@@ -142,7 +142,7 @@ class Z2System2DConfig:
         return self._paramdict
 
     @paramdict.setter
-    def paramvec(self,val):
+    def paramdict(self,val):
         #Check the number of parameters
         if len(val)==3:
             self._paramdict=val

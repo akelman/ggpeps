@@ -192,7 +192,7 @@ class MonteCarloEstimator:
         # Pick a site to update
         lattice = self.system.cfg.lattice
         nlinks = lattice.nlinks
-        for i in range(nlinks):
+        for _ in range(nlinks):
             link_ind = np.random.randint(0, nlinks)
             # Uniformly pick a gauge to replace
             theta = self.system.gaugemgr.get_random_gauge_value()
