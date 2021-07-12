@@ -121,7 +121,8 @@ def main():
         start = timer()
         ex_eval=exacteval.ExactEvaluator(system)
         stop = timer()
-        dest_dict=ex_eval.evaluate()
+        dest_dict = ex_eval.evaluate()
+        ex_eval.save()
         for key,val in dest_dict.items():
             print("{}: {}".format(key,val))
     else:

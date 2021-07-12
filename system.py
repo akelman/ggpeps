@@ -323,19 +323,19 @@ class Z2System2D:
     @property
     def incdet(self):
         if self._incdet is None:
-            self._gamma_in_sys, self._wi_gamma_in, self._wi_gamma_out, self._incdet=self.initialize_gamma_in_sys()
+            self._gamma_in_sys, self._wi_gamma_in, self._wi_gamma_out, self._incdet = self.initialize_gamma_in_sys()
         return self._incdet
 
     @property
     def wi_gamma_in(self):
         if self._wi_gamma_in is None:
-            self._gamma_in_sys, self._wi_gamma_in, self._wi_gamma_out, self._incdet=self.initialize_gamma_in_sys()
+            self._gamma_in_sys, self._wi_gamma_in, self._wi_gamma_out, self._incdet = self.initialize_gamma_in_sys()
         return self._wi_gamma_in
 
     @property
     def wi_gamma_out(self):
         if self._wi_gamma_out is None:
-            self._gamma_in_sys, self._wi_gamma_in, self._wi_gamma_out, self._incdet=self.initialize_gamma_in_sys()
+            self._gamma_in_sys, self._wi_gamma_in, self._wi_gamma_out, self._incdet = self.initialize_gamma_in_sys()
         return self._wi_gamma_out
 
     @property
@@ -457,8 +457,8 @@ class Z2System2D:
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
 
-    def update_gauge_full_system(self,config):
-        for ind,gauge in enumerate(config):
+    def update_gauge_full_system(self,gaugeconfig):
+        for ind,gauge in enumerate(gaugeconfig):
             self.update_gauge_ind(ind,gauge)
 
     def calculate_weight_attempt(self, link_ind, theta, all_factors=False):

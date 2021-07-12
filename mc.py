@@ -120,6 +120,7 @@ class MonteCarloEstimator:
                                                     binsize)
         self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm",
                                                     binsize)
+        self.obsdict["norm"] = Measurement("Norm", binsize)
         #self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
 
     def measure(self):
@@ -143,6 +144,7 @@ class MonteCarloEstimator:
         self.obsdict["el_energy"].append(self.system.el_energy)
         self.obsdict["mag_energy"].append(self.system.mag_energy)
         self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad)
+        self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
 
     def warmup(self):
         """Warm up phase without measurement"""
@@ -263,10 +265,10 @@ class MonteCarloEstimator:
         t = syscfg.paramdict["t"]
         y = syscfg.paramdict["y"]
         z = syscfg.paramdict["z"]
-        fname_full = "data_L_{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl.gz".format(
+        fname_full = "data_mc_L_{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl.gz".format(
             syscfg.lattice.nx, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z,
             warmup_steps, meas_steps)
-        fname_summary = "summary_L_{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl".format(
+        fname_summary = "summary_mc_L_{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl".format(
             syscfg.lattice.nx, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z,
             warmup_steps, meas_steps)
         self.save_full(fname_full)
