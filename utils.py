@@ -317,6 +317,14 @@ class IncLogAbsDeterminant:
 
 #========== Debugging Functions ====================
 
+def show_vector(vec, title=None):
+    """Display a matrix and interrupt the program. """
+    f, ax = plt.subplots(1, 1)
+    ax.plot(vec)
+    if title is not None and len(title) > 0:
+        plt.title(title)
+    plt.show()
+
 def show_matrix(mat, title=None):
     """Display a matrix and interrupt the program. """
     f, ax = plt.subplots(1, 1)
