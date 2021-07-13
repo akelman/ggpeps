@@ -63,7 +63,8 @@ class Minimizer():
                 self.min_result = MinimizerResult(paramvec,self.method,energy,grad_paramvec,True)
                 return self.min_result
 
-            #Adapt the xivec and alphavec according to the gradient
+            #Adapt the parametervec according to the gradient
+            # TODO: Implement stochastic reconfiguration
             paramvec-=self.alpha*grad_paramvec
 
         logging.warn("Reached maximum number of iterations without convergence")
@@ -75,7 +76,7 @@ class Minimizer():
         def energy_wrapper(parametervec):
             #Energy wrapper
             if self.last_paramvec is None or not np.allclose(self.last_paramvec,parametervec):
-                #We only set the xivec and start the simulation if the xivec is new
+                #We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec=parametervec
                 self.mc_mgr.system_cfg.parametervec=parametervec
                 self.last_mcresult=self.mc_mgr.simulate()
@@ -86,7 +87,7 @@ class Minimizer():
         def gradient_wrapper(parametervec):
             #Jacobian wrapper
             if self.last_paramvec is None or not np.allclose(self.last_paramvec,parametervec):
-                #We only set the xivec and start the simulation if the xivec is new
+                #We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec=parametervec
                 self.mc_mgr.system_cfg.parametervec=parametervec
                 self.last_mcresult=self.mc_mgr.simulate()
@@ -127,7 +128,6 @@ class Minimizer():
         el_energy_op_grad = prod_el_energy_grad.mean() - meas_el_energy_op.mean()*meas_grad_over_norm.mean() + meas_el_energy_op_grad.mean()
         # Add the constants back into the expression of the magnetic energy
         el_energy_grad = - mc.system.cfg.g_el * el_energy_op_grad
-        # TODO: Implement stochastic reconfiguration
         return mag_energy_grad + el_energy_grad
 
 
