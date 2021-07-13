@@ -26,8 +26,9 @@ def mask_impossible_values(df):
 
 def plot_heatmap(df,obs,vmin=None, vmax=None, gradients=False):
     df_obs=df.loc[df['name'] == obs]
+    df_obs.reset_index(inplace=True,drop=True)
     #if not is_3d(df_obs):
-        #mask_impossible_values(df_obs)
+    #mask_impossible_values(df_obs)
     value_data=df_obs["mean"][df_obs["mean"].notnull()]
     if vmax is not None:
         maxval=float(vmax)
@@ -84,6 +85,13 @@ def main(args):
         else:
             print("Could not open '{}'. Skipping file.".format(fname), file=sys.stderr)
     df=pd.concat(dfvec)
+
+    #Rename the dataframe columns 'val' to mean for the exact results
+    if "val" in df.columns:
+        df.rename(columns={"val":"mean"},inplace=True)
+
+    #Filter out illegal data
+    df=df.dropna()
 
     obsverablevec=df.name.unique()
     if args.list:
