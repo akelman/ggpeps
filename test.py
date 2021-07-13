@@ -39,11 +39,6 @@ class TestGauge(unittest.TestCase):
                 self.assertTrue(np.any(np.isclose(val,poss_gauges)))
 
 
-class TestMCMethods(unittest.TestCase):
-
-    def test(self):
-        pass
-
 class TestUtils(unittest.TestCase):
 
     def generate_smat(self):
@@ -399,13 +394,13 @@ class TestZ2SystemMethods(unittest.TestCase):
         compare_array_elementwise(self,ref,res)
 
 
-    def test_derivative_y_numeric(self):
+    def test_derivative_y_numeric_pure_gauge(self):
         #This is comparison of the analytic derivative against the numeric derivative
         eps=1e-5
         lat = lattice.Lattice2D(2, 2)
-        paramdict = {"y": 0.35, "z": 0.56, "t": 0.17}
-        paramdict_left = {"y": 0.35-eps, "z": 0.56, "t": 0.17}
-        paramdict_right = {"y": 0.35+eps, "z": 0.56, "t": 0.17}
+        paramdict = {"y": 0.35, "z": 0.56, "t": 0.0}
+        paramdict_left = {"y": 0.35-eps, "z": 0.56, "t": 0.0}
+        paramdict_right = {"y": 0.35+eps, "z": 0.56, "t": 0.0}
 
         cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
         cfg_left = system.Z2System2DConfig(paramdict_left, lat, 0, 0, 0)
@@ -422,13 +417,13 @@ class TestZ2SystemMethods(unittest.TestCase):
 
         compare_array_elementwise(self,deriv_num,deriv_ana,print_vals=False)
 
-    def test_derivative_z_numeric(self):
+    def test_derivative_z_numeric_pure_gauge(self):
         #This is comparison of the analytic derivative against the numeric derivative
         eps=1e-5
         lat = lattice.Lattice2D(2, 2)
-        paramdict = {"y": 0.35, "z": 0.56, "t": 0.17}
-        paramdict_left = {"y": 0.35, "z": 0.56-eps, "t": 0.17}
-        paramdict_right = {"y": 0.35, "z": 0.56+eps, "t": 0.17}
+        paramdict = {"y": 0.35, "z": 0.56, "t": 0.0}
+        paramdict_left = {"y": 0.35, "z": 0.56-eps, "t": 0.0}
+        paramdict_right = {"y": 0.35, "z": 0.56+eps, "t": 0.0}
 
         cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
         cfg_left = system.Z2System2DConfig(paramdict_left, lat, 0, 0, 0)
@@ -494,6 +489,32 @@ class TestZ2SystemMethods(unittest.TestCase):
         weight_recalc = self.system_z2_2_2.calculate_lognorm(all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
+    def test_grad_over_norm_pure_gauge(self):
+        #This is comparison of the analytic derivative against the numeric derivative
+        eps=1e-5
+        lat = lattice.Lattice2D(2, 2)
+        t=0.0
+        y=0.1
+        z=0.2
+        paramdict = {"y": y, "z": z, "t": t}
+        paramdict_left = {"y": y-eps, "z": z, "t": t}
+        paramdict_right = {"y": y+eps, "z": z, "t": t}
+
+        cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
+        cfg_left = system.Z2System2DConfig(paramdict_left, lat, 0, 0, 0)
+        cfg_right = system.Z2System2DConfig(paramdict_right, lat, 0, 0, 0)
+
+        system_z2_2_2 = system.Z2System2D(cfg)
+        system_z2_2_2_left= system.Z2System2D(cfg_left)
+        system_z2_2_2_right = system.Z2System2D(cfg_right)
+
+        deriv_ana = system_z2_2_2.compute_grad_over_norm("y")
+        lognorm_left = system_z2_2_2_left.calculate_lognorm(all_factors=True)
+        lognorm_right = system_z2_2_2_right.calculate_lognorm(all_factors=True)
+        deriv_num = (lognorm_right - lognorm_left) / (2 * eps)
+
+        self.assertAlmostEqual(deriv_ana, deriv_num)
+
     def test_grad_over_norm(self):
         #This is comparison of the analytic derivative against the numeric derivative
         eps=1e-5
@@ -520,6 +541,30 @@ class TestZ2SystemMethods(unittest.TestCase):
 
         self.assertAlmostEqual(deriv_ana, deriv_num)
 
+    @skip("This test is not precise enough")
+    def test_wilson_exact(self):
+        t=0.17
+        y=0.35
+        z=0.56
+        paramdict = {"y": y, "z": z, "t": t}
+
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.Z2System2DConfig(paramdict, lat_2x2, 1.0, None,
+                                            None)
+        sys_exact = system.Z2System2D(system_cfg)
+        sys_mc = system.Z2System2D(system_cfg)
+
+        exact_ev=ExactEvaluator(sys_exact)
+        res=exact_ev.evaluate()
+
+        mc_config=MonteCarloEstimatorConfig()
+        mc_config.binsize=1
+        mc_config.meas_steps=40000
+        mc_config.warmup_steps=10000
+        mc=MonteCarloEstimator(mc_config,sys_mc)
+        mc.simulate()
+
+        self.assertAlmostEqual(res["wilson_00_11"], mc.get_obs_mean("wilson_00_11"),places=2)
 
 class TestU1MultilayerSystemMethods(unittest.TestCase):
 
@@ -612,7 +657,7 @@ class TestMinimizerZ2(unittest.TestCase):
 
                 self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
 
-    def test_derivative_el_el_energy_exact(self):
+    def test_derivative_el_energy_exact(self):
         eps = 1e-5
         paramdict = {"t": 0.0, "y": 0.5, "z": 0.5}
         for ind in range(3):
