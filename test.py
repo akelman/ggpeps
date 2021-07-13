@@ -393,6 +393,29 @@ class TestZ2SystemMethods(unittest.TestCase):
         res = system_z2_2_2.compute_gamma_maj_deriv_t()
         compare_array_elementwise(self,ref,res)
 
+    def test_derivative_t_numeric(self):
+        #This is comparison of the analytic derivative against the numeric derivative
+        eps=1e-5
+        lat = lattice.Lattice2D(2, 2)
+        paramdict = {"y": 0.35, "z": 0.56, "t": 0.17}
+        paramdict_left = {"y": 0.35, "z": 0.56, "t": 0.17-eps}
+        paramdict_right = {"y": 0.35, "z": 0.56, "t": 0.17+eps}
+
+        cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
+        cfg_left = system.Z2System2DConfig(paramdict_left, lat, 0, 0, 0)
+        cfg_right = system.Z2System2DConfig(paramdict_right, lat, 0, 0, 0)
+
+        system_z2_2_2 = system.Z2System2D(cfg)
+        system_z2_2_2_left= system.Z2System2D(cfg_left)
+        system_z2_2_2_right = system.Z2System2D(cfg_right)
+
+        deriv_ana=system_z2_2_2.compute_gamma_maj_deriv_t()
+        gamma_left=system_z2_2_2_left.gamma_maj
+        gamma_right=system_z2_2_2_right.gamma_maj
+        deriv_num=(gamma_right-gamma_left)/(2*eps)
+
+        compare_array_elementwise(self,deriv_num,deriv_ana,print_vals=True)
+
 
     def test_derivative_y_numeric_pure_gauge(self):
         #This is comparison of the analytic derivative against the numeric derivative
@@ -454,6 +477,14 @@ class TestZ2SystemMethods(unittest.TestCase):
         cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
         system_z2_2_2 = system.Z2System2D(cfg)
         res = system_z2_2_2.gamma_maj_sys_deriv("z")
+        self.assertTrue(utils.is_antisymmetric(res))
+
+    def test_derivative_t_sys(self):
+        lat = lattice.Lattice2D(2, 2)
+        paramdict = {"y": 0.35, "z": 0.56, "t": 0.17}
+        cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
+        system_z2_2_2 = system.Z2System2D(cfg)
+        res = system_z2_2_2.gamma_maj_sys_deriv("t")
         self.assertTrue(utils.is_antisymmetric(res))
 
     def test_norm_minimal(self):
@@ -523,23 +554,33 @@ class TestZ2SystemMethods(unittest.TestCase):
         y=0.35
         z=0.56
         paramdict = {"y": y, "z": z, "t": t}
-        paramdict_left = {"y": y, "z": z-eps, "t": t}
-        paramdict_right = {"y": y, "z": z+eps, "t": t}
+        for ind in range(3):
+            with self.subTest(ind=ind):
+                lat_2x2 = lattice.Lattice2D(2, 2)
+                system_cfg = system.Z2System2DConfig(paramdict, lat_2x2, 1.0, None,
+                                                    None)
+                paramvec=system_cfg.paramvec
+                paramvec_left=np.copy(paramvec)
+                paramvec_right=np.copy(paramvec)
+                paramvec_left[ind]-=eps
+                paramvec_right[ind]+=eps
+                system_cfg_left = system.Z2System2DConfig(paramvec_left, lat_2x2, 1.0,
+                                                        None, None)
+                system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
+                                                        1.0, None, None)
 
-        cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
-        cfg_left = system.Z2System2DConfig(paramdict_left, lat, 0, 0, 0)
-        cfg_right = system.Z2System2DConfig(paramdict_right, lat, 0, 0, 0)
+                cfg = system.Z2System2DConfig(paramdict, lat, 0, 0, 0)
 
-        system_z2_2_2 = system.Z2System2D(cfg)
-        system_z2_2_2_left= system.Z2System2D(cfg_left)
-        system_z2_2_2_right = system.Z2System2D(cfg_right)
+                system_z2_2_2 = system.Z2System2D(cfg)
+                system_z2_2_2_left= system.Z2System2D(system_cfg_left)
+                system_z2_2_2_right = system.Z2System2D(system_cfg_right)
 
-        deriv_ana = system_z2_2_2.compute_grad_over_norm("z") * np.exp(system_z2_2_2.calculate_lognorm(all_factors=True))
-        norm_left = np.exp(system_z2_2_2_left.calculate_lognorm(all_factors=True))
-        norm_right = np.exp(system_z2_2_2_right.calculate_lognorm(all_factors=True))
-        deriv_num = (norm_right - norm_left) / (2 * eps)
+                deriv_ana = system_z2_2_2.compute_grad_over_norm("z") * np.exp(system_z2_2_2.calculate_lognorm(all_factors=True))
+                norm_left = np.exp(system_z2_2_2_left.calculate_lognorm(all_factors=True))
+                norm_right = np.exp(system_z2_2_2_right.calculate_lognorm(all_factors=True))
+                deriv_num = (norm_right - norm_left) / (2 * eps)
 
-        self.assertAlmostEqual(deriv_ana, deriv_num)
+                self.assertAlmostEqual(deriv_ana, deriv_num)
 
     @skip("This test is not precise enough")
     def test_wilson_exact(self):
