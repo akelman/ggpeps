@@ -103,9 +103,9 @@ class ExactEvaluator():
             "g_el": [],
             "g_gm": [],
             "g_mag": [],
-            "val": []
+            "mean": []
         }
-        for key in self.obsdict.keys():
+        for key in ["energy","norm","el_energy","mag_energy", "wilson_00_11"]:
             dest['name'].append(key)
             dest['g_el'].append(self.system.cfg.g_el)
             dest['g_gm'].append(self.system.cfg.g_gm)
@@ -113,7 +113,7 @@ class ExactEvaluator():
             dest['t'].append(self.system.cfg.paramdict["t"])
             dest['y'].append(self.system.cfg.paramdict["y"])
             dest['z'].append(self.system.cfg.paramdict["z"])
-            dest["val"].append(self.obsdict[key])
+            dest["mean"].append(float(self.obsdict[key]))
         df = pd.DataFrame(dest)
         return df
 
