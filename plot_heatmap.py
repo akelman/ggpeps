@@ -7,6 +7,7 @@ from os.path import join
 import seaborn as sns
 import matplotlib.pyplot as plt
 from differential_heatmap import grad_heatmap
+import utils
 
 def _draw_heatmap(*args, **kwargs):
     data = kwargs.pop('data')
@@ -49,14 +50,17 @@ def plot_heatmap(df,obs,vmin=None, vmax=None, gradients=False):
         fg.set_xticklabels(rotation=90,visible=True)
         fig=fg.fig
     else:
-        d=df_obs.pivot(index="z",columns="y",values="mean")
+        #The 1e6 is a dirty fix because the heatmap cannot deal with NaN data anymore
+        d=df_obs.pivot_table(index="z",columns="y",values="mean",fill_value=1e6)
+        darr=np.asarray(d.values)
+        darr=darr.astype('float64')
         if (gradients):
-            im,cbar=grad_heatmap(sorted(df_obs.y.unique()),sorted(df_obs.z.unique()),d.values)
+            im,cbar=grad_heatmap(sorted(df_obs.y.unique()),sorted(df_obs.z.unique()),darr)
             plt.xlabel("y")
             plt.ylabel("z")
             fig=plt.gcf()
         else:
-            sns_heatmap=sns.heatmap(d, xticklabels=np.round(d.columns.tolist(),2), yticklabels=np.round(d.index.tolist(),2), vmin=minval, vmax=maxval)
+            sns_heatmap=sns.heatmap(darr, xticklabels=np.round(d.columns.tolist(),2), yticklabels=np.round(d.index.tolist(),2), vmin=minval, vmax=maxval)
             sns_heatmap.invert_yaxis()
             sns_heatmap.set_yticklabels(sns_heatmap.get_yticklabels(),rotation=0)
             sns_heatmap.set_xticklabels(sns_heatmap.get_xticklabels(),rotation=90)
@@ -92,6 +96,10 @@ def main(args):
 
     #Filter out illegal data
     df=df.dropna()
+
+    #Filter out all the list-valued rows (gradients)
+    df=df[df['mean'].apply(lambda x: not isinstance(x, list) and not isinstance(x,np.ndarray))]
+    df=df.convert_dtypes()
 
     obsverablevec=df.name.unique()
     if args.list:
