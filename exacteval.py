@@ -8,13 +8,13 @@ class ExactEvaluator():
         self.system = system
         self.obsdict = None
 
-    def compute_expval(self, obs, norm):
-        normalization=np.sum(norm)
+    def compute_expval(self, obs, normvec):
+        normalization=np.sum(normvec)
         if len(obs.shape)>1:
             # We have to treat the gradients differently as they are multi-dimensional observables
-            expval=np.sum(obs*norm,axis=1)
+            expval=np.sum(obs*normvec,axis=1)
         else:
-            expval=np.sum(obs*norm)
+            expval=np.sum(obs*normvec)
         return expval/normalization
 
 
@@ -66,6 +66,8 @@ class ExactEvaluator():
             dest["mag_energy"] = self.compute_expval(data["mag_energy"], normvec)
             dest["el_energy"] = self.compute_expval(data["el_energy"], normvec)
             dest["wilson_00_11"] = self.compute_expval(data["wilson_00_11"], normvec)
+            dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
+            dest["grad_norm"] = self.compute_expval(np.transpose(data["grad_norm"]), normvec)
 
             #The norm that we turn in the end is the actual norm, not the lognorm!
             dest["norm"] = np.sum(normvec)
@@ -105,7 +107,7 @@ class ExactEvaluator():
             "g_mag": [],
             "mean": []
         }
-        for key in ["energy","norm","el_energy","mag_energy", "wilson_00_11"]:
+        for key in self.obsdict.keys():
             dest['name'].append(key)
             dest['g_el'].append(self.system.cfg.g_el)
             dest['g_gm'].append(self.system.cfg.g_gm)
