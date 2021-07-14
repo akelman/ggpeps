@@ -275,6 +275,25 @@ class Z2System2D:
             self._gamma_maj = np.real(smat@gamma_dirac@np.transpose(smat))
         return self._gamma_maj
 
+    def _expand_gamma_maj_to_system(self,covmat):
+        permbuilder = lat.PermutationBuilderGMS2D(self.cfg.lattice, nmodes_per_link=1)
+        mat_perm = permbuilder.perm()
+        nsites=self.cfg.lattice.size
+        id = np.eye(nsites)
+        # Extract the parts of the covariance matrix
+        amat = covmat[:2, :2]
+        bmat = covmat[:2, 2:]
+        dmat = covmat[2:, 2:]
+        #Expand them
+        amat_sys = np.kron(id, amat)
+        bmat_sys = np.kron(id, bmat)
+        dmat_sys = np.kron(id, dmat)
+        #Reassemble them in the correct order
+        mat_sys_unordered= np.block(
+            [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
+        dest=mat_perm@mat_sys_unordered@np.transpose(mat_perm)
+        return dest
+
     @property
     def gamma_maj_sys(self):
         """Return the covariance matrix of the full system in Majorana modes.
@@ -285,21 +304,7 @@ class Z2System2D:
             [np.array]: Covariance matrix of the full system
         """
         if self._gamma_maj_sys is None:
-            gamma_maj = self.gamma_maj
-            amat = gamma_maj[:2, :2]
-            bmat = gamma_maj[:2, 2:]
-            dmat = gamma_maj[2:, 2:]
-            nsites = self.cfg.lattice.size
-            id = np.eye(nsites)
-            # Extract the parts of the covariance matrix
-            amat_sys = np.kron(id, amat)
-            bmat_sys = np.kron(id, bmat)
-            dmat_sys = np.kron(id, dmat)
-            # Order the modes of the covariance matrix according to gamma_in_sys
-            permbuilder = lat.PermutationBuilderGMS2D(self.cfg.lattice, nmodes_per_link=1)
-            mat_perm = permbuilder.perm()
-            self._gamma_maj_sys = mat_perm@np.block(
-                [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])@np.transpose(mat_perm)
+            self._gamma_maj_sys=self._expand_gamma_maj_to_system(self.gamma_maj)
         return self._gamma_maj_sys
 
     def initialize_gamma_in_sys(self):
@@ -570,37 +575,23 @@ class Z2System2D:
         return dest
             
 
+
     @property
     def gamma_maj_sys_deriv_y(self):
         if self._gamma_maj_sys_deriv_y is None:
-            permbuilder = lat.PermutationBuilderGMS2D(self.cfg.lattice, nmodes_per_link=1)
-            mat_perm = permbuilder.perm()
-            gamma_maj_deriv_y = self.compute_gamma_maj_deriv_y()
-            nsites=self.cfg.lattice.size
-            gamma_maj_deriv_y_sys_unsorted=np.kron(np.eye(nsites),gamma_maj_deriv_y)
-            self._gamma_maj_sys_deriv_y=mat_perm@gamma_maj_deriv_y_sys_unsorted@np.transpose(mat_perm)
+            self._gamma_maj_sys_deriv_y=self._expand_gamma_maj_to_system(self.compute_gamma_maj_deriv_y())
         return self._gamma_maj_sys_deriv_y
 
     @property
     def gamma_maj_sys_deriv_z(self):
         if self._gamma_maj_sys_deriv_z is None:
-            permbuilder = lat.PermutationBuilderGMS2D(self.cfg.lattice, nmodes_per_link=1)
-            mat_perm = permbuilder.perm()
-            gamma_maj_deriv_z = self.compute_gamma_maj_deriv_z()
-            nsites=self.cfg.lattice.size
-            gamma_maj_deriv_z_sys_unsorted=np.kron(np.eye(nsites),gamma_maj_deriv_z)
-            self._gamma_maj_sys_deriv_z=mat_perm@gamma_maj_deriv_z_sys_unsorted@np.transpose(mat_perm)
+            self._gamma_maj_sys_deriv_z=self._expand_gamma_maj_to_system(self.compute_gamma_maj_deriv_z())
         return self._gamma_maj_sys_deriv_z
 
     @property
     def gamma_maj_sys_deriv_t(self):
         if self._gamma_maj_sys_deriv_t is None:
-            permbuilder = lat.PermutationBuilderGMS2D(self.cfg.lattice, nmodes_per_link=1)
-            mat_perm = permbuilder.perm()
-            gamma_maj_deriv_t = self.compute_gamma_maj_deriv_t()
-            nsites=self.cfg.lattice.size
-            gamma_maj_deriv_t_sys_unsorted=np.kron(np.eye(nsites),gamma_maj_deriv_t)
-            self._gamma_maj_sys_deriv_t=mat_perm@gamma_maj_deriv_t_sys_unsorted@np.transpose(mat_perm)
+            self._gamma_maj_sys_deriv_t=self._expand_gamma_maj_to_system(self.compute_gamma_maj_deriv_t())
         return self._gamma_maj_sys_deriv_t
 
     def compute_gamma_maj_deriv_y(self):

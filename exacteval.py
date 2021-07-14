@@ -115,7 +115,7 @@ class ExactEvaluator():
             dest['t'].append(self.system.cfg.paramdict["t"])
             dest['y'].append(self.system.cfg.paramdict["y"])
             dest['z'].append(self.system.cfg.paramdict["z"])
-            dest["mean"].append(float(self.obsdict[key]))
+            dest["mean"].append(self.obsdict[key])
         df = pd.DataFrame(dest)
         return df
 
