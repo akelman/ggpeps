@@ -405,8 +405,6 @@ class Z2System2D:
         self._weight = val
 
 
-
-
     def generate_gamma_gauge_neutral(self):
         return np.real_if_close(1.j*np.kron(utils.pauliy, utils.paulix))
 

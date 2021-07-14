@@ -521,7 +521,8 @@ class TestZ2SystemMethods(unittest.TestCase):
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
     def test_grad_over_norm_pure_gauge(self):
-        #This is comparison of the analytic derivative against the numeric derivative
+        # This is comparison of the analytic derivative against the numeric derivative
+        # There is no sampling involved here. The gauge field is 0.
         eps=1e-5
         lat = lattice.Lattice2D(2, 2)
         t=0.0
@@ -539,11 +540,14 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_left= system.Z2System2D(cfg_left)
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
+        # We are using here that the gradient of the d/dx log(f(x)) is [d/dx f(x)]/f(x).
+        # Thus, the d/dx log(norm(x))= [d/dx norm(x)]/ norm(x) which is exactly the function grad_over_norm
         deriv_ana = system_z2_2_2.compute_grad_over_norm("y")
         lognorm_left = system_z2_2_2_left.calculate_lognorm(all_factors=True)
         lognorm_right = system_z2_2_2_right.calculate_lognorm(all_factors=True)
         deriv_num = (lognorm_right - lognorm_left) / (2 * eps)
-
+        #print("Analytical",deriv_ana)
+        #print("Numerical",deriv_num)
         self.assertAlmostEqual(deriv_ana, deriv_num)
 
     def test_grad_over_norm(self):
@@ -554,6 +558,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         y=0.35
         z=0.56
         paramdict = {"y": y, "z": z, "t": t}
+        param_namevec=["t","y","z"]
         for ind in range(3):
             with self.subTest(ind=ind):
                 lat_2x2 = lattice.Lattice2D(2, 2)
@@ -575,9 +580,9 @@ class TestZ2SystemMethods(unittest.TestCase):
                 system_z2_2_2_left= system.Z2System2D(system_cfg_left)
                 system_z2_2_2_right = system.Z2System2D(system_cfg_right)
 
-                deriv_ana = system_z2_2_2.compute_grad_over_norm("z") * np.exp(system_z2_2_2.calculate_lognorm(all_factors=True))
-                norm_left = np.exp(system_z2_2_2_left.calculate_lognorm(all_factors=True))
-                norm_right = np.exp(system_z2_2_2_right.calculate_lognorm(all_factors=True))
+                deriv_ana = system_z2_2_2.compute_grad_over_norm(param_namevec[ind]) 
+                norm_left = system_z2_2_2_left.calculate_lognorm(all_factors=True)
+                norm_right = system_z2_2_2_right.calculate_lognorm(all_factors=True)
                 deriv_num = (norm_right - norm_left) / (2 * eps)
 
                 self.assertAlmostEqual(deriv_ana, deriv_num)
