@@ -651,7 +651,7 @@ class TestZ2SystemMethods(unittest.TestCase):
                 val_right = system_z2_2_2_right.el_energy_op
                 deriv_num = (val_right - val_left) / (2 * eps)
 
-                self.assertAlmostEqual(deriv_ana[ind], deriv_num)
+                self.assertAlmostEqual(deriv_ana[ind], deriv_num, places=5)
 
     @skip("This test is not precise enough")
     def test_wilson_exact(self):

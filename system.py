@@ -262,8 +262,8 @@ class Z2System2D:
         """Return the covariance matrix in Majorana modes.
         The mode order of this matrix is {p_1,p_2,l_1,l_2,r_1,r_2,d_1,d_2,u_1,u_2}.
         The definition of Majorana modes used is
-            \gamma_1=c+c^\dagger
-            \gamma_2=i(c-c^\dagger)
+            \\gamma_1=c+c^\\dagger
+            \\gamma_2=i(c-c^\\dagger)
 
         Returns:
             [np.array]: Covariance matrix in Majorana modes
@@ -431,7 +431,7 @@ class Z2System2D:
         self._energy = None
         self._mag_energy_op = None
         self._el_energy_op = None
-        self._el_energy_grad = None
+        self._el_energy_op_grad = None
 
     def calculate_update_gamma_in(self,offset,update_mat):
         m_up, n_up = update_mat.shape
@@ -559,10 +559,13 @@ class Z2System2D:
         offset = 2 * self.cfg.lattice.size + single_site_offset
         nlinks = self.cfg.lattice.nlinks
         dest = np.zeros(self.cfg.nvarparams())
+        # The matrices must be re-extracted here since we slice at different positions than usually
+        # One virtual link is attributed to the physical part
         _, mat_b, mat_d = extract_partial_covmats(self.gamma_maj_sys, offset)
         # We have to cut one link from gamma_in_sys as well
         gamma_in_sys_tilde = self.gamma_in_sys[single_site_offset:,
                                                single_site_offset:]
+        #TODO: We could also track this inverse
         diff_d_inv = np.linalg.inv(mat_d - gamma_in_sys_tilde)
         for ind, var in enumerate(["t", "y", "z"]):
             deriv_gamma_maj_sys = self.gamma_maj_sys_deriv(var)
@@ -571,6 +574,7 @@ class Z2System2D:
                     d_mat_b @ diff_d_inv @ np.transpose(mat_b) \
                     + mat_b @ diff_d_inv @ np.transpose(d_mat_b) \
                     - mat_b @ diff_d_inv @ d_mat_d @ diff_d_inv @ np.transpose(mat_b)
+            # The virtual mode is the last link on the bottom right of the covariance matrix
             covmat_out_virt = gamma_out[-single_site_offset:,
                                         -single_site_offset:]
             d_el_energy = nlinks * np.real(
@@ -942,9 +946,9 @@ class Z2System2D:
                                          single_site_offset:]
             # The real part ensures that we calculate P+P\dag. 
             # The matrix elements yield only the expectation value of P
-            el_energy_bare = nlinks * 0.5j * np.real(
+            el_energy_bare = nlinks * np.real(0.5j * (
                 covmat_out_virt[0, 2] - covmat_out_virt[0, 3] -
-                1.j * covmat_out_virt[0, 1] - 1.j * covmat_out_virt[2, 3])
+                1.j * covmat_out_virt[0, 1] - 1.j * covmat_out_virt[2, 3]))
         else:
             # Evaluate every link of the system
             logging.error("compute_el_energy: not implemented yet")
