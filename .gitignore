@@ -34,4 +34,4 @@ inputfile_*
 # We do not store checkpoints of jupyter notebooks
 .ipynb_checkpoints
 
-convergence_test
+run
