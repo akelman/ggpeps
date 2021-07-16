@@ -49,7 +49,7 @@ class Minimizer():
         for ind in range(self.max_it):
             if self.last_paramvec is None or not np.allclose(self.last_paramvec,paramvec):
                 # We copy here to get a new set of variables. We will paramvec below and do not want to change last_paramvec
-                self.paramvec=np.copy(paramvec)
+                self.last_paramvec=np.copy(paramvec)
                 mc_result=self.mc_mgr.simulate()
 
             energy = mc_result.get_obs_mean("energy")
