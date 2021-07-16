@@ -28,20 +28,20 @@ def extract_partial_covmats(mat,corner):
 
 
 class U1MultilayerSystem2DConfig:
-    def __init__(self, paramdict, lattice):
-        self.paramdict = paramdict
-        if not self.check_paramdict(paramdict):
+    def __init__(self, paramvec, lattice):
+        self.paramvec= paramvec
+        if not self.check_paramvec(paramvec):
             logging.error("Different number of copies in parameters. Aborting")
             sys.exit(1)
         self.lattice = lattice
 
-        self.yvec = paramdict["y"]
-        self.zvec = paramdict["z"]
-        self.tvec = paramdict["t"]
-        self.ncopies = len(paramdict["y"])
+        self.tvec = paramvec[0]
+        self.yvec = paramvec[1]
+        self.zvec = paramvec[2]
+        self.ncopies = len(paramvec[0])
 
-    def check_paramdict(self, paramdict):
-        lenarr = np.asarray([len(val) for _, val in paramdict.items()])
+    def check_paramvec(self, paramvec):
+        lenarr = np.asarray([len(vec) for vec in paramvec])
         return np.all(lenarr[-1] == lenarr)
 
 
@@ -111,12 +111,8 @@ class U1MultilayerSystem2D:
 
 class Z2System2DConfig:
     def __init__(self, params, lattice, g2, g_gm, g_mag):
-        if type(params) is dict:
-            self._paramdict = params
-            self._paramvec = None
-        elif type(params) is np.ndarray or type(params) is list:
-            self._paramdict = None
-            self._paramvec = params
+        #The parameters have the following order: t,y,z
+        self.paramvec = params
         self.lattice = lattice
 
         #Parameters of the Hamiltonian
@@ -130,46 +126,6 @@ class Z2System2DConfig:
 
     def nvarparams(self):
         return 3
-
-    @property
-    def paramdict (self):
-        if self._paramdict is None:
-            dest={}
-            dest["t"]=self.paramvec[0]
-            dest["y"]=self.paramvec[1]
-            dest["z"]=self.paramvec[2]
-            self._paramdict=dest
-        return self._paramdict
-
-    @paramdict.setter
-    def paramdict(self,val):
-        #Check the number of parameters
-        if len(val)==3:
-            self._paramdict=val
-            self._paramvec=np.array([val["t"],val["y"],val["z"]])
-        else:
-            print("Invalid length of parameter vector: '{}'".format(len(val)),
-                  file=sys.stderr)
-
-    @property
-    def paramvec(self):
-        if self._paramvec is None:
-            pdict=self.paramdict
-            self._paramvec=np.array([pdict["t"],pdict["y"],pdict["z"]])
-        return self._paramvec
-
-    @paramvec.setter
-    def paramvec(self,val):
-        #Check the number of parameters
-        if len(val)==3:
-            self._paramvec=val
-            self._paramdict["t"]=val[0]
-            self._paramdict["y"]=val[1]
-            self._paramdict["z"]=val[2]
-        else:
-            print("Invalid length of parameter vector: '{}'".format(len(val)),
-                  file=sys.stderr)
-
 
 class Z2System2D:
     def __init__(self, cfg):
@@ -231,10 +187,11 @@ class Z2System2D:
             [np.array]: parameter matrix T
         """
         if self._tmat is None:
-            paramdict = self.cfg.paramdict
-            t = paramdict["t"]
-            y = paramdict["y"]
-            z = paramdict["z"]
+            paramvec = self.cfg.paramvec
+            #Order of the paramvec: [t,y,z]
+            t = paramvec[0]
+            y = paramvec[1]
+            z = paramvec[2]
             self._tmat = np.array([
                 [0, -1.j*t, 1.j*t, t, -t],
                 [1.j*t, 0, 1.j*y, z, 1.j*z],
@@ -429,6 +386,8 @@ class Z2System2D:
 
     def invalidate_gauge_update(self):
         self._energy = None
+        self._mag_energy = None
+        self._el_energy = None
         self._mag_energy_op = None
         self._el_energy_op = None
         self._el_energy_op_grad = None
@@ -603,9 +562,9 @@ class Z2System2D:
         return self._gamma_maj_sys_deriv_t
 
     def compute_gamma_maj_deriv_y(self):
-        t=self.cfg.paramdict["t"]
-        y=self.cfg.paramdict["y"]
-        z=self.cfg.paramdict["z"]
+        t=self.cfg.paramvec[0]
+        y=self.cfg.paramvec[1]
+        z=self.cfg.paramvec[2]
         d = 1 + 4 * t**2 + y**2 + 2 * y * z + 2 * z**2
         b = 1 + y**2 - 2 * y * z + 2 * z**2
         alpha = y + z
@@ -703,9 +662,9 @@ class Z2System2D:
 
     def compute_gamma_maj_deriv_z(self):
         dest = np.zeros((10, 10))
-        t = self.cfg.paramdict["t"]
-        y = self.cfg.paramdict["y"]
-        z = self.cfg.paramdict["z"]
+        t = self.cfg.paramvec[0]
+        y = self.cfg.paramvec[1]
+        z = self.cfg.paramvec[2]
 
         d = 1 + 4 * t**2 + y**2 + 2 * y * z + 2 * z**2
         b = 1 + y**2 - 2 * y * z + 2 * z**2
@@ -811,9 +770,9 @@ class Z2System2D:
 
     def compute_gamma_maj_deriv_t(self):
         dest = np.zeros((10, 10))
-        t = self.cfg.paramdict["t"]
-        y = self.cfg.paramdict["y"]
-        z = self.cfg.paramdict["z"]
+        t = self.cfg.paramvec[0]
+        y = self.cfg.paramvec[1]
+        z = self.cfg.paramvec[2]
 
         d = 1 + 4 * t**2 + y**2 + 2 * y * z + 2 * z**2
         b = 1 + y**2 - 2 * y * z + 2 * z**2

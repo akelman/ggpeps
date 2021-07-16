@@ -21,7 +21,8 @@ def args2logname(args):
         "min": "min",
         "minimize": "min",
         "eval": "eval",
-        "exact": "exact"
+        "exact": "exact",
+        "minexact": "minexact"
     }
     if args.g_mag == None:
         fname = "log_{}_L_{:02d}_g2_{:.3f}_gm_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(
@@ -72,10 +73,10 @@ def main():
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 
-    paramdict = {"t": args.t, "y": args.y, "z": args.z}
+    paramvec = [args.t, args.y, args.z]
     # TODO: This is now a specialized version that runs only Z2 System 2D.
     # We will have to make this more general at some point.
-    system_cfg = Z2System2DConfig(paramdict, lattice, g2, g_gm, g_mag)
+    system_cfg = Z2System2DConfig(paramvec, lattice, g2, g_gm, g_mag)
 
     logging.info("======= SYSTEM INFO ========")
     logging.info("L: {}".format(L))
@@ -88,10 +89,10 @@ def main():
     #logging.info("Method: {}".format(method_str))
     logging.info("============================")
 
-    mc = MonteCarloManager(mc_config, Z2System2D, system_cfg, args.nrunner)
+    mc_mgr = MonteCarloManager(mc_config, Z2System2D, system_cfg, args.nrunner)
     if args.mode == "eval":
         start = timer()
-        mc_result = mc.simulate()
+        mc_result = mc_mgr.simulate()
         stop = timer()
         mc_result.print_stats()
         mc_result.save()
@@ -107,7 +108,7 @@ def main():
         logging.info("Method: {}".format(args.method))
         logging.info("============================")
 
-        minimizer = Minimizer(mc)
+        minimizer = Minimizer(mc_mgr)
         #Set the parameters of the minimizer according to the command line
         minimizer.method = args.method
         minimizer.max_it = args.maxiter
@@ -128,6 +129,28 @@ def main():
         ex_eval.save()
         for key,val in dest_dict.items():
             print("{}: {}".format(key,val))
+    elif args.mode == "minexact": 
+        logging.info("====== MINIMIZER INFO ======")
+        logging.info("Max Iterations: {}".format(args.maxiter))
+        logging.info("Learning rate: {}".format(args.alpha))
+        logging.info("Method: {}".format(args.method))
+        logging.info("============================")
+
+        start = timer()
+        ex_mgr=exacteval.ExactEvaluatorManager(Z2System2D, system_cfg)
+
+        minimizer = Minimizer(ex_mgr, use_exact=True)
+        #Set the parameters of the minimizer according to the command line
+        minimizer.method = args.method
+        minimizer.max_it = args.maxiter
+        minimizer.alpha = args.alpha
+        minimizer.min_grad = args.min_grad
+
+        start = timer()
+        result = minimizer.minimize()
+        stop = timer()
+        print(result)
+        minimizer.save()
     else:
         logging.error("Mode '{}' unkown.".format(args.mode))
 
@@ -140,11 +163,11 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        epilog="""Possible modes: eval, minimize (min), exact. Possible logging levels are critical, error, warning, info, debug."""
+        epilog="""Possible modes: eval, minimize (min), exact, minexact. Possible logging levels are critical, error, warning, info, debug."""
     )
     parser.add_argument("mode",
                         type=str,
-                        choices=["eval", "min", "exact"],
+                        choices=["eval", "min", "exact", "minexact"],
                         help="Mode of the program")
     parser.add_argument(
         "L", type=int, help="Size of the square system (one side)")

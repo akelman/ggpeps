@@ -3,6 +3,20 @@ import itertools as it
 import lattice
 import pandas as pd
 
+class ExactEvaluatorManager:
+    def __init__(self, system_cls, system_cfg):
+        self.system_cfg = system_cfg
+        self.system_cls = system_cls
+
+    def simulate(self):
+        """Start the simulation of the runners"""
+        system = self.system_cls(self.system_cfg)
+        system.initialize()
+        exact_eval=ExactEvaluator(system)
+        exact_eval.evaluate()
+        return exact_eval
+
+
 class ExactEvaluator():
     def __init__(self, system) -> None:
         self.system = system
@@ -112,18 +126,18 @@ class ExactEvaluator():
             dest['g_el'].append(self.system.cfg.g_el)
             dest['g_gm'].append(self.system.cfg.g_gm)
             dest['g_mag'].append(self.system.cfg.g_mag)
-            dest['t'].append(self.system.cfg.paramdict["t"])
-            dest['y'].append(self.system.cfg.paramdict["y"])
-            dest['z'].append(self.system.cfg.paramdict["z"])
+            dest['t'].append(self.system.cfg.paramvec[0])
+            dest['y'].append(self.system.cfg.paramvec[1])
+            dest['z'].append(self.system.cfg.paramvec[2])
             dest["mean"].append(self.obsdict[key])
         df = pd.DataFrame(dest)
         return df
 
     def save(self):
         syscfg = self.system.cfg
-        t = syscfg.paramdict["t"]
-        y = syscfg.paramdict["y"]
-        z = syscfg.paramdict["z"]
+        t = syscfg.paramvec[0]
+        y = syscfg.paramvec[1]
+        z = syscfg.paramvec[2]
         fname_summary = "summary_exact_L_{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}.pkl".format(
             syscfg.lattice.nx, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z)
         self.save_summary(fname_summary)
