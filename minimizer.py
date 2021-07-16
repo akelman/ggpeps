@@ -2,6 +2,7 @@ import numpy as np
 import scipy
 import logging
 import pickle
+from scipy.optimize import minimize
 
 class MinimizerResult:
     def __init__(self,parametervec,energygrad,method,value,converged):
@@ -80,7 +81,6 @@ class Minimizer():
                 self.last_paramvec=parametervec
                 self.mc_mgr.system_cfg.parametervec=parametervec
                 self.last_mcresult=self.mc_mgr.simulate()
-                print("simulate energy")
             energy=self.last_mcresult.get_obs_mean("energy")
             return energy
 
@@ -91,14 +91,13 @@ class Minimizer():
                 self.last_paramvec=parametervec
                 self.mc_mgr.system_cfg.parametervec=parametervec
                 self.last_mcresult=self.mc_mgr.simulate()
-                print("simulate gradient")
-            parametergrad=self.last_mcresult.parameter_gradient()
+            parametergrad=self.energy_gradient(self.last_mcresult)
             return parametergrad
 
         # Use the random initialization from the system.initialize as first guess.
         # We might want to change this later.
         paramvec=self.mc_mgr.system_cfg.paramvec
-        min_result= scipy.optimize.minimize(energy_wrapper, paramvec,
+        min_result= minimize(energy_wrapper, paramvec,
                                          method=self.method,
                                          jac=gradient_wrapper,
                                          callback=lambda x: print_callback(x, self))
