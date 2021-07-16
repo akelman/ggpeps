@@ -103,6 +103,7 @@ def main():
     elif args.mode == "minimize" or args.mode == "min":
         logging.info("====== MINIMIZER INFO ======")
         logging.info("Max Iterations: {}".format(args.maxiter))
+        logging.info("Learning rate: {}".format(args.alpha))
         logging.info("Method: {}".format(args.method))
         logging.info("============================")
 
@@ -110,6 +111,8 @@ def main():
         #Set the parameters of the minimizer according to the command line
         minimizer.method = args.method
         minimizer.max_it = args.maxiter
+        minimizer.alpha = args.alpha
+        minimizer.min_grad = args.min_grad
 
         start = timer()
         result = minimizer.minimize()
@@ -166,6 +169,10 @@ if __name__ == "__main__":
                         default="custom", help="Minimization method")
     parser.add_argument("--maxiter", type=int, default=100,
                         help="Number of steps for the minimizer (if custom is used)")
+    parser.add_argument("--alpha", type=float, default=0.1,
+                        help="Learning rate")
+    parser.add_argument("--min-grad", type=float, default=1e-5,
+                        help="Minimal gradient to use a stopping criterion")
     #Arguments for ray
     parser.add_argument("--nrunner", type=int, default=0,
                         help="Number of parallel MC runners")
