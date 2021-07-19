@@ -17,6 +17,7 @@ class MinimizerResult:
         dest+="converged: {}\n".format(self.converged)
         dest+="Value: {}\n".format(self.value)
         dest+="Method: {}\n".format(self.method)
+        dest+="Parameters: {}\n".format(self.parametervec)
         dest+="==========================\n"
         return dest
 
