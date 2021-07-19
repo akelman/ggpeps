@@ -1,4 +1,5 @@
 import numpy as np
+from datetime import datetime
 import time
 import matplotlib.pyplot as plt
 import logging
@@ -78,7 +79,8 @@ class MonteCarloEstimatorConfig:
     @property
     def seed(self):
         if self._seed is None:
-            self._seed = int(time.time())
+            dt = datetime.now()
+            self._seed = int(time.time()+dt.microsecond)
         return self._seed
 
     @seed.setter
