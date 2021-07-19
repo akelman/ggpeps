@@ -28,7 +28,7 @@ class Minimizer():
         # We use the polymorphism of python classes.
         # Below, we will have to be careful to only call valid functions
         self.evaluator=evaluator
-        self.method="CG"
+        self._method="CG"
         self.last_paramvec=None
         self.last_result=None
         self.min_result=None
@@ -37,9 +37,18 @@ class Minimizer():
         self.max_it=100
         self.min_grad=1e-5
         self.alpha=0.1
+    
+    @property
+    def method(self):
+        return self._method
+
+    @method.setter
+    def method(self,val):
+        self._method=val.upper()
+
 
     def minimize(self):
-        if self.method=="custom":
+        if self.method=="CUSTOM":
             return self.minimize_custom()
         elif self.method in self.supported_methods:
             return self.minimize_scipy()

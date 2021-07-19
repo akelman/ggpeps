@@ -105,12 +105,12 @@ def main():
         logging.info("====== MINIMIZER INFO ======")
         logging.info("Max Iterations: {}".format(args.maxiter))
         logging.info("Learning rate: {}".format(args.alpha))
-        logging.info("Method: {}".format(args.method))
+        logging.info("Method: {}".format(args.method.upper()))
         logging.info("============================")
 
         minimizer = Minimizer(mc_mgr)
         #Set the parameters of the minimizer according to the command line
-        minimizer.method = args.method
+        minimizer.method = args.method.upper()
         minimizer.max_it = args.maxiter
         minimizer.alpha = args.alpha
         minimizer.min_grad = args.min_grad
@@ -133,7 +133,7 @@ def main():
         logging.info("====== MINIMIZER INFO ======")
         logging.info("Max Iterations: {}".format(args.maxiter))
         logging.info("Learning rate: {}".format(args.alpha))
-        logging.info("Method: {}".format(args.method))
+        logging.info("Method: {}".format(args.method.upper()))
         logging.info("============================")
 
         start = timer()
