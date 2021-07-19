@@ -24,11 +24,11 @@ def main():
         df_filtered=df[df.name==args.obs]
         print(df_filtered)
         if not df_filtered.empty:
-            f,ax=plt.subplots(1,1)
+            f,ax=plt.subplots(1,1,figsize=(4.14,2.66))
             ax.set_xscale('log')
             ax.errorbar(df_filtered['meas_steps'],np.real(df_filtered['mean']),yerr=df_filtered['err'],fmt='o')
-            ax.set_xlabel(r"$\tau$")
-            ax.set_ylabel(args.obs)
+            ax.set_xlabel(r"$\tau$", fontsize=10)
+            ax.set_ylabel(args.obs, fontsize=10)
 
             #Plot the exact value if given via exact contraction
             df_exact=df_filtered[df_filtered['warmup_steps'].isna()]
