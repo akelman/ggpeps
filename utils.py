@@ -314,6 +314,53 @@ class IncLogAbsDeterminant:
         else:
             return self.det()
 
+# ========= Rebinning Functions ====================
+
+def rebin_array( a, R):
+    """rebins a into bins of length R"""
+    max_fit = len(a) - len(a) % R
+    return np.mean(a[:max_fit].reshape(-1, R), axis=1)
+
+
+def rebin_error(arr):
+    """Rebin the given error to avoid autocorrelation in the error estimation
+
+    Args:
+        arr (np.ndarray): Timeseries of a measurement
+
+    Returns:
+        tuple: (value of binning, mean estimations, error on mean estimations, std dev estimations)
+    """
+
+    N = len(arr)
+    max_exp = int(np.floor(np.log2(N / 10)))
+    rangevals = [2**i for i in range(max_exp)]
+    eomarr = []
+    stdarr = []
+    meanarr = []
+    for i in rangevals:
+        data_rebin = rebin_array(arr, i)
+        eom = np.std(data_rebin, ddof=1) / np.sqrt(len(data_rebin))
+        std = np.std(data_rebin, ddof=1)
+        eomarr.append(eom)
+        meanarr.append(np.mean(data_rebin))
+        stdarr.append(std)
+    return rangevals, meanarr, eomarr, stdarr
+
+
+def rebin_eom(arr):
+    """Wrapper around rebin_error that returns only the EOM.
+
+    Args:
+        arr (np.ndarray): Timeseries of a measurement
+
+    Returns:
+        float: Best estimate of the EOM on the given array
+    """
+    _, _, eomarr, _ = rebin_error(arr)
+    # This is a very rought heuristic:
+    # Take the last rebinning value as best estimate
+    return eomarr[-1]
 
 #========== Debugging Functions ====================
 
