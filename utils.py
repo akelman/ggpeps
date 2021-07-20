@@ -4,8 +4,7 @@ from scipy.sparse import issparse
 import scipy.sparse as sparse
 import os
 import sys
-import utils
-from measurement import Measurement
+import measurement as meas
 import gzip
 import pickle
 import subprocess  # Start process for git hash
@@ -20,7 +19,7 @@ pauliz = np.array([[1, 0], [0, -1]])
 
 
 def merge_measurements(meas1, meas2):
-    dest = Measurement(meas1.name, meas1.binsize)
+    dest = meas.Measurement(meas1.name, meas1.binsize)
     dest.extend(meas1.get_timeseries())
     dest.extend(meas2.get_timeseries())
     return dest
@@ -318,8 +317,9 @@ class IncLogAbsDeterminant:
 
 def rebin_array( a, R):
     """rebins a into bins of length R"""
-    max_fit = len(a) - len(a) % R
-    return np.mean(a[:max_fit].reshape(-1, R), axis=1)
+    anp = np.asarray(a)
+    max_fit = len(anp) - len(anp) % R
+    return np.mean(anp[:max_fit].reshape(-1, R), axis=1)
 
 
 def rebin_error(arr):

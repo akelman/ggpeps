@@ -1,6 +1,7 @@
 """Main script to control the simulation. 
 Further details about the usage of the script can be found in README.md.
 """
+from measurement import Measurement
 import os
 import sys
 from system import Z2System2D, Z2System2DConfig
@@ -78,6 +79,9 @@ def main():
     # We will have to make this more general at some point.
     system_cfg = Z2System2DConfig(paramvec, lattice, g2, g_gm, g_mag)
 
+    if args.no_bin_eom:
+        Measurement.use_rebinning = False
+
     logging.info("======= SYSTEM INFO ========")
     logging.info("L: {}".format(L))
     logging.info("t: {}".format(args.t))
@@ -86,10 +90,11 @@ def main():
     logging.info("g^2: {}".format(g2))
     logging.info("g_mag: {}".format(g_mag))
     logging.info("g_gm: {}".format(g_gm))
-    #logging.info("Method: {}".format(method_str))
+    logging.info("Rebinning EOM: {}".format(Measurement.use_rebinning))
     logging.info("============================")
 
     mc_mgr = MonteCarloManager(mc_config, Z2System2D, system_cfg, args.nrunner)
+
     if args.mode == "eval":
         start = timer()
         mc_result = mc_mgr.simulate()
@@ -129,7 +134,7 @@ def main():
         ex_eval.save()
         for key,val in dest_dict.items():
             print("{}: {}".format(key,val))
-    elif args.mode == "minexact": 
+    elif args.mode == "minexact":
         logging.info("====== MINIMIZER INFO ======")
         logging.info("Max Iterations: {}".format(args.maxiter))
         logging.info("Learning rate: {}".format(args.alpha))
@@ -184,6 +189,11 @@ if __name__ == "__main__":
     parser.add_argument("--level", default="info", help="logging level")
     parser.add_argument("--binsize", default=1, type=int,
                         help="Binsize used in the MC computation")
+    parser.add_argument(
+        "--no-bin-eom",
+        default=False,
+        action="store_true",
+        help="Use the standard EOM instead of a rebinning analysis")
     parser.add_argument("--y", default=0.5, type=float, help="initial y parameter")
     parser.add_argument("--z", default=0.5, type=float, help="initial z parameter")
     parser.add_argument("--t", default=0.0, type=float, help="initial t parameter: coupling to physical fermions")

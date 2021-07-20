@@ -1,7 +1,10 @@
 import numpy as np
 import copy
+import utils
 
 class Measurement:
+    use_rebinning=True
+
     def __init__(self,name,binsize):
         self.counter=0
         self.name=name
@@ -33,8 +36,11 @@ class Measurement:
     def mean(self):
         return np.mean(self.datavec,axis=0)
 
-    def mean_err(self):
-        return np.std(self.datavec,ddof=1,axis=0)/np.sqrt(len(self.datavec))
+    def mean_err(self, use_binning=True):
+        if use_binning:
+            return utils.rebin_eom(self.datavec)
+        else:
+            return np.std(self.datavec,ddof=1,axis=0)/np.sqrt(len(self.datavec))
 
     def std(self):
         return np.std(self.datavec,ddof=1,axis=0)
