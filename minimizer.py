@@ -38,7 +38,7 @@ class Minimizer():
         self.max_it=100
         self.min_grad=1e-5
         self.alpha=0.1
-    
+
     @property
     def method(self):
         return self._method
@@ -86,7 +86,7 @@ class Minimizer():
             #Adapt the parametervec according to the gradient
             # TODO: Implement stochastic reconfiguration
 
-            # We have to use the internal name of the paramvec if we write to it since it is a property and not just an array 
+            # We have to use the internal name of the paramvec if we write to it since it is a property and not just an array
             self.evaluator.system_cfg.paramvec-=self.alpha*grad_paramvec
 
         logging.warn("Reached maximum number of iterations without convergence")
@@ -164,10 +164,14 @@ class Minimizer():
 
     def save(self):
         if self.min_result is not None:
-            #fname_mc_summary="summary_min_L_{:02d}_wsteps_{:07d}_msteps_{:07d}.pkl".format(self.mc_mgr.system_cfg.lattice.nx,self.mc_mgr.mc_cfg.warmup_steps,self.mc_mgr.mc_cfg.meas_steps)
             sys_cfg=self.evaluator.system_cfg
+
+            fname_mc_summary = "summary_min_L_{:02d}_gel_{:.4f}_gm_{:.4f}.pkl".format(
+                sys_cfg.lattice.nx, sys_cfg.g_el, sys_cfg.g_gm)
             fname_result_min = "result_min_L_{:02d}_gel_{:.4f}_gm_{:.4f}.pkl".format(
                 sys_cfg.lattice.nx, sys_cfg.g_el, sys_cfg.g_gm)
+
+            self.last_result.save_summary(fname_mc_summary)
             with open(fname_result_min,"wb") as outfile:
                 pickle.dump(self.min_result,outfile)
 
