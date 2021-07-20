@@ -24,7 +24,8 @@ def print_output_mc_dump(version,mc):
 
 def main():
     if args.fname is not None and os.path.isfile(args.fname):
-        name,ext=os.path.splitext(args.fname)
+        fname_base=os.path.basename(args.fname)
+        name,ext=os.path.splitext(fname_base)
         if ext == ".gz" and name.startswith("data"):
             #We are dealing with a full simulation file
             with gzip.open(args.fname,"rb") as infile:
