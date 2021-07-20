@@ -264,9 +264,9 @@ class MonteCarloEstimator:
         syscfg = self.system.cfg
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
-        t = syscfg.paramdict["t"]
-        y = syscfg.paramdict["y"]
-        z = syscfg.paramdict["z"]
+        t = syscfg.paramvec[0]
+        y = syscfg.paramvec[1]
+        z = syscfg.paramvec[2]
         fname_full = "data_mc_L_{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl.gz".format(
             syscfg.lattice.nx, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z,
             warmup_steps, meas_steps)
@@ -304,9 +304,9 @@ class MonteCarloEstimator:
             dest['g_el'].append(self.system.cfg.g_el)
             dest['g_gm'].append(self.system.cfg.g_gm)
             dest['g_mag'].append(self.system.cfg.g_mag)
-            dest['t'].append(self.system.cfg.paramdict["t"])
-            dest['y'].append(self.system.cfg.paramdict["y"])
-            dest['z'].append(self.system.cfg.paramdict["z"])
+            dest['t'].append(self.system.cfg.paramvec[0])
+            dest['y'].append(self.system.cfg.paramvec[1])
+            dest['z'].append(self.system.cfg.paramvec[2])
             dest['seed'].append(self.cfg.seed)
             dest['warmup_steps'].append(self.cfg.warmup_steps)
             dest['meas_steps'].append(self.cfg.meas_steps)
