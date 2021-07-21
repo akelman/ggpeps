@@ -26,11 +26,11 @@ def args2logname(args):
         "minexact": "minexact"
     }
     if args.g_mag == None:
-        fname = "log_{}_L_{:02d}_g2_{:.3f}_gm_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(
-            shorthands[args.mode], args.L, args.g2, args.g_gm, args.t, args.y, args.z, args.warmup_steps, args.meas_steps)
+        fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(
+            shorthands[args.mode], args.L, args.L, args.g2, args.g_gm, args.t, args.y, args.z, args.warmup_steps, args.meas_steps)
     else:
-        fname = "log_{}_L_{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(
-            shorthands[args.mode], args.L, args.g2, args.g_gm, args.g_mag, args.t, args.y, args.z, args.warmup_steps, args.meas_steps)
+        fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(
+            shorthands[args.mode], args.L, args.L, args.g2, args.g_gm, args.g_mag, args.t, args.y, args.z, args.warmup_steps, args.meas_steps)
     return fname
 
 

@@ -267,11 +267,11 @@ class MonteCarloEstimator:
         t = syscfg.paramvec[0]
         y = syscfg.paramvec[1]
         z = syscfg.paramvec[2]
-        fname_full = "data_mc_L_{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl.gz".format(
-            syscfg.lattice.nx, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z,
+        fname_full = "data_mc_L_{:02d}-{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl.gz".format(
+            syscfg.lattice.nx,syscfg.lattice.ny, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z,
             warmup_steps, meas_steps)
-        fname_summary = "summary_mc_L_{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl".format(
-            syscfg.lattice.nx, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z,
+        fname_summary = "summary_mc_L_{:02d}-{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl".format(
+            syscfg.lattice.nx, syscfg.lattice.ny, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z,
             warmup_steps, meas_steps)
         self.save_full(fname_full)
         self.save_summary(fname_summary)
@@ -287,6 +287,8 @@ class MonteCarloEstimator:
     def summary(self):
         dest = {
             "name": [],
+            "nx":[],
+            "ny":[],
             "t": [],
             "y": [],
             "z": [],
@@ -301,6 +303,8 @@ class MonteCarloEstimator:
         }
         for key in self.obsdict.keys():
             dest['name'].append(key)
+            dest['nx'].append(self.system.cfg.lattice.nx)
+            dest['ny'].append(self.system.cfg.lattice.ny)
             dest['g_el'].append(self.system.cfg.g_el)
             dest['g_gm'].append(self.system.cfg.g_gm)
             dest['g_mag'].append(self.system.cfg.g_mag)

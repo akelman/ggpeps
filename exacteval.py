@@ -113,6 +113,8 @@ class ExactEvaluator():
     def summary(self):
         dest = {
             "name": [],
+            "nx": [],
+            "ny": [],
             "t": [],
             "y": [],
             "z": [],
@@ -123,6 +125,8 @@ class ExactEvaluator():
         }
         for key in self.obsdict.keys():
             dest['name'].append(key)
+            dest['nx'].append(self.system.cfg.lattice.nx)
+            dest['ny'].append(self.system.cfg.lattice.ny)
             dest['g_el'].append(self.system.cfg.g_el)
             dest['g_gm'].append(self.system.cfg.g_gm)
             dest['g_mag'].append(self.system.cfg.g_mag)

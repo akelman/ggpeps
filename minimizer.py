@@ -166,10 +166,12 @@ class Minimizer():
         if self.min_result is not None:
             sys_cfg=self.evaluator.system_cfg
 
-            fname_mc_summary = "summary_min_L_{:02d}_gel_{:.4f}_gm_{:.4f}.pkl".format(
-                sys_cfg.lattice.nx, sys_cfg.g_el, sys_cfg.g_gm)
-            fname_result_min = "result_min_L_{:02d}_gel_{:.4f}_gm_{:.4f}.pkl".format(
-                sys_cfg.lattice.nx, sys_cfg.g_el, sys_cfg.g_gm)
+            fname_mc_summary = "summary_min_L_{:02d}-{:02d}_gel_{:.4f}_gm_{:.4f}.pkl".format(
+                sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g_el,
+                sys_cfg.g_gm)
+            fname_result_min = "result_min_L_{:02d}-{:02d}_gel_{:.4f}_gm_{:.4f}.pkl".format(
+                sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g_el,
+                sys_cfg.g_gm)
 
             self.last_result.save_summary(fname_mc_summary)
             with open(fname_result_min,"wb") as outfile:
