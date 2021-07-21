@@ -34,18 +34,15 @@ def main():
                 mc=data["mc"]
                 print_output_mc_dump(version,mc)
         elif ext == ".pkl": 
-            if name.startswith("summary"):
-                # We are dealing with a summary file
-                df=pd.read_pickle(args.fname)
-                print(df)
-            elif name.startswith("result_min"):
+            if name.startswith("result_min"):
                 with open(args.fname, "rb") as infile:
                     # We are dealing with a minimization result
                     data=pickle.load(infile)
                     print(data)
             else:
-                #We don't know what to do
-                print("Invalid file '{}'".format(args.fname),file=sys.stderr)
+                #We assume that we are dealing with a pickled dataframe
+                df=pd.read_pickle(args.fname)
+                print(df)
         elif ext== ".npy":
             # We are looking at a xivec or alphavec file, load it and display it
             vec_import=np.load(args.fname)
