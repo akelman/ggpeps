@@ -500,6 +500,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         param_namevec = ["t", "y", "z"]
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None, None)
+        system_z2_2_2 = system.Z2System2D(system_cfg)
         for ind in range(3):
             with self.subTest(ind=ind):
                 paramvec_left=np.copy(paramvec)
@@ -512,7 +513,6 @@ class TestZ2SystemMethods(unittest.TestCase):
                 system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
                                                         1.0, None, None)
 
-                system_z2_2_2 = system.Z2System2D(system_cfg)
                 system_z2_2_2_left= system.Z2System2D(system_cfg_left)
                 system_z2_2_2_right = system.Z2System2D(system_cfg_right)
 
@@ -598,6 +598,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         param_namevec=["t","y","z"]
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None, None)
+        system_z2_2_2 = system.Z2System2D(system_cfg)
         for ind in range(3):
             with self.subTest(ind=ind):
                 paramvec_left=np.copy(paramvec)
@@ -609,7 +610,6 @@ class TestZ2SystemMethods(unittest.TestCase):
                 system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
                                                         1.0, None, None)
 
-                system_z2_2_2 = system.Z2System2D(system_cfg)
                 system_z2_2_2_left= system.Z2System2D(system_cfg_left)
                 system_z2_2_2_right = system.Z2System2D(system_cfg_right)
 
@@ -737,11 +737,14 @@ class TestMinimizerZ2(unittest.TestCase):
     def test_derivative_mag_energy_exact(self):
         eps = 1e-5
         paramvec= [[0.0, 0.5, 0.5]]
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None,
+                                            None)
+        sys = system.Z2System2D(system_cfg)
+        exact_ev = ExactEvaluator(sys)
+        res = exact_ev.evaluate()
         for ind in range(3):
             with self.subTest(ind=ind):
-                lat_2x2 = lattice.Lattice2D(2, 2)
-                system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None,
-                                                    None)
                 paramvec=system_cfg.paramvec
                 paramvec_left=np.copy(paramvec)
                 paramvec_right=np.copy(paramvec)
@@ -752,31 +755,31 @@ class TestMinimizerZ2(unittest.TestCase):
                 system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
                                                         1.0, None, None)
 
-                sys = system.Z2System2D(system_cfg)
                 sys_left = system.Z2System2D(system_cfg_left)
                 sys_right = system.Z2System2D(system_cfg_right)
 
-                exact_ev = ExactEvaluator(sys)
                 exact_ev_left = ExactEvaluator(sys_left)
                 exact_ev_right = ExactEvaluator(sys_right)
 
-                res = exact_ev.evaluate()
                 res_left = exact_ev_left.evaluate()
                 res_right = exact_ev_right.evaluate()
 
                 mag_energy_deriv_num = (res_right["mag_energy"] - res_left["mag_energy"]) / (2 * eps)
-                mag_energy_deriv_ana = res["mag_energy_grad"][0,ind]
+                mag_energy_deriv_ana = res["mag_energy_grad"][0, ind]
 
                 self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
 
     def test_derivative_el_energy_exact(self):
         eps = 1e-5
         paramvec = [[0.2, 0.5, 0.5]]
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None,
+                                            None)
+        sys = system.Z2System2D(system_cfg)
+        exact_ev=ExactEvaluator(sys)
+        res=exact_ev.evaluate()
         for ind in range(3):
             with self.subTest(ind=ind):
-                lat_2x2 = lattice.Lattice2D(2, 2)
-                system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None,
-                                                    None)
                 paramvec_left=np.copy(paramvec)
                 paramvec_right=np.copy(paramvec)
                 paramvec_left[0, ind] -= eps
@@ -786,15 +789,12 @@ class TestMinimizerZ2(unittest.TestCase):
                 system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
                                                         1.0, None, None)
 
-                sys = system.Z2System2D(system_cfg)
                 sys_left = system.Z2System2D(system_cfg_left)
                 sys_right = system.Z2System2D(system_cfg_right)
 
-                exact_ev=ExactEvaluator(sys)
                 exact_ev_left=ExactEvaluator(sys_left)
                 exact_ev_right=ExactEvaluator(sys_right)
 
-                res=exact_ev.evaluate()
                 res_left=exact_ev_left.evaluate()
                 res_right=exact_ev_right.evaluate()
 
