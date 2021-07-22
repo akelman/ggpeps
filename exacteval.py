@@ -26,7 +26,8 @@ class ExactEvaluator():
         normalization=np.sum(normvec)
         if len(obs.shape)>1:
             # We have to treat the gradients differently as they are multi-dimensional observables
-            expval=np.sum(obs*normvec,axis=1)
+            prod = obs * normvec
+            expval=np.transpose(np.sum(prod,axis=2))
         else:
             expval=np.sum(obs*normvec)
         return expval/normalization
@@ -62,9 +63,9 @@ class ExactEvaluator():
                 data["el_energy"].append(self.system.el_energy)
                 data["mag_energy_op"].append(self.system.mag_energy_op)
                 data["el_energy_op"].append(self.system.el_energy_op)
-                data["el_energy_op_grad"].append(self.system.el_energy_op_grad)
+                data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
                 data["norm"].append(self.system.calculate_lognorm(all_factors=True))
-                data["grad_norm"].append(self.system.compute_grad_norm())
+                data["grad_norm"].append(self.system.compute_grad_norm_vec())
                 data["wilson_00_11"].append(np.real(self.system.compute_path(wilson_loop)))
                 data["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
 
@@ -76,12 +77,15 @@ class ExactEvaluator():
             # We need to change from log values to regular values here
             normvec = np.exp(data["norm"])
 
+            # Transpose to enable broadcasting
+            grad_norm_transposed=np.transpose(data["grad_norm"],[2,1,0])
+
             dest["energy"] = self.compute_expval(data["energy"], normvec)
             dest["mag_energy"] = self.compute_expval(data["mag_energy"], normvec)
             dest["el_energy"] = self.compute_expval(data["el_energy"], normvec)
             dest["wilson_00_11"] = self.compute_expval(data["wilson_00_11"], normvec)
             dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
-            dest["grad_norm"] = self.compute_expval(np.transpose(data["grad_norm"]), normvec)
+            dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)
 
             #The norm that we turn in the end is the actual norm, not the lognorm!
             dest["norm"] = np.sum(normvec)
@@ -89,18 +93,18 @@ class ExactEvaluator():
             # Compute the gradients
 
             # Magnetic gradient
-            prod_mag_op_norm = data["mag_energy_op"] * np.transpose(data["grad_norm"])
+            prod_mag_op_norm = data["mag_energy_op"] * grad_norm_transposed
             expval_prod_mag = self.compute_expval(prod_mag_op_norm, normvec)
-            prod_expval_mag = self.compute_expval(data["mag_energy_op"],normvec) * self.compute_expval(np.transpose(data["grad_norm"]),normvec)
+            prod_expval_mag = self.compute_expval(data["mag_energy_op"],normvec) * dest["grad_norm"]
             mag_op_grad = expval_prod_mag - prod_expval_mag
             mag_energy_grad = -self.system.cfg.g_mag * mag_op_grad
             dest["mag_energy_grad"] = mag_energy_grad
 
             # Electric gradient
-            prod_el_op_norm = data["el_energy_op"] * np.transpose(data["grad_norm"])
+            prod_el_op_norm = data["el_energy_op"] * grad_norm_transposed
             expval_prod_el = self.compute_expval(prod_el_op_norm, normvec)
-            prod_expval_el = self.compute_expval(data["el_energy_op"],normvec) * self.compute_expval(np.transpose(data["grad_norm"]),normvec)
-            el_op_grad = expval_prod_el - prod_expval_el + self.compute_expval(np.transpose(data["el_energy_op_grad"]),normvec)
+            prod_expval_el = self.compute_expval(data["el_energy_op"],normvec) * dest["grad_norm"]
+            el_op_grad = expval_prod_el - prod_expval_el + self.compute_expval(np.transpose(data["el_energy_op_grad"],[2,1,0]),normvec)
             el_energy_grad = -self.system.cfg.g_el * el_op_grad
             dest["el_energy_grad"] = el_energy_grad
 
@@ -142,8 +146,8 @@ class ExactEvaluator():
         t = syscfg.paramvec[0]
         y = syscfg.paramvec[1]
         z = syscfg.paramvec[2]
-        fname_summary = "summary_exact_L_{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}.pkl".format(
-            syscfg.lattice.nx, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z)
+        fname_summary = "summary_exact_L_{:02d}-{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}.pkl".format(
+            syscfg.lattice.nx,syscfg.lattice.ny, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z)
         self.save_summary(fname_summary)
 
     def save_summary(self, fname_summary):
