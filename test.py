@@ -734,7 +734,7 @@ class TestU1MultilayerSystemMethods(unittest.TestCase):
 
 class TestMinimizerZ2(unittest.TestCase):
 
-    def test_derivative_mag_energy_exact(self):
+    def test_derivative_mag_energy_exact_1_layer(self):
         eps = 1e-5
         paramvec= [[0.0, 0.5, 0.5]]
         lat_2x2 = lattice.Lattice2D(2, 2)
@@ -767,9 +767,45 @@ class TestMinimizerZ2(unittest.TestCase):
                 mag_energy_deriv_num = (res_right["mag_energy"] - res_left["mag_energy"]) / (2 * eps)
                 mag_energy_deriv_ana = res["mag_energy_grad"][0, ind]
 
-                self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
 
-    def test_derivative_el_energy_exact(self):
+    def test_derivative_mag_energy_exact_1_layer(self):
+        eps = 1e-5
+        paramvec= [[0.0, 0.5, 0.5],[0.0,0.3,0.8]]
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None,
+                                            None)
+        sys = system.Z2System2D(system_cfg)
+        exact_ev = ExactEvaluator(sys)
+        res = exact_ev.evaluate()
+        for layer in range(2):
+            for ind in range(3):
+                with self.subTest(ind=ind, layer=layer):
+                    paramvec=system_cfg.paramvec
+                    paramvec_left=np.copy(paramvec)
+                    paramvec_right=np.copy(paramvec)
+                    paramvec_left[layer, ind] -= eps
+                    paramvec_right[layer, ind] += eps
+                    system_cfg_left = system.Z2System2DConfig(paramvec_left, lat_2x2, 1.0,
+                                                            None, None)
+                    system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
+                                                            1.0, None, None)
+
+                    sys_left = system.Z2System2D(system_cfg_left)
+                    sys_right = system.Z2System2D(system_cfg_right)
+
+                    exact_ev_left = ExactEvaluator(sys_left)
+                    exact_ev_right = ExactEvaluator(sys_right)
+
+                    res_left = exact_ev_left.evaluate()
+                    res_right = exact_ev_right.evaluate()
+
+                    mag_energy_deriv_num = (res_right["mag_energy"] - res_left["mag_energy"]) / (2 * eps)
+                    mag_energy_deriv_ana = res["mag_energy_grad"][layer, ind]
+
+                    self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
+                    self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
+
+    def test_derivative_el_energy_exact_1_layer(self):
         eps = 1e-5
         paramvec = [[0.2, 0.5, 0.5]]
         lat_2x2 = lattice.Lattice2D(2, 2)
@@ -802,6 +838,42 @@ class TestMinimizerZ2(unittest.TestCase):
                 el_energy_deriv_ana = res["el_energy_grad"][0,ind]
 
                 self.assertAlmostEqual(el_energy_deriv_num, el_energy_deriv_ana)
+
+    def test_derivative_el_energy_exact_2_layer(self):
+        eps = 1e-5
+        paramvec = [[0.2, 0.5, 0.5],[0.1, 0.4, 0.2]]
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None,
+                                            None)
+        sys = system.Z2System2D(system_cfg)
+        exact_ev=ExactEvaluator(sys)
+        res=exact_ev.evaluate()
+        for layerind in range(2):
+            for ind in range(3):
+                with self.subTest(ind=ind, layerind=layerind):
+                    paramvec_left=np.copy(paramvec)
+                    paramvec_right=np.copy(paramvec)
+                    paramvec_left[layerind, ind] -= eps
+                    paramvec_right[layerind, ind] += eps
+                    system_cfg_left = system.Z2System2DConfig(paramvec_left, lat_2x2, 1.0,
+                                                            None, None)
+                    system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
+                                                            1.0, None, None)
+
+                    sys_left = system.Z2System2D(system_cfg_left)
+                    sys_right = system.Z2System2D(system_cfg_right)
+
+                    exact_ev_left=ExactEvaluator(sys_left)
+                    exact_ev_right=ExactEvaluator(sys_right)
+
+                    res_left=exact_ev_left.evaluate()
+                    res_right=exact_ev_right.evaluate()
+
+                    el_energy_deriv_num = (res_right["el_energy"] - res_left["el_energy"]) / (2 * eps)
+                    el_energy_deriv_ana = res["el_energy_grad"][layerind, ind]
+
+                    self.assertAlmostEqual(el_energy_deriv_num, el_energy_deriv_ana)
+
 
     @skip("Too long")
     def test_derivative_mag_energy_y(self):
