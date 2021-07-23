@@ -64,6 +64,15 @@ def get_git_hash():
     return githash.decode("utf-8").strip()
 
 
+def multiply_except(arr,ind):
+    if len(arr)>1:
+        mask = np.ones_like(arr, dtype=bool)
+        mask[ind] = False
+        return np.prod(arr[mask])
+    else:
+        #It does not make sense to execute this function with only one element
+        return arr[0]
+
 # =========== Matrix Evaluation Functions ====================
 
 def is_hermitian(mat):

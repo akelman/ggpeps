@@ -165,6 +165,7 @@ class Z2System2D:
         # Observables
         self._energy = None
         self._el_energy_op = None
+        self._el_energy_op_vec = None
         self._mag_energy_op = None
 
         # Weight
@@ -431,6 +432,7 @@ class Z2System2D:
         self._el_energy = None
         self._mag_energy_op = None
         self._el_energy_op = None
+        self._el_energy_op_vec = None
         self._el_energy_op_grad_vec = None
 
     def calculate_update_gamma_in(self,offset,update_mat):
@@ -605,7 +607,14 @@ class Z2System2D:
                     1.j * covmat_out_virt[0, 1] - 1.j * covmat_out_virt[2, 3]))
                 layer_derivative.append(d_el_energy)
             dest.append(layer_derivative)
-        return np.asarray(dest)
+        # We have to weight the different layers with the electric energy operator expectation of the other layers.
+        # They act as a prefactor in the derivative
+        dest = np.asarray(dest)
+        if self.cfg.nlayer > 1:
+            for i in range(self.cfg.nlayer):
+                prod_other_layers = utils.multiply_except(self.el_energy_op_vec, i)
+                dest[i] *= prod_other_layers
+        return dest
 
     @property
     def gamma_maj_sys_deriv_t_vec(self):
@@ -936,8 +945,16 @@ class Z2System2D:
     @property
     def el_energy_op(self):
         if self._el_energy_op is None:
-            self._el_energy_op = self._compute_el_energy_op()
+            # The different layers can be separated into separate PEPS.
+            # Their expectation values are multiplied
+            self._el_energy_op = np.prod(self.el_energy_op_vec)
         return self._el_energy_op
+
+    @property
+    def el_energy_op_vec(self):
+        if self._el_energy_op_vec is None:
+            self._el_energy_op_vec = self._compute_el_energy_op_vec()
+        return self._el_energy_op_vec
 
     @property
     def mag_energy(self):
@@ -958,10 +975,9 @@ class Z2System2D:
         return self._el_energy_op_grad_vec
 
 
-    def _compute_el_energy_op(self, use_trans_inv=True):
+    def _compute_el_energy_op_vec(self, use_trans_inv=True):
         if use_trans_inv:
             nlinks=self.cfg.lattice.nlinks
-            cumval=1.0
             gamma_in_sys = self.gamma_in_sys
             # Number of fermions = # of sites
             single_site_offset = 4
@@ -969,6 +985,7 @@ class Z2System2D:
             # We have to cut one link from gamma_in_sys as well
             gamma_in_sys_tilde = gamma_in_sys[single_site_offset:,
                                             single_site_offset:]
+            el_energy_bare=[]
             for ind in range(self.cfg.nlayer):
                 #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
                 gamma_maj_sys = self.gamma_maj_sys_vec[ind]
@@ -983,15 +1000,12 @@ class Z2System2D:
                 el_energy_layer = nlinks * np.real(0.5j * (
                     covmat_out_virt[0, 2] - covmat_out_virt[0, 3] -
                     1.j * covmat_out_virt[0, 1] - 1.j * covmat_out_virt[2, 3]))
-                # The different layers can be separated into separate PEPS.
-                # Their expectation values are multiplied
-                cumval *= el_energy_layer
-            el_energy_bare=cumval
+                el_energy_bare.append(el_energy_layer)
         else:
             # Evaluate every link of the system
             logging.error("compute_el_energy: not implemented yet")
-            el_energy_bare = None
-        return el_energy_bare
+            el_energy_bare = [None]*self.cfg.nlayer
+        return np.asarray(el_energy_bare)
 
     def _compute_mag_energy_op(self, use_trans_inv=True):
         if use_trans_inv:

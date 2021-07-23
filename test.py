@@ -872,7 +872,9 @@ class TestMinimizerZ2(unittest.TestCase):
                     el_energy_deriv_num = (res_right["el_energy"] - res_left["el_energy"]) / (2 * eps)
                     el_energy_deriv_ana = res["el_energy_grad"][layerind, ind]
 
-                    self.assertAlmostEqual(el_energy_deriv_num, el_energy_deriv_ana)
+                    self.assertAlmostEqual(el_energy_deriv_num,
+                                           el_energy_deriv_ana,
+                                           places=6)
 
 
     @skip("Too long")
