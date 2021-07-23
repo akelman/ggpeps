@@ -431,7 +431,7 @@ class Z2System2D:
         self._el_energy = None
         self._mag_energy_op = None
         self._el_energy_op = None
-        self._el_energy_op_grad = None
+        self._el_energy_op_grad_vec = None
 
     def calculate_update_gamma_in(self,offset,update_mat):
         m_up, n_up = update_mat.shape
