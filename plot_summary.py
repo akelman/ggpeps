@@ -3,6 +3,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os, sys
 
+def len_arr(x):
+    if isinstance(x,list) or isinstance(x,np.ndarray):
+        return len(x)
+    else:
+        return 1
 
 def main(args):
     dfvec = []
@@ -12,6 +17,7 @@ def main(args):
             dfvec.append(df)
     df = pd.concat(dfvec)
     df["L"] = df["nx"].astype("str") + "-" + df["ny"].astype("str")
+    df["nlayer"] = df["t"].apply(len_arr)
     obsnamevec = df.name.unique()
 
     if args.exact is not None and os.path.isfile(args.exact):
@@ -24,11 +30,11 @@ def main(args):
             df_filtered=df[df.name==obs]
             df_filtered.reset_index(drop=True, inplace=True)
 
-            for name, group in df_filtered.groupby("L"):
+            for name, group in df_filtered.groupby(["L","nlayer"]):
                 ax.plot(group["g_el"],
                         group["mean"],
                         'o',
-                        label="EC, {}, L={}".format(obs,name))
+                        label="EC, {}, L={}, layer={}".format(obs,*name))
 
             # We can add the ED data to the plot to compare the curves
             if args.exact is not None and os.path.isfile(args.exact):
