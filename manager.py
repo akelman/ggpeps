@@ -25,12 +25,28 @@ def args2logname(args):
         "exact": "exact",
         "minexact": "minexact"
     }
-    if args.g_mag == None:
-        fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(
-            shorthands[args.mode], args.L, args.L, args.g2, args.g_gm, args.t, args.y, args.z, args.warmup_steps, args.meas_steps)
+    tvec_str="-".join([str(t) for t in args.t])
+    yvec_str="-".join([str(y) for y in args.y])
+    zvec_str="-".join([str(z) for z in args.z])
+    if args.mode == "eval":
+        if args.g_mag == None:
+            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_t_{}_y_{}_z_{}_wsteps_{:06d}_msteps_{:06d}.log".format(
+                shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
+                tvec_str, yvec_str, zvec_str, args.warmup_steps, args.meas_steps)
+        else:
+            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{}_y_{}_z_{}_wsteps_{:06d}_msteps_{:06d}.log".format(
+                shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
+                args.g_mag, tvec_str, yvec_str, zvec_str, args.warmup_steps,
+                args.meas_steps)
     else:
-        fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(
-            shorthands[args.mode], args.L, args.L, args.g2, args.g_gm, args.g_mag, args.t, args.y, args.z, args.warmup_steps, args.meas_steps)
+        if args.g_mag == None:
+            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_nlayer_{:02d}_wsteps_{:06d}_msteps_{:06d}.log".format(
+                shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
+                len(args.z), args.warmup_steps, args.meas_steps)
+        else:
+            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_nlayer_{:02d}_wsteps_{:06d}_msteps_{:06d}.log".format(
+                shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
+                args.g_mag, len(args.z), args.warmup_steps, args.meas_steps)
     return fname
 
 
@@ -74,7 +90,7 @@ def main():
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 
-    paramvec = [args.t, args.y, args.z]
+    paramvec = np.transpose(np.array([args.t, args.y, args.z]))
     # TODO: This is now a specialized version that runs only Z2 System 2D.
     # We will have to make this more general at some point.
     system_cfg = Z2System2DConfig(paramvec, lattice, g2, g_gm, g_mag)
@@ -194,9 +210,9 @@ if __name__ == "__main__":
         default=False,
         action="store_true",
         help="Use the standard EOM instead of a rebinning analysis")
-    parser.add_argument("--y", default=0.5, type=float, help="initial y parameter")
-    parser.add_argument("--z", default=0.5, type=float, help="initial z parameter")
-    parser.add_argument("--t", default=0.0, type=float, help="initial t parameter: coupling to physical fermions")
+    parser.add_argument("--y", default=[0.5], type=float, nargs="+", help="initial y parameter(s)")
+    parser.add_argument("--z", default=[0.5], type=float, nargs="+", help="initial z parameter(s)")
+    parser.add_argument("--t", default=[0.0], type=float, nargs="+", help="initial t parameter(s): coupling to physical fermions")
     #Arguments for the minimizer
     parser.add_argument("--method", type=str,
                         default="custom", help="Minimization method")

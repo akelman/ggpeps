@@ -400,8 +400,9 @@ class Z2System2D:
     @property
     def weight(self):
         if self._weight is None:
-            #TODO: Fix the weight!
-            self._weight = 0.5 * self.incdet.det()
+            self._weight=1.0
+            for ind in range(self.cfg.nlayer):
+                self._weight *= 0.5 * self.incdet_vec[ind].det()
         return self._weight
 
     @weight.setter
@@ -939,32 +940,37 @@ class Z2System2D:
     @property
     def mag_energy_op(self):
         if self._mag_energy_op is None:
-            self._mag_energy_op = self._compute_mag_energy_op()
+            nplaq = self.cfg.lattice.nplaquettes
+            self._mag_energy_op = nplaq * self._compute_mag_energy_op()
         return self._mag_energy_op
 
     @property
     def el_energy_op(self):
         if self._el_energy_op is None:
             # The different layers can be separated into separate PEPS.
-            # Their expectation values are multiplied
-            self._el_energy_op = np.prod(self.el_energy_op_vec)
+            nlinks = self.cfg.lattice.nlinks
+            self._el_energy_op = nlinks * np.prod(self.el_energy_op_vec)
         return self._el_energy_op
 
     @property
     def el_energy_op_vec(self):
         if self._el_energy_op_vec is None:
+            # This vector is the electric energy on a single link.
+            # Otherwise, we get a power of nlinks in the product and the electric energy term (with prefactors) gets negative
             self._el_energy_op_vec = self._compute_el_energy_op_vec()
         return self._el_energy_op_vec
 
     @property
     def mag_energy(self):
         nplaq = self.cfg.lattice.nplaquettes
+        # The el_energy_op is already weighted with nplaq
         mag_energy = self.cfg.g_mag * (nplaq - self.mag_energy_op)
         return mag_energy
 
     @property
     def el_energy(self):
         nlinks=self.cfg.lattice.nlinks
+        # The el_energy_op is already weighted with nlinks
         el_energy = self.cfg.g_el * (nlinks - self.el_energy_op)
         return el_energy
 
@@ -977,7 +983,6 @@ class Z2System2D:
 
     def _compute_el_energy_op_vec(self, use_trans_inv=True):
         if use_trans_inv:
-            nlinks=self.cfg.lattice.nlinks
             gamma_in_sys = self.gamma_in_sys
             # Number of fermions = # of sites
             single_site_offset = 4
@@ -997,7 +1002,7 @@ class Z2System2D:
                                             single_site_offset:]
                 # The real part ensures that we calculate P+P\dag.
                 # The matrix elements yield only the expectation value of P
-                el_energy_layer = nlinks * np.real(0.5j * (
+                el_energy_layer = np.real(0.5j * (
                     covmat_out_virt[0, 2] - covmat_out_virt[0, 3] -
                     1.j * covmat_out_virt[0, 1] - 1.j * covmat_out_virt[2, 3]))
                 el_energy_bare.append(el_energy_layer)
@@ -1010,10 +1015,9 @@ class Z2System2D:
     def _compute_mag_energy_op(self, use_trans_inv=True):
         if use_trans_inv:
             # Evaluate one plaquette and multiply by number of plaquettes
-            nplaq = self.cfg.lattice.nplaquettes
             wilson_plaquette = self.cfg.lattice.generate_wilson_loop(
                 (0, 0), (1, 1))
-            mag_energy_bare = nplaq * np.real(
+            mag_energy_bare = np.real(
                 self.compute_path(wilson_plaquette))
         else:
             # Evaluate every plaquette of the system

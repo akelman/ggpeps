@@ -139,13 +139,13 @@ class MonteCarloEstimator:
         #self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
-        self.obsdict["grad_norm"].append(self.system.compute_grad_norm())
+        self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
 
         # These values could be calculated in a post-processing step
         self.obsdict["energy"].append(self.system.energy)
         self.obsdict["el_energy"].append(self.system.el_energy)
         self.obsdict["mag_energy"].append(self.system.mag_energy)
-        self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad)
+        self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
 
     def warmup(self):
@@ -264,15 +264,12 @@ class MonteCarloEstimator:
         syscfg = self.system.cfg
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
-        t = syscfg.paramvec[0]
-        y = syscfg.paramvec[1]
-        z = syscfg.paramvec[2]
-        fname_full = "data_mc_L_{:02d}-{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl.gz".format(
-            syscfg.lattice.nx,syscfg.lattice.ny, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z,
-            warmup_steps, meas_steps)
-        fname_summary = "summary_mc_L_{:02d}-{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}_wsteps_{:07d}_msteps_{:07d}.pkl".format(
-            syscfg.lattice.nx, syscfg.lattice.ny, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z,
-            warmup_steps, meas_steps)
+        fname_full = "data_mc_L_{:02d}-{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_nlayer_{:02d}_wsteps_{:07d}_msteps_{:07d}.pkl.gz".format(
+            syscfg.lattice.nx, syscfg.lattice.ny, syscfg.g_el, syscfg.g_gm,
+            syscfg.g_mag, syscfg.nlayer, warmup_steps, meas_steps)
+        fname_summary = "summary_mc_L_{:02d}-{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_nlayer_{:02d}_wsteps_{:07d}_msteps_{:07d}.pkl".format(
+            syscfg.lattice.nx, syscfg.lattice.ny, syscfg.g_el, syscfg.g_gm,
+            syscfg.g_mag, syscfg.nlayer, warmup_steps, meas_steps)
         self.save_full(fname_full)
         self.save_summary(fname_summary)
 
@@ -308,9 +305,9 @@ class MonteCarloEstimator:
             dest['g_el'].append(self.system.cfg.g_el)
             dest['g_gm'].append(self.system.cfg.g_gm)
             dest['g_mag'].append(self.system.cfg.g_mag)
-            dest['t'].append(self.system.cfg.paramvec[0])
-            dest['y'].append(self.system.cfg.paramvec[1])
-            dest['z'].append(self.system.cfg.paramvec[2])
+            dest['t'].append(self.system.cfg.paramvec[:,0])
+            dest['y'].append(self.system.cfg.paramvec[:,1])
+            dest['z'].append(self.system.cfg.paramvec[:,2])
             dest['seed'].append(self.cfg.seed)
             dest['warmup_steps'].append(self.cfg.warmup_steps)
             dest['meas_steps'].append(self.cfg.meas_steps)

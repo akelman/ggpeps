@@ -134,20 +134,23 @@ class ExactEvaluator():
             dest['g_el'].append(self.system.cfg.g_el)
             dest['g_gm'].append(self.system.cfg.g_gm)
             dest['g_mag'].append(self.system.cfg.g_mag)
-            dest['t'].append(self.system.cfg.paramvec[0])
-            dest['y'].append(self.system.cfg.paramvec[1])
-            dest['z'].append(self.system.cfg.paramvec[2])
+            dest['t'].append(self.system.cfg.paramvec[:,0])
+            dest['y'].append(self.system.cfg.paramvec[:,1])
+            dest['z'].append(self.system.cfg.paramvec[:,2])
             dest["mean"].append(self.obsdict[key])
         df = pd.DataFrame(dest)
         return df
 
     def save(self):
         syscfg = self.system.cfg
-        t = syscfg.paramvec[0]
-        y = syscfg.paramvec[1]
-        z = syscfg.paramvec[2]
-        fname_summary = "summary_exact_L_{:02d}-{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{:.3f}_y_{:.3f}_z_{:.3f}.pkl".format(
-            syscfg.lattice.nx,syscfg.lattice.ny, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, t, y, z)
+        tvec = syscfg.paramvec[:,0]
+        yvec = syscfg.paramvec[:,1]
+        zvec = syscfg.paramvec[:,2]
+        tstr="-".join([str(t) for t in tvec])
+        ystr="-".join([str(y) for y in yvec])
+        zstr="-".join([str(z) for z in zvec])
+        fname_summary = "summary_exact_L_{:02d}-{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{}_y_{}_z_{}.pkl".format(
+            syscfg.lattice.nx,syscfg.lattice.ny, syscfg.g_el, syscfg.g_gm, syscfg.g_mag, tstr, ystr, zstr)
         self.save_summary(fname_summary)
 
     def save_summary(self, fname_summary):
