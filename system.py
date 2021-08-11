@@ -121,9 +121,9 @@ class Z2System2DConfig:
 
         #Parameters of the Hamiltonian
         self.g2 = g2
-        self.g_el = g2
+        self.g_el = g2/2
         if g_mag is None:
-            self.g_mag = 1./g2
+            self.g_mag = 1./(2*g2)
         else:
             self.g_mag = g_mag
         self.g_gm = g_gm
@@ -429,8 +429,6 @@ class Z2System2D:
 
     def invalidate_gauge_update(self):
         self._energy = None
-        self._mag_energy = None
-        self._el_energy = None
         self._mag_energy_op = None
         self._el_energy_op = None
         self._el_energy_op_vec = None
@@ -963,15 +961,13 @@ class Z2System2D:
     @property
     def mag_energy(self):
         nplaq = self.cfg.lattice.nplaquettes
-        # The el_energy_op is already weighted with nplaq
-        mag_energy = self.cfg.g_mag * (nplaq - self.mag_energy_op)
+        mag_energy = self.cfg.g_mag * (2*nplaq - 2*self.mag_energy_op)
         return mag_energy
 
     @property
     def el_energy(self):
         nlinks=self.cfg.lattice.nlinks
-        # The el_energy_op is already weighted with nlinks
-        el_energy = self.cfg.g_el * (nlinks - self.el_energy_op)
+        el_energy = self.cfg.g_el * (2*nlinks - 2*self.el_energy_op)
         return el_energy
 
     @property
@@ -1000,7 +996,7 @@ class Z2System2D:
                                         gamma_in_sys_tilde) @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_site_offset:, -
                                             single_site_offset:]
-                # The real part ensures that we calculate P+P\dag.
+                # The real part ensures that we calculate 0.5(P+P\dag)
                 # The matrix elements yield only the expectation value of P
                 el_energy_layer = np.real(0.5j * (
                     covmat_out_virt[0, 2] - covmat_out_virt[0, 3] -
