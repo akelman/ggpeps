@@ -766,9 +766,10 @@ class TestMinimizerZ2(unittest.TestCase):
 
                 mag_energy_deriv_num = (res_right["mag_energy"] - res_left["mag_energy"]) / (2 * eps)
                 mag_energy_deriv_ana = res["mag_energy_grad"][0, ind]
+                self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
 
 
-    def test_derivative_mag_energy_exact_1_layer(self):
+    def test_derivative_mag_energy_exact_2_layer(self):
         eps = 1e-5
         paramvec= [[0.0, 0.5, 0.5],[0.0,0.3,0.8]]
         lat_2x2 = lattice.Lattice2D(2, 2)
@@ -802,7 +803,6 @@ class TestMinimizerZ2(unittest.TestCase):
                     mag_energy_deriv_num = (res_right["mag_energy"] - res_left["mag_energy"]) / (2 * eps)
                     mag_energy_deriv_ana = res["mag_energy_grad"][layer, ind]
 
-                    self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
                     self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
 
     def test_derivative_el_energy_exact_1_layer(self):
