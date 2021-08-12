@@ -24,7 +24,8 @@ def main(args):
         df_exact=pd.read_pickle(args.exact)
         df_exact["L"] = df_exact["nx"].astype("str") + "-" + df_exact["ny"].astype("str")
 
-    f,ax=plt.subplots(1,1,figsize=(4.14,2.66))
+    #f,ax=plt.subplots(1,1,figsize=(4.14,2.66))
+    f,ax=plt.subplots(1,1)
     for obs in args.obs:
         if obs in obsnamevec:
             df_filtered=df[df.name==obs]
