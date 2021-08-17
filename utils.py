@@ -324,11 +324,34 @@ class IncLogAbsDeterminant:
 
 # ========= Rebinning Functions ====================
 
-def rebin_array( a, R):
-    """rebins a into bins of length R"""
-    anp = np.asarray(a)
-    max_fit = len(anp) - len(anp) % R
-    return np.mean(anp[:max_fit].reshape(-1, R), axis=1)
+def autocorr_fft(arr):
+    arr=arr-np.mean(arr)
+    fft_vals=np.fft.fft(arr)
+    spectrum=fft_vals*np.conjugate(fft_vals)
+    dest=np.fft.ifft(spectrum)
+    return dest/dest[0]
+
+def rebin_array(a, R):
+    """Rebin an array into bins of length R"""
+    if isinstance(a, list):
+        a = np.asarray(a)
+    R=int(R)
+    max_fit = int(len(a) - len(a) % R)
+    if a.ndim == 1:
+        #Shape (N): N samples of scalars
+        dest = np.mean(a[:max_fit].reshape(-1, R), axis=1)
+    elif a.ndim==2:
+        #Shape (N,n,m): N samples of m-dim vecotrs
+        N,m=a.shape
+        dest = np.mean(a[:max_fit].reshape(-1, m, R), axis=2)
+    elif a.ndim == 3:
+        #Shape (N,n,m): N samples of n x m matrices
+        N,m,n=a.shape
+        dest = np.mean(a[:max_fit].reshape(-1, m, n, R), axis=3)
+    else:
+        logging.error("rebin_array not implemented for dimensions greater than 3.")
+        return a
+    return dest
 
 
 def rebin_error(arr):
@@ -340,10 +363,9 @@ def rebin_error(arr):
     Returns:
         tuple: (value of binning, mean estimations, error on mean estimations, std dev estimations)
     """
-
     N = len(arr)
     max_exp = int(np.floor(np.log2(N / 10)))
-    rangevals = [2**i for i in range(max_exp)]
+    rangevals = [2**i for i in range(max_exp+1)]
     eomarr = []
     stdarr = []
     meanarr = []
@@ -358,18 +380,28 @@ def rebin_error(arr):
 
 
 def rebin_eom(arr):
-    """Wrapper around rebin_error that returns only the EOM.
+    """Calculate the error on the mean (EOM) by rebinning.
+    As a heuristic for the EOM we use that the biggest bin will give the best estimate.
+    We do not rebin to the maximal extent, but use the heuristic of taking the largest binsize of the form 2^i that can fit N/20.
 
     Args:
         arr (np.ndarray): Timeseries of a measurement
 
     Returns:
-        float: Best estimate of the EOM on the given array
+        float or arr: Best estimate of the EOM on the given array. The output shape depends on the input shape of arr.
     """
-    _, _, eomarr, _ = rebin_error(arr)
-    # This is a very rought heuristic:
-    # Take the last rebinning value as best estimate
-    return eomarr[-1]
+    N = len(arr)
+    #We want to leave a sufficient number of samples to build a reasonable mean
+    max_exp = int(np.floor(np.log2(N / 10)))
+    if max_exp > 0:
+        binsize= 2**(max_exp-1)
+        data_rebin = rebin_array(arr, binsize)
+    else:
+        # We cannot rebin if we have too few data. We will just return the normal EOM
+        data_rebin = arr
+    eom = np.std(data_rebin, ddof=1, axis=0) / np.sqrt(len(data_rebin))
+    return eom
+
 
 #========== Debugging Functions ====================
 
