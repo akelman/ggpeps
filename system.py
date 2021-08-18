@@ -996,8 +996,8 @@ class Z2System2D:
                                         gamma_in_sys_tilde) @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_site_offset:, -
                                             single_site_offset:]
-                # The real part ensures that we calculate 0.5(P+P\dag)
                 # The matrix elements yield only the expectation value of P
+                # The real part ensures that we calculate Re(P)
                 el_energy_layer = np.real(0.5j * (
                     covmat_out_virt[0, 2] - covmat_out_virt[0, 3] -
                     1.j * covmat_out_virt[0, 1] - 1.j * covmat_out_virt[2, 3]))

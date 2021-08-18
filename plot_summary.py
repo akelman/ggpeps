@@ -32,7 +32,7 @@ def main(args):
             df_filtered.reset_index(drop=True, inplace=True)
 
             for name, group in df_filtered.groupby(["L","nlayer"]):
-                ax.plot(group["g_el"],
+                ax.plot(group["g_el"]*2,
                         group["mean"],
                         'o',
                         label="EC, {}, L={}, layer={}".format(obs,*name))
@@ -41,7 +41,7 @@ def main(args):
             if args.exact is not None and os.path.isfile(args.exact):
                 df_exact_filtered=df_exact[df_exact.name==obs]
                 for name, group in df_exact_filtered.groupby("L"):
-                    ax.plot(df_exact_filtered["g_ham"],df_exact_filtered["value"],"-",label="ED, {}, L={}".format(obs,name))
+                    ax.plot(df_exact_filtered["g2_ham"],df_exact_filtered["value"],"-",label="ED, {}, L={}".format(obs,name))
 
     ax.set_xlabel("$g^2$", fontsize=10)
     ax.set_ylabel("Value", fontsize=10)
