@@ -488,21 +488,7 @@ class Z2System2D:
     # Calculating the norm
 
     def calculate_lognorm(self,all_factors=False):
-        # This is still the plain formula, without any update mechanism
-        gamma_in_sys = self.gamma_in_sys
-        cumval = 0
-        for ind in range(self.cfg.nlayer):
-            mat_d = self.mat_d_vec[ind]
-            if all_factors:
-                sign, logval = np.linalg.slogdet(
-                    (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d) / 2)
-            else:
-                # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
-                sign, logval = np.linalg.slogdet(
-                    (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d))
-            cumval += logval
-        #The factor 1/2 is the square-root
-        return cumval / 2
+        return calculate_lognorm(self.gamma_in_sys, self.mat_d_vec, all_factors=all_factors)
 
     def calculate_lognorm_inc(self, offset, update, all_factors=False):
         cumval=0
@@ -520,14 +506,14 @@ class Z2System2D:
 
     # Calculate gradients
 
-    def compute_grad_norm_vec(self):
+    def compute_grad_norm_vec(self) -> np.ndarray:
         #The parameter order is [[dt1, dy1, dz1],[dt2,dy2,dz2]...]
         dest=[]
         for layerind in range(self.cfg.nlayer):
             dest.append(self.compute_grad_norm(layerind))
         return np.asarray(dest)
 
-    def compute_grad_norm(self,layerind):
+    def compute_grad_norm(self, layerind: int) -> np.ndarray:
         #The parameter order is [dt, dy, dz]
         dest=np.zeros(3)
         dest[0]=self.compute_grad_over_norm("t",layerind)
@@ -535,7 +521,7 @@ class Z2System2D:
         dest[2]=self.compute_grad_over_norm("z",layerind)
         return dest
 
-    def gamma_maj_sys_deriv_vec(self,var):
+    def gamma_maj_sys_deriv_vec(self, var: str) -> np.ndarray:
         if var == "t":
             return self.gamma_maj_sys_deriv_t_vec
         elif var == "y":
@@ -545,7 +531,7 @@ class Z2System2D:
         print("gamma_maj_sys_deriv: Invalid variable name", sys.stderr)
         return None
 
-    def compute_grad_over_norm(self,var,layerind):
+    def compute_grad_over_norm(self, var: str, layerind: int) -> float:
         """Compute the quotient of derivative of the norm over the norm itself.
         We can avoid a lot of factors by computing the quotient directly.
 
@@ -561,59 +547,9 @@ class Z2System2D:
         offset = 2 * self.cfg.lattice.size
         # Extract only the part of the virtual-virtual correlations
         deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:]
-        dest = -0.5 * np.trace(
-            np.linalg.multi_dot(
-                [self.gamma_in_sys, deriv_d, self.mat_d_inv_vec[layerind], diff]))
-        return dest
+        mat_d_inv=self.mat_d_inv_vec[layerind]
+        return compute_grad_over_norm(self.gamma_in_sys, diff, deriv_d, mat_d_inv)
 
-    def _compute_el_energy_op_grad_vec(self):
-        """The electric energy depends explicitly on the parameters of the Ansatz. 
-        Thus, we have to build the explicit derivative of the electric energy with respect to the parameters.
-
-        Args:
-            var (str): Name of the variable (t,y,z)
-
-        Returns:
-            list: Matrix of the gradients of the electric energy wrt [[t1,y1,z1],[t2,y2,z2],...]
-        """
-        single_site_offset = 4
-        offset = 2 * self.cfg.lattice.size + single_site_offset
-        nlinks = self.cfg.lattice.nlinks
-        dest = []
-        # We have to cut one link from gamma_in_sys as well
-        gamma_in_sys_tilde = self.gamma_in_sys[single_site_offset:,
-                                               single_site_offset:]
-        for layerind in range(self.cfg.nlayer):
-            layer_derivative=[]
-            for var in ["t", "y", "z"]:
-                # The matrices must be re-extracted here since we slice at different positions than usually
-                # One virtual link is attributed to the physical part
-                _, mat_b, mat_d = extract_partial_covmats(self.gamma_maj_sys_vec[layerind], offset)
-                #TODO: We could also track this inverse
-                diff_d_inv = np.linalg.inv(mat_d - gamma_in_sys_tilde)
-                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(var)[layerind]
-                d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
-                gamma_out = d_mat_a + \
-                        d_mat_b @ diff_d_inv @ np.transpose(mat_b) \
-                        + mat_b @ diff_d_inv @ np.transpose(d_mat_b) \
-                        - mat_b @ diff_d_inv @ d_mat_d @ diff_d_inv @ np.transpose(mat_b)
-                # The virtual mode is the last link on the bottom right of the covariance matrix
-                covmat_out_virt = gamma_out[-single_site_offset:,
-                                            -single_site_offset:]
-                d_el_energy = nlinks * np.real(
-                    0.5j *
-                    (covmat_out_virt[0, 2] - covmat_out_virt[0, 3] -
-                    1.j * covmat_out_virt[0, 1] - 1.j * covmat_out_virt[2, 3]))
-                layer_derivative.append(d_el_energy)
-            dest.append(layer_derivative)
-        # We have to weight the different layers with the electric energy operator expectation of the other layers.
-        # They act as a prefactor in the derivative
-        dest = np.asarray(dest)
-        if self.cfg.nlayer > 1:
-            for i in range(self.cfg.nlayer):
-                prod_other_layers = utils.multiply_except(self.el_energy_op_vec, i)
-                dest[i] *= prod_other_layers
-        return dest
 
     @property
     def gamma_maj_sys_deriv_t_vec(self):
@@ -645,7 +581,184 @@ class Z2System2D:
             ]
         return self._gamma_maj_sys_deriv_z_vec
 
-    def compute_gamma_maj_deriv_y(self,layerind):
+
+    # Observables
+
+    @property
+    def energy(self):
+        if self._energy is None:
+            self._energy = self.el_energy + self.mag_energy
+        return self._energy
+
+    @property
+    def mag_energy_op(self):
+        if self._mag_energy_op is None:
+            nplaq = self.cfg.lattice.nplaquettes
+            self._mag_energy_op = nplaq * self._compute_mag_energy_op()
+        return self._mag_energy_op
+
+    @property
+    def el_energy_op(self):
+        if self._el_energy_op is None:
+            # The different layers can be separated into separate PEPS.
+            nlinks = self.cfg.lattice.nlinks
+            self._el_energy_op = nlinks * np.prod(self.el_energy_op_vec)
+        return self._el_energy_op
+
+    @property
+    def el_energy_op_vec(self):
+        if self._el_energy_op_vec is None:
+            # This vector is the electric energy on a single link.
+            # Otherwise, we get a power of nlinks in the product and the electric energy term (with prefactors) gets negative
+            self._el_energy_op_vec = self._compute_el_energy_op_vec()
+        return self._el_energy_op_vec
+
+    @property
+    def mag_energy(self):
+        nplaq = self.cfg.lattice.nplaquettes
+        mag_energy = self.cfg.g_mag * (2*nplaq - 2*self.mag_energy_op)
+        return mag_energy
+
+    @property
+    def el_energy(self):
+        nlinks=self.cfg.lattice.nlinks
+        el_energy = self.cfg.g_el * (2*nlinks - 2*self.el_energy_op)
+        return el_energy
+
+    @property
+    def el_energy_op_grad_vec(self):
+        if self._el_energy_op_grad_vec is None:
+            self._el_energy_op_grad_vec = self._compute_el_energy_op_grad_vec()
+        return self._el_energy_op_grad_vec
+
+
+    def _compute_el_energy_op_vec(self, use_trans_inv=True):
+        if use_trans_inv:
+            gamma_in_sys = self.gamma_in_sys
+            norm_default=self.calculate_lognorm()
+            # Number of fermions = # of sites
+            single_site_offset = 4
+            offset = 2 * self.cfg.lattice.size + single_site_offset
+            # We have to cut one link from gamma_in_sys as well
+            gamma_in_sys_tilde = gamma_in_sys[single_site_offset:,
+                                            single_site_offset:]
+            el_energy_bare=[]
+            for ind in range(self.cfg.nlayer):
+                #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
+                gamma_maj_sys = self.gamma_maj_sys_vec[ind]
+                mat_a, mat_b, mat_d = extract_partial_covmats(gamma_maj_sys, offset)
+                covmat_out = mat_a + \
+                    mat_b @ np.linalg.inv(mat_d -
+                                        gamma_in_sys_tilde) @ np.transpose(mat_b)
+                covmat_out_virt = covmat_out[-single_site_offset:, -
+                                            single_site_offset:]
+                # The matrix elements yield only the real part of <P>
+                norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
+                el_energy_layer = 0.5 * (
+                    covmat_out_virt[0, 1] +
+                    covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
+                el_energy_bare.append(el_energy_layer)
+        else:
+            # Evaluate every link of the system
+            logging.error("compute_el_energy: not implemented yet")
+            el_energy_bare = [None]*self.cfg.nlayer
+        return np.asarray(el_energy_bare)
+
+
+    def _compute_el_energy_op_grad_vec(self):
+        """The electric energy depends explicitly on the parameters of the Ansatz. 
+        Thus, we have to build the explicit derivative of the electric energy with respect to the parameters.
+
+        Args:
+            var (str): Name of the variable (t,y,z)
+
+        Returns:
+            list: Matrix of the gradients of the electric energy wrt [[t1,y1,z1],[t2,y2,z2],...]
+        """
+        single_site_offset = 4
+        offset = 2 * self.cfg.lattice.size + single_site_offset
+        nlinks = self.cfg.lattice.nlinks
+        dest = []
+        # We have to cut one link from gamma_in_sys as well
+        gamma_in_sys_tilde = self.gamma_in_sys[single_site_offset:,
+                                               single_site_offset:]
+        norm_default=self.calculate_lognorm()
+        for layerind in range(self.cfg.nlayer):
+            layer_derivative=[]
+            # The matrices must be re-extracted here since we slice at different positions than usually
+            # The offset is changed such that one virtual link is attributed to the physical part
+            _, mat_b, mat_d = extract_partial_covmats(self.gamma_maj_sys_vec[layerind], offset)
+            #TODO: We could also track this inverse
+            diff_d_gamma_inv = np.linalg.inv(mat_d - gamma_in_sys_tilde)
+            #TODO: This inverse can be calculated once and stored afterwards
+            mat_d_inv=np.linalg.inv(mat_d)
+            diff_d_inv_gamma_inv = np.linalg.inv(mat_d_inv - gamma_in_sys_tilde)
+
+            norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
+            for var in ["t", "y", "z"]:
+                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(var)[layerind]
+                d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                gamma_out = d_mat_a + \
+                        d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
+                        + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
+                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+                # The virtual mode is the last link on the bottom right of the covariance matrix
+                covmat_out_virt = gamma_out[-single_site_offset:,
+                                            -single_site_offset:]
+                # Summand with derivative of the covariance matrix
+                d_el_energy = 0.5 * (covmat_out_virt[0, 1] + covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
+                # Summand with derivative of norms
+                trace_def = self.compute_grad_over_norm(var, layerind)
+                trace_mod = compute_grad_over_norm(gamma_in_sys_tilde, diff_d_inv_gamma_inv, d_mat_d, mat_d_inv)
+                # In contrast to the formula, it seems like we have an additional factor of -2 in the equation.
+                # This is due to the definition of compute_grad_over_norm with a factor of -1/2
+                d_el_energy += self.el_energy_op_vec[layerind] * (trace_mod - trace_def)
+                # Scale to system size
+                d_el_energy *= nlinks
+                layer_derivative.append(d_el_energy)
+            dest.append(layer_derivative)
+        # We have to weight the different layers with the electric energy operator expectation of the other layers.
+        # They act as a prefactor in the derivative
+        dest = np.asarray(dest)
+        if self.cfg.nlayer > 1:
+            for i in range(self.cfg.nlayer):
+                prod_other_layers = utils.multiply_except(self.el_energy_op_vec, i)
+                dest[i] *= prod_other_layers
+        return dest
+
+    def _compute_mag_energy_op(self, use_trans_inv=True):
+        if use_trans_inv:
+            # Evaluate one plaquette and multiply by number of plaquettes
+            wilson_plaquette = self.cfg.lattice.generate_wilson_loop(
+                (0, 0), (1, 1))
+            mag_energy_bare = np.real(
+                self.compute_path(wilson_plaquette))
+        else:
+            # Evaluate every plaquette of the system
+            logging.error("compute_mag_energy: not implemented yet")
+            mag_energy_bare = None
+        return mag_energy_bare
+
+    def compute_path(self,path):
+        """Compute the observable corresponding the path given as an argument
+
+        Args:
+            path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
+            This is the case if the link is traversed from right to left or from top to bottom.
+        """
+        theta_sum=0.
+        for ind, conj in path:
+            if conj:
+                theta_sum+=self.gaugefieldvec[ind]
+            else:
+                theta_sum+=self.gaugefieldvec[ind]
+        return np.exp(1.j*theta_sum)
+
+    def compute_ferm_cov(self):
+        """Compute the covariance matrix of the fermions in the system """
+        return self.mat_a + self.mat_b@self.wi_gamma_out.inv()@np.transpose(self.mat_b)
+
+    def compute_gamma_maj_deriv_y(self, layerind: int) -> np.ndarray:
         t = self.cfg.paramvec[layerind, 0]
         y = self.cfg.paramvec[layerind, 1]
         z = self.cfg.paramvec[layerind, 2]
@@ -744,7 +857,7 @@ class Z2System2D:
 
         return dest - np.transpose(dest)
 
-    def compute_gamma_maj_deriv_z(self,layerind):
+    def compute_gamma_maj_deriv_z(self, layerind: int) -> np.ndarray:
         dest = np.zeros((10, 10))
         t = self.cfg.paramvec[layerind,0]
         y = self.cfg.paramvec[layerind,1]
@@ -852,7 +965,7 @@ class Z2System2D:
 
         return dest - np.transpose(dest)
 
-    def compute_gamma_maj_deriv_t(self, layerind):
+    def compute_gamma_maj_deriv_t(self, layerind: int) -> np.ndarray:
         dest = np.zeros((10, 10))
         t = self.cfg.paramvec[layerind, 0]
         y = self.cfg.paramvec[layerind, 1]
@@ -927,115 +1040,41 @@ class Z2System2D:
         return dest - np.transpose(dest)
 
 
-    # Observables
-
-    @property
-    def energy(self):
-        if self._energy is None:
-            self._energy = self.el_energy + self.mag_energy
-        return self._energy
-
-    @property
-    def mag_energy_op(self):
-        if self._mag_energy_op is None:
-            nplaq = self.cfg.lattice.nplaquettes
-            self._mag_energy_op = nplaq * self._compute_mag_energy_op()
-        return self._mag_energy_op
-
-    @property
-    def el_energy_op(self):
-        if self._el_energy_op is None:
-            # The different layers can be separated into separate PEPS.
-            nlinks = self.cfg.lattice.nlinks
-            self._el_energy_op = nlinks * np.prod(self.el_energy_op_vec)
-        return self._el_energy_op
-
-    @property
-    def el_energy_op_vec(self):
-        if self._el_energy_op_vec is None:
-            # This vector is the electric energy on a single link.
-            # Otherwise, we get a power of nlinks in the product and the electric energy term (with prefactors) gets negative
-            self._el_energy_op_vec = self._compute_el_energy_op_vec()
-        return self._el_energy_op_vec
-
-    @property
-    def mag_energy(self):
-        nplaq = self.cfg.lattice.nplaquettes
-        mag_energy = self.cfg.g_mag * (2*nplaq - 2*self.mag_energy_op)
-        return mag_energy
-
-    @property
-    def el_energy(self):
-        nlinks=self.cfg.lattice.nlinks
-        el_energy = self.cfg.g_el * (2*nlinks - 2*self.el_energy_op)
-        return el_energy
-
-    @property
-    def el_energy_op_grad_vec(self):
-        if self._el_energy_op_grad_vec is None:
-            self._el_energy_op_grad_vec = self._compute_el_energy_op_grad_vec()
-        return self._el_energy_op_grad_vec
-
-
-    def _compute_el_energy_op_vec(self, use_trans_inv=True):
-        if use_trans_inv:
-            gamma_in_sys = self.gamma_in_sys
-            # Number of fermions = # of sites
-            single_site_offset = 4
-            offset = 2*self.cfg.lattice.size+single_site_offset
-            # We have to cut one link from gamma_in_sys as well
-            gamma_in_sys_tilde = gamma_in_sys[single_site_offset:,
-                                            single_site_offset:]
-            el_energy_bare=[]
-            for ind in range(self.cfg.nlayer):
-                #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
-                gamma_maj_sys = self.gamma_maj_sys_vec[ind]
-                mat_a, mat_b, mat_d = extract_partial_covmats(gamma_maj_sys, offset)
-                covmat_out = mat_a + \
-                    mat_b @ np.linalg.inv(mat_d -
-                                        gamma_in_sys_tilde) @ np.transpose(mat_b)
-                covmat_out_virt = covmat_out[-single_site_offset:, -
-                                            single_site_offset:]
-                # The matrix elements yield only the expectation value of P
-                # The real part ensures that we calculate Re(P)
-                el_energy_layer = np.real(0.5j * (
-                    covmat_out_virt[0, 2] - covmat_out_virt[0, 3] -
-                    1.j * covmat_out_virt[0, 1] - 1.j * covmat_out_virt[2, 3]))
-                el_energy_bare.append(el_energy_layer)
+def calculate_lognorm(gamma_in_sys: np.ndarray,
+                      mat_d_vec: np.ndarray,
+                      all_factors=False) -> float:
+    # This is still the plain formula, without any update mechanism
+    cumval = 0
+    nlayer=len(mat_d_vec)
+    for ind in range(nlayer):
+        mat_d = mat_d_vec[ind]
+        if all_factors:
+            sign, logval = np.linalg.slogdet(
+                (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d) / 2)
         else:
-            # Evaluate every link of the system
-            logging.error("compute_el_energy: not implemented yet")
-            el_energy_bare = [None]*self.cfg.nlayer
-        return np.asarray(el_energy_bare)
+            # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
+            sign, logval = np.linalg.slogdet(
+                (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d))
+        cumval += logval
+    #The factor 1/2 is the square-root
+    return cumval / 2
 
-    def _compute_mag_energy_op(self, use_trans_inv=True):
-        if use_trans_inv:
-            # Evaluate one plaquette and multiply by number of plaquettes
-            wilson_plaquette = self.cfg.lattice.generate_wilson_loop(
-                (0, 0), (1, 1))
-            mag_energy_bare = np.real(
-                self.compute_path(wilson_plaquette))
-        else:
-            # Evaluate every plaquette of the system
-            logging.error("compute_mag_energy: not implemented yet")
-            mag_energy_bare = None
-        return mag_energy_bare
 
-    def compute_path(self,path):
-        """Compute the observable corresponding the path given as an argument
+def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray,
+                           deriv_d: np.ndarray,
+                           mat_d_inv: np.ndarray) -> float:
+    """Compute the gradient of the norm divided by the norm.
+    The expression of deriv_d given to this function decides which derivative is computed
 
-        Args:
-            path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
-            This is the case if the link is traversed from right to left or from top to bottom.
-        """
-        theta_sum=0.
-        for ind, conj in path:
-            if conj:
-                theta_sum+=self.gaugefieldvec[ind]
-            else:
-                theta_sum+=self.gaugefieldvec[ind]
-        return np.exp(1.j*theta_sum)
+    Args:
+        gamma_in_sys (np.ndarray): Gauged covariance matrix of the projectors
+        diff (np.ndarray): (D^{-1}-gamma_in_sys)^{-1}
+        deriv_d (np.ndarray): dD/d{alpha}: Derivative of the virtual-virtual covariance matrix
+        mat_d_inv (np.ndarray): Inverse of D: D^{-1}
 
-    def compute_ferm_cov(self):
-        """Compute the covariance matrix of the fermions in the system """
-        return self.mat_a + self.mat_b@self.wi_gamma_out.inv()@np.transpose(self.mat_b)
+    Returns:
+        float: Gradient of the norm divided by the norm.
+    """
+    # Extract only the part of the virtual-virtual correlations
+    dest = -0.5 * np.trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
+    return dest

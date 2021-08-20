@@ -21,6 +21,14 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Test grad_el_energy",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/test.py",
+            "args": ["TestZ2SystemMethods.test_grad_el_energy_2_layer"],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Eval L=2",
             "type": "python",
             "request": "launch",
