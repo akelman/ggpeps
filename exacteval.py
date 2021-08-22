@@ -97,7 +97,7 @@ class ExactEvaluator():
             expval_prod_mag = self.compute_expval(prod_mag_op_norm, normvec)
             prod_expval_mag = self.compute_expval(data["mag_energy_op"],normvec) * dest["grad_norm"]
             mag_op_grad = expval_prod_mag - prod_expval_mag
-            mag_energy_grad = -self.system.cfg.g_mag * mag_op_grad
+            mag_energy_grad = -2*self.system.cfg.g_mag * mag_op_grad
             dest["mag_energy_grad"] = mag_energy_grad
 
             # Electric gradient
@@ -105,7 +105,7 @@ class ExactEvaluator():
             expval_prod_el = self.compute_expval(prod_el_op_norm, normvec)
             prod_expval_el = self.compute_expval(data["el_energy_op"],normvec) * dest["grad_norm"]
             el_op_grad = expval_prod_el - prod_expval_el + self.compute_expval(np.transpose(data["el_energy_op_grad"],[2,1,0]),normvec)
-            el_energy_grad = -self.system.cfg.g_el * el_op_grad
+            el_energy_grad = - 2 *self.system.cfg.g_el * el_op_grad
             dest["el_energy_grad"] = el_energy_grad
 
             # Add for the full electric gradient
