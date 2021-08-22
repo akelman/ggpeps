@@ -5,6 +5,7 @@ import sys
 import lattice as lat
 import gauge
 import logging
+import sympy
 from scipy.linalg import block_diag
 
 ################## Utility Functions ######################
@@ -190,15 +191,35 @@ class Z2System2D:
 
     def _compute_tmat(self, paramvec):
         #Order of the paramvec: [t,y,z]
-        t, y, z = paramvec
-        tmat = np.array([
-            [0, -1.j*t, 1.j*t, t, -t],
-            [1.j*t, 0, 1.j*y, z, 1.j*z],
-            [-1.j*t, -1.j*y, 0, -1.j*z, -z],
-            [-t, -z, 1.j*z, 0, -y],
-            [t, -1.j*z, z, y, 0]],
-            dtype=complex)
-        return tmat
+        t = paramvec[0]
+        y = paramvec[1]
+        z = paramvec[2]
+        tmat_eval = self.tmat_symb.evalf(subs={
+            self.symbolvec[0]: t,
+            self.symbolvec[1]: y,
+            self.symbolvec[2]: z
+        })
+        return np.asarray(tmat_eval).astype(complex)
+
+    @property
+    def symbolvec(self):
+        t = sympy.Symbol("t", real=True)
+        y = sympy.Symbol("y", real=True)
+        z = sympy.Symbol("z", real=True)
+        return [t,y,z]
+
+    @property
+    def tmat_symb(self):
+        [t, y, z] = self.symbolvec
+        tmat_symb=sympy.Matrix([[0, -1.j * t, 1.j * t, t, -t],
+                            [1.j * t, 0, 1.j * y, z, 1.j * z],
+                            [-1.j * t, -1.j * y, 0, -1.j * z, -z],
+                            [-t, -z, 1.j * z, 0, -y], [t, -1.j * z, z, y, 0]])
+        return tmat_symb
+
+    def compute_tmat_deriv(self,symb):
+        tmat_symb = self.tmat_symb
+        return np.asarray(sympy.diff(tmat_symb, symb)).astype(complex)
 
     @property
     def tmat_vec(self):
@@ -219,6 +240,20 @@ class Z2System2D:
                 self._compute_tmat(params) for params in self.cfg.paramvec
             ]
         return self._tmat_vec
+
+    def compute_gamma_dirac_deriv(self, symb, layerind):
+        deriv_t=self.compute_tmat_deriv(symb)
+        tmat=self.tmat_vec[layerind]
+        tmatc=np.conjugate(tmat)
+        idttinv_minus = np.linalg.inv(np.eye(deriv_t.shape[0]) - tmat @ tmatc)
+        idtt_plus = np.eye(deriv_t.shape[0]) + tmat @ tmatc
+        d_idtt_minus = -(deriv_t @ tmatc + tmat @ np.conjugate(deriv_t))
+        d_idtt_plus = -d_idtt_minus
+        d_lt = idttinv_minus @ d_idtt_minus @ idttinv_minus @ tmat - idttinv_minus @ deriv_t
+        d_rt = 0.5 * idttinv_minus @ d_idtt_plus @ idttinv_minus @ idtt_plus + 0.5 * idttinv_minus @ d_idtt_plus
+        d_lb = -np.conjugate(d_rt)
+        d_rb = -np.conjugate(d_lt)
+        return 1.j*np.block([[d_lt, d_rt], [d_lb, d_rb]])
 
     @property
     def gamma_dirac_vec(self):
@@ -254,6 +289,13 @@ class Z2System2D:
                 for gamma_dirac in self.gamma_dirac_vec
             ]
         return self._gamma_maj_vec
+
+    def compute_gamma_maj_deriv(self,symb,layerind):
+        gamma_dirac_deriv = self.compute_gamma_dirac_deriv(symb,layerind)
+        m, _ = gamma_dirac_deriv.shape
+        smat = utils.generate_smat(m)
+        return np.real(smat@gamma_dirac_deriv@np.transpose(smat))
+
 
     def _expand_gamma_maj_to_system(self,covmat):
         permbuilder = lat.PermutationBuilderGMS2D(self.cfg.lattice, nmodes_per_link=1)
@@ -618,313 +660,24 @@ class Z2System2D:
     @property
     def gamma_maj_sys_deriv_t_vec(self):
         if self._gamma_maj_sys_deriv_t_vec is None:
-            self._gamma_maj_sys_deriv_t_vec = [
-                self._expand_gamma_maj_to_system(
-                    self.compute_gamma_maj_deriv_t(i))
-                for i in range(self.cfg.nlayer)
-            ]
+            self._gamma_maj_sys_deriv_t_vec = [self._expand_gamma_maj_to_system(self.compute_gamma_maj_deriv(self.symbolvec[0], i)) for i in range(self.cfg.nlayer)
+                                               ]
         return self._gamma_maj_sys_deriv_t_vec
 
     @property
     def gamma_maj_sys_deriv_y_vec(self):
         if self._gamma_maj_sys_deriv_y_vec is None:
             self._gamma_maj_sys_deriv_y_vec = [
-                self._expand_gamma_maj_to_system(
-                    self.compute_gamma_maj_deriv_y(i))
-                for i in range(self.cfg.nlayer)
+                self._expand_gamma_maj_to_system(self.compute_gamma_maj_deriv(self.symbolvec[1], i)) for i in range(self.cfg.nlayer)
             ]
         return self._gamma_maj_sys_deriv_y_vec
 
     @property
     def gamma_maj_sys_deriv_z_vec(self):
         if self._gamma_maj_sys_deriv_z_vec is None:
-            self._gamma_maj_sys_deriv_z_vec = [
-                self._expand_gamma_maj_to_system(
-                    self.compute_gamma_maj_deriv_z(i))
-                for i in range(self.cfg.nlayer)
-            ]
+            self._gamma_maj_sys_deriv_z_vec = [self._expand_gamma_maj_to_system(self.compute_gamma_maj_deriv(self.symbolvec[2], i)) for i in range(self.cfg.nlayer)
+                                               ]
         return self._gamma_maj_sys_deriv_z_vec
-
-    def compute_gamma_maj_deriv_y(self,layerind):
-        t = self.cfg.paramvec[layerind, 0]
-        y = self.cfg.paramvec[layerind, 1]
-        z = self.cfg.paramvec[layerind, 2]
-        d = 1 + 4 * t**2 + y**2 + 2 * y * z + 2 * z**2
-        b = 1 + y**2 - 2 * y * z + 2 * z**2
-        alpha = y + z
-        beta = y - z
-        gamma = 1 + z
-        delta = 1 + y
-        dest = np.zeros((10, 10))
-        dest[0, 1] = (16 * t**2 * alpha) / d**2
-        dest[0, 2] = (-4 * t * (-1 + z) * alpha) / d**2
-        dest[0, 3] = (-2 * t * (d - 2 * alpha**2)) / d**2
-        dest[0, 4] = (-4 * t * alpha * gamma) / d**2
-        dest[0, 5] = (-2 * t * (d - 2 * alpha**2)) / d**2
-        dest[0, 6] = (-4 * t * z * alpha) / d**2
-        dest[0, 7] = (-2 * t * (d - 2 * (-1 + alpha) * alpha)) / d**2
-        dest[0, 8] = (-4 * t * z * alpha) / d**2
-        dest[0, 9] = (-2 * t * (d - 2 * alpha * (1 + alpha))) / d**2
-
-        dest[1, 2] = (2 * t * (d - 2 * alpha**2)) / d**2
-        dest[1, 3] = (-4 * t * alpha * gamma) / d**2
-        dest[1, 4] = (2 * t * (d - 2 * alpha**2)) / d**2
-        dest[1, 5] = (-4 * t * (-1 + z) * alpha) / d**2
-        dest[1, 6] = (2 * t * (d - 2 * alpha * (1 + alpha))) / d**2
-        dest[1, 7] = (-4 * t * z * alpha) / d**2
-        dest[1, 8] = (2 * t * (d - 2 * (-1 + alpha) * alpha)) / d**2
-        dest[1, 9] = (-4 * t * z * alpha) / d**2
-
-        dest[2, 3] = (-2 * (alpha + 2 * t**2 * alpha)) / d**2 - (2 * beta) / b**2
-        dest[2, 4] = (d - 2 * alpha**2) / d**2 + (b - 2 * beta**2) / b**2
-        dest[2, 5] = (-2 * (2 * t**2 + z) * alpha) / d**2 + (2 * z * beta) / b**2
-        dest[2, 6] = (-2 * b * d * (t**2 + z + 2 * y * z) + 4 * (t**2 + y * z) *
-                   (b * alpha + d * beta) * delta) / (b**2 * d**2)
-        dest[2, 7] = (-((b + 4 * z * beta - 2 * beta * delta) / b**2) +
-                      (d - 2 * alpha * (4 * t**2 + 2 * z + delta)) / d**2) / 2.
-        dest[2, 8] = ((d - 2 * (-1 + y + 2 * z) * alpha) / d**2 -
-                      (b + 2 * beta - 2 * y * beta + 4 * z * beta) / b**2) / 2.
-        dest[2, 9] = (-(
-            (d + 2 * alpha + 8 * t**2 * alpha - 2 * y * alpha) / d**2) +
-                      (b + 2 * beta - 2 * y * beta) / b**2) / 2.
-
-        dest[3, 4] = (4 * t**2 * alpha - 2 * z * alpha) / d**2 + (2 * z *
-                                                                  beta) / b**2
-        dest[3, 5] = -((d - 2 * alpha**2) / d**2) - (b - 2 * beta**2) / b**2
-        dest[3, 6] = (-(1 / b) + (d - 2 *
-                                  (-1 - 4 * t**2 + y + 2 * z) * alpha) / d**2 +
-                      (2 * (-1 + y - 2 * z) * beta) / b**2) / 2.
-        dest[3, 7] = (2 * b * d * (t**2 + (-1 + 2 * y) * z) - 4 * b *
-                      (-1 + y) * (t**2 + y * z) * alpha - 4 * d * (-1 + y) *
-                      (t**2 + y * z) * beta) / (b**2 * d**2)
-        dest[3, 8] = ((b - 2 * beta * delta) / b**2 +
-                      (-d + 2 * alpha * (4 * t**2 + delta)) / d**2) / 2.
-        dest[3, 9] = (-4 * d * beta * (z * (-1 + y - 2 * z**2) + t**2 *
-                                       (-2 * z + delta)) + 2 * b *
-                      (d * (t**2 + z) - 2 * alpha *
-                       (z * (-1 + y - 2 * z**2) + t**2 *
-                        (-2 * z + delta)))) / (b**2 * d**2)
-
-        dest[4, 5] = (-2 * (alpha + 2 * t**2 * alpha)) / d**2 - (2 * beta) / b**2
-        dest[4, 6] = (-4 * d * beta * (z * (-1 + y - 2 * z**2) + t**2 *
-                                       (-2 * z + delta)) + 2 * b *
-                      (d * (t**2 + z) - 2 * alpha *
-                       (z * (-1 + y - 2 * z**2) + t**2 *
-                        (-2 * z + delta)))) / (b**2 * d**2)
-        dest[4, 7] = (-((b - 2 * beta * delta) / b**2) +
-                      (d - 2 * alpha * (4 * t**2 + delta)) / d**2) / 2.
-        dest[4, 8] = (2 * b * d * (t**2 + (-1 + 2 * y) * z) - 4 * b *
-                      (-1 + y) * (t**2 + y * z) * alpha - 4 * d * (-1 + y) *
-                      (t**2 + y * z) * beta) / (b**2 * d**2)
-
-        dest[4, 9] = ((-d + 2 * (-1 - 4 * t**2 + y + 2 * z) * alpha) / d**2 +
-                      (b + 2 * beta - 2 * y * beta + 4 * z * beta) / b**2) / 2.
-
-        dest[5, 6] = -0.5 * 1 / b + (d + 2 * alpha + 8 * t**2 * alpha -
-                                     2 * y * alpha) / (2. * d**2) + (
-                                         (-1 + y) * beta) / b**2
-        dest[5, 7] = ((d - 2 * (-1 + y + 2 * z) * alpha) / d**2 -
-                      (b + 2 * beta - 2 * y * beta + 4 * z * beta) / b**2) / 2.
-
-        dest[5, 8] = ((b + 4 * z * beta - 2 * beta * delta) / b**2 +
-                   (-d + 2 * alpha * (4 * t**2 + 2 * z + delta)) / d**2) / 2.
-        dest[5, 9] = (-2 * b * d * (t**2 + z + 2 * y * z) + 4 * (t**2 + y * z) *
-                   (b * alpha + d * beta) * delta) / (b**2 * d**2)
-
-        dest[6, 7] = (-2 * (alpha + 2 * t**2 * alpha)) / d**2 - (2 * beta) / b**2
-        dest[6, 8] = z * ((-2 * alpha) / d**2 + (2 * beta) / b**2)
-        dest[6, 9] = -((d + 4 * t**2 * alpha - 2 * alpha**2) /
-                       d**2) - (b - 2 * beta**2) / b**2
-
-        dest[7, 8] = (-d + 2 * alpha *
-                      (2 * t**2 + alpha)) / d**2 - (b - 2 * beta**2) / b**2
-        dest[7, 9] = 2 * z * ((-y + z) / b**2 + alpha / d**2)
-
-        dest[8, 9] = (-2 * (alpha + 2 * t**2 * alpha)) / d**2 - (2 * beta) / b**2
-
-        return dest - np.transpose(dest)
-
-    def compute_gamma_maj_deriv_z(self,layerind):
-        dest = np.zeros((10, 10))
-        t = self.cfg.paramvec[layerind,0]
-        y = self.cfg.paramvec[layerind,1]
-        z = self.cfg.paramvec[layerind,2]
-
-        d = 1 + 4 * t**2 + y**2 + 2 * y * z + 2 * z**2
-        b = 1 + y**2 - 2 * y * z + 2 * z**2
-        alpha = y + z
-        beta = y - z
-        gamma = 1 + z
-        delta = 1 + y
-        eta = y + 2 * z
-
-        dest[0, 1] = (16 * t**2 * eta) / d**2
-        dest[0, 2] = (2 * t * (d - 2 * (-1 + z) * eta)) / d**2
-        dest[0, 3] = (-2 * t * (d - 2 * alpha * eta)) / d**2
-        dest[0, 4] = (2 * t * (d - 2 * gamma * eta)) / d**2
-        dest[0, 5] = (-2 * t * (d - 2 * alpha * eta)) / d**2
-        dest[0, 6] = (2 * t * (d - 2 * z * eta)) / d**2
-        dest[0, 7] = (-2 * t * (d - 2 * (-1 + alpha) * eta)) / d**2
-        dest[0, 8] = (2 * t * (d - 2 * z * eta)) / d**2
-        dest[0, 9] = (-2 * t * (d - 2 * (1 + alpha) * eta)) / d**2
-
-        dest[1, 2] = (2 * t * (d - 2 * alpha * eta)) / d**2
-        dest[1, 3] = (2 * t * (d - 2 * gamma * eta)) / d**2
-        dest[1, 4] = (2 * t * (d - 2 * alpha * eta)) / d**2
-        dest[1, 5] = (2 * t * (d - 2 * (-1 + z) * eta)) / d**2
-        dest[1, 6] = (2 * t * (d - 2 * (1 + alpha) * eta)) / d**2
-        dest[1, 7] = (2 * t * (d - 2 * z * eta)) / d**2
-        dest[1, 8] = (2 * t * (d - 2 * (-1 + alpha) * eta)) / d**2
-        dest[1, 9] = (2 * t * (d - 2 * z * eta)) / d**2
-
-        dest[2, 3] = (2 * (y - 2 * z)) / b**2 - (2 *
-                                                 (eta + 2 * t**2 * eta)) / d**2
-        dest[2, 4] = -((b - 2 * y * beta + 4 * z * beta) /
-                       b**2) + (d - 2 * alpha * eta) / d**2
-        dest[2, 5] = -(1/b) - (2*(y - 2*z)*z)/b**2 + \
-            (d - 2*(2*t**2 + z)*eta)/d**2
-        dest[2, 6] = (-2 * delta * (b * d * y + 2 * d * (y - 2 * z) *
-                                    (t**2 + y * z) - 2 * b *
-                                    (t**2 + y * z) * eta)) / (b**2 * d**2)
-        dest[2, 7] = 1/b + ((y - 2*z)*(2*z - delta))/b**2 + \
-            (d - (4*t**2 + 2*z + delta)*eta)/d**2
-        dest[2, 8] = (b - (-1 + y - 2*z)*(y - 2*z)) / \
-            b**2 + (d + eta - eta**2)/d**2
-        dest[2, 9] = ((-1 + y) *
-                      (y - 2 * z)) / b**2 + ((-1 - 4 * t**2 + y) * eta) / d**2
-
-        dest[3, 4] = -(1/b) - (2*(y - 2*z)*z)/b**2 + \
-            (d + 4*t**2*eta - 2*z*eta)/d**2
-        dest[3, 5] = (b - 2 * y * beta +
-                      4 * z * beta) / b**2 - (d - 2 * alpha * eta) / d**2
-        dest[3, 6] = (b - (-1 + y - 2*z)*(y - 2*z))/b**2 + \
-            (d + eta + 4*t**2*eta - eta**2)/d**2
-        dest[3, 7] = (2 * (-1 + y) * (b * d * y + 2 * d * (y - 2 * z) *
-                                      (t**2 + y * z) - 2 * b *
-                                      (t**2 + y * z) * eta)) / (b**2 * d**2)
-        dest[3, 8] = ((y - 2 * z) * delta) / b**2 + (
-            (4 * t**2 + delta) * eta) / d**2
-        dest[3, 9] = (4 * d * (y - 2 * z) * (z * (-1 + y - 2 * z**2) + t**2 *
-                                             (-2 * z + delta)) + 2 * b *
-                      (d * (-1 - 2 * t**2 + y - 6 * z**2) - 2 *
-                       (z * (-1 + y - 2 * z**2) + t**2 *
-                        (-2 * z + delta)) * eta)) / (b**2 * d**2)
-
-        dest[4, 5] = (2 * (y - 2 * z)) / b**2 - (2 *
-                                                 (eta + 2 * t**2 * eta)) / d**2
-        dest[4, 6] = (4 * d * (y - 2 * z) * (z * (-1 + y - 2 * z**2) + t**2 *
-                                             (-2 * z + delta)) + 2 * b *
-                      (d * (-1 - 2 * t**2 + y - 6 * z**2) - 2 *
-                       (z * (-1 + y - 2 * z**2) + t**2 *
-                        (-2 * z + delta)) * eta)) / (b**2 * d**2)
-        dest[4, 7] = -(((y - 2 * z) * delta) / b**2) - (
-            (4 * t**2 + delta) * eta) / d**2
-        dest[4, 8] = (2 * (-1 + y) * (b * d * y + 2 * d * (y - 2 * z) *
-                                      (t**2 + y * z) - 2 * b *
-                                      (t**2 + y * z) * eta)) / (b**2 * d**2)
-        dest[4, 9] = (-b + (-1 + y - 2*z)*(y - 2*z))/b**2 - \
-            (d + eta + 4*t**2*eta - eta**2)/d**2
-
-        dest[5, 6] = -(((-1 + y) *
-                     (y - 2 * z)) / b**2) + ((1 + 4 * t**2 - y) * eta) / d**2
-        dest[5, 7] = (b - (-1 + y - 2*z)*(y - 2*z)) / \
-            b**2 + (d + eta - eta**2)/d**2
-        dest[5, 8] = -(1/b) + ((y - 2*z)*(-2*z + delta))/b**2 + \
-            (-d + (4*t**2 + 2*z + delta)*eta)/d**2
-        dest[5, 9] = (-2 * delta * (b * d * y + 2 * d * (y - 2 * z) *
-                                    (t**2 + y * z) - 2 * b *
-                                    (t**2 + y * z) * eta)) / (b**2 * d**2)
-
-        dest[6, 7] = (2 * (y - 2 * z)) / b**2 - (2 *
-                                                 (eta + 2 * t**2 * eta)) / d**2
-        dest[6, 8] = 1 / d - (b + 2 *
-                              (y - 2 * z) * z) / b**2 - (2 * z * eta) / d**2
-        dest[6, 9] = (b - 2*y*beta + 4*z*beta)/b**2 - \
-            (d + 4*t**2*eta - 2*alpha*eta)/d**2
-
-        dest[7, 8] = (b - 2*y*beta + 4*z*beta)/b**2 + \
-            (-d + 2*(2*t**2 + alpha)*eta)/d**2
-        dest[7, 9] = 1 / b + (2 *
-                           (y - 2 * z) * z) / b**2 - (d - 2 * z * eta) / d**2
-
-        dest[8, 9] = (2 * (y - 2 * z)) / b**2 - (2 *
-                                                 (eta + 2 * t**2 * eta)) / d**2
-
-        return dest - np.transpose(dest)
-
-    def compute_gamma_maj_deriv_t(self, layerind):
-        dest = np.zeros((10, 10))
-        t = self.cfg.paramvec[layerind, 0]
-        y = self.cfg.paramvec[layerind, 1]
-        z = self.cfg.paramvec[layerind, 2]
-
-        d = 1 + 4 * t**2 + y**2 + 2 * y * z + 2 * z**2
-        b = 1 + y**2 - 2 * y * z + 2 * z**2
-        alpha = y + z
-        gamma = 1 + z
-        delta = 1 + y
-        eta = y + 2 * z
-        beta = d - 8 * t**2
-
-        dest[0, 1] = (-16 * t * (d - 4 * t**2)) / d**2
-        dest[0, 2] = (2 * (-1 + z) * beta) / d**2
-        dest[0, 3] = (-2 * alpha * beta) / d**2
-        dest[0, 4] = (2 * beta * gamma) / d**2
-        dest[0, 5] = (-2 * alpha * beta) / d**2
-        dest[0, 6] = (2 * z * beta) / d**2
-        dest[0, 7] = (-2 * (-1 + alpha) * beta) / d**2
-        dest[0, 8] = (2 * z * beta) / d**2
-        dest[0, 9] = (-2 * (1 + alpha) * beta) / d**2
-
-        dest[1, 2] = (2 * alpha * beta) / d**2
-        dest[1, 3] = (2 * beta * gamma) / d**2
-        dest[1, 4] = (2 * alpha * beta) / d**2
-        dest[1, 5] = (2 * (-1 + z) * beta) / d**2
-        dest[1, 6] = (2 * (1 + alpha) * beta) / d**2
-        dest[1, 7] = (2 * z * beta) / d**2
-        dest[1, 8] = (2 * (-1 + alpha) * beta) / d**2
-        dest[1, 9] = (2 * z * beta) / d**2
-
-        dest[2, 3] = (4 * t * (-2 + d - 4 * t**2)) / d**2
-        dest[2, 4] = (-8 * t * alpha) / d**2
-        dest[2, 5] = (4 * t * (d - 2 * (2 * t**2 + z))) / d**2
-        dest[2, 6] = (-4 * t * (d - 4 * (t**2 + y * z)) * delta) / (b * d**2)
-        dest[2, 7] = (-4 * t * (-d + 4 * t**2 + 2 * z + delta)) / d**2
-        dest[2, 8] = (-4 * t * (-1 + eta)) / d**2
-        dest[2, 9] = (4 * t * (-1 + d - 4 * t**2 + y)) / d**2
-
-        dest[3, 4] = (-4 * t * (d - 4 * t**2 + 2 * z)) / d**2
-        dest[3, 5] = (8 * t * alpha) / d**2
-        dest[3, 6] = (-4 * t * (-1 + d - 4 * t**2 + eta)) / d**2
-        dest[3, 7] = (4 * t * (-1 + y) * (d - 4 * (t**2 + y * z))) / (b * d**2)
-        dest[3, 8] = (4 * t * (-d + 4 * t**2 + delta)) / d**2
-        dest[3,
-             9] = (4 * t * (-2 * (-2 + d - 4 * t**2 + 2 * y) * z + 8 * z**3 +
-                            (d - 4 * t**2) * delta)) / (b * d**2)
-
-        dest[4, 5] = (4 * t * (-2 + d - 4 * t**2)) / d**2
-        dest[4,
-             6] = (4 * t * (-2 * (-2 + d - 4 * t**2 + 2 * y) * z + 8 * z**3 +
-                            (d - 4 * t**2) * delta)) / (b * d**2)
-        dest[4, 7] = (4 * t * (d - 4 * t**2 - delta)) / d**2
-        dest[4, 8] = (4 * t * (-1 + y) * (d - 4 * (t**2 + y * z))) / (b * d**2)
-        dest[4, 9] = (4 * t * (-1 + d - 4 * t**2 + eta)) / d**2
-
-        dest[5, 6] = (-4 * t * (-1 + d - 4 * t**2 + y)) / d**2
-        dest[5, 7] = (-4 * t * (-1 + eta)) / d**2
-        dest[5, 8] = (4 * t * (-d + 4 * t**2 + 2 * z + delta)) / d**2
-        dest[5, 9] = (-4 * t * (d - 4 * (t**2 + y * z)) * delta) / (b * d**2)
-
-        dest[6, 7] = (4 * t * (-2 + d - 4 * t**2)) / d**2
-        dest[6, 8] = (-8 * t * z) / d**2
-        dest[6, 9] = (4 * t * (d - 4 * t**2 + 2 * alpha)) / d**2
-
-        dest[7, 8] = (-4 * t * (d - 2 * (2 * t**2 + alpha))) / d**2
-        dest[7, 9] = (8 * t * z) / d**2
-
-        dest[8, 9] = (4 * t * (-2 + d - 4 * t**2)) / d**2
-
-        return dest - np.transpose(dest)
 
 
     # Observables

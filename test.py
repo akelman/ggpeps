@@ -196,6 +196,34 @@ class TestZ2SystemMethods(unittest.TestCase):
                         [0.3, -0.8*1.j, 0.8, 0.5, 0]])
         self.assertTrue(np.allclose(tmat,ref))
 
+    def test_tmat_deriv_symb(self):
+        eps=1e-5
+        t=0.83
+        y=0.39
+        z=0.93
+        lat=lattice.Lattice2D(2,2)
+        paramvec = [[t, y, z]]
+        paramvec_left = [[t, y-eps, z]]
+        paramvec_right = [[t, y+eps, z]]
+
+        cfg = system.Z2System2DConfig(paramvec, lat, 0, 0, 0)
+        cfg_left = system.Z2System2DConfig(paramvec_left, lat, 0, 0, 0)
+        cfg_right = system.Z2System2DConfig(paramvec_right, lat, 0, 0, 0)
+
+        system_z2_2_2 = system.Z2System2D(cfg)
+        system_z2_2_2_left= system.Z2System2D(cfg_left)
+        system_z2_2_2_right = system.Z2System2D(cfg_right)
+
+        symbvec = system_z2_2_2.symbolvec
+        tmat_symb = system_z2_2_2.tmat_symb
+        #Derivative wrt y
+        deriv_ana = system_z2_2_2.compute_tmat_deriv(symbvec[1])
+        tmat_left = system_z2_2_2_left.tmat_vec[0]
+        tmat_right = system_z2_2_2_right.tmat_vec[0]
+        deriv_num = (tmat_right - tmat_left) / (2 * eps)
+        self.assertTrue(np.allclose(deriv_ana, deriv_num))
+
+
     def test_tmat_antisymmetric(self):
         tmat=self.system_z2_2_2.tmat_vec[0]
         self.assertTrue(utils.is_antisymmetric(tmat))
@@ -238,6 +266,34 @@ class TestZ2SystemMethods(unittest.TestCase):
                           [-0.0421743 + 0.0685332 * 1.j, -0.0733832 + 0.0605802 * 1.j, 0.0733832 + 0.0605802 * 1.j, -2.44205*10**-21 - 0.0128029 * 1.j, -2.35267*10**-20 - 0.102576 * 1.j, 3.72404*10**-20 + 0.0753112 * 1.j, -0.304589 - 0.0256841 * 1.j, -0.0256841 + 0.304589 * 1.j, 0.0821891 + 0.124232 * 1.j, -6.93687*10**-18 + 4.33681*10**-18 * 1.j]])
         compare_array_elementwise(self,np.real(ref),np.real(gamma_dirac))
         compare_array_elementwise(self,np.imag(ref),np.imag(gamma_dirac))
+
+    def test_gamma_dirac_deriv_symb(self):
+        eps=1e-5
+        t=0.83
+        y=0.39
+        z=0.93
+        lat=lattice.Lattice2D(2,2)
+        paramvec = [[t, y, z]]
+        paramvec_left = [[t, y-eps, z]]
+        paramvec_right = [[t, y+eps, z]]
+
+        cfg = system.Z2System2DConfig(paramvec, lat, 0, 0, 0)
+        cfg_left = system.Z2System2DConfig(paramvec_left, lat, 0, 0, 0)
+        cfg_right = system.Z2System2DConfig(paramvec_right, lat, 0, 0, 0)
+
+        system_z2_2_2 = system.Z2System2D(cfg)
+        system_z2_2_2_left= system.Z2System2D(cfg_left)
+        system_z2_2_2_right = system.Z2System2D(cfg_right)
+
+        symbvec = system_z2_2_2.symbolvec
+        #Derivative wrt y
+        deriv_ana = system_z2_2_2.compute_gamma_dirac_deriv(symbvec[1],0)
+        gamma_left = system_z2_2_2_left.gamma_dirac_vec[0]
+        gamma_right = system_z2_2_2_right.gamma_dirac_vec[0]
+        deriv_num = (gamma_right - gamma_left) / (2 * eps)
+        self.assertTrue(np.allclose(deriv_ana, deriv_num))
+
+
 
     def test_gamma_maj_covariance(self):
         gamma_maj=self.system_z2_2_2.gamma_maj_vec[0]
@@ -334,7 +390,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec = [[0.17, 0.35, 0.56]]
         cfg = system.Z2System2DConfig(paramvec, lat, 0, 0, 0)
         system_z2_2_2 = system.Z2System2D(cfg)
-        res = system_z2_2_2.compute_gamma_maj_deriv_y(0)
+        res = system_z2_2_2.compute_gamma_maj_deriv(system_z2_2_2.symbolvec[1],0)
         self.assertTrue(np.allclose(ref, res))
 
     def test_derivative_z(self):
@@ -362,7 +418,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec = [[0.17, 0.35, 0.56]]
         cfg = system.Z2System2DConfig(paramvec, lat, 0, 0, 0)
         system_z2_2_2 = system.Z2System2D(cfg)
-        res = system_z2_2_2.compute_gamma_maj_deriv_z(0)
+        res = system_z2_2_2.compute_gamma_maj_deriv(system_z2_2_2.symbolvec[2],0)
         compare_array_elementwise(self,ref,res)
 
     def test_derivative_t(self):
@@ -390,8 +446,34 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec = [[0.17, 0.35, 0.56]]
         cfg = system.Z2System2DConfig(paramvec, lat, 0, 0, 0)
         system_z2_2_2 = system.Z2System2D(cfg)
-        res = system_z2_2_2.compute_gamma_maj_deriv_t(0)
+        res = system_z2_2_2.compute_gamma_maj_deriv(system_z2_2_2.symbolvec[0],0)
         compare_array_elementwise(self,ref,res)
+
+    def test_gamma_maj_deriv_symb_y(self):
+        eps=1e-5
+        t=0.83
+        y=0.39
+        z=0.93
+        lat=lattice.Lattice2D(2,2)
+        paramvec = [[t, y, z]]
+        paramvec_left = [[t, y-eps, z]]
+        paramvec_right = [[t, y+eps, z]]
+
+        cfg = system.Z2System2DConfig(paramvec, lat, 0, 0, 0)
+        cfg_left = system.Z2System2DConfig(paramvec_left, lat, 0, 0, 0)
+        cfg_right = system.Z2System2DConfig(paramvec_right, lat, 0, 0, 0)
+
+        system_z2_2_2 = system.Z2System2D(cfg)
+        system_z2_2_2_left= system.Z2System2D(cfg_left)
+        system_z2_2_2_right = system.Z2System2D(cfg_right)
+
+        symbvec = system_z2_2_2.symbolvec
+        #Derivative wrt y
+        deriv_ana = system_z2_2_2.compute_gamma_maj_deriv(symbvec[1],0)
+        gamma_left = system_z2_2_2_left.gamma_maj_vec[0]
+        gamma_right = system_z2_2_2_right.gamma_maj_vec[0]
+        deriv_num = (gamma_right - gamma_left) / (2 * eps)
+        self.assertTrue(np.allclose(deriv_ana, deriv_num))
 
     def test_derivative_t_numeric(self):
         #This is comparison of the analytic derivative against the numeric derivative
@@ -410,7 +492,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_left= system.Z2System2D(cfg_left)
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
-        deriv_ana=system_z2_2_2.compute_gamma_maj_deriv_t(0)
+        deriv_ana=system_z2_2_2.compute_gamma_maj_deriv(system_z2_2_2.symbolvec[0],0)
         gamma_left=system_z2_2_2_left.gamma_maj_vec[0]
         gamma_right=system_z2_2_2_right.gamma_maj_vec[0]
         deriv_num=(gamma_right-gamma_left)/(2*eps)
@@ -434,7 +516,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_left= system.Z2System2D(cfg_left)
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
-        deriv_ana=system_z2_2_2.compute_gamma_maj_deriv_y(0)
+        deriv_ana=system_z2_2_2.compute_gamma_maj_deriv(system_z2_2_2.symbolvec[1],0)
         gamma_left=system_z2_2_2_left.gamma_maj_vec[0]
         gamma_right=system_z2_2_2_right.gamma_maj_vec[0]
         deriv_num=(gamma_right-gamma_left)/(2*eps)
@@ -457,7 +539,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_left= system.Z2System2D(cfg_left)
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
-        deriv_ana=system_z2_2_2.compute_gamma_maj_deriv_z(0)
+        deriv_ana=system_z2_2_2.compute_gamma_maj_deriv(system_z2_2_2.symbolvec[2],0)
         gamma_left=system_z2_2_2_left.gamma_maj_vec[0]
         gamma_right=system_z2_2_2_right.gamma_maj_vec[0]
         deriv_num=(gamma_right-gamma_left)/(2*eps)
