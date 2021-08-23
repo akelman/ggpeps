@@ -1246,5 +1246,112 @@ class TestIncLogDeterminant(unittest.TestCase):
         _,detval_direct = np.linalg.slogdet(mat)
         self.assertAlmostEqual(detval,detval_direct)
 
+# ======================= Z2 fermionic system (2 copies) =========================================
+
+class TestZ2C2SystemMethods(unittest.TestCase):
+    def setUp(self):
+        lat=lattice.Lattice2D(2,2)
+        paramvec=np.random.rand(1,10)
+        cfg=system.Z2System2D2CConfig(paramvec,lat,0,0,0)
+        self.system_z2_2_2=system.Z2System2D2C(cfg)
+
+
+    def test_tmat_deriv_symb(self):
+        eps=1e-5
+        lat=lattice.Lattice2D(2,2)
+        paramvec = np.random.rand(1,10)
+        paramvec_left = np.copy(paramvec)
+        paramvec_left[0,1]-=eps
+        paramvec_right = np.copy(paramvec)
+        paramvec_right[0,1]+=eps
+
+        cfg = system.Z2System2D2CConfig(paramvec, lat, 0, 0, 0)
+        cfg_left = system.Z2System2D2CConfig(paramvec_left, lat, 0, 0, 0)
+        cfg_right = system.Z2System2D2CConfig(paramvec_right, lat, 0, 0, 0)
+
+        system_z2_2_2 = system.Z2System2D2C(cfg)
+        system_z2_2_2_left= system.Z2System2D2C(cfg_left)
+        system_z2_2_2_right = system.Z2System2D2C(cfg_right)
+
+        symbvec = system_z2_2_2.symbolvec
+        #Derivative wrt y
+        deriv_ana = system_z2_2_2.compute_tmat_deriv(symbvec[1])
+        tmat_left = system_z2_2_2_left.tmat_vec[0]
+        tmat_right = system_z2_2_2_right.tmat_vec[0]
+        deriv_num = (tmat_right - tmat_left) / (2 * eps)
+        self.assertTrue(np.allclose(deriv_ana, deriv_num))
+
+
+    def test_tmat_antisymmetric(self):
+        tmat=self.system_z2_2_2.tmat_vec[0]
+        self.assertTrue(utils.is_antisymmetric(tmat))
+
+
+    def test_gamma_dirac_covariance(self):
+        gamma_dirac=self.system_z2_2_2.gamma_dirac_vec[0]
+        m, n = gamma_dirac.shape
+        res=gamma_dirac@np.transpose(np.conjugate(gamma_dirac))
+        ref=0.25*np.eye(gamma_dirac.shape[0])
+        self.assertTrue(np.allclose(ref,res))
+        self.assertEqual(m, n)
+        self.assertTrue(utils.is_antisymmetric(gamma_dirac))
+
+
+    def test_gamma_dirac_deriv_symb(self):
+        eps=1e-5
+        t=0.83
+        y=0.39
+        z=0.93
+        lat=lattice.Lattice2D(2,2)
+        paramvec = [[t, y, z]]
+        paramvec_left = [[t, y-eps, z]]
+        paramvec_right = [[t, y+eps, z]]
+
+        cfg = system.Z2System2DConfig(paramvec, lat, 0, 0, 0)
+        cfg_left = system.Z2System2DConfig(paramvec_left, lat, 0, 0, 0)
+        cfg_right = system.Z2System2DConfig(paramvec_right, lat, 0, 0, 0)
+
+        system_z2_2_2 = system.Z2System2D(cfg)
+        system_z2_2_2_left= system.Z2System2D(cfg_left)
+        system_z2_2_2_right = system.Z2System2D(cfg_right)
+
+        symbvec = system_z2_2_2.symbolvec
+        #Derivative wrt the second variable
+        deriv_ana = system_z2_2_2.compute_gamma_dirac_deriv(symbvec[1],0)
+        gamma_left = system_z2_2_2_left.gamma_dirac_vec[0]
+        gamma_right = system_z2_2_2_right.gamma_dirac_vec[0]
+        deriv_num = (gamma_right - gamma_left) / (2 * eps)
+        self.assertTrue(np.allclose(deriv_ana, deriv_num))
+
+
+    def test_gamma_maj_covariance(self):
+        gamma_maj=self.system_z2_2_2.gamma_maj_vec[0]
+        m, n = gamma_maj.shape
+        self.assertEqual(m, n)
+        self.assertEqual(m, 18)
+        self.assertTrue(np.allclose(np.imag(gamma_maj),0))
+        self.assertTrue(utils.is_antisymmetric(gamma_maj))
+        self.assertTrue(np.allclose(gamma_maj@gamma_maj,-np.eye(m)))
+        self.assertTrue(np.allclose(gamma_maj@np.transpose(gamma_maj),np.eye(m)))
+
+
+    def test_gamma_maj_sys_covariance(self):
+        gamma_maj=self.system_z2_2_2.gamma_maj_sys_vec[0]
+        m, n = gamma_maj.shape
+        self.assertEqual(m, n)
+        self.assertTrue(np.allclose(np.imag(gamma_maj),0))
+        self.assertTrue(utils.is_antisymmetric(gamma_maj))
+        self.assertTrue(np.allclose(gamma_maj@gamma_maj,-np.eye(m)))
+        self.assertTrue(np.allclose(gamma_maj@np.transpose(gamma_maj),np.eye(m)))
+
+
+    def test_gamma_in_sys_covariance(self):
+        gamma_in=self.system_z2_2_2.gamma_in_sys
+        m, n = gamma_in.shape
+        self.assertEqual(m, n)
+        self.assertTrue(utils.is_antisymmetric(gamma_in))
+        self.assertTrue(np.allclose(gamma_in@gamma_in,-np.eye(m)))
+        self.assertTrue(np.allclose(gamma_in@np.transpose(gamma_in),np.eye(m)))
+
 if __name__ == '__main__':
     unittest.main()

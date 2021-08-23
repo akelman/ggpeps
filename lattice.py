@@ -1,8 +1,6 @@
 import itertools
 import numpy as np
 from enum import Enum
-import utils
-import os
 import sys
 import logging
 from scipy.linalg import block_diag

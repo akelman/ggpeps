@@ -310,6 +310,7 @@ class Z2System2D:
     def mat_a_vec(self):
         """Extract the matrix for physical-physical correlations.
         The mode ordering of this matrix is (p_1(0,0),p_2(0,0),p_1(1,0),p_2(1,0)....).
+        It is formulated in terms of Majorana modes.
         The mode ordering of the sites is identical to the site convention defined in the lattice class.
 
         Returns:
