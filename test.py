@@ -178,7 +178,28 @@ class TestPermutationBuilder2D(unittest.TestCase):
         self.assertTrue(utils.is_permutation(self.permbuilder_2x3.perm()))
         self.assertTrue(utils.is_permutation(self.permbuilder_3x2.perm()))
         self.assertTrue(utils.is_permutation(self.permbuilder_4x3.perm()))
-    
+
+    def test_2copy_3x2(self):
+        permbuilder_3x2 = lattice.PermutationBuilderGMS2D2C(
+            lattice.Lattice2D(3, 2), 1)
+        permutation = permbuilder_3x2.perm()
+        #utils.show_matrix(permutation)
+        self.assertTrue(utils.is_permutation(permutation))
+
+
+    def test_2copies_2x3(self):
+        permbuilder_2x3 = lattice.PermutationBuilderGMS2D2C(
+            lattice.Lattice2D(2, 3), 1)
+        permutation = permbuilder_2x3.perm()
+        self.assertTrue(utils.is_permutation(permutation))
+
+    def test_2copies_2x2(self):
+        permbuilder_2x2 = lattice.PermutationBuilderGMS2D2C(
+            lattice.Lattice2D(2, 2), 1)
+        permutation = permbuilder_2x2.perm()
+        self.assertTrue(utils.is_permutation(permutation))
+
+
 class TestZ2SystemMethods(unittest.TestCase):
     def setUp(self):
         lat=lattice.Lattice2D(2,2)
