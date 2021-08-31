@@ -144,7 +144,7 @@ class Z2System2D:
     def tmat_vec(self):
         """
         Generate the T-matrix vector(single virtual fermion on the link).
-        The mode ordering of this matrix is {p,l,r,d,u}.
+        he mode ordering of this matrix is {p,l,r,d,u}.
         Analytically, this mode order is not advantageous, 
         but is makes the reshuffling of the modes easier for gamma_in and M_D in the covariance matrix.
 
@@ -269,7 +269,26 @@ class Z2System2D:
 
     @property
     def gamma_in_sys(self):
-        #TODO: Details about mode order
+        """ 
+        The mode-order in gamma_in_sys is dictated by the numbering of the links on the lattice.
+        The numbering guarantees that we split the vertical from the horizontal links for easier gauging.
+
+            |         |
+            "5"       "7"
+            |         |
+            2 --"2"-- 3 --"3"--
+            |         |
+            "4"       "6"
+            |         |
+            0 --"0"-- 1 --"1"--
+
+        The vertex indices are written as <number>, the link indices are written as "<number>". 
+
+        For a 2x2 system, gamma_in has the order {l_1, r_0, l_0, r_1, l_3, r_2, l_2, r_3, d_2, u_0, d_0, u_2, d_3, u_1, d_1, d_3}.
+
+        Returns:
+            np.ndarray: Covariance matrix of the projectors (full-system size)
+        """
         if self._gamma_in_sys is None:
             self._gamma_in_sys, self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = self.initialize_gamma_in_sys()
         return self._gamma_in_sys

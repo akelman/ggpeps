@@ -3,7 +3,9 @@ import numpy as np
 from enum import Enum
 import sys
 import logging
+from numpy.core.shape_base import block
 from scipy.linalg import block_diag
+import utils
 
 
 class Direction(Enum):
@@ -61,13 +63,13 @@ class Lattice2D:
         else:
             logging.error("coord2ind_dir: There are only X and Y as directions",file=sys.stderr)
             return None
-    
+
     def get_neighbor(self,coord,orient):
-        # We assume periodic boundary conditions 
+        # We assume periodic boundary conditions
         x, y = coord
         if dir==Direction.X:
             xn = (x+orient.value+self.nx) % self.nx
-            yn=y 
+            yn=y
         elif dir==Direction.Y:
             xn=x
             yn = (y+orient.value+self.ny) % self.ny
@@ -161,6 +163,28 @@ class Lattice3D:
 
 class PermutationBuilderGMS2D:
     """Build a permutation matrix for gamma_maj_sys
+    The default mode-order of the T matrix is {p,l,r,d,u}.
+    By building the Dirac covariance matrix from it and transforming it to a Majorana matrix, we obtain a mode-order of {p,l,r,d,u,p_dag,l_dat,r_dag,u_dag,d_dag}.
+    The covariance matrix of the projectors is chosen such that modes from adherent vertices can be modified together, i.e. it is ordered by links.
+    The order of the links is first along x and then along y. In the case of a 2x2 lattice, it reads
+
+    |         |
+   "5"       "7"
+    |         |
+    2 --"2"-- 3 --"3"--
+    |         |
+   "4"       "6"
+    |         |
+    0 --"0"-- 1 --"1"--
+
+    The vertex indices are written as <number>, the link indices are written as "<number>". 
+
+    Before the transformation the covariance matrix of the gamma_maj_sys has the order (taking the 2x2 system as an example for concreteness)
+    {l_0, r_0, d_0, u_0, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, l_3, r_3, d_3, u_3}.
+    The numbers in the basis above are the vertex indices.
+    Gamma_in has the order
+    {l_1, r_0, l_0, r_1, l_3, r_2, l_2, r_3, d_2, u_0, d_0, u_2, d_3, u_1, d_1, d_3}.
+    This class provides the necessary permutation matrix to change from one basis to the other.
     """
     def __init__(self, lat, nmodes_per_link):
         self.lattice = lat
@@ -171,19 +195,20 @@ class PermutationBuilderGMS2D:
         maj_per_link = 2*self.nmodes_per_link
         # left and right Majoranas: 2 * maj_per_link
         single_block = np.eye(maj_per_link)
-        double_block = np.eye(2*maj_per_link)
-        # pad right for the down and up modes
-        mode_block = np.hstack([double_block, np.zeros((2*maj_per_link, 2*maj_per_link))])
-        # This is the main part for all modes in the chain (w/o periodic boundary conditions)
-        matrix_body = np.kron(np.eye(self.lattice.nx - 1), mode_block)
-        # Pad the matrix body by one block on the top and the bottom
-        matrix_body = np.pad(matrix_body,[[maj_per_link,maj_per_link],[0,0]])
+        empty_3x1= np.zeros((maj_per_link,3*maj_per_link))
+        building_block = np.block([[empty_3x1,single_block],[single_block,empty_3x1]])
+        matrix_body_no_pad = np.kron(np.eye(self.lattice.nx-1),building_block)
+        # Pad the matrix body by the remaining block distributed left and right
+        matrix_body = np.pad(matrix_body_no_pad, [[0, 0], [maj_per_link, 3 * maj_per_link]])
+        print(matrix_body.shape)
         # Prepare the block for the periodic boundary conditions
-        # We want the first left and the first right mode of the row as padding on the left
-        block_pbc = np.zeros((2*self.lattice.nx*maj_per_link, 4*maj_per_link))
-        block_pbc[:maj_per_link, maj_per_link:2*maj_per_link] = single_block
-        block_pbc[-maj_per_link:, :maj_per_link] = single_block
-        dest = np.block([block_pbc, matrix_body])
+        # The factor 4 in the second argument is the coordination number of the lattice 
+        block_pbc = np.zeros((2*maj_per_link, 4*maj_per_link*self.lattice.nx))
+        # Set the first left mode of the row
+        block_pbc[:maj_per_link, :maj_per_link] = single_block
+        # Set the last right mode of the row
+        block_pbc[-maj_per_link:, -3*maj_per_link:-2*maj_per_link] = single_block
+        dest = np.block([[matrix_body],[block_pbc]])
         return dest
 
     def _perm_du(self):
@@ -191,18 +216,19 @@ class PermutationBuilderGMS2D:
         maj_per_link = 2*self.nmodes_per_link
         # left and right Majoranas: 2 * maj_per_link
         single_block = np.eye(maj_per_link)
-        double_block = np.eye(2*maj_per_link)
+        empty_3x1= np.zeros((maj_per_link,3*maj_per_link))
+        empty_nx = np.zeros((maj_per_link,(self.lattice.nx-1)*maj_per_link*4))
+        building_block = np.block([[empty_nx, empty_3x1,single_block],[single_block,empty_nx,empty_3x1]])
         # pad left for all the modes in a row 
-        mode_block = np.hstack([np.zeros((2*maj_per_link, (4*self.lattice.nx-2)*maj_per_link)),double_block])
-        matrix_body = np.kron(np.eye(self.lattice.ny-1), mode_block)
+        matrix_body_no_pad = np.kron(np.eye(self.lattice.ny-1),building_block)
         # Pad the matrix body by one block on the top and the bottom
-        matrix_body = np.pad(matrix_body,[[maj_per_link,maj_per_link],[0,0]])
+        matrix_body = np.pad(matrix_body_no_pad, [[0, 0], [3 * maj_per_link, maj_per_link]])
         # Prepare the block for the periodic boundary conditions
         # We want the first left and the first right mode of the row as padding on the left
-        block_pbc = np.zeros((2*self.lattice.ny*maj_per_link, 4*maj_per_link))
-        block_pbc[:maj_per_link, -maj_per_link:] = single_block
-        block_pbc[-maj_per_link:, -2*maj_per_link:-maj_per_link] = single_block
-        dest = np.block([block_pbc, matrix_body])
+        block_pbc = np.zeros((2*maj_per_link,(self.lattice.nx*(self.lattice.ny-1)+1)*maj_per_link*4))
+        block_pbc[:maj_per_link, 2*maj_per_link:3*maj_per_link] = single_block
+        block_pbc[-maj_per_link:, -maj_per_link:] = single_block
+        dest = np.block([[matrix_body],[block_pbc]])
         return dest
 
     def perm(self):

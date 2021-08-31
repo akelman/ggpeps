@@ -178,7 +178,7 @@ class TestPermutationBuilder2D(unittest.TestCase):
         self.assertTrue(utils.is_permutation(self.permbuilder_2x3.perm()))
         self.assertTrue(utils.is_permutation(self.permbuilder_3x2.perm()))
         self.assertTrue(utils.is_permutation(self.permbuilder_4x3.perm()))
-
+    
 class TestZ2SystemMethods(unittest.TestCase):
     def setUp(self):
         lat=lattice.Lattice2D(2,2)
