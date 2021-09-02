@@ -208,7 +208,7 @@ class Z2System2D2C:
 
 
     def _expand_gamma_maj_to_system(self,covmat):
-        permbuilder = lat.PermutationBuilderGMS2D(self.cfg.lattice, nmodes_per_link=1)
+        permbuilder = lat.PermutationBuilderGMS2D2C(self.cfg.lattice, nmodes_per_link=1)
         mat_perm = permbuilder.perm()
         nsites=self.cfg.lattice.size
         id = np.eye(nsites)
@@ -363,11 +363,36 @@ class Z2System2D2C:
 
 
     def generate_gamma_gauge_neutral(self):
-        return np.real_if_close(1.j*np.kron(utils.pauliy, utils.paulix))
+        """This matrix is the covariance matrix of the ungauged projectors.
+        The morde order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}.
+        The naming convention here is <mode letter><number of copy>_<majorana mode>.
+        We order first by link and then by copy. 
+        Modes of copy one are coupled to modes of copy 2. The projectors mix copies.
+        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The same is true for the for the up and down modes.
+
+        Returns:
+            np.ndarray: Covariance matrix of the ungauged projector on a single link
+        """
+        return np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
 
     #Gauging
 
     def generate_rotmat(self,theta):
+        """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
+        The mode order is (as for gamma_in_neutral) {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}, depending on whether the link is vertical or horizontal.
+        The naming convention here is <mode letter><number of copy>_<majorana mode>.
+        We order first by link and then by copy. 
+        Modes of copy one are coupled to modes of copy 2. The projectors mix copies.
+        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The same is true for the for the up and down modes.
+
+        Args:
+            theta (float): Angle of rotation
+
+        Returns:
+            np.ndarray: Rotation matrix for gamma_in_neutral
+        """
         # TODO: Do we want to stagger here?
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
@@ -376,7 +401,8 @@ class Z2System2D2C:
         # We have only one left mode => 2 Majorana modes
         rot_left = np.eye(2)
         # The mode order is lr (horizontally) or du (vertically).
-        dest = block_diag(rot_left, rot_right)
+        # We rotate the different copies in the SAME way.
+        dest = block_diag(rot_left, rot_right, rot_left, rot_right)
         return dest
 
     def invalidate_gauge_update(self):
