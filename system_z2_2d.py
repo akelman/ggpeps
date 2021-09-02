@@ -392,11 +392,28 @@ class Z2System2D:
 
 
     def generate_gamma_gauge_neutral(self):
+        """This matrix is the covariance matrix of the ungauged projectors.
+        The morde order is {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2}, where the underscore notation explicitly denotes Majorana modes and not sites.
+        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The same is true for the for the up and down modes.
+
+        Returns:
+            np.ndarray: Covariance matrix of the ungauged projector on a single link
+        """
         return np.real_if_close(1.j*np.kron(utils.pauliy, utils.paulix))
 
     #Gauging
 
     def generate_rotmat(self,theta):
+        """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
+        The mode order is (as for gamma_in_neutral) {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2}, depending on whether the link is vertical or horizontal.
+
+        Args:
+            theta (float): Angle of rotation
+
+        Returns:
+            np.ndarray: Rotation matrix for gamma_in_neutral
+        """
         # TODO: Do we want to stagger here?
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
