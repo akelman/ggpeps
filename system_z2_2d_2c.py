@@ -444,8 +444,8 @@ class Z2System2D2C:
     def update_gauge_ind(self, ind, theta):
         # Update the gaugefield
         self._gaugefieldvec[ind] = theta
-        # There are two directions per vertex and two Majoranas per link
-        ind_mat = 4 * ind
+        # There are two directions per vertex, two Majoranas per link and two copies
+        ind_mat = 8 * ind
         rotmat = self.generate_rotmat(theta)
         gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(
             rotmat)
@@ -464,8 +464,8 @@ class Z2System2D2C:
         [ wi_gamma_in.update_index(update, ind_mat, ind_mat) for wi_gamma_in in self.wi_gamma_in_vec ]
         [ wi_gamma_out.update_index(update, ind_mat, ind_mat) for wi_gamma_out in self.wi_gamma_out_vec ]
         # Substitute in the array
-        self.gamma_in_sys[ind_mat:ind_mat + 4,
-                          ind_mat:ind_mat + 4] = gamma_in_subst
+        self.gamma_in_sys[ind_mat:ind_mat + 8,
+                          ind_mat:ind_mat + 8] = gamma_in_subst
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
 
@@ -497,7 +497,7 @@ class Z2System2D2C:
             detval = self.incdet_vec[ind].update_index(self.wi_gamma_in_vec[ind].inv(), update,
                                             offset, offset, store=False)
             if all_factors:
-                detval-=np.log(2**self.gamma_in_sys.shape[0])
+                detval-=self.gamma_in_sys.shape[0]*np.log(2.0)
                 detval+=np.linalg.slogdet(self.mat_d_vec[0])[1]
             # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
             # The addition of the cumval is the multiplication of the indpendent PEPS
@@ -516,20 +516,16 @@ class Z2System2D2C:
 
     def compute_grad_norm(self, layerind: int) -> np.ndarray:
         #The parameter order is [dt, dy, dz]
-        dest=np.zeros(3)
-        dest[0]=self.compute_grad_over_norm("t",layerind)
-        dest[1]=self.compute_grad_over_norm("y",layerind)
-        dest[2]=self.compute_grad_over_norm("z",layerind)
+        dest=np.zeros(len(self.symbolvec))
+        for ind, symbol in enumerate(self.symbolvec):
+            dest[ind]=self.compute_grad_over_norm(symbol,layerind)
         return dest
 
-    def gamma_maj_sys_deriv_vec(self, var: str) -> np.ndarray:
-        if var == "t":
-            return self.gamma_maj_sys_deriv_t_vec
-        elif var == "y":
-            return self.gamma_maj_sys_deriv_y_vec
-        elif var == "z":
-            return self.gamma_maj_sys_deriv_z_vec
-        print("gamma_maj_sys_deriv: Invalid variable name", sys.stderr)
+    def gamma_maj_sys_deriv_vec(self, symb: sympy.Symbol) -> np.ndarray:
+        if symb in self.symbolvec:
+            return self.get_gamma_maj_sys_deriv(symb)
+        else:
+            print("gamma_maj_sys_deriv: Invalid variable name", sys.stderr)
         return None
 
     def compute_grad_over_norm(self, var: str, layerind: int) -> float:
@@ -696,27 +692,19 @@ class Z2System2D2C:
                 dest[i] *= prod_other_layers
         return dest
 
-    @property
-    def gamma_maj_sys_deriv_t_vec(self):
-        if self._gamma_maj_sys_deriv_t_vec is None:
-            self._gamma_maj_sys_deriv_t_vec = [self._expand_gamma_maj_to_system(self.compute_gamma_maj_deriv(self.symbolvec[0], i)) for i in range(self.cfg.nlayer)
-                                               ]
-        return self._gamma_maj_sys_deriv_t_vec
+    def _generate_gamma_maj_sys_deriv_dict(self):
+        dest={}
+        for symb in self.symbolvec:
+            dest[symb]=[self._expand_gamma_maj_to_system(self.compute_gamma_maj_deriv(symb, i)) for i in range(self.cfg.nlayer) ]
+        return dest
 
-    @property
-    def gamma_maj_sys_deriv_y_vec(self):
-        if self._gamma_maj_sys_deriv_y_vec is None:
-            self._gamma_maj_sys_deriv_y_vec = [
-                self._expand_gamma_maj_to_system(self.compute_gamma_maj_deriv(self.symbolvec[1], i)) for i in range(self.cfg.nlayer)
-            ]
-        return self._gamma_maj_sys_deriv_y_vec
 
-    @property
-    def gamma_maj_sys_deriv_z_vec(self):
-        if self._gamma_maj_sys_deriv_z_vec is None:
-            self._gamma_maj_sys_deriv_z_vec = [self._expand_gamma_maj_to_system(self.compute_gamma_maj_deriv(self.symbolvec[2], i)) for i in range(self.cfg.nlayer)
-                                               ]
-        return self._gamma_maj_sys_deriv_z_vec
+    def get_gamma_maj_sys_deriv(self, symb):
+        if symb in self.symbolvec:
+            if self._gamma_maj_sys_deriv_dict is None:
+                self._gamma_maj_sys_deriv_dict = self._generate_gamma_maj_sys_deriv_dict()
+            return self._gamma_maj_sys_deriv_dict[symb]
+        return None
 
     def _compute_mag_energy_op(self, use_trans_inv=True):
         if use_trans_inv:

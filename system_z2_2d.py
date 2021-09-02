@@ -177,7 +177,7 @@ class Z2System2D:
     @property
     def gamma_dirac_vec(self):
         """Return the vector of covariance matrices in dirac modes.
-        The mode order of this matrix is {p,l,r,d,u,p_dag,l_dat,r_dag,u_dag,d_dag}.
+        The mode order of this matrix is {p,l,r,d,u,p_dag,l_dag,r_dag,u_dag,d_dag}.
 
         Returns:
             [np.array]: Vector of covariance matrices in Dirac modes
@@ -495,7 +495,7 @@ class Z2System2D:
             detval = self.incdet_vec[ind].update_index(self.wi_gamma_in_vec[ind].inv(), update,
                                             offset, offset, store=False)
             if all_factors:
-                detval-=np.log(2**self.gamma_in_sys.shape[0])
+                detval-=self.gamma_in_sys.shape[0]*np.log(2)
                 detval+=np.linalg.slogdet(self.mat_d_vec[0])[1]
             # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
             # The addition of the cumval is the multiplication of the indpendent PEPS
