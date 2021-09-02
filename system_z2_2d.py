@@ -285,6 +285,7 @@ class Z2System2D:
         The vertex indices are written as <number>, the link indices are written as "<number>". 
 
         For a 2x2 system, gamma_in has the order {l_1, r_0, l_0, r_1, l_3, r_2, l_2, r_3, d_2, u_0, d_0, u_2, d_3, u_1, d_1, d_3}.
+        The modes are named as <mode letter>_<vertex site>. Each constitent in the list above labels two Majorana modes.
 
         Returns:
             np.ndarray: Covariance matrix of the projectors (full-system size)

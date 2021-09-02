@@ -135,12 +135,9 @@ class Z2System2D2C:
     def tmat_vec(self):
         """
         Generate the T-matrix vector(single virtual fermion on the link).
-        The mode ordering of this matrix is {p,l,r,d,u}.
+        The mode ordering of this matrix is {p,l1,r1,d1,u1,l2,r2,d2,u2}.
         Analytically, this mode order is not advantageous, 
         but is makes the reshuffling of the modes easier for gamma_in and M_D in the covariance matrix.
-
-        In the analytical part, we will keep the mode ordering {p,r,u,l,d} because the transformation matrices are easier to cope with.
-        In the numerics, however, we will stick with {p,l,r,d,u}
 
         Returns:
             [np.array]: parameter matrix T
@@ -168,7 +165,7 @@ class Z2System2D2C:
     @property
     def gamma_dirac_vec(self):
         """Return the vector of covariance matrices in dirac modes.
-        The mode order of this matrix is {p,l,r,d,u,p_dag,l_dat,r_dag,u_dag,d_dag}.
+        The mode order of this matrix is {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
 
         Returns:
             [np.array]: Vector of covariance matrices in Dirac modes
@@ -182,7 +179,7 @@ class Z2System2D2C:
     @property
     def gamma_maj_vec(self):
         """Return the covariance matrix in Majorana modes.
-        The mode order of this matrix is {p_1,p_2,l_1,l_2,r_1,r_2,d_1,d_2,u_1,u_2}.
+        The mode order of this matrix is {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
         The definition of Majorana modes used is
             \\gamma_1=c+c^\\dagger
             \\gamma_2=i(c-c^\\dagger)
@@ -260,7 +257,33 @@ class Z2System2D2C:
 
     @property
     def gamma_in_sys(self):
-        #TODO: Details about mode order
+        """ 
+        The mode-order in gamma_in_sys is dictated by the numbering of the links on the lattice.
+        The numbering guarantees that we split the vertical from the horizontal links for easier gauging.
+
+            |         |
+            "5"       "7"
+            |         |
+            2 --"2"-- 3 --"3"--
+            |         |
+            "4"       "6"
+            |         |
+            0 --"0"-- 1 --"1"--
+
+        The vertex indices are written as <number>, the link indices are written as "<number>". 
+
+        For a 2x2 system, gamma_in has the order 
+        { l1_1, r2_0, l1_1, r2_0, l1_0, r2_1, l1_0, r2_1,  
+          l1_3, r2_2, l1_3, r2_2, l1_2, r2_3, l1_2, r2_3,  
+          d1_2, u2_0, d1_2, u2_0, d1_0, u2_2, d1_0, u2_2,  
+          d1_3, u2_1, d1_3, u2_1, d1_1, d2_3, d1_1, d2_3 }.
+
+        The naming convention here is <mode letter><number of copy>_<vertex index>.
+        Each constituent in the list above refers to two Majorana modes.
+
+        Returns:
+            np.ndarray: Covariance matrix of the projectors (full-system size)
+        """
         if self._gamma_in_sys is None:
             self._gamma_in_sys, self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = self.initialize_gamma_in_sys()
         return self._gamma_in_sys
