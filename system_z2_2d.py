@@ -9,23 +9,8 @@ import logging
 import sympy
 from scipy.linalg import block_diag
 import utils
+from system_base import calculate_lognorm, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats
 
-################## Utility Functions ######################
-
-def extract_partial_covmats(mat,corner):
-    """Extract the partial covariance matrices from a gaussian mapping
-
-    Args:
-        mat (np.ndarray): Full covariance matrix
-        corner (int): Index of the top left element of the bottom right matrix
-
-    Returns:
-        tuple: Matrices (A,B,D)
-    """
-    mat_a = mat[:corner, :corner]
-    mat_b = mat[:corner, corner:]
-    mat_d = mat[corner:, corner:]
-    return mat_a, mat_b, mat_d
 
 ###################### Z2System2D ##########################
 
@@ -626,11 +611,10 @@ class Z2System2D:
                                         gamma_in_sys_tilde) @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_site_offset:, -
                                             single_site_offset:]
-                # The matrix elements yield only the real part of <P>
-                norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
                 # For the modified norm, we still have to take into account the other contributions from the unmodified parts
                 norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
                 norm_mod += np.sum(utils.select_except(normvec_default,layerind))
+                # The matrix elements yield only the real part of <P>
                 el_energy_layer = 0.5 * (
                     covmat_out_virt[0, 1] +
                     covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
@@ -662,6 +646,8 @@ class Z2System2D:
         normvec_default = calculate_lognormvec(self.gamma_in_sys,
                                                self.mat_d_vec)
 
+        # This is the usual norm without any modifications
+        norm_default = np.sum(normvec_default)
         for layerind in range(self.cfg.nlayer):
             layer_derivative=[]
             # The matrices must be re-extracted here since we slice at different positions than usually
@@ -676,8 +662,6 @@ class Z2System2D:
             # For the modified norm, we still have to take into account the other contributions from the unmodified parts
             norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
             norm_mod += np.sum(utils.select_except(normvec_default,layerind))
-            # This is the usual norm without any modifications
-            norm_default = np.sum(normvec_default)
             for symbol in self.symbolvec:
                 deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
                 d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
@@ -763,49 +747,3 @@ class Z2System2D:
         """Compute the covariance matrix of the fermions in the system """
         return self.mat_a + self.mat_b@self.wi_gamma_out.inv()@np.transpose(self.mat_b)
 
-def calculate_lognormvec(gamma_in_sys: np.ndarray,
-                      mat_d_vec: np.ndarray,
-                      all_factors=False) -> float:
-    # This is still the plain formula, without any update mechanism
-    cumval = 0
-    nlayer=len(mat_d_vec)
-    dest=np.zeros(nlayer)
-    for ind in range(nlayer):
-        mat_d = mat_d_vec[ind]
-        if all_factors:
-            sign, logval = np.linalg.slogdet(
-                (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d) / 2)
-        else:
-            # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
-            sign, logval = np.linalg.slogdet(
-                (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d))
-        dest[ind]= logval
-    #The factor 1/2 is the square-root
-    return dest / 2
-
-def calculate_lognorm(gamma_in_sys: np.ndarray,
-                      mat_d_vec: np.ndarray,
-                      all_factors=False) -> float:
-    # This is still the plain formula, without any update mechanism
-    normvec=calculate_lognormvec(gamma_in_sys,mat_d_vec,all_factors=all_factors)
-    return np.sum(normvec)
-
-
-def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray,
-                           deriv_d: np.ndarray,
-                           mat_d_inv: np.ndarray) -> float:
-    """Compute the gradient of the norm divided by the norm.
-    The expression of deriv_d given to this function decides which derivative is computed
-
-    Args:
-        gamma_in_sys (np.ndarray): Gauged covariance matrix of the projectors
-        diff (np.ndarray): (D^{-1}-gamma_in_sys)^{-1}
-        deriv_d (np.ndarray): dD/d{alpha}: Derivative of the virtual-virtual covariance matrix
-        mat_d_inv (np.ndarray): Inverse of D: D^{-1}
-
-    Returns:
-        float: Gradient of the norm divided by the norm.
-    """
-    # Extract only the part of the virtual-virtual correlations
-    dest = -0.5 * np.trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
-    return dest

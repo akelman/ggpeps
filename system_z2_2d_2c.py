@@ -8,7 +8,7 @@ import logging
 import sympy
 from scipy.linalg import block_diag
 import utils
-from system_base import extract_partial_covmats
+from system_base import calculate_lognorm, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats
 
 ###################### Z2System2D ##########################
 
@@ -601,10 +601,13 @@ class Z2System2D2C:
 
 
     def _compute_el_energy_op_vec(self, use_trans_inv=True):
-        #FIXME: What do we do with the second copy?
+        #FIXME: Adapt for 2 copies. There are contributions of the second copy in the covariance matrix
         if use_trans_inv:
             gamma_in_sys = self.gamma_in_sys
-            norm_default=self.calculate_lognorm()
+            normvec_default = calculate_lognormvec(self.gamma_in_sys,
+                                                self.mat_d_vec)
+            # This is the usual norm without any modifications
+            norm_default = np.sum(normvec_default)
             # Number of fermions = # of sites
             # Since we have 2 copies, we get 8 virtual fermions per site
             single_site_offset = 8
@@ -613,17 +616,19 @@ class Z2System2D2C:
             gamma_in_sys_tilde = gamma_in_sys[single_site_offset:,
                                             single_site_offset:]
             el_energy_bare=[]
-            for ind in range(self.cfg.nlayer):
+            for layerind in range(self.cfg.nlayer):
                 #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
-                gamma_maj_sys = self.gamma_maj_sys_vec[ind]
+                gamma_maj_sys = self.gamma_maj_sys_vec[layerind]
                 mat_a, mat_b, mat_d = extract_partial_covmats(gamma_maj_sys, offset)
                 covmat_out = mat_a + \
                     mat_b @ np.linalg.inv(mat_d -
                                         gamma_in_sys_tilde) @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_site_offset:, -
                                             single_site_offset:]
-                # The matrix elements yield only the real part of <P>
+                # For the modified norm, we still have to take into account the other contributions from the unmodified parts
                 norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
+                norm_mod += np.sum(utils.select_except(normvec_default,layerind))
+                # The matrix elements yield only the real part of <P>
                 el_energy_layer = 0.5 * (
                     covmat_out_virt[0, 1] +
                     covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
@@ -645,6 +650,7 @@ class Z2System2D2C:
         Returns:
             list: Matrix of the gradients of the electric energy wrt [[t1,y1,z1],[t2,y2,z2],...]
         """
+        #FIXME: Adapt for 2 copies. There are contributions of the second copy in the covariance matrix
         # Since we have two copies, there are 8 virtual fermions per site
         single_site_offset = 8
         offset = 2 * self.cfg.lattice.size + single_site_offset
@@ -653,7 +659,10 @@ class Z2System2D2C:
         # We have to cut one link from gamma_in_sys as well
         gamma_in_sys_tilde = self.gamma_in_sys[single_site_offset:,
                                                single_site_offset:]
-        norm_default=self.calculate_lognorm()
+        normvec_default = calculate_lognormvec(self.gamma_in_sys,
+                                               self.mat_d_vec)
+        # This is the usual norm without any modifications
+        norm_default = np.sum(normvec_default)
         for layerind in range(self.cfg.nlayer):
             layer_derivative=[]
             # The matrices must be re-extracted here since we slice at different positions than usually
@@ -665,7 +674,9 @@ class Z2System2D2C:
             mat_d_inv=np.linalg.inv(mat_d)
             diff_d_inv_gamma_inv = np.linalg.inv(mat_d_inv - gamma_in_sys_tilde)
 
+            # For the modified norm, we still have to take into account the other contributions from the unmodified parts
             norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
+            norm_mod += np.sum(utils.select_except(normvec_default,layerind))
             for symbol in self.symbolvec:
                 deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
                 d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
@@ -735,43 +746,3 @@ class Z2System2D2C:
     def compute_ferm_cov(self):
         """Compute the covariance matrix of the fermions in the system """
         return self.mat_a + self.mat_b@self.wi_gamma_out.inv()@np.transpose(self.mat_b)
-
-
-def calculate_lognorm(gamma_in_sys: np.ndarray,
-                      mat_d_vec: np.ndarray,
-                      all_factors=False) -> float:
-    # This is still the plain formula, without any update mechanism
-    cumval = 0
-    nlayer=len(mat_d_vec)
-    for ind in range(nlayer):
-        mat_d = mat_d_vec[ind]
-        if all_factors:
-            sign, logval = np.linalg.slogdet(
-                (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d) / 2)
-        else:
-            # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
-            sign, logval = np.linalg.slogdet(
-                (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d))
-        cumval += logval
-    #The factor 1/2 is the square-root
-    return cumval / 2
-
-
-def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray,
-                           deriv_d: np.ndarray,
-                           mat_d_inv: np.ndarray) -> float:
-    """Compute the gradient of the norm divided by the norm.
-    The expression of deriv_d given to this function decides which derivative is computed
-
-    Args:
-        gamma_in_sys (np.ndarray): Gauged covariance matrix of the projectors
-        diff (np.ndarray): (D^{-1}-gamma_in_sys)^{-1}
-        deriv_d (np.ndarray): dD/d{alpha}: Derivative of the virtual-virtual covariance matrix
-        mat_d_inv (np.ndarray): Inverse of D: D^{-1}
-
-    Returns:
-        float: Gradient of the norm divided by the norm.
-    """
-    # Extract only the part of the virtual-virtual correlations
-    dest = -0.5 * np.trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
-    return dest
