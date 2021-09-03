@@ -1415,31 +1415,27 @@ class TestZ2C2SystemMethods(unittest.TestCase):
     def test_grad_over_norm(self):
         #This is comparison of the analytic derivative against the numeric derivative
         eps=1e-5
-        lat = lattice.Lattice2D(2, 2)
-        t=0.17
-        y=0.35
-        z=0.56
-        paramvec = [[t, y, z]]
-        param_namevec=["t","y","z"]
+        paramvec = np.random.rand(1,10)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None, None)
-        system_z2_2_2 = system.Z2System2D(system_cfg)
-        for ind in range(3):
-            with self.subTest(ind=ind):
+        system_cfg = system.Z2System2D2CConfig(paramvec, lat_2x2, 1.0, None, None)
+        system_z2_2_2 = system.Z2System2D2C(system_cfg)
+        symbolvec = system_z2_2_2.symbolvec
+        for ind in range(len(symbolvec)):
+            with self.subTest(symbol=symbolvec[ind]):
                 paramvec_left=np.copy(paramvec)
                 paramvec_right=np.copy(paramvec)
                 paramvec_left[0,ind]-=eps
                 paramvec_right[0,ind]+=eps
-                system_cfg_left = system.Z2System2DConfig(paramvec_left, lat_2x2, 1.0,
+                system_cfg_left = system.Z2System2D2CConfig(paramvec_left, lat_2x2, 1.0,
                                                         None, None)
-                system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
+                system_cfg_right = system.Z2System2D2CConfig(paramvec_right, lat_2x2,
                                                         1.0, None, None)
 
-                system_z2_2_2_left= system.Z2System2D(system_cfg_left)
-                system_z2_2_2_right = system.Z2System2D(system_cfg_right)
+                system_z2_2_2_left= system.Z2System2D2C(system_cfg_left)
+                system_z2_2_2_right = system.Z2System2D2C(system_cfg_right)
 
                 #This is a single layer construction, we always use layer 0 to test.
-                deriv_ana = system_z2_2_2.compute_grad_over_norm(param_namevec[ind],0)
+                deriv_ana = system_z2_2_2.compute_grad_over_norm(symbolvec[ind],0)
                 norm_left = system_z2_2_2_left.calculate_lognorm(all_factors=True)
                 norm_right = system_z2_2_2_right.calculate_lognorm(all_factors=True)
                 deriv_num = (norm_right - norm_left) / (2 * eps)
@@ -1449,27 +1445,25 @@ class TestZ2C2SystemMethods(unittest.TestCase):
     def test_grad_el_energy_1_layer(self):
         #This is comparison of the analytic derivative against the numeric derivative
         eps=1e-5
-        t=0.17
-        y=0.35
-        z=0.56
-        paramvec = [[t, y, z]]
+        paramvec = np.random.rand(1,10)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None, None)
-        system_z2_2_2 = system.Z2System2D(system_cfg)
+        system_cfg = system.Z2System2D2CConfig(paramvec, lat_2x2, 1.0, None, None)
+        system_z2_2_2 = system.Z2System2D2C(system_cfg)
+        symbolvec = system_z2_2_2.symbolvec
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
-        for ind in range(3):
-            with self.subTest(ind=ind):
+        for ind in range(len(symbolvec)):
+            with self.subTest(symbol=symbolvec[ind]):
                 paramvec_left=np.copy(paramvec)
                 paramvec_right=np.copy(paramvec)
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
-                system_cfg_left = system.Z2System2DConfig(paramvec_left, lat_2x2, 1.0,
+                system_cfg_left = system.Z2System2D2CConfig(paramvec_left, lat_2x2, 1.0,
                                                         None, None)
-                system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
+                system_cfg_right = system.Z2System2D2CConfig(paramvec_right, lat_2x2,
                                                         1.0, None, None)
 
-                system_z2_2_2_left= system.Z2System2D(system_cfg_left)
-                system_z2_2_2_right = system.Z2System2D(system_cfg_right)
+                system_z2_2_2_left= system.Z2System2D2C(system_cfg_left)
+                system_z2_2_2_right = system.Z2System2D2C(system_cfg_right)
 
                 val_left = system_z2_2_2_left.el_energy_op
                 val_right = system_z2_2_2_right.el_energy_op
@@ -1480,25 +1474,26 @@ class TestZ2C2SystemMethods(unittest.TestCase):
     def test_grad_el_energy_2_layer(self):
         #This is comparison of the analytic derivative against the numeric derivative
         eps=1e-5
-        paramvec = np.asarray([[0.17, 0.35, 0.56],[0.3,0.2,0.8]])
+        paramvec = np.random.rand(2,10)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None, None)
-        system_z2_2_2 = system.Z2System2D(system_cfg)
+        system_cfg = system.Z2System2D2CConfig(paramvec, lat_2x2, 1.0, None, None)
+        system_z2_2_2 = system.Z2System2D2C(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
+        symbolvec = system_z2_2_2.symbolvec
         for layerind in range(2):
-            for ind in range(3):
-                with self.subTest(ind=ind, layerind=layerind):
+            for ind in range(len(symbolvec)):
+                with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left=np.copy(paramvec)
                     paramvec_right=np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2DConfig(paramvec_left, lat_2x2, 1.0,
+                    system_cfg_left = system.Z2System2D2CConfig(paramvec_left, lat_2x2, 1.0,
                                                             None, None)
-                    system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
+                    system_cfg_right = system.Z2System2D2CConfig(paramvec_right, lat_2x2,
                                                             1.0, None, None)
 
-                    system_z2_2_2_left= system.Z2System2D(system_cfg_left)
-                    system_z2_2_2_right = system.Z2System2D(system_cfg_right)
+                    system_z2_2_2_left= system.Z2System2D2C(system_cfg_left)
+                    system_z2_2_2_right = system.Z2System2D2C(system_cfg_right)
 
                     val_left = system_z2_2_2_left.el_energy_op
                     val_right = system_z2_2_2_right.el_energy_op

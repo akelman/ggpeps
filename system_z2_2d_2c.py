@@ -114,7 +114,7 @@ class Z2System2D2C:
     def tmat_symb(self):
         # Mode order Psi,  l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2
         [t1, y1, z1, t2, y2, z2, a, b, c, d]=self.symbolvec
-        tmat_symb=sympy.Matrix([ 
+        tmat_symb=sympy.Matrix([
             [0, -1.j*t1, 1.j*t1, t1, -t1, -1.j*t2, 1.j*t2, t2, -t2],
             [1.j*t1, 0, 1.j*y1, z1, 1.j*z1, -1.j*a, -1.j*c, -1.j*b, -1.j*d],
             [-1.j*t1, -1.j*y1, 0, -1.j*z1, -z1, 1.j*c, 1.j*a, 1.j*d, 1.j*b],
@@ -523,12 +523,14 @@ class Z2System2D2C:
 
     def gamma_maj_sys_deriv_vec(self, symb: sympy.Symbol) -> np.ndarray:
         if symb in self.symbolvec:
-            return self.get_gamma_maj_sys_deriv(symb)
+            if self._gamma_maj_sys_deriv_dict is None:
+                self._gamma_maj_sys_deriv_dict = self._generate_gamma_maj_sys_deriv_dict()
+            return self._gamma_maj_sys_deriv_dict[symb]
         else:
             print("gamma_maj_sys_deriv: Invalid variable name", sys.stderr)
         return None
 
-    def compute_grad_over_norm(self, var: str, layerind: int) -> float:
+    def compute_grad_over_norm(self, var: sympy.Symbol, layerind: int) -> float:
         """Compute the quotient of derivative of the norm over the norm itself.
         We can avoid a lot of factors by computing the quotient directly.
 
@@ -540,11 +542,11 @@ class Z2System2D2C:
             float: Value of the gradient divided by the norm of the state
         """
         diff = self.wi_gamma_in_vec[layerind].inv()
-        # 2 phys. Majorana modes per vertex
+        # 2 phys. Majorana modes per vertex, this is independent of the number of copies
         offset = 2 * self.cfg.lattice.size
         # Extract only the part of the virtual-virtual correlations
         deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:]
-        mat_d_inv=self.mat_d_inv_vec[layerind]
+        mat_d_inv = self.mat_d_inv_vec[layerind]
         return compute_grad_over_norm(self.gamma_in_sys, diff, deriv_d, mat_d_inv)
 
 
@@ -599,11 +601,13 @@ class Z2System2D2C:
 
 
     def _compute_el_energy_op_vec(self, use_trans_inv=True):
+        #FIXME: What do we do with the second copy?
         if use_trans_inv:
             gamma_in_sys = self.gamma_in_sys
             norm_default=self.calculate_lognorm()
             # Number of fermions = # of sites
-            single_site_offset = 4
+            # Since we have 2 copies, we get 8 virtual fermions per site
+            single_site_offset = 8
             offset = 2 * self.cfg.lattice.size + single_site_offset
             # We have to cut one link from gamma_in_sys as well
             gamma_in_sys_tilde = gamma_in_sys[single_site_offset:,
@@ -641,7 +645,8 @@ class Z2System2D2C:
         Returns:
             list: Matrix of the gradients of the electric energy wrt [[t1,y1,z1],[t2,y2,z2],...]
         """
-        single_site_offset = 4
+        # Since we have two copies, there are 8 virtual fermions per site
+        single_site_offset = 8
         offset = 2 * self.cfg.lattice.size + single_site_offset
         nlinks = self.cfg.lattice.nlinks
         dest = []
@@ -661,8 +666,8 @@ class Z2System2D2C:
             diff_d_inv_gamma_inv = np.linalg.inv(mat_d_inv - gamma_in_sys_tilde)
 
             norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
-            for var in ["t", "y", "z"]:
-                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(var)[layerind]
+            for symbol in self.symbolvec:
+                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
                 d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
                 gamma_out = d_mat_a + \
                         d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
@@ -674,7 +679,7 @@ class Z2System2D2C:
                 # Summand with derivative of the covariance matrix
                 d_el_energy = 0.5 * (covmat_out_virt[0, 1] + covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
                 # Summand with derivative of norms
-                trace_def = self.compute_grad_over_norm(var, layerind)
+                trace_def = self.compute_grad_over_norm(symbol, layerind)
                 trace_mod = compute_grad_over_norm(gamma_in_sys_tilde, diff_d_inv_gamma_inv, d_mat_d, mat_d_inv)
                 # In contrast to the formula, it seems like we have an additional factor of -2 in the equation.
                 # This is due to the definition of compute_grad_over_norm with a factor of -1/2
@@ -698,13 +703,6 @@ class Z2System2D2C:
             dest[symb]=[self._expand_gamma_maj_to_system(self.compute_gamma_maj_deriv(symb, i)) for i in range(self.cfg.nlayer) ]
         return dest
 
-
-    def get_gamma_maj_sys_deriv(self, symb):
-        if symb in self.symbolvec:
-            if self._gamma_maj_sys_deriv_dict is None:
-                self._gamma_maj_sys_deriv_dict = self._generate_gamma_maj_sys_deriv_dict()
-            return self._gamma_maj_sys_deriv_dict[symb]
-        return None
 
     def _compute_mag_energy_op(self, use_trans_inv=True):
         if use_trans_inv:
