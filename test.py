@@ -805,6 +805,36 @@ class TestZ2SystemMethods(unittest.TestCase):
 
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
 
+    def test_grad_el_energy_3_layer(self):
+        #This is comparison of the analytic derivative against the numeric derivative
+        eps=1e-5
+        paramvec = np.random.rand(3,3)
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None, None)
+        system_z2_2_2 = system.Z2System2D(system_cfg)
+        deriv_ana = system_z2_2_2.el_energy_op_grad_vec
+        symbolvec = self.system_z2_2_2.symbolvec
+        for layerind in range(paramvec.shape[0]):
+            for ind in range(len(symbolvec)):
+                with self.subTest(symbol=symbolvec[ind], layerind=layerind):
+                    paramvec_left=np.copy(paramvec)
+                    paramvec_right=np.copy(paramvec)
+                    paramvec_left[layerind, ind] -= eps
+                    paramvec_right[layerind, ind] += eps
+                    system_cfg_left = system.Z2System2DConfig(paramvec_left, lat_2x2, 1.0,
+                                                            None, None)
+                    system_cfg_right = system.Z2System2DConfig(paramvec_right, lat_2x2,
+                                                            1.0, None, None)
+
+                    system_z2_2_2_left= system.Z2System2D(system_cfg_left)
+                    system_z2_2_2_right = system.Z2System2D(system_cfg_right)
+
+                    val_left = system_z2_2_2_left.el_energy_op
+                    val_right = system_z2_2_2_right.el_energy_op
+                    deriv_num = (val_right - val_left) / (2 * eps)
+
+                    self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
+
     @skip("This test is not precise enough")
     def test_wilson_exact(self):
         t=0.17
