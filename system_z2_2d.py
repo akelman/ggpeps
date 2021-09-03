@@ -92,9 +92,7 @@ class Z2System2D:
         self._weight = None
 
         # Gradients
-        self._gamma_maj_sys_deriv_y_vec = None
-        self._gamma_maj_sys_deriv_z_vec = None
-        self._gamma_maj_sys_deriv_t_vec = None
+        self._gamma_maj_sys_deriv_dict = None
         self._el_energy_op_grad_vec = None
 
         # Woodbury Update and Matrix Inversion
@@ -513,21 +511,25 @@ class Z2System2D:
         return np.asarray(dest)
 
     def compute_grad_norm(self, layerind: int) -> np.ndarray:
-        #The parameter order is [dt, dy, dz]
-        dest=np.zeros(3)
-        dest[0]=self.compute_grad_over_norm("t",layerind)
-        dest[1]=self.compute_grad_over_norm("y",layerind)
-        dest[2]=self.compute_grad_over_norm("z",layerind)
+        #The parameter order is [dt, dy, dz] (as in symbolvec)
+        dest=np.zeros(len(self.symbolvec))
+        for ind, symbol in enumerate(self.symbolvec):
+            dest[ind]=self.compute_grad_over_norm(symbol,layerind)
         return dest
 
-    def gamma_maj_sys_deriv_vec(self, var: str) -> np.ndarray:
-        if var == "t":
-            return self.gamma_maj_sys_deriv_t_vec
-        elif var == "y":
-            return self.gamma_maj_sys_deriv_y_vec
-        elif var == "z":
-            return self.gamma_maj_sys_deriv_z_vec
-        print("gamma_maj_sys_deriv: Invalid variable name", sys.stderr)
+    def _generate_gamma_maj_sys_deriv_dict(self):
+        dest={}
+        for symb in self.symbolvec:
+            dest[symb]=[self._expand_gamma_maj_to_system(self.compute_gamma_maj_deriv(symb, i)) for i in range(self.cfg.nlayer) ]
+        return dest
+
+    def gamma_maj_sys_deriv_vec(self, symb: sympy.Symbol) -> np.ndarray:
+        if symb in self.symbolvec:
+            if self._gamma_maj_sys_deriv_dict is None:
+                self._gamma_maj_sys_deriv_dict = self._generate_gamma_maj_sys_deriv_dict()
+            return self._gamma_maj_sys_deriv_dict[symb]
+        else:
+            print("gamma_maj_sys_deriv: Invalid variable name", sys.stderr)
         return None
 
     def compute_grad_over_norm(self, var: str, layerind: int) -> float:
@@ -663,8 +665,8 @@ class Z2System2D:
             diff_d_inv_gamma_inv = np.linalg.inv(mat_d_inv - gamma_in_sys_tilde)
 
             norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
-            for var in ["t", "y", "z"]:
-                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(var)[layerind]
+            for symbol in self.symbolvec:
+                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
                 d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
                 gamma_out = d_mat_a + \
                         d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
@@ -676,7 +678,7 @@ class Z2System2D:
                 # Summand with derivative of the covariance matrix
                 d_el_energy = 0.5 * (covmat_out_virt[0, 1] + covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
                 # Summand with derivative of norms
-                trace_def = self.compute_grad_over_norm(var, layerind)
+                trace_def = self.compute_grad_over_norm(symbol, layerind)
                 trace_mod = compute_grad_over_norm(gamma_in_sys_tilde, diff_d_inv_gamma_inv, d_mat_d, mat_d_inv)
                 # In contrast to the formula, it seems like we have an additional factor of -2 in the equation.
                 # This is due to the definition of compute_grad_over_norm with a factor of -1/2

@@ -508,14 +508,14 @@ class Z2System2D2C:
     # Calculate gradients
 
     def compute_grad_norm_vec(self) -> np.ndarray:
-        #The parameter order is [[dt1, dy1, dz1],[dt2,dy2,dz2]...]
+        #The parameter order is [[dt1, dy1, dz1...],[dt2,dy2,dz2...]...]
         dest=[]
         for layerind in range(self.cfg.nlayer):
             dest.append(self.compute_grad_norm(layerind))
         return np.asarray(dest)
 
     def compute_grad_norm(self, layerind: int) -> np.ndarray:
-        #The parameter order is [dt, dy, dz]
+        #The parameter order is the same as in the symbolvec [t1,y1,z1....]
         dest=np.zeros(len(self.symbolvec))
         for ind, symbol in enumerate(self.symbolvec):
             dest[ind]=self.compute_grad_over_norm(symbol,layerind)

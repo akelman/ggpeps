@@ -572,7 +572,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec = [[0.17, 0.35, 0.56]]
         cfg = system.Z2System2DConfig(paramvec, lat, 0, 0, 0)
         system_z2_2_2 = system.Z2System2D(cfg)
-        res = system_z2_2_2.gamma_maj_sys_deriv_vec("y")[0]
+        res = system_z2_2_2.gamma_maj_sys_deriv_vec(system_z2_2_2.symbolvec[1])[0]
         self.assertTrue(utils.is_antisymmetric(res))
 
     def test_derivative_z_sys(self):
@@ -580,7 +580,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec = [[0.17, 0.35, 0.56]]
         cfg = system.Z2System2DConfig(paramvec, lat, 0, 0, 0)
         system_z2_2_2 = system.Z2System2D(cfg)
-        res = system_z2_2_2.gamma_maj_sys_deriv_vec("z")[0]
+        res = system_z2_2_2.gamma_maj_sys_deriv_vec(system_z2_2_2.symbolvec[2])[0]
         self.assertTrue(utils.is_antisymmetric(res))
 
     def test_derivative_t_sys(self):
@@ -588,7 +588,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec = [[0.17, 0.35, 0.56]]
         cfg = system.Z2System2DConfig(paramvec, lat, 0, 0, 0)
         system_z2_2_2 = system.Z2System2D(cfg)
-        res = system_z2_2_2.gamma_maj_sys_deriv_vec("t")[0]
+        res = system_z2_2_2.gamma_maj_sys_deriv_vec(system_z2_2_2.symbolvec[0])[0]
         self.assertTrue(utils.is_antisymmetric(res))
 
     def test_derivative_gamma_sys_finite_diff(self):
@@ -604,8 +604,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None, None)
         system_z2_2_2 = system.Z2System2D(system_cfg)
-        for ind in range(3):
-            with self.subTest(ind=ind):
+        symbolvec=system_z2_2_2.symbolvec
+        for ind in range(len(symbolvec)):
+            with self.subTest(symbol=symbolvec[ind]):
                 paramvec_left=np.copy(paramvec)
                 paramvec_right=np.copy(paramvec)
                 #We are only modifying the first layer (there is only one)
@@ -619,7 +620,7 @@ class TestZ2SystemMethods(unittest.TestCase):
                 system_z2_2_2_left= system.Z2System2D(system_cfg_left)
                 system_z2_2_2_right = system.Z2System2D(system_cfg_right)
 
-                deriv_maj_sys=system_z2_2_2.gamma_maj_sys_deriv_vec(param_namevec[ind])[0]
+                deriv_maj_sys=system_z2_2_2.gamma_maj_sys_deriv_vec(symbolvec[ind])[0]
                 deriv_maj_sys_left=system_z2_2_2_left.gamma_maj_sys_vec[0]
                 deriv_maj_sys_right=system_z2_2_2_right.gamma_maj_sys_vec[0]
 
@@ -682,7 +683,8 @@ class TestZ2SystemMethods(unittest.TestCase):
 
         # We are using here that the gradient of the d/dx log(f(x)) is [d/dx f(x)]/f(x).
         # Thus, the d/dx log(norm(x))= [d/dx norm(x)]/ norm(x) which is exactly the function grad_over_norm
-        deriv_ana = system_z2_2_2.compute_grad_over_norm("y",0)
+        # The second symbol is y
+        deriv_ana = system_z2_2_2.compute_grad_over_norm(system_z2_2_2.symbolvec[1],0)
         lognorm_left = system_z2_2_2_left.calculate_lognorm(all_factors=True)
         lognorm_right = system_z2_2_2_right.calculate_lognorm(all_factors=True)
         deriv_num = (lognorm_right - lognorm_left) / (2 * eps)
@@ -698,11 +700,11 @@ class TestZ2SystemMethods(unittest.TestCase):
         y=0.35
         z=0.56
         paramvec = [[t, y, z]]
-        param_namevec=["t","y","z"]
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None, None)
         system_z2_2_2 = system.Z2System2D(system_cfg)
-        for ind in range(3):
+        symbolvec = self.system_z2_2_2.symbolvec
+        for ind in range(len(symbolvec)):
             with self.subTest(ind=ind):
                 paramvec_left=np.copy(paramvec)
                 paramvec_right=np.copy(paramvec)
@@ -717,7 +719,7 @@ class TestZ2SystemMethods(unittest.TestCase):
                 system_z2_2_2_right = system.Z2System2D(system_cfg_right)
 
                 #This is a single layer construction, we always use layer 0 to test.
-                deriv_ana = system_z2_2_2.compute_grad_over_norm(param_namevec[ind],0)
+                deriv_ana = system_z2_2_2.compute_grad_over_norm(symbolvec[ind],0)
                 norm_left = system_z2_2_2_left.calculate_lognorm(all_factors=True)
                 norm_right = system_z2_2_2_right.calculate_lognorm(all_factors=True)
                 deriv_num = (norm_right - norm_left) / (2 * eps)
@@ -735,8 +737,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None, None)
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
-        for ind in range(3):
-            with self.subTest(ind=ind):
+        symbolvec=system_z2_2_2.symbolvec
+        for ind in range(len(symbolvec)):
+            with self.subTest(symbol=symbolvec[ind]):
                 paramvec_left=np.copy(paramvec)
                 paramvec_right=np.copy(paramvec)
                 paramvec_left[0, ind] -= eps
@@ -763,9 +766,10 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None, None)
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
+        symbolvec = self.system_z2_2_2.symbolvec
         for layerind in range(2):
-            for ind in range(3):
-                with self.subTest(ind=ind, layerind=layerind):
+            for ind in range(len(symbolvec)):
+                with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left=np.copy(paramvec)
                     paramvec_right=np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
