@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from numpy.lib.function_base import select
 from scipy.sparse import issparse
 import scipy.sparse as sparse
 import os
@@ -63,12 +64,18 @@ def get_git_hash():
         ['git', '--git-dir={}'.format(gitdir), 'rev-parse', 'HEAD'])
     return githash.decode("utf-8").strip()
 
+def select_except(arr,ind):
+    #This function works only on the outer-most layer
+    if isinstance(arr,list):
+        arr = np.asarray(arr)
+    mask = np.ones(len(arr), dtype=bool)
+    mask[ind] = False
+    return arr[mask]
 
 def multiply_except(arr,ind):
     if len(arr)>1:
-        mask = np.ones_like(arr, dtype=bool)
-        mask[ind] = False
-        return np.prod(arr[mask])
+        others=select_except(arr,ind)
+        return np.prod(others)
     else:
         #It does not make sense to execute this function with only one element
         return arr[0]

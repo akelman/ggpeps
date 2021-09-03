@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 import sys
+from scipy.linalg.misc import norm
 import sympy
 import lattice as lat
 import gauge
@@ -605,7 +606,10 @@ class Z2System2D:
     def _compute_el_energy_op_vec(self, use_trans_inv=True):
         if use_trans_inv:
             gamma_in_sys = self.gamma_in_sys
-            norm_default=self.calculate_lognorm()
+            normvec_default = calculate_lognormvec(self.gamma_in_sys,
+                                                self.mat_d_vec)
+            # This is the usual norm without any modifications
+            norm_default = np.sum(normvec_default)
             # Number of fermions = # of sites
             single_site_offset = 4
             offset = 2 * self.cfg.lattice.size + single_site_offset
@@ -613,9 +617,9 @@ class Z2System2D:
             gamma_in_sys_tilde = gamma_in_sys[single_site_offset:,
                                             single_site_offset:]
             el_energy_bare=[]
-            for ind in range(self.cfg.nlayer):
+            for layerind in range(self.cfg.nlayer):
                 #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
-                gamma_maj_sys = self.gamma_maj_sys_vec[ind]
+                gamma_maj_sys = self.gamma_maj_sys_vec[layerind]
                 mat_a, mat_b, mat_d = extract_partial_covmats(gamma_maj_sys, offset)
                 covmat_out = mat_a + \
                     mat_b @ np.linalg.inv(mat_d -
@@ -624,6 +628,9 @@ class Z2System2D:
                                             single_site_offset:]
                 # The matrix elements yield only the real part of <P>
                 norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
+                # For the modified norm, we still have to take into account the other contributions from the unmodified parts
+                norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
+                norm_mod += np.sum(utils.select_except(normvec_default,layerind))
                 el_energy_layer = 0.5 * (
                     covmat_out_virt[0, 1] +
                     covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
@@ -652,7 +659,9 @@ class Z2System2D:
         # We have to cut one link from gamma_in_sys as well
         gamma_in_sys_tilde = self.gamma_in_sys[single_site_offset:,
                                                single_site_offset:]
-        norm_default=self.calculate_lognorm()
+        normvec_default = calculate_lognormvec(self.gamma_in_sys,
+                                               self.mat_d_vec)
+
         for layerind in range(self.cfg.nlayer):
             layer_derivative=[]
             # The matrices must be re-extracted here since we slice at different positions than usually
@@ -661,10 +670,14 @@ class Z2System2D:
             #TODO: We could also track this inverse
             diff_d_gamma_inv = np.linalg.inv(mat_d - gamma_in_sys_tilde)
             #TODO: This inverse can be calculated once and stored afterwards
-            mat_d_inv=np.linalg.inv(mat_d)
+            mat_d_inv = np.linalg.inv(mat_d)
             diff_d_inv_gamma_inv = np.linalg.inv(mat_d_inv - gamma_in_sys_tilde)
 
+            # For the modified norm, we still have to take into account the other contributions from the unmodified parts
             norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
+            norm_mod += np.sum(utils.select_except(normvec_default,layerind))
+            # This is the usual norm without any modifications
+            norm_default = np.sum(normvec_default)
             for symbol in self.symbolvec:
                 deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
                 d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
@@ -750,13 +763,13 @@ class Z2System2D:
         """Compute the covariance matrix of the fermions in the system """
         return self.mat_a + self.mat_b@self.wi_gamma_out.inv()@np.transpose(self.mat_b)
 
-
-def calculate_lognorm(gamma_in_sys: np.ndarray,
+def calculate_lognormvec(gamma_in_sys: np.ndarray,
                       mat_d_vec: np.ndarray,
                       all_factors=False) -> float:
     # This is still the plain formula, without any update mechanism
     cumval = 0
     nlayer=len(mat_d_vec)
+    dest=np.zeros(nlayer)
     for ind in range(nlayer):
         mat_d = mat_d_vec[ind]
         if all_factors:
@@ -766,9 +779,16 @@ def calculate_lognorm(gamma_in_sys: np.ndarray,
             # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
             sign, logval = np.linalg.slogdet(
                 (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d))
-        cumval += logval
+        dest[ind]= logval
     #The factor 1/2 is the square-root
-    return cumval / 2
+    return dest / 2
+
+def calculate_lognorm(gamma_in_sys: np.ndarray,
+                      mat_d_vec: np.ndarray,
+                      all_factors=False) -> float:
+    # This is still the plain formula, without any update mechanism
+    normvec=calculate_lognormvec(gamma_in_sys,mat_d_vec,all_factors=all_factors)
+    return np.sum(normvec)
 
 
 def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray,

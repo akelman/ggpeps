@@ -41,7 +41,7 @@ class TestGauge(unittest.TestCase):
 
 class TestUtils(unittest.TestCase):
 
-    def generate_smat(self):
+    def test_generate_smat(self):
         N=10
         smat = utils.generate_smat(N)
         m, n = smat.shape
@@ -50,6 +50,23 @@ class TestUtils(unittest.TestCase):
         res=smat@np.conjugate(np.transpose(smat))
         ref=2.*np.eye(N)
         self.assertTrue(np.allclose(ref,res))
+    
+    def test_select_except(self):
+        arr=np.array([1,2,3,4])
+        arr_ref=np.array([1,3,4])
+        arr_exc=utils.select_except(arr,1)
+        self.assertTrue(np.allclose(arr_ref,arr_exc))
+
+    def test_select_except_list(self):
+        arr=[1,2,3,4]
+        arr_ref=[1,3,4]
+        arr_exc=utils.select_except(arr,1)
+        self.assertTrue(np.allclose(arr_ref,arr_exc))
+
+    def test_multiply_except(self):
+        arr=np.array([1,2,3,4])
+        dest=utils.multiply_except(arr,3)
+        self.assertEqual(6,dest)
 
 class TestLattice(unittest.TestCase):
 
@@ -767,7 +784,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
         symbolvec = self.system_z2_2_2.symbolvec
-        for layerind in range(2):
+        for layerind in range(paramvec.shape[0]):
             for ind in range(len(symbolvec)):
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left=np.copy(paramvec)
