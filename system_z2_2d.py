@@ -206,9 +206,8 @@ class Z2System2D:
         nsites=self.cfg.lattice.size
         id = np.eye(nsites)
         # Extract the parts of the covariance matrix
-        amat = covmat[:2, :2]
-        bmat = covmat[:2, 2:]
-        dmat = covmat[2:, 2:]
+        # The 2 is the number of physical fermionic Majorana modes
+        amat, bmat, dmat = extract_partial_covmats(covmat, 2)
         #Expand them
         amat_sys = np.kron(id, amat)
         bmat_sys = np.kron(id, bmat)
@@ -216,6 +215,7 @@ class Z2System2D:
         #Reassemble them in the correct order
         mat_sys_unordered= np.block(
             [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
+        #utils.show_matrix(mat_perm,"mat_perm")
         dest=mat_perm@mat_sys_unordered@np.transpose(mat_perm)
         return dest
 
@@ -591,6 +591,7 @@ class Z2System2D:
     def _compute_el_energy_op_vec(self, use_trans_inv=True):
         if use_trans_inv:
             gamma_in_sys = self.gamma_in_sys
+            #utils.show_matrix(gamma_in_sys)
             normvec_default = calculate_lognormvec(self.gamma_in_sys,
                                                 self.mat_d_vec)
             # This is the usual norm without any modifications
@@ -606,16 +607,21 @@ class Z2System2D:
                 #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
                 gamma_maj_sys = self.gamma_maj_sys_vec[layerind]
                 mat_a, mat_b, mat_d = extract_partial_covmats(gamma_maj_sys, offset)
+                #utils.show_matrix(mat_d)
                 covmat_out = mat_a + \
                     mat_b @ np.linalg.inv(mat_d -
                                         gamma_in_sys_tilde) @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_site_offset:, -
                                             single_site_offset:]
                 # For the modified norm, we still have to take into account the other contributions from the unmodified parts
+                #utils.show_matrix(covmat_out_virt)
                 norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
                 norm_mod += np.sum(utils.select_except(normvec_default,layerind))
+                #print("g: {}, Norm factor: {}".format(self.cfg.g2,np.exp(norm_mod-norm_default)))
+                #print("g: {}, Gamma part: {}".format(self.cfg.g2,0.5 * ( covmat_out_virt[0, 1] + covmat_out_virt[2, 3])))
                 # The matrix elements yield only the real part of <P>
-                el_energy_layer = 0.5 * (
+                # FIXME: There is a 0.5 missing here
+                el_energy_layer = (
                     covmat_out_virt[0, 1] +
                     covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
                 el_energy_bare.append(el_energy_layer)
@@ -673,7 +679,8 @@ class Z2System2D:
                 covmat_out_virt = gamma_out[-single_site_offset:,
                                             -single_site_offset:]
                 # Summand with derivative of the covariance matrix
-                d_el_energy = 0.5 * (covmat_out_virt[0, 1] + covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
+                #FIXME: Factor of 2 deleted
+                d_el_energy = (covmat_out_virt[0, 1] + covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
                 # Summand with derivative of norms
                 trace_def = self.compute_grad_over_norm(symbol, layerind)
                 trace_mod = compute_grad_over_norm(gamma_in_sys_tilde, diff_d_inv_gamma_inv, d_mat_d, mat_d_inv)
@@ -746,4 +753,3 @@ class Z2System2D:
     def compute_ferm_cov(self):
         """Compute the covariance matrix of the fermions in the system """
         return self.mat_a + self.mat_b@self.wi_gamma_out.inv()@np.transpose(self.mat_b)
-
