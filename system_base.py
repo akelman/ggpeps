@@ -21,7 +21,6 @@ def calculate_lognormvec(gamma_in_sys: np.ndarray,
                       mat_d_vec: np.ndarray,
                       all_factors=False) -> float:
     # This is still the plain formula, without any update mechanism
-    cumval = 0
     nlayer=len(mat_d_vec)
     dest=np.zeros(nlayer)
     for ind in range(nlayer):

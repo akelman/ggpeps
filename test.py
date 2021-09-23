@@ -835,7 +835,17 @@ class TestZ2SystemMethods(unittest.TestCase):
 
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
 
-    def test_el_energy_1_layer(self):
+    def test_el_energy_1_layer_single_eval(self):
+        # Calculate the electric energy of an empty system.
+        paramvec = [[0, 0.0, 0.0]]
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.Z2System2DConfig(paramvec, lat_2x2, 1.0, None,
+                                             None)
+        system_z2_2_2 = system.Z2System2D(system_cfg)
+        el_energy = system_z2_2_2.el_energy
+        self.assertAlmostEqual(el_energy, 0.0)
+
+    def test_el_energy_1_layer_mc(self):
         # Calculate the electric energy of an empty system.
         paramvec = [[0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
