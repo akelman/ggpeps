@@ -601,11 +601,10 @@ class Z2System2D2C:
 
 
     def _compute_el_energy_op_vec(self, use_trans_inv=True):
-        #FIXME: Adapt for 2 copies. There are contributions of the second copy in the covariance matrix
         if use_trans_inv:
             gamma_in_sys = self.gamma_in_sys
             normvec_default = calculate_lognormvec(self.gamma_in_sys,
-                                                self.mat_d_vec)
+                                                   self.mat_d_vec, all_factors=True)
             # This is the usual norm without any modifications
             norm_default = np.sum(normvec_default)
             # Number of fermions = # of sites
@@ -626,12 +625,12 @@ class Z2System2D2C:
                 covmat_out_virt = covmat_out[-single_site_offset:, -
                                             single_site_offset:]
                 # For the modified norm, we still have to take into account the other contributions from the unmodified parts
-                norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
+                norm_mod = calculate_lognorm(
+                    gamma_in_sys_tilde, [mat_d], all_factors=True)
                 norm_mod += np.sum(utils.select_except(normvec_default,layerind))
                 # The matrix elements yield only the real part of <P>
-                el_energy_layer = 0.5 * (
-                    covmat_out_virt[0, 1] +
-                    covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
+                el_energy_layer = 0.25 * (covmat_out_virt[4, 5] + covmat_out_virt[2, 3]) * 0.25 * (
+                    covmat_out_virt[0, 1] + covmat_out_virt[6, 7]) * np.exp(norm_mod - norm_default)
                 el_energy_bare.append(el_energy_layer)
         else:
             # Evaluate every link of the system
@@ -660,7 +659,7 @@ class Z2System2D2C:
         gamma_in_sys_tilde = self.gamma_in_sys[single_site_offset:,
                                                single_site_offset:]
         normvec_default = calculate_lognormvec(self.gamma_in_sys,
-                                               self.mat_d_vec)
+                                               self.mat_d_vec, all_factors=True)
         # This is the usual norm without any modifications
         norm_default = np.sum(normvec_default)
         for layerind in range(self.cfg.nlayer):
@@ -675,7 +674,8 @@ class Z2System2D2C:
             diff_d_inv_gamma_inv = np.linalg.inv(mat_d_inv - gamma_in_sys_tilde)
 
             # For the modified norm, we still have to take into account the other contributions from the unmodified parts
-            norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d])
+            norm_mod = calculate_lognorm(
+                gamma_in_sys_tilde, [mat_d], all_factors=True)
             norm_mod += np.sum(utils.select_except(normvec_default,layerind))
             for symbol in self.symbolvec:
                 deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
@@ -688,7 +688,8 @@ class Z2System2D2C:
                 covmat_out_virt = gamma_out[-single_site_offset:,
                                             -single_site_offset:]
                 # Summand with derivative of the covariance matrix
-                d_el_energy = 0.5 * (covmat_out_virt[0, 1] + covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
+                #FIXME: We need to respect the product rule here!
+                d_el_energy = 0.25 * (covmat_out_virt[4, 5] + covmat_out_virt[2, 3]) * 0.25 * (covmat_out_virt[0, 1] + covmat_out_virt[6, 7])* np.exp(norm_mod - norm_default)
                 # Summand with derivative of norms
                 trace_def = self.compute_grad_over_norm(symbol, layerind)
                 trace_mod = compute_grad_over_norm(gamma_in_sys_tilde, diff_d_inv_gamma_inv, d_mat_d, mat_d_inv)

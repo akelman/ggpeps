@@ -860,113 +860,6 @@ class TestZ2SystemMethods(unittest.TestCase):
         el_energy = mc_result.get_obs_mean("el_energy")
         self.assertAlmostEqual(el_energy, 0.0)
 
-    def test_el_energy_1_layer_ring_even(self):
-        pass
-
-    def test_el_energy_1_layer_ring_odd(self):
-        pass
-
-# TEST_F(Schwinger2dTest, test_electric_energy_L_2_ring_even){
-#   Schwinger2d sw=Schwinger2d();
-#   sw.set_print(false);
-#   vector<double> tvec={0.};
-#   vector<complex<double>> yvec {{0.0,0.0}};
-#   vector<complex<double>> zvec {{0.0,0.0}};
-#   sw.set_size(2,2,1);
-#   sw.set_tvec(tvec);
-#   sw.set_yvec(yvec);
-#   sw.set_zvec(zvec);
-#   //Modify the matrix D by hand
-#   // [[0, -1],[1, 0]]
-#   MatrixXd filled=MatrixXd::Zero(2,2);
-#   filled(0,1)=-1;
-#   filled(1,0)=1;
-#   auto &gamma_maj_sys_vec=sw.get_gamma_maj_sys_vec();
-#   MatrixXd gamma_maj_sys(gamma_maj_sys_vec[0]);
-#   int offset=sw.get_nsites()*2;
-#   /*Setting mode l(0,1)-*/
-#   gamma_maj_sys.block(offset + 2, offset + 2, 2, 2) = filled;
-#   /*Setting mode r(0,0)+*/
-#   gamma_maj_sys.block(offset + 4, offset + 4, 2, 2) = filled;
-#   /*Setting mode l(0,0)+*/
-#   gamma_maj_sys.block(offset + 8, offset + 8, 2, 2) = filled;
-#   /*Setting mode r(0,1)-*/
-#   gamma_maj_sys.block(offset + 14, offset + 14, 2, 2) = filled;
-#   sw.gamma_maj_sys_vec[0]=gamma_maj_sys;
-#   sw.gamma_maj_sys_d_inv_vec.push_back(gamma_maj_sys
-#                                            .block(offset, offset,
-#                                                   gamma_maj_sys.rows() - offset,
-#                                                   gamma_maj_sys.cols() - offset)
-#                                            .inverse());
-#   sw.init_measurements(nullptr);
-#   sw.set_warmup_steps(10);
-#   sw.set_measurement_steps(10);
-#   sw.set_gauge_by_name("Z3");
-#   sw.gauge_gamma_in_sys();
-#   sw.current_weight=0.5*sw.incdet_vec[0].det();
-#   sw.warmup();
-#   sw.run();
-#   auto measurement_manager=sw.get_measurement_manager();
-#   auto el_en=dynamic_pointer_cast<Measurement<double>> (measurement_manager["el_en_00_x"]);
-#   if (el_en){
-#     EXPECT_NEAR(el_en->mean(),3,1e-10);
-#   }else{
-#     ERROR("Measurement was not found");
-#     FAIL();
-#   }
-# }
-
-# TEST_F(Schwinger2dTest, test_electric_energy_L_2_ring_odd){
-#   Schwinger2d sw=Schwinger2d();
-#   sw.set_print(false);
-#   vector<double> tvec={0.};
-#   vector<complex<double>> yvec {{0.0,0.0}};
-#   vector<complex<double>> zvec {{0.0,0.0}};
-#   sw.set_size(2,2,1);
-#   sw.set_tvec(tvec);
-#   sw.set_yvec(yvec);
-#   sw.set_zvec(zvec);
-#   //Modify the matrix D by hand
-#   // [[0, -1],[1, 0]]
-#   MatrixXd filled=MatrixXd::Zero(2,2);
-#   filled(0,1)=-1;
-#   filled(1,0)=1;
-#   auto &gamma_maj_sys_vec=sw.get_gamma_maj_sys_vec();
-#   MatrixXd gamma_maj_sys(gamma_maj_sys_vec[0]);
-#   int offset=sw.get_nsites()*2;
-#   /*Setting mode l(0,1)+*/
-#   gamma_maj_sys.block(offset + 0, offset + 0, 2, 2) = filled;
-#   /*Setting mode r(0,0)-*/
-#   gamma_maj_sys.block(offset + 6, offset + 6, 2, 2) = filled;
-#   /*Setting mode l(0,0)-*/
-#   gamma_maj_sys.block(offset + 10, offset + 10, 2, 2) = filled;
-#   /*Setting mode r(0,1)+*/
-#   gamma_maj_sys.block(offset + 12, offset + 12, 2, 2) = filled;
-#   sw.gamma_maj_sys_vec[0]=gamma_maj_sys;
-#   sw.gamma_maj_sys_d_inv_vec.push_back(gamma_maj_sys
-#                                        .block(offset, offset,
-#                                               gamma_maj_sys.rows() - offset,
-#                                               gamma_maj_sys.cols() - offset)
-#                                        .inverse());
-#   sw.init_measurements(nullptr);
-#   sw.set_warmup_steps(10);
-#   sw.set_measurement_steps(10);
-#   sw.set_gauge_by_name("Z3");
-#   sw.gauge_gamma_in_sys();
-#   sw.current_weight=0.5*sw.incdet_vec[0].det();
-#   sw.warmup();
-#   sw.run();
-#   auto measurement_manager=sw.get_measurement_manager();
-#   auto el_en=dynamic_pointer_cast<Measurement<double>> (measurement_manager["el_en_00_x"]);
-#   if (el_en){
-#     EXPECT_NEAR(el_en->mean(),3,1e-10);
-#   }else{
-#     ERROR("Measurement was not found");
-#     FAIL();
-#   }
-# }
-
-
     @skip("This test is not precise enough")
     def test_wilson_exact(self):
         t=0.17
@@ -1683,6 +1576,16 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                     deriv_num = (val_right - val_left) / (2 * eps)
 
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
+
+    def test_el_energy_1_layer_single_eval(self):
+        # Calculate the electric energy of an empty system.
+        paramvec = np.zeros((1,10))
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.Z2System2D2CConfig(paramvec, lat_2x2, 1.0, None,
+                                             None)
+        system_z2_2_2 = system.Z2System2D2C(system_cfg)
+        el_energy = system_z2_2_2.el_energy
+        self.assertAlmostEqual(el_energy, 0.0)
 
 if __name__ == '__main__':
     unittest.main()
