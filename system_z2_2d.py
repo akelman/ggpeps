@@ -682,8 +682,6 @@ class Z2System2D:
                 # Summand with derivative of norms
                 trace_def = self.compute_grad_over_norm(symbol, layerind)
                 trace_mod = compute_grad_over_norm(gamma_in_sys_tilde, diff_d_inv_gamma_inv, d_mat_d, mat_d_inv)
-                # In contrast to the formula, it seems like we have an additional factor of -2 in the equation.
-                # This is due to the definition of compute_grad_over_norm with a factor of -1/2
                 d_el_energy += self.el_energy_op_vec[layerind] * (trace_mod - trace_def)
                 # Scale to system size
                 d_el_energy *= nlinks
