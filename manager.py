@@ -1,6 +1,7 @@
 """Main script to control the simulation. 
 Further details about the usage of the script can be found in README.md.
 """
+from system_z2_2d_2c import Z2System2D2C,Z2System2D2CConfig
 from measurement import Measurement
 import os
 import sys
@@ -25,29 +26,39 @@ def args2logname(args):
         "exact": "exact",
         "minexact": "minexact"
     }
-    tvec_str="-".join([str(t) for t in args.t])
-    yvec_str="-".join([str(y) for y in args.y])
-    zvec_str="-".join([str(z) for z in args.z])
     if args.mode == "eval":
         if args.g_mag == None:
-            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_t_{}_y_{}_z_{}_wsteps_{:06d}_msteps_{:06d}.log".format(
+            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(
                 shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
-                tvec_str, yvec_str, zvec_str, args.warmup_steps, args.meas_steps)
+                args.warmup_steps, args.meas_steps)
         else:
-            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{}_y_{}_z_{}_wsteps_{:06d}_msteps_{:06d}.log".format(
+            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(
                 shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
-                args.g_mag, tvec_str, yvec_str, zvec_str, args.warmup_steps,
-                args.meas_steps)
+                args.g_mag, args.warmup_steps, args.meas_steps)
     else:
         if args.g_mag == None:
             fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_nlayer_{:02d}_wsteps_{:06d}_msteps_{:06d}.log".format(
                 shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
-                len(args.z), args.warmup_steps, args.meas_steps)
+                args.nlayer, args.warmup_steps, args.meas_steps)
         else:
             fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_nlayer_{:02d}_wsteps_{:06d}_msteps_{:06d}.log".format(
                 shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
-                args.g_mag, len(args.z), args.warmup_steps, args.meas_steps)
+                args.g_mag, args.nlayer, args.warmup_steps, args.meas_steps)
     return fname
+
+def translate_parameters(system_cfg, params):
+    nparams = system_cfg.nvarparams()
+    nlayer = system_cfg.nlayer
+    if args.params=="rand" or args.params is None:
+        dest = np.random.rand(nlayer, nparams)
+    else:
+        dest = np.asarray(params, dtype=float)
+        try:
+            dest = dest.reshape((nlayer, nparams))
+        except:
+            logging.warning("Reshape of provided parameters impossible. Starting with random parameters.")
+            dest = np.random.rand(nlayer, nparams)
+    return dest
 
 
 def main():
@@ -90,26 +101,33 @@ def main():
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 
-    paramvec = np.transpose(np.array([args.t, args.y, args.z]))
-    # TODO: This is now a specialized version that runs only Z2 System 2D.
-    # We will have to make this more general at some point.
-    system_cfg = Z2System2DConfig(paramvec, lattice, g2, g_gm, g_mag)
+    if args.ncopy == 1:
+        system_type = Z2System2D
+        system_cfg = Z2System2DConfig(lattice, g2, g_gm, g_mag)
+    elif args.ncopy == 2:
+        system_type = Z2System2D2C
+        system_cfg = Z2System2D2CConfig(lattice, g2, g_gm, g_mag)
+    else:
+        logging.error("Not Implemented: Only 1 or two copies are possible")
+        sys.exit(1)
+    paramvec = translate_parameters(system_cfg, args.params)
+    system_cfg.paramvec = paramvec
 
     if args.no_bin_eom:
         Measurement.use_rebinning = False
 
     logging.info("======= SYSTEM INFO ========")
     logging.info("L: {}".format(L))
-    logging.info("t: {}".format(args.t))
-    logging.info("y: {}".format(args.y))
-    logging.info("z: {}".format(args.z))
+    logging.info("# of layers: {}".format(system_cfg.nlayer))
+    logging.info("# of copies: {}".format(args.ncopy))
+    logging.info("parameters: {}".format(paramvec))
     logging.info("g^2: {}".format(g2))
     logging.info("g_mag: {}".format(g_mag))
     logging.info("g_gm: {}".format(g_gm))
     logging.info("Rebinning EOM: {}".format(Measurement.use_rebinning))
     logging.info("============================")
 
-    mc_mgr = MonteCarloManager(mc_config, Z2System2D, system_cfg, args.nrunner)
+    mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
 
     if args.mode == "eval":
         start = timer()
@@ -142,9 +160,9 @@ def main():
         print(result)
         minimizer.save()
     elif args.mode == "exact":
-        system=Z2System2D(system_cfg)
+        system=system_type(system_cfg)
         start = timer()
-        ex_eval=exacteval.ExactEvaluator(system)
+        ex_eval = exacteval.ExactEvaluator(system)
         stop = timer()
         dest_dict = ex_eval.evaluate()
         ex_eval.save()
@@ -158,7 +176,7 @@ def main():
         logging.info("============================")
 
         start = timer()
-        ex_mgr=exacteval.ExactEvaluatorManager(Z2System2D, system_cfg)
+        ex_mgr=exacteval.ExactEvaluatorManager(system_type, system_cfg)
 
         minimizer = Minimizer(ex_mgr, use_exact=True)
         #Set the parameters of the minimizer according to the command line
@@ -210,9 +228,18 @@ if __name__ == "__main__":
         default=False,
         action="store_true",
         help="Use the standard EOM instead of a rebinning analysis")
-    parser.add_argument("--y", default=[0.5], type=float, nargs="+", help="initial y parameter(s)")
-    parser.add_argument("--z", default=[0.5], type=float, nargs="+", help="initial z parameter(s)")
-    parser.add_argument("--t", default=[0.0], type=float, nargs="+", help="initial t parameter(s): coupling to physical fermions")
+    parser.add_argument("--nlayer",
+                        default=1,
+                        type=int,
+                        help="Number of PEPS layers for the variational state")
+    parser.add_argument("--ncopy",
+                        default=1,
+                        type=int,
+                        help="Number of virtual fermions on the links")
+    parser.add_argument("--params",
+                        type=float,
+                        nargs="+",
+                        help="Parameters passed as a starting configuration (Order for one copy: [t1, t2,..., y1, y2,..., z1, z2...])")
     #Arguments for the minimizer
     parser.add_argument("--method", type=str,
                         default="custom", help="Minimization method")

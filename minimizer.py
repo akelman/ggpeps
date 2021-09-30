@@ -97,10 +97,11 @@ class Minimizer():
     def minimize_scipy(self):
         def energy_wrapper(parametervec):
             #Energy wrapper
+            #print("Entered energy wrapper")
             if self.last_paramvec is None or not np.allclose(self.last_paramvec,parametervec):
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = parametervec
-                self.evaluator.system_cfg.paramvec = np.reshape(parametervec,(-1,3))
+                self.evaluator.system_cfg.paramvec = np.reshape(parametervec,(-1,self.evaluator.system_cfg._nparams))
                 self.last_result = self.evaluator.simulate()
             if self.use_exact:
                 energy=self.last_result.obsdict["energy"]
@@ -111,11 +112,11 @@ class Minimizer():
 
         def gradient_wrapper(parametervec):
             #Jacobian wrapper
+            #print("Entered gradient wrapper")
             if self.last_paramvec is None or not np.allclose(self.last_paramvec,parametervec):
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = parametervec
-                # We know that we are dealing with 3 parameters (t,y,z)
-                self.evaluator.system_cfg.paramvec = np.reshape(parametervec,(-1,3))
+                self.evaluator.system_cfg.paramvec = np.reshape(parametervec,(-1,self.evaluator.system_cfg._nparams))
                 self.last_result = self.evaluator.simulate()
             if self.use_exact:
                 parametergrad=self.last_result.obsdict["energy_grad"]
@@ -127,10 +128,11 @@ class Minimizer():
         # Use the random initialization from the system.initialize as first guess.
         # We might want to change this later.
         paramvec = np.reshape(self.evaluator.system_cfg.paramvec,(-1))
-        min_result= minimize(energy_wrapper, paramvec,
-                                         method=self.method,
-                                         jac=gradient_wrapper,
-                                         callback=lambda x: print_callback(x, self))
+        min_result = minimize(energy_wrapper,
+                              paramvec,
+                              method=self.method,
+                              jac=gradient_wrapper,
+                              callback=lambda x: print_callback(x, self))
         parametervec = min_result.x
         energygrad = min_result.jac
         energy = min_result.fun
@@ -167,12 +169,12 @@ class Minimizer():
         if self.min_result is not None:
             sys_cfg=self.evaluator.system_cfg
 
-            fname_mc_summary = "summary_min_L_{:02d}-{:02d}_gel_{:.4f}_gm_{:.4f}.pkl".format(
+            fname_mc_summary = "summary_min_L_{:02d}-{:02d}_gel_{:.4f}_gm_{:.4f}_ncopy_{:02d}_nlayer_{:02d}.pkl".format(
                 sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g_el,
-                sys_cfg.g_gm)
-            fname_result_min = "result_min_L_{:02d}-{:02d}_gel_{:.4f}_gm_{:.4f}.pkl".format(
+                sys_cfg.g_gm, sys_cfg.ncopy, sys_cfg.nlayer)
+            fname_result_min = "result_min_L_{:02d}-{:02d}_gel_{:.4f}_gm_{:.4f}_ncopy_{:02d}_nlayer_{:02d}.pkl".format(
                 sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g_el,
-                sys_cfg.g_gm)
+                sys_cfg.g_gm, sys_cfg.ncopy, sys_cfg.nlayer)
 
             self.last_result.save_summary(fname_mc_summary)
             with open(fname_result_min,"wb") as outfile:

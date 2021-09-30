@@ -9,44 +9,19 @@ import logging
 import sympy
 from scipy.linalg import block_diag
 import utils
-from system_base import calculate_lognorm, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats
+from system_base import Z2System2DConfigBase, calculate_lognorm, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats
 
 
 ###################### Z2System2D ##########################
 
 
-class Z2System2DConfig:
-    def __init__(self, params, lattice, g2, g_gm, g_mag):
+class Z2System2DConfig(Z2System2DConfigBase):
+    _nparams = 3
+    ncopy = 1
+
+    def __init__(self, lattice, g2, g_gm, g_mag):
         #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
-        if not self.check_params(params):
-            logging.error("The set of parameters is not consistent.")
-            sys.exit(1)
-        self.paramvec = np.asarray(params)
-        self.nlayer = self.paramvec.shape[0]
-        self.lattice = lattice
-
-        #Parameters of the Hamiltonian
-        self.g2 = g2
-        self.g_el = g2/2
-        if g_mag is None:
-            self.g_mag = 1./(2*g2)
-        else:
-            self.g_mag = g_mag
-        self.g_gm = g_gm
-
-    def check_params(self,params):
-        """Check the consistency of the input parameters.
-        All arrays must have the same length.
-
-        Args:
-            params (list or np.ndarray): two dimensional array of input parameters
-        """
-        lenvec = np.asarray([len(x) for x in params])
-        #We know that we need 3 parameters for each layer
-        return np.all(lenvec == 3)
-
-    def nvarparams(self):
-        return 3*self.nlayer
+        super().__init__(lattice, g2, g_gm, g_mag)
 
 class Z2System2D:
     def __init__(self, cfg: Z2System2DConfig):

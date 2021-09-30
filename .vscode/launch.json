@@ -43,6 +43,14 @@
             "program": "${workspaceFolder}/manager.py",
             "args": ["exact","2"],
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Minexact L=2, cp=2, nl=1",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "args": [ "minexact","2","--g2","2.0", "--method", "BFGS", "--ncopy", "2"],
+            "console": "integratedTerminal"
         }
     ]
 }
