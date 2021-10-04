@@ -47,7 +47,7 @@ def args2logname(args):
     return fname
 
 def translate_parameters(system_cfg, params):
-    nparams = system_cfg.nvarparams()
+    nparams = system_cfg._nparams
     nlayer = system_cfg.nlayer
     if args.params=="rand" or args.params is None:
         dest = np.random.rand(nlayer, nparams)
@@ -103,10 +103,18 @@ def main():
 
     if args.ncopy == 1:
         system_type = Z2System2D
-        system_cfg = Z2System2DConfig(lattice, g2, g_gm, g_mag)
+        system_cfg = Z2System2DConfig(lattice,
+                                      g2,
+                                      g_gm,
+                                      g_mag,
+                                      nlayer=args.nlayer)
     elif args.ncopy == 2:
         system_type = Z2System2D2C
-        system_cfg = Z2System2D2CConfig(lattice, g2, g_gm, g_mag)
+        system_cfg = Z2System2D2CConfig(lattice,
+                                        g2,
+                                        g_gm,
+                                        g_mag,
+                                        nlayer=args.nlayer)
     else:
         logging.error("Not Implemented: Only 1 or two copies are possible")
         sys.exit(1)

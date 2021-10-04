@@ -17,9 +17,9 @@ class Z2System2D2CConfig(Z2System2DConfigBase):
     _nparams = 10
     ncopy = 2
 
-    def __init__(self, lattice, g2, g_gm, g_mag):
+    def __init__(self, lattice, g2, g_gm, g_mag, nlayer=1):
         #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
-        super().__init__(lattice, g2, g_gm, g_mag)
+        super().__init__(lattice, g2, g_gm, g_mag, nlayer)
 
 
 class Z2System2D2C:
