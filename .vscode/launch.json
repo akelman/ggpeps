@@ -45,12 +45,29 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Minexact L=2, cp=1, nl=1",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "args": [ "minexact","2","--g2","2.0", "--method", "BFGS", "--ncopy", "1"],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Minexact L=2, cp=2, nl=1",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "args": [ "minexact","2","--g2","2.0", "--method", "BFGS", "--ncopy", "2"],
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Minexact L=2, cp=2, nl=1, params",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "args":["minexact","2","--level","debug","--method","BFGS","--g2","2.2","--ncopy","2","--params","0.63005117","0.76455278","0.45734536","0.83226862","0.55244299","0.97926054","0.00445478","0.5159167","0.58325311","0.75802506"],
+            "console": "integratedTerminal"
         }
+
     ]
 }
