@@ -4,8 +4,6 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
-
         {
             "name": "Python: Current File",
             "type": "python",
@@ -25,7 +23,9 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/test.py",
-            "args": ["TestZ2SystemMethods.test_grad_el_energy_2_layer"],
+            "args": [
+                "TestZ2SystemMethods.test_grad_el_energy_2_layer"
+            ],
             "console": "integratedTerminal"
         },
         {
@@ -33,7 +33,16 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
-            "args": ["eval","2","--level","debug", "--warmup", "1000","--seed","42"],
+            "args": [
+                "eval",
+                "2",
+                "--level",
+                "debug",
+                "--warmup",
+                "1000",
+                "--seed",
+                "42"
+            ],
             "console": "integratedTerminal"
         },
         {
@@ -41,7 +50,10 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
-            "args": ["exact","2"],
+            "args": [
+                "exact",
+                "2"
+            ],
             "console": "integratedTerminal"
         },
         {
@@ -49,7 +61,16 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
-            "args": [ "minexact","2","--g2","2.0", "--method", "BFGS", "--ncopy", "1"],
+            "args": [
+                "minexact",
+                "2",
+                "--g2",
+                "2.0",
+                "--method",
+                "BFGS",
+                "--ncopy",
+                "1"
+            ],
             "console": "integratedTerminal"
         },
         {
@@ -57,7 +78,16 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
-            "args": [ "minexact","2","--g2","2.0", "--method", "BFGS", "--ncopy", "2"],
+            "args": [
+                "minexact",
+                "2",
+                "--g2",
+                "2.0",
+                "--method",
+                "BFGS",
+                "--ncopy",
+                "2"
+            ],
             "console": "integratedTerminal"
         },
         {
@@ -65,17 +95,49 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
-            "args": [ "minexact","2","--g2","2.0", "--method", "BFGS", "--ncopy", "2", "--nlayer", "2"],
+            "args": [
+                "minexact",
+                "2",
+                "--g2",
+                "2.0",
+                "--method",
+                "BFGS",
+                "--ncopy",
+                "2",
+                "--nlayer",
+                "2"
+            ],
             "console": "integratedTerminal"
         },
         {
-            "name": "Minexact L=2, cp=2, nl=1, params",
+            "name": "Minexact L=2, cp=2, nl=1, neg. el.energy",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
-            "args":["minexact","2","--level","debug","--method","BFGS","--g2","2.2","--ncopy","2","--params","0.63005117","0.76455278","0.45734536","0.83226862","0.55244299","0.97926054","0.00445478","0.5159167","0.58325311","0.75802506"],
+            "args": [
+                "minexact",
+                "2",
+                "--g2",
+                "2.0",
+                "--method",
+                "BFGS",
+                "--ncopy",
+                "2",
+                "--nlayer",
+                "1",
+                "--params",
+                "0",
+                "0",
+                " -1.32861719e-07",
+                " -2.05205254e+01",
+                "2.86415604e+01",
+                " -1.28094401e+01",
+                "4.33298334e-04",
+                "7.11586303e-01",
+                "7.32972863e-03",
+                "1.21453816e-01"
+            ],
             "console": "integratedTerminal"
         }
-
     ]
 }

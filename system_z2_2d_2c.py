@@ -727,7 +727,7 @@ class Z2System2D2C:
                 # The matrix elements yield only the real part of <P>
                 el_energy_c1 = 0.25 * (covmat_out_virt[4, 5] + covmat_out_virt[2, 3])
                 el_energy_c2 =  0.25 * (covmat_out_virt[0, 1] + covmat_out_virt[6, 7])
-                el_energy_layer = el_energy_c1 * el_energy_c2 * np.exp(norm_mod - norm_default)
+                el_energy_layer = np.exp(np.log(el_energy_c1) + np.log(el_energy_c2) + norm_mod - norm_default)
                 dest.append(el_energy_layer)
 
                 ###################### Calculation of the derivative ########################

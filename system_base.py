@@ -75,7 +75,7 @@ def calculate_lognormvec(gamma_in_sys: np.ndarray,
         mat_d = mat_d_vec[ind]
         if all_factors:
             sign, logval = np.linalg.slogdet(
-                (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d) / 2)
+                (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d))-mat_d.shape[0]*np.log(2)
         else:
             # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
             sign, logval = np.linalg.slogdet(
