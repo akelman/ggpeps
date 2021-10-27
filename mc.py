@@ -189,24 +189,23 @@ class MonteCarloEstimator:
 
     def update_all_sites_single_site(self):
         """Update for the MC simulation.
-        This updates iterates over all lattice sites.
+        This updates iterates over all lattice sites and updates every site once.
         The update is local. 
         The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
         nlinks = lattice.nlinks
-        for _ in range(nlinks):
-            link_ind = np.random.randint(0, nlinks)
+        for i in range(nlinks):
             # Uniformly pick a gauge to replace
             theta = self.system.gaugemgr.get_random_gauge_value()
             # Store the old values
             weight_old = self.system.weight
-            weight_new = self.system.calculate_weight_attempt(link_ind, theta)
+            weight_new = self.system.calculate_weight_attempt(i, theta)
             if np.exp(weight_new - weight_old) > np.random.rand():
                 # Accept
                 self.obsdict["acceptance_prob"].append(1)
-                self.system.update_gauge_ind(link_ind, theta)
+                self.system.update_gauge_ind(i, theta)
             else:
                 # Reject
                 self.obsdict["acceptance_prob"].append(0)
