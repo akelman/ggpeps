@@ -436,7 +436,7 @@ class Z2System2D:
         rotmat = self.generate_rotmat(theta)
         gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
-        return self.calculate_lognorm_inc(ind_mat, update, all_factors)
+        return self.update_lognorm_inc(ind_mat, update, all_factors)
 
 
     def update_gauge_coord(self,coord,dir,theta):
@@ -448,14 +448,31 @@ class Z2System2D:
     def calculate_lognorm(self,all_factors=False):
         return calculate_lognorm(self.gamma_in_sys, self.mat_d_vec, all_factors=all_factors)
 
-    def calculate_lognorm_inc(self, offset, update, all_factors=False):
+    def calculate_lognormvec_inc(self, all_factors=False):
+        dest=[]
+        for ind in range(self.cfg.nlayer):
+            detval = self.incdet_vec[ind].det()
+            if all_factors:
+                detval-=self.gamma_in_sys.shape[0]*np.log(2)
+                #TODO: This could be cached since mat_d_vec is constant
+                detval+=np.linalg.slogdet(self.mat_d_vec[ind])[1]
+            # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
+            # The addition of the cumval is the multiplication of the indpendent PEPS
+            dest.append(0.5 * detval)
+        return dest
+
+    def calculate_lognorm_inc(self, all_factors=False):
+        normvec = self.calculate_lognormvec_inc(all_factors=all_factors)
+        return np.sum(normvec)
+
+    def update_lognorm_inc(self, offset, update, all_factors=False):
         cumval=0
         for ind in range(self.cfg.nlayer):
             detval = self.incdet_vec[ind].update_index(self.wi_gamma_in_vec[ind].inv(), update,
                                             offset, offset, store=False)
             if all_factors:
                 detval-=self.gamma_in_sys.shape[0]*np.log(2)
-                detval+=np.linalg.slogdet(self.mat_d_vec[0])[1]
+                detval+=np.linalg.slogdet(self.mat_d_vec[ind])[1]
             # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
             # The addition of the cumval is the multiplication of the indpendent PEPS
             cumval += 0.5 * detval
@@ -510,6 +527,8 @@ class Z2System2D:
         # Extract only the part of the virtual-virtual correlations
         deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:]
         mat_d_inv=self.mat_d_inv_vec[layerind]
+
+        #TODO: We might save one matrix-matrix multiplication here
         return compute_grad_over_norm(self.gamma_in_sys, diff, deriv_d, mat_d_inv)
 
 
@@ -565,7 +584,6 @@ class Z2System2D:
     def _compute_el_energy_op_vec(self, use_trans_inv=True):
         if use_trans_inv:
             gamma_in_sys = self.gamma_in_sys
-            #utils.show_matrix(gamma_in_sys)
             normvec_default = calculate_lognormvec(self.gamma_in_sys,
                                                 self.mat_d_vec,all_factors=True)
             # This is the usual norm without any modifications
@@ -637,8 +655,8 @@ class Z2System2D:
             diff_d_inv_gamma_inv = np.linalg.inv(mat_d_inv - gamma_in_sys_tilde)
 
             # For the modified norm, we still have to take into account the other contributions from the unmodified parts
-            norm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d],all_factors=True)
-            norm_mod += np.sum(utils.select_except(normvec_default,layerind))
+            lognorm_mod = calculate_lognorm(gamma_in_sys_tilde, [mat_d],all_factors=True)
+            lognorm_mod += np.sum(utils.select_except(normvec_default,layerind))
             for symbol in self.symbolvec:
                 deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
                 d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
@@ -652,7 +670,7 @@ class Z2System2D:
                 # Summand with derivative of the covariance matrix
                 d_el_energy = 0.25 * (
                     covmat_out_virt[0, 1] +
-                    covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
+                    covmat_out_virt[2, 3]) * np.exp(lognorm_mod - norm_default)
                 # Summand with derivative of norms
                 trace_def = self.compute_grad_over_norm(symbol, layerind)
                 trace_mod = compute_grad_over_norm(gamma_in_sys_tilde, diff_d_inv_gamma_inv, d_mat_d, mat_d_inv)
@@ -673,10 +691,9 @@ class Z2System2D:
     def _compute_el_energy_op_vec_and_grad(self, use_trans_inv=True):
         if use_trans_inv:
             gamma_in_sys = self.gamma_in_sys
-            normvec_default = calculate_lognormvec(self.gamma_in_sys,
-                                                   self.mat_d_vec, all_factors=True)
+            lognormvec_default_inc = self.calculate_lognormvec_inc(all_factors=True)
             # This is the usual norm without any modifications
-            norm_default = np.sum(normvec_default)
+            lognorm_default = np.sum(lognormvec_default_inc)
             # Number of fermions = # of sites
             # Since we have 1 copy, we get 4 virtual fermions per site
             single_site_offset = 4
@@ -709,9 +726,9 @@ class Z2System2D:
                 # For the modified norm, we still have to take into account the other contributions from the unmodified parts
                 norm_mod = calculate_lognorm(
                     gamma_in_sys_tilde, [mat_d], all_factors=True)
-                norm_mod += np.sum(utils.select_except(normvec_default,layerind))
+                norm_mod += np.sum(utils.select_except(lognormvec_default_inc,layerind))
                 # The matrix elements yield only the real part of <P>
-                el_energy_layer = 0.25*( covmat_out_virt[0, 1] + covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
+                el_energy_layer = 0.25*( covmat_out_virt[0, 1] + covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                 dest.append(el_energy_layer)
 
                 ###################### Calculation of the derivative ########################
@@ -726,7 +743,7 @@ class Z2System2D:
                     d_covmat_out_virt = d_gamma_out[-single_site_offset:,
                                                 -single_site_offset:]
                     # Summand with derivative of the covariance matrix
-                    d_el_energy = 0.25 * ( d_covmat_out_virt[0, 1] + d_covmat_out_virt[2, 3]) * np.exp(norm_mod - norm_default)
+                    d_el_energy = 0.25 * ( d_covmat_out_virt[0, 1] + d_covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                     # Summand with derivative of norms
                     trace_def = self.compute_grad_over_norm(symbol, layerind)
                     trace_mod = compute_grad_over_norm(gamma_in_sys_tilde, diff_d_inv_gamma_inv, d_mat_d, mat_d_inv)
