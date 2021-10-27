@@ -663,7 +663,6 @@ class Z2System2D2C:
                 covmat_out_virt = gamma_out[-single_site_offset:,
                                             -single_site_offset:]
                 # Summand with derivative of the covariance matrix
-                #FIXME: We need to respect the product rule here!
                 d_el_energy = 0.25 * (covmat_out_virt[4, 5] + covmat_out_virt[2, 3]) * 0.25 * (covmat_out_virt[0, 1] + covmat_out_virt[6, 7])* np.exp(norm_mod - norm_default)
                 # Summand with derivative of norms
                 trace_def = self.compute_grad_over_norm(symbol, layerind)
@@ -725,9 +724,11 @@ class Z2System2D2C:
                     gamma_in_sys_tilde, [mat_d], all_factors=True)
                 norm_mod += np.sum(utils.select_except(normvec_default,layerind))
                 # The matrix elements yield only the real part of <P>
+                # TODO: Check whether negative energies are okay here.
+                # If we use the log formulation, we can calculate the log of single terms.
                 el_energy_c1 = 0.25 * (covmat_out_virt[4, 5] + covmat_out_virt[2, 3])
                 el_energy_c2 =  0.25 * (covmat_out_virt[0, 1] + covmat_out_virt[6, 7])
-                el_energy_layer = np.exp(np.log(el_energy_c1) + np.log(el_energy_c2) + norm_mod - norm_default)
+                el_energy_layer = el_energy_c1 * el_energy_c2 * np.exp(norm_mod - norm_default)
                 dest.append(el_energy_layer)
 
                 ###################### Calculation of the derivative ########################
