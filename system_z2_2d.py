@@ -9,7 +9,7 @@ import logging
 import sympy
 from scipy.linalg import block_diag
 import utils
-from system_base import Z2System2DConfigBase, calculate_lognorm, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats
+from system_base import Z2System2DConfigBase, calculate_lognorm, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats, calculate_lognormvec_inc,calculate_lognorm_inc
 
 
 ###################### Z2System2D ##########################
@@ -37,12 +37,14 @@ class Z2System2D:
         self._mat_a_vec = None
         self._mat_b_vec = None
         self._mat_d_vec = None
+        self._det_mat_d_vec = None
         self._mat_d_inv_vec = None
 
         # Parameter dependent quantities for the electric energy
         self._mat_a_mod_vec = None
         self._mat_b_mod_vec = None
         self._mat_d_mod_vec = None
+        self._det_mat_d_mod_vec = None
         self._mat_d_mod_inv_vec = None
 
         # Management of the gaugefields
@@ -338,7 +340,6 @@ class Z2System2D:
 
     def _exract_partial_covmatvec(self, offset):
         #We are assuming one physical mode per site
-        nsites = self.cfg.lattice.size
         mat_a_vec = []
         mat_b_vec = []
         mat_d_vec = []
@@ -390,6 +391,14 @@ class Z2System2D:
         return self._mat_d_vec
 
     @property
+    def det_mat_d_vec (self):
+        if self._det_mat_d_vec is None:
+            self._det_mat_d_vec = [
+                np.linalg.slogdet(mat_d)[1] for mat_d in self.mat_d_vec
+            ]
+        return self._det_mat_d_vec
+
+    @property
     def mat_d_inv_vec(self):
         if self._mat_d_inv_vec is None:
             self._mat_d_inv_vec = [
@@ -438,6 +447,14 @@ class Z2System2D:
             offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._exract_partial_covmatvec(offset)
         return self._mat_d_mod_vec
+
+    @property
+    def det_mat_d_mod_vec (self):
+        if self._det_mat_d_mod_vec is None:
+            self._det_mat_d_mod_vec = [
+                np.linalg.slogdet(mat_d)[1] for mat_d in self.mat_d_mod_vec
+            ]
+        return self._det_mat_d_mod_vec
 
     @property
     def mat_d_mod_inv_vec(self):
@@ -533,13 +550,18 @@ class Z2System2D:
             incdet.update_index(mat_inv, update, ind_mat, ind_mat)
             for mat_inv, incdet in zip(mat_inv_vec, self.incdet_vec)
         ]
+        # Update the modified determinant
+        offset = 2* self.cfg.nvirtmodes_link
+        if ind_mat - offset >=0:
+            for wi, incdet in zip(self.wi_gamma_in_mod_vec,self.incdet_mod_vec):
+                mat_inv = wi.inv()
+                incdet.update_index(mat_inv, update, ind_mat-offset, ind_mat-offset)
         # Update the weight
         self.weight = 0.5 * np.sum(detval_vec)
         # Update the matrix inversion
         [ wi_gamma_in.update_index(update, ind_mat, ind_mat) for wi_gamma_in in self.wi_gamma_in_vec ]
         [ wi_gamma_out.update_index(update, ind_mat, ind_mat) for wi_gamma_out in self.wi_gamma_out_vec ]
 
-        offset = 2* self.cfg.nvirtmodes_link
         if ind_mat - offset >= 0:
             # We do not update the matrix if the first link is updated (it is just not there)
             [ wi_gamma_in_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_in_mod in self.wi_gamma_in_mod_vec ]
@@ -573,17 +595,10 @@ class Z2System2D:
         return calculate_lognorm(self.gamma_in_sys, self.mat_d_vec, all_factors=all_factors)
 
     def calculate_lognormvec_inc(self, all_factors=False):
-        dest=[]
-        for ind in range(self.cfg.nlayer):
-            detval = self.incdet_vec[ind].det()
-            if all_factors:
-                detval-=self.gamma_in_sys.shape[0]*np.log(2)
-                #TODO: This could be cached since mat_d_vec is constant
-                detval+=np.linalg.slogdet(self.mat_d_vec[ind])[1]
-            # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
-            # The addition of the cumval is the multiplication of the indpendent PEPS
-            dest.append(0.5 * detval)
-        return dest
+        return calculate_lognormvec_inc(self.incdet_vec,
+                                        self.det_mat_d_vec,
+                                        self.gamma_in_sys.shape[0],
+                                        all_factors=all_factors)
 
     def calculate_lognorm_inc(self, all_factors=False):
         normvec = self.calculate_lognormvec_inc(all_factors=all_factors)
@@ -835,20 +850,21 @@ class Z2System2D:
                 mat_a = self.mat_a_mod_vec[layerind]
                 mat_b = self.mat_b_mod_vec[layerind]
                 mat_d = self.mat_d_mod_vec[layerind]
-                #diff_d_gamma_inv = np.linalg.inv(mat_d - gamma_in_sys_mod)
                 diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
-                #diff_d_inv_gamma_inv = np.linalg.inv(self.mat_d_mod_inv_vec[layerind] - gamma_in_sys_mod)
                 diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
 
                 ###################### Calculation of <P> ########################
-                covmat_out = mat_a + \
-                    mat_b @ np.linalg.inv(mat_d -
-                                        gamma_in_sys_mod) @ np.transpose(mat_b)
+                covmat_out = mat_a + mat_b @ self.wi_gamma_out_mod_vec[layerind].inv() @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_link_offset:, -
                                             single_link_offset:]
                 # For the modified norm, we still have to take into account the other contributions from the unmodified parts
-                norm_mod = calculate_lognorm(
-                    gamma_in_sys_mod, [mat_d], all_factors=True)
+                norm_mod = calculate_lognorm_inc(
+                    [self.incdet_mod_vec[layerind]],
+                    [self.det_mat_d_mod_vec[layerind]],
+                    gamma_in_sys_mod.shape[0],
+                    all_factors=True)
+                #norm_mod = calculate_lognorm(gamma_in_sys_mod, [mat_d],
+                                             #all_factors=True)
                 norm_mod += np.sum(utils.select_except(lognormvec_default_inc,layerind))
                 # The matrix elements yield only the real part of <P>
                 el_energy_layer = 0.25*( covmat_out_virt[0, 1] + covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)

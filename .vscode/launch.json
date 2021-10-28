@@ -38,10 +38,12 @@
                 "2",
                 "--level",
                 "debug",
-                "--warmup",
+                "--warmup_steps",
+                "1000",
+                "--meas_steps",
                 "1000",
                 "--seed",
-                "42"
+                "15"
             ],
             "console": "integratedTerminal"
         },

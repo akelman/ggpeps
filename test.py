@@ -680,8 +680,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         # This update is a nullop since we initialize the gauge-field with 0
         zeroarr = np.zeros((1, 1))
         #The factor of 2 compensates for the
-        logdet_inc = 2*self.system_z2_2_2.calculate_lognorm_inc(
-            0, zeroarr, all_factors=False)
+        logdet_inc = 2*self.system_z2_2_2.update_lognorm_inc(0, zeroarr, all_factors=False)
         # This is equivalent to
         #logdet_inc = self.system_z2_2_2.incdet.det()
         diff = self.system_z2_2_2.mat_d_inv_vec[0] - self.system_z2_2_2.gamma_in_sys
@@ -693,7 +692,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         # Test that the incremental update is equivalent to the re-calculation of the norm
         # This update is a nullop since we initialize the gauge-field with 0
         zeroarr = np.zeros((1, 1))
-        weight_inc = self.system_z2_2_2.calculate_lognorm_inc(0,
+        weight_inc = self.system_z2_2_2.update_lognorm_inc(0,
                                                               zeroarr,
                                                               all_factors=True)
         weight_recalc = self.system_z2_2_2.calculate_lognorm(all_factors=True)

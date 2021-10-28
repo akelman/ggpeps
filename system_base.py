@@ -110,3 +110,24 @@ def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray,
     # Extract only the part of the virtual-virtual correlations
     dest = -0.5 * np.trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
     return dest
+
+
+def calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=False):
+    dest=[]
+    for ind in range(len(incdet_vec)):
+        detval = incdet_vec[ind].det()
+        if all_factors:
+            detval -= n * np.log(2)
+            detval += det_mat_d_vec[ind]
+        # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
+        # The addition of the cumval is the multiplication of the indpendent PEPS
+        dest.append(0.5 * detval)
+    return dest
+
+
+def calculate_lognorm_inc(incdet_vec, det_mat_d_vec, n, all_factors=False):
+    lognormvec = calculate_lognormvec_inc(incdet_vec,
+                                          det_mat_d_vec,
+                                          n,
+                                          all_factors=all_factors)
+    return np.sum(lognormvec)

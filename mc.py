@@ -1,7 +1,6 @@
 import numpy as np
 from datetime import datetime
 import time
-import matplotlib.pyplot as plt
 import logging
 import pickle
 import pandas as pd
