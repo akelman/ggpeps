@@ -849,7 +849,6 @@ class Z2System2D:
                 # The offset is changed such that one virtual link is attributed to the physical part
                 mat_a = self.mat_a_mod_vec[layerind]
                 mat_b = self.mat_b_mod_vec[layerind]
-                mat_d = self.mat_d_mod_vec[layerind]
                 diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
                 diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
 

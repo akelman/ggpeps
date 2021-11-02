@@ -743,6 +743,7 @@ class Z2System2D2C:
                     d_covmat_out_virt = d_gamma_out[-single_site_offset:,
                                                 -single_site_offset:]
                     # Summand with derivative of the covariance matrix
+                    # The prefactor of 0.25 is correct since el_energy_ci already includes a factor of 0.25
                     d_el_energy = ( 0.25 * (d_covmat_out_virt[4, 5] + d_covmat_out_virt[2, 3]) * el_energy_c2 \
                         + 0.25 * (d_covmat_out_virt[0, 1] + d_covmat_out_virt[6, 7]) * el_energy_c1) * np.exp(norm_mod - norm_default)
                     # Summand with derivative of norms
