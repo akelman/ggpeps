@@ -433,6 +433,8 @@ def show_matrix(mat, title=None):
 def show_matrixvec(matvec, title=None, log=False):
     """Display a matrix and interrupt the program. """
     f, axvec = plt.subplots(1, len(matvec))
+    if len(matvec)==1:
+        axvec=[axvec]
     for ind, mat in enumerate(matvec):
         if log:
             minval = np.min(mat)
