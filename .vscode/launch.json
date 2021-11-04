@@ -112,17 +112,15 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Minexact L=2, cp=2, nl=1, neg. el.energy",
+            "name": "Exact L=2, cp=2, nl=1, neg. el.energy",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "args": [
-                "minexact",
+                "exact",
                 "2",
                 "--g2",
                 "2.0",
-                "--method",
-                "BFGS",
                 "--ncopy",
                 "2",
                 "--nlayer",
@@ -130,14 +128,14 @@
                 "--params",
                 "0",
                 "0",
-                " -1.32861719e-07",
-                " -2.05205254e+01",
-                "2.86415604e+01",
-                " -1.28094401e+01",
-                "4.33298334e-04",
-                "7.11586303e-01",
-                "7.32972863e-03",
-                "1.21453816e-01"
+                "0",
+                "10",
+                "10",
+                "10",
+                "0",
+                "0.7",
+                "0",
+                "0"
             ],
             "console": "integratedTerminal"
         }
