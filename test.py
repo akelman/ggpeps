@@ -208,6 +208,7 @@ class TestPermutationBuilder2D(unittest.TestCase):
         permbuilder_2x3 = lattice.PermutationBuilderGMS2D2C(
             lattice.Lattice2D(2, 3), 1)
         permutation = permbuilder_2x3.perm()
+        #utils.show_matrix(permutation)
         self.assertTrue(utils.is_permutation(permutation))
 
     def test_2copies_2x2(self):
@@ -985,6 +986,7 @@ class TestU1MultilayerSystemMethods(unittest.TestCase):
 #        self.assertTrue(np.allclose(gamma_in@gamma_in,-np.eye(m)))
 #        self.assertTrue(np.allclose(gamma_in@np.transpose(gamma_in),np.eye(m)))
 
+@skip("This class of tests takes too long")
 class TestMinimizerZ2(unittest.TestCase):
 
     def test_derivative_mag_energy_exact_1_layer(self):
@@ -1590,15 +1592,6 @@ class TestZ2C2SystemMethods(unittest.TestCase):
 
                 self.assertAlmostEqual(deriv_ana, deriv_num, places=5)
 
-    def test_combined_vs_single_el_energy_1_layer(self):
-        paramvec = np.random.rand(1,10)
-        lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None)
-        system_cfg.paramvec = paramvec
-        system_z2_2_2 = system.Z2System2D2C(system_cfg)
-        val, _ = system_z2_2_2._compute_el_energy_op_vec_and_grad()
-        val_single = system_z2_2_2._compute_el_energy_op_vec()
-        self.assertTrue(np.allclose(val,val_single))
 
     def test_grad_el_energy_1_layer(self):
         #This is comparison of the analytic derivative against the numeric derivative

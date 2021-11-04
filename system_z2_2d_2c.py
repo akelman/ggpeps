@@ -20,7 +20,11 @@ class Z2System2D2CConfig(Z2System2DConfigBase):
     def __init__(self, lattice, g2, g_gm, g_mag, nlayer=1):
         #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         super().__init__(lattice, g2, g_gm, g_mag, nlayer)
-
+    
+    def print_parametervec(self,symbolvec):
+        for ind in range(self.nlayer):
+            for symb,val in zip(symbolvec, self._parametervec[ind]):
+                print(str(symb),val)
 
 class Z2System2D2C:
     def __init__(self, cfg: Z2System2D2CConfig):
@@ -575,114 +579,6 @@ class Z2System2D2C:
         return self._el_energy_op_grad_vec
 
 
-    def _compute_el_energy_op_vec(self, use_trans_inv=True):
-        if use_trans_inv:
-            gamma_in_sys = self.gamma_in_sys
-            normvec_default = calculate_lognormvec(self.gamma_in_sys,
-                                                   self.mat_d_vec, all_factors=True)
-            # This is the usual norm without any modifications
-            norm_default = np.sum(normvec_default)
-            # Number of fermions = # of sites
-            # Since we have 2 copies, we get 8 virtual fermions per site
-            single_site_offset = 8
-            offset = 2 * self.cfg.lattice.size + single_site_offset
-            # We have to cut one link from gamma_in_sys as well
-            gamma_in_sys_tilde = gamma_in_sys[single_site_offset:,
-                                            single_site_offset:]
-            el_energy_bare=[]
-            for layerind in range(self.cfg.nlayer):
-                #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
-                gamma_maj_sys = self.gamma_maj_sys_vec[layerind]
-                mat_a, mat_b, mat_d = extract_partial_covmats(gamma_maj_sys, offset)
-                covmat_out = mat_a + \
-                    mat_b @ np.linalg.inv(mat_d -
-                                        gamma_in_sys_tilde) @ np.transpose(mat_b)
-                covmat_out_virt = covmat_out[-single_site_offset:, -
-                                            single_site_offset:]
-                # For the modified norm, we still have to take into account the other contributions from the unmodified parts
-                norm_mod = calculate_lognorm(
-                    gamma_in_sys_tilde, [mat_d], all_factors=True)
-                norm_mod += np.sum(utils.select_except(normvec_default,layerind))
-                # The matrix elements yield only the real part of <P>
-                el_energy_layer = 0.25 * (covmat_out_virt[4, 5] + covmat_out_virt[2, 3]) * 0.25 * (
-                    covmat_out_virt[0, 1] + covmat_out_virt[6, 7]) * np.exp(norm_mod - norm_default)
-                el_energy_bare.append(el_energy_layer)
-        else:
-            # Evaluate every link of the system
-            logging.error("compute_el_energy: not implemented yet")
-            el_energy_bare = [None]*self.cfg.nlayer
-        return np.asarray(el_energy_bare)
-
-
-    def _compute_el_energy_op_grad_vec(self):
-        """The electric energy depends explicitly on the parameters of the Ansatz. 
-        Thus, we have to build the explicit derivative of the electric energy with respect to the parameters.
-
-        Args:
-            var (str): Name of the variable (t,y,z)
-
-        Returns:
-            list: Matrix of the gradients of the electric energy wrt [[t1,y1,z1],[t2,y2,z2],...]
-        """
-        #FIXME: Adapt for 2 copies. There are contributions of the second copy in the covariance matrix
-        # Since we have two copies, there are 8 virtual fermions per site
-        single_site_offset = 8
-        offset = 2 * self.cfg.lattice.size + single_site_offset
-        nlinks = self.cfg.lattice.nlinks
-        dest = []
-        # We have to cut one link from gamma_in_sys as well
-        gamma_in_sys_tilde = self.gamma_in_sys[single_site_offset:,
-                                               single_site_offset:]
-        normvec_default = calculate_lognormvec(self.gamma_in_sys,
-                                               self.mat_d_vec, all_factors=True)
-        # This is the usual norm without any modifications
-        norm_default = np.sum(normvec_default)
-        for layerind in range(self.cfg.nlayer):
-            layer_derivative=[]
-            # The matrices must be re-extracted here since we slice at different positions than usually
-            # The offset is changed such that one virtual link is attributed to the physical part
-            _, mat_b, mat_d = extract_partial_covmats(self.gamma_maj_sys_vec[layerind], offset)
-            #TODO: We could also track this inverse
-            diff_d_gamma_inv = np.linalg.inv(mat_d - gamma_in_sys_tilde)
-            #TODO: This inverse can be calculated once and stored afterwards
-            mat_d_inv=np.linalg.inv(mat_d)
-            diff_d_inv_gamma_inv = np.linalg.inv(mat_d_inv - gamma_in_sys_tilde)
-
-            # For the modified norm, we still have to take into account the other contributions from the unmodified parts
-            norm_mod = calculate_lognorm(
-                gamma_in_sys_tilde, [mat_d], all_factors=True)
-            norm_mod += np.sum(utils.select_except(normvec_default,layerind))
-            for symbol in self.symbolvec:
-                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
-                d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
-                gamma_out = d_mat_a + \
-                        d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
-                        + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
-                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
-                # The virtual mode is the last link on the bottom right of the covariance matrix
-                covmat_out_virt = gamma_out[-single_site_offset:,
-                                            -single_site_offset:]
-                # Summand with derivative of the covariance matrix
-                d_el_energy = 0.25 * (covmat_out_virt[4, 5] + covmat_out_virt[2, 3]) * 0.25 * (covmat_out_virt[0, 1] + covmat_out_virt[6, 7])* np.exp(norm_mod - norm_default)
-                # Summand with derivative of norms
-                trace_def = self.compute_grad_over_norm(symbol, layerind)
-                trace_mod = compute_grad_over_norm(gamma_in_sys_tilde, diff_d_inv_gamma_inv, d_mat_d, mat_d_inv)
-                # In contrast to the formula, it seems like we have an additional factor of -2 in the equation.
-                # This is due to the definition of compute_grad_over_norm with a factor of -1/2
-                d_el_energy += self.el_energy_op_vec[layerind] * (trace_mod - trace_def)
-                # Scale to system size
-                d_el_energy *= nlinks
-                layer_derivative.append(d_el_energy)
-            dest.append(layer_derivative)
-        # We have to weight the different layers with the electric energy operator expectation of the other layers.
-        # They act as a prefactor in the derivative
-        dest = np.asarray(dest)
-        if self.cfg.nlayer > 1:
-            for i in range(self.cfg.nlayer):
-                prod_other_layers = utils.multiply_except(self.el_energy_op_vec, i)
-                dest[i] *= prod_other_layers
-        return dest
-
     def _compute_el_energy_op_vec_and_grad(self, use_trans_inv=True):
         if use_trans_inv:
             gamma_in_sys = self.gamma_in_sys
@@ -724,11 +620,11 @@ class Z2System2D2C:
                     gamma_in_sys_tilde, [mat_d], all_factors=True)
                 norm_mod += np.sum(utils.select_except(normvec_default,layerind))
                 # The matrix elements yield only the real part of <P>
-                # TODO: Check whether negative energies are okay here.
                 # If we use the log formulation, we can calculate the log of single terms.
-                el_energy_c1 = 0.25 * (covmat_out_virt[4, 5] + covmat_out_virt[2, 3])
-                el_energy_c2 =  0.25 * (covmat_out_virt[0, 1] + covmat_out_virt[6, 7])
-                el_energy_layer = el_energy_c1 * el_energy_c2 * np.exp(norm_mod - norm_default)
+                #utils.show_matrix(covmat_out_virt)
+                el_energy_c1 = 0.25 * (covmat_out_virt[4, 5] + covmat_out_virt[2, 3] -1.j*covmat_out_virt[2,4] + 1.j*covmat_out_virt[3,5])
+                el_energy_c2 =  0.25 * (covmat_out_virt[0, 1] + covmat_out_virt[6, 7] +1.j*covmat_out_virt[0,6] - 1.j*covmat_out_virt[1,7])
+                el_energy_layer = np.real(el_energy_c1 * el_energy_c2) * np.exp(norm_mod - norm_default)
                 dest.append(el_energy_layer)
 
                 ###################### Calculation of the derivative ########################
@@ -744,15 +640,15 @@ class Z2System2D2C:
                                                 -single_site_offset:]
                     # Summand with derivative of the covariance matrix
                     # The prefactor of 0.25 is correct since el_energy_ci already includes a factor of 0.25
-                    d_el_energy = ( 0.25 * (d_covmat_out_virt[4, 5] + d_covmat_out_virt[2, 3]) * el_energy_c2 \
-                        + 0.25 * (d_covmat_out_virt[0, 1] + d_covmat_out_virt[6, 7]) * el_energy_c1) * np.exp(norm_mod - norm_default)
+                    d_el_energy = (0.25 * (d_covmat_out_virt[4, 5] + d_covmat_out_virt[2, 3] - 1.j*d_covmat_out_virt[2, 4] + 1.j*d_covmat_out_virt[3, 5]) * el_energy_c2
+                                   + 0.25 * (d_covmat_out_virt[0, 1] + d_covmat_out_virt[6, 7] + 1.j*d_covmat_out_virt[0, 6] - 1.j*d_covmat_out_virt[1, 7]) * el_energy_c1) * np.exp(norm_mod - norm_default)
                     # Summand with derivative of norms
                     trace_def = self.compute_grad_over_norm(symbol, layerind)
                     trace_mod = compute_grad_over_norm(gamma_in_sys_tilde, diff_d_inv_gamma_inv, d_mat_d, mat_d_inv)
                     d_el_energy += dest[layerind] * (trace_mod - trace_def)
                     # Scale to system size
                     d_el_energy *= nlinks
-                    layer_derivative.append(d_el_energy)
+                    layer_derivative.append(np.real(d_el_energy))
                 dest_grad.append(layer_derivative)
             # We have to weight the different layers with the electric energy operator expectation of the other layers.
             # They act as a prefactor in the derivative
