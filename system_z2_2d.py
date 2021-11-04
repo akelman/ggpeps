@@ -866,6 +866,7 @@ class Z2System2D:
                                              #all_factors=True)
                 norm_mod += np.sum(utils.select_except(lognormvec_default_inc,layerind))
                 # The matrix elements yield only the real part of <P>
+                #el_energy_layer = 0.25*( covmat_out_virt[0, 1] + covmat_out_virt[2, 3] + 1.j*covmat_out_virt[0,2] - 1.j*covmat_out_virt[0,3]) * np.exp(norm_mod - lognorm_default)
                 el_energy_layer = 0.25*( covmat_out_virt[0, 1] + covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                 dest.append(el_energy_layer)
 
