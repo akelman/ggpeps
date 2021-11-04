@@ -1,0 +1,10 @@
+#!/bin/bash
+set -eu
+
+for x in $@
+do
+	cd $x
+	echo "Starting $x"
+	sbatch slurmjob
+	cd ..
+done

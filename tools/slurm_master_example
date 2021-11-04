@@ -1,0 +1,43 @@
+#!/bin/bash -l
+# Standard output and error:
+#SBATCH -o ./tjob.out.%j
+#SBATCH -e ./tjob.err.%j
+# Initial working directory:
+#SBATCH -D ./
+# Job Name:
+#SBATCH -J {jobname}
+# Queue (Partition):
+#SBATCH --partition=s.168h
+# Number of nodes and MPI tasks per node:
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task={ncpu}
+#
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=julian.bender@mpq.mpg.de
+#
+# Wall clock limit:
+#SBATCH --time={time}
+
+#Load some modules
+#module purge
+
+function find_port(){
+  CHECK="do while"
+
+  while [[ ! -z $CHECK ]]; do
+      PORT=$(( ( RANDOM % 60000 )  + 1025 ))
+      CHECK=$(netstat -ap 2>&1| grep $PORT)
+  done
+  echo $PORT
+}
+
+port="$(find_port)"
+echo "Unused port $port"
+
+# Run the program: 
+srun {command} {coupling} {mass} {chempot}
+if [ -d /tmp/ray ]
+then
+	rm -rf /tmp/ray
+fi
