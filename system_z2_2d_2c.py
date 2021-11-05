@@ -30,17 +30,17 @@ class Z2System2D2CConfig(Z2System2DConfigBase):
                 print(str(symb),val)
 
 class Z2System2D2C(Z2System2DBase):
+    """ 2 copy version of the Z2 system GGPEPS ansatz
+
+    Some general notes about conventions:
+
+    Order of the paramvec: [t1,y1,z1,t2,y2,z2,a,b,c,d]
+    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
+    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
+    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
+    """
     def __init__(self, cfg: Z2System2D2CConfig):
         super().__init__(cfg)
-        # Parameter dependent quantities
-        # Order of the paramvec: [t1,y1,z1,t2,y2,z2,a,b,c,d]
-        self._tmat_vec = None # Mode order: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
-        self._gamma_dirac_vec = None # Mode order: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
-        self._gamma_maj_vec = None # Mode order: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
-        self._gamma_maj_sys_vec = None
-
-        # Weight
-        self._weight = None
 
 
     @property

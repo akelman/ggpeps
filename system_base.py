@@ -144,11 +144,12 @@ class Z2System2DBase(ABC):
 
     def __init__(self, cfg: Z2System2DConfigBase):
         self.cfg = cfg
-        # Observables
-        self._energy = None
-        self._el_energy_op = None
-        self._el_energy_op_vec = None
-        self._mag_energy_op = None
+
+        # Parameter based matrices
+        self._tmat_vec = None
+        self._gamma_dirac_vec = None
+        self._gamma_maj_vec = None
+        self._gamma_maj_sys_vec = None
 
         #Partial covariance matrices 
         self._mat_a_vec = None
@@ -176,6 +177,12 @@ class Z2System2DBase(ABC):
         # Gradients
         self._gamma_maj_sys_deriv_dict = None
         self._el_energy_op_grad_vec = None
+
+        # Observables
+        self._energy = None
+        self._el_energy_op = None
+        self._el_energy_op_vec = None
+        self._mag_energy_op = None
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in_vec = None   #Tracks (D^-1 - gammain)^-1

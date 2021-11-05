@@ -26,17 +26,20 @@ class Z2System2DConfig(Z2System2DConfigBase):
         super().__init__(lattice, g2, g_gm, g_mag,nlayer)
 
 class Z2System2D(Z2System2DBase):
+    """ Single copy (referring to the number of virtual modes on the links) of the Z2 GGPEPS ansatz
+
+        Some general notes about conventions:
+
+        Order of the paramvec: [t,y,z]
+        Mode order of T: {p,l,r,d,u}
+        Mode Order of gamma_dirac:  {p,l,r,d,u,p_dag,l_dag,r_dag,u_dag,d_dag}.
+        Mode Order of gamma_maj: {p_1,p_2,l_1,l_2,r_1,r_2,d_1,d_2,u_1,u_2}.
+        The subscript indices are Majorana mode indices here.
+    Args:
+        Z2System2DBase ([type]): [description]
+    """
     def __init__(self, cfg: Z2System2DConfig):
         super().__init__(cfg)
-
-        # Parameter dependent quantities
-
-        # In the analytical part, we will keep the mode ordering {p,r,u,l,d} because the transformation matrices are easier to cope with.
-        # In the numerics, however, we will stick with {p,l,r,d,u}
-        self._tmat_vec = None #Order of the paramvec: [t,y,z]
-        self._gamma_dirac_vec = None # Mode Order:  {p,l,r,d,u,p_dag,l_dag,r_dag,u_dag,d_dag}.
-        self._gamma_maj_vec = None # Mode Order: {p_1,p_2,l_1,l_2,r_1,r_2,d_1,d_2,u_1,u_2}.
-        self._gamma_maj_sys_vec = None
 
 
     @property
