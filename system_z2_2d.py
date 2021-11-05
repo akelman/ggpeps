@@ -42,12 +42,12 @@ class Z2System2D(Z2System2DBase):
         super().__init__(cfg)
 
 
-    @property
-    def symbolvec(self):
+    def _create_symbolvec(self):
         t = sympy.Symbol("t", real=True)
         y = sympy.Symbol("y", real=True)
         z = sympy.Symbol("z", real=True)
         return [t,y,z]
+
 
     @property
     def tmat_symb(self):

@@ -146,6 +146,7 @@ class Z2System2DBase(ABC):
         self.cfg = cfg
 
         # Parameter based matrices
+        self._symbolvec = None
         self._tmat_vec = None
         self._gamma_dirac_vec = None
         self._gamma_maj_vec = None
@@ -200,6 +201,7 @@ class Z2System2DBase(ABC):
         """
         return None
         
+
     def _exract_partial_covmatvec(self, offset):
         #We are assuming one physical mode per site
         mat_a_vec = []
@@ -213,10 +215,15 @@ class Z2System2DBase(ABC):
             mat_d_vec.append(mat_d)
         return mat_a_vec, mat_b_vec, mat_d_vec
 
-    @property
     @abstractmethod
-    def symbolvec(self):
+    def _create_symbolvec(self):
         pass
+
+    @property
+    def symbolvec(self):
+        if self._symbolvec is None:
+            self._symbolvec=self._create_symbolvec()
+        return self._symbolvec
 
     @property
     @abstractmethod

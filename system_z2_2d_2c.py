@@ -43,8 +43,7 @@ class Z2System2D2C(Z2System2DBase):
         super().__init__(cfg)
 
 
-    @property
-    def symbolvec(self):
+    def _create_symbolvec(self):
         t1 = sympy.Symbol("t1", real=True)
         y1 = sympy.Symbol("y1", real=True)
         z1 = sympy.Symbol("z1", real=True)
