@@ -420,15 +420,9 @@ def show_vector(vec, title=None):
         plt.title(title)
     plt.show()
 
-def show_matrix(mat, title=None):
+def show_matrix(mat, title=None, **kwargs):
     """Display a matrix and interrupt the program. """
-    f, ax = plt.subplots(1, 1)
-    matax = ax.matshow(mat)
-    f.colorbar(matax, ax=ax)
-    if title is not None and len(title) > 0:
-        plt.title(title)
-    plt.show()
-
+    show_matrixvec([mat],title=[title],**kwargs)
 
 def show_matrixvec(matvec, title=None, log=False):
     """Display a matrix and interrupt the program. """
