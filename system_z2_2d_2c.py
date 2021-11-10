@@ -22,10 +22,6 @@ class Z2System2D2CConfig(Z2System2DConfigBase):
         #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         super().__init__(lattice, g2, g_gm, g_mag, nlayer)
     
-    def print_parametervec(self,symbolvec):
-        for ind in range(self.nlayer):
-            for symb,val in zip(symbolvec, self._parametervec[ind]):
-                print(str(symb),val)
 
 class Z2System2D2C(Z2System2DBase):
     """ 2 copy version of the Z2 system GGPEPS ansatz

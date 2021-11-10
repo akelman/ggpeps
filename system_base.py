@@ -52,6 +52,11 @@ class Z2System2DConfigBase():
     def nvarparams(self):
         return self._nparams*self.nlayer
 
+    def print_parametervec(self,symbolvec):
+        for ind in range(self.nlayer):
+            for symb,val in zip(symbolvec, self._parametervec[ind]):
+                print(str(symb),val)
+
 ################## Utility Functions ######################
 
 def extract_partial_covmats(mat,corner):
