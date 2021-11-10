@@ -10,7 +10,7 @@ from timeit import default_timer as timer
 import ray
 import utils
 import logging
-from minimizer import Minimizer
+from minimizer import Minimizer, MinimizerConfig
 from mc import MonteCarloEstimatorConfig, MonteCarloManager
 import exacteval
 import lattice as lat
@@ -46,10 +46,9 @@ def args2logname(args):
                 args.g_mag, args.nlayer, args.warmup_steps, args.meas_steps)
     return fname
 
-def translate_parameters(system_cfg, params, pure_gauge=False):
+def translate_parameters(system_cfg, params):
     nparams = system_cfg._nparams
     nlayer = system_cfg.nlayer
-    ncopy = system_cfg.ncopy
     if isinstance(params,str) and os.path.isifile(params):
         dest = np.load(params)
     elif params=="rand" or params is None:
@@ -141,9 +140,10 @@ def main():
     logging.info("Rebinning EOM: {}".format(Measurement.use_rebinning))
     logging.info("============================")
 
-    mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
 
     if args.mode == "eval":
+        mc_config.minimizer_mode = False
+        mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
         start = timer()
         mc_result = mc_mgr.simulate()
         stop = timer()
@@ -161,12 +161,16 @@ def main():
         logging.info("Method: {}".format(args.method.upper()))
         logging.info("============================")
 
-        minimizer = Minimizer(mc_mgr)
+        mc_config.minimizer_mode = True
+        mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
         #Set the parameters of the minimizer according to the command line
-        minimizer.method = args.method.upper()
-        minimizer.max_it = args.maxiter
-        minimizer.alpha = args.alpha
-        minimizer.min_grad = args.min_grad
+        min_cfg = MinimizerConfig()
+        min_cfg.method = args.method.upper()
+        min_cfg.max_it = args.maxiter
+        min_cfg.alpha = args.alpha
+        min_cfg.min_grad = args.min_grad
+
+        minimizer = Minimizer(min_cfg,mc_mgr)
 
         start = timer()
         result = minimizer.minimize()
@@ -192,18 +196,46 @@ def main():
         start = timer()
         ex_mgr=exacteval.ExactEvaluatorManager(system_type, system_cfg)
 
-        minimizer = Minimizer(ex_mgr, use_exact=True)
-        #Set the parameters of the minimizer according to the command line
-        minimizer.method = args.method
-        minimizer.max_it = args.maxiter
-        minimizer.alpha = args.alpha
-        minimizer.min_grad = args.min_grad
+        min_cfg = MinimizerConfig()
+        min_cfg.method = args.method.upper()
+        min_cfg.max_it = args.maxiter
+        min_cfg.alpha = args.alpha
+        min_cfg.min_grad = args.min_grad
+
+        minimizer = Minimizer(min_cfg, ex_mgr, use_exact=True)
 
         start = timer()
         result = minimizer.minimize()
         stop = timer()
         print(result)
         minimizer.save()
+    elif args.mode == "minmult":
+        #Set the parameters of the minimizer according to the command line
+        min_cfg = MinimizerConfig()
+        min_cfg.method=args.method
+        min_cfg.max_iter=args.maxiter
+        min_cfg.delta=args.delta
+        min_cfg.use_metric=args.use_metric
+
+        start = timer()
+        resultvec = []
+        mc_config.minimizer_mode = True
+        for i in range(args.minmult_iter):
+            logging.info("Minimization iteration: {:02d}".format(i))
+            mc = MonteCarloManager(mc_config, system_type, system_cfg,
+                               args.nrunner, port=args.port)
+            minimizer = Minimizer(mc, min_cfg)
+
+            resultvec.append(minimizer.minimize())
+            system_cfg.paramvec = resultvec[-1].parametervec
+        stop = timer()
+        #TODO: We can merge the resultvec to get a full result
+        minimizer.save()
+        # We run a final iteration of the MC simulation with all observables
+        mc_config.minimizer_mode = False
+        mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
+        mc_result = mc_mgr.simulate()
+        mc_result.save()
     else:
         logging.error("Mode '{}' unkown.".format(args.mode))
 

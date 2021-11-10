@@ -5,12 +5,12 @@ import pickle
 from scipy.optimize import minimize
 
 class MinimizerResult:
-    def __init__(self,parametervec,energygrad,method,value,converged):
-        self.parametervec=parametervec
-        self.energygrad=energygrad
-        self.method=method
-        self.value=value
-        self.converged=converged
+    def __init__(self, parametervec, energygrad, method, value, converged):
+        self.parametervec = parametervec
+        self.energygrad = energygrad
+        self.method = method
+        self.value = value
+        self.converged = converged
 
     def __str__(self):
         dest="==== Minimizer Result ====\n"
@@ -21,23 +21,13 @@ class MinimizerResult:
         dest+="==========================\n"
         return dest
 
-class Minimizer():
-    supported_methods=["CG","BFGS","L-BFGS-B"]
+class MinimizerConfig():
 
-    def __init__(self, evaluator, use_exact=False):
-        self.use_exact=use_exact
-        # We use the polymorphism of python classes.
-        # Below, we will have to be careful to only call valid functions
-        self.evaluator=evaluator
-        self._method="CG"
-        self.last_paramvec=None
-        self.last_result=None
-        self.min_result=None
-
-        # Parameters for custom minimization
-        self.max_it=100
-        self.min_grad=1e-5
-        self.alpha=0.1
+    def __init__(self):
+        self.max_iter = 100
+        self.min_grad = 1e-5
+        self.delta = 1e-2
+        self._method = "CG"
 
     @property
     def method(self):
@@ -47,11 +37,25 @@ class Minimizer():
     def method(self,val):
         self._method=val.upper()
 
+class Minimizer():
+    supported_methods=["CG","BFGS","L-BFGS-B"]
+
+    def __init__(self, cfg, evaluator, use_exact=False):
+        self.cfg = cfg
+        self.use_exact = use_exact
+        # We use the polymorphism of python classes.
+        # Below, we will have to be careful to only call valid functions
+        self.evaluator = evaluator
+        self._method = "CG"
+        self.last_paramvec = None
+        self.last_result = None
+        self.min_result = None
+
 
     def minimize(self):
-        if self.method=="CUSTOM":
+        if self.cfg.method=="CUSTOM":
             return self.minimize_custom()
-        elif self.method in self.supported_methods:
+        elif self.cfg.method in self.supported_methods:
             return self.minimize_scipy()
         else:
             logging.error("Unkown minimization method '{}'. Aborting...".format(self.method))
@@ -60,7 +64,7 @@ class Minimizer():
     def minimize_custom(self):
         paramvec=self.evaluator.system_cfg.paramvec
 
-        for ind in range(self.max_it):
+        for ind in range(self.cfg.max_it):
             if self.last_paramvec is None or not np.allclose(self.last_paramvec,paramvec):
                 # We copy here to get a new set of variables. We will paramvec below and do not want to change last_paramvec
                 self.last_paramvec=np.copy(paramvec)
@@ -79,7 +83,7 @@ class Minimizer():
             logging.info("It: {:03d}, Energy: {:.5f}, Max grad paramvec: {:.5f} acceptance prob: {:.5f} ".format(ind,energy,max_grad_paramvec,acceptance_prob))
 
             #Check if the maximum of the gradient is smaller than min_grad
-            if max_grad_paramvec < abs(self.min_grad):
+            if max_grad_paramvec < abs(self.cfg.min_grad):
                 self.min_result = MinimizerResult(paramvec,self.method,energy,grad_paramvec,True)
                 return self.min_result
 
@@ -130,7 +134,7 @@ class Minimizer():
         paramvec = np.reshape(self.evaluator.system_cfg.paramvec,(-1))
         min_result = minimize(energy_wrapper,
                               paramvec,
-                              method=self.method,
+                              method=self.cfg.method,
                               jac=gradient_wrapper,
                               callback=lambda x: print_callback(x, self))
         parametervec = min_result.x
