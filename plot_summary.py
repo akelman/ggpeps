@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import os, sys
+import utils
 
 def len_arr(x):
     if isinstance(x,list) or isinstance(x,np.ndarray):
@@ -11,31 +12,45 @@ def len_arr(x):
 
 def main(args):
     dfvec = []
-    for fname in args.fnames:
-        if os.path.isfile(fname):
-            df = pd.read_pickle(fname)
-            dfvec.append(df)
+    if args.ec is not None:
+        for fname in args.ec:
+            if os.path.isfile(fname):
+                df = pd.read_pickle(fname)
+                df['type'] = "EC"
+                if not "nlayer" in df.columns:
+                    df["nlayer"] = utils.fname2nlayer(fname)
+                if not "ncopy" in df.columns:
+                    df["ncopy"] = utils.fname2ncopy(fname)
+                dfvec.append(df)
+    if args.mc is not None:
+        for fname in args.mc:
+            if os.path.isfile(fname):
+                df = pd.read_pickle(fname)
+                df['type'] = "MC"
+                dfvec.append(df)
     df = pd.concat(dfvec)
+
+    #Enrich dataset
     df["L"] = df["nx"].astype("str") + "-" + df["ny"].astype("str")
-    df["nlayer"] = df["t"].apply(len_arr)
     obsnamevec = df.name.unique()
 
     if args.exact is not None and os.path.isfile(args.exact):
-        df_exact=pd.read_pickle(args.exact)
+        df_exact = pd.read_pickle(args.exact)
         df_exact["L"] = df_exact["nx"].astype("str") + "-" + df_exact["ny"].astype("str")
 
     #f,ax=plt.subplots(1,1,figsize=(4.14,2.66))
     f,ax=plt.subplots(1,1)
     for obs in args.obs:
         if obs in obsnamevec:
-            df_filtered=df[df.name==obs]
+            df_filtered = df[df.name == obs]
             df_filtered.reset_index(drop=True, inplace=True)
 
-            for name, group in df_filtered.groupby(["L","nlayer"]):
+            for name, group in df_filtered.groupby(["type","L","nlayer", "ncopy"]):
+                type, L, nlayer, ncopy = name
                 ax.plot(group["g_el"]*2,
                         group["mean"],
                         'o',
-                        label="EC, {}, L={}, layer={}".format(obs,*name))
+                        label="{}, {}, L={}, nc={}, nl={}".format(type,obs,L,ncopy,nlayer))
 
             # We can add the ED data to the plot to compare the curves
             if args.exact is not None and os.path.isfile(args.exact):
@@ -54,8 +69,9 @@ def main(args):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("fnames", nargs="+", help="Filenames")
     parser.add_argument("--exact", help="ED data")
+    parser.add_argument("--mc", nargs="+", help="EC data")
+    parser.add_argument("--ec", nargs="+", help="MC data")
     parser.add_argument("--show", action="store_true", default=False, help="Show the plot")
     parser.add_argument("--obs",
                         type=str,

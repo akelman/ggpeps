@@ -9,6 +9,7 @@ import measurement as meas
 import gzip
 import pickle
 import subprocess  # Start process for git hash
+import re
 
 from matplotlib.colors import LogNorm
 
@@ -17,6 +18,24 @@ pauliy = np.array([[0, -1.j], [1.j, 0]])
 pauliz = np.array([[1, 0], [0, -1]])
 
 # ========== Utility Functions ====================
+
+def fname2nlayer(fname):
+    """Extract the number of layers from a filename"""
+    pattern=r"(?<=nlayer_)[\d]*"
+    result = re.search(pattern, fname)
+    if result is not None:
+        return int(result.group(0))
+    else:
+        return None
+
+def fname2ncopy(fname):
+    """Extract the number of layers from a filename"""
+    pattern=r"(?<=ncopy_)[\d]*"
+    result = re.search(pattern, fname)
+    if result is not None:
+        return int(result.group(0))
+    else:
+        return None
 
 
 def merge_measurements(meas1, meas2):

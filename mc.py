@@ -11,6 +11,36 @@ import ray
 import lattice
 from measurement import Measurement
 
+#################### Monte Carlo Estimator Config ###################
+
+class MonteCarloEstimatorConfig:
+    """Monte Carlo Configuration"""
+    def __init__(self):
+        self.warmup_steps = None
+        self._seed = None
+        self.meas_steps = None
+        self.binsize = 1
+        self.minimizer_mode = False
+
+    @property
+    def seed(self):
+        if self._seed is None:
+            dt = datetime.now()
+            self._seed = int(time.time()+dt.microsecond)
+        return self._seed
+
+    @seed.setter
+    def seed(self, seedval):
+        self._seed = seedval
+
+    def __str__(self):
+        dest = ""
+        dest += "Seed: {}\n".format(self.seed)
+        dest += "Warmup steps: {}\n".format(self.warmup_steps)
+        dest += "Measurement steps: {}\n".format(self.meas_steps)
+        return dest
+
+
 ################################### Multiprocessing layer #######################
 
 
@@ -24,7 +54,8 @@ def run_mc(runner_id, mc_cfg, system_cls, system_cfg):
 
 
 class MonteCarloManager:
-    def __init__(self, mc_cfg, system_cls, system_cfg, nrunner):
+    def __init__(self, mc_cfg: MonteCarloEstimatorConfig, system_cls,
+                 system_cfg, nrunner):
         self.nrunner = nrunner
         self.mc_cfg = mc_cfg
         self.system_cfg = system_cfg
@@ -64,34 +95,7 @@ class MonteCarloManager:
         return dest
 
 
-################################### Monte Carlo runner and config ###############
-
-
-class MonteCarloEstimatorConfig:
-    """Monte Carlo Configuration"""
-    def __init__(self):
-        self.warmup_steps = None
-        self._seed = None
-        self.meas_steps = None
-        self.binsize = 1
-
-    @property
-    def seed(self):
-        if self._seed is None:
-            dt = datetime.now()
-            self._seed = int(time.time()+dt.microsecond)
-        return self._seed
-
-    @seed.setter
-    def seed(self, seedval):
-        self._seed = seedval
-
-    def __str__(self):
-        dest = ""
-        dest += "Seed: {}\n".format(self.seed)
-        dest += "Warmup steps: {}\n".format(self.warmup_steps)
-        dest += "Measurement steps: {}\n".format(self.meas_steps)
-        return dest
+################################### Monte Carlo runner ###############
 
 
 class MonteCarloEstimator:
@@ -115,13 +119,14 @@ class MonteCarloEstimator:
         self.obsdict["el_energy"] = Measurement("Electric Energy", binsize)
         self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
         self.obsdict["el_energy_op"] = Measurement("Electric Energy Operator (bare)", binsize)
-        self.obsdict["el_energy_op_grad"] = Measurement("Electric Energy Operator Gradient", binsize)
         self.obsdict["wilson_00_11"] = Measurement("Wilson (0,0) 1x1", binsize)
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x",
                                                     binsize)
-        self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm",
-                                                    binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
+        if self.cfg.minimizer_mode:
+            self.obsdict["el_energy_op_grad"] = Measurement("Electric Energy Operator Gradient", binsize)
+            self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm",
+                                                        binsize)
         #self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
 
     def measure(self):
@@ -138,14 +143,16 @@ class MonteCarloEstimator:
         #self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
-        self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
 
         # These values could be calculated in a post-processing step
         self.obsdict["energy"].append(self.system.energy)
         self.obsdict["el_energy"].append(self.system.el_energy)
         self.obsdict["mag_energy"].append(self.system.mag_energy)
-        self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
+
+        if self.cfg.minimizer_mode:
+            self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
+            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
 
     def warmup(self):
         """Warm up phase without measurement"""
@@ -284,9 +291,9 @@ class MonteCarloEstimator:
             "name": [],
             "nx":[],
             "ny":[],
-            "t": [],
-            "y": [],
-            "z": [],
+            "paramvec":[],
+            "ncopy":[],
+            "nlayer":[],
             "g_el": [],
             "g_gm": [],
             "g_mag": [],
@@ -303,9 +310,9 @@ class MonteCarloEstimator:
             dest['g_el'].append(self.system.cfg.g_el)
             dest['g_gm'].append(self.system.cfg.g_gm)
             dest['g_mag'].append(self.system.cfg.g_mag)
-            dest['t'].append(self.system.cfg.paramvec[:,0])
-            dest['y'].append(self.system.cfg.paramvec[:,1])
-            dest['z'].append(self.system.cfg.paramvec[:,2])
+            dest['paramvec'].append(self.system.cfg.paramvec)
+            dest['ncopy'].append(self.system.cfg.ncopy)
+            dest['nlayer'].append(self.system.cfg.nlayer)
             dest['seed'].append(self.cfg.seed)
             dest['warmup_steps'].append(self.cfg.warmup_steps)
             dest['meas_steps'].append(self.cfg.meas_steps)

@@ -119,9 +119,9 @@ class ExactEvaluator():
             "name": [],
             "nx": [],
             "ny": [],
-            "t": [],
-            "y": [],
-            "z": [],
+            "paramvec":[],
+            "ncopy":[],
+            "nlayer":[],
             "g_el": [],
             "g_gm": [],
             "g_mag": [],
@@ -134,9 +134,9 @@ class ExactEvaluator():
             dest['g_el'].append(self.system.cfg.g_el)
             dest['g_gm'].append(self.system.cfg.g_gm)
             dest['g_mag'].append(self.system.cfg.g_mag)
-            dest['t'].append(self.system.cfg.paramvec[:,0])
-            dest['y'].append(self.system.cfg.paramvec[:,1])
-            dest['z'].append(self.system.cfg.paramvec[:,2])
+            dest['paramvec'].append(self.system.cfg.paramvec)
+            dest['ncopy'].append(self.system.cfg.ncopy)
+            dest['nlayer'].append(self.system.cfg.nlayer)
             dest["mean"].append(self.obsdict[key])
         df = pd.DataFrame(dest)
         return df
