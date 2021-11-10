@@ -1,9 +1,7 @@
 import numpy as np
 import logging
-import sys
 import sympy
 import lattice as lat
-import gauge
 import logging
 import sympy
 from scipy.linalg import block_diag
@@ -151,19 +149,6 @@ class Z2System2D2C(Z2System2DBase):
         incdet_mod_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec_mod]
 
         return gamma_in_sys, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
-
-
-    @property
-    def weight(self):
-        if self._weight is None:
-            self._weight=1.0
-            for ind in range(self.cfg.nlayer):
-                self._weight *= 0.5 * self.incdet_vec[ind].det()
-        return self._weight
-
-    @weight.setter
-    def weight(self,val):
-        self._weight = val
 
 
     def generate_gamma_gauge_neutral(self):
