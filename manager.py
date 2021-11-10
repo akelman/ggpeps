@@ -46,10 +46,13 @@ def args2logname(args):
                 args.g_mag, args.nlayer, args.warmup_steps, args.meas_steps)
     return fname
 
-def translate_parameters(system_cfg, params):
+def translate_parameters(system_cfg, params, pure_gauge=False):
     nparams = system_cfg._nparams
     nlayer = system_cfg.nlayer
-    if args.params=="rand" or args.params is None:
+    ncopy = system_cfg.ncopy
+    if isinstance(params,str) and os.path.isifile(params):
+        dest = np.load(params)
+    elif params=="rand" or params is None:
         dest = np.random.rand(nlayer, nparams)
     else:
         dest = np.asarray(params, dtype=float)
@@ -120,6 +123,9 @@ def main():
         sys.exit(1)
     paramvec = translate_parameters(system_cfg, args.params)
     system_cfg.paramvec = paramvec
+
+    if args.pure_gauge:
+        system_cfg.make_pure_gauge()
 
     if args.no_bin_eom:
         Measurement.use_rebinning = False
@@ -248,6 +254,10 @@ if __name__ == "__main__":
                         type=float,
                         nargs="+",
                         help="Parameters passed as a starting configuration (Order for one copy: [t1, t2,..., y1, y2,..., z1, z2...])")
+    parser.add_argument("--pure-gauge",
+                        action="store_true",
+                        default=False,
+                        help="Force the coupling of physical and virtual fermions (t-parameters) to be 0")
     #Arguments for the minimizer
     parser.add_argument("--method", type=str,
                         default="custom", help="Minimization method")

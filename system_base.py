@@ -6,7 +6,7 @@ import sympy
 import utils
 import gauge
 
-class Z2System2DConfigBase():
+class Z2System2DConfigBase(ABC):
     _nparams = 1
 
     def __init__(self, lattice, g2, g_gm, g_mag, nlayer=1):
@@ -56,6 +56,10 @@ class Z2System2DConfigBase():
         for ind in range(self.nlayer):
             for symb,val in zip(symbolvec, self._parametervec[ind]):
                 print(str(symb),val)
+    
+    @abstractmethod
+    def make_pure_gauge(self):
+        pass
 
 ################## Utility Functions ######################
 

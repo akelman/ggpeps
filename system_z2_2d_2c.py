@@ -21,7 +21,13 @@ class Z2System2D2CConfig(Z2System2DConfigBase):
     def __init__(self, lattice, g2, g_gm, g_mag, nlayer=1):
         #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         super().__init__(lattice, g2, g_gm, g_mag, nlayer)
-    
+
+    def make_pure_gauge(self):
+        #The order of the parameters is [t1,y1,z1,t2,y2,z2,a,b,c,d]
+        for ind in range(self.nlayer):
+            self.paramvec[ind, 0] = 0
+            self.paramvec[ind, 3] = 0
+
 
 class Z2System2D2C(Z2System2DBase):
     """ 2 copy version of the Z2 system GGPEPS ansatz

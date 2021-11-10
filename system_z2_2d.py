@@ -1,7 +1,5 @@
 import numpy as np
 import logging
-import sys
-from scipy.linalg.misc import norm
 import sympy
 import lattice as lat
 import logging
@@ -24,6 +22,12 @@ class Z2System2DConfig(Z2System2DConfigBase):
     def __init__(self, lattice, g2, g_gm, g_mag, nlayer=1):
         #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         super().__init__(lattice, g2, g_gm, g_mag,nlayer)
+
+    def make_pure_gauge(self):
+        #The order of the parameters is [t,y,z]
+        for ind in range(self.nlayer):
+            self.paramvec[ind, 0] = 0
+
 
 class Z2System2D(Z2System2DBase):
     """ Single copy (referring to the number of virtual modes on the links) of the Z2 GGPEPS ansatz
@@ -361,7 +365,7 @@ class Z2System2D(Z2System2DBase):
                     gamma_in_sys_mod.shape[0],
                     all_factors=True)
                 #norm_mod = calculate_lognorm(gamma_in_sys_mod, [mat_d],
-                                             #all_factors=True)
+                #all_factors=True)
                 norm_mod += np.sum(utils.select_except(lognormvec_default_inc,layerind))
                 # The matrix elements yield only the real part of <P>
                 #el_energy_layer = 0.25*( covmat_out_virt[0, 1] + covmat_out_virt[2, 3] + 1.j*covmat_out_virt[0,2] - 1.j*covmat_out_virt[0,3]) * np.exp(norm_mod - lognorm_default)
