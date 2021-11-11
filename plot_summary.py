@@ -76,7 +76,7 @@ if __name__ == "__main__":
     parser.add_argument("--obs",
                         type=str,
                         nargs="+",
-                        default="energy",
+                        default=["energy"],
                         help="Observable")
 
     args = parser.parse_args()
