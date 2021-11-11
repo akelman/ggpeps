@@ -58,7 +58,7 @@ class Minimizer():
         elif self.cfg.method in self.supported_methods:
             return self.minimize_scipy()
         else:
-            logging.error("Unkown minimization method '{}'. Aborting...".format(self.method))
+            logging.error("Unkown minimization method '{}'. Aborting...".format(self.cfg.method))
             return None
 
     def minimize_custom(self):
@@ -84,7 +84,7 @@ class Minimizer():
 
             #Check if the maximum of the gradient is smaller than min_grad
             if max_grad_paramvec < abs(self.cfg.min_grad):
-                self.min_result = MinimizerResult(paramvec,self.method,energy,grad_paramvec,True)
+                self.min_result = MinimizerResult(paramvec,self.cfg.method,energy,grad_paramvec,True)
                 return self.min_result
 
             #Adapt the parametervec according to the gradient
@@ -94,7 +94,7 @@ class Minimizer():
             self.evaluator.system_cfg.paramvec-=self.alpha*grad_paramvec
 
         logging.warn("Reached maximum number of iterations without convergence")
-        self.min_result = MinimizerResult(paramvec,self.method,energy,grad_paramvec,False)
+        self.min_result = MinimizerResult(paramvec,self.cfg.method,energy,grad_paramvec,False)
         return self.min_result
 
 
@@ -142,7 +142,7 @@ class Minimizer():
         energy = min_result.fun
         converged = min_result.success
 
-        dest = MinimizerResult(parametervec, energygrad, self.method, energy,
+        dest = MinimizerResult(parametervec, energygrad, self.cfg.method, energy,
                                converged)
         self.min_result = dest
         return dest
