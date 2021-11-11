@@ -101,6 +101,16 @@ def main(args):
     df=df[df['mean'].apply(lambda x: not isinstance(x, list) and not isinstance(x,np.ndarray))]
     df=df.convert_dtypes()
 
+    # Make explicit t, y and z columns
+    if not "y" in df.columns:
+        df['y']=df["paramvec"].apply(lambda x: np.squeeze(x[:,1]))
+    if not "z" in df.columns:
+        df['z']=df["paramvec"].apply(lambda x: np.squeeze(x[:,2]))
+    if not "t" in df.columns:
+        df['t']=df["paramvec"].apply(lambda x: np.squeeze(x[:,0]))
+
+    print(df)
+
     obsverablevec=df.name.unique()
     if args.list:
         print("\n".join(sorted(obsverablevec)))
