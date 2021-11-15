@@ -1,5 +1,4 @@
 import numpy as np
-import scipy
 import logging
 import pickle
 from scipy.optimize import minimize

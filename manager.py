@@ -1,11 +1,11 @@
 """Main script to control the simulation. 
 Further details about the usage of the script can be found in README.md.
 """
-from system_z2_2d_2c import Z2System2D2C,Z2System2D2CConfig
+from system import Z2System2D2C,Z2System2D2CConfig
+from system import Z2System2D, Z2System2DConfig
 from measurement import Measurement
 import os
 import sys
-from system import Z2System2D, Z2System2DConfig
 from timeit import default_timer as timer
 import ray
 import utils

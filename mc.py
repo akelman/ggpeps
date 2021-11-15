@@ -99,7 +99,7 @@ class MonteCarloManager:
 
 
 class MonteCarloEstimator:
-    def __init__(self, cfg, system):
+    def __init__(self, cfg:MonteCarloEstimatorConfig, system):
         self.cfg = cfg
         self.system = system
         self.obsdict = {}
