@@ -288,7 +288,7 @@ class MonteCarloEstimator:
         for key in self.obsdict.keys():
             val = self.obsdict[key]
             if val is not None and len(val) > 0:
-                logging.info("<{}>".format(key), self.obsdict[key].mean())
+                logging.info("<{}>: {}".format(key, self.obsdict[key].mean()))
 
     def summary(self):
         dest = {
