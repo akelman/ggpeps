@@ -47,8 +47,9 @@ def args2logname(args):
 def translate_parameters(system_cfg, params):
     nparams = system_cfg._nparams
     nlayer = system_cfg.nlayer
-    if isinstance(params,str) and os.path.isifile(params):
-        dest = np.load(params)
+    if len(params)==1 and isinstance(params[0],str) and os.path.isfile(params[0]):
+        dest = np.load(params[0])
+        dest = np.reshape(dest,(nlayer,-1))
     elif params=="rand" or params is None:
         dest = np.random.rand(nlayer, nparams)
     else:
@@ -281,7 +282,6 @@ if __name__ == "__main__":
                         type=int,
                         help="Number of virtual fermions on the links")
     parser.add_argument("--params",
-                        type=float,
                         nargs="+",
                         help="Parameters passed as a starting configuration (Order for one copy: [t1, t2,..., y1, y2,..., z1, z2...])")
     parser.add_argument("--pure-gauge",
@@ -294,7 +294,7 @@ if __name__ == "__main__":
                         help="Update every spin of the system between each update step")
     #Arguments for the minimizer
     parser.add_argument("--method", type=str,
-                        default="custom", help="Minimization method")
+                        default="bfgs", help="Minimization method")
     parser.add_argument("--maxiter", type=int, default=100,
                         help="Number of steps for the minimizer (if custom is used)")
     parser.add_argument("--alpha", type=float, default=0.1,
