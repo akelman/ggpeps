@@ -290,6 +290,10 @@ if __name__ == "__main__":
                         action="store_true",
                         default=False,
                         help="Force the coupling of physical and virtual fermions (t-parameters) to be 0")
+    parser.add_argument("--use-systemsize-updates",
+                        action="store_true",
+                        default=False,
+                        help="Update every spin of the system between each update step")
     #Arguments for the minimizer
     parser.add_argument("--method", type=str,
                         default="custom", help="Minimization method")

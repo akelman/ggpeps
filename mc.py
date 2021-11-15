@@ -21,6 +21,7 @@ class MonteCarloEstimatorConfig:
         self.meas_steps = None
         self.binsize = 1
         self.minimizer_mode = False
+        self.use_systemsize_update = False
 
     @property
     def seed(self):
@@ -107,7 +108,10 @@ class MonteCarloEstimator:
         self.step = 0
 
         #This might change in the future if we implement different updates
-        self.update = self.update_single_site
+        if cfg.use_systemsize_update:
+            self.update = self.update_all_sites_single_site
+        else:
+            self.update = self.update_single_site
 
     def init_measurements(self):
         """Add empty measurement vectors to the measurement dictionary"""
