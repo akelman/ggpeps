@@ -26,15 +26,13 @@ def args2logname(args):
         "exact": "exact",
         "minexact": "minexact"
     }
-    if args.mode == "eval":
+    if "exact" in args.mode:
         if args.g_mag == None:
-            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(
-                shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
-                args.warmup_steps, args.meas_steps)
+            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}.log".format(
+                shorthands[args.mode], args.L, args.L, args.g2, args.g_gm)
         else:
-            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_wsteps_{:06d}_msteps_{:06d}.log".format(
-                shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
-                args.g_mag, args.warmup_steps, args.meas_steps)
+            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}.log".format(
+                shorthands[args.mode], args.L, args.L, args.g2, args.g_gm, args.g_mag)
     else:
         if args.g_mag == None:
             fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_nlayer_{:02d}_wsteps_{:06d}_msteps_{:06d}.log".format(
@@ -265,7 +263,7 @@ if __name__ == "__main__":
     parser.add_argument("--warmup_steps", type=int,
                         default=int(1e5), help="Number of warmup steps")
     parser.add_argument("--meas_steps", type=int,
-                        default=int(1e4), help="Number of run steps")
+                        default=int(1e5), help="Number of run steps")
     parser.add_argument("--level", default="info", help="logging level")
     parser.add_argument("--binsize", default=1, type=int,
                         help="Binsize used in the MC computation")
