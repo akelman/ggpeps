@@ -6,7 +6,7 @@ import sympy
 from scipy.linalg import block_diag
 import utils
 from .system_base import Z2System2DBase, Z2System2DConfigBase
-from .system_base import calculate_lognorm, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats
+from .system_base import calculate_lognorm_inc, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats
 
 ###################### Z2System2D ##########################
 
@@ -15,7 +15,7 @@ class Z2System2D2CConfig(Z2System2DConfigBase):
     _nparams = 10
     ncopy = 2
     nvirtmodes_vertex = 4 # We have one virtual mode per direction
-    nvirtmodes_link = 4
+    nvirtmodes_link = 4 #Number of virtual modes per link (2 copies and l/r)
 
     def __init__(self, lattice, g2, g_gm, g_mag, nlayer=1):
         #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
@@ -199,7 +199,7 @@ class Z2System2D2C(Z2System2DBase):
     def update_gauge_ind(self, ind, theta):
         # Update the gaugefield
         self._gaugefieldvec[ind] = theta
-        # There are two directions per vertex, two Majoranas per link and two copies
+        # There are two directions per vertex and four Majoranas per link
         ind_mat = 8 * ind
         rotmat = self.generate_rotmat(theta)
         gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(
@@ -213,11 +213,22 @@ class Z2System2D2C(Z2System2DBase):
             incdet.update_index(mat_inv, update, ind_mat, ind_mat)
             for mat_inv, incdet in zip(mat_inv_vec, self.incdet_vec)
         ]
+        # Update the modified determinant
+        offset = 2* self.cfg.nvirtmodes_link
+        if ind_mat - offset >=0:
+            for wi, incdet in zip(self.wi_gamma_in_mod_vec,self.incdet_mod_vec):
+                mat_inv = wi.inv()
+                incdet.update_index(mat_inv, update, ind_mat-offset, ind_mat-offset)
         # Update the weight
         self.weight = 0.5 * np.sum(detval_vec)
         # Update the matrix inversion
         [ wi_gamma_in.update_index(update, ind_mat, ind_mat) for wi_gamma_in in self.wi_gamma_in_vec ]
         [ wi_gamma_out.update_index(update, ind_mat, ind_mat) for wi_gamma_out in self.wi_gamma_out_vec ]
+
+        if ind_mat - offset >= 0:
+            # We do not update the matrix if the first link is updated (it is just not there)
+            [ wi_gamma_in_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_in_mod in self.wi_gamma_in_mod_vec ]
+            [ wi_gamma_out_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_out_mod in self.wi_gamma_out_mod_vec ]
         # Substitute in the array
         self.gamma_in_sys[ind_mat:ind_mat + 8,
                           ind_mat:ind_mat + 8] = gamma_in_subst
@@ -239,48 +250,45 @@ class Z2System2D2C(Z2System2DBase):
     def _compute_el_energy_op_vec_and_grad(self, use_trans_inv=True):
         if use_trans_inv:
             gamma_in_sys = self.gamma_in_sys
-            normvec_default = calculate_lognormvec(self.gamma_in_sys,
-                                                   self.mat_d_vec, all_factors=True)
+            lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
             # This is the usual norm without any modifications
-            norm_default = np.sum(normvec_default)
+            lognorm_default = np.sum(lognormvec_default)
             # Number of fermions = # of sites
             # Since we have 2 copies, we get 8 virtual fermions per site
-            single_site_offset = 8
-            offset = 2 * self.cfg.lattice.size + single_site_offset
+            single_link_offset = 2 * self.cfg.nvirtmodes_link
+            offset = 2 * self.cfg.lattice.size + single_link_offset
             # We have to cut one link from gamma_in_sys as well
-            gamma_in_sys_tilde = gamma_in_sys[single_site_offset:,
-                                            single_site_offset:]
+            gamma_in_sys_mod = self.gamma_in_sys_mod
             nlinks = self.cfg.lattice.nlinks
             dest = []
             dest_grad = []
+
             for layerind in range(self.cfg.nlayer):
                 layer_derivative=[]
                 #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
+                mat_a = self.mat_a_mod_vec[layerind]
+                mat_b = self.mat_b_mod_vec[layerind]
                 gamma_maj_sys = self.gamma_maj_sys_vec[layerind]
-                # The matrices must be re-extracted here since we slice at different positions than usually
-                # The offset is changed such that one virtual link is attributed to the physical part
-                mat_a, mat_b, mat_d = extract_partial_covmats(gamma_maj_sys, offset)
-                #TODO: We could also track this inverse
-                diff_d_gamma_inv = np.linalg.inv(mat_d - gamma_in_sys_tilde)
-                #TODO: This inverse can be calculated once and stored afterwards
-                mat_d_inv=np.linalg.inv(mat_d)
-                diff_d_inv_gamma_inv = np.linalg.inv(mat_d_inv - gamma_in_sys_tilde)
+                diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
+                diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
 
                 ###################### Calculation of <P> ########################
                 covmat_out = mat_a + \
-                    mat_b @ np.linalg.inv(mat_d -
-                                        gamma_in_sys_tilde) @ np.transpose(mat_b)
-                covmat_out_virt = covmat_out[-single_site_offset:, -
-                                            single_site_offset:]
+                    mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
+                covmat_out_virt = covmat_out[-single_link_offset:, -
+                                            single_link_offset:]
                 # For the modified norm, we still have to take into account the other contributions from the unmodified parts
-                norm_mod = calculate_lognorm(
-                    gamma_in_sys_tilde, [mat_d], all_factors=True)
-                norm_mod += np.sum(utils.select_except(normvec_default,layerind))
+                norm_mod = calculate_lognorm_inc(
+                    [self.incdet_mod_vec[layerind]],
+                    [self.det_mat_d_mod_vec[layerind]],
+                    gamma_in_sys_mod.shape[0],
+                    all_factors=True)
+                norm_mod += np.sum(utils.select_except(lognormvec_default,layerind))
                 # The matrix elements yield only the real part of <P>
                 # If we use the log formulation, we can calculate the log of single terms.
                 el_energy_c1 = 0.25 * (covmat_out_virt[4, 5] + covmat_out_virt[2, 3] -1.j*covmat_out_virt[2,4] + 1.j*covmat_out_virt[3,5])
                 el_energy_c2 =  0.25 * (covmat_out_virt[0, 1] + covmat_out_virt[6, 7] +1.j*covmat_out_virt[0,6] - 1.j*covmat_out_virt[1,7])
-                el_energy_layer = np.real(el_energy_c1 * el_energy_c2) * np.exp(norm_mod - norm_default)
+                el_energy_layer = np.real(el_energy_c1 * el_energy_c2) * np.exp(norm_mod - lognorm_default)
                 dest.append(el_energy_layer)
 
                 ###################### Calculation of the derivative ########################
@@ -292,15 +300,15 @@ class Z2System2D2C(Z2System2DBase):
                             + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
                             - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
                     # The virtual mode is the last link on the bottom right of the covariance matrix
-                    d_covmat_out_virt = d_gamma_out[-single_site_offset:,
-                                                -single_site_offset:]
+                    d_covmat_out_virt = d_gamma_out[-single_link_offset:,
+                                                -single_link_offset:]
                     # Summand with derivative of the covariance matrix
                     # The prefactor of 0.25 is correct since el_energy_ci already includes a factor of 0.25
                     d_el_energy = (0.25 * (d_covmat_out_virt[4, 5] + d_covmat_out_virt[2, 3] - 1.j*d_covmat_out_virt[2, 4] + 1.j*d_covmat_out_virt[3, 5]) * el_energy_c2
-                                   + 0.25 * (d_covmat_out_virt[0, 1] + d_covmat_out_virt[6, 7] + 1.j*d_covmat_out_virt[0, 6] - 1.j*d_covmat_out_virt[1, 7]) * el_energy_c1) * np.exp(norm_mod - norm_default)
+                                   + 0.25 * (d_covmat_out_virt[0, 1] + d_covmat_out_virt[6, 7] + 1.j*d_covmat_out_virt[0, 6] - 1.j*d_covmat_out_virt[1, 7]) * el_energy_c1) * np.exp(norm_mod - lognorm_default)
                     # Summand with derivative of norms
                     trace_def = self.compute_grad_over_norm(symbol, layerind)
-                    trace_mod = compute_grad_over_norm(gamma_in_sys_tilde, diff_d_inv_gamma_inv, d_mat_d, mat_d_inv)
+                    trace_mod = compute_grad_over_norm(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
                     d_el_energy += dest[layerind] * (trace_mod - trace_def)
                     # Scale to system size
                     d_el_energy *= nlinks
