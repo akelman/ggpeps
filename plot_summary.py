@@ -27,6 +27,10 @@ def main(args):
             if os.path.isfile(fname):
                 df = pd.read_pickle(fname)
                 df['type'] = "MC"
+                if not "nlayer" in df.columns:
+                    df["nlayer"] = utils.fname2nlayer(fname)
+                if not "ncopy" in df.columns:
+                    df["ncopy"] = utils.fname2ncopy(fname)
                 dfvec.append(df)
     df = pd.concat(dfvec)
 
