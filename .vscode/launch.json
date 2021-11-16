@@ -71,7 +71,8 @@
                 "--method",
                 "BFGS",
                 "--ncopy",
-                "1"
+                "1",
+                "--pure-gauge"
             ],
             "console": "integratedTerminal"
         },
