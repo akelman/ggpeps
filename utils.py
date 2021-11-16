@@ -37,6 +37,24 @@ def fname2ncopy(fname):
     else:
         return None
 
+def fname2g2(fname):
+    """Extract the number of layers from a filename"""
+    pattern=r"(?<=g2_)[\d]*\.[\d]*"
+    result = re.search(pattern, fname)
+    if result is not None:
+        return float(result.group(0))
+    else:
+        return None
+
+def fname2g2el(fname):
+    """Extract the number of layers from a filename"""
+    pattern=r"(?<=g2el_)[\d]*\.[\d]*"
+    result = re.search(pattern, fname)
+    if result is not None:
+        return float(result.group(0))
+    else:
+        return None
+
 
 def merge_measurements(meas1, meas2):
     dest = meas.Measurement(meas1.name, meas1.binsize)
