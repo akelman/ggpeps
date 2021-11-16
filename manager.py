@@ -27,30 +27,30 @@ def args2logname(args):
         "minexact": "minexact"
     }
     if "exact" in args.mode:
-        if args.g_mag == None:
+        if args.g2_mag == None:
             fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}.log".format(
                 shorthands[args.mode], args.L, args.L, args.g2, args.g_gm)
         else:
-            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}.log".format(
-                shorthands[args.mode], args.L, args.L, args.g2, args.g_gm, args.g_mag)
+            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_g2mag_{:.3f}.log".format(
+                shorthands[args.mode], args.L, args.L, args.g2, args.g_gm, args.g2_mag)
     else:
-        if args.g_mag == None:
+        if args.g2_mag == None:
             fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_nlayer_{:02d}_wsteps_{:06d}_msteps_{:06d}.log".format(
                 shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
                 args.nlayer, args.warmup_steps, args.meas_steps)
         else:
-            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_nlayer_{:02d}_wsteps_{:06d}_msteps_{:06d}.log".format(
+            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_g2mag_{:.3f}_nlayer_{:02d}_wsteps_{:06d}_msteps_{:06d}.log".format(
                 shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
-                args.g_mag, args.nlayer, args.warmup_steps, args.meas_steps)
+                args.g2_mag, args.nlayer, args.warmup_steps, args.meas_steps)
     return fname
 
 def translate_parameters(system_cfg, params):
     nparams = system_cfg._nparams
     nlayer = system_cfg.nlayer
-    if len(params)==1 and isinstance(params[0],str) and os.path.isfile(params[0]):
+    if params is not None and len(params)==1 and isinstance(params[0],str) and os.path.isfile(params[0]):
         dest = np.load(params[0])
         dest = np.reshape(dest,(nlayer,-1))
-    elif params=="rand" or params is None:
+    elif params is None or params=="rand" :
         dest = np.random.rand(nlayer, nparams)
     else:
         dest = np.asarray(params, dtype=float)
@@ -98,7 +98,7 @@ def main():
     L = args.L
     g2 = args.g2
     g_gm = args.g_gm
-    g_mag = args.g_mag
+    g2_mag = args.g2_mag
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 
@@ -107,14 +107,14 @@ def main():
         system_cfg = Z2System2DConfig(lattice,
                                       g2,
                                       g_gm,
-                                      g_mag,
+                                      g2_mag,
                                       nlayer=args.nlayer)
     elif args.ncopy == 2:
         system_type = Z2System2D2C
         system_cfg = Z2System2D2CConfig(lattice,
                                         g2,
                                         g_gm,
-                                        g_mag,
+                                        g2_mag,
                                         nlayer=args.nlayer)
     else:
         logging.error("Not Implemented: Only 1 or two copies are possible")
@@ -134,7 +134,7 @@ def main():
     logging.info("# of copies: {}".format(args.ncopy))
     logging.info("parameters: {}".format(paramvec))
     logging.info("g^2: {}".format(g2))
-    logging.info("g_mag: {}".format(g_mag))
+    logging.info("g^2_mag: {}".format(g2_mag))
     logging.info("g_gm: {}".format(g_gm))
     logging.info("Rebinning EOM: {}".format(Measurement.use_rebinning))
     logging.info("============================")
@@ -257,7 +257,7 @@ if __name__ == "__main__":
         "L", type=int, help="Size of the square system (one side)")
     parser.add_argument("--g2", type=float, default=1.0,
                         help="coupling constant")
-    parser.add_argument("--g_mag", type=float, help="coupling constant")
+    parser.add_argument("--g2_mag", type=float, help="magnetic coupling constant (if not given, computed from g2)")
     parser.add_argument("--g_gm", type=float, default=0.0,
                         help="gauge matter coupling")
     parser.add_argument("--seed", type=int, help="Seed for the MC simulation")

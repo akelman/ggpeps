@@ -274,11 +274,11 @@ class MonteCarloEstimator:
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
         fname_full = "data_mc_L_{:02d}-{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_nlayer_{:02d}_wsteps_{:07d}_msteps_{:07d}.pkl.gz".format(
-            syscfg.lattice.nx, syscfg.lattice.ny, syscfg.g_el, syscfg.g_gm,
-            syscfg.g_mag, syscfg.nlayer, warmup_steps, meas_steps)
+            syscfg.lattice.nx, syscfg.lattice.ny, syscfg.g2_el, syscfg.g_gm,
+            syscfg.g2_mag, syscfg.nlayer, warmup_steps, meas_steps)
         fname_summary = "summary_mc_L_{:02d}-{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_nlayer_{:02d}_wsteps_{:07d}_msteps_{:07d}.pkl".format(
-            syscfg.lattice.nx, syscfg.lattice.ny, syscfg.g_el, syscfg.g_gm,
-            syscfg.g_mag, syscfg.nlayer, warmup_steps, meas_steps)
+            syscfg.lattice.nx, syscfg.lattice.ny, syscfg.g2_el, syscfg.g_gm,
+            syscfg.g2_mag, syscfg.nlayer, warmup_steps, meas_steps)
         self.save_full(fname_full)
         self.save_summary(fname_summary)
 
@@ -298,9 +298,9 @@ class MonteCarloEstimator:
             "paramvec":[],
             "ncopy":[],
             "nlayer":[],
-            "g_el": [],
+            "g2_el": [],
             "g_gm": [],
-            "g_mag": [],
+            "g2_mag": [],
             "warmup_steps": [],
             "meas_steps": [],
             "seed": [],
@@ -311,9 +311,9 @@ class MonteCarloEstimator:
             dest['name'].append(key)
             dest['nx'].append(self.system.cfg.lattice.nx)
             dest['ny'].append(self.system.cfg.lattice.ny)
-            dest['g_el'].append(self.system.cfg.g_el)
+            dest['g2_el'].append(self.system.cfg.g2_el)
             dest['g_gm'].append(self.system.cfg.g_gm)
-            dest['g_mag'].append(self.system.cfg.g_mag)
+            dest['g2_mag'].append(self.system.cfg.g2_mag)
             dest['paramvec'].append(self.system.cfg.paramvec)
             dest['ncopy'].append(self.system.cfg.ncopy)
             dest['nlayer'].append(self.system.cfg.nlayer)

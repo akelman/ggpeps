@@ -18,9 +18,9 @@ class Z2System2DConfig(Z2System2DConfigBase):
     nvirtmodes_vertex = 4 # We have one virtual mode per direction
     nvirtmodes_link = 2
 
-    def __init__(self, lattice, g2, g_gm, g_mag, nlayer=1):
+    def __init__(self, lattice, g2, g_gm, g2_mag, nlayer=1):
         #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
-        super().__init__(lattice, g2, g_gm, g_mag,nlayer)
+        super().__init__(lattice, g2, g_gm, g2_mag,nlayer)
 
     def make_pure_gauge(self):
         #The order of the parameters is [t,y,z]

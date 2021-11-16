@@ -9,7 +9,7 @@ import gauge
 class Z2System2DConfigBase(ABC):
     _nparams = 1
 
-    def __init__(self, lattice, g2, g_gm, g_mag, nlayer=1):
+    def __init__(self, lattice, g2, g_gm, g2_mag, nlayer=1):
         #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         self.nlayer = nlayer
         self.lattice = lattice
@@ -18,11 +18,11 @@ class Z2System2DConfigBase(ABC):
 
         #Parameters of the Hamiltonian
         self.g2 = g2
-        self.g_el = g2/2
-        if g_mag is None:
-            self.g_mag = 1./(2*g2)
+        self.g2_el = g2/2
+        if g2_mag is None:
+            self.g2_mag = 1./(2*g2)
         else:
-            self.g_mag = g_mag
+            self.g2_mag = g2_mag
         self.g_gm = g_gm
 
     @property
@@ -692,13 +692,13 @@ class Z2System2DBase(ABC):
     @property
     def mag_energy(self):
         nplaq = self.cfg.lattice.nplaquettes
-        mag_energy = self.cfg.g_mag * (2*nplaq - 2*self.mag_energy_op)
+        mag_energy = self.cfg.g2_mag * (2*nplaq - 2*self.mag_energy_op)
         return mag_energy
 
     @property
     def el_energy(self):
         nlinks=self.cfg.lattice.nlinks
-        el_energy = self.cfg.g_el * (2*nlinks - 2*self.el_energy_op)
+        el_energy = self.cfg.g2_el * (2*nlinks - 2*self.el_energy_op)
         return el_energy
 
     @property
