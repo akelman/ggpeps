@@ -155,7 +155,7 @@ class Minimizer():
         prod_mag_energy_grad = meas_mag_energy_op * meas_grad_over_norm
         mag_energy_op_grad = prod_mag_energy_grad.mean() - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
         # Add the constants back into the expression of the magnetic energy
-        mag_energy_grad = - 2 * mc.system.cfg.g_mag * mag_energy_op_grad
+        mag_energy_grad = - 2 * mc.system.cfg.g2_mag * mag_energy_op_grad
 
         # Gradient of the electric energy
         meas_el_energy_op = mc.obsdict["el_energy_op"]
@@ -163,7 +163,7 @@ class Minimizer():
         prod_el_energy_grad = meas_el_energy_op * meas_grad_over_norm
         el_energy_op_grad = prod_el_energy_grad.mean() - meas_el_energy_op.mean()*meas_grad_over_norm.mean() + meas_el_energy_op_grad.mean()
         # Add the constants back into the expression of the electric energy
-        el_energy_grad = - 2 * mc.system.cfg.g_el * el_energy_op_grad
+        el_energy_grad = - 2 * mc.system.cfg.g2_el * el_energy_op_grad
 
         return mag_energy_grad + el_energy_grad
 
@@ -173,10 +173,10 @@ class Minimizer():
             sys_cfg=self.evaluator.system_cfg
 
             fname_mc_summary = "summary_min_L_{:02d}-{:02d}_gel_{:.4f}_gm_{:.4f}_ncopy_{:02d}_nlayer_{:02d}.pkl".format(
-                sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g_el,
+                sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g2_el,
                 sys_cfg.g_gm, sys_cfg.ncopy, sys_cfg.nlayer)
             fname_result_min = "result_min_L_{:02d}-{:02d}_gel_{:.4f}_gm_{:.4f}_ncopy_{:02d}_nlayer_{:02d}.pkl".format(
-                sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g_el,
+                sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g2_el,
                 sys_cfg.g_gm, sys_cfg.ncopy, sys_cfg.nlayer)
 
             self.last_result.save_summary(fname_mc_summary)
