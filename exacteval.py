@@ -150,7 +150,7 @@ class ExactEvaluator():
         ystr="-".join([str(y) for y in yvec])
         zstr="-".join([str(z) for z in zvec])
         fname_summary = "summary_exact_L_{:02d}-{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{}_y_{}_z_{}.pkl".format(
-            syscfg.lattice.nx,syscfg.lattice.ny, syscfg.g_el, syscfg.g_gm, syscfg.g2_mag, tstr, ystr, zstr)
+            syscfg.lattice.nx,syscfg.lattice.ny, syscfg.g2_el, syscfg.g_gm, syscfg.g2_mag, tstr, ystr, zstr)
         self.save_summary(fname_summary)
 
     def save_summary(self, fname_summary):
