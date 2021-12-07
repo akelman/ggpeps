@@ -932,59 +932,157 @@ class TestZ2SystemMethods(unittest.TestCase):
 
         self.assertAlmostEqual(res["wilson_00_11"], mc.get_obs_mean("wilson_00_11"),places=2)
 
-class TestU1MultilayerSystemMethods(unittest.TestCase):
+class TestU1SystemMethods(unittest.TestCase):
 
     def setUp(self):
-        lat=lattice.Lattice2D(2,2)
-        paramvec=[[0.3,0.4],[0.5,0.2],[0.8,0.3]]
-        cfg=system.U1MultilayerSystem2DConfig(paramvec,lat)
-        self.system_u1_2_2=system.U1MultilayerSystem2D(cfg)
-
-    def test_tmat_numeric(self):
-        #Test numeric equivalent with Mathematica
-        tmat=self.system_u1_2_2.tmat
-        pass
+        lat = lattice.Lattice2D(2, 2)
+        paramvec = [[0.1, 0.3, 0.4]]
+        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
+        cfg.paramvec = paramvec
+        self.system_u1_2_2 = system.U1System2D(cfg)
 
     def test_tmat_antisymmetric(self):
-        tmat=self.system_u1_2_2.tmat
-        ncopy,m,n=tmat.shape
-        self.assertEqual(m,5)
-        self.assertEqual(n,4)
-        #for ind in range(ncopy):
-        #self.assertTrue(utils.is_antisymmetric(tmat[ind,1:,:]))
+        tmat = self.system_u1_2_2.tmat_vec[0]
+        m,n = tmat.shape
+        self.assertEqual(m,9)
+        self.assertEqual(n,9)
+        self.assertTrue(utils.is_antisymmetric(np.real(tmat)))
 
-#    def test_gamma_dirac_covariance(self):
-#        gamma_dirac=self.system_u1_2_2.gamma_dirac
-#        m, n = gamma_dirac.shape
-#        res=gamma_dirac@np.transpose(np.conjugate(gamma_dirac))
-#        ref=0.25*np.eye(gamma_dirac.shape[0])
-#        self.assertTrue(np.allclose(ref,res))
-#        self.assertEqual(m, n)
-#        self.assertTrue(utils.is_antisymmetric(gamma_dirac))
-#
-#    def test_gamma_maj_covariance(self):
-#        gamma_maj=self.system_u1_2_2.gamma_maj
-#        m, n = gamma_maj.shape
-#        self.assertEqual(m, n)
-#        self.assertTrue(utils.is_antisymmetric(gamma_maj))
-#        self.assertTrue(np.allclose(gamma_maj@gamma_maj,-np.eye(m)))
-#        self.assertTrue(np.allclose(gamma_maj@np.transpose(gamma_maj),np.eye(m)))
-#
-#    def test_gamma_maj_sys_covariance(self):
-#        gamma_maj=self.system_u1_2_2.gamma_maj_sys
-#        m, n = gamma_maj.shape
-#        self.assertEqual(m, n)
-#        self.assertTrue(utils.is_antisymmetric(gamma_maj))
-#        self.assertTrue(np.allclose(gamma_maj@gamma_maj,-np.eye(m)))
-#        self.assertTrue(np.allclose(gamma_maj@np.transpose(gamma_maj),np.eye(m)))
-#
-#    def test_gamma_in_sys_covariance(self):
-#        gamma_in=self.system_u1_2_2.gamma_in_sys
-#        m, n = gamma_in.shape
-#        self.assertEqual(m, n)
-#        self.assertTrue(utils.is_antisymmetric(gamma_in))
-#        self.assertTrue(np.allclose(gamma_in@gamma_in,-np.eye(m)))
-#        self.assertTrue(np.allclose(gamma_in@np.transpose(gamma_in),np.eye(m)))
+    def test_gamma_dirac_covariance(self):
+        gamma_dirac = self.system_u1_2_2.gamma_dirac_vec[0]
+        m, n = gamma_dirac.shape
+        res = gamma_dirac @ np.transpose(np.conjugate(gamma_dirac))
+        ref = 0.25 * np.eye(gamma_dirac.shape[0])
+        self.assertTrue(np.allclose(ref, res))
+        self.assertEqual(m, n)
+        self.assertTrue(utils.is_antisymmetric(gamma_dirac))
+
+    def test_gamma_maj_covariance(self):
+        gamma_maj = self.system_u1_2_2.gamma_maj_vec[0]
+        m, n = gamma_maj.shape
+        self.assertEqual(m, n)
+        self.assertTrue(utils.is_antisymmetric(gamma_maj))
+        self.assertTrue(np.allclose(gamma_maj @ gamma_maj, -np.eye(m)))
+        self.assertTrue(np.allclose(gamma_maj@np.transpose(gamma_maj),np.eye(m)))
+
+    def test_gamma_maj_sys_covariance(self):
+        gamma_maj = self.system_u1_2_2.gamma_maj_sys_vec[0]
+        m, n = gamma_maj.shape
+        self.assertEqual(m, n)
+        self.assertTrue(utils.is_antisymmetric(gamma_maj))
+        self.assertTrue(np.allclose(gamma_maj @ gamma_maj, -np.eye(m)))
+        self.assertTrue(np.allclose(gamma_maj @ np.transpose(gamma_maj), np.eye(m)))
+
+    def test_gamma_in_sys_covariance(self):
+        gamma_in = self.system_u1_2_2.gamma_in_sys
+        m, n = gamma_in.shape
+        self.assertEqual(m, n)
+        self.assertTrue(utils.is_antisymmetric(gamma_in))
+        self.assertTrue(np.allclose(gamma_in@gamma_in,-np.eye(m)))
+        self.assertTrue(np.allclose(gamma_in@np.transpose(gamma_in),np.eye(m)))
+
+    def test_norm_minimal(self):
+        # This update is a nullop since we initialize the gauge-field with 0
+        zeroarr = np.zeros((1, 1))
+        #The factor of 2 compensates for the
+        logdet_inc = 2*self.system_u1_2_2.update_lognorm_inc(0, zeroarr, all_factors=False)
+        # This is equivalent to
+        #logdet_inc = self.system_u1_2_2.incdet.det()
+        diff = self.system_u1_2_2.mat_d_inv_vec[0] - self.system_u1_2_2.gamma_in_sys
+        sign, logdet = np.linalg.slogdet(diff)
+        self.assertGreater(sign,0)
+        self.assertAlmostEqual(logdet_inc, logdet)
+
+    def test_norm_incremental(self):
+        # Test that the incremental update is equivalent to the re-calculation of the norm
+        # This update is a nullop since we initialize the gauge-field with 0
+        zeroarr = np.zeros((1, 1))
+        weight_inc = self.system_u1_2_2.update_lognorm_inc(0,
+                                                              zeroarr,
+                                                              all_factors=True)
+        weight_recalc = self.system_u1_2_2.calculate_lognorm(all_factors=True)
+        self.assertAlmostEqual(weight_inc, weight_recalc)
+
+    def test_norm_incremental_update(self):
+        # Test that the incremental update is equivalent to the re-calculation of the norm
+        ind = 0
+        theta = np.pi
+        weight_inc = self.system_u1_2_2.calculate_weight_attempt(
+            ind, theta, all_factors=True)
+        self.system_u1_2_2.update_gauge_ind(ind, theta)
+        weight_recalc = self.system_u1_2_2.calculate_lognorm(all_factors=True)
+        self.assertAlmostEqual(weight_inc, weight_recalc)
+
+    def test_grad_over_norm_pure_gauge(self):
+        # This is comparison of the analytic derivative against the numeric derivative
+        # There is no sampling involved here. The gauge field is 0.
+        eps=1e-5
+        lat = lattice.Lattice2D(2, 2)
+        t=0.0
+        y=0.1
+        z=0.2
+        paramvec = [[t, y, z]]
+        paramvec_left =  [[t, y-eps, z]]
+        paramvec_right = [[t, y+eps, z]]
+
+        cfg = system.Z2System2DConfig(lat, 0, 0, 0)
+        cfg_left = system.Z2System2DConfig(lat, 0, 0, 0)
+        cfg_right = system.Z2System2DConfig(lat, 0, 0, 0)
+
+        cfg.paramvec = paramvec
+        cfg_left.paramvec = paramvec_left
+        cfg_right.paramvec = paramvec_right
+
+        system_u1_2_2 = system.Z2System2D(cfg)
+        system_u1_2_2_left= system.Z2System2D(cfg_left)
+        system_u1_2_2_right = system.Z2System2D(cfg_right)
+
+        # We are using here that the gradient of the d/dx log(f(x)) is [d/dx f(x)]/f(x).
+        # Thus, the d/dx log(norm(x))= [d/dx norm(x)]/ norm(x) which is exactly the function grad_over_norm
+        # The second symbol is y
+        deriv_ana = system_u1_2_2.compute_grad_over_norm(system_u1_2_2.symbolvec[1],0)
+        lognorm_left = system_u1_2_2_left.calculate_lognorm(all_factors=True)
+        lognorm_right = system_u1_2_2_right.calculate_lognorm(all_factors=True)
+        deriv_num = (lognorm_right - lognorm_left) / (2 * eps)
+        #print("Analytical",deriv_ana)
+        #print("Numerical",deriv_num)
+        self.assertAlmostEqual(deriv_ana, deriv_num)
+
+    def test_grad_over_norm(self):
+        #This is comparison of the analytic derivative against the numeric derivative
+        eps=1e-5
+        t=0.17
+        y=0.35
+        z=0.56
+        paramvec = [[t, y, z]]
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, None, None)
+        system_cfg.paramvec = paramvec
+        system_u1_2_2 = system.Z2System2D(system_cfg)
+        symbolvec = self.system_u1_2_2.symbolvec
+        for ind in range(len(symbolvec)):
+            with self.subTest(ind=ind):
+                paramvec_left=np.copy(paramvec)
+                paramvec_right=np.copy(paramvec)
+                paramvec_left[0,ind]-=eps
+                paramvec_right[0,ind]+=eps
+                system_cfg_left = system.Z2System2DConfig(
+                    lat_2x2, 1.0, None, None)
+                system_cfg_right = system.Z2System2DConfig(
+                    lat_2x2, 1.0, None, None)
+                system_cfg_left.paramvec=paramvec_left
+                system_cfg_right.paramvec=paramvec_right
+
+                system_u1_2_2_left= system.Z2System2D(system_cfg_left)
+                system_u1_2_2_right = system.Z2System2D(system_cfg_right)
+
+                #This is a single layer construction, we always use layer 0 to test.
+                deriv_ana = system_u1_2_2.compute_grad_over_norm(symbolvec[ind],0)
+                norm_left = system_u1_2_2_left.calculate_lognorm(all_factors=True)
+                norm_right = system_u1_2_2_right.calculate_lognorm(all_factors=True)
+                deriv_num = (norm_right - norm_left) / (2 * eps)
+
+                self.assertAlmostEqual(deriv_ana, deriv_num)
 
 @skip("This class of tests takes too long")
 class TestMinimizerZ2(unittest.TestCase):
