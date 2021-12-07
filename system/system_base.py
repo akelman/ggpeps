@@ -559,6 +559,14 @@ class Z2System2DBase(ABC):
     def weight(self,val):
         self._weight = val
 
+    def calculate_weight_attempt(self, link_ind, theta, all_factors=False):
+        # There are two directions per vertex and two Majoranas per link
+        ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
+        rotmat = self.generate_rotmat(theta)
+        gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(rotmat)
+        update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
+        return self.update_lognorm_inc(ind_mat, update, all_factors)
+
     def calculate_lognorm(self,all_factors=False):
         return calculate_lognorm(self.gamma_in_sys, self.mat_d_vec, all_factors=all_factors)
 

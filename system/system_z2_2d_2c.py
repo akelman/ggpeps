@@ -199,11 +199,10 @@ class Z2System2D2C(Z2System2DBase):
     def update_gauge_ind(self, ind, theta):
         # Update the gaugefield
         self._gaugefieldvec[ind] = theta
-        # There are two directions per vertex and four Majoranas per link
-        ind_mat = 8 * ind
+        # There are two directions per vertex
+        ind_mat = 2 * self.cfg.nvirtmodes_link * ind
         rotmat = self.generate_rotmat(theta)
-        gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(
-            rotmat)
+        gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
         # Update the determinant
         mat_inv_vec = [
@@ -230,26 +229,16 @@ class Z2System2D2C(Z2System2DBase):
             [ wi_gamma_in_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_in_mod in self.wi_gamma_in_mod_vec ]
             [ wi_gamma_out_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_out_mod in self.wi_gamma_out_mod_vec ]
         # Substitute in the array
-        self.gamma_in_sys[ind_mat:ind_mat + 8,
-                          ind_mat:ind_mat + 8] = gamma_in_subst
+        self.gamma_in_sys[ind_mat:ind_mat + rotmat.shape[0],
+                          ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
-
-
-    def calculate_weight_attempt(self, link_ind, theta, all_factors=False):
-        # There are two directions per vertex and two Majoranas per link
-        ind_mat = 4 * link_ind
-        rotmat = self.generate_rotmat(theta)
-        gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(rotmat)
-        update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
-        return self.update_lognorm_inc(ind_mat, update, all_factors)
 
 
     # Observables
 
     def _compute_el_energy_op_vec_and_grad(self, use_trans_inv=True):
         if use_trans_inv:
-            gamma_in_sys = self.gamma_in_sys
             lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
             # This is the usual norm without any modifications
             lognorm_default = np.sum(lognormvec_default)
@@ -268,7 +257,6 @@ class Z2System2D2C(Z2System2DBase):
                 #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
                 mat_a = self.mat_a_mod_vec[layerind]
                 mat_b = self.mat_b_mod_vec[layerind]
-                gamma_maj_sys = self.gamma_maj_sys_vec[layerind]
                 diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
                 diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
 

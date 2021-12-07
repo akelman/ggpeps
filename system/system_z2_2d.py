@@ -35,7 +35,7 @@ class Z2System2D(Z2System2DBase):
 
         Order of the paramvec: [t,y,z]
         Mode order of T: {p,l,r,d,u}
-        Mode Order of gamma_dirac:  {p,l,r,d,u,p_dag,l_dag,r_dag,u_dag,d_dag}.
+        Mode Order of gamma_dirac:  {p,l,r,d,u,p_dag,l_dag,r_dag,d_dag,u_dag}.
         Mode Order of gamma_maj: {p_1,p_2,l_1,l_2,r_1,r_2,d_1,d_2,u_1,u_2}.
         The subscript indices are Majorana mode indices here.
     Args:
@@ -209,21 +209,11 @@ class Z2System2D(Z2System2DBase):
         self.invalidate_gauge_update()
 
 
-    def calculate_weight_attempt(self, link_ind, theta, all_factors=False):
-        # There are two directions per vertex and two Majoranas per link
-        ind_mat = 4 * link_ind
-        rotmat = self.generate_rotmat(theta)
-        gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(rotmat)
-        update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
-        return self.update_lognorm_inc(ind_mat, update, all_factors)
-
-
     # Calculating the norm
 
 
     def _compute_el_energy_op_vec(self, use_trans_inv=True):
         if use_trans_inv:
-            gamma_in_sys = self.gamma_in_sys
             normvec_default = calculate_lognormvec(self.gamma_in_sys,
                                                 self.mat_d_vec,all_factors=True)
             # This is the usual norm without any modifications
@@ -232,8 +222,7 @@ class Z2System2D(Z2System2DBase):
             single_site_offset = 4
             offset = 2 * self.cfg.lattice.size + single_site_offset
             # We have to cut one link from gamma_in_sys as well
-            gamma_in_sys_tilde = gamma_in_sys[single_site_offset:,
-                                            single_site_offset:]
+            gamma_in_sys_tilde = self.gamma_in_sys_mod
             el_energy_bare=[]
             for layerind in range(self.cfg.nlayer):
                 #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
