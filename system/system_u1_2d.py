@@ -6,6 +6,7 @@ import utils
 import gauge
 import lattice as lat
 from scipy.linalg import block_diag
+import pfapack
 
 from .system_base import calculate_lognorm, calculate_lognormvec_inc, extract_partial_covmats, compute_grad_over_norm
 
@@ -633,7 +634,6 @@ class U1System2D:
         deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:]
         mat_d_inv=self.mat_d_inv_vec[layerind]
 
-        #TODO: We might save one matrix-matrix multiplication here
         return compute_grad_over_norm(self.gamma_in_sys, diff, deriv_d, mat_d_inv)
 
 
@@ -745,9 +745,109 @@ class U1System2D:
             mag_energy_bare = None
         return mag_energy_bare
 
+    def _compute_el_energy_op_gaussian(self):
+        if use_trans_inv:
+            lognormvec_default_inc = self.calculate_lognormvec_inc(all_factors=True)
+            # This is the usual norm without any modifications
+            lognorm_default = np.sum(lognormvec_default_inc)
+            # Number of fermions = # of sites
+            # Since we have 1 copy, we get 2 virtual fermions per link, leading to 2 * 2 Majorana modes
+            single_link_offset = 2 * self.cfg.nvirtmodes_link
+            offset = 2 * self.cfg.lattice.size + single_link_offset
+            # We have to cut one link from gamma_in_sys as well
+            gamma_in_sys_mod = self.gamma_in_sys_mod
+            nlinks = self.cfg.lattice.nlinks
+            dest = []
+            dest_grad = []
+
+            for layerind in range(self.cfg.nlayer):
+                layer_derivative=[]
+                # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
+                # The shifted matrices are extracted at the initalization
+                # The offset is changed such that one virtual link is attributed to the physical part
+                mat_a = self.mat_a_mod_vec[layerind]
+                mat_b = self.mat_b_mod_vec[layerind]
+                diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
+                diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
+
+                ###################### Calculation of <P> ########################
+                covmat_out = mat_a + mat_b @ self.wi_gamma_out_mod_vec[layerind].inv() @ np.transpose(mat_b)
+                covmat_out_virt = covmat_out[-single_link_offset:, -
+                                            single_link_offset:]
+                # For the modified norm, we still have to take into account the other contributions from the unmodified parts
+                norm_mod = calculate_lognorm_inc(
+                    [self.incdet_mod_vec[layerind]],
+                    [self.det_mat_d_mod_vec[layerind]],
+                    gamma_in_sys_mod.shape[0],
+                    all_factors=True)
+                #norm_mod = calculate_lognorm(gamma_in_sys_mod, [mat_d],
+                #all_factors=True)
+                norm_mod += np.sum(utils.select_except(lognormvec_default_inc,layerind))
+                # The matrix elements yield only the real part of <P>
+                #el_energy_layer = 0.25*( covmat_out_virt[0, 1] + covmat_out_virt[2, 3] + 1.j*covmat_out_virt[0,2] - 1.j*covmat_out_virt[0,3]) * np.exp(norm_mod - lognorm_default)
+                el_energy_layer = 0.25*( covmat_out_virt[0, 1] + covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
+                dest.append(el_energy_layer)
+
+                ###################### Calculation of the derivative ########################
+                for symbol in self.symbolvec:
+                    deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
+                    d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                    d_gamma_out = d_mat_a + \
+                            d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
+                            + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
+                            - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+                    # The virtual mode is the last link on the bottom right of the covariance matrix
+                    d_covmat_out_virt = d_gamma_out[-single_link_offset:,
+                                                -single_link_offset:]
+                    # Summand with derivative of the covariance matrix
+                    d_el_energy = 0.25 * ( d_covmat_out_virt[0, 1] + d_covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
+                    # Summand with derivative of norms
+                    trace_def = self.compute_grad_over_norm(symbol, layerind)
+                    trace_mod = compute_grad_over_norm(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
+                    d_el_energy += dest[layerind] * (trace_mod - trace_def)
+                    # Scale to system size
+                    d_el_energy *= nlinks
+                    layer_derivative.append(d_el_energy)
+                dest_grad.append(layer_derivative)
+            # We have to weight the different layers with the electric energy operator expectation of the other layers.
+            # They act as a prefactor in the derivative
+            dest = np.asarray(dest)
+            dest_grad = np.asarray(dest_grad)
+            if self.cfg.nlayer > 1:
+                for i in range(self.cfg.nlayer):
+                    prod_other_layers = utils.multiply_except(dest, i)
+                    dest_grad[i] *= prod_other_layers
+        else:
+            # Evaluate every link of the system
+            logging.error("compute_el_energy: not implemented yet")
+            dest = np.asarray([None]*self.cfg.nlayer)
+            dest_grad = np.asarray([[None]*len(self.symbolvec)]*self.cfg.nlayer)
+        return dest, dest_grad
+
+    def _compute_el_energy_op_pfaffian(self):
+        # Store the current value of the overlap
+        dest = []
+        increment = -self.gaugemgr.get_increment()
+        prefactor = 0.5 * (1. + np.cos(increment))
+        gamma_in_try = self.construct_gamma_in_sys_electric(indx, indy, dir)
+        # Build the new value for gamma_in
+        # Since there can be singular matrices in the update, we can't use the
+        # Determinant Lemma
+        for i in range(self.cfg.ncopy):
+            mat_d_inv = self.mat_d_inv_vec[i]
+            # The 0.5 is the square root since incdet stores the log of the determinant
+            overlap_same_gauge = np.exp(0.5*self.incdet_vec[i].det())
+
+            diff_try = gamma_in_try - mat_d_inv
+            overlap_diff_gauge = pfapack.pfaffian(diff_try)
+            dest.append(prefactor * np.real(overlap_diff_gauge) / overlap_same_gauge)
+        return dest, None
+
     def _compute_el_energy_op_vec_and_grad(self):
-        #TODO: FILL
-        pass
+        if self.use_pfaffian:
+            return self._compute_el_energy_op_pfaffian()
+        else:
+            return self.self_comptue_el_energy_op_gaussian()
 
     @property
     def energy(self):
