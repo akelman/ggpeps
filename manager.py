@@ -226,7 +226,7 @@ def main():
             minimizer = Minimizer(mc, min_cfg)
 
             resultvec.append(minimizer.minimize())
-            system_cfg.paramvec = resultvec[-1].parametervec
+            system_cfg.paramvec = resultvec[-1].paramvec
         stop = timer()
         #TODO: We can merge the resultvec to get a full result
         minimizer.save()

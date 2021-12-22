@@ -14,7 +14,7 @@ class Z2System2DConfigBase(ABC):
         self.nlayer = nlayer
         self.lattice = lattice
 
-        self._parametervec = None
+        self._parmvec = None
 
         #Parameters of the Hamiltonian
         self.g2 = g2
@@ -27,12 +27,12 @@ class Z2System2DConfigBase(ABC):
 
     @property
     def paramvec(self):
-        return self._parametervec
+        return self._parmvec
 
     @paramvec.setter
     def paramvec(self,val):
         if self.check_params(val):
-            self._parametervec=val
+            self._parmvec=val
             self.nlayer = len(val)
         else:
             logging.error("The set of parameters is not consistent.")
@@ -54,7 +54,7 @@ class Z2System2DConfigBase(ABC):
 
     def print_parametervec(self,symbolvec):
         for ind in range(self.nlayer):
-            for symb,val in zip(symbolvec, self._parametervec[ind]):
+            for symb,val in zip(symbolvec, self._parmvec[ind]):
                 print(str(symb),val)
     
     @abstractmethod

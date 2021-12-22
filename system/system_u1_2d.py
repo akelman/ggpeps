@@ -24,7 +24,7 @@ class U1System2DConfig():
         self.nlayer = nlayer
         self.lattice = lattice
 
-        self._parametervec = None
+        self._paramvec = None
 
         #Parameters of the Hamiltonian
         self.g2 = g2
@@ -37,12 +37,12 @@ class U1System2DConfig():
 
     @property
     def paramvec(self):
-        return self._parametervec
+        return self._paramvec
 
     @paramvec.setter
     def paramvec(self,val):
         if self.check_params(val):
-            self._parametervec=val
+            self._paramvec=val
             self.nlayer = len(val)
         else:
             logging.error("The set of parameters is not consistent.")
@@ -64,7 +64,7 @@ class U1System2DConfig():
 
     def print_parametervec(self,symbolvec):
         for ind in range(self.nlayer):
-            for symb,val in zip(symbolvec, self._parametervec[ind]):
+            for symb,val in zip(symbolvec, self._paramvec[ind]):
                 print(str(symb),val)
 
     def make_pure_gauge(self):
