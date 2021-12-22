@@ -6,7 +6,7 @@ from scipy.linalg import svd, block_diag
 import scipy.sparse as sparse
 import os
 import sys
-import measurement as meas
+import ggpeps.measurement as meas
 import gzip
 import pickle
 import subprocess  # Start process for git hash

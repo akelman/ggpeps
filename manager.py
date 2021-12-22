@@ -1,19 +1,18 @@
 """Main script to control the simulation. 
 Further details about the usage of the script can be found in README.md.
 """
-from system import Z2System2D2C,Z2System2D2CConfig
-from system import Z2System2D, Z2System2DConfig
-from measurement import Measurement
+from ggpeps.system import Z2System2D2C,Z2System2D2CConfig
+from ggpeps.system import Z2System2D, Z2System2DConfig
+from ggpeps.measurement import Measurement
 import os
 import sys
 from timeit import default_timer as timer
 import ray
-import utils
+from ggpeps import utils, exacteval
 import logging
-from minimizer import Minimizer, MinimizerConfig
-from mc import MonteCarloEstimatorConfig, MonteCarloManager
-import exacteval
-import lattice as lat
+from ggpeps.minimizer import Minimizer, MinimizerConfig
+from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloManager
+from ggpeps import lattice as lat
 import numpy as np
 np.set_printoptions(linewidth=200)
 

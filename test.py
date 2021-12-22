@@ -1,14 +1,11 @@
 from unittest.case import SkipTest, skip
-from exacteval import ExactEvaluator
+from ggpeps.exacteval import ExactEvaluator
 import unittest
 import numpy as np
-import utils
-import system
-import lattice
-from measurement import Measurement
-from mc import MonteCarloEstimatorConfig, MonteCarloEstimator, MonteCarloManager
-from minimizer import Minimizer
-import gauge
+from ggpeps import utils, system, lattice, gauge
+from ggpeps.measurement import Measurement
+from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloEstimator, MonteCarloManager
+from ggpeps.minimizer import Minimizer
 from pfapack import pfaffian as pf
 
 def compare_array_elementwise(testcase,ref,res,print_vals=True):
