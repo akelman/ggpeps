@@ -6,9 +6,9 @@ import utils
 import gauge
 import lattice as lat
 from scipy.linalg import block_diag
-import pfapack
+from pfapack import pfaffian as pf
 
-from .system_base import calculate_lognorm, calculate_lognormvec_inc, extract_partial_covmats, compute_grad_over_norm
+from .system_base import calculate_lognorm, calculate_lognormvec_inc, extract_partial_covmats, compute_grad_over_norm, calculate_lognorm_inc
 
 ################### U1MultilayerSystem2D ###################
 
@@ -752,7 +752,7 @@ class U1System2D:
             mag_energy_bare = None
         return mag_energy_bare
 
-    def _compute_el_energy_op_gaussian(self,use_trans_inv=True):
+    def _compute_el_energy_op_and_grad_gaussian(self,use_trans_inv=True):
         if use_trans_inv:
             lognormvec_default_inc = self.calculate_lognormvec_inc(all_factors=True)
             # This is the usual norm without any modifications
@@ -831,30 +831,81 @@ class U1System2D:
             dest_grad = np.asarray([[None]*len(self.symbolvec)]*self.cfg.nlayer)
         return dest, dest_grad
 
-    def _compute_el_energy_op_pfaffian(self):
-        # Store the current value of the overlap
-        dest = []
-        increment = -self.gaugemgr.get_increment()
-        prefactor = 0.5 * (1. + np.cos(increment))
-        gamma_in_try = self.construct_gamma_in_sys_electric(indx, indy, dir)
-        # Build the new value for gamma_in
-        # Since there can be singular matrices in the update, we can't use the
-        # Determinant Lemma
-        for i in range(self.cfg.ncopy):
-            mat_d_inv = self.mat_d_inv_vec[i]
-            # The 0.5 is the square root since incdet stores the log of the determinant
-            overlap_same_gauge = np.exp(0.5*self.incdet_vec[i].det())
 
-            diff_try = gamma_in_try - mat_d_inv
-            overlap_diff_gauge = pfapack.pfaffian(diff_try)
-            dest.append(prefactor * np.real(overlap_diff_gauge) / overlap_same_gauge)
-        return dest, None
+    def construct_gamma_in_sys_electric(self,indx, indy, dir):
+        link_ind = self.cfg.lattice.coord2ind_dir((indx, indy), dir)
+        current_phase = self.gaugefieldvec[link_ind]
+        increment = -self.gaugemgr.get_increment()
+        dest = self.gamma_in_sys.astype(complex).copy()
+        adapted_no_gauge = self.generate_electric_full(increment)
+        rotmat = self.generate_rotmat_staggered(current_phase, indx, indy)
+        adapted = rotmat * adapted_no_gauge * rotmat.transpose()
+        ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
+        dest[ind_mat:ind_mat+adapted.shape[0],
+             ind_mat:ind_mat+adapted.shape[1]] = adapted
+        return dest
+
+
+    def generate_electric_single_mode(self, phi):
+        #This function outputs a matrix in the order r(1),r(2),l(1),l(2)
+        #The convention is that phi is taken as positive for the modes r+ and l-,
+        #and negative for r- and l+
+        t = np.tan(phi/2.)
+        dest = np.array([[0, -1.j*t, -t,-1],
+                         [ 1.j*t, 0, -1,t],
+                         [ t, 1, 0, -1.j*t],
+                         [1, -t, 1.j*t, 0]],dtype=complex)
+        return dest
+
+
+    def generate_electric_full(self,phi):
+        #Mode order of the matrix before reordering:r+,l-,r-,l+
+        part = np.zeros((8, 8), dtype=complex)
+        part[0:4, 0:4] = self.generate_electric_single_mode(phi)
+        part[4:, 4:] = self.generate_electric_single_mode(-phi)
+        #TODO: We can also insert the matrix elements already in the correct order
+        #Mode order of the matrix after reordering:l+,l-,r+,r- (as needed for Gamma_in)
+        perm_electric = np.zeros((8, 8))
+        id = np.eye(2)
+        perm_electric[0:2, 6:8] = id
+        perm_electric[2:4, 2:4] = id
+        perm_electric[4:6, 0:2] = id
+        perm_electric[6:8, 4:6] = id
+        return perm_electric@part@np.transpose(perm_electric)
+    
+
+    def _compute_el_energy_op_and_grad_pfaffian(self,use_trans_inv=True):
+        # Store the current value of the overlap
+        if use_trans_inv:
+            dest = []
+            increment = -self.gaugemgr.get_increment()
+            prefactor = 0.5 * (1. + np.cos(increment))
+            gamma_in_try = self.construct_gamma_in_sys_electric(0, 0, lat.Direction.X)
+            # Build the new value for gamma_in
+            # Since there can be singular matrices in the update, we can't use the
+            # Determinant Lemma
+            for i in range(self.cfg.ncopy):
+                mat_d_inv = self.mat_d_inv_vec[i]
+                # The 0.5 is the square root since incdet stores the log of the determinant
+                overlap_same_gauge = np.exp(0.5*self.incdet_vec[i].det())
+
+                diff_try = gamma_in_try - mat_d_inv
+                overlap_diff_gauge = pf.pfaffian(diff_try)
+                dest.append(prefactor * np.real(overlap_diff_gauge) / overlap_same_gauge)
+            #TODO: Implement gradient
+            dest_grad = np.asarray([[None]*len(self.symbolvec)]*self.cfg.nlayer)
+        else:
+            # Evaluate every link of the system
+            logging.error("compute_el_energy: not implemented yet")
+            dest = np.asarray([None]*self.cfg.nlayer)
+            dest_grad = np.asarray([[None]*len(self.symbolvec)]*self.cfg.nlayer)
+        return dest, dest_grad
 
     def _compute_el_energy_op_vec_and_grad(self):
         if self.use_pfaffian:
-            return self._compute_el_energy_op_pfaffian()
+            return self._compute_el_energy_op_and_grad_pfaffian()
         else:
-            return self._compute_el_energy_op_gaussian()
+            return self._compute_el_energy_op_and_grad_gaussian()
 
     @property
     def energy(self):

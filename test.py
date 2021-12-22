@@ -9,6 +9,7 @@ from measurement import Measurement
 from mc import MonteCarloEstimatorConfig, MonteCarloEstimator, MonteCarloManager
 from minimizer import Minimizer
 import gauge
+from pfapack import pfaffian as pf
 
 def compare_array_elementwise(testcase,ref,res,print_vals=True):
     testcase.assertEqual(ref.shape,res.shape)
@@ -1046,9 +1047,14 @@ class TestU1SystemMethods(unittest.TestCase):
         system_cfg = system.U1System2DConfig(lat_2x2, 1.0, None, None)
         system_cfg.paramvec = paramvec
         system_u1_2_2_pf = system.U1System2D(system_cfg)
+        gamma_maj = system_u1_2_2_pf.gamma_maj_vec[0]
+        system_u1_2_2_pf.use_pfaffian = True
         system_u1_2_2_link = system.U1System2D(system_cfg)
-        self.assertAlmostEqual(system_u1_2_2_pf.el_energy, 0.0)
-        self.assertAlmostEqual(system_u1_2_2_link.el_energy, 0.0)
+        el_energy_pf = system_u1_2_2_pf.el_energy
+        el_energy_link = system_u1_2_2_link.el_energy
+        self.assertAlmostEqual(el_energy_link, el_energy_pf)
+        self.assertAlmostEqual(el_energy_pf, 0.0)
+        self.assertAlmostEqual(el_energy_link, 0.0)
 
 
 @skip("This class of tests takes too long")
@@ -1782,6 +1788,31 @@ class TestBGBTransform(unittest.TestCase):
 
         self.assertTrue(np.allclose(np.real(gamma_dirac), np.real(gamma_dirac_svd)))
         self.assertTrue(np.allclose(np.imag(gamma_dirac), np.imag(gamma_dirac_svd)))
+
+class TestPfaffian(unittest.TestCase):
+
+
+    def setUp(self):
+        N=4
+        self.mat=np.zeros((N, N))
+        mat[0,1]=1.0
+        mat[1,0]=-1.0
+        mat[0,2]=2.0
+        mat[2,0]=-2.0
+        mat[0,3]=3.0
+        mat[3,0]=-3.0
+        mat[1,2]=4.0j
+        mat[2,1]=-4.0j
+        mat[1,3]=5.0
+        mat[3,1]=-5.0
+        mat[2,3]=6.0
+        mat[3,2]=-6.0
+
+
+def test_pfaffian(self):
+    pfaffian = pf.pfaffian(self.mat)
+    self.assertAlmostEqual(np.real(pfaffian), -4)
+    self.assertAlmostEqual(np.imag(pfaffian), 12)
 
 if __name__ == '__main__':
     unittest.main()
