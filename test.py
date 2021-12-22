@@ -1013,76 +1013,43 @@ class TestU1SystemMethods(unittest.TestCase):
         weight_recalc = self.system_u1_2_2.calculate_lognorm(all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
-    def test_grad_over_norm_pure_gauge(self):
-        # This is comparison of the analytic derivative against the numeric derivative
-        # There is no sampling involved here. The gauge field is 0.
-        eps=1e-5
+
+    def test_compare_cpp_pure_gauge_gamma_dirac(self):
         lat = lattice.Lattice2D(2, 2)
-        t=0.0
-        y=0.1
-        z=0.2
-        paramvec = [[t, y, z]]
-        paramvec_left =  [[t, y-eps, z]]
-        paramvec_right = [[t, y+eps, z]]
-
-        cfg = system.Z2System2DConfig(lat, 0, 0, 0)
-        cfg_left = system.Z2System2DConfig(lat, 0, 0, 0)
-        cfg_right = system.Z2System2DConfig(lat, 0, 0, 0)
-
+        paramvec = [[0.1, 0.4, 0.2]]
+        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
         cfg.paramvec = paramvec
-        cfg_left.paramvec = paramvec_left
-        cfg_right.paramvec = paramvec_right
+        system_u1_2_2 = system.U1System2D(cfg)
+        gamma_dirac = system_u1_2_2.gamma_dirac_vec[0]
+        gamma_dirac_cpp = utils.load_matrix_dat_fmt("misc/gamma_dirac_cpp_t_0.0_y_0.4_z_0.2.dat")
+        #utils.show_matrixvec([np.real(gamma_dirac),np.real(gamma_dirac_cpp)])
+        #utils.show_matrixvec([np.imag(gamma_dirac),np.imag(gamma_dirac_cpp)])
+        self.assertTrue(np.allclose(gamma_dirac,gamma_dirac_cpp))
 
-        system_u1_2_2 = system.Z2System2D(cfg)
-        system_u1_2_2_left= system.Z2System2D(cfg_left)
-        system_u1_2_2_right = system.Z2System2D(cfg_right)
 
-        # We are using here that the gradient of the d/dx log(f(x)) is [d/dx f(x)]/f(x).
-        # Thus, the d/dx log(norm(x))= [d/dx norm(x)]/ norm(x) which is exactly the function grad_over_norm
-        # The second symbol is y
-        deriv_ana = system_u1_2_2.compute_grad_over_norm(system_u1_2_2.symbolvec[1],0)
-        lognorm_left = system_u1_2_2_left.calculate_lognorm(all_factors=True)
-        lognorm_right = system_u1_2_2_right.calculate_lognorm(all_factors=True)
-        deriv_num = (lognorm_right - lognorm_left) / (2 * eps)
-        #print("Analytical",deriv_ana)
-        #print("Numerical",deriv_num)
-        self.assertAlmostEqual(deriv_ana, deriv_num)
+    def test_compare_cpp_pure_gauge_gamma_maj(self):
+        lat = lattice.Lattice2D(2, 2)
+        paramvec = [[0.1, 0.4, 0.2]]
+        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
+        cfg.paramvec = paramvec
+        system_u1_2_2 = system.U1System2D(cfg)
+        gamma_maj = system_u1_2_2.gamma_maj_vec[0]
+        gamma_maj_cpp = utils.load_matrix_dat_fmt("misc/gamma_maj_cpp_t_0.0_y_0.4_z_0.2.dat",is_complex=False)
+        #utils.show_matrixvec([np.real(gamma_maj),np.real(gamma_maj_cpp)])
+        #utils.show_matrixvec([np.imag(gamma_maj),np.imag(gamma_maj_cpp)])
+        self.assertTrue(np.allclose(gamma_maj,gamma_maj_cpp))
 
-    def test_grad_over_norm(self):
-        #This is comparison of the analytic derivative against the numeric derivative
-        eps=1e-5
-        t=0.17
-        y=0.35
-        z=0.56
-        paramvec = [[t, y, z]]
+    def test_el_energy_1_layer_single_eval(self):
+        # Calculate the electric energy of an empty system.
+        paramvec = np.zeros((1,3))
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, None, None)
+        system_cfg = system.U1System2DConfig(lat_2x2, 1.0, None, None)
         system_cfg.paramvec = paramvec
-        system_u1_2_2 = system.Z2System2D(system_cfg)
-        symbolvec = self.system_u1_2_2.symbolvec
-        for ind in range(len(symbolvec)):
-            with self.subTest(ind=ind):
-                paramvec_left=np.copy(paramvec)
-                paramvec_right=np.copy(paramvec)
-                paramvec_left[0,ind]-=eps
-                paramvec_right[0,ind]+=eps
-                system_cfg_left = system.Z2System2DConfig(
-                    lat_2x2, 1.0, None, None)
-                system_cfg_right = system.Z2System2DConfig(
-                    lat_2x2, 1.0, None, None)
-                system_cfg_left.paramvec=paramvec_left
-                system_cfg_right.paramvec=paramvec_right
+        system_u1_2_2_pf = system.U1System2D(system_cfg)
+        system_u1_2_2_link = system.U1System2D(system_cfg)
+        self.assertAlmostEqual(system_u1_2_2_pf.el_energy, 0.0)
+        self.assertAlmostEqual(system_u1_2_2_link.el_energy, 0.0)
 
-                system_u1_2_2_left= system.Z2System2D(system_cfg_left)
-                system_u1_2_2_right = system.Z2System2D(system_cfg_right)
-
-                #This is a single layer construction, we always use layer 0 to test.
-                deriv_ana = system_u1_2_2.compute_grad_over_norm(symbolvec[ind],0)
-                norm_left = system_u1_2_2_left.calculate_lognorm(all_factors=True)
-                norm_right = system_u1_2_2_right.calculate_lognorm(all_factors=True)
-                deriv_num = (norm_right - norm_left) / (2 * eps)
-
-                self.assertAlmostEqual(deriv_ana, deriv_num)
 
 @skip("This class of tests takes too long")
 class TestMinimizerZ2(unittest.TestCase):
@@ -1767,6 +1734,54 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         system_z2_2_2 = system.Z2System2D2C(system_cfg)
         el_energy = system_z2_2_2.el_energy
         self.assertAlmostEqual(el_energy, 0.0)
+
+
+class TestBGBTransform(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_cmp_dirac_pure_gauge(self):
+        lat = lattice.Lattice2D(2,2)
+        system_u1_cfg = system.U1System2DConfig(lat, 1, 0, 0)
+        system_u1_cfg.paramvec = np.asarray([[0., 1., 2.]])
+        system_u1 = system.U1System2D(system_u1_cfg)
+        tmat_double = system_u1.tmat_vec[0]
+        gamma_dirac = utils.tmat_to_covariance_matrix(tmat_double)
+        #Delete the rows and columns belonging to the physical fermions
+        gamma_dirac = np.delete(gamma_dirac,[9],axis=1)
+        gamma_dirac = np.delete(gamma_dirac,[9],axis=0)
+        gamma_dirac = np.delete(gamma_dirac,[0],axis=1)
+        gamma_dirac = np.delete(gamma_dirac,[0],axis=0)
+
+        tmat_single = system_u1._eval_tmat_symb_single(system_u1.cfg.paramvec[0])
+        #Cut the physical mode
+        tmat_single = tmat_single[1:,:]
+        bgb_trafo = utils.BgbTransform(tmat_single, pure_gauge=True)
+        gamma_dirac_svd = bgb_trafo.mat_out
+
+        self.assertTrue(np.allclose(np.real(gamma_dirac), np.real(gamma_dirac_svd)))
+        self.assertTrue(np.allclose(np.imag(gamma_dirac), np.imag(gamma_dirac_svd)))
+
+
+    def test_cmp_dirac(self):
+        lat = lattice.Lattice2D(2,2)
+        system_u1_cfg = system.U1System2DConfig(lat, 1, 0, 0)
+        system_u1_cfg.paramvec = np.asarray([[0.0, 1., 2.]])
+        system_u1 = system.U1System2D(system_u1_cfg)
+        tmat_double = system_u1.tmat_vec[0]
+        # We use the function explicitly to avoid the permutation matrix
+        gamma_dirac = utils.tmat_to_covariance_matrix(tmat_double)
+        #gamma_dirac = system_u1.gamma_dirac_vec[0]
+
+        tmat_single = system_u1._eval_tmat_symb_single(system_u1.cfg.paramvec[0])
+        bgb_trafo = utils.BgbTransform(tmat_single, pure_gauge=False)
+        gamma_dirac_svd = bgb_trafo.mat_out
+
+        utils.show_matrixvec([np.real(gamma_dirac_svd), np.real(gamma_dirac)], title=["Re SVD", "Re T"])
+        utils.show_matrixvec([np.imag(gamma_dirac_svd), np.imag(gamma_dirac)], title=["Im SVD", "Im T"])
+
+        self.assertTrue(np.allclose(np.real(gamma_dirac), np.real(gamma_dirac_svd)))
+        self.assertTrue(np.allclose(np.imag(gamma_dirac), np.imag(gamma_dirac_svd)))
 
 if __name__ == '__main__':
     unittest.main()

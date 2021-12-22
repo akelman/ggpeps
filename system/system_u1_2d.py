@@ -134,6 +134,7 @@ class U1System2D:
         self._wi_gamma_out_mod_vec = None  #Tracks (Dmod - gammain)^-1
         self._incdet_mod_vec = None #Tracks det(Dmod^-1 - gammain)
 
+        self.use_pfaffian = False
 
     def initialize(self):
         """Initialization function. 
@@ -167,8 +168,7 @@ class U1System2D:
             self._symbolvec=self._create_symbolvec()
         return self._symbolvec
 
-    @property
-    def tmat_symb(self):
+    def _compute_tmat_symb_single(self):
         [t, y, z] = self.symbolvec
         etap = sympy.exp(1.j * sympy.pi / 4.)
         zsqrt = z/sympy.sqrt(2)
@@ -177,7 +177,16 @@ class U1System2D:
                                          [-y,          0,       zsqrt,     -zsqrt],
                                          [-zsqrt,  zsqrt,           0,         -y],
                                          [-zsqrt,  zsqrt,           y,          0]])
+        return tmat_symb_single
+
+    def _eval_tmat_symb_single(self,paramvec):
+        tmat_eval = self._compute_tmat_symb_single().evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
+        return np.asarray(tmat_eval).astype(complex)
+
+    @property
+    def tmat_symb(self):
         tmat_symb = sympy.zeros(9,9)
+        tmat_symb_single = self._compute_tmat_symb_single()
         tmat_symb[0:5,5:]=tmat_symb_single
         tmat_symb[5:,0:5]=-tmat_symb_single.T
         return tmat_symb
@@ -186,23 +195,21 @@ class U1System2D:
         tmat_symb = self.tmat_symb
         return np.asarray(sympy.diff(tmat_symb, symb)).astype(complex)
 
-    def _compute_tmat(self, paramvec):
+    def _eval_tmat_symb(self, paramvec):
         tmat_eval = self.tmat_symb.evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
         return np.asarray(tmat_eval).astype(complex)
 
     @property
     def tmat_vec(self):
         """
-        Generate the T-matrix vector(single virtual fermion on the link).
-        Analytically, this mode order is not advantageous, 
-        but is makes the reshuffling of the modes easier for gamma_in and M_D in the covariance matrix.
+        Generate the T-matrix vector(positive and negative virtual fermion on the link).
 
         Returns:
             [np.array]: parameter matrix T
         """
         if self._tmat_vec is None:
             self._tmat_vec = [
-                self._compute_tmat(params) for params in self.cfg.paramvec
+                self._eval_tmat_symb(params) for params in self.cfg.paramvec
             ]
         return self._tmat_vec
 
@@ -745,7 +752,7 @@ class U1System2D:
             mag_energy_bare = None
         return mag_energy_bare
 
-    def _compute_el_energy_op_gaussian(self):
+    def _compute_el_energy_op_gaussian(self,use_trans_inv=True):
         if use_trans_inv:
             lognormvec_default_inc = self.calculate_lognormvec_inc(all_factors=True)
             # This is the usual norm without any modifications
@@ -847,7 +854,7 @@ class U1System2D:
         if self.use_pfaffian:
             return self._compute_el_energy_op_pfaffian()
         else:
-            return self.self_comptue_el_energy_op_gaussian()
+            return self._compute_el_energy_op_gaussian()
 
     @property
     def energy(self):

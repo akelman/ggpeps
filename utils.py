@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numpy.lib.function_base import select
 from scipy.sparse import issparse
+from scipy.linalg import svd, block_diag
 import scipy.sparse as sparse
 import os
 import sys
@@ -54,6 +55,35 @@ def fname2g2el(fname):
         return float(result.group(0))
     else:
         return None
+
+
+def load_matrix_dat_fmt(path,is_complex=True):
+    """Load matrix format exported from C++.
+
+    Args:
+        path (str): Path to file
+        is_complex (bool, optional): Matrix is complex or not. Defaults to True.
+    """
+    complexptrn= re.compile(r'\(([^,\)]+),([^,\)]+)\)')
+
+    def parse_complex(s):
+        return complex(*map(float, complexptrn.match(s).groups()))
+    def parse_real(s):
+        return float(s)
+    dest=[]
+    with open(path,'r') as f:
+        for line in f:
+            line_short=re.sub(' +', ' ', line.strip())
+            strvec=line_short.split(" ")
+            numvec=[]
+            for s in strvec:
+                if is_complex:
+                    num=parse_complex(s)
+                else:
+                    num=parse_real(s)
+                numvec.append(num)
+            dest.append(numvec)
+    return np.array(dest)
 
 
 def merge_measurements(meas1, meas2):
@@ -365,6 +395,66 @@ class IncLogAbsDeterminant:
             return self.update(ainv, u, m, v, store)
         else:
             return self.det()
+
+class BgbTransform():
+
+    def __init__(self,mat_in, pure_gauge=True):
+        self.mat_in = mat_in
+        self.is_pure_gauge = pure_gauge
+        self._mat_out = None
+    
+    @property
+    def mat_out(self):
+        if self._mat_out is None:
+            wn,s,wp=svd(self.mat_in, full_matrices=True, compute_uv=True)
+            wp = herm_conj(wp)
+            if not self.is_pure_gauge:
+                # We are shuffling the physical mode to the front again
+                # It would look like s=perm*s
+                #diag = np.ones(wn.shape[0] - 1)
+                #perm = np.zeros((wn.shape[0], wn.shape[0]))
+                #sub_diag= np.diag(perm,k=-1) 
+                #sub_diag= diag
+                #perm[0, :- 1] = 1
+                # Apply the permutation
+                #wn = wn * perm.transpose()
+                pass
+            un = herm_conj(wn)
+            # now we got the transpose of wp
+            up = np.transpose(wp)
+            un_rows, un_cols = un.shape
+            up_rows, up_cols = up.shape
+            unitary_transform = np.zeros((un.shape[0] + up.shape[0], un.shape[1] + up.shape[1]),dtype=complex)
+            unitary_transform[:un_rows, :un_cols] = un
+            unitary_transform[-up_rows:, -up_cols:] = up
+
+            trafo_size = len(s) * 2 if self.is_pure_gauge else len(s) * 2 + 1
+            start_ind = 0 if self.is_pure_gauge else 1
+            r0_diagonal = np.zeros(trafo_size, dtype=complex)
+            if not self.is_pure_gauge:
+                r0_diagonal[0] = 1j / 2.
+            r0_diagonal[start_ind: start_ind+len(s)] = 1j / 2. * (1 - s**2) / (1 + s**2)
+            r0_diagonal[-len(s):] = 1j / 2. * (1 - s**2) / (1 + s**2)
+            r0 = np.diag(r0_diagonal)
+
+            q0_offdiagonal = np.zeros(len(s), dtype=complex)
+            q0_offdiagonal = 1j * s / (1 + s**2)
+            q0_block = np.diag(q0_offdiagonal)
+            q0 = np.zeros((trafo_size, trafo_size), dtype=complex)
+            if not self.is_pure_gauge:
+                q0[0, 0] = 0
+            q0[start_ind:start_ind+len(s), start_ind + len(s):start_ind+2*len(s)] = -q0_block
+            q0[start_ind + len(s): start_ind+2*len(s), start_ind:start_ind+len(s)] = q0_block
+
+            gamma0 = np.zeros((2 * trafo_size, 2 * trafo_size), dtype=complex)
+            gamma0=np.block([[q0,r0],[np.conj(r0),np.conj(q0)]])
+            trafo_0 = block_diag(herm_conj(unitary_transform),np.transpose(unitary_transform))
+            trafo_1 = block_diag(np.conj(unitary_transform),unitary_transform)
+            # This matrix has the following order: psi, r+, u-, l-, d+,t,b, r-, l+,
+            # u+, d-,t,b psi_dag, r+_dag, l-_dag, u-_dag, d+_dag,t_dag,b_dag,
+            # r-_dag, l+_dag, u+_dag, d-_dag, t_dag, b_dag.
+            self._mat_out = trafo_0 @ gamma0 @ trafo_1
+        return self._mat_out
 
 # ========= Rebinning Functions ====================
 
