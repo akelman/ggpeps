@@ -1061,7 +1061,6 @@ class TestU1SystemMethods(unittest.TestCase):
         system_cfg = system.U1System2DConfig(lat_2x2, 1.0, None, None)
         system_cfg.paramvec = paramvec
         system_u1_2_2_pf = system.U1System2D(system_cfg)
-        gamma_maj = system_u1_2_2_pf.gamma_maj_vec[0]
         system_u1_2_2_pf.use_pfaffian = True
         system_u1_2_2_link = system.U1System2D(system_cfg)
         el_energy_pf = system_u1_2_2_pf.el_energy
@@ -1069,6 +1068,86 @@ class TestU1SystemMethods(unittest.TestCase):
         self.assertAlmostEqual(el_energy_link, el_energy_pf)
         self.assertAlmostEqual(el_energy_pf, 0.0)
         self.assertAlmostEqual(el_energy_link, 0.0)
+
+    def test_electric_energy_L_4_0(self):
+        paramvec = np.zeros((1,3))
+        lat_4x4 = lattice.Lattice2D(4, 4)
+        system_cfg = system.U1System2DConfig(lat_4x4, 1.0, None, None)
+        system_cfg.paramvec = paramvec
+        system_u1_pf = system.U1System2D(system_cfg)
+        system_u1_pf.use_pfaffian = True
+        system_u1_link = system.U1System2D(system_cfg)
+        el_energy_pf = system_u1_pf.el_energy
+        el_energy_link = system_u1_link.el_energy
+        self.assertAlmostEqual(el_energy_link, el_energy_pf)
+        self.assertAlmostEqual(el_energy_pf, 0.0)
+        self.assertAlmostEqual(el_energy_link, 0.0)
+
+    def test_electric_energy_L_2_ring_even_pfaffian(self):
+        paramvec = np.zeros((1,3))
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.U1System2DConfig(lat_2x2, 1.0, None, None)
+        system_cfg.paramvec = paramvec
+        system_u1 = system.U1System2D(system_cfg)
+        system_u1.use_pfaffian = True
+        #Modify the matrix D by hand
+        # [[0, -1],[1, 0]]
+        filled=np.zeros((2,2))
+        filled[0,1]=-1
+        filled[1,0]=1
+        gamma_maj_sys_vec=system_u1.gamma_maj_sys_vec
+        gamma_maj_sys=np.copy(gamma_maj_sys_vec[0])
+        offset=lat_2x2.size*2
+        #Setting mode l(0,1)-
+        gamma_maj_sys[offset + 2:offset+4,offset + 2:offset+4] = filled
+        #Setting mode r(0,0)+
+        gamma_maj_sys[offset + 4:offset+6, offset + 4:offset+6] = filled
+        #Setting mode l(0,0)+
+        gamma_maj_sys[offset + 8:offset+10, offset + 8:offset+10] = filled
+        #Setting mode r(0,1)-
+        gamma_maj_sys[offset + 14:offset+16, offset + 14:offset+16] = filled
+        system_u1.gamma_maj_sys_vec[0]=gamma_maj_sys
+        mat_d = gamma_maj_sys[offset:gamma_maj_sys.shape[0],
+                              offset:gamma_maj_sys.shape[1]]
+        system_u1.mat_d_inv_vec[0]=np.linalg.inv(mat_d)
+        system_u1.det_mat_d_vec[0]=np.linalg.slogdet(mat_d)[1]
+        # We are checking the value for a single link
+        el_energy_link_bare, _ = system_u1._compute_el_energy_op_and_grad_pfaffian(True)
+        el_energy = 2 - 2 * np.prod(el_energy_link_bare)
+        self.assertAlmostEqual(el_energy, 3.)
+
+    def test_electric_energy_L_2_ring_odd(self):
+        paramvec = np.zeros((1,3))
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.U1System2DConfig(lat_2x2, 1.0, None, None)
+        system_cfg.paramvec = paramvec
+        system_u1 = system.U1System2D(system_cfg)
+        system_u1.use_pfaffian = True
+        #Modify the matrix D by han
+        # [[0, -1],[1, 0]
+        filled=np.zeros((2,2))
+        filled[0,1]=-1
+        filled[1,0]=1
+        gamma_maj_sys_vec=system_u1.gamma_maj_sys_vec
+        gamma_maj_sys=np.copy(gamma_maj_sys_vec[0])
+        offset=lat_2x2.size*2
+        #Setting mode l(0,1)+
+        gamma_maj_sys[offset + 0:offset+2,offset + 0:offset+2] = filled
+        #Setting mode r(0,0)-
+        gamma_maj_sys[offset + 6:offset+8,offset + 6:offset+8] = filled
+        # Setting mode l(0,0)-
+        gamma_maj_sys[offset + 10:offset+12,offset + 10:offset+12] = filled
+        # Setting mode r(0,1)+
+        gamma_maj_sys[offset + 12:offset+14,offset + 12:offset+14] = filled
+        system_u1.gamma_maj_sys_vec[0]=gamma_maj_sys
+        mat_d = gamma_maj_sys[offset:gamma_maj_sys.shape[0],
+                              offset:gamma_maj_sys.shape[1]]
+        system_u1.mat_d_inv_vec[0]=np.linalg.inv(mat_d)
+        system_u1.det_mat_d_vec[0]=np.linalg.slogdet(mat_d)[1]
+        # We are checking the value for a single link
+        el_energy_link_bare, _ = system_u1._compute_el_energy_op_and_grad_pfaffian(True)
+        el_energy = 2 - 2 * np.prod(el_energy_link_bare)
+        self.assertAlmostEqual(el_energy, 3.)
 
 
 @skip("This class of tests takes too long")

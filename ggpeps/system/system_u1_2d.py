@@ -1,3 +1,4 @@
+from turtle import title
 import numpy as np
 import sys
 import logging
@@ -344,7 +345,7 @@ class U1System2D(Z2System2DBase):
         dest = self.gamma_in_sys.astype(complex).copy()
         adapted_no_gauge = self.generate_electric_full(increment)
         rotmat = self.generate_rotmat(current_phase, coord)
-        adapted = rotmat * adapted_no_gauge * rotmat.transpose()
+        adapted = rotmat @ adapted_no_gauge @ rotmat.transpose()
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         dest[ind_mat:ind_mat+adapted.shape[0],
              ind_mat:ind_mat+adapted.shape[1]] = adapted
