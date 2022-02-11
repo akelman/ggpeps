@@ -1053,8 +1053,7 @@ class TestU1SystemMethods(unittest.TestCase):
         gamma_maj_cpp = utils.load_matrix_dat_fmt("misc/gamma_maj_cpp_t_0.0_y_0.4_z_0.2.dat",is_complex=False)
         self.assertTrue(np.allclose(gamma_maj,gamma_maj_cpp))
 
-
-    def test_el_energy_1_layer_single_eval(self):
+    def test_electric_energy_L_2_empty(self):
         # Calculate the electric energy of an empty system.
         paramvec = np.zeros((1,3))
         lat_2x2 = lattice.Lattice2D(2, 2)
@@ -1065,11 +1064,11 @@ class TestU1SystemMethods(unittest.TestCase):
         system_u1_2_2_link = system.U1System2D(system_cfg)
         el_energy_pf = system_u1_2_2_pf.el_energy
         el_energy_link = system_u1_2_2_link.el_energy
-        self.assertAlmostEqual(el_energy_link, el_energy_pf)
         self.assertAlmostEqual(el_energy_pf, 0.0)
         self.assertAlmostEqual(el_energy_link, 0.0)
+        self.assertAlmostEqual(el_energy_link, el_energy_pf)
 
-    def test_electric_energy_L_4_0(self):
+    def test_electric_energy_L_4_empty(self):
         paramvec = np.zeros((1,3))
         lat_4x4 = lattice.Lattice2D(4, 4)
         system_cfg = system.U1System2DConfig(lat_4x4, 1.0, None, None)
@@ -1079,9 +1078,9 @@ class TestU1SystemMethods(unittest.TestCase):
         system_u1_link = system.U1System2D(system_cfg)
         el_energy_pf = system_u1_pf.el_energy
         el_energy_link = system_u1_link.el_energy
-        self.assertAlmostEqual(el_energy_link, el_energy_pf)
         self.assertAlmostEqual(el_energy_pf, 0.0)
         self.assertAlmostEqual(el_energy_link, 0.0)
+        self.assertAlmostEqual(el_energy_link, el_energy_pf)
 
     def test_electric_energy_L_2_ring_even_pfaffian(self):
         paramvec = np.zeros((1,3))
