@@ -1,6 +1,6 @@
 import numpy as np
 import copy
-import utils
+import ggpeps.utils as utils
 
 class Measurement:
     use_rebinning=True

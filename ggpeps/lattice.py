@@ -1,11 +1,8 @@
-import itertools
 import numpy as np
 from enum import Enum
 import sys
 import logging
-from numpy.core.shape_base import block
 from scipy.linalg import block_diag
-import utils
 
 
 class Direction(Enum):

@@ -6,7 +6,7 @@ import sympy
 from scipy.linalg import block_diag
 from ggpeps import utils
 from .system_base import Z2System2DBase, Z2System2DConfigBase
-from .system_base import calculate_lognorm_inc, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats
+from .system_base import calculate_lognorm_inc, compute_grad_over_norm, extract_partial_covmats
 
 ###################### Z2System2D ##########################
 

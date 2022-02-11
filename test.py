@@ -1,4 +1,4 @@
-from unittest.case import SkipTest, skip
+from unittest.case import skip
 from ggpeps.exacteval import ExactEvaluator
 import unittest
 import numpy as np

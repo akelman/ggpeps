@@ -1,11 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from numpy.lib.function_base import select
 from scipy.sparse import issparse
 from scipy.linalg import svd, block_diag
-import scipy.sparse as sparse
 import os
-import sys
 import ggpeps.measurement as meas
 import gzip
 import pickle
