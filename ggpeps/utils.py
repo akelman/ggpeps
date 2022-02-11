@@ -6,6 +6,7 @@ import os
 import ggpeps.measurement as meas
 import gzip
 import pickle
+import logging
 import subprocess  # Start process for git hash
 import re
 

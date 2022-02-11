@@ -42,7 +42,7 @@ class Lattice2D:
         return self.nx * y + x
 
     def ind2coord_dir(self,ind):
-        dir=Direction(ind//(self.nx*self.ny))
+        dir = Direction(ind // (self.nx * self.ny))
         if dir == Direction.X:
             return (((ind%(self.nx*self.ny)) % self.nx, (ind%(self.nx*self.ny))//self.nx),dir)
         elif dir == Direction.Y:

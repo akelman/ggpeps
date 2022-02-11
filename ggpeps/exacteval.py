@@ -1,6 +1,6 @@
 import numpy as np
 import itertools as it
-import lattice
+import ggpeps.lattice as lattice
 import pandas as pd
 
 class ExactEvaluatorManager:

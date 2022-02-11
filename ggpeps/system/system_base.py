@@ -5,7 +5,7 @@ import sys
 import sympy
 from ggpeps import gauge,utils
 
-class Z2System2DConfigBase(ABC):
+class Config2DBase(ABC):
     _nparams = 1
 
     def __init__(self, lattice, g2, g_gm, g2_mag, nlayer=1):
@@ -55,7 +55,7 @@ class Z2System2DConfigBase(ABC):
         for ind in range(self.nlayer):
             for symb,val in zip(symbolvec, self._parmvec[ind]):
                 print(str(symb),val)
-    
+
     @abstractmethod
     def make_pure_gauge(self):
         pass
@@ -150,7 +150,7 @@ def calculate_lognorm_inc(incdet_vec, det_mat_d_vec, n, all_factors=False):
 
 class Z2System2DBase(ABC):
 
-    def __init__(self, cfg: Z2System2DConfigBase):
+    def __init__(self, cfg: Config2DBase):
         self.cfg = cfg
 
         # Parameter based matrices
@@ -160,7 +160,7 @@ class Z2System2DBase(ABC):
         self._gamma_maj_vec = None
         self._gamma_maj_sys_vec = None
 
-        #Partial covariance matrices 
+        #Partial covariance matrices
         self._mat_a_vec = None
         self._mat_b_vec = None
         self._mat_d_vec = None
@@ -182,7 +182,7 @@ class Z2System2DBase(ABC):
 
         # Weight
         self._weight = None
-        
+
         # Gradients
         self._gamma_maj_sys_deriv_dict = None
         self._el_energy_op_grad_vec = None
@@ -208,7 +208,7 @@ class Z2System2DBase(ABC):
         This is a good spot to copy essential data from the configuration.
         """
         return None
-        
+
 
     def _exract_partial_covmatvec(self, offset):
         #We are assuming one physical mode per site
@@ -242,7 +242,7 @@ class Z2System2DBase(ABC):
         tmat_symb = self.tmat_symb
         return np.asarray(sympy.diff(tmat_symb, symb)).astype(complex)
 
-    def _compute_tmat(self, paramvec):
+    def _eval_tmat_symb(self, paramvec):
         tmat_eval = self.tmat_symb.evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
         return np.asarray(tmat_eval).astype(complex)
 
@@ -258,7 +258,7 @@ class Z2System2DBase(ABC):
         """
         if self._tmat_vec is None:
             self._tmat_vec = [
-                self._compute_tmat(params) for params in self.cfg.paramvec
+                self._eval_tmat_symb(params) for params in self.cfg.paramvec
             ]
         return self._tmat_vec
 
@@ -494,7 +494,7 @@ class Z2System2DBase(ABC):
         return self._wi_gamma_out_mod_vec
 
     ################## Computation of derivatives ######################
-    
+
     def compute_gamma_dirac_deriv(self, symb, layerind):
         deriv_t=self.compute_tmat_deriv(symb)
         tmat=self.tmat_vec[layerind]
@@ -561,7 +561,8 @@ class Z2System2DBase(ABC):
     def calculate_weight_attempt(self, link_ind, theta, all_factors=False):
         # There are two directions per vertex and two Majoranas per link
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
-        rotmat = self.generate_rotmat(theta)
+        coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
+        rotmat = self.generate_rotmat(theta, coord)
         gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
         return self.update_lognorm_inc(ind_mat, update, all_factors)
@@ -630,21 +631,21 @@ class Z2System2DBase(ABC):
     def generate_gamma_gauge_neutral(self):
         pass
 
-
     @abstractmethod
-    def generate_rotmat(self,theta):
+    def generate_rotmat(self, theta, coord):
         pass
 
+    @abstractmethod
+    def update_gauge_ind(self, link_ind, theta):
+        pass
 
-    def update_gauge_full_system(self,gaugeconfig):
-        for ind,gauge in enumerate(gaugeconfig):
+    def update_gauge_full_system(self, gaugeconfig):
+        for ind, gauge in enumerate(gaugeconfig):
             self.update_gauge_ind(ind, gauge)
 
-
-    def update_gauge_coord(self,coord,dir,theta):
+    def update_gauge_coord(self, coord, dir, theta):
         ind = self.cfg.lattice.coord2ind_dir(coord, dir)
         self.update_gauge_ind(ind, theta)
-
 
     def calculate_update_gamma_in(self,offset,update_mat):
         m_up, n_up = update_mat.shape

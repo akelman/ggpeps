@@ -5,14 +5,14 @@ from ggpeps import lattice as lat
 import sympy
 from scipy.linalg import block_diag
 from ggpeps import utils
-from .system_base import Z2System2DConfigBase, Z2System2DBase
+from .system_base import Config2DBase, Z2System2DBase
 from .system_base import calculate_lognorm, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats, calculate_lognorm_inc
 
 
 ###################### Z2System2D ##########################
 
 
-class Z2System2DConfig(Z2System2DConfigBase):
+class Z2System2DConfig(Config2DBase):
     _nparams = 3
     ncopy = 1
     nvirtmodes_vertex = 4 # We have one virtual mode per direction
@@ -147,12 +147,13 @@ class Z2System2D(Z2System2DBase):
 
     #Gauging
 
-    def generate_rotmat(self,theta):
+    def generate_rotmat(self,theta, coord):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
         The mode order is (as for gamma_in_neutral) {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2}, depending on whether the link is vertical or horizontal.
 
         Args:
             theta (float): Angle of rotation
+            coord (tuple): (x,y) coordinate on the lattice
 
         Returns:
             np.ndarray: Rotation matrix for gamma_in_neutral
@@ -169,12 +170,13 @@ class Z2System2D(Z2System2DBase):
         return dest
 
 
-    def update_gauge_ind(self, ind, theta):
+    def update_gauge_ind(self, link_ind, theta):
         # Update the gaugefield
-        self._gaugefieldvec[ind] = theta
+        self._gaugefieldvec[link_ind] = theta
         # There are two directions per vertex and two Majoranas per link
-        ind_mat = 4 * ind
-        rotmat = self.generate_rotmat(theta)
+        ind_mat = 4 * link_ind
+        coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
+        rotmat = self.generate_rotmat(theta, coord)
         gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(
             rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
