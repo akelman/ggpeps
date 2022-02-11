@@ -1791,25 +1791,24 @@ class TestPfaffian(unittest.TestCase):
 
     def setUp(self):
         N=4
-        self.mat=np.zeros((N, N))
-        mat[0,1]=1.0
-        mat[1,0]=-1.0
-        mat[0,2]=2.0
-        mat[2,0]=-2.0
-        mat[0,3]=3.0
-        mat[3,0]=-3.0
-        mat[1,2]=4.0j
-        mat[2,1]=-4.0j
-        mat[1,3]=5.0
-        mat[3,1]=-5.0
-        mat[2,3]=6.0
-        mat[3,2]=-6.0
+        self.mat=np.zeros((N, N), dtype=complex)
+        self.mat[0,1]=1.0
+        self.mat[1,0]=-1.0
+        self.mat[0,2]=2.0
+        self.mat[2,0]=-2.0
+        self.mat[0,3]=3.0
+        self.mat[3,0]=-3.0
+        self.mat[1,2]=4.0j
+        self.mat[2,1]=-4.0j
+        self.mat[1,3]=5.0
+        self.mat[3,1]=-5.0
+        self.mat[2,3]=6.0
+        self.mat[3,2]=-6.0
 
-
-def test_pfaffian(self):
-    pfaffian = pf.pfaffian(self.mat)
-    self.assertAlmostEqual(np.real(pfaffian), -4)
-    self.assertAlmostEqual(np.imag(pfaffian), 12)
+    def test_pfaffian(self):
+        pfaffian = pf.pfaffian(self.mat)
+        self.assertAlmostEqual(np.real(pfaffian), -4)
+        self.assertAlmostEqual(np.imag(pfaffian), 12)
 
 if __name__ == '__main__':
     unittest.main()
