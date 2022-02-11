@@ -393,13 +393,13 @@ class IncLogAbsDeterminant:
         else:
             return self.det()
 
-class BgbTransform():
 
-    def __init__(self,mat_in, pure_gauge=True):
+class BgbTransform():
+    def __init__(self, mat_in, pure_gauge=True):
         self.mat_in = mat_in
         self.is_pure_gauge = pure_gauge
         self._mat_out = None
-    
+
     @property
     def mat_out(self):
         if self._mat_out is None:
@@ -408,14 +408,13 @@ class BgbTransform():
             if not self.is_pure_gauge:
                 # We are shuffling the physical mode to the front again
                 # It would look like s=perm*s
-                #diag = np.ones(wn.shape[0] - 1)
-                #perm = np.zeros((wn.shape[0], wn.shape[0]))
-                #sub_diag= np.diag(perm,k=-1) 
-                #sub_diag= diag
-                #perm[0, :- 1] = 1
+                #TODO: This does not work properly yet. But the function is not used anywhere.
+                perm = np.zeros((wn.shape[0], wn.shape[0]))
+                i,j = np.indices(perm.shape)
+                perm[i == j + 1] = 1
+                perm[0, -1:] = 1
                 # Apply the permutation
-                #wn = wn * perm.transpose()
-                pass
+                wn = wn * perm.transpose()
             un = herm_conj(wn)
             # now we got the transpose of wp
             up = np.transpose(wp)
@@ -453,14 +452,17 @@ class BgbTransform():
             self._mat_out = trafo_0 @ gamma0 @ trafo_1
         return self._mat_out
 
+
 # ========= Rebinning Functions ====================
+
 
 def autocorr_fft(arr):
     arr=arr-np.mean(arr)
     fft_vals=np.fft.fft(arr)
     spectrum=fft_vals*np.conjugate(fft_vals)
     dest=np.fft.ifft(spectrum)
-    return dest/dest[0]
+    return dest / dest[0]
+
 
 def rebin_array(a, R):
     """Rebin an array into bins of length R"""

@@ -173,9 +173,9 @@ class U1System2D:
         zsqrt = z/sympy.sqrt(2)
         tmat_symb_single = sympy.Matrix([[t,  etap**2 *t,      etap*t, etap**3 *t],
                                          [0,           y,       zsqrt,      zsqrt],
-                                         [-y,          0,       zsqrt,     -zsqrt],
-                                         [-zsqrt,  zsqrt,           0,         -y],
-                                         [-zsqrt,  zsqrt,           y,          0]])
+                                         [-y,          0,      -zsqrt,      zsqrt],
+                                         [-zsqrt,  zsqrt,           0,          y],
+                                         [-zsqrt,  -zsqrt,          -y,         0]])
         return tmat_symb_single
 
     def _eval_tmat_symb_single(self,paramvec):

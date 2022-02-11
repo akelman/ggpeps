@@ -198,7 +198,6 @@ class TestPermutationBuilder2D(unittest.TestCase):
         permbuilder_3x2 = lattice.PermutationBuilderGMS2D2C(
             lattice.Lattice2D(3, 2), 1)
         permutation = permbuilder_3x2.perm()
-        #utils.show_matrix(permutation)
         self.assertTrue(utils.is_permutation(permutation))
 
 
@@ -206,7 +205,6 @@ class TestPermutationBuilder2D(unittest.TestCase):
         permbuilder_2x3 = lattice.PermutationBuilderGMS2D2C(
             lattice.Lattice2D(2, 3), 1)
         permutation = permbuilder_2x3.perm()
-        #utils.show_matrix(permutation)
         self.assertTrue(utils.is_permutation(permutation))
 
     def test_2copies_2x2(self):
@@ -1012,30 +1010,49 @@ class TestU1SystemMethods(unittest.TestCase):
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
 
-    def test_compare_cpp_pure_gauge_gamma_dirac(self):
+    def test_compare_gauge_gamma_dirac(self):
         lat = lattice.Lattice2D(2, 2)
         paramvec = [[0.1, 0.4, 0.2]]
         cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
         cfg.paramvec = paramvec
         system_u1_2_2 = system.U1System2D(cfg)
         gamma_dirac = system_u1_2_2.gamma_dirac_vec[0]
-        gamma_dirac_cpp = utils.load_matrix_dat_fmt("misc/gamma_dirac_cpp_t_0.0_y_0.4_z_0.2.dat")
-        #utils.show_matrixvec([np.real(gamma_dirac),np.real(gamma_dirac_cpp)])
-        #utils.show_matrixvec([np.imag(gamma_dirac),np.imag(gamma_dirac_cpp)])
+        gamma_dirac_cpp = utils.load_matrix_dat_fmt("misc/gamma_dirac_cpp_t_0.1_y_0.4_z_0.2.dat")
         self.assertTrue(np.allclose(gamma_dirac,gamma_dirac_cpp))
 
 
-    def test_compare_cpp_pure_gauge_gamma_maj(self):
+    def test_compare_cpp_gamma_maj(self):
         lat = lattice.Lattice2D(2, 2)
         paramvec = [[0.1, 0.4, 0.2]]
         cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
         cfg.paramvec = paramvec
         system_u1_2_2 = system.U1System2D(cfg)
         gamma_maj = system_u1_2_2.gamma_maj_vec[0]
-        gamma_maj_cpp = utils.load_matrix_dat_fmt("misc/gamma_maj_cpp_t_0.0_y_0.4_z_0.2.dat",is_complex=False)
-        #utils.show_matrixvec([np.real(gamma_maj),np.real(gamma_maj_cpp)])
-        #utils.show_matrixvec([np.imag(gamma_maj),np.imag(gamma_maj_cpp)])
+        gamma_maj_cpp = utils.load_matrix_dat_fmt("misc/gamma_maj_cpp_t_0.1_y_0.4_z_0.2.dat",is_complex=False)
         self.assertTrue(np.allclose(gamma_maj,gamma_maj_cpp))
+
+
+    def test_compare_cpp_pure_gauge_gamma_dirac(self):
+        lat = lattice.Lattice2D(2, 2)
+        paramvec = [[0.0, 0.4, 0.2]]
+        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
+        cfg.paramvec = paramvec
+        system_u1_2_2 = system.U1System2D(cfg)
+        gamma_dirac = system_u1_2_2.gamma_dirac_vec[0]
+        gamma_dirac_cpp = utils.load_matrix_dat_fmt("misc/gamma_dirac_cpp_t_0.0_y_0.4_z_0.2.dat")
+        self.assertTrue(np.allclose(gamma_dirac,gamma_dirac_cpp))
+
+
+    def test_compare_cpp_pure_gauge_gamma_maj(self):
+        lat = lattice.Lattice2D(2, 2)
+        paramvec = [[0.0, 0.4, 0.2]]
+        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
+        cfg.paramvec = paramvec
+        system_u1_2_2 = system.U1System2D(cfg)
+        gamma_maj = system_u1_2_2.gamma_maj_vec[0]
+        gamma_maj_cpp = utils.load_matrix_dat_fmt("misc/gamma_maj_cpp_t_0.0_y_0.4_z_0.2.dat",is_complex=False)
+        self.assertTrue(np.allclose(gamma_maj,gamma_maj_cpp))
+
 
     def test_el_energy_1_layer_single_eval(self):
         # Calculate the electric energy of an empty system.
@@ -1627,6 +1644,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         weight_recalc = self.system_z2_2_2.calculate_lognorm(all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
+
     def test_grad_over_norm(self):
         #This is comparison of the analytic derivative against the numeric derivative
         eps=1e-5
@@ -1728,6 +1746,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
 
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
 
+
     def test_el_energy_1_layer_single_eval(self):
         # Calculate the electric energy of an empty system.
         paramvec = np.zeros((1,10))
@@ -1742,6 +1761,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
 class TestBGBTransform(unittest.TestCase):
     def setUp(self):
         pass
+
 
     def test_cmp_dirac_pure_gauge(self):
         lat = lattice.Lattice2D(2,2)
@@ -1769,7 +1789,7 @@ class TestBGBTransform(unittest.TestCase):
     def test_cmp_dirac(self):
         lat = lattice.Lattice2D(2,2)
         system_u1_cfg = system.U1System2DConfig(lat, 1, 0, 0)
-        system_u1_cfg.paramvec = np.asarray([[0.0, 1., 2.]])
+        system_u1_cfg.paramvec = np.asarray([[0.7, 1., 2.]])
         system_u1 = system.U1System2D(system_u1_cfg)
         tmat_double = system_u1.tmat_vec[0]
         # We use the function explicitly to avoid the permutation matrix
@@ -1780,11 +1800,26 @@ class TestBGBTransform(unittest.TestCase):
         bgb_trafo = utils.BgbTransform(tmat_single, pure_gauge=False)
         gamma_dirac_svd = bgb_trafo.mat_out
 
-        utils.show_matrixvec([np.real(gamma_dirac_svd), np.real(gamma_dirac)], title=["Re SVD", "Re T"])
-        utils.show_matrixvec([np.imag(gamma_dirac_svd), np.imag(gamma_dirac)], title=["Im SVD", "Im T"])
+        #utils.show_matrixvec([np.real(gamma_dirac_svd), np.real(gamma_dirac)], title=["Re SVD", "Re T"])
+        #utils.show_matrixvec([np.imag(gamma_dirac_svd), np.imag(gamma_dirac)], title=["Im SVD", "Im T"])
 
         self.assertTrue(np.allclose(np.real(gamma_dirac), np.real(gamma_dirac_svd)))
         self.assertTrue(np.allclose(np.imag(gamma_dirac), np.imag(gamma_dirac_svd)))
+
+
+    def test_simple_mat(self):
+        mat = np.array([[0, 1, 2, 3],
+                        [7, 0, 2, 1],
+                        [9, 6, 0, 9],
+                        [8, 4, 0, 0]])
+        mat_zero = np.zeros((4,4))
+        mat_full = np.block([[mat_zero,mat],[-np.transpose(mat),mat_zero]])
+        # We have different input conventions for the two functions
+        # BgbTransform takes only the single matrix and doubles it for positive and negative modes
+        # uitls.tmat_to_covariance_matrix takes the full T matrix
+        covmat_direct = utils.tmat_to_covariance_matrix(mat_full)
+        covmat_bgb = utils.BgbTransform(mat, pure_gauge=True).mat_out
+        self.assertTrue(np.allclose(covmat_direct, covmat_bgb))
 
 class TestPfaffian(unittest.TestCase):
 
