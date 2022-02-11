@@ -5,11 +5,11 @@ import logging
 import pickle
 import pandas as pd
 import gzip
-import utils
+import ggpeps.utils as utils
 import copy
 import ray
-import lattice
-from measurement import Measurement
+import ggpeps.lattice as lattice
+from ggpeps.measurement import Measurement
 
 #################### Monte Carlo Estimator Config ###################
 
