@@ -36,6 +36,7 @@ def main(args):
 
     #Enrich dataset
     df["L"] = df["nx"].astype("str") + "-" + df["ny"].astype("str")
+    df.rename(columns={"g_el":"g2_el", "g_mag":"g2_mag"},inplace=True)
     obsnamevec = df.name.unique()
 
     if args.exact is not None and os.path.isfile(args.exact):
@@ -51,7 +52,8 @@ def main(args):
 
             for name, group in df_filtered.groupby(["type","L","nlayer", "ncopy"]):
                 type, L, nlayer, ncopy = name
-                ax.plot(group["g_el"]*2,
+                # We calculate the coupling g^2 from g2_el
+                ax.plot(group["g2_el"]*2,
                         group["mean"],
                         'o',
                         label="{}, {}, L={}, nc={}, nl={}".format(type,obs,L,ncopy,nlayer))
