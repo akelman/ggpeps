@@ -5,7 +5,7 @@ import sys
 import logging
 from numpy.core.shape_base import block
 from scipy.linalg import block_diag
-import utils
+import ggpeps.utils as utils
 
 
 class Direction(Enum):

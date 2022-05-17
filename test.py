@@ -1780,8 +1780,8 @@ class TestBGBTransform(unittest.TestCase):
         bgb_trafo = utils.BgbTransform(tmat_single, pure_gauge=False)
         gamma_dirac_svd = bgb_trafo.mat_out
 
-        utils.show_matrixvec([np.real(gamma_dirac_svd), np.real(gamma_dirac)], title=["Re SVD", "Re T"])
-        utils.show_matrixvec([np.imag(gamma_dirac_svd), np.imag(gamma_dirac)], title=["Im SVD", "Im T"])
+        #utils.show_matrixvec([np.real(gamma_dirac_svd), np.real(gamma_dirac)], title=["Re SVD", "Re T"])
+        #utils.show_matrixvec([np.imag(gamma_dirac_svd), np.imag(gamma_dirac)], title=["Im SVD", "Im T"])
 
         self.assertTrue(np.allclose(np.real(gamma_dirac), np.real(gamma_dirac_svd)))
         self.assertTrue(np.allclose(np.imag(gamma_dirac), np.imag(gamma_dirac_svd)))
