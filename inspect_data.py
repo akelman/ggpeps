@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import os, sys
 import gzip
-import utils
+import ggpeps.utils as utils
 
 def print_output_mc_dump(version,mc):
     obsdict=mc.obsdict
