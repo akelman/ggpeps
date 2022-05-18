@@ -1,6 +1,8 @@
 """Main script to control the simulation. 
 Further details about the usage of the script can be found in README.md.
 """
+
+# Imports of things that we later need
 from ggpeps.system import Z2System2D2C,Z2System2D2CConfig
 from ggpeps.system import Z2System2D, Z2System2DConfig
 from ggpeps.measurement import Measurement
@@ -18,6 +20,14 @@ np.set_printoptions(linewidth=200)
 
 
 def args2logname(args):
+    """Convert arguments to a name for the log file
+
+    Args:
+        args (namespace): Namespace of arguments as provided by argparse
+
+    Returns:
+        string: Filename of the log file
+    """
     shorthands = {
         "min": "min",
         "minimize": "min",
@@ -44,6 +54,15 @@ def args2logname(args):
     return fname
 
 def translate_parameters(system_cfg, params):
+    """Translate the parameters given on the commandline to a form useful in the code
+
+    Args:
+        system_cfg (SystemConfig): Configuration of the system
+        params (string): Parameters as given on the command line
+
+    Returns:
+        np.array: Array of parameters that are suited for the simulation according to the command line parameters
+    """
     nparams = system_cfg._nparams
     nlayer = system_cfg.nlayer
     if params is not None and len(params)==1 and isinstance(params[0],str) and os.path.isfile(params[0]):
@@ -101,7 +120,10 @@ def main():
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 
+    # Depending on the parameters, we instantiate different systems
+    # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.ncopy == 1:
+        # Z2 system with one copy of virtual fermions on the links
         system_type = Z2System2D
         system_cfg = Z2System2DConfig(lattice,
                                       g2,
@@ -109,6 +131,7 @@ def main():
                                       g2_mag,
                                       nlayer=args.nlayer)
     elif args.ncopy == 2:
+        # Z2 system with two copies of virtual fermions on the links
         system_type = Z2System2D2C
         system_cfg = Z2System2D2CConfig(lattice,
                                         g2,
@@ -121,9 +144,11 @@ def main():
     paramvec = translate_parameters(system_cfg, args.params)
     system_cfg.paramvec = paramvec
 
+    # Ensure pure guage (setting t parameter to zero) if enabled
     if args.pure_gauge:
         system_cfg.make_pure_gauge()
 
+    # Switch to control the binning analysis on EOM (Error of mean)
     if args.no_bin_eom:
         Measurement.use_rebinning = False
 
@@ -139,6 +164,7 @@ def main():
     logging.info("============================")
 
 
+    # Call different functions depending on the mode specified via CLI
     if args.mode == "eval":
         mc_config.minimizer_mode = False
         mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)

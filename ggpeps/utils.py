@@ -86,7 +86,16 @@ def load_matrix_dat_fmt(path,is_complex=True):
     return np.array(dest)
 
 
-def merge_measurements(meas1, meas2):
+def merge_measurements(meas1: meas.Measurement, meas2: meas.Measurement):
+    """Merge two measurements by merging their timeseries
+
+    Args:
+        meas1 (Measurement): First measurement
+        meas2 (Measurement): Second measurement
+
+    Returns:
+        Measurement: Merged measurement
+    """
     dest = meas.Measurement(meas1.name, meas1.binsize)
     dest.extend(meas1.get_timeseries())
     dest.extend(meas2.get_timeseries())
@@ -106,6 +115,13 @@ def mergeDict(dict1, dict2):
 
 
 def print_columns(listvals, padding=4, header=False):
+    """Print a multi-dimensional list in a table
+
+    Args:
+        listvals (list of lists): Input data
+        padding (int, optional): Padding of the columns. Defaults to 4.
+        header (bool, optional): Print a header on top of the table. Defaults to False.
+    """
     col_width = max([len(str(word))
                      for row in listvals for word in row]) + padding
     for ind, row in enumerate(listvals):
@@ -124,6 +140,11 @@ def sizeof_fmt(num, suffix='B'):
 
 
 def get_git_hash():
+    """Get the git hash of the current commit in the repository.
+
+    Returns:
+        string: git hash
+    """
     #This assumes that .git is in the parent folder of util.py 
     packagedir = os.path.dirname(os.path.realpath(__file__))
     rootdir = os.path.join(packagedir,os.path.pardir)
@@ -132,7 +153,17 @@ def get_git_hash():
         ['git', '--git-dir={}'.format(gitdir), 'rev-parse', 'HEAD'])
     return githash.decode("utf-8").strip()
 
-def select_except(arr,ind):
+
+def select_except(arr, ind: int):
+    """Return all elements of a list except the indicated one
+
+    Args:
+        arr (list/np.array): list of values
+        ind (int): index
+
+    Returns:
+        np.array: Array with all elements of arr except for arr[ind]
+    """
     #This function works only on the outer-most layer
     if isinstance(arr,list):
         arr = np.asarray(arr)
@@ -140,9 +171,19 @@ def select_except(arr,ind):
     mask[ind] = False
     return arr[mask]
 
-def multiply_except(arr,ind):
+
+def multiply_except(arr, ind: int):
+    """Product of all array values except for arr[ind]
+
+    Args:
+        arr (list/np.arr): list of values
+        ind (int): index
+
+    Returns:
+        float: Multiplication of all array values except for arr[ind]
+    """
     if len(arr)>1:
-        others=select_except(arr,ind)
+        others = select_except(arr, ind)
         return np.prod(others)
     else:
         #It does not make sense to execute this function with only one element
@@ -233,6 +274,15 @@ def anticommutator(mat1, mat2):
 
 
 def tmat_to_covariance_matrix(tmat):
+    """Transforms a T matrix into the corresponding covariance matrix in terms of Dirac modes.
+    This function assumes that the fiducial operator has a certain form: A=exp(T_{ij}a_i^\dagger a_j^\dagger)
+
+    Args:
+        tmat (np.array): Matrix of parameters
+
+    Returns:
+        np.array: Covariance matrix in terms of Dirac modes
+    """
     m, n = tmat.shape
     id = np.eye(m)
     idinv = np.linalg.inv(id-tmat@np.conjugate(tmat))
@@ -243,7 +293,16 @@ def tmat_to_covariance_matrix(tmat):
     return 1.j*np.block([[lt, rt], [lb, rb]])
 
 
-def generate_smat(n):
+def generate_smat(n: int):
+    """Generate matrix to transform Dirac modes into Majorana modes.
+    The function assumes the modes order of [a_1, a_2,....., a_n, a_1^\dagger,.....,a_n^\dagger].
+
+    Args:
+        n (int): Size of the matrix
+
+    Returns:
+        np.array: n x n matrix
+    """
     pattern = [[1], [1.j]]
     halfmat = np.kron(np.eye(n//2), pattern)
     return np.block([halfmat, np.conjugate(halfmat)])
@@ -410,6 +469,7 @@ class BgbTransform():
             wn,s,wp=svd(self.mat_in, full_matrices=True, compute_uv=True)
             wp = herm_conj(wp)
             if not self.is_pure_gauge:
+                #TODO: Fix this
                 # We are shuffling the physical mode to the front again
                 # It would look like s=perm*s
                 #diag = np.ones(wn.shape[0] - 1)
@@ -460,10 +520,10 @@ class BgbTransform():
 # ========= Rebinning Functions ====================
 
 def autocorr_fft(arr):
-    arr=arr-np.mean(arr)
-    fft_vals=np.fft.fft(arr)
-    spectrum=fft_vals*np.conjugate(fft_vals)
-    dest=np.fft.ifft(spectrum)
+    arr = arr-np.mean(arr)
+    fft_vals = np.fft.fft(arr)
+    spectrum = fft_vals*np.conjugate(fft_vals)
+    dest = np.fft.ifft(spectrum)
     return dest/dest[0]
 
 def rebin_array(a, R):
@@ -588,6 +648,7 @@ def print_mat_stats(mat, title=None):
 
 
 def show_eigenvalues(mat):
+    """Display the eigenvalues of a matrix"""
     if is_hermitian(mat):
         #Plot the real eigenvalues
         f, ax = plt.subplots(1, 1)
