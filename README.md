@@ -67,14 +67,26 @@ In the following, we will describe the different modes in more detail.
 
 `eval`: 
 The evaluation mode computes the expectation value of a set of observables with given set of parameters using Monte Carlo.
+To simulate a $2\times 2$ system with MC, we can call
+```
+python manager.py eval 2
+```
+The call generates three files: a log file, a data file and a summary file.
+The log file is identical to the text printed on the console.
+It is especially useful to check computations performed on a cluster.
 
-TODO: Add example call
+The data file contains the full timeseries of the computation and can get quite large.
+It is compressed by default to save disk space
+
+The summary file is most relevant for most plots since it contains the mean values of observables including errors (computed via binning analysis).
 
 `exact`:
 The exact evaluation mode computes the expectation value of a set of observables with given set of parameters using exact contraction.
 This works only for small systems of $L=2$.
 
-TODO: Add example call
+```
+python manager.py eval 2
+```
 
 `min`:
 In minimization mode, the Kogut Susskind Hamiltonian for the gauge theory in question is minimized by using different minimizers. 
@@ -107,3 +119,10 @@ TODO: More about plotting scripts
 ## Known Issues
 
 - Error in computation of electric energy of Z2 theories in 2d
+
+## Ideas
+
+- Add U1 system
+- Add system in 3d
+- Add option for DMRG like cylinder compression to obtain transfer matrices
+- Make data file optional?
