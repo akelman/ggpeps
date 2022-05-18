@@ -124,9 +124,10 @@ def sizeof_fmt(num, suffix='B'):
 
 
 def get_git_hash():
-    #This assumes that .git and util.py are in the same directory
-    dir = os.path.dirname(os.path.realpath(__file__))
-    gitdir = os.path.join(dir, ".git")
+    #This assumes that .git is in the parent folder of util.py 
+    packagedir = os.path.dirname(os.path.realpath(__file__))
+    rootdir = os.path.join(packagedir,os.path.pardir)
+    gitdir = os.path.join(rootdir, ".git")
     githash = subprocess.check_output(
         ['git', '--git-dir={}'.format(gitdir), 'rev-parse', 'HEAD'])
     return githash.decode("utf-8").strip()
