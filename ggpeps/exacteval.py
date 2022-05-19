@@ -181,11 +181,11 @@ class ExactEvaluator():
             syscfg.lattice.nx,syscfg.lattice.ny, syscfg.g2_el, syscfg.g_gm, syscfg.g2_mag, tstr, ystr, zstr)
         self.save_summary(fname_summary)
 
-    def save_summary(self, fname_summary: string):
+    def save_summary(self, fname_summary: str):
         """Save the summary of the computation to a given filename
 
         Args:
-            fname_summary (string): Output filename for the summary
+            fname_summary (str): Output filename for the summary
         """
         df_summary = self.summary()
         df_summary.to_pickle(fname_summary)

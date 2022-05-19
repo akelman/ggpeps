@@ -7,11 +7,11 @@ class Measurement:
     """
     use_rebinning=True
 
-    def __init__(self, name: string, binsize: int):
+    def __init__(self, name: str, binsize: int):
         """Constructor of a Measurement
 
         Args:
-            name (string): Name of the measurement
+            name (str): Name of the measurement
             binsize (int): Size of the internal bins used during data acquisition
         """
         self.counter = 0

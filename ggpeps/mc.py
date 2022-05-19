@@ -256,11 +256,11 @@ class MonteCarloEstimator:
 
     #### Data management functions ####
 
-    def get_obs_mean(self, obsname: string):
+    def get_obs_mean(self, obsname: str):
         """Returns the mean value of an observable
 
         Args:
-            obsname (string): Name of observable
+            obsname (str): Name of observable
 
         Returns:
             float: Mean value of the observable
@@ -271,11 +271,11 @@ class MonteCarloEstimator:
                 return meas.mean()
         return None
 
-    def get_obs_mean_err(self, obsname: string):
+    def get_obs_mean_err(self, obsname: str):
         """Returns the error on the mean of an observable
 
         Args:
-            obsname (string): Name of observable
+            obsname (str): Name of observable
 
         Returns:
             float: Error on mean of observable
@@ -286,11 +286,11 @@ class MonteCarloEstimator:
                 return meas.mean_err()
         return None
 
-    def get_obs_std(self, obsname: string):
+    def get_obs_std(self, obsname: str):
         """Returns the standard deviation of an observable
 
         Args:
-            obsname (string): Name of observable
+            obsname (str): Name of observable
 
         Returns:
             float: Standard deviation of an observable
@@ -301,11 +301,11 @@ class MonteCarloEstimator:
                 return meas.std()
         return None
 
-    def get_obs_var(self, obsname: string):
+    def get_obs_var(self, obsname: str):
         """Returns the variance of an observable
 
         Args:
-            obsname (string): Name of observable
+            obsname (str): Name of observable
 
         Returns:
             float: Variance of the observable
@@ -316,20 +316,20 @@ class MonteCarloEstimator:
                 return meas.var()
         return None
 
-    def save_summary(self, fname_summary: string):
+    def save_summary(self, fname_summary: str):
         """Save the summary to disk
 
         Args:
-            fname_summary (string): Filename of the summary
+            fname_summary (str): Filename of the summary
         """
         df_summary = self.summary()
         df_summary.to_pickle(fname_summary)
 
-    def save_full(self, fname_full: string):
+    def save_full(self, fname_full: str):
         """Save the full MonteCarloEstimator
 
         Args:
-            fname_full (string): Filename of the full MonteCarloEstimator
+            fname_full (str): Filename of the full MonteCarloEstimator
         """
         data_full = {
             "version": utils.get_git_hash(),

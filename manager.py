@@ -26,7 +26,7 @@ def args2logname(args):
         args (namespace): Namespace of arguments as provided by argparse
 
     Returns:
-        string: Filename of the log file
+        str: Filename of the log file
     """
     shorthands = {
         "min": "min",
@@ -58,7 +58,7 @@ def translate_parameters(system_cfg, params):
 
     Args:
         system_cfg (SystemConfig): Configuration of the system
-        params (string): Parameters as given on the command line
+        params (str): Parameters as given on the command line
 
     Returns:
         np.array: Array of parameters that are suited for the simulation according to the command line parameters

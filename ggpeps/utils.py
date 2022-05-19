@@ -143,7 +143,7 @@ def get_git_hash():
     """Get the git hash of the current commit in the repository.
 
     Returns:
-        string: git hash
+        str: git hash
     """
     #This assumes that .git is in the parent folder of util.py 
     packagedir = os.path.dirname(os.path.realpath(__file__))
