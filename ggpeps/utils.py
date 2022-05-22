@@ -1,14 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from numpy.lib.function_base import select
 from scipy.sparse import issparse
 from scipy.linalg import svd, block_diag
-import scipy.sparse as sparse
 import os
-import sys
 import ggpeps.measurement as meas
 import gzip
 import pickle
+import logging
 import subprocess  # Start process for git hash
 import re
 from pfapack import pfaffian as pf
@@ -484,13 +482,13 @@ class IncLogAbsDeterminant:
         else:
             return self.det()
 
-class BgbTransform():
 
-    def __init__(self,mat_in, pure_gauge=True):
+class BgbTransform():
+    def __init__(self, mat_in, pure_gauge=True):
         self.mat_in = mat_in
         self.is_pure_gauge = pure_gauge
         self._mat_out = None
-    
+
     @property
     def mat_out(self):
         if self._mat_out is None:
@@ -500,14 +498,13 @@ class BgbTransform():
                 #TODO: Fix this
                 # We are shuffling the physical mode to the front again
                 # It would look like s=perm*s
-                #diag = np.ones(wn.shape[0] - 1)
-                #perm = np.zeros((wn.shape[0], wn.shape[0]))
-                #sub_diag= np.diag(perm,k=-1) 
-                #sub_diag= diag
-                #perm[0, :- 1] = 1
+                #TODO: This does not work properly yet. But the function is not used anywhere.
+                perm = np.zeros((wn.shape[0], wn.shape[0]))
+                i,j = np.indices(perm.shape)
+                perm[i == j + 1] = 1
+                perm[0, -1:] = 1
                 # Apply the permutation
-                #wn = wn * perm.transpose()
-                pass
+                wn = wn * perm.transpose()
             un = herm_conj(wn)
             # now we got the transpose of wp
             up = np.transpose(wp)
@@ -545,7 +542,9 @@ class BgbTransform():
             self._mat_out = trafo_0 @ gamma0 @ trafo_1
         return self._mat_out
 
+
 # ========= Rebinning Functions ====================
+
 
 def autocorr_fft(arr):
     arr = arr-np.mean(arr)

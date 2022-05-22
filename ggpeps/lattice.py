@@ -1,11 +1,8 @@
-import itertools
 import numpy as np
 from enum import Enum
 import sys
 import logging
-from numpy.core.shape_base import block
 from scipy.linalg import block_diag
-import ggpeps.utils as utils
 
 
 class Direction(Enum):
@@ -45,7 +42,7 @@ class Lattice2D:
         return self.nx * y + x
 
     def ind2coord_dir(self,ind):
-        dir=Direction(ind//(self.nx*self.ny))
+        dir = Direction(ind // (self.nx * self.ny))
         if dir == Direction.X:
             return (((ind%(self.nx*self.ny)) % self.nx, (ind%(self.nx*self.ny))//self.nx),dir)
         elif dir == Direction.Y:
@@ -339,14 +336,12 @@ class PermutationBuilderGMS2D2C:
              [empty_2x4, building_block_single_copy]])
         # Pad the matrix body by one block on the top and the bottom
         building_block = np.pad(building_block_no_pad, [[0, 0], [3 * maj_per_link, maj_per_link]])
-        #utils.show_matrix(building_block,title="building block")
         m_bb, n_bb = building_block.shape
         #Shift the building block to the other pairs of sites
         matrix_body = np.zeros(((self.lattice.ny-1)*self.ncopies*2*maj_per_link,(self.ncopies*(self.lattice.ny-1)*self.lattice.nx+2)*4*maj_per_link))
         for y in range(self.lattice.ny-1):
             offset = self.ncopies * y * self.lattice.nx * 4 * maj_per_link  # One vertex has 4 links to other vertices
             matrix_body[y*m_bb:y*m_bb+m_bb,offset:offset+n_bb]=building_block
-        #utils.show_matrix(matrix_body,title="matrix_body")
         # Prepare the block for the periodic boundary conditions
         # We want the first left and the first right mode of the row as padding on the left
         # TODO: Check whether the -3 is ncopy dependent
@@ -361,7 +356,6 @@ class PermutationBuilderGMS2D2C:
 
     def perm(self):
         perm_lr=self._perm_lr()
-        #utils.show_matrix(perm_lr,"perm_lr")
         perm_du=self._perm_du()
         #Permutation of the lr modes
         top_perm=np.kron(np.eye(self.lattice.ny),perm_lr)

@@ -6,8 +6,8 @@ import sympy
 from ggpeps import gauge, utils
 
 
-class Z2System2DConfigBase(ABC):
-    """ Configuration for a Z2 System in two dimensions
+class Config2DBase(ABC):
+    """ Configuration for a system in two dimensions
 
     This class inherits from the abstract base class to enable abstract methods that has to be overwritten in a child class.
     This class cannot be instantiated directly.
@@ -175,7 +175,7 @@ class Z2System2DBase(ABC):
     This class cannot be instantiated directly.
     """
 
-    def __init__(self, cfg: Z2System2DConfigBase):
+    def __init__(self, cfg: Config2DBase):
         self.cfg = cfg
 
         # Parameter based matrices
@@ -288,7 +288,7 @@ class Z2System2DBase(ABC):
         tmat_symb = self.tmat_symb
         return np.asarray(sympy.diff(tmat_symb, symb)).astype(complex)
 
-    def _compute_tmat(self, paramvec):
+    def _eval_tmat_symb(self, paramvec):
         """Compute the numerical representation of the T matrix
 
         Args:
@@ -297,8 +297,7 @@ class Z2System2DBase(ABC):
         Returns:
             np.array: T matrix with numerical values
         """
-        tmat_eval = self.tmat_symb.evalf(
-            subs={self.symbolvec[i]: paramvec[i] for i in range(len(paramvec))})
+        tmat_eval = self.tmat_symb.evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
         return np.asarray(tmat_eval).astype(complex)
 
     @property
@@ -313,7 +312,7 @@ class Z2System2DBase(ABC):
         """
         if self._tmat_vec is None:
             self._tmat_vec = [
-                self._compute_tmat(params) for params in self.cfg.paramvec
+                self._eval_tmat_symb(params) for params in self.cfg.paramvec
             ]
         return self._tmat_vec
 
@@ -800,9 +799,9 @@ class Z2System2DBase(ABC):
         """
         # There are two directions per vertex and two Majoranas per link
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
-        rotmat = self.generate_rotmat(theta)
-        gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(
-            rotmat)
+        coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
+        rotmat = self.generate_rotmat(theta, coord)
+        gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
         return self.update_lognorm_inc(ind_mat, update, all_factors)
 
@@ -912,11 +911,15 @@ class Z2System2DBase(ABC):
         pass
 
     @abstractmethod
-    def generate_rotmat(self, theta):
+    def generate_rotmat(self, theta, coord):
         """Abstract method to define the rotation matrix of a single link.
         The substitution method must ensure a consistent order of the modes.
         This method must be overwritten in a subclass.
         """
+        pass
+
+    @abstractmethod
+    def update_gauge_ind(self, link_ind, theta):
         pass
 
     def update_gauge_full_system(self, gaugeconfig):
@@ -939,7 +942,7 @@ class Z2System2DBase(ABC):
         ind = self.cfg.lattice.coord2ind_dir(coord, dir)
         self.update_gauge_ind(ind, theta)
 
-    def calculate_update_gamma_in(self, offset, update_mat):
+    def calculate_update_gamma_in(self,offset,update_mat):
         """Compute an update between the current gamma_in and the new gamma_in
 
         Args:
