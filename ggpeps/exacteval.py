@@ -2,6 +2,7 @@ import numpy as np
 import itertools as it
 import ggpeps.lattice as lattice
 import pandas as pd
+import logging
 
 class ExactEvaluatorManager:
     """Wrapper Class for the ExactEvaluator.
@@ -16,7 +17,7 @@ class ExactEvaluatorManager:
         The implementation currently only supports a single runner."""
         system = self.system_cls(self.system_cfg)
         system.initialize()
-        exact_eval=ExactEvaluator(system)
+        exact_eval = ExactEvaluator(system)
         exact_eval.evaluate()
         return exact_eval
 
@@ -79,6 +80,7 @@ class ExactEvaluator():
             }
             for config in configvec:
                 self.system.update_gauge_full_system(config)
+                logging.debug("Configuration: {}".format(config))
                 data["energy"].append(self.system.energy)
                 data["mag_energy"].append(self.system.mag_energy)
                 data["el_energy"].append(self.system.el_energy)
