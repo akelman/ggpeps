@@ -205,8 +205,8 @@ def main():
         system=system_type(system_cfg)
         start = timer()
         ex_eval = exacteval.ExactEvaluator(system)
-        stop = timer()
         dest_dict = ex_eval.evaluate()
+        stop = timer()
         ex_eval.save()
         for key,val in dest_dict.items():
             print("{}: {}".format(key,val))
