@@ -11,6 +11,7 @@ import gzip
 import pickle
 import subprocess  # Start process for git hash
 import re
+from pfapack import pfaffian as pf
 
 from matplotlib.colors import LogNorm
 
@@ -189,6 +190,26 @@ def multiply_except(arr, ind: int):
         #It does not make sense to execute this function with only one element
         return arr[0]
 
+
+def derivative_pfaffian(mat, d_mat):
+    """Compute the derivative of a Pfaffian of a matrix.
+    The explicit derivative dA/dx is given as a second argument
+
+    The given formula is only valid if A is not singular.
+
+    Args:
+        mat (np.ndarray): Input Matrix A
+        d_mat (np.ndarray): Derivative dA/dx
+
+    Returns:
+        np.ndarray: d(Pf(A))/dx
+    """
+    pfaval = pf.pfaffian(mat)
+    if not np.isclose(pfaval, 0):
+        return 0.5 *pfaval*np.trace(np.linalg.inv(mat)@d_mat)
+    else:
+        return 0.0
+
 # =========== Matrix Evaluation Functions ====================
 
 def is_hermitian(mat):
@@ -233,6 +254,13 @@ def is_antisymmetric(mat):
         return np.allclose(mat.todense(), -mat.T.todense())
     else:
         return np.allclose(-np.transpose(mat), mat)
+
+def anti_symmetrize(mat):
+    """Force a matrix to be anti-symmetirc."""
+    if issparse(mat):
+        return 0.5*(mat-mat.T)
+    else:
+        return 0.5*(mat-np.transpose(mat))
 
 
 def get_nonzero_fraction(mat):

@@ -65,6 +65,57 @@ class TestUtils(unittest.TestCase):
         arr=np.array([1,2,3,4])
         dest=utils.multiply_except(arr,3)
         self.assertEqual(6,dest)
+    
+    def test_anti_symmetrize(self):
+        mat = np.random.rand(10)
+        mat_as = utils.anti_symmetrize(mat)
+        self.assertTrue(utils.is_antisymmetric(mat_as))
+
+    def test_derivative_pfaffian_zero(self):
+        zero_mat = np.zeros((4,4))
+        self.assertEqual(utils.derivative_pfaffian(zero_mat,zero_mat),0)
+
+    def test_derivative_pfaffian(self):
+        matvec = [np.array([[0.,         0.03656259, 0.27166934, -0.30600668],
+                            [-0.03656259,  0., -0.04027417,  0.39463847],
+                            [-0.27166934,  0.04027417,  0., -0.15850552],
+                            [0.30600668, -0.39463847,  0.15850552,  0.]]),
+                  np.array([[0.,         -0.03656259, -0.27166934, -0.30600668],
+                            [0.03656259,  0., -0.04027417,  0.39463847],
+                            [0.27166934,  0.04027417,  0., -0.15850552],
+                            [0.30600668, -0.39463847,  0.15850552,  0.]])
+                  ]
+        eps=1e-6
+        deriv_mat = np.zeros((4, 4))
+        deriv_mat[0, 1] = 1
+        deriv_mat[1, 0] = -1
+        for mat in matvec:
+            derivative_ana = utils.derivative_pfaffian(mat,deriv_mat)
+            mat_rand_right = mat.copy()
+            mat_rand_right[0, 1] += eps
+            mat_rand_right[1, 0] -= eps
+            mat_rand_left = mat.copy()
+            mat_rand_left[0, 1] -= eps
+            mat_rand_left[1, 0] += eps
+            derivative_numeric = (pf.pfaffian(mat_rand_right)-pf.pfaffian(mat_rand_left))/(2*eps)
+            self.assertAlmostEqual(derivative_numeric,derivative_ana)
+
+    def test_derivative_pfaffian_rnd(self):
+        eps=1e-6
+        deriv_mat = np.zeros((4, 4))
+        deriv_mat[0, 1] = 1
+        deriv_mat[1, 0] = -1
+        for i in range(10):
+            mat_rand = utils.anti_symmetrize(np.random.rand(4,4))
+            derivative_ana = utils.derivative_pfaffian(mat_rand,deriv_mat)
+            mat_rand_right = mat_rand.copy()
+            mat_rand_right[0, 1] += eps
+            mat_rand_right[1, 0] -= eps
+            mat_rand_left = mat_rand.copy()
+            mat_rand_left[0, 1] -= eps
+            mat_rand_left[1, 0] += eps
+            derivative_numeric = (pf.pfaffian(mat_rand_right)-pf.pfaffian(mat_rand_left))/(2*eps)
+            self.assertAlmostEqual(derivative_numeric,derivative_ana)
 
 class TestLattice(unittest.TestCase):
 
