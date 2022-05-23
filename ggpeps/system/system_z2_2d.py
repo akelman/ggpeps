@@ -7,7 +7,7 @@ from scipy.linalg import block_diag
 from ggpeps import utils
 from .system_base import Config2DBase, Z2System2DBase
 from .system_base import calculate_lognorm, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats, calculate_lognorm_inc
-from warning import warn # Used for deprecation warnings
+from warnings import warn # Used for deprecation warnings
 
 
 ###################### Z2System2D ##########################
