@@ -7,6 +7,7 @@ from scipy.linalg import block_diag
 from ggpeps import utils
 from .system_base import Config2DBase, Z2System2DBase
 from .system_base import calculate_lognorm, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats, calculate_lognorm_inc
+from warning import warn # Used for deprecation warnings
 
 
 ###################### Z2System2D ##########################
@@ -15,8 +16,8 @@ from .system_base import calculate_lognorm, compute_grad_over_norm, calculate_lo
 class Z2System2DConfig(Config2DBase):
     _nparams = 3
     ncopy = 1
-    nvirtmodes_vertex = 4 # We have one virtual mode per direction
-    nvirtmodes_link = 2
+    nvirtmodes_vertex = 4 # We have one virtual mode per direction (1 mode x 4 directions)
+    nvirtmodes_link = 2 # We have two virtual modes per link (l/r or u/d)
 
     def __init__(self, lattice, g2, g_gm, g2_mag, nlayer=1):
         #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
@@ -46,6 +47,14 @@ class Z2System2D(Z2System2DBase):
 
 
     def _create_symbolvec(self):
+        """Define all symbols of the T matrix as symbols.
+        We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
+
+        This method overwrites an abstract method in Z2System2DBase.
+
+        Returns:
+            list: List of all analytic symbols
+        """
         t = sympy.Symbol("t", real=True)
         y = sympy.Symbol("y", real=True)
         z = sympy.Symbol("z", real=True)
@@ -54,6 +63,24 @@ class Z2System2D(Z2System2DBase):
 
     @property
     def tmat_symb(self):
+        """Definition of the symbolic T matrix.
+        The definition of T here is a result of an analytic consideration of global symmetries like rotational invariance, charge conjugation invarance, etc.
+        The T matrix is given in terms of symbols to compute the derivative of the covariance matrices analytically via sympy.
+        We do not have to type them explicitly anymore into the code.
+
+        This is one of two analytic inputs into the code. 
+        The other input is the structure and the parametrization of the projectors.
+
+        The mode order is: Psi, l, r, d, u
+
+        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
+        The permutation matrices are prone for errors.
+
+        This method overwrites an abstract method in Z2System2DBase.
+
+        Returns:
+            sympy.Matrix: Analytic T matrix of the fiducial state
+        """
         [t, y, z] = self.symbolvec
         tmat_symb=sympy.Matrix([[0, -1.j * t, 1.j * t, t, -t],
                             [1.j * t, 0, 1.j * y, z, 1.j * z],
@@ -63,6 +90,22 @@ class Z2System2D(Z2System2DBase):
 
 
     def _expand_gamma_maj_to_system(self,covmat):
+        """Expand the covariance matrix in Majorana modes to the full system.
+        In order to obtain a structure that is convenient for further computations,
+            (A    B)
+            (-B^T D)
+        we have to reorder the modes of the single-vertex matrix with respect to the full matrix.
+        The biggest part of the permutation-matrix generation is done in PermutationBuilderGMS2D.
+        The GMS stands for Gamma Majorana System, 2D is 2 dimensions.
+
+        This method overwrites an abstract method in Z2System2DBase.
+
+        Args:
+            covmat (np.ndarray): 2D covariance matrix of a single site
+
+        Returns:
+            np.ndarray: 2D covariance matrix of the full system
+        """
         permbuilder = lat.PermutationBuilderGMS2D(self.cfg.lattice, nmodes_per_link=1)
         mat_perm = permbuilder.perm()
         nsites = self.cfg.lattice.size
@@ -77,8 +120,7 @@ class Z2System2D(Z2System2DBase):
         #Reassemble them in the correct order
         mat_sys_unordered= np.block(
             [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
-        #utils.show_matrix(mat_perm,"mat_perm")
-        dest=mat_perm@mat_sys_unordered@np.transpose(mat_perm)
+        dest = mat_perm@mat_sys_unordered@np.transpose(mat_perm)
         return dest
 
 
@@ -100,6 +142,8 @@ class Z2System2D(Z2System2DBase):
 
         For a 2x2 system, gamma_in has the order {l_1, r_0, l_0, r_1, l_3, r_2, l_2, r_3, d_2, u_0, d_0, u_2, d_3, u_1, d_1, d_3}.
         The modes are named as <mode letter>_<vertex site>. Each constitent in the list above labels two Majorana modes.
+
+        This method overwrites an abstract method in Z2System2DBase.
         """
 
         nlinks = self.cfg.lattice.nlinks
@@ -140,6 +184,8 @@ class Z2System2D(Z2System2DBase):
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
+        This method overwrites an abstract method in Z2System2DBase.
+
         Returns:
             np.ndarray: Covariance matrix of the ungauged projector on a single link
         """
@@ -150,6 +196,8 @@ class Z2System2D(Z2System2DBase):
     def generate_rotmat(self,theta, coord):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
         The mode order is (as for gamma_in_neutral) {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2}, depending on whether the link is vertical or horizontal.
+
+        This method overwrites an abstract method in Z2System2DBase.
 
         Args:
             theta (float): Angle of rotation
@@ -170,7 +218,17 @@ class Z2System2D(Z2System2DBase):
         return dest
 
 
-    def update_gauge_ind(self, link_ind, theta):
+    def update_gauge_ind(self, link_ind: int, theta: float):
+        """Update method that is called upon changing a gauge field.
+        This method is central to the algorithm since it changes the gauged projectors and updates all incremental trackers of determinants and inverses.
+        The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
+
+        This method overwrites an abstract method in Z2System2DBase.
+
+        Args:
+            link_ind (int): Link index to be updated
+            theta (float): New gauge field value
+        """
         # Update the gaugefield
         self._gaugefieldvec[link_ind] = theta
         # There are two directions per vertex and two Majoranas per link
@@ -215,6 +273,21 @@ class Z2System2D(Z2System2DBase):
 
 
     def _compute_el_energy_op_vec(self, use_trans_inv=True):
+        """Computation of the electric energy operators (w/o shift).
+        Since the electric energy is not diagonal in the gauge field (group element) basis, this method is a bit more involved than the computation of the magnetic energy.
+        The length of the returned vector is equal to the number of layers.
+
+        Currently, only the computationally inexpensive, translationally version is implemented.
+
+        This method is deprecated, please use _compute_el_energy_op_vec_and_grad instead.
+
+        Args:
+            use_trans_inv (bool, optional): Use translational invariance of the systemm to speed up the computation. Defaults to True.
+
+        Returns:
+            np.array: 1d array of the electric energies of the different layers
+        """
+        warn("This method is deprecated. Use _compute_el_energy_op_vec_and_grad instead.",DeprecationWarning,stacklevel=2)
         if use_trans_inv:
             normvec_default = calculate_lognormvec(self.gamma_in_sys,
                                                 self.mat_d_vec,all_factors=True)
@@ -248,13 +321,17 @@ class Z2System2D(Z2System2DBase):
         else:
             # Evaluate every link of the system
             logging.error("compute_el_energy: not implemented yet")
+            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
             el_energy_bare = [None]*self.cfg.nlayer
         return np.asarray(el_energy_bare)
 
 
     def _compute_el_energy_op_grad_vec(self):
-        """The electric energy depends explicitly on the parameters of the Ansatz. 
+        """Compute the gradient of the electric energy.
+        The electric energy depends explicitly on the parameters of the Ansatz. 
         Thus, we have to build the explicit derivative of the electric energy with respect to the parameters.
+
+        This method is deprecated, please use _compute_el_energy_op_vec_and_grad instead.
 
         Args:
             var (str): Name of the variable (t,y,z)
@@ -262,6 +339,8 @@ class Z2System2D(Z2System2DBase):
         Returns:
             list: Matrix of the gradients of the electric energy wrt [[t1,y1,z1],[t2,y2,z2],...]
         """
+        warn("This method is deprecated. Use _compute_el_energy_op_vec_and_grad instead.",DeprecationWarning,stacklevel=2)
+
         single_site_offset = 4
         offset = 2 * self.cfg.lattice.size + single_site_offset
         nlinks = self.cfg.lattice.nlinks
@@ -320,6 +399,17 @@ class Z2System2D(Z2System2DBase):
         return dest
 
     def _compute_el_energy_op_vec_and_grad(self, use_trans_inv=True):
+        """Computation of the electric energy and the electric gradient in a single method.
+        Since many operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
+
+        This method overwrites an abstract method in Z2System2DBase.
+
+        Args:
+            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
+
+        Returns:
+            tuple: Tuple of (list of electric energies for a single link, list of gradients for the full system)
+        """
         if use_trans_inv:
             lognormvec_default_inc = self.calculate_lognormvec_inc(all_factors=True)
             # This is the usual norm without any modifications
@@ -394,11 +484,23 @@ class Z2System2D(Z2System2DBase):
         else:
             # Evaluate every link of the system
             logging.error("compute_el_energy: not implemented yet")
+            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
             dest = np.asarray([None]*self.cfg.nlayer)
             dest_grad = np.asarray([[None]*len(self.symbolvec)]*self.cfg.nlayer)
         return dest, dest_grad
 
     def _compute_mag_energy_op(self, use_trans_inv=True):
+        """Computation of the magnetic energy operator (w/o shift).
+        This operator is diagonal in the gauge field (group element) basis and can thus be computed easily.
+
+        This method overwrites an abstract method in Z2System2DBase.
+
+        Args:
+            use_trans_inv (bool, optional): Use the translationally invariant computation method. Defaults to True.
+
+        Returns:
+            float: magnetic energy w/o shift for a single plaquette
+        """
         if use_trans_inv:
             # Evaluate one plaquette and multiply by number of plaquettes
             wilson_plaquette = self.cfg.lattice.generate_wilson_loop(
@@ -408,5 +510,6 @@ class Z2System2D(Z2System2DBase):
         else:
             # Evaluate every plaquette of the system
             logging.error("compute_mag_energy: not implemented yet")
+            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
             mag_energy_bare = None
         return mag_energy_bare
