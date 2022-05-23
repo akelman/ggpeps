@@ -75,7 +75,7 @@ class Config2DBase(ABC):
         """Ensure that the system is pure gauge, i.e. no physical fermions.
         This abstract method must be overwritten by a subclass.
         """
-        pass
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
 ################## Utility Functions ######################
 
@@ -253,7 +253,7 @@ class Z2System2DBase(ABC):
         We need these symbols to analytically derive T automatically.
         This function has to overwritten in the child-class.
         """
-        pass
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @property
     def symbolvec(self):
@@ -274,7 +274,7 @@ class Z2System2DBase(ABC):
         """Create the symbolic version of the T matrix.
         This is an abstract function that has to be overwritten by the child class.
         """
-        pass
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     def compute_tmat_deriv(self, symb):
         """Return the derivative of the T matrix with respect to the symbol
@@ -358,7 +358,7 @@ class Z2System2DBase(ABC):
         Args:
             covmat (np.array): Covariance matrix for the single site
         """
-        pass
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @property
     def gamma_maj_sys_vec(self):
@@ -544,7 +544,7 @@ class Z2System2DBase(ABC):
         """Abstract function to initialize gamma_in (the covariance matrix of the projectors) in a child class
         This function has to be overwritten in a child class.
         """
-        pass
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @property
     def gamma_in_sys(self):
@@ -908,7 +908,7 @@ class Z2System2DBase(ABC):
         The substitution method must ensure a consistent order of the modes.
         This method must be overwritten in a subclass.
         """
-        pass
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
     def generate_rotmat(self, theta, coord):
@@ -916,11 +916,11 @@ class Z2System2DBase(ABC):
         The substitution method must ensure a consistent order of the modes.
         This method must be overwritten in a subclass.
         """
-        pass
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
     def update_gauge_ind(self, link_ind, theta):
-        pass
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     def update_gauge_full_system(self, gaugeconfig):
         """Replace all gauge fields on the links by the values given in gaugeconfig.
@@ -972,14 +972,14 @@ class Z2System2DBase(ABC):
         """Compute the bare operator (without shift) of the magnetic energy.
         This is an abstract method and has to be overwritten in a subclass.
         """
-        pass
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
     def _compute_el_energy_op_vec_and_grad(self):
         """Compute the electric energy and the gradient in each layer.
         This is an abstract method and has to be overwritten in a subclass.
         """
-        pass
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @property
     def energy(self):

@@ -237,7 +237,7 @@ def is_permutation(mat):
     """Returns true if the matrix is a permutation matrix. """
     n, m = mat.shape
     if issparse(mat):
-        pass
+        raise NotImplementedError("Checking for sparse permutation matrices is not implemented.")
     else:
         square = n == m
         id = np.allclose(np.eye(n), mat@np.transpose(mat))
