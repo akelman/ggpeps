@@ -344,6 +344,9 @@ class Z2System2D2C(Z2System2DBase):
                     mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_link_offset:, -
                                             single_link_offset:]
+
+                # The library pfapack is rather picky about the anti-symmtrization (to 1e-14)
+                covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
                 # For the modified norm, we still have to take into account the other contributions from the unmodified parts
                 norm_mod = calculate_lognorm_inc(
                     [self.incdet_mod_vec[layerind]],
@@ -353,11 +356,14 @@ class Z2System2D2C(Z2System2DBase):
                 norm_mod += np.sum(utils.select_except(lognormvec_default,layerind))
                 # The matrix elements yield only the real part of <P>
                 # If we use the log formulation, we can calculate the log of single terms.
+
+                # Instead of writing down all the terms explicitly, we build tuples of the prefactors and the indices of the covariance matrix.
+                # Then, we compute all terms in a list comprehension.
                 idxarr= [ (   1, [0,2,4,6]), (  -1, [1,2,4,7]), (-1.j, [0,1,2,4]), (-1.j,[2,4,6,7]),
                           (  -1, [0,3,5,6]), (   1, [1,3,5,7]), ( 1.j, [0,1,3,5]), ( 1.j,[3,5,6,7]),
                           ( 1.j, [0,4,5,6]), (-1.j, [1,4,5,7]), (   1, [0,1,4,5]), (   1,[4,5,6,7]),
-                          ( 1.j, [0,2,3,6]), (-1.j, [1,2,3,7]), (   1, [0,2,3,4]), (  -1,[2,3,6,7])]
-                pfarr = [prefactor * pf.pfaffian(utils.anti_symmetrize(covmat_out_virt[np.ix_(ind,ind)])) for prefactor,ind in idxarr]
+                          ( 1.j, [0,2,3,6]), (-1.j, [1,2,3,7]), (   1, [0,1,2,3]), (   1,[2,3,6,7])]
+                pfarr = [prefactor * pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
                 el_energy_full = 1/16 * np.sum(pfarr)
                 
                 el_energy_layer = np.real(el_energy_full) * np.exp(norm_mod - lognorm_default)
@@ -374,11 +380,13 @@ class Z2System2D2C(Z2System2DBase):
                     # The virtual mode is the last link on the bottom right of the covariance matrix
                     d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
                     # Summand with derivative of the covariance matrix
-                    d_el_energy = 1/16 * np.sum([prefactor * utils.derivative_pfaffian(utils.anti_symmetrize(covmat_out_virt[np.ix_(ind,ind)]),d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr])
+                    # We re-use the list comprehension from above to use the indices
+                    d_el_energy = 1/16 * np.sum([prefactor * utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)],d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr])
                                   
                     # Summand with derivative of norms
                     trace_def = self.compute_grad_over_norm(symbol, layerind)
                     trace_mod = compute_grad_over_norm(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
+                    # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
                     d_el_energy += dest[layerind] * (trace_mod - trace_def)
                     # Scale to system size
                     d_el_energy *= nlinks
