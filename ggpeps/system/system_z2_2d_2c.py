@@ -381,7 +381,8 @@ class Z2System2D2C(Z2System2DBase):
                     d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
                     # Summand with derivative of the covariance matrix
                     # We re-use the list comprehension from above to use the indices
-                    d_el_energy = 1/16 * np.sum([prefactor * utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)],d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr])
+                    deriv_pfarr = [prefactor * utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)],d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
+                    d_el_energy = 1/16 * np.real(np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
                                   
                     # Summand with derivative of norms
                     trace_def = self.compute_grad_over_norm(symbol, layerind)
