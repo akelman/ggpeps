@@ -1,24 +1,33 @@
 """Main script to control the simulation. 
 Further details about the usage of the script can be found in README.md.
 """
-from system import Z2System2D2C,Z2System2D2CConfig
-from system import Z2System2D, Z2System2DConfig
-from measurement import Measurement
+
+# Imports of things that we later need
+from ggpeps.system import Z2System2D2C,Z2System2D2CConfig
+from ggpeps.system import Z2System2D, Z2System2DConfig
+from ggpeps.measurement import Measurement
 import os
 import sys
 from timeit import default_timer as timer
 import ray
-import utils
+from ggpeps import utils, exacteval
 import logging
-from minimizer import Minimizer, MinimizerConfig
-from mc import MonteCarloEstimatorConfig, MonteCarloManager
-import exacteval
-import lattice as lat
+from ggpeps.minimizer import Minimizer, MinimizerConfig
+from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloManager
+from ggpeps import lattice as lat
 import numpy as np
 np.set_printoptions(linewidth=200)
 
 
 def args2logname(args):
+    """Convert arguments to a name for the log file
+
+    Args:
+        args (namespace): Namespace of arguments as provided by argparse
+
+    Returns:
+        str: Filename of the log file
+    """
     shorthands = {
         "min": "min",
         "minimize": "min",
@@ -45,6 +54,15 @@ def args2logname(args):
     return fname
 
 def translate_parameters(system_cfg, params):
+    """Translate the parameters given on the commandline to a form useful in the code
+
+    Args:
+        system_cfg (SystemConfig): Configuration of the system
+        params (str): Parameters as given on the command line
+
+    Returns:
+        np.array: Array of parameters that are suited for the simulation according to the command line parameters
+    """
     nparams = system_cfg._nparams
     nlayer = system_cfg.nlayer
     if params is not None and len(params)==1 and isinstance(params[0],str) and os.path.isfile(params[0]):
@@ -102,7 +120,10 @@ def main():
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 
+    # Depending on the parameters, we instantiate different systems
+    # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.ncopy == 1:
+        # Z2 system with one copy of virtual fermions on the links
         system_type = Z2System2D
         system_cfg = Z2System2DConfig(lattice,
                                       g2,
@@ -110,6 +131,7 @@ def main():
                                       g2_mag,
                                       nlayer=args.nlayer)
     elif args.ncopy == 2:
+        # Z2 system with two copies of virtual fermions on the links
         system_type = Z2System2D2C
         system_cfg = Z2System2D2CConfig(lattice,
                                         g2,
@@ -122,9 +144,11 @@ def main():
     paramvec = translate_parameters(system_cfg, args.params)
     system_cfg.paramvec = paramvec
 
+    # Ensure pure guage (setting t parameter to zero) if enabled
     if args.pure_gauge:
         system_cfg.make_pure_gauge()
 
+    # Switch to control the binning analysis on EOM (Error of mean)
     if args.no_bin_eom:
         Measurement.use_rebinning = False
 
@@ -140,6 +164,7 @@ def main():
     logging.info("============================")
 
 
+    # Call different functions depending on the mode specified via CLI
     if args.mode == "eval":
         mc_config.minimizer_mode = False
         mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
@@ -180,8 +205,8 @@ def main():
         system=system_type(system_cfg)
         start = timer()
         ex_eval = exacteval.ExactEvaluator(system)
-        stop = timer()
         dest_dict = ex_eval.evaluate()
+        stop = timer()
         ex_eval.save()
         for key,val in dest_dict.items():
             print("{}: {}".format(key,val))
@@ -226,7 +251,7 @@ def main():
             minimizer = Minimizer(mc, min_cfg)
 
             resultvec.append(minimizer.minimize())
-            system_cfg.paramvec = resultvec[-1].parametervec
+            system_cfg.paramvec = resultvec[-1].paramvec
         stop = timer()
         #TODO: We can merge the resultvec to get a full result
         minimizer.save()

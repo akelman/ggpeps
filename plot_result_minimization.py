@@ -18,7 +18,7 @@ def fname2g2(fname):
 
 def res2df(fname,res):
     resdict={}
-    resdict["parametervec"]=res.parametervec
+    resdict["paramvec"]=res.paramvec
     resdict["energygrad"]=res.energygrad
     resdict["method"]=res.method
     resdict["energy"]=res.value

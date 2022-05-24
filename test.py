@@ -1,14 +1,12 @@
-from unittest.case import SkipTest, skip
-from exacteval import ExactEvaluator
+from unittest.case import skip
+from ggpeps.exacteval import ExactEvaluator
 import unittest
 import numpy as np
-import utils
-import system
-import lattice
-from measurement import Measurement
-from mc import MonteCarloEstimatorConfig, MonteCarloEstimator, MonteCarloManager
-from minimizer import Minimizer
-import gauge
+from ggpeps import utils, system, lattice, gauge
+from ggpeps.measurement import Measurement
+from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloEstimator, MonteCarloManager
+from ggpeps.minimizer import Minimizer
+from pfapack import pfaffian as pf
 
 def compare_array_elementwise(testcase,ref,res,print_vals=True):
     testcase.assertEqual(ref.shape,res.shape)
@@ -67,6 +65,57 @@ class TestUtils(unittest.TestCase):
         arr=np.array([1,2,3,4])
         dest=utils.multiply_except(arr,3)
         self.assertEqual(6,dest)
+    
+    def test_anti_symmetrize(self):
+        mat = np.random.rand(10)
+        mat_as = utils.anti_symmetrize(mat)
+        self.assertTrue(utils.is_antisymmetric(mat_as))
+
+    def test_derivative_pfaffian_zero(self):
+        zero_mat = np.zeros((4,4))
+        self.assertEqual(utils.derivative_pfaffian(zero_mat,zero_mat),0)
+
+    def test_derivative_pfaffian(self):
+        matvec = [np.array([[0.,         0.03656259, 0.27166934, -0.30600668],
+                            [-0.03656259,  0., -0.04027417,  0.39463847],
+                            [-0.27166934,  0.04027417,  0., -0.15850552],
+                            [0.30600668, -0.39463847,  0.15850552,  0.]]),
+                  np.array([[0.,         -0.03656259, -0.27166934, -0.30600668],
+                            [0.03656259,  0., -0.04027417,  0.39463847],
+                            [0.27166934,  0.04027417,  0., -0.15850552],
+                            [0.30600668, -0.39463847,  0.15850552,  0.]])
+                  ]
+        eps=1e-6
+        deriv_mat = np.zeros((4, 4))
+        deriv_mat[0, 1] = 1
+        deriv_mat[1, 0] = -1
+        for mat in matvec:
+            derivative_ana = utils.derivative_pfaffian(mat,deriv_mat)
+            mat_rand_right = mat.copy()
+            mat_rand_right[0, 1] += eps
+            mat_rand_right[1, 0] -= eps
+            mat_rand_left = mat.copy()
+            mat_rand_left[0, 1] -= eps
+            mat_rand_left[1, 0] += eps
+            derivative_numeric = (pf.pfaffian(mat_rand_right)-pf.pfaffian(mat_rand_left))/(2*eps)
+            self.assertAlmostEqual(derivative_numeric,derivative_ana)
+
+    def test_derivative_pfaffian_rnd(self):
+        eps=1e-6
+        deriv_mat = np.zeros((4, 4))
+        deriv_mat[0, 1] = 1
+        deriv_mat[1, 0] = -1
+        for i in range(10):
+            mat_rand = utils.anti_symmetrize(np.random.rand(4,4))
+            derivative_ana = utils.derivative_pfaffian(mat_rand,deriv_mat)
+            mat_rand_right = mat_rand.copy()
+            mat_rand_right[0, 1] += eps
+            mat_rand_right[1, 0] -= eps
+            mat_rand_left = mat_rand.copy()
+            mat_rand_left[0, 1] -= eps
+            mat_rand_left[1, 0] += eps
+            derivative_numeric = (pf.pfaffian(mat_rand_right)-pf.pfaffian(mat_rand_left))/(2*eps)
+            self.assertAlmostEqual(derivative_numeric,derivative_ana)
 
 class TestLattice(unittest.TestCase):
 
@@ -200,7 +249,6 @@ class TestPermutationBuilder2D(unittest.TestCase):
         permbuilder_3x2 = lattice.PermutationBuilderGMS2D2C(
             lattice.Lattice2D(3, 2), 1)
         permutation = permbuilder_3x2.perm()
-        #utils.show_matrix(permutation)
         self.assertTrue(utils.is_permutation(permutation))
 
 
@@ -208,7 +256,6 @@ class TestPermutationBuilder2D(unittest.TestCase):
         permbuilder_2x3 = lattice.PermutationBuilderGMS2D2C(
             lattice.Lattice2D(2, 3), 1)
         permutation = permbuilder_2x3.perm()
-        #utils.show_matrix(permutation)
         self.assertTrue(utils.is_permutation(permutation))
 
     def test_2copies_2x2(self):
@@ -932,59 +979,226 @@ class TestZ2SystemMethods(unittest.TestCase):
 
         self.assertAlmostEqual(res["wilson_00_11"], mc.get_obs_mean("wilson_00_11"),places=2)
 
-class TestU1MultilayerSystemMethods(unittest.TestCase):
+class TestU1SystemMethods(unittest.TestCase):
 
     def setUp(self):
-        lat=lattice.Lattice2D(2,2)
-        paramvec=[[0.3,0.4],[0.5,0.2],[0.8,0.3]]
-        cfg=system.U1MultilayerSystem2DConfig(paramvec,lat)
-        self.system_u1_2_2=system.U1MultilayerSystem2D(cfg)
-
-    def test_tmat_numeric(self):
-        #Test numeric equivalent with Mathematica
-        tmat=self.system_u1_2_2.tmat
-        pass
+        lat = lattice.Lattice2D(2, 2)
+        paramvec = [[0.1, 0.3, 0.4]]
+        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
+        cfg.paramvec = paramvec
+        self.system_u1_2_2 = system.U1System2D(cfg)
 
     def test_tmat_antisymmetric(self):
-        tmat=self.system_u1_2_2.tmat
-        ncopy,m,n=tmat.shape
-        self.assertEqual(m,5)
-        self.assertEqual(n,4)
-        #for ind in range(ncopy):
-        #self.assertTrue(utils.is_antisymmetric(tmat[ind,1:,:]))
+        tmat = self.system_u1_2_2.tmat_vec[0]
+        m,n = tmat.shape
+        self.assertEqual(m,9)
+        self.assertEqual(n,9)
+        self.assertTrue(utils.is_antisymmetric(np.real(tmat)))
 
-#    def test_gamma_dirac_covariance(self):
-#        gamma_dirac=self.system_u1_2_2.gamma_dirac
-#        m, n = gamma_dirac.shape
-#        res=gamma_dirac@np.transpose(np.conjugate(gamma_dirac))
-#        ref=0.25*np.eye(gamma_dirac.shape[0])
-#        self.assertTrue(np.allclose(ref,res))
-#        self.assertEqual(m, n)
-#        self.assertTrue(utils.is_antisymmetric(gamma_dirac))
-#
-#    def test_gamma_maj_covariance(self):
-#        gamma_maj=self.system_u1_2_2.gamma_maj
-#        m, n = gamma_maj.shape
-#        self.assertEqual(m, n)
-#        self.assertTrue(utils.is_antisymmetric(gamma_maj))
-#        self.assertTrue(np.allclose(gamma_maj@gamma_maj,-np.eye(m)))
-#        self.assertTrue(np.allclose(gamma_maj@np.transpose(gamma_maj),np.eye(m)))
-#
-#    def test_gamma_maj_sys_covariance(self):
-#        gamma_maj=self.system_u1_2_2.gamma_maj_sys
-#        m, n = gamma_maj.shape
-#        self.assertEqual(m, n)
-#        self.assertTrue(utils.is_antisymmetric(gamma_maj))
-#        self.assertTrue(np.allclose(gamma_maj@gamma_maj,-np.eye(m)))
-#        self.assertTrue(np.allclose(gamma_maj@np.transpose(gamma_maj),np.eye(m)))
-#
-#    def test_gamma_in_sys_covariance(self):
-#        gamma_in=self.system_u1_2_2.gamma_in_sys
-#        m, n = gamma_in.shape
-#        self.assertEqual(m, n)
-#        self.assertTrue(utils.is_antisymmetric(gamma_in))
-#        self.assertTrue(np.allclose(gamma_in@gamma_in,-np.eye(m)))
-#        self.assertTrue(np.allclose(gamma_in@np.transpose(gamma_in),np.eye(m)))
+    def test_gamma_dirac_covariance(self):
+        gamma_dirac = self.system_u1_2_2.gamma_dirac_vec[0]
+        m, n = gamma_dirac.shape
+        res = gamma_dirac @ np.transpose(np.conjugate(gamma_dirac))
+        ref = 0.25 * np.eye(gamma_dirac.shape[0])
+        self.assertTrue(np.allclose(ref, res))
+        self.assertEqual(m, n)
+        self.assertTrue(utils.is_antisymmetric(gamma_dirac))
+
+    def test_gamma_maj_covariance(self):
+        gamma_maj = self.system_u1_2_2.gamma_maj_vec[0]
+        m, n = gamma_maj.shape
+        self.assertEqual(m, n)
+        self.assertTrue(utils.is_antisymmetric(gamma_maj))
+        self.assertTrue(np.allclose(gamma_maj @ gamma_maj, -np.eye(m)))
+        self.assertTrue(np.allclose(gamma_maj@np.transpose(gamma_maj),np.eye(m)))
+
+    def test_gamma_maj_sys_covariance(self):
+        gamma_maj = self.system_u1_2_2.gamma_maj_sys_vec[0]
+        m, n = gamma_maj.shape
+        self.assertEqual(m, n)
+        self.assertTrue(utils.is_antisymmetric(gamma_maj))
+        self.assertTrue(np.allclose(gamma_maj @ gamma_maj, -np.eye(m)))
+        self.assertTrue(np.allclose(gamma_maj @ np.transpose(gamma_maj), np.eye(m)))
+
+    def test_gamma_in_sys_covariance(self):
+        gamma_in = self.system_u1_2_2.gamma_in_sys
+        m, n = gamma_in.shape
+        self.assertEqual(m, n)
+        self.assertTrue(utils.is_antisymmetric(gamma_in))
+        self.assertTrue(np.allclose(gamma_in@gamma_in,-np.eye(m)))
+        self.assertTrue(np.allclose(gamma_in@np.transpose(gamma_in),np.eye(m)))
+
+    def test_norm_minimal(self):
+        # This update is a nullop since we initialize the gauge-field with 0
+        zeroarr = np.zeros((1, 1))
+        #The factor of 2 compensates for the
+        logdet_inc = 2*self.system_u1_2_2.update_lognorm_inc(0, zeroarr, all_factors=False)
+        # This is equivalent to
+        #logdet_inc = self.system_u1_2_2.incdet.det()
+        diff = self.system_u1_2_2.mat_d_inv_vec[0] - self.system_u1_2_2.gamma_in_sys
+        sign, logdet = np.linalg.slogdet(diff)
+        self.assertGreater(sign,0)
+        self.assertAlmostEqual(logdet_inc, logdet)
+
+    def test_norm_incremental(self):
+        # Test that the incremental update is equivalent to the re-calculation of the norm
+        # This update is a nullop since we initialize the gauge-field with 0
+        zeroarr = np.zeros((1, 1))
+        weight_inc = self.system_u1_2_2.update_lognorm_inc(0,
+                                                              zeroarr,
+                                                              all_factors=True)
+        weight_recalc = self.system_u1_2_2.calculate_lognorm(all_factors=True)
+        self.assertAlmostEqual(weight_inc, weight_recalc)
+
+    def test_norm_incremental_update(self):
+        # Test that the incremental update is equivalent to the re-calculation of the norm
+        ind = 0
+        theta = np.pi
+        weight_inc = self.system_u1_2_2.calculate_weight_attempt(
+            ind, theta, all_factors=True)
+        self.system_u1_2_2.update_gauge_ind(ind, theta)
+        weight_recalc = self.system_u1_2_2.calculate_lognorm(all_factors=True)
+        self.assertAlmostEqual(weight_inc, weight_recalc)
+
+
+    def test_compare_gauge_gamma_dirac(self):
+        lat = lattice.Lattice2D(2, 2)
+        paramvec = [[0.1, 0.4, 0.2]]
+        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
+        cfg.paramvec = paramvec
+        system_u1_2_2 = system.U1System2D(cfg)
+        gamma_dirac = system_u1_2_2.gamma_dirac_vec[0]
+        gamma_dirac_cpp = utils.load_matrix_dat_fmt("misc/gamma_dirac_cpp_t_0.1_y_0.4_z_0.2.dat")
+        self.assertTrue(np.allclose(gamma_dirac,gamma_dirac_cpp))
+
+
+    def test_compare_cpp_gamma_maj(self):
+        lat = lattice.Lattice2D(2, 2)
+        paramvec = [[0.1, 0.4, 0.2]]
+        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
+        cfg.paramvec = paramvec
+        system_u1_2_2 = system.U1System2D(cfg)
+        gamma_maj = system_u1_2_2.gamma_maj_vec[0]
+        gamma_maj_cpp = utils.load_matrix_dat_fmt("misc/gamma_maj_cpp_t_0.1_y_0.4_z_0.2.dat",is_complex=False)
+        self.assertTrue(np.allclose(gamma_maj,gamma_maj_cpp))
+
+
+    def test_compare_cpp_pure_gauge_gamma_dirac(self):
+        lat = lattice.Lattice2D(2, 2)
+        paramvec = [[0.0, 0.4, 0.2]]
+        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
+        cfg.paramvec = paramvec
+        system_u1_2_2 = system.U1System2D(cfg)
+        gamma_dirac = system_u1_2_2.gamma_dirac_vec[0]
+        gamma_dirac_cpp = utils.load_matrix_dat_fmt("misc/gamma_dirac_cpp_t_0.0_y_0.4_z_0.2.dat")
+        self.assertTrue(np.allclose(gamma_dirac,gamma_dirac_cpp))
+
+
+    def test_compare_cpp_pure_gauge_gamma_maj(self):
+        lat = lattice.Lattice2D(2, 2)
+        paramvec = [[0.0, 0.4, 0.2]]
+        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
+        cfg.paramvec = paramvec
+        system_u1_2_2 = system.U1System2D(cfg)
+        gamma_maj = system_u1_2_2.gamma_maj_vec[0]
+        gamma_maj_cpp = utils.load_matrix_dat_fmt("misc/gamma_maj_cpp_t_0.0_y_0.4_z_0.2.dat",is_complex=False)
+        self.assertTrue(np.allclose(gamma_maj,gamma_maj_cpp))
+
+    def test_electric_energy_L_2_empty(self):
+        # Calculate the electric energy of an empty system.
+        paramvec = np.zeros((1,3))
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.U1System2DConfig(lat_2x2, 1.0, None, None)
+        system_cfg.paramvec = paramvec
+        system_u1_2_2_pf = system.U1System2D(system_cfg)
+        system_u1_2_2_pf.use_pfaffian = True
+        system_u1_2_2_link = system.U1System2D(system_cfg)
+        el_energy_pf = system_u1_2_2_pf.el_energy
+        el_energy_link = system_u1_2_2_link.el_energy
+        self.assertAlmostEqual(el_energy_pf, 0.0)
+        self.assertAlmostEqual(el_energy_link, 0.0)
+        self.assertAlmostEqual(el_energy_link, el_energy_pf)
+
+    def test_electric_energy_L_4_empty(self):
+        paramvec = np.zeros((1,3))
+        lat_4x4 = lattice.Lattice2D(4, 4)
+        system_cfg = system.U1System2DConfig(lat_4x4, 1.0, None, None)
+        system_cfg.paramvec = paramvec
+        system_u1_pf = system.U1System2D(system_cfg)
+        system_u1_pf.use_pfaffian = True
+        system_u1_link = system.U1System2D(system_cfg)
+        el_energy_pf = system_u1_pf.el_energy
+        el_energy_link = system_u1_link.el_energy
+        self.assertAlmostEqual(el_energy_pf, 0.0)
+        self.assertAlmostEqual(el_energy_link, 0.0)
+        self.assertAlmostEqual(el_energy_link, el_energy_pf)
+
+    def test_electric_energy_L_2_ring_even_pfaffian(self):
+        paramvec = np.zeros((1,3))
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.U1System2DConfig(lat_2x2, 1.0, None, None)
+        system_cfg.paramvec = paramvec
+        system_u1 = system.U1System2D(system_cfg)
+        system_u1.use_pfaffian = True
+        #Modify the matrix D by hand
+        # [[0, -1],[1, 0]]
+        filled=np.zeros((2,2))
+        filled[0,1]=-1
+        filled[1,0]=1
+        gamma_maj_sys_vec=system_u1.gamma_maj_sys_vec
+        gamma_maj_sys=np.copy(gamma_maj_sys_vec[0])
+        offset=lat_2x2.size*2
+        #Setting mode l(0,1)-
+        gamma_maj_sys[offset + 2:offset+4,offset + 2:offset+4] = filled
+        #Setting mode r(0,0)+
+        gamma_maj_sys[offset + 4:offset+6, offset + 4:offset+6] = filled
+        #Setting mode l(0,0)+
+        gamma_maj_sys[offset + 8:offset+10, offset + 8:offset+10] = filled
+        #Setting mode r(0,1)-
+        gamma_maj_sys[offset + 14:offset+16, offset + 14:offset+16] = filled
+        system_u1.gamma_maj_sys_vec[0]=gamma_maj_sys
+        mat_d = gamma_maj_sys[offset:gamma_maj_sys.shape[0],
+                              offset:gamma_maj_sys.shape[1]]
+        system_u1.mat_d_inv_vec[0]=np.linalg.inv(mat_d)
+        system_u1.det_mat_d_vec[0]=np.linalg.slogdet(mat_d)[1]
+        # We are checking the value for a single link
+        el_energy_link_bare, _ = system_u1._compute_el_energy_op_and_grad_pfaffian(True)
+        el_energy = 2 - 2 * np.prod(el_energy_link_bare)
+        self.assertAlmostEqual(el_energy, 3.)
+
+    def test_electric_energy_L_2_ring_odd(self):
+        paramvec = np.zeros((1,3))
+        lat_2x2 = lattice.Lattice2D(2, 2)
+        system_cfg = system.U1System2DConfig(lat_2x2, 1.0, None, None)
+        system_cfg.paramvec = paramvec
+        system_u1 = system.U1System2D(system_cfg)
+        system_u1.use_pfaffian = True
+        #Modify the matrix D by han
+        # [[0, -1],[1, 0]
+        filled=np.zeros((2,2))
+        filled[0,1]=-1
+        filled[1,0]=1
+        gamma_maj_sys_vec=system_u1.gamma_maj_sys_vec
+        gamma_maj_sys=np.copy(gamma_maj_sys_vec[0])
+        offset=lat_2x2.size*2
+        #Setting mode l(0,1)+
+        gamma_maj_sys[offset + 0:offset+2,offset + 0:offset+2] = filled
+        #Setting mode r(0,0)-
+        gamma_maj_sys[offset + 6:offset+8,offset + 6:offset+8] = filled
+        # Setting mode l(0,0)-
+        gamma_maj_sys[offset + 10:offset+12,offset + 10:offset+12] = filled
+        # Setting mode r(0,1)+
+        gamma_maj_sys[offset + 12:offset+14,offset + 12:offset+14] = filled
+        system_u1.gamma_maj_sys_vec[0]=gamma_maj_sys
+        mat_d = gamma_maj_sys[offset:gamma_maj_sys.shape[0],
+                              offset:gamma_maj_sys.shape[1]]
+        system_u1.mat_d_inv_vec[0]=np.linalg.inv(mat_d)
+        system_u1.det_mat_d_vec[0]=np.linalg.slogdet(mat_d)[1]
+        # We are checking the value for a single link
+        el_energy_link_bare, _ = system_u1._compute_el_energy_op_and_grad_pfaffian(True)
+        el_energy = 2 - 2 * np.prod(el_energy_link_bare)
+        self.assertAlmostEqual(el_energy, 3.)
+
 
 @skip("This class of tests takes too long")
 class TestMinimizerZ2(unittest.TestCase):
@@ -1559,6 +1773,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         weight_recalc = self.system_z2_2_2.calculate_lognorm(all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
+
     def test_grad_over_norm(self):
         #This is comparison of the analytic derivative against the numeric derivative
         eps=1e-5
@@ -1660,6 +1875,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
 
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
 
+
     def test_el_energy_1_layer_single_eval(self):
         # Calculate the electric energy of an empty system.
         paramvec = np.zeros((1,10))
@@ -1669,6 +1885,94 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         system_z2_2_2 = system.Z2System2D2C(system_cfg)
         el_energy = system_z2_2_2.el_energy
         self.assertAlmostEqual(el_energy, 0.0)
+
+
+class TestBGBTransform(unittest.TestCase):
+    def setUp(self):
+        pass
+
+
+    def test_cmp_dirac_pure_gauge(self):
+        lat = lattice.Lattice2D(2,2)
+        system_u1_cfg = system.U1System2DConfig(lat, 1, 0, 0)
+        system_u1_cfg.paramvec = np.asarray([[0., 1., 2.]])
+        system_u1 = system.U1System2D(system_u1_cfg)
+        tmat_double = system_u1.tmat_vec[0]
+        gamma_dirac = utils.tmat_to_covariance_matrix(tmat_double)
+        #Delete the rows and columns belonging to the physical fermions
+        gamma_dirac = np.delete(gamma_dirac,[9],axis=1)
+        gamma_dirac = np.delete(gamma_dirac,[9],axis=0)
+        gamma_dirac = np.delete(gamma_dirac,[0],axis=1)
+        gamma_dirac = np.delete(gamma_dirac,[0],axis=0)
+
+        tmat_single = system_u1._eval_tmat_symb_single(system_u1.cfg.paramvec[0])
+        #Cut the physical mode
+        tmat_single = tmat_single[1:,:]
+        bgb_trafo = utils.BgbTransform(tmat_single, pure_gauge=True)
+        gamma_dirac_svd = bgb_trafo.mat_out
+
+        self.assertTrue(np.allclose(np.real(gamma_dirac), np.real(gamma_dirac_svd)))
+        self.assertTrue(np.allclose(np.imag(gamma_dirac), np.imag(gamma_dirac_svd)))
+
+
+    def test_cmp_dirac(self):
+        lat = lattice.Lattice2D(2,2)
+        system_u1_cfg = system.U1System2DConfig(lat, 1, 0, 0)
+        system_u1_cfg.paramvec = np.asarray([[0.7, 1., 2.]])
+        system_u1 = system.U1System2D(system_u1_cfg)
+        tmat_double = system_u1.tmat_vec[0]
+        # We use the function explicitly to avoid the permutation matrix
+        gamma_dirac = utils.tmat_to_covariance_matrix(tmat_double)
+        #gamma_dirac = system_u1.gamma_dirac_vec[0]
+
+        tmat_single = system_u1._eval_tmat_symb_single(system_u1.cfg.paramvec[0])
+        bgb_trafo = utils.BgbTransform(tmat_single, pure_gauge=False)
+        gamma_dirac_svd = bgb_trafo.mat_out
+
+        #utils.show_matrixvec([np.real(gamma_dirac_svd), np.real(gamma_dirac)], title=["Re SVD", "Re T"])
+        #utils.show_matrixvec([np.imag(gamma_dirac_svd), np.imag(gamma_dirac)], title=["Im SVD", "Im T"])
+
+        self.assertTrue(np.allclose(np.real(gamma_dirac), np.real(gamma_dirac_svd)))
+        self.assertTrue(np.allclose(np.imag(gamma_dirac), np.imag(gamma_dirac_svd)))
+
+
+    def test_simple_mat(self):
+        mat = np.array([[0, 1, 2, 3],
+                        [7, 0, 2, 1],
+                        [9, 6, 0, 9],
+                        [8, 4, 0, 0]])
+        mat_zero = np.zeros((4,4))
+        mat_full = np.block([[mat_zero,mat],[-np.transpose(mat),mat_zero]])
+        # We have different input conventions for the two functions
+        # BgbTransform takes only the single matrix and doubles it for positive and negative modes
+        # uitls.tmat_to_covariance_matrix takes the full T matrix
+        covmat_direct = utils.tmat_to_covariance_matrix(mat_full)
+        covmat_bgb = utils.BgbTransform(mat, pure_gauge=True).mat_out
+        self.assertTrue(np.allclose(covmat_direct, covmat_bgb))
+
+class TestPfaffian(unittest.TestCase):
+
+
+    def setUp(self):
+        N=4
+        self.mat=np.zeros((N, N), dtype=complex)
+        self.mat[0,1]=1.0
+        self.mat[1,0]=-1.0
+        self.mat[0,2]=2.0
+        self.mat[2,0]=-2.0
+        self.mat[0,3]=3.0
+        self.mat[3,0]=-3.0
+        self.mat[1,2]=4.0j
+        self.mat[2,1]=-4.0j
+        self.mat[1,3]=5.0
+        self.mat[3,1]=-5.0
+        self.mat[2,3]=6.0
+        self.mat[3,2]=-6.0
+
+    def test_pfaffian(self):
+        pfaffian = pf.pfaffian(self.mat)
+        self.assertAlmostEqual(np.real(pfaffian), -4)
+        self.assertAlmostEqual(np.imag(pfaffian), 12)
 
 if __name__ == '__main__':
     unittest.main()

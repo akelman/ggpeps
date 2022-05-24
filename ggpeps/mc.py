@@ -5,16 +5,20 @@ import logging
 import pickle
 import pandas as pd
 import gzip
-import utils
+import ggpeps.utils as utils
 import copy
 import ray
-import lattice
-from measurement import Measurement
+import ggpeps.lattice as lattice
+from ggpeps.measurement import Measurement
 
 #################### Monte Carlo Estimator Config ###################
 
 class MonteCarloEstimatorConfig:
-    """Monte Carlo Configuration"""
+    """Monte Carlo Configuration
+
+    This class manages the parameters of the MC simulation. 
+    It is more convenient than passing an extensive number of parameters to the constructor.
+    """
     def __init__(self):
         self.warmup_steps = None
         self._seed = None
@@ -55,8 +59,23 @@ def run_mc(runner_id, mc_cfg, system_cls, system_cfg):
 
 
 class MonteCarloManager:
+    """The MonteCarloManager allows the execution of a Monte Carlo simulation with multiple cores.
+    The parallelization is performed with ray.
+
+    If the simulation is distributed across N runners, each runner performs the full warm-up but only 1/N of the total measurement steps.
+    
+    This is the general interface for MC simulations that is used in the manager.
+    """
     def __init__(self, mc_cfg: MonteCarloEstimatorConfig, system_cls,
                  system_cfg, nrunner):
+        """Constructor of MonteCarloManager
+
+        Args:
+            mc_cfg (MonteCarloEstimatorConfig): Configuration to be used in the runners
+            system_cls (SystemClass): Class of the system. This determines the type of the system.
+            system_cfg (SystemConfig): Configuration of the system. This determines the parameters of the system.
+            nrunner (int): Number of runners. 0 is an execution without ray. 1-N uses 1-N ray cores.
+        """
         self.nrunner = nrunner
         self.mc_cfg = mc_cfg
         self.system_cfg = system_cfg
@@ -83,7 +102,14 @@ class MonteCarloManager:
             return mc
 
     def collect(self, resultvec):
-        """Unify the results of the different Monte Carlo runners"""
+        """Unify the results of the different Monte Carlo runners
+
+        Args:
+            resultvec (list): List of MonteCarloEstimators from the different runners
+
+        Returns:
+            MonteCarloEstimator: Monte Carlo estimator with information from all runners
+        """
         system = self.system_cls(self.system_cfg)
         dest = MonteCarloEstimator(self.mc_cfg, system)
         if len(resultvec) > 1:
@@ -100,6 +126,8 @@ class MonteCarloManager:
 
 
 class MonteCarloEstimator:
+    """Class to take care of the MC simulation on a single runner
+    """
     def __init__(self, cfg:MonteCarloEstimatorConfig, system):
         self.cfg = cfg
         self.system = system
@@ -228,39 +256,81 @@ class MonteCarloEstimator:
 
     #### Data management functions ####
 
-    def get_obs_mean(self, obsname):
+    def get_obs_mean(self, obsname: str):
+        """Returns the mean value of an observable
+
+        Args:
+            obsname (str): Name of observable
+
+        Returns:
+            float: Mean value of the observable
+        """
         if obsname in self.obsdict.keys():
             meas = self.obsdict[obsname]
             if meas is not None and len(meas) > 0:
                 return meas.mean()
         return None
 
-    def get_obs_mean_err(self, obsname):
+    def get_obs_mean_err(self, obsname: str):
+        """Returns the error on the mean of an observable
+
+        Args:
+            obsname (str): Name of observable
+
+        Returns:
+            float: Error on mean of observable
+        """
         if obsname in self.obsdict.keys():
             meas = self.obsdict[obsname]
             if meas is not None and len(meas) > 0:
                 return meas.mean_err()
         return None
 
-    def get_obs_std(self, obsname):
+    def get_obs_std(self, obsname: str):
+        """Returns the standard deviation of an observable
+
+        Args:
+            obsname (str): Name of observable
+
+        Returns:
+            float: Standard deviation of an observable
+        """
         if obsname in self.obsdict.keys():
             meas = self.obsdict[obsname]
             if meas is not None and len(meas) > 0:
                 return meas.std()
         return None
 
-    def get_obs_var(self, obsname):
+    def get_obs_var(self, obsname: str):
+        """Returns the variance of an observable
+
+        Args:
+            obsname (str): Name of observable
+
+        Returns:
+            float: Variance of the observable
+        """
         if obsname in self.obsdict.keys():
             meas = self.obsdict[obsname]
             if meas is not None and len(meas) > 0:
                 return meas.var()
         return None
 
-    def save_summary(self, fname_summary):
+    def save_summary(self, fname_summary: str):
+        """Save the summary to disk
+
+        Args:
+            fname_summary (str): Filename of the summary
+        """
         df_summary = self.summary()
         df_summary.to_pickle(fname_summary)
 
-    def save_full(self, fname_full):
+    def save_full(self, fname_full: str):
+        """Save the full MonteCarloEstimator
+
+        Args:
+            fname_full (str): Filename of the full MonteCarloEstimator
+        """
         data_full = {
             "version": utils.get_git_hash(),
             "rng_state": np.random.get_state(),
@@ -270,6 +340,8 @@ class MonteCarloEstimator:
             pickle.dump(data_full, outfile)
 
     def save(self):
+        """Convenience function to combine saving the MonteCarloEstimator and the summary of the observables
+        """
         syscfg = self.system.cfg
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
@@ -285,12 +357,19 @@ class MonteCarloEstimator:
     #### Output (plots or on the commandline) ####
 
     def print_stats(self):
+        """Print a quick summary of the observables
+        """
         for key in self.obsdict.keys():
             val = self.obsdict[key]
             if val is not None and len(val) > 0:
                 logging.info("<{}>: {}".format(key, self.obsdict[key].mean()))
 
     def summary(self):
+        """Generate a summary of the simulation in the form of a pandas dataframe
+
+        Returns:
+            pd.DataFrame: Pandas dataframe with a summary of all results
+        """
         dest = {
             "name": [],
             "nx":[],

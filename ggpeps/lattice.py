@@ -1,11 +1,8 @@
-import itertools
 import numpy as np
 from enum import Enum
 import sys
 import logging
-from numpy.core.shape_base import block
 from scipy.linalg import block_diag
-import utils
 
 
 class Direction(Enum):
@@ -45,7 +42,7 @@ class Lattice2D:
         return self.nx * y + x
 
     def ind2coord_dir(self,ind):
-        dir=Direction(ind//(self.nx*self.ny))
+        dir = Direction(ind // (self.nx * self.ny))
         if dir == Direction.X:
             return (((ind%(self.nx*self.ny)) % self.nx, (ind%(self.nx*self.ny))//self.nx),dir)
         elif dir == Direction.Y:
@@ -250,7 +247,7 @@ class PermutationBuilderGMS2D:
         return dest
 
 class PermutationBuilderGMS2D2C:
-    """Build a permutation matrix for gamma_maj_sys
+    """Build a permutation matrix for gamma_maj_sys with 2 copies
     The default mode-order of the T matrix is {p,l1,r1,d1,u1,l2,r2,d2,u2}.
     By building the Dirac covariance matrix from it and transforming it to a Majorana matrix, we obtain a mode-order of {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dag,r2_dag,u2_dag,d2_dag}.
     The covariance matrix of the projectors is chosen such that modes from adherent vertices can be modified together, i.e. it is ordered by links.
@@ -339,14 +336,12 @@ class PermutationBuilderGMS2D2C:
              [empty_2x4, building_block_single_copy]])
         # Pad the matrix body by one block on the top and the bottom
         building_block = np.pad(building_block_no_pad, [[0, 0], [3 * maj_per_link, maj_per_link]])
-        #utils.show_matrix(building_block,title="building block")
         m_bb, n_bb = building_block.shape
         #Shift the building block to the other pairs of sites
         matrix_body = np.zeros(((self.lattice.ny-1)*self.ncopies*2*maj_per_link,(self.ncopies*(self.lattice.ny-1)*self.lattice.nx+2)*4*maj_per_link))
         for y in range(self.lattice.ny-1):
             offset = self.ncopies * y * self.lattice.nx * 4 * maj_per_link  # One vertex has 4 links to other vertices
             matrix_body[y*m_bb:y*m_bb+m_bb,offset:offset+n_bb]=building_block
-        #utils.show_matrix(matrix_body,title="matrix_body")
         # Prepare the block for the periodic boundary conditions
         # We want the first left and the first right mode of the row as padding on the left
         # TODO: Check whether the -3 is ncopy dependent
@@ -361,7 +356,6 @@ class PermutationBuilderGMS2D2C:
 
     def perm(self):
         perm_lr=self._perm_lr()
-        #utils.show_matrix(perm_lr,"perm_lr")
         perm_du=self._perm_du()
         #Permutation of the lr modes
         top_perm=np.kron(np.eye(self.lattice.ny),perm_lr)
@@ -377,6 +371,85 @@ class PermutationBuilderGMS2D2C:
         phys_block = np.eye(self.lattice.nx*self.lattice.ny*2)
         perm_virt = np.block([[top_perm], [bottom_perm]])
         dest = block_diag(phys_block,perm_virt)
+        return dest
+
+class PermutationBuilderGMS2DU1:
+    """Build a permutation matrix for gamma_maj_sys for the U1 parametrization
+    The default mode-order of the elementary T matrix is {p,l,r,u,d}.
+    We double this T matrix to accomodate for positive and negative modes.
+    By building the Dirac covariance matrix from it and transforming it to a Majorana matrix, we obtain a mode-order of {p_1,p_2,l+_1, l+_2, l-_1, l-_2, r+_1, r+_2, r-_1, r-_2, d+_1, d+_2, d-_1, d-_2, u+_1, u+_2, u-_1, u-_2}.
+    The covariance matrix of the projectors is chosen such that modes from adherent vertices can be modified together, i.e. it is ordered by links.
+    The order of the links is first along x and then along y. In the case of a 2x2 lattice, it reads
+
+    |         |
+   "5"       "7"
+    |         |
+    2 --"2"-- 3 --"3"--
+    |         |
+   "4"       "6"
+    |         |
+    0 --"0"-- 1 --"1"--
+
+    The vertex indices are written as <number>, the link indices are written as "<number>". 
+
+    Before the transformation the covariance matrix of the gamma_maj_sys has the order (taking the 2x2 system as an example for concreteness)
+    { l1_0, r1_0, d1_0, u1_0, l2_0, r2_0, d2_0, u2_0,
+      l1_1, r1_1, d1_1, u1_1, l2_1, r2_1, d2_1, u2_1, 
+      l1_2, r1_2, d1_2, u1_2, l2_2, r2_2, d2_2, u2_2, 
+      l1_3, r1_3, d1_3, u1_3, l2_3, r2_3, d2_3, u2_3 }
+    The formatting of the modes above follows the structure {ldru}<copy>_<site_index>.
+    Gamma_in for two copies has the order
+    { l1_1, r1_0, l2_1, r2_0, l1_0, r1_1, l2_0, r2_1, 
+      l1_3, r1_2, l2_3, r2_2, l1_2, r1_3, l2_2, r2_3, 
+      d1_2, u1_0, d2_2, u2_0, d1_0, u1_2, d2_0, u2_2, 
+      d1_3, u1_1, d2_3, u2_1, d1_1, d1_3, d2_1, d2_3 }.
+    This class provides the necessary permutation matrix to change from one basis to the other.
+    """
+
+    def __init__(self, lat: Lattice2D, nmodes_per_link: int):
+        self.lattice = lat
+        self.nmodes_per_link = nmodes_per_link
+        self.ncopies = 1
+
+    def perm(self):
+        size = self.lattice.size
+        nx = self.lattice.nx
+        ny = self.lattice.ny
+        offset_physical_modes = 2 * size
+        nmodes = 16
+        mat_size = offset_physical_modes + nmodes * size
+        dest = np.zeros((mat_size, mat_size))
+        # The physical modes are not permuted at all, so we insert an identity matrix
+        dest[range(2*size), range(2*size)] = 1
+        # Now we have to permute the virtual modes
+        # Permutation of the l,r modes.
+        # We order them row-wise: Example for a 4x4 system
+        # l(0,1), r(0,0), l(0,2), r(0,1), l(0,3), r(0,2), l(0,0), r(0,3), l(1,1),
+        # r(1,0), l(1,2), r(1,1)....
+        for y in range(ny):
+            for x in range(nx):
+                # Treatment of  the left and right modes
+                offset_site = offset_physical_modes + nmodes * x + y * nx * nmodes
+                l_j_perm = offset_site
+                l_i_perm = offset_physical_modes + y * 2 * nx * 4 + (x - 1) * 8
+                r_j_perm = offset_site + 4
+                r_i_perm = offset_physical_modes + y * 2 * nx * 4 + x * 8 + 4
+                if x == 0:
+                    # We have to add the periodic boundary condition here for the left mode
+                    l_i_perm = offset_physical_modes + y * 2 * nx * 4 + (nx - 1) * 8
+                dest[range(l_i_perm,l_i_perm+4),range(l_j_perm,l_j_perm+4)]=1
+                dest[range(r_i_perm,r_i_perm+4),range(r_j_perm,r_j_perm+4)]=1
+
+                # Treatment of the down and up modes
+                d_j_perm = offset_site + 8
+                d_i_perm = offset_physical_modes + 8 * size + (y - 1) * nx * 8 + x * 8
+                u_j_perm = offset_site + 12
+                u_i_perm = offset_physical_modes + 8 * size + y * nx * 8 + 8 * x + 4
+                if y == 0:
+                    # We have to add the periodic boundary condition here for the down mode
+                    d_i_perm = offset_physical_modes + 8 * size + (ny - 1) * nx * 8 + 8 * x;
+                dest[range(d_i_perm,d_i_perm+4),range(d_j_perm,d_j_perm+4)]=1
+                dest[range(u_i_perm,u_i_perm+4),range(u_j_perm,u_j_perm+4)]=1
         return dest
 
 

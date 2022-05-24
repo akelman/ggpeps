@@ -1,15 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from numpy.lib.function_base import select
 from scipy.sparse import issparse
-import scipy.sparse as sparse
+from scipy.linalg import svd, block_diag
 import os
-import sys
-import measurement as meas
+import ggpeps.measurement as meas
 import gzip
 import pickle
+import logging
 import subprocess  # Start process for git hash
 import re
+from pfapack import pfaffian as pf
 
 from matplotlib.colors import LogNorm
 
@@ -56,7 +56,45 @@ def fname2g2el(fname):
         return None
 
 
-def merge_measurements(meas1, meas2):
+def load_matrix_dat_fmt(path,is_complex=True):
+    """Load matrix format exported from C++.
+
+    Args:
+        path (str): Path to file
+        is_complex (bool, optional): Matrix is complex or not. Defaults to True.
+    """
+    complexptrn= re.compile(r'\(([^,\)]+),([^,\)]+)\)')
+
+    def parse_complex(s):
+        return complex(*map(float, complexptrn.match(s).groups()))
+    def parse_real(s):
+        return float(s)
+    dest=[]
+    with open(path,'r') as f:
+        for line in f:
+            line_short=re.sub(' +', ' ', line.strip())
+            strvec=line_short.split(" ")
+            numvec=[]
+            for s in strvec:
+                if is_complex:
+                    num=parse_complex(s)
+                else:
+                    num=parse_real(s)
+                numvec.append(num)
+            dest.append(numvec)
+    return np.array(dest)
+
+
+def merge_measurements(meas1: meas.Measurement, meas2: meas.Measurement):
+    """Merge two measurements by merging their timeseries
+
+    Args:
+        meas1 (Measurement): First measurement
+        meas2 (Measurement): Second measurement
+
+    Returns:
+        Measurement: Merged measurement
+    """
     dest = meas.Measurement(meas1.name, meas1.binsize)
     dest.extend(meas1.get_timeseries())
     dest.extend(meas2.get_timeseries())
@@ -76,6 +114,13 @@ def mergeDict(dict1, dict2):
 
 
 def print_columns(listvals, padding=4, header=False):
+    """Print a multi-dimensional list in a table
+
+    Args:
+        listvals (list of lists): Input data
+        padding (int, optional): Padding of the columns. Defaults to 4.
+        header (bool, optional): Print a header on top of the table. Defaults to False.
+    """
     col_width = max([len(str(word))
                      for row in listvals for word in row]) + padding
     for ind, row in enumerate(listvals):
@@ -94,14 +139,30 @@ def sizeof_fmt(num, suffix='B'):
 
 
 def get_git_hash():
-    #This assumes that .git and util.py are in the same directory
-    dir = os.path.dirname(os.path.realpath(__file__))
-    gitdir = os.path.join(dir, ".git")
+    """Get the git hash of the current commit in the repository.
+
+    Returns:
+        str: git hash
+    """
+    #This assumes that .git is in the parent folder of util.py 
+    packagedir = os.path.dirname(os.path.realpath(__file__))
+    rootdir = os.path.join(packagedir,os.path.pardir)
+    gitdir = os.path.join(rootdir, ".git")
     githash = subprocess.check_output(
         ['git', '--git-dir={}'.format(gitdir), 'rev-parse', 'HEAD'])
     return githash.decode("utf-8").strip()
 
-def select_except(arr,ind):
+
+def select_except(arr, ind: int):
+    """Return all elements of a list except the indicated one
+
+    Args:
+        arr (list/np.array): list of values
+        ind (int): index
+
+    Returns:
+        np.array: Array with all elements of arr except for arr[ind]
+    """
     #This function works only on the outer-most layer
     if isinstance(arr,list):
         arr = np.asarray(arr)
@@ -109,13 +170,43 @@ def select_except(arr,ind):
     mask[ind] = False
     return arr[mask]
 
-def multiply_except(arr,ind):
+
+def multiply_except(arr, ind: int):
+    """Product of all array values except for arr[ind]
+
+    Args:
+        arr (list/np.arr): list of values
+        ind (int): index
+
+    Returns:
+        float: Multiplication of all array values except for arr[ind]
+    """
     if len(arr)>1:
-        others=select_except(arr,ind)
+        others = select_except(arr, ind)
         return np.prod(others)
     else:
         #It does not make sense to execute this function with only one element
         return arr[0]
+
+
+def derivative_pfaffian(mat, d_mat):
+    """Compute the derivative of a Pfaffian of a matrix.
+    The explicit derivative dA/dx is given as a second argument
+
+    The given formula is only valid if A is not singular.
+
+    Args:
+        mat (np.ndarray): Input Matrix A
+        d_mat (np.ndarray): Derivative dA/dx
+
+    Returns:
+        np.ndarray: d(Pf(A))/dx
+    """
+    pfaval = pf.pfaffian(mat)
+    if not np.isclose(pfaval, 0):
+        return 0.5 *pfaval*np.trace(np.linalg.inv(mat)@d_mat)
+    else:
+        return 0.0
 
 # =========== Matrix Evaluation Functions ====================
 
@@ -146,7 +237,7 @@ def is_permutation(mat):
     """Returns true if the matrix is a permutation matrix. """
     n, m = mat.shape
     if issparse(mat):
-        pass
+        raise NotImplementedError("Checking for sparse permutation matrices is not implemented.")
     else:
         square = n == m
         id = np.allclose(np.eye(n), mat@np.transpose(mat))
@@ -161,6 +252,13 @@ def is_antisymmetric(mat):
         return np.allclose(mat.todense(), -mat.T.todense())
     else:
         return np.allclose(-np.transpose(mat), mat)
+
+def anti_symmetrize(mat):
+    """Force a matrix to be anti-symmetirc."""
+    if issparse(mat):
+        return 0.5*(mat-mat.T)
+    else:
+        return 0.5*(mat-np.transpose(mat))
 
 
 def get_nonzero_fraction(mat):
@@ -202,6 +300,15 @@ def anticommutator(mat1, mat2):
 
 
 def tmat_to_covariance_matrix(tmat):
+    """Transforms a T matrix into the corresponding covariance matrix in terms of Dirac modes.
+    This function assumes that the fiducial operator has a certain form: A=exp(T_{ij}a_i^\dagger a_j^\dagger)
+
+    Args:
+        tmat (np.array): Matrix of parameters
+
+    Returns:
+        np.array: Covariance matrix in terms of Dirac modes
+    """
     m, n = tmat.shape
     id = np.eye(m)
     idinv = np.linalg.inv(id-tmat@np.conjugate(tmat))
@@ -212,7 +319,16 @@ def tmat_to_covariance_matrix(tmat):
     return 1.j*np.block([[lt, rt], [lb, rb]])
 
 
-def generate_smat(n):
+def generate_smat(n: int):
+    """Generate matrix to transform Dirac modes into Majorana modes.
+    The function assumes the modes order of [a_1, a_2,....., a_n, a_1^\dagger,.....,a_n^\dagger].
+
+    Args:
+        n (int): Size of the matrix
+
+    Returns:
+        np.array: n x n matrix
+    """
     pattern = [[1], [1.j]]
     halfmat = np.kron(np.eye(n//2), pattern)
     return np.block([halfmat, np.conjugate(halfmat)])
@@ -366,13 +482,75 @@ class IncLogAbsDeterminant:
         else:
             return self.det()
 
+
+class BgbTransform():
+    def __init__(self, mat_in, pure_gauge=True):
+        self.mat_in = mat_in
+        self.is_pure_gauge = pure_gauge
+        self._mat_out = None
+
+    @property
+    def mat_out(self):
+        if self._mat_out is None:
+            wn,s,wp=svd(self.mat_in, full_matrices=True, compute_uv=True)
+            wp = herm_conj(wp)
+            if not self.is_pure_gauge:
+                #TODO: Fix this
+                # We are shuffling the physical mode to the front again
+                # It would look like s=perm*s
+                #TODO: This does not work properly yet. But the function is not used anywhere.
+                perm = np.zeros((wn.shape[0], wn.shape[0]))
+                i,j = np.indices(perm.shape)
+                perm[i == j + 1] = 1
+                perm[0, -1:] = 1
+                # Apply the permutation
+                wn = wn * perm.transpose()
+            un = herm_conj(wn)
+            # now we got the transpose of wp
+            up = np.transpose(wp)
+            un_rows, un_cols = un.shape
+            up_rows, up_cols = up.shape
+            unitary_transform = np.zeros((un.shape[0] + up.shape[0], un.shape[1] + up.shape[1]),dtype=complex)
+            unitary_transform[:un_rows, :un_cols] = un
+            unitary_transform[-up_rows:, -up_cols:] = up
+
+            trafo_size = len(s) * 2 if self.is_pure_gauge else len(s) * 2 + 1
+            start_ind = 0 if self.is_pure_gauge else 1
+            r0_diagonal = np.zeros(trafo_size, dtype=complex)
+            if not self.is_pure_gauge:
+                r0_diagonal[0] = 1j / 2.
+            r0_diagonal[start_ind: start_ind+len(s)] = 1j / 2. * (1 - s**2) / (1 + s**2)
+            r0_diagonal[-len(s):] = 1j / 2. * (1 - s**2) / (1 + s**2)
+            r0 = np.diag(r0_diagonal)
+
+            q0_offdiagonal = np.zeros(len(s), dtype=complex)
+            q0_offdiagonal = 1j * s / (1 + s**2)
+            q0_block = np.diag(q0_offdiagonal)
+            q0 = np.zeros((trafo_size, trafo_size), dtype=complex)
+            if not self.is_pure_gauge:
+                q0[0, 0] = 0
+            q0[start_ind:start_ind+len(s), start_ind + len(s):start_ind+2*len(s)] = -q0_block
+            q0[start_ind + len(s): start_ind+2*len(s), start_ind:start_ind+len(s)] = q0_block
+
+            gamma0 = np.zeros((2 * trafo_size, 2 * trafo_size), dtype=complex)
+            gamma0=np.block([[q0,r0],[np.conj(r0),np.conj(q0)]])
+            trafo_0 = block_diag(herm_conj(unitary_transform),np.transpose(unitary_transform))
+            trafo_1 = block_diag(np.conj(unitary_transform),unitary_transform)
+            # This matrix has the following order: psi, r+, u-, l-, d+,t,b, r-, l+,
+            # u+, d-,t,b psi_dag, r+_dag, l-_dag, u-_dag, d+_dag,t_dag,b_dag,
+            # r-_dag, l+_dag, u+_dag, d-_dag, t_dag, b_dag.
+            self._mat_out = trafo_0 @ gamma0 @ trafo_1
+        return self._mat_out
+
+
 # ========= Rebinning Functions ====================
 
+
 def autocorr_fft(arr):
-    arr=arr-np.mean(arr)
-    fft_vals=np.fft.fft(arr)
-    spectrum=fft_vals*np.conjugate(fft_vals)
-    dest=np.fft.ifft(spectrum)
+    arr = arr-np.mean(arr)
+    fft_vals = np.fft.fft(arr)
+    spectrum = fft_vals*np.conjugate(fft_vals)
+    dest = np.fft.ifft(spectrum)
     return dest/dest[0]
 
 def rebin_array(a, R):
@@ -497,6 +675,7 @@ def print_mat_stats(mat, title=None):
 
 
 def show_eigenvalues(mat):
+    """Display the eigenvalues of a matrix"""
     if is_hermitian(mat):
         #Plot the real eigenvalues
         f, ax = plt.subplots(1, 1)

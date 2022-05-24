@@ -1,39 +1,61 @@
 import numpy as np
 import itertools as it
-import lattice
+import ggpeps.lattice as lattice
 import pandas as pd
+import logging
 
 class ExactEvaluatorManager:
+    """Wrapper Class for the ExactEvaluator.
+    This matches the structure of the MonteCarloManager and makes the two classes freely interchangable.
+    """
     def __init__(self, system_cls, system_cfg):
         self.system_cfg = system_cfg
         self.system_cls = system_cls
 
     def simulate(self):
-        """Start the simulation of the runners"""
+        """Start the simulation of the runners.
+        The implementation currently only supports a single runner."""
         system = self.system_cls(self.system_cfg)
         system.initialize()
-        exact_eval=ExactEvaluator(system)
+        exact_eval = ExactEvaluator(system)
         exact_eval.evaluate()
         return exact_eval
 
 
 class ExactEvaluator():
+    """An ExactEvaluator exactly evaluates the expectation value of an observable by iterating over all possible states of the gauge field.
+    """
     def __init__(self, system) -> None:
         self.system = system
         self.obsdict = None
 
     def compute_expval(self, obs, normvec):
-        normalization=np.sum(normvec)
-        if len(obs.shape)>1:
+        """Compute the expectation value of an observable.
+
+        Args:
+            obs (np.array): Measurement values of an observables for different gauge field configurations
+            normvec (np.array): Values of the norm of <Psi(G)|Psi(G)> for different gauge field configurations
+
+        Returns:
+            _type_: _description_
+        """
+        normalization = np.sum(normvec)
+        if len(obs.shape) > 1:
             # We have to treat the gradients differently as they are multi-dimensional observables
             prod = obs * normvec
-            expval=np.transpose(np.sum(prod,axis=2))
+            expval = np.transpose(np.sum(prod, axis=2))
         else:
-            expval=np.sum(obs*normvec)
+            expval = np.sum(obs*normvec)
         return expval/normalization
 
 
     def evaluate(self):
+        """Main evaluation function of ExactEvaluator.
+        This function computes the exact expectation values <Psi|O|Psi>/<Psi|Psi> for a range of observables defined in the function.
+
+        Returns:
+            dict: Dictionary of the results
+        """
         if self.obsdict is None:
             poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
             nlinks = self.system.cfg.lattice.nlinks
@@ -58,6 +80,7 @@ class ExactEvaluator():
             }
             for config in configvec:
                 self.system.update_gauge_full_system(config)
+                logging.debug("Configuration: {}".format(config))
                 data["energy"].append(self.system.energy)
                 data["mag_energy"].append(self.system.mag_energy)
                 data["el_energy"].append(self.system.el_energy)
@@ -110,11 +133,16 @@ class ExactEvaluator():
 
             # Add for the full electric gradient
             dest["energy_grad"] = mag_energy_grad + el_energy_grad
-            self.obsdict=dest
+            self.obsdict = dest
 
         return self.obsdict
 
     def summary(self):
+        """Summarize the results of the exact contraction in a dataframe.
+
+        Returns:
+            pd.DataFrame: Result of the contraction
+        """
         dest = {
             "name": [],
             "nx": [],
@@ -142,6 +170,8 @@ class ExactEvaluator():
         return df
 
     def save(self):
+        """Convenience function to generate a filename and save the summary in one step
+        """
         syscfg = self.system.cfg
         tvec = syscfg.paramvec[:,0]
         yvec = syscfg.paramvec[:,1]
@@ -153,6 +183,11 @@ class ExactEvaluator():
             syscfg.lattice.nx,syscfg.lattice.ny, syscfg.g2_el, syscfg.g_gm, syscfg.g2_mag, tstr, ystr, zstr)
         self.save_summary(fname_summary)
 
-    def save_summary(self, fname_summary):
+    def save_summary(self, fname_summary: str):
+        """Save the summary of the computation to a given filename
+
+        Args:
+            fname_summary (str): Output filename for the summary
+        """
         df_summary = self.summary()
         df_summary.to_pickle(fname_summary)
