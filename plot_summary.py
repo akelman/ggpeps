@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import os, sys
-import utils
+from ggpeps import utils
 
 def len_arr(x):
     if isinstance(x,list) or isinstance(x,np.ndarray):
