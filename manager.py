@@ -66,11 +66,14 @@ def translate_parameters(system_cfg, params):
     nparams = system_cfg._nparams
     nlayer = system_cfg.nlayer
     if params is not None and len(params)==1 and isinstance(params[0],str) and os.path.isfile(params[0]):
+        # The parameters are stored in a file and we can load them
         dest = np.load(params[0])
         dest = np.reshape(dest,(nlayer,-1))
     elif params is None or params=="rand" :
+        # No parameters are given and we randomize
         dest = np.random.rand(nlayer, nparams)
     else:
+        # The parameters are listed explicitly in the command line
         dest = np.asarray(params, dtype=float)
         try:
             dest = dest.reshape((nlayer, nparams))

@@ -6,6 +6,7 @@ from scipy.linalg import block_diag
 
 
 class Direction(Enum):
+    """Enum to capture the direction of a link"""
     X = 0
     Y = 1
     Z = 2
@@ -18,30 +19,67 @@ class Lattice2D:
     Handler of a square lattice of size nx x ny
     """
 
-    def __init__(self, nx, ny):
+    def __init__(self, nx: int, ny: int):
+        """Constructor of a lattice.
+
+        Args:
+            nx (int): Extend of the lattice in x direction (given in number of vertices)
+            ny (int): Extend of the lattice in y direction (given in number of vertices)
+        """
         self.nx = nx
         self.ny = ny
         self.nlinks = 2*nx*ny
         self.nplaquettes = nx*ny
-        self.size=nx*ny
+        self.size = nx*ny
 
     def __str__(self):
-        dest=""
+        """Generate a string representation of the lattice.
+        For a given index the coordinate representation and the adjoint links are printed: <ind>,(x_ind,y_ind): x_link, y_link
+
+        Returns:
+            str: String representation of the lattice
+        """
+        dest = ""
         for ind in range(self.nplaquettes):
-            x,y=self.ind2coord(ind)
-            x_ind=self.coord2ind_dir((x,y),Direction.X)
-            y_ind=self.coord2ind_dir((x,y),Direction.Y)
-            dest+=("{:02d}, ({:02d},{:02d}): {:02d},{:02d}\n".format(ind,x,y,x_ind,y_ind))
+            x, y = self.ind2coord(ind)
+            x_link = self.coord2ind_dir((x, y), Direction.X)
+            y_link = self.coord2ind_dir((x, y), Direction.Y)
+            dest += ("{:02d}, ({:02d},{:02d}): {:02d},{:02d}\n".format(ind,
+                     x, y, x_link, y_link))
         return dest
 
-    def ind2coord(self,ind):
+    def ind2coord(self, ind: int) -> tuple:
+        """Conversion method from integer to lattice coordinate (a tuple).
+
+        Args:
+            ind (int): Index of a site
+
+        Returns:
+            tuple: Tuple of integers (x,y)
+        """
         return (ind % self.nx, ind//self.nx)
 
-    def coord2ind(self, coord):
+    def coord2ind(self, coord: tuple) -> int:
+        """Conversion method from coordinate tupels to lattice index (integer).
+
+        Args:
+            coord (tuple): Tuple of integers (x,y)
+
+        Returns:
+            int: Lattice index of the site
+        """
         x, y = coord
         return self.nx * y + x
 
-    def ind2coord_dir(self,ind):
+    def ind2coord_dir(self, ind: int) -> tuple:
+        """Conversion method to convert a link index into a coordinate tuple with a direction ((x,y),dir)
+
+        Args:
+            ind (int): link index
+
+        Returns:
+            tuple: coordinate of the adjacent vertex and the link direction ((x,y),dir)
+        """
         dir = Direction(ind // (self.nx * self.ny))
         if dir == Direction.X:
             return (((ind%(self.nx*self.ny)) % self.nx, (ind%(self.nx*self.ny))//self.nx),dir)
@@ -51,49 +89,100 @@ class Lattice2D:
             logging.error("ind2coord_dir: There are only X and Y as directions")
             return None
 
-    def coord2ind_dir(self, coord, dir):
+    def coord2ind_dir(self, coord: tuple, dir: Direction) -> int:
+        """Conversion method from a coordinate tuple (x,y) and a direction to a link index.
+
+        Args:
+            coord (tuple): Coordinate tuple (x,y)
+            dir (Direction): Direction of the link
+
+        Returns:
+            int: link index
+        """
         x, y = coord
         if dir == Direction.X:
             return self.nx*self.ny*dir.value + self.nx * y + x
         elif dir == Direction.Y:
             return self.nx*self.ny*dir.value + self.ny * x + y
         else:
-            logging.error("coord2ind_dir: There are only X and Y as directions",file=sys.stderr)
+            logging.error(
+                "coord2ind_dir: There are only X and Y as directions", file=sys.stderr)
             return None
 
-    def get_neighbor(self,coord,orient):
+    def get_neighbor(self, coord: tuple, orient: Direction) -> tuple:
+        """Get the next coordinate tuple in a given direction (wraps around periodic boundary conditions)
+
+        Args:
+            coord (tuple): (x,y) coordinates of the original point
+            orient (Direction): _description_
+
+        Returns:
+            tuple: (x,y) coordinate of the next point
+        """
         # We assume periodic boundary conditions
         x, y = coord
-        if dir==Direction.X:
+        if dir == Direction.X:
             xn = (x+orient.value+self.nx) % self.nx
-            yn=y
-        elif dir==Direction.Y:
-            xn=x
+            yn = y
+        elif dir == Direction.Y:
+            xn = x
             yn = (y+orient.value+self.ny) % self.ny
         return (xn,yn)
 
-    def generate_polyakov_loop(self,coord,dir,use_indices=True):
+    def generate_polyakov_loop(self, coord: tuple, dir: Direction, use_indices=True) -> list:
+        """Generate a Polyakov loop, a loop around the full system.
+        We only need one point so start from and a direction.
+        The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
+        The <link_id> can be either a tuple of coordinates or an integer id of a link (depending on use_indices).
+        The bool in the tuples returned by this function signifies the orientation.
+        "True" means flip gauge field, "False" means no flip.
+
+        Args:
+            coord (tuple): Coordinate to start from
+            dir (Direction): Direction of the loop (x or y)
+            use_indices (bool, optional): Return the loop in terms of link indices. Defaults to True.
+
+        Returns:
+            list: Links on the Polyakov loop
+        """
         x, y = coord
-        dest=[]
-        if dir==Direction.X:
+        dest = []
+        if dir == Direction.X:
             #Build polyakov loop in X direction
             for i in range(self.nx):
                 coord_link = ((i, y), dir)
-                dest.append((coord_link,False))
-        elif dir==Direction.Y:
+                dest.append((coord_link, False))
+        elif dir == Direction.Y:
             #Build polyakov loop in Y direction
             for i in range(self.ny):
                 coord_link = ((x, i), dir)
                 dest.append((coord_link, False))
         else:
-            logging.error("generate_polyakov_loop: There are only X and Y as directions")
+            logging.error(
+                "generate_polyakov_loop: There are only X and Y as directions")
             return None
         if use_indices:
             #Transform the coordinates to indices
-            dest=[(self.coord2ind_dir(*coorddir),conj) for (coorddir,conj) in dest]
+            dest = [(self.coord2ind_dir(*coorddir), conj)
+                    for (coorddir, conj) in dest]
         return dest
 
-    def generate_wilson_loop(self,coord,size,use_indices=True):
+    def generate_wilson_loop(self, coord: tuple, size: tuple, use_indices=True) -> list:
+        """Generate a Wilson loop with bottom left corner at coord and an extend specified by the tuple size.
+        This method is aware of the periodic boundary conditions of the lattice.
+        The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
+        The <link_id> can be either a tuple of coordinates or an integer id of a link (depending on use_indices).
+        The bool in the tuples returned by this function signifies the orientation.
+        "True" means flip gauge field, "False" means no flip.
+
+        Args:
+            coord (tuple): bottom left corner (x,y) of the Wilson loop
+            size (tuple): extend in (x,y)
+            use_indices (bool, optional): Use link indices instead of coordinate representation. Defaults to True.
+
+        Returns:
+            list: List of tuples of the form (link_id,<bool>)
+        """
         ext_x, ext_y = size
         x, y = coord
         dest=[]
@@ -117,7 +206,9 @@ class Lattice2D:
 
 class Lattice3D:
     """
-    Handler of a square lattice of size nx x ny x nz
+    Handler of a square lattice of size nx x ny x nz.
+    The functions are very similar to the Lattice2D class.
+    For more documentation on the methods, we refer to the Lattice2D class.
     """
 
     def __init__(self, nx, ny, nz):
@@ -455,5 +546,7 @@ class PermutationBuilderGMS2DU1:
 
 if __name__ == "__main__":
     print("Lattice 2d, 3x2")
-    lat_3x2=Lattice2D(3,2)
+    lat_3x2 = Lattice2D(3, 2)
     print(lat_3x2)
+    wilson_loop = lat_3x2.generate_wilson_loop((0,0), (1,1))
+    print(wilson_loop)
