@@ -63,7 +63,10 @@ def main(args):
                 df_exact_filtered=df_exact[df_exact.name==obs]
                 for name, group in df_exact_filtered.groupby("L"):
                     ax.plot(df_exact_filtered["g2_ham"],df_exact_filtered["value"],"-",label="ED, {}, L={}".format(obs,name))
-
+    if args.logx:
+        ax.set_xscale("log")
+    if args.logy:
+        ax.set_yscale("log")
     ax.set_xlabel("$g^2$", fontsize=10)
     ax.set_ylabel("Value", fontsize=10)
     ax.legend(fontsize=8)
@@ -79,6 +82,8 @@ if __name__ == "__main__":
     parser.add_argument("--mc", nargs="+", help="EC data")
     parser.add_argument("--ec", nargs="+", help="MC data")
     parser.add_argument("--show", action="store_true", default=False, help="Show the plot")
+    parser.add_argument("--logx", action="store_true", default=False, help="Use logarithmic scaling for x axis")
+    parser.add_argument("--logy", action="store_true", default=False, help="Use logarithmix scaling for y axis")
     parser.add_argument("--obs",
                         type=str,
                         nargs="+",
