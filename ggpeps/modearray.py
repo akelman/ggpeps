@@ -99,7 +99,7 @@ class ModeArray(np.ndarray):
 
     def check_matmul(self, modes, arrs, scalars, rest):
         if len(modes) == 2:
-            if not np.all(modes[0][1] == modes[1][0]):
+            if not modes[0][1]==modes[1][0]:
                 raise ValueError("The column mode array of the first matrix must match for the row mode array of the second matrix in matrix multiplication.")    
             else:
                 return [modes[0][0],modes[1][1]]
@@ -223,7 +223,7 @@ class ModeArray(np.ndarray):
         
         return self @ permutation_cols
 
-    def _verify_modes_permutation(self,modes):
+    def verify_modes_permutation(self,modes):
         # Run all the usual checks
         self._verify_modes(modes)
         # Additionally, we check that all old modes are in the new ones
