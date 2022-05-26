@@ -17,15 +17,13 @@ class Direction(Enum):
 class Lattice2D:
     """
     Handler of a square lattice of size nx x ny
+
+    Args:
+        nx (int): Extend of the lattice in x direction (given in number of vertices)
+        ny (int): Extend of the lattice in y direction (given in number of vertices)
     """
 
     def __init__(self, nx: int, ny: int):
-        """Constructor of a lattice.
-
-        Args:
-            nx (int): Extend of the lattice in x direction (given in number of vertices)
-            ny (int): Extend of the lattice in y direction (given in number of vertices)
-        """
         self.nx = nx
         self.ny = ny
         self.nlinks = 2*nx*ny
