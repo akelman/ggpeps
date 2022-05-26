@@ -8,7 +8,7 @@ class ModeArray(np.ndarray):
         # We first cast to be our class type
         obj = np.asarray(input_array).view(cls)
         # add the new attribute to the created instance
-        obj._modes = modes if isinstance(modes,np.ndarray) else np.asarray(modes)
+        obj._modes = list(modes) if isinstance(modes,np.ndarray) else modes
 
         # Finally, we must return the newly created object:
         return obj
@@ -39,7 +39,7 @@ class ModeArray(np.ndarray):
         # InfoArray.__new__ constructor, but also with
         # arr.view(ModeArray).
         modes = getattr(obj, 'modes', None)
-        self._modes = modes if isinstance(modes, np.ndarray) else np.asarray(modes)
+        self._modes = list(modes) if isinstance(modes, np.ndarray) else modes
 
     @property
     def modes(self):
@@ -57,7 +57,7 @@ class ModeArray(np.ndarray):
 
         self._verify_modes(val)
 
-        self._modes=val
+        self._modes = list(val)
 
     def structure_input(self,*inputs):
         modes = []
@@ -75,6 +75,17 @@ class ModeArray(np.ndarray):
                 rest.append(input_)
         return modes, arrs, scalars, rest
 
+    def check_subtract(self, modes, arrs, scalars, rest):
+        if len(modes) == 1:
+            if len(scalars)==1:
+                return modes[0]
+        if len(modes)==2:
+            if not modes[0]==modes[1]:
+                raise ValueError("The mode arrays must match for subtraction.")    
+            else:
+                return modes[0]
+        # TODO: More checks
+
     def check_addition(self, modes, arrs, scalars, rest):
         if len(modes) == 1:
             if len(scalars)==1:
@@ -88,18 +99,19 @@ class ModeArray(np.ndarray):
 
     def check_matmul(self, modes, arrs, scalars, rest):
         if len(modes) == 2:
-            if not modes[0][1]==modes[1][0]:
+            if not np.all(modes[0][1] == modes[1][0]):
                 raise ValueError("The column mode array of the first matrix must match for the row mode array of the second matrix in matrix multiplication.")    
             else:
                 return [modes[0][0],modes[1][1]]
 
     def check_multiply(self, modes, arrs, scalars, rest):
         if len(modes) == 1:
-            if len(scalars)==1:
+            if len(scalars) == 1:
                 return modes[0]
         if len(modes) == 2:
-            if not modes[0]==modes[1]:
-                raise ValueError("The mode arrays must match for elementwise multiplication.")    
+            if not modes[0] == modes[1]:
+                raise ValueError(
+                    "The mode arrays must match for elementwise multiplication.")
             else:
                 return modes[0]
         # TODO: More checks
@@ -110,10 +122,15 @@ class ModeArray(np.ndarray):
             ufunc_name = ufunc.__name__
             if ufunc_name == "add":
                 return self.check_addition(*sorted_arrs)
+            if ufunc_name == "subtract":
+                return self.check_subtract(*sorted_arrs)
             elif ufunc_name == "matmul":
                 return self.check_matmul(*sorted_arrs)
             elif ufunc_name == "multiply":
                 return self.check_multiply(*sorted_arrs)
+            else:
+                #print(ufunc)
+                pass
         return None
 
     def __array_ufunc__(self, ufunc, method, *inputs, out=None, **kwargs):
@@ -158,6 +175,17 @@ class ModeArray(np.ndarray):
 
         return results[0] if len(results) == 1 else results
     
+    def transpose(self, *axis):
+        dest_data = np.transpose(np.asarray(self),*axis)
+        # TODO: Make this more elegant. This works only in 2D
+        if len(self.modes)==1:
+            dest_modes = self.modes
+        if len(self.modes)==2:
+            dest_modes = [self.modes[1],self.modes[0]]
+        else:
+            raise NotImplementedError("Transposition is not implemented for >2D")
+        return ModeArray(dest_data,dest_modes)
+    
     def permute(self, new_modes):
         """Permute the matrix according to the new order of the basis given by new modes.
         The modes given in new_modes must be named the same way as the ones in the original matrix.
@@ -165,9 +193,13 @@ class ModeArray(np.ndarray):
         Args:
             new_modes (list): List of new mode names. Order matters.
         """
-        self._verify_modes(new_modes)
+        self._verify_modes_permutation(new_modes)
+        permutation_rows = generate_permutation_matrix(self.modes[0],new_modes[0])
+        permutation_cols = generate_permutation_matrix(self.modes[1],new_modes[1])
+        
+        return np.transpose(permutation_rows) @ self @ permutation_cols
 
-    def verify_modes_permutation(self,modes):
+    def _verify_modes_permutation(self,modes):
         # Run all the usual checks
         self._verify_modes(modes)
         # Additionally, we check that all old modes are in the new ones
@@ -189,3 +221,11 @@ class ModeArray(np.ndarray):
                     "The names of modes must be unique, they are supposed to form a basis.")
             if len(mode_set) != self.shape[ind]:
                 raise ValueError("The number of modes does not match the number of entries in dimension {}".format(ind))
+
+
+def generate_permutation_matrix(old_modes,new_modes):
+    arr = np.zeros((len(old_modes),len(new_modes)))
+    for ind_i,mode_i in enumerate(old_modes):
+        ind_j = new_modes.index(mode_i)
+        arr[ind_i, ind_j] = 1
+    return ModeArray(arr,[old_modes,new_modes])

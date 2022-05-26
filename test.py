@@ -2099,9 +2099,39 @@ class TestModeArray(unittest.TestCase):
 
         self.assertTrue(d_2d_ab.modes == ref_2d_ab)
         self.assertTrue(d_2d_ad.modes == ref_2d_ad)
+
+    def test_transpose(self):
+        dest = np.transpose(self.a_2d)
+        self.assertTrue(dest.modes == [self.a_2d.modes[1],self.a_2d.modes[0]])
+        self.assertTrue(np.allclose(np.transpose(self.a_2d),np.asarray(dest)))
+
     
-    def test_permute_3x3_check_matrix(self):
-        pass
+    def test_gen_permutation_matrix(self):
+        from ggpeps.modearray import generate_permutation_matrix
+        old_modes = ["1","2","3"]
+        new_modes = ["3","2","1"]
+        perm = generate_permutation_matrix(old_modes,new_modes)
+        self.assertTrue(utils.is_permutation(perm))
+    
+    def test_permute_3x3_rows(self):
+        old_modes = ["1","2","3"]
+        new_modes = ["3","2","1"]
+        arr = ModeArray(np.array([[1,1,1],[2,2,2],[3,3,3]]),[old_modes,old_modes])
+        dest = arr.permute([new_modes,old_modes])
+
+        ref_modes = [new_modes, old_modes]
+        self.assertTrue(dest.modes == ref_modes)
+        self.assertTrue(np.allclose(np.asarray(dest), np.asarray( [[3, 3, 3], [2, 2, 2], [1, 1, 1]])))
+
+    def test_permute_3x3_cols(self):
+        old_modes = ["1","2","3"]
+        new_modes = ["3","2","1"]
+        arr = ModeArray(np.array([[1,2,3],[1,2,3],[1,2,3]]),[old_modes,old_modes])
+        dest = arr.permute([old_modes,new_modes])
+
+        ref_modes = [old_modes, new_modes]
+        self.assertTrue(list(dest.modes) == ref_modes)
+        self.assertTrue(np.allclose(np.asarray(dest), np.asarray( [[3, 2, 1], [3, 2, 1], [3, 2, 1]])))
 
 
 if __name__ == '__main__':
