@@ -191,13 +191,37 @@ class ModeArray(np.ndarray):
         The modes given in new_modes must be named the same way as the ones in the original matrix.
 
         Args:
-            new_modes (list): List of new mode names. Order matters.
+            new_modes (list): List of new mode names for rows and columns [[row_names], [col_names]]. Order matters.
         """
         self._verify_modes_permutation(new_modes)
         permutation_rows = generate_permutation_matrix(self.modes[0],new_modes[0])
         permutation_cols = generate_permutation_matrix(self.modes[1],new_modes[1])
         
         return np.transpose(permutation_rows) @ self @ permutation_cols
+
+    def permute_rows(self, new_modes):
+        """Permute the rows of the matrix according to the new order of the basis given by new modes.
+        The modes given in new_modes must be named the same way as the ones in the original matrix.
+
+        Args:
+            new_modes (list): List of new mode names. Order matters.
+        """
+        self._verify_modes_permutation(new_modes)
+        permutation_rows = generate_permutation_matrix(self.modes[0],new_modes[0])
+        
+        return np.transpose(permutation_rows) @ self
+
+    def permute_cols(self, new_modes):
+        """Permute the columns of the matrix according to the new order of the basis given by new modes.
+        The modes given in new_modes must be named the same way as the ones in the original matrix.
+
+        Args:
+            new_modes (list): List of new mode names for rows and columns [row_names]. Order matters.
+        """
+        self._verify_modes_permutation(new_modes)
+        permutation_cols = generate_permutation_matrix(self.modes[1],new_modes[1])
+        
+        return self @ permutation_cols
 
     def _verify_modes_permutation(self,modes):
         # Run all the usual checks
