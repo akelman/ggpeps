@@ -200,6 +200,7 @@ class Z2System2DBase(ABC):
         self._mat_d_mod_inv_vec = None
 
         # Management of the gaugefields
+        # FIXME: Either make this direction aware (lattice.Direction) or switch all calls with direct calls to generate_gamma_gauge_neutral
         self.gamma_neutral_gauge = self.generate_gamma_gauge_neutral()
         self._gamma_in_sys = None
         self._gaugefieldvec = np.zeros(self.cfg.lattice.nlinks)
@@ -902,6 +903,7 @@ class Z2System2DBase(ABC):
         print(
             "Do not set the gaugefieldvec explicitly. Use 'update_gauge_ind'.", file=sys.stderr)
 
+    #FIXME: Make this function direction aware (lattice.Direction) and adapt it in all subclasses
     @abstractmethod
     def generate_gamma_gauge_neutral(self):
         """Abstract method to define the ungauged covariance matrix of a single link.
@@ -910,6 +912,7 @@ class Z2System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    #FIXME: Check whether rotation matrices are changed
     @abstractmethod
     def generate_rotmat(self, theta, coord):
         """Abstract method to define the rotation matrix of a single link.

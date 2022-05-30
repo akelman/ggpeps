@@ -147,11 +147,15 @@ class Z2System2D(Z2System2DBase):
         """
 
         nlinks = self.cfg.lattice.nlinks
+        # Prepare this matrix for the Kronecker product
         id = np.eye(nlinks)
         neutral_gauge = self.gamma_neutral_gauge
 
-        # Initialize gamma_in_sys for the full system (and trackers)
+        # Initialize gamma_in_sys for the full system 
+        # FIXME: This should be direction aware. The first half of the matrix are horizontal links, the second half are vertical links.
         gamma_in_sys = np.kron(id, neutral_gauge)
+
+        # Initialize all the trackers of inverses and determinants
         diffvec = [
             mat_d_inv - gamma_in_sys for mat_d_inv in self.mat_d_inv_vec
         ]
@@ -178,7 +182,7 @@ class Z2System2D(Z2System2DBase):
         return gamma_in_sys, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
 
-    def generate_gamma_gauge_neutral(self):
+    def generate_gamma_gauge_neutral(self,dir: Direction):
         """This matrix is the covariance matrix of the ungauged projectors.
         The morde order is {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2}, where the underscore notation explicitly denotes Majorana modes and not sites.
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
@@ -235,6 +239,7 @@ class Z2System2D(Z2System2DBase):
         ind_mat = 4 * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord)
+        #FIXME: Check the direction of the link here and take the appropriate single-link covariance matrix
         gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(
             rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
