@@ -202,6 +202,53 @@ class Lattice2D:
             #Transform the coordinates to indices
             dest=[(self.coord2ind_dir(*coorddir),conj) for (coorddir,conj) in dest]
         return dest
+    
+    def get_link_based_mode_order(self) -> list:
+        """Generate the link-based mode order.
+
+            |         |
+            "5"       "7"
+            |         |
+            2 --"2"-- 3 --"3"--
+            |         |
+            "4"       "6"
+            |         |
+            0 --"0"-- 1 --"1"--
+
+        Returns:
+            list: List of strings of the form <mode_letter:maj mode>_<copy>_<link_id>
+        """
+
+        num_copies = 1 # needs to be changed to get the correct number of copies
+        mode_order = []
+
+        # Horizontal first
+        for link in range(self.nx):
+            for copy in range(num_copies):
+                mode1 = ( "l1", copy, link ) # majorana mode l1
+                mode2 = ( "l2", copy, link ) # majorana mode l2
+                mode3 = ( "r1", copy, link )
+                mode4 = ( "r2", copy, link )
+                mode_order.append( mode1, mode2, mode3, mode4 )
+        
+        # Vertical
+        for link in range(self.ny):
+            link_num = link + self.nx # vertical link numbers start at the number of horizontal links that there are
+            for copy in range(num_copies):
+                mode1 = ( "d1", copy, link_num ) # majorana mode d1
+                mode2 = ( "d2", copy, link_num ) # majorana mode d2
+                mode3 = ( "u1", copy, link_num )
+                mode4 = ( "u2", copy, link_num )
+                mode_order.append( mode1, mode2, mode3, mode4 )
+
+        # Covert to a list of strings
+        # This was left as a tupple above in case there was ever any use for that format
+        mode_order_str = []
+        for mode in mode_order:
+            mode_str = mode[0] + "_" + str(mode[1]) + "_" + str(mode[2])
+            mode_order_str.append(mode_str)
+
+        return mode_order_str
 
 
 class Lattice3D:
