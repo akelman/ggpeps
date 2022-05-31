@@ -206,7 +206,6 @@ class Z2System2D2C(Z2System2DBase):
 
         return gamma_in_sys, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
-    # FIXME: DONE - make direction aware
     def generate_gamma_gauge_neutral(self, dir: Direction):
         """Generate the the covariance matrix of the ungauged projectors.
         The morde order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}.
