@@ -206,40 +206,48 @@ class Lattice2D:
     def get_link_based_mode_order(self) -> list:
         """Generate the link-based mode order.
 
+        This is a sketch of a 2x3 lattice. 
+        This lattice is what's used in testing this function, so check there for an explicit list of expected output.
             |         |
-            "5"       "7"
+            "8"       "11"
+            |         |
+            4 --"4"-- 5 --"5"--
+            |         |
+            "7"       "10"
             |         |
             2 --"2"-- 3 --"3"--
             |         |
-            "4"       "6"
+            "6"       "9"
             |         |
             0 --"0"-- 1 --"1"--
 
         Returns:
-            list: List of strings of the form <mode_letter:maj mode>_<copy>_<link_id>
+            list: List of strings of the form <mode_letter:majorana mode>_<copy>_<link_id>
         """
 
         num_copies = 1 # needs to be changed to get the correct number of copies
         mode_order = []
 
         # Horizontal first
-        for link in range(self.nx):
-            for copy in range(num_copies):
+        for link in range(self.nx * self.ny):
+            for c in range(num_copies):
+                copy = c + 1
                 mode1 = ( "l1", copy, link ) # majorana mode l1
                 mode2 = ( "l2", copy, link ) # majorana mode l2
                 mode3 = ( "r1", copy, link )
                 mode4 = ( "r2", copy, link )
-                mode_order.append( mode1, mode2, mode3, mode4 )
+                mode_order += [ mode1, mode2, mode3, mode4 ]
         
         # Vertical
-        for link in range(self.ny):
-            link_num = link + self.nx # vertical link numbers start at the number of horizontal links that there are
-            for copy in range(num_copies):
+        for link in range(self.nx * self.ny):
+            link_num = link + self.nx * self.ny # vertical link numbers start at the number of horizontal links that there are
+            for c in range(num_copies):
+                copy = c + 1
                 mode1 = ( "d1", copy, link_num ) # majorana mode d1
                 mode2 = ( "d2", copy, link_num ) # majorana mode d2
                 mode3 = ( "u1", copy, link_num )
                 mode4 = ( "u2", copy, link_num )
-                mode_order.append( mode1, mode2, mode3, mode4 )
+                mode_order += [ mode1, mode2, mode3, mode4 ]
 
         # Covert to a list of strings
         # This was left as a tupple above in case there was ever any use for that format
