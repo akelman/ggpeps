@@ -149,7 +149,6 @@ class Z2System2D(Z2System2DBase):
 
         size = self.cfg.lattice.size # number of sites
 
-        # FIXME: DONE - This should be direction aware. The first half of the matrix are horizontal links, the second half are vertical links.
         # Initialize gamma_in_sys for the full system 
         id = np.eye(size) 
         neutral_gauge_X = np.kron( id, self.generate_gamma_gauge_neutral(Direction.X) )
@@ -183,7 +182,6 @@ class Z2System2D(Z2System2DBase):
         return gamma_in_sys, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
 
-    #FIXME: DONE - make direction aware 
     def generate_gamma_gauge_neutral(self, dir: Direction):
         """This matrix is the covariance matrix of the ungauged projectors.
         The mode order is {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2}, where the underscore notation explicitly denotes Majorana modes and not sites.
@@ -247,7 +245,6 @@ class Z2System2D(Z2System2DBase):
         ind_mat = 4 * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord)
-        #FIXME: Check the direction of the link here and take the appropriate single-link covariance matrix
         gamma_neutral_gauge = self.generate_gamma_gauge_neutral(dir) # calling every time (rather than storing) will cause some innefficiency 
         gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(
             rotmat)
