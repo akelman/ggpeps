@@ -6,6 +6,7 @@ from ggpeps import utils, system, lattice, gauge
 from ggpeps.measurement import Measurement
 from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloEstimator, MonteCarloManager
 from ggpeps.minimizer import Minimizer
+from ggpeps.lattice import Direction
 from pfapack import pfaffian as pf
 from ggpeps.modearray import ModeArray
 
@@ -466,6 +467,26 @@ class TestZ2SystemMethods(unittest.TestCase):
         self.assertTrue(utils.is_antisymmetric(gamma_maj))
         self.assertTrue(np.allclose(gamma_maj@gamma_maj,-np.eye(m)))
         self.assertTrue(np.allclose(gamma_maj@np.transpose(gamma_maj),np.eye(m)))
+
+    # FIXME: finish tests for covariance matrices involving u,d modes
+    def test(self):
+        # cov matrix properties are satisfied
+        # correct results per site in both X, Y dirs
+        # some system test
+        self.assertTrue( True )
+
+    def test_gamma_ungauged_site(self):
+        # check single site ungauged covariance matrix
+        gamma_X = self.system_z2_2_2.generate_gamma_gauge_neutral(Direction.X)
+        gamma_Y = self.system_z2_2_2.generate_gamma_gauge_neutral(Direction.Y)
+        self.assertTrue(np.allclose( gamma_X, np.array([   [0,0,0,1],
+                                                [0,0,1,0],
+                                                [0,-1,0,0],
+                                                [-1,0,0,0],  ]) ))
+        self.assertTrue(np.allclose( gamma_Y, np.array([   [0,0,1,0],
+                                                [0,0,0,-1],
+                                                [-1,0,0,0],
+                                                [0,1,0,0],  ]) ))
 
     def test_gamma_in_sys_covariance(self):
         gamma_in=self.system_z2_2_2.gamma_in_sys

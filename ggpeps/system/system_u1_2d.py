@@ -185,7 +185,8 @@ class U1System2D(Z2System2DBase):
 
     ################## Local Gauge ######################
 
-    def generate_gamma_gauge_neutral(self):
+    def generate_gamma_gauge_neutral(self, dir = None):
+        # Note: unlike in the Z2 case, here we can ignore the direction of the link
         return np.real(1.j * np.kron(np.kron(utils.pauliy,utils.paulix),utils.paulix))
 
 
