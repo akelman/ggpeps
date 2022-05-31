@@ -470,8 +470,8 @@ class TestZ2SystemMethods(unittest.TestCase):
 
     def test_gamma_ungauged_site(self):
         # check single site ungauged covariance matrix
-        gamma_X = self.system_z2_2_2.generate_gamma_gauge_neutral(Direction.X)
-        gamma_Y = self.system_z2_2_2.generate_gamma_gauge_neutral(Direction.Y)
+        gamma_X = self.system_z2_2_2.gamma_gauge_neutral[Direction.X]
+        gamma_Y = self.system_z2_2_2.gamma_gauge_neutral[Direction.Y]
         self.assertTrue(np.allclose( gamma_X, np.array([   [0,0,0,1],
                                                 [0,0,1,0],
                                                 [0,-1,0,0],

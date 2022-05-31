@@ -151,8 +151,8 @@ class Z2System2D(Z2System2DBase):
 
         # Initialize gamma_in_sys for the full system 
         id = np.eye(size) 
-        neutral_gauge_X = np.kron( id, self.generate_gamma_gauge_neutral(Direction.X) )
-        neutral_gauge_Y = np.kron( id, self.generate_gamma_gauge_neutral(Direction.Y) )
+        neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral[Direction.X] )
+        neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral[Direction.Y] )
         gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y) # for the 3D case, simply add in the Z covariance matrix as well
 
         # Initialize all the trackers of inverses and determinants
@@ -182,7 +182,7 @@ class Z2System2D(Z2System2DBase):
         return gamma_in_sys, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
 
-    def generate_gamma_gauge_neutral(self, dir: Direction):
+    def _generate_gamma_gauge_neutral_dict(self):
         """This matrix is the covariance matrix of the ungauged projectors.
         The mode order is {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2}, where the underscore notation explicitly denotes Majorana modes and not sites.
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
@@ -193,13 +193,10 @@ class Z2System2D(Z2System2DBase):
         Returns:
             np.ndarray: Covariance matrix of the ungauged projector on a single link
         """
-        if dir == Direction.X:
-            return np.real_if_close(1.j*np.kron(utils.pauliy, utils.paulix)) # this just happens to be a convenient way to generate the covariance matrix that was calculated by hand
-        elif dir == Direction.Y:
-            return np.real_if_close(np.kron(1.j*utils.pauliy, utils.pauliz))
-        else:
-            logging.error("The 2D class only accepts X or Y direction. A call was made to generate the ungauged covariance matrix with an invalid direction.")
-            raise ValueError("2D class only accepts X or Y direction.")
+        dest={}
+        dest[Direction.X] = np.real_if_close(1.j*np.kron(utils.pauliy, utils.paulix)) # this just happens to be a convenient way to generate the covariance matrix that was calculated by hand
+        dest[Direction.Y] = np.real_if_close(np.kron(1.j*utils.pauliy, utils.pauliz))
+        return dest
 
     #Gauging
 
@@ -245,7 +242,7 @@ class Z2System2D(Z2System2DBase):
         ind_mat = 4 * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord)
-        gamma_neutral_gauge = self.generate_gamma_gauge_neutral(dir) # calling every time (rather than storing) will cause some innefficiency 
+        gamma_neutral_gauge = self.gamma_gauge_neutral[dir] # calling every time (rather than storing) will cause some innefficiency 
         gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(
             rotmat)
 
