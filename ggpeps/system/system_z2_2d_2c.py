@@ -177,8 +177,8 @@ class Z2System2D2C(Z2System2DBase):
         # Initialize gamma_in_sys for the full system (and trackers)
         size = self.cfg.lattice.size # number of sites
         id = np.eye(size) 
-        neutral_gauge_X = np.kron( id, self.generate_gamma_gauge_neutral(Direction.X) )
-        neutral_gauge_Y = np.kron( id, self.generate_gamma_gauge_neutral(Direction.Y) )
+        neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral[Direction.X] )
+        neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral[Direction.Y] )
         gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y)
 
         diffvec = [
@@ -206,7 +206,7 @@ class Z2System2D2C(Z2System2DBase):
 
         return gamma_in_sys, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
-    def generate_gamma_gauge_neutral(self, dir: Direction):
+    def _generate_gamma_gauge_neutral_dict(self):
         """Generate the the covariance matrix of the ungauged projectors.
         The morde order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
@@ -220,13 +220,10 @@ class Z2System2D2C(Z2System2DBase):
         Returns:
             np.ndarray: Covariance matrix of the ungauged projector on a single link
         """
-        if dir == Direction.X:
-            return np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
-        elif dir == Direction.Y:
-            return np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
-        else:
-            logging.error("The 2D class only accepts X or Y direction. A call was made to generate the ungauged covariance matrix with an invalid direction.")
-            raise ValueError("2D class only accepts X or Y direction.")
+        dest={}
+        dest[Direction.X]= np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
+        dest[Direction.Y]= np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
+        return dest
 
     #Gauging
 
@@ -278,7 +275,7 @@ class Z2System2D2C(Z2System2DBase):
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord)
-        gamma_neutral_gauge = self.generate_gamma_gauge_neutral(dir)
+        gamma_neutral_gauge = self.gamma_gauge_neutral[dir]
         gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
         # Update the determinant

@@ -201,6 +201,7 @@ class Z2System2DBase(ABC):
         self._mat_d_mod_inv_vec = None
 
         # Management of the gaugefields
+        self._gamma_gauge_neutral_dict = None
         self._gamma_in_sys = None
         self._gaugefieldvec = np.zeros(self.cfg.lattice.nlinks)
         self.gaugemgr = gauge.ZNGauge(2)
@@ -801,7 +802,7 @@ class Z2System2DBase(ABC):
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord)
-        gamma_neutral_gauge = self.generate_gamma_gauge_neutral(dir)
+        gamma_neutral_gauge = self.gamma_gauge_neutral[dir]
         gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
         return self.update_lognorm_inc(ind_mat, update, all_factors)
@@ -903,8 +904,14 @@ class Z2System2DBase(ABC):
         print(
             "Do not set the gaugefieldvec explicitly. Use 'update_gauge_ind'.", file=sys.stderr)
 
+    @property
+    def gamma_gauge_neutral(self):
+        if not self._gamma_gauge_neutral_dict:
+            self._gamma_gauge_neutral_dict = self._generate_gamma_gauge_neutral_dict()
+        return self._gamma_gauge_neutral_dict
+
     @abstractmethod
-    def generate_gamma_gauge_neutral(self, dir: Direction):
+    def _generate_gamma_gauge_neutral_dict(self):
         """Abstract method to define the ungauged covariance matrix of a single link.
         The substitution method must ensure a consistent order of the modes.
         The direction parameter controls which covariance matrix is retrieved, since these can differ between directions.
