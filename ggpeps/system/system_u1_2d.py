@@ -5,6 +5,7 @@ import logging
 import sympy
 from ggpeps import utils, gauge
 import ggpeps.lattice as lat
+from ggpeps.lattice import Direction
 from scipy.linalg import block_diag
 from pfapack import pfaffian as pf
 
@@ -150,12 +151,14 @@ class U1System2D(Z2System2DBase):
         """
         #TODO: Fix description
 
-        nlinks = self.cfg.lattice.nlinks
-        id = np.eye(nlinks)
-        neutral_gauge = self.gamma_neutral_gauge
+        size = self.cfg.lattice.size # number of sites
 
-        # Initialize gamma_in_sys for the full system (and trackers)
-        gamma_in_sys = np.kron(id, neutral_gauge)
+        # Initialize gamma_in_sys for the full system 
+        id = np.eye(size) 
+        neutral_gauge_X = np.kron( id, self.generate_gamma_gauge_neutral(Direction.X) )
+        neutral_gauge_Y = np.kron( id, self.generate_gamma_gauge_neutral(Direction.Y) )
+        gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y) # for the 3D case, simply add in the Z covariance matrix as well
+
         diffvec = [
             mat_d_inv - gamma_in_sys for mat_d_inv in self.mat_d_inv_vec
         ]
@@ -212,7 +215,8 @@ class U1System2D(Z2System2DBase):
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord)
-        gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(rotmat)
+        gamma_neutral_gauge = self.generate_gamma_gauge_neutral(dir)
+        gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
         # Update the determinant
         mat_inv_vec = [
