@@ -468,13 +468,6 @@ class TestZ2SystemMethods(unittest.TestCase):
         self.assertTrue(np.allclose(gamma_maj@gamma_maj,-np.eye(m)))
         self.assertTrue(np.allclose(gamma_maj@np.transpose(gamma_maj),np.eye(m)))
 
-    # FIXME: finish tests for covariance matrices involving u,d modes
-    def test(self):
-        # cov matrix properties are satisfied
-        # correct results per site in both X, Y dirs
-        # some system test
-        self.assertTrue( True )
-
     def test_gamma_ungauged_site(self):
         # check single site ungauged covariance matrix
         gamma_X = self.system_z2_2_2.generate_gamma_gauge_neutral(Direction.X)
@@ -487,6 +480,12 @@ class TestZ2SystemMethods(unittest.TestCase):
                                                 [0,0,0,-1],
                                                 [-1,0,0,0],
                                                 [0,1,0,0],  ]) ))
+        
+        for gamma in [gamma_X, gamma_Y]:
+            m, n = gamma.shape
+            self.assertTrue(utils.is_antisymmetric(gamma))
+            self.assertTrue(np.allclose(gamma @ gamma, -np.eye(m)))
+            self.assertTrue(np.allclose(gamma @ np.transpose(gamma), np.eye(m)))
 
     def test_gamma_in_sys_covariance(self):
         gamma_in=self.system_z2_2_2.gamma_in_sys
