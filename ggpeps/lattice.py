@@ -23,12 +23,14 @@ class Lattice2D:
         ny (int): Extend of the lattice in y direction (given in number of vertices)
     """
 
+    dim = 2
+
     def __init__(self, nx: int, ny: int):
         self.nx = nx
         self.ny = ny
         self.nlinks = 2*nx*ny
         self.nplaquettes = nx*ny
-        self.size = nx*ny
+        self.size = nx*ny # number of sites
 
     def __str__(self):
         """Generate a string representation of the lattice.
@@ -206,14 +208,17 @@ class Lattice3D:
     """
     Handler of a square lattice of size nx x ny x nz.
     The functions are very similar to the Lattice2D class.
-    For more documentation on the methods, we refer to the Lattice2D class.
+    For more documentation on the methods, refer to the Lattice2D class.
     """
+
+    dim = 3
 
     def __init__(self, nx, ny, nz):
         self.nx = nx
         self.ny = ny
         self.nz = nz
         self.nlinks = 3*nx*ny*nz
+        self.size = nx*ny*nz # number of sites
 
     def __str__(self):
         arr = np.arange(self.get_size())

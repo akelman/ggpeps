@@ -4,6 +4,7 @@ import logging
 import sys
 import sympy
 from ggpeps import gauge, utils
+from ggpeps.lattice import Direction
 
 
 class Config2DBase(ABC):
@@ -200,8 +201,6 @@ class Z2System2DBase(ABC):
         self._mat_d_mod_inv_vec = None
 
         # Management of the gaugefields
-        # FIXME: Either make this direction aware (lattice.Direction) or switch all calls with direct calls to generate_gamma_gauge_neutral
-        self.gamma_neutral_gauge = self.generate_gamma_gauge_neutral()
         self._gamma_in_sys = None
         self._gaugefieldvec = np.zeros(self.cfg.lattice.nlinks)
         self.gaugemgr = gauge.ZNGauge(2)
@@ -802,7 +801,8 @@ class Z2System2DBase(ABC):
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord)
-        gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(rotmat)
+        gamma_neutral_gauge = self.generate_gamma_gauge_neutral(dir)
+        gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
         return self.update_lognorm_inc(ind_mat, update, all_factors)
 
@@ -903,16 +903,17 @@ class Z2System2DBase(ABC):
         print(
             "Do not set the gaugefieldvec explicitly. Use 'update_gauge_ind'.", file=sys.stderr)
 
-    #FIXME: Make this function direction aware (lattice.Direction) and adapt it in all subclasses
+    #FIXME: DONE - Make this function direction aware (lattice.Direction) and adapt it in all subclasses
     @abstractmethod
-    def generate_gamma_gauge_neutral(self):
+    def generate_gamma_gauge_neutral(self, dir: Direction):
         """Abstract method to define the ungauged covariance matrix of a single link.
         The substitution method must ensure a consistent order of the modes.
+        The direction parameter controls which covariance matrix is retrieved, since these can differ between directions.
         This method must be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
-    #FIXME: Check whether rotation matrices are changed
+    #FIXME: DONE - Check whether rotation matrices are changed - they aren't
     @abstractmethod
     def generate_rotmat(self, theta, coord):
         """Abstract method to define the rotation matrix of a single link.
