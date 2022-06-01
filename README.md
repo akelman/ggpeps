@@ -22,7 +22,9 @@ The virtual environment can be deactivated with `deactivate`.
 
 2. Cloning the code  
 You can obtain the code by cloning the repo with
-```git clone git@gitlab.mpcdf.mpg.de:pemonts/gaussian-peps.git```.
+```
+git clone git@gitlab.mpcdf.mpg.de:pemonts/gaussian-peps.git
+```.
 Note that you have to be a member of the project to clone it.
 Cloning via SSH works only if you have added a (public) SSH key to the repository.
 
@@ -115,6 +117,19 @@ python inspect_data.py <fname>
 All scripts prefixed with `plot_*` will plot some aspect of the provided datasets.
 
 TODO: More about plotting scripts
+
+## Tests
+
+The code is accompagnied by an extensive suit of tests which are located in the folder `tests`.
+The full test-suite can be executed with
+```
+python -m unittest tests/test_*.py
+```
+
+If you want to execute a more specialized test, you can execute the files separately as well:
+```
+python -m unittest tests/test_lattice.py
+```
 
 ## Known Issues
 
