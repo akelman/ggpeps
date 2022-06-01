@@ -223,7 +223,7 @@ class ModeArray(np.ndarray):
         
         return self @ permutation_cols
 
-    def verify_modes_permutation(self,modes):
+    def _verify_modes_permutation(self,modes):
         # Run all the usual checks
         self._verify_modes(modes)
         # Additionally, we check that all old modes are in the new ones
