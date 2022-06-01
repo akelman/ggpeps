@@ -172,11 +172,11 @@ class Minimizer():
         if self.min_result is not None:
             sys_cfg=self.evaluator.system_cfg
 
-            fname_mc_summary = "summary_min_L_{:02d}-{:02d}_g2el_{:.4f}_gm_{:.4f}_ncopy_{:02d}_nlayer_{:02d}.pkl".format(
-                sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g2_el,
+            fname_mc_summary = "summary_min_L_{:02d}-{:02d}_g2_{:.4f}_gm_{:.4f}_ncopy_{:02d}_nlayer_{:02d}.pkl".format(
+                sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g2,
                 sys_cfg.g_gm, sys_cfg.ncopy, sys_cfg.nlayer)
-            fname_result_min = "result_min_L_{:02d}-{:02d}_g2el_{:.4f}_gm_{:.4f}_ncopy_{:02d}_nlayer_{:02d}.pkl".format(
-                sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g2_el,
+            fname_result_min = "result_min_L_{:02d}-{:02d}_g2_{:.4f}_gm_{:.4f}_ncopy_{:02d}_nlayer_{:02d}.pkl".format(
+                sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g2,
                 sys_cfg.g_gm, sys_cfg.ncopy, sys_cfg.nlayer)
 
             self.last_result.save_summary(fname_mc_summary)

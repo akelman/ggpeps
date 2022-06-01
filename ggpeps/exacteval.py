@@ -150,6 +150,7 @@ class ExactEvaluator():
             "paramvec":[],
             "ncopy":[],
             "nlayer":[],
+            "g2": [],
             "g2_el": [],
             "g_gm": [],
             "g2_mag": [],
@@ -159,6 +160,7 @@ class ExactEvaluator():
             dest['name'].append(key)
             dest['nx'].append(self.system.cfg.lattice.nx)
             dest['ny'].append(self.system.cfg.lattice.ny)
+            dest['g2'].append(2*self.system.cfg.g2_el)
             dest['g2_el'].append(self.system.cfg.g2_el)
             dest['g_gm'].append(self.system.cfg.g_gm)
             dest['g2_mag'].append(self.system.cfg.g2_mag)
@@ -179,8 +181,8 @@ class ExactEvaluator():
         tstr="-".join([str(t) for t in tvec])
         ystr="-".join([str(y) for y in yvec])
         zstr="-".join([str(z) for z in zvec])
-        fname_summary = "summary_exact_L_{:02d}-{:02d}_gel_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{}_y_{}_z_{}.pkl".format(
-            syscfg.lattice.nx,syscfg.lattice.ny, syscfg.g2_el, syscfg.g_gm, syscfg.g2_mag, tstr, ystr, zstr)
+        fname_summary = "summary_exact_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{}_y_{}_z_{}.pkl".format(
+            syscfg.lattice.nx,syscfg.lattice.ny, syscfg.g2, syscfg.g_gm, syscfg.g2_mag, tstr, ystr, zstr)
         self.save_summary(fname_summary)
 
     def save_summary(self, fname_summary: str):
