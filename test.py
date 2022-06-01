@@ -7,7 +7,8 @@ from ggpeps.measurement import Measurement
 from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloEstimator, MonteCarloManager
 from ggpeps.minimizer import Minimizer
 from pfapack import pfaffian as pf
-from ggpeps.modearray import ModeArray, generate_permutation_matrix
+from ggpeps.modearray import ModeArray
+from ggpeps.lattice import Direction
 
 
 def compare_array_elementwise(testcase,ref,res,print_vals=True):
@@ -131,6 +132,11 @@ class TestLattice(unittest.TestCase):
         coord=self.lat2d.ind2coord(ind)
         self.assertEqual(ref,coord)
 
+    def test_coord2ind_dir(self):
+        # test for negative coordinates
+        self.assertTrue( self.lat2d.coord2ind_dir( (-1,0), Direction.X) == self.lat2d.nx - 1)
+        self.assertTrue( self.lat2d.coord2ind_dir( (0,-1), Direction.Y) == self.lat2d.nx * self.lat2d.ny + self.lat2d.ny - 1)
+
     def test_ind2coord_dir_2d(self):
         coord_ref=(2,3)
         for dir_ref in [lattice.Direction.X, lattice.Direction.Y]:
@@ -251,6 +257,30 @@ class TestLattice(unittest.TestCase):
         for k in range( len(modes_calc) ):
             self.assertTrue( modes_calc[k] == modes_manual[k] )
     
+    def test_site_based_mode_order(self):
+        # TODO: for now, this only tests the case with 1 copy 
+        # (to extend the test, the tested function needs to be updated)
+
+        lat = lattice.Lattice2D(2,3)
+        modes_calc = lat.get_site_based_mode_order()
+
+        # <mode_letter:maj mode>_<copy>_<link_id>
+        modes_manual = [    "l1_1_1", "l2_1_1", "r1_1_0", "r2_1_0", # each two lines is one site
+                            "d1_1_8", "d2_1_8", "u1_1_6", "u2_1_6",
+                            "l1_1_0", "l2_1_0", "r1_1_1", "r2_1_1",
+                            "d1_1_11", "d2_1_11", "u1_1_9", "u2_1_9",
+                            "l1_1_3", "l2_1_3", "r1_1_2", "r2_1_2",
+                            "d1_1_6", "d2_1_6", "u1_1_7", "u2_1_7",
+                            "l1_1_2", "l2_1_2", "r1_1_3", "r2_1_3",
+                            "d1_1_9", "d2_1_9", "u1_1_10", "u2_1_10",
+                            "l1_1_5", "l2_1_5", "r1_1_4", "r2_1_4", 
+                            "d1_1_7", "d2_1_7", "u1_1_8", "u2_1_8",
+                            "l1_1_4", "l2_1_4", "r1_1_5", "r2_1_5",
+                            "d1_1_10", "d2_1_10", "u1_1_11", "u2_1_11" ]
+        
+        self.assertTrue( len(modes_calc) == len(modes_manual))
+        for k in range( len(modes_calc) ):
+            self.assertTrue( modes_calc[k] == modes_manual[k] )
 
 class TestPermutationBuilder2D(unittest.TestCase):
 

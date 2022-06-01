@@ -203,7 +203,7 @@ class System2DBase(ABC):
         self.gamma_neutral_gauge = self.generate_gamma_gauge_neutral()
         self._gamma_in_sys = None
         self._gaugefieldvec = np.zeros(self.cfg.lattice.nlinks)
-        self.gaugemgr = gauge.ZNGauge(2)
+        self.gaugemgr = gauge.ZNGauge(2) # needs to be changed for cases other than Z2
 
         # Weight
         self._weight = None

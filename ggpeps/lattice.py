@@ -60,7 +60,7 @@ class Lattice2D:
         return (ind % self.nx, ind//self.nx)
 
     def coord2ind(self, coord: tuple) -> int:
-        """Conversion method from coordinate tupels to lattice index (integer).
+        """Conversion method from coordinate tuples to lattice index (integer).
 
         Args:
             coord (tuple): Tuple of integers (x,y)
@@ -91,6 +91,8 @@ class Lattice2D:
 
     def coord2ind_dir(self, coord: tuple, dir: Direction) -> int:
         """Conversion method from a coordinate tuple (x,y) and a direction to a link index.
+        If one wishes to get a link in the 'negative direction', simply change coord so that travelling in the positive direction gives the correct link.
+        The function can handle negative coordinates (assumes periodic boundary conditions).
 
         Args:
             coord (tuple): Coordinate tuple (x,y)
@@ -100,6 +102,13 @@ class Lattice2D:
             int: link index
         """
         x, y = coord
+
+        # Handle case where coordinates have wrapped around the boundary in the negative direction
+        while x < 0:
+            x += self.nx
+        while y < 0:
+            y += self.ny
+
         if dir == Direction.X:
             return self.nx*self.ny*dir.value + self.nx * y + x
         elif dir == Direction.Y:
@@ -204,7 +213,7 @@ class Lattice2D:
         return dest
     
     def get_link_based_mode_order(self) -> list:
-        """Generate the link-based mode order.
+        """Generate the link-based majorana mode order.
 
         This is a sketch of a 2x3 lattice. 
         This lattice is what's used in testing this function, so check there for an explicit list of expected output.
@@ -249,8 +258,61 @@ class Lattice2D:
                 mode4 = ( "u2", copy, link_num )
                 mode_order += [ mode1, mode2, mode3, mode4 ]
 
-        # Covert to a list of strings
+        # Convert to a list of strings
         # This was left as a tupple above in case there was ever any use for that format
+        mode_order_str = []
+        for mode in mode_order:
+            mode_str = mode[0] + "_" + str(mode[1]) + "_" + str(mode[2])
+            mode_order_str.append(mode_str)
+
+        return mode_order_str
+    
+    def get_site_based_mode_order(self) -> list:
+        """Generate the site-based majorana mode order.
+
+        This is a sketch of a 2x3 lattice.
+
+            |         |
+            "8"       "11"
+            |         |
+            4 --"4"-- 5 --"5"--
+            |         |
+            "7"       "10"
+            |         |
+            2 --"2"-- 3 --"3"--
+            |         |
+            "6"       "9"
+            |         |
+            0 --"0"-- 1 --"1"--
+
+        On each site, the mode order is l1, l2, r1, r2, d1, d2, u1, u2 for the first copy, 
+        and then the same thing for the second copy (if there is one).
+
+        Returns:
+            list: List of strings of the form <mode_letter:majorana mode>_<copy>_<link_id>
+        """
+        num_copies = 1 # should be generalized
+        mode_order = []
+        for site in range(self.nx * self.ny):
+            for c in range(num_copies):
+                copy = c + 1
+                x, y = self.ind2coord(site) # coordinates of the site
+
+                # Horizontal
+                mode1 = ("l1", copy, self.coord2ind_dir( (x-1,y), Direction.X ) )
+                mode2 = ("l2", copy, self.coord2ind_dir( (x-1,y), Direction.X ) )
+                mode3 = ("r1", copy, self.coord2ind_dir( (x,y), Direction.X ) )
+                mode4 = ("r2", copy, self.coord2ind_dir( (x,y), Direction.X ) )
+
+                # Vertical
+                mode5 = ("d1", copy, self.coord2ind_dir( (x,y-1), Direction.Y ) )
+                mode6 = ("d2", copy, self.coord2ind_dir( (x,y-1), Direction.Y ) )
+                mode7 = ("u1", copy, self.coord2ind_dir( (x,y), Direction.Y ) )
+                mode8 = ("u2", copy, self.coord2ind_dir( (x,y), Direction.Y ) )
+
+                mode_order += [ mode1, mode2, mode3, mode4, mode5, mode6, mode7, mode8 ]
+        
+        # Convert to a list of strings
         mode_order_str = []
         for mode in mode_order:
             mode_str = mode[0] + "_" + str(mode[1]) + "_" + str(mode[2])
