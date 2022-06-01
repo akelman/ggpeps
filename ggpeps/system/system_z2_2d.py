@@ -6,6 +6,7 @@ import sympy
 from scipy.linalg import block_diag
 from ggpeps import utils
 from .system_base import Config2DBase, System2DBase
+from ggpeps.lattice import Direction
 from .system_base import calculate_lognorm, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats, calculate_lognorm_inc
 from warnings import warn # Used for deprecation warnings
 
@@ -146,12 +147,15 @@ class Z2System2D(System2DBase):
         This method overwrites an abstract method in System2DBase.
         """
 
-        nlinks = self.cfg.lattice.nlinks
-        id = np.eye(nlinks)
-        neutral_gauge = self.gamma_neutral_gauge
+        size = self.cfg.lattice.size # number of sites
 
-        # Initialize gamma_in_sys for the full system (and trackers)
-        gamma_in_sys = np.kron(id, neutral_gauge)
+        # Initialize gamma_in_sys for the full system 
+        id = np.eye(size) 
+        neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral[Direction.X] )
+        neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral[Direction.Y] )
+        gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y) # for the 3D case, simply add in the Z covariance matrix as well
+
+        # Initialize all the trackers of inverses and determinants
         diffvec = [
             mat_d_inv - gamma_in_sys for mat_d_inv in self.mat_d_inv_vec
         ]
@@ -178,9 +182,9 @@ class Z2System2D(System2DBase):
         return gamma_in_sys, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
 
-    def generate_gamma_gauge_neutral(self):
+    def _generate_gamma_gauge_neutral_dict(self):
         """This matrix is the covariance matrix of the ungauged projectors.
-        The morde order is {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2}, where the underscore notation explicitly denotes Majorana modes and not sites.
+        The mode order is {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2}, where the underscore notation explicitly denotes Majorana modes and not sites.
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
@@ -189,11 +193,14 @@ class Z2System2D(System2DBase):
         Returns:
             np.ndarray: Covariance matrix of the ungauged projector on a single link
         """
-        return np.real_if_close(1.j*np.kron(utils.pauliy, utils.paulix))
+        dest={}
+        dest[Direction.X] = np.real_if_close(1.j*np.kron(utils.pauliy, utils.paulix)) # this just happens to be a convenient way to generate the covariance matrix that was calculated by hand
+        dest[Direction.Y] = np.real_if_close(np.kron(1.j*utils.pauliy, utils.pauliz))
+        return dest
 
     #Gauging
 
-    def generate_rotmat(self,theta, coord):
+    def generate_rotmat(self, theta, coord):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
         The mode order is (as for gamma_in_neutral) {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2}, depending on whether the link is vertical or horizontal.
 
@@ -235,8 +242,10 @@ class Z2System2D(System2DBase):
         ind_mat = 4 * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord)
-        gamma_in_subst = rotmat @ self.gamma_neutral_gauge @ np.transpose(
+        gamma_neutral_gauge = self.gamma_gauge_neutral[dir] # calling every time (rather than storing) will cause some innefficiency 
+        gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(
             rotmat)
+
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
         # Update the determinant
         mat_inv_vec = [
