@@ -14,7 +14,7 @@
 #SBATCH --cpus-per-task={ncpu}
 #
 #SBATCH --mail-type=FAIL
-#SBATCH --mail-user=julian.bender@mpq.mpg.de
+#SBATCH --mail-user=patrick.emonts@mpq.mpg.de
 #
 # Wall clock limit:
 #SBATCH --time={time}
