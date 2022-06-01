@@ -7,7 +7,8 @@ from ggpeps.measurement import Measurement
 from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloEstimator, MonteCarloManager
 from ggpeps.minimizer import Minimizer
 from pfapack import pfaffian as pf
-from ggpeps.modearray import ModeArray
+from ggpeps.modearray import ModeArray, generate_permutation_matrix
+
 
 def compare_array_elementwise(testcase,ref,res,print_vals=True):
     testcase.assertEqual(ref.shape,res.shape)
@@ -249,6 +250,7 @@ class TestLattice(unittest.TestCase):
         self.assertTrue( len(modes_calc) == len(modes_manual))
         for k in range( len(modes_calc) ):
             self.assertTrue( modes_calc[k] == modes_manual[k] )
+    
 
 class TestPermutationBuilder2D(unittest.TestCase):
 

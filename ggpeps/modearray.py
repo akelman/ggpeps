@@ -223,7 +223,7 @@ class ModeArray(np.ndarray):
         
         return self @ permutation_cols
 
-    def _verify_modes_permutation(self,modes):
+    def _verify_modes_permutation(self, modes):
         # Run all the usual checks
         self._verify_modes(modes)
         # Additionally, we check that all old modes are in the new ones
@@ -231,7 +231,7 @@ class ModeArray(np.ndarray):
             if not sorted(modes[ind])==sorted(self.modes[ind]):
                 raise ValueError(f"In dimension {ind}, the mode arrays to not correspond: {modes[ind]} vs. {self.modes[ind]}.")
 
-    def _verify_modes(self,val):
+    def _verify_modes(self, val):
         """Verify that the given modes are apt to be used as a description of the modes.
 
         Args:
@@ -247,9 +247,16 @@ class ModeArray(np.ndarray):
                 raise ValueError("The number of modes does not match the number of entries in dimension {}".format(ind))
 
 
-def generate_permutation_matrix(old_modes,new_modes):
-    arr = np.zeros((len(old_modes),len(new_modes)))
-    for ind_i,mode_i in enumerate(old_modes):
-        ind_j = new_modes.index(mode_i)
+def generate_permutation_matrix(start_modes, end_modes):
+
+    # Do checks to ensure the given mode orders are valid and compatible
+    # could probably use ModeArray methods for this
+
+    # Build permutation matrix
+    arr = np.zeros( (len(start_modes), len(end_modes)) )
+    for ind_i, mode_i in enumerate(start_modes):
+        ind_j = end_modes.index(mode_i)
         arr[ind_i, ind_j] = 1
-    return ModeArray(arr,[old_modes,new_modes])
+    
+    return ModeArray(arr, [start_modes, end_modes] )
+

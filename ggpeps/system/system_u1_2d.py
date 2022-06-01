@@ -8,7 +8,7 @@ import ggpeps.lattice as lat
 from scipy.linalg import block_diag
 from pfapack import pfaffian as pf
 
-from .system_base import Config2DBase, Z2System2DBase, calculate_lognorm, calculate_lognormvec_inc, extract_partial_covmats, compute_grad_over_norm, calculate_lognorm_inc
+from .system_base import Config2DBase, System2DBase, calculate_lognorm, calculate_lognormvec_inc, extract_partial_covmats, compute_grad_over_norm, calculate_lognorm_inc
 
 ################### U1MultilayerSystem2D ###################
 
@@ -29,7 +29,7 @@ class U1System2DConfig(Config2DBase):
             self.paramvec[ind, 0] = 0
 
 
-class U1System2D(Z2System2DBase):
+class U1System2D(System2DBase):
 
     """ NOTE: The mode ordering of the T matrix in this class is different from all other classes in this repo. 
         Order of the paramvec: [t,y,z]

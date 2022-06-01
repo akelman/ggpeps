@@ -5,7 +5,7 @@ from ggpeps import lattice as lat
 import sympy
 from scipy.linalg import block_diag
 from ggpeps import utils
-from .system_base import Z2System2DBase, Config2DBase
+from .system_base import System2DBase, Config2DBase
 from .system_base import calculate_lognorm_inc, compute_grad_over_norm, extract_partial_covmats
 from pfapack import pfaffian as pf
 
@@ -33,7 +33,7 @@ class Z2System2D2CConfig(Config2DBase):
             self.paramvec[ind, 3] = 0 # Set t2 to 0
 
 
-class Z2System2D2C(Z2System2DBase):
+class Z2System2D2C(System2DBase):
     """ 2 copy version of the Z2 system GGPEPS ansatz
 
     Some general notes about conventions:
@@ -116,7 +116,7 @@ class Z2System2D2C(Z2System2DBase):
         The biggest part of the permutation-matrix generation is done in PermutationBuilderGMS2D2C.
         The GMS stands for Gamma Majorana System, 2D for 2 dimensions, 2C for 2 copies.
 
-        This method overwrites an abstract method in Z2System2DBase.
+        This method overwrites an abstract method in System2DBase.
 
         Args:
             covmat (np.ndarray): 2D covariance matrix of a single site
@@ -169,7 +169,7 @@ class Z2System2D2C(Z2System2DBase):
         The naming convention here is <mode letter><number of copy>_<vertex index>.
         Each constituent in the list above refers to two Majorana modes.
 
-        This method overwrites an abstract method in Z2System2DBase.
+        This method overwrites an abstract method in System2DBase.
 
         """
         nlinks = self.cfg.lattice.nlinks
@@ -213,7 +213,7 @@ class Z2System2D2C(Z2System2DBase):
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
-        This method overwrites an abstract method in Z2System2DBase.
+        This method overwrites an abstract method in System2DBase.
 
         Returns:
             np.ndarray: Covariance matrix of the ungauged projector on a single link
@@ -231,7 +231,7 @@ class Z2System2D2C(Z2System2DBase):
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
-        This method overwrites an abstract method in Z2System2DBase.
+        This method overwrites an abstract method in System2DBase.
 
         Args:
             theta (float): Angle of rotation
@@ -258,7 +258,7 @@ class Z2System2D2C(Z2System2DBase):
         This method is central to the algorithm since it changes the gauged projectors and updates all incremental trackers of determinants and inverses.
         The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
 
-        This method overwrites an abstract method in Z2System2DBase.
+        This method overwrites an abstract method in System2DBase.
 
         Args:
             link_ind (int): Link index to be updated
@@ -309,7 +309,7 @@ class Z2System2D2C(Z2System2DBase):
         """Computation of the electric energy and the electric gradient in a single method.
         Since many operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
 
-        This method overwrites an abstract method in Z2System2DBase.
+        This method overwrites an abstract method in System2DBase.
 
         Args:
             use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
@@ -414,7 +414,7 @@ class Z2System2D2C(Z2System2DBase):
         """Computation of the magnetic energy operator (w/o shift).
         This operator is diagonal in the gauge field (group element) basis and can thus be computed easily.
 
-        This method overwrites an abstract method in Z2System2DBase.
+        This method overwrites an abstract method in System2DBase.
 
         Args:
             use_trans_inv (bool, optional): Use the translationally invariant computation method. Defaults to True.
