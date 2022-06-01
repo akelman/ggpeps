@@ -1,5 +1,6 @@
 import unittest
 from ggpeps import lattice
+from ggpeps.lattice import Direction
 import numpy as np
 
 
@@ -22,6 +23,12 @@ class TestLattice(unittest.TestCase):
             coord,dir=self.lat2d.ind2coord_dir(ind)
             self.assertEqual(coord_ref,coord)
             self.assertEqual(dir_ref,dir)
+
+    def test_coord2ind_dir(self):
+        # test for negative coordinates
+        self.assertTrue( self.lat2d.coord2ind_dir( (-1,0), Direction.X) == self.lat2d.nx - 1)
+        self.assertTrue( self.lat2d.coord2ind_dir( (0,-1), Direction.Y) == self.lat2d.nx * self.lat2d.ny + self.lat2d.ny - 1)
+
 
     def test_wilson_loop_1x1(self):
         ref=[(((0,0),lattice.Direction.X),False),
@@ -130,6 +137,31 @@ class TestLattice(unittest.TestCase):
                             "d1_1_9", "d2_1_9", "u1_1_9", "u2_1_9",
                             "d1_1_10", "d2_1_10", "u1_1_10", "u2_1_10",
                             "d1_1_11", "d2_1_11", "u1_1_11", "u2_1_11" ]
+        
+        self.assertTrue( len(modes_calc) == len(modes_manual))
+        for k in range( len(modes_calc) ):
+            self.assertTrue( modes_calc[k] == modes_manual[k] )
+    
+    def test_site_based_mode_order(self):
+        # TODO: for now, this only tests the case with 1 copy 
+        # (to extend the test, the tested function needs to be updated)
+
+        lat = lattice.Lattice2D(2,3)
+        modes_calc = lat.get_site_based_mode_order()
+
+        # <mode_letter:maj mode>_<copy>_<link_id>
+        modes_manual = [    "l1_1_1", "l2_1_1", "r1_1_0", "r2_1_0", # each two lines is one site
+                            "d1_1_8", "d2_1_8", "u1_1_6", "u2_1_6",
+                            "l1_1_0", "l2_1_0", "r1_1_1", "r2_1_1",
+                            "d1_1_11", "d2_1_11", "u1_1_9", "u2_1_9",
+                            "l1_1_3", "l2_1_3", "r1_1_2", "r2_1_2",
+                            "d1_1_6", "d2_1_6", "u1_1_7", "u2_1_7",
+                            "l1_1_2", "l2_1_2", "r1_1_3", "r2_1_3",
+                            "d1_1_9", "d2_1_9", "u1_1_10", "u2_1_10",
+                            "l1_1_5", "l2_1_5", "r1_1_4", "r2_1_4", 
+                            "d1_1_7", "d2_1_7", "u1_1_8", "u2_1_8",
+                            "l1_1_4", "l2_1_4", "r1_1_5", "r2_1_5",
+                            "d1_1_10", "d2_1_10", "u1_1_11", "u2_1_11" ]
         
         self.assertTrue( len(modes_calc) == len(modes_manual))
         for k in range( len(modes_calc) ):
