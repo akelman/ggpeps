@@ -167,10 +167,10 @@ def calculate_lognorm_inc(incdet_vec, det_mat_d_vec, n, all_factors=False):
     return np.sum(lognormvec)
 
 
-################## Z2System2DBase ######################
+################## System2DBase ######################
 
-class Z2System2DBase(ABC):
-    """ Base class for two dimensional Z2 systems
+class System2DBase(ABC):
+    """ Base class for two dimensional systems
 
     This class inherits from the abstract base class to enable abstract methods that has to be overwritten in a child class.
     This class cannot be instantiated directly.
@@ -204,7 +204,7 @@ class Z2System2DBase(ABC):
         self._gamma_gauge_neutral_dict = None
         self._gamma_in_sys = None
         self._gaugefieldvec = np.zeros(self.cfg.lattice.nlinks)
-        self.gaugemgr = gauge.ZNGauge(2)
+        self.gaugemgr = gauge.ZNGauge(2) # needs to be changed for cases other than Z2
 
         # Weight
         self._weight = None

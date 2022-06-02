@@ -22,7 +22,9 @@ The virtual environment can be deactivated with `deactivate`.
 
 2. Cloning the code  
 You can obtain the code by cloning the repo with
-```git clone git@gitlab.mpcdf.mpg.de:pemonts/gaussian-peps.git```.
+```
+git clone git@gitlab.mpcdf.mpg.de:pemonts/gaussian-peps.git
+```.
 Note that you have to be a member of the project to clone it.
 Cloning via SSH works only if you have added a (public) SSH key to the repository.
 
@@ -143,6 +145,19 @@ The option `--show` displays the interactive matplotlib plot before saving the p
 This script is meant for data exploration and should not be used to produce paper-style plots.
 
 Further information about the capabilities of `plot_summary.py` can be obtained with `python plot_summary.py --help`.
+
+## Tests
+
+The code is accompagnied by an extensive suit of tests which are located in the folder `tests`.
+The full test-suite can be executed with
+```
+python -m unittest tests/test_*.py
+```
+
+If you want to execute a more specialized test, you can execute the files separately as well:
+```
+python -m unittest tests/test_lattice.py
+```
 
 ## Known Issues
 
