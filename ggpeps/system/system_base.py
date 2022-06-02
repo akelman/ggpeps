@@ -1096,3 +1096,120 @@ class System2DBase(ABC):
     def compute_ferm_cov(self):
         """Compute the covariance matrix of the fermions in the system """
         return self.mat_a + self.mat_b@self.wi_gamma_out.inv()@np.transpose(self.mat_b)
+
+
+
+    ################## Mode Permutations ######################
+
+    def get_link_based_mode_order(self) -> list:
+        """Generate the link-based majorana mode order.
+
+        This is a sketch of a 2x3 lattice. 
+        This lattice is what's used in testing this function, so check there for an explicit list of expected output.
+            |         |
+            "8"       "11"
+            |         |
+            4 --"4"-- 5 --"5"--
+            |         |
+            "7"       "10"
+            |         |
+            2 --"2"-- 3 --"3"--
+            |         |
+            "6"       "9"
+            |         |
+            0 --"0"-- 1 --"1"--
+
+        Returns:
+            list: List of strings of the form <mode_letter:majorana mode>_<copy>_<link_id>
+        """
+
+        lat = self.cfg.lattice
+        num_copies = 1 # needs to be changed to get the correct number of copies
+        mode_order = []
+
+        # Horizontal first
+        for link in range(lat.nx * lat.ny):
+            for c in range(num_copies):
+                copy = c + 1
+                mode1 = ( "l1", copy, link ) # majorana mode l1
+                mode2 = ( "l2", copy, link ) # majorana mode l2
+                mode3 = ( "r1", copy, link )
+                mode4 = ( "r2", copy, link )
+                mode_order += [ mode1, mode2, mode3, mode4 ]
+        
+        # Vertical
+        for link in range(lat.nx * lat.ny):
+            link_num = link + lat.nx * lat.ny # vertical link numbers start at the number of horizontal links that there are
+            for c in range(num_copies):
+                copy = c + 1
+                mode1 = ( "d1", copy, link_num ) # majorana mode d1
+                mode2 = ( "d2", copy, link_num ) # majorana mode d2
+                mode3 = ( "u1", copy, link_num )
+                mode4 = ( "u2", copy, link_num )
+                mode_order += [ mode1, mode2, mode3, mode4 ]
+
+        # Convert to a list of strings
+        # This was left as a tupple above in case there was ever any use for that format
+        mode_order_str = []
+        for mode in mode_order:
+            mode_str = mode[0] + "_" + str(mode[1]) + "_" + str(mode[2])
+            mode_order_str.append(mode_str)
+
+        return mode_order_str
+    
+    
+    def get_site_based_mode_order(self) -> list:
+        """Generate the site-based majorana mode order.
+
+        This is a sketch of a 2x3 lattice.
+
+            |         |
+            "8"       "11"
+            |         |
+            4 --"4"-- 5 --"5"--
+            |         |
+            "7"       "10"
+            |         |
+            2 --"2"-- 3 --"3"--
+            |         |
+            "6"       "9"
+            |         |
+            0 --"0"-- 1 --"1"--
+
+        On each site, the mode order is l1, l2, r1, r2, d1, d2, u1, u2 for the first copy, 
+        and then the same thing for the second copy (if there is one).
+
+        Returns:
+            list: List of strings of the form <mode_letter:majorana mode>_<copy>_<link_id>
+        """
+
+        lat = self.cfg.lattice
+        num_copies = 1 # should be generalized
+        mode_order = []
+
+        for site in range(lat.nx * lat.ny):
+            for c in range(num_copies):
+                copy = c + 1
+                x, y = lat.ind2coord(site) # coordinates of the site
+
+                # Horizontal
+                mode1 = ("l1", copy, lat.coord2ind_dir( (x-1,y), Direction.X ) )
+                mode2 = ("l2", copy, lat.coord2ind_dir( (x-1,y), Direction.X ) )
+                mode3 = ("r1", copy, lat.coord2ind_dir( (x,y), Direction.X ) )
+                mode4 = ("r2", copy, lat.coord2ind_dir( (x,y), Direction.X ) )
+
+                # Vertical
+                mode5 = ("d1", copy, lat.coord2ind_dir( (x,y-1), Direction.Y ) )
+                mode6 = ("d2", copy, lat.coord2ind_dir( (x,y-1), Direction.Y ) )
+                mode7 = ("u1", copy, lat.coord2ind_dir( (x,y), Direction.Y ) )
+                mode8 = ("u2", copy, lat.coord2ind_dir( (x,y), Direction.Y ) )
+
+                mode_order += [ mode1, mode2, mode3, mode4, mode5, mode6, mode7, mode8 ]
+        
+        # Convert to a list of strings
+        mode_order_str = []
+        for mode in mode_order:
+            mode_str = mode[0] + "_" + str(mode[1]) + "_" + str(mode[2])
+            mode_order_str.append(mode_str)
+
+        return mode_order_str
