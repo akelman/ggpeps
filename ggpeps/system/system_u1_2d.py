@@ -126,7 +126,7 @@ class U1System2D(System2DBase):
         #Reassemble them in the correct order
         mat_sys_unordered= np.block(
             [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
-        dest = mat_perm @ mat_sys_unordered @ np.transpose(mat_perm)
+        dest = mat_perm @ mat_sys_unordered @ np.transpose(mat_perm) # Note that this uses a different permutation matrix convention than in Z2 case.
         return dest
 
 
