@@ -1,6 +1,12 @@
 import numpy as np
 from numbers import Number
 
+# There are multiple ways to extend numpy arrays to contain an additional list of mode arrays
+# One option is a container class: https://numpy.org/doc/stable/user/basics.dispatch.html
+# Given the documentation this option looks like a class that should behave like a numpy array but is actually implemented differently.
+# We are aiming rather for a numpy array with a bit extra. The inheritance option looks more reasonable: https://numpy.org/doc/stable/user/basics.subclassing.html
+# The following code roughly follows the ideas given in the documentation "Subclassing ndarray"
+
 class ModeArray(np.ndarray):
 
     def __new__(cls, input_array, modes):
