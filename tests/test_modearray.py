@@ -142,20 +142,20 @@ class TestModeArray(unittest.TestCase):
     
     def test_permute_3x3_rows(self):
         old_modes = ["1","2","3"]
-        new_modes = ["3","2","1"]
-        arr = ModeArray(np.array([[1,1,1],[2,2,2],[3,3,3]]),[old_modes,old_modes])
+        new_modes = ["3","1","2"]
+        arr = ModeArray(np.array([[1,2,3],[4,5,6],[7,8,9]]),[old_modes,old_modes])
         dest = arr.permute([new_modes,old_modes])
 
         ref_modes = [new_modes, old_modes]
         self.assertTrue(dest.modes == ref_modes)
-        self.assertTrue(np.allclose(np.asarray(dest), np.asarray( [[3, 3, 3], [2, 2, 2], [1, 1, 1]])))
+        self.assertTrue(np.allclose(np.asarray(dest), np.asarray( [[7, 8, 9], [1, 2, 3], [4, 5, 6]])))
 
     def test_permute_3x3_cols(self):
         old_modes = ["1","2","3"]
-        new_modes = ["3","2","1"]
-        arr = ModeArray(np.array([[1,2,3],[1,2,3],[1,2,3]]),[old_modes,old_modes])
+        new_modes = ["3","1","2"]
+        arr = ModeArray(np.array([[1,2,3],[4,5,6],[7,8,9]]),[old_modes,old_modes])
         dest = arr.permute([old_modes,new_modes])
 
         ref_modes = [old_modes, new_modes]
         self.assertTrue(list(dest.modes) == ref_modes)
-        self.assertTrue(np.allclose(np.asarray(dest), np.asarray( [[3, 2, 1], [3, 2, 1], [3, 2, 1]])))
+        self.assertTrue(np.allclose(np.asarray(dest), np.asarray( [[3, 1, 2], [6, 4, 5], [9, 7, 8]])))
