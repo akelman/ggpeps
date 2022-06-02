@@ -166,3 +166,20 @@ class TestLattice(unittest.TestCase):
         self.assertTrue( len(modes_calc) == len(modes_manual))
         for k in range( len(modes_calc) ):
             self.assertTrue( modes_calc[k] == modes_manual[k] )
+    
+    def test_matching_permutations(self):
+        # Test that permutation matrices generated using the ModeArray methods matches with previous PermutationBuilder class
+
+        from ggpeps.modearray import generate_permutation_matrix
+
+        lat = lattice.Lattice2D(2,3)
+        modes_link_order = lat.get_link_based_mode_order()
+        modes_site_order = lat.get_site_based_mode_order()
+        new_perm_mat = generate_permutation_matrix(modes_site_order, modes_link_order)
+
+        permbuilder = lattice.PermutationBuilderGMS2D(lat, 1)
+        prev_perm_mat = permbuilder.perm()
+        prev_perm_mat = prev_perm_mat[12:,12:] # remove the physical modes on the sites
+
+        self.assertTrue(np.allclose(new_perm_mat.view(np.ndarray), prev_perm_mat.T)) # currently the convention is not matching, so we take the transposition of one of them
+        
