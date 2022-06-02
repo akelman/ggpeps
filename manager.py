@@ -104,12 +104,16 @@ def main():
     mc_config.seed = seed
 
     #Set up the logger
+    h_stdout = logging.StreamHandler(stream=sys.stdout)
+    h_stderr = logging.StreamHandler(stream=sys.stderr)
+    h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
     logging.basicConfig(
         level=args.level.upper(),
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[
             logging.FileHandler(args2logname(args)),
-            logging.StreamHandler()
+            h_stdout,
+            h_stderr
         ]
     )
 
