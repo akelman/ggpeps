@@ -151,8 +151,9 @@ Further information about the capabilities of `plot_summary.py` can be obtained 
 The code is accompagnied by an extensive suit of tests which are located in the folder `tests`.
 The full test-suite can be executed with
 ```
-python -m unittest tests/test_*.py
+python -m unittest
 ```
+from the main project folder.
 
 If you want to execute a more specialized test, you can execute the files separately as well:
 ```
