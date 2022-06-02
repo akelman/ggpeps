@@ -690,3 +690,14 @@ def show_eigenvalues(mat):
         ax[0].set_title("Imaginary part")
         ax[1].plot(np.imag(eigvals), 'o')
     plt.show()
+
+#========== Testing Functions ====================
+
+def compare_array_elementwise(testcase,ref,res,print_vals=True):
+    testcase.assertEqual(ref.shape,res.shape)
+    if print_vals:
+        for i in range(ref.shape[0]):
+            for j in range(ref.shape[1]):
+                if not np.isclose(ref[i, j] , res[i, j]):
+                    print("{},{}: ref: {},res:{}".format(i,j,ref[i,j],res[i,j]))
+    testcase.assertTrue(np.allclose(ref,res))
