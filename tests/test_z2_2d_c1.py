@@ -6,7 +6,7 @@ from ggpeps.lattice import Direction
 from ggpeps import system
 from ggpeps import utils
 from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloEstimator, MonteCarloManager
-from . import compare_array_elementwise
+from ggpeps.utils import compare_array_elementwise
 
 class TestZ2SystemMethods(unittest.TestCase):
     def setUp(self):
