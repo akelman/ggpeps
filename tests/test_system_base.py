@@ -121,32 +121,5 @@ class TestSystemBase(unittest.TestCase):
         for k in range( len(modes_calc) ):
             self.assertTrue( modes_calc[k] == modes_manual[k] )
     
-    def test_matching_permutations_1copy(self):
-        # Test that permutation matrices generated using the ModeArray methods matches with previous PermutationBuilder class
 
-        from ggpeps.modearray import generate_permutation_matrix
-
-        modes_link_order = self.system_z2_1c.get_link_based_mode_order()
-        modes_site_order = self.system_z2_1c.get_site_based_mode_order()
-        new_perm_mat = generate_permutation_matrix(modes_site_order, modes_link_order)
-
-        permbuilder = lattice.PermutationBuilderGMS2D(self.system_z2_1c.cfg.lattice, 1)
-        prev_perm_mat = permbuilder.perm()
-        prev_perm_mat = prev_perm_mat[12:,12:] # remove the physical modes on the sites
-
-        self.assertTrue(np.allclose(new_perm_mat.view(np.ndarray), prev_perm_mat.T)) # currently the convention is not matching, so we take the transposition of one of them
-        
-    def test_matching_permutations_2copy(self):
-        from ggpeps.modearray import generate_permutation_matrix
-
-        modes_link_order = self.system_z2_2c.get_link_based_mode_order()
-        modes_site_order = self.system_z2_2c.get_site_based_mode_order()
-        new_perm_mat = generate_permutation_matrix(modes_site_order, modes_link_order)
-
-        permbuilder = lattice.PermutationBuilderGMS2D2C(self.system_z2_2c.cfg.lattice, 1)
-        prev_perm_mat = permbuilder.perm()
-        prev_perm_mat = prev_perm_mat[12:,12:] # remove the physical modes on the sites
-
-        self.assertTrue(np.allclose(new_perm_mat.view(np.ndarray), prev_perm_mat.T)) # currently the convention is not matching, so we take the transposition of one of them
-        
 
