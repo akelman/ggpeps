@@ -79,8 +79,8 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--exact", help="ED data")
-    parser.add_argument("--mc", nargs="+", help="EC data")
-    parser.add_argument("--ec", nargs="+", help="MC data")
+    parser.add_argument("--mc", nargs="+", help="MC data")
+    parser.add_argument("--ec", nargs="+", help="EC data")
     parser.add_argument("--show", action="store_true", default=False, help="Show the plot")
     parser.add_argument("--logx", action="store_true", default=False, help="Use logarithmic scaling for x axis")
     parser.add_argument("--logy", action="store_true", default=False, help="Use logarithmix scaling for y axis")
