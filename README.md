@@ -45,7 +45,21 @@ If you want to make the change persistent, i.e. it remains after closing the ter
 
 The repository is split into two main parts: the package `ggpeps` and utility scripts in the main folder.
 
-TODO: Write more about the structure of the code
+The package `ggpeps` contains the simulation code, i.e. the actual implementation of the physical problem.
+All scripts in the main folder call parts of the package and provide the infrastructure to manage the simulations.
+
+The package `ggpeps` is divided into several parts:
+
+- `plot`: Helper scripts for plots
+- `system`: Module containing all system implementations. Currently, two-dimensional systems for $Z_2$ are implemented with one and two copies of virtual fermions on the links are implemented.
+The implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
+- `exacteval.py`: For small systems and finite gauge groups, the expectation values of the states can be evaluated exactly by contracting the full PEPS.
+- `gauge.py`: Implementation of the gauge groups
+- `lattice.py`: Implementation of two- and three-dimensional lattices
+- `mc.py`: Implementation of the Monte Carlo sampling
+- `measurement.py`: Measurement class to manage the timeseries data of the MC simulation
+- `minimizer.py`: Minimizer class with a custom minimizer and a wrapper of the `scipy.optimize.minimize` function.
+- `utils.py`: Utility functions
 
 ## Physical System
 
@@ -89,23 +103,28 @@ python manager.py eval 2
 ```
 
 `min`:
-In minimization mode, the Kogut Susskind Hamiltonian for the gauge theory in question is minimized by using different minimizers. 
+In minimization mode, the Kogut-Susskind Hamiltonian for the gauge theory in question is minimized by using different minimizers. 
 The expectation values for a given set of parameters are computed with Monte Carlo.
 The update according to the computed energy and gradients is controlled by the optimizer.
 Currently, scipy optimizers like `BFGS` and a custom gradient based optimizer is available.
 
-TODO: Add example call
+```
+python manager.py min 2 --method BFGS
+```
 
 `minexact`:
 For small systems, we can substitute the Monte Carlo evaluation part in the minimization (just as we did in `eval` mode) with an exact contraction.
+Exact contraction are only available for systems of size 2x2.
 
-TODO: Add example call
+```
+python manager.py minexact 2 --method BFGS
+```
 
 For an overview of all command line parameters call `python manager.py --help`.
 
 ## Data Analysis/ Data Exploration
 
-The data from different modes is stored in the form of pickled dataframes.
+The data from different modes is stored in the form of pickled pandas dataframes.
 
 A basic overview of the data can be obtained with 
 ```
@@ -113,16 +132,26 @@ python inspect_data.py <fname>
 ```
 
 All scripts prefixed with `plot_*` will plot some aspect of the provided datasets.
+The most used script is `plot_summary.py` which displays the data of a `summary_*.pkl` file.
+Minimization and evalautions of single parameters produce summary files.
 
-TODO: More about plotting scripts
+A typical can look like
+```
+python ../../../../plot_summary.py --ec summary_min* --obs el_energy mag_energy energy --show
+```
+The option `--show` displays the interactive matplotlib plot before saving the plot to disk.
+This script is meant for data exploration and should not be used to produce paper-style plots.
+
+Further information about the capabilities of `plot_summary.py` can be obtained with `python plot_summary.py --help`.
 
 ## Known Issues
 
-- Error in computation of electric energy of Z2 theories in 2d
+- Current implementation of U1 is not working properly
+- Bogoliubov transform yields wrong results if used with fermions
 
 ## Ideas
 
-- Add U1 system
+- Add U1 system properly
 - Add system in 3d
 - Add option for DMRG like cylinder compression to obtain transfer matrices
 - Make data file optional?
