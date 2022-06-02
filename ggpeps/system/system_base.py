@@ -1124,7 +1124,7 @@ class System2DBase(ABC):
         """
 
         lat = self.cfg.lattice
-        num_copies = 1 # needs to be changed to get the correct number of copies
+        num_copies = self.cfg.ncopy # The ncopy property is defined the config of any child class of System2DBase
         mode_order = []
 
         # Horizontal first
@@ -1157,7 +1157,7 @@ class System2DBase(ABC):
 
         return mode_order_str
     
-    
+
     def get_site_based_mode_order(self) -> list:
         """Generate the site-based majorana mode order.
 
@@ -1184,7 +1184,7 @@ class System2DBase(ABC):
         """
 
         lat = self.cfg.lattice
-        num_copies = 1 # should be generalized
+        num_copies = self.cfg.ncopy # The ncopy property is defined the config of any child class of System2DBase
         mode_order = []
 
         for site in range(lat.nx * lat.ny):
