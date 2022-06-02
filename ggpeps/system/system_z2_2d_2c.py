@@ -7,6 +7,7 @@ from scipy.linalg import block_diag
 from ggpeps import utils
 from .system_base import System2DBase, Config2DBase
 from ggpeps.lattice import Direction
+from ggpeps.modearray import generate_permutation_matrix
 from .system_base import calculate_lognorm_inc, compute_grad_over_norm, extract_partial_covmats
 from pfapack import pfaffian as pf
 
@@ -125,9 +126,13 @@ class Z2System2D2C(System2DBase):
         Returns:
             np.ndarray: 2D covariance matrix of the full system
         """
-        #TODO: Why are we calling this function with 1 mode per link? There are two copies and thus two modes per link around...
-        permbuilder = lat.PermutationBuilderGMS2D2C(self.cfg.lattice, nmodes_per_link=1)
-        mat_perm = permbuilder.perm()
+        # Build permutation matrix to convert modes from site order to link order
+        modes_link_order = self.get_link_based_mode_order()
+        modes_site_order = self.get_site_based_mode_order()
+        mat_perm_links = generate_permutation_matrix( modes_site_order, modes_link_order) # be careful with the convention of the permutation matrix vs its transpose; this way works with the code below.
+        sites_perm = np.eye( 2 * self.cfg.lattice.nx * self.cfg.lattice.ny ) # total number of physical fermionic modes on all the sites together
+        mat_perm = block_diag(sites_perm, mat_perm_links)
+
         nsites=self.cfg.lattice.size
         id = np.eye(nsites)
         # Extract the parts of the covariance matrix
@@ -141,7 +146,7 @@ class Z2System2D2C(System2DBase):
         #Reassemble them in the correct order
         mat_sys_unordered= np.block(
             [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
-        dest=mat_perm@mat_sys_unordered@np.transpose(mat_perm)
+        dest = np.transpose(mat_perm) @ mat_sys_unordered @ mat_perm
         return dest
 
 
