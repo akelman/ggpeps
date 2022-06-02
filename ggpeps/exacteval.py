@@ -160,7 +160,7 @@ class ExactEvaluator():
             dest['name'].append(key)
             dest['nx'].append(self.system.cfg.lattice.nx)
             dest['ny'].append(self.system.cfg.lattice.ny)
-            dest['g2'].append(2*self.system.cfg.g2_el)
+            dest['g2'].append(self.system.cfg.g2)
             dest['g2_el'].append(self.system.cfg.g2_el)
             dest['g_gm'].append(self.system.cfg.g_gm)
             dest['g2_mag'].append(self.system.cfg.g2_mag)
