@@ -22,6 +22,7 @@ class MonteCarloEstimatorConfig:
     def __init__(self):
         self.warmup_steps = None
         self._seed = None
+        self._rng_state = None
         self.meas_steps = None
         self.binsize = 1
         self.minimizer_mode = False
@@ -30,13 +31,27 @@ class MonteCarloEstimatorConfig:
     @property
     def seed(self):
         if self._seed is None:
-            dt = datetime.now()
-            self._seed = int(time.time()+dt.microsecond)
+            self._seed = np.random.randint(np.iinfo(np.int32).max)
+            self._rng_state = np.random.RandomState(self._seed)
         return self._seed
 
     @seed.setter
-    def seed(self, seedval):
+    def seed(self,seedval):
         self._seed = seedval
+        self._rng_state = np.random.RandomState(seedval)
+
+    @property
+    def rng_state(self):
+        if self._rng_state is None:
+            self._seed = np.random.randint(np.iinfo(np.int32).max)
+            self._rng_state = np.random.RandomState(self._seed)
+        return self._rng_state
+
+    @rng_state.setter
+    def rng_state(self,state):
+        logging.error("MonteCarloEstimatorConfig: Do not set the state directly. Use a seed instead.")
+        self.rng_state = None
+        self.seed = None
 
     def __str__(self):
         dest = ""
@@ -211,13 +226,13 @@ class MonteCarloEstimator:
         # Pick a site to update
         lattice = self.system.cfg.lattice
         nlinks = lattice.nlinks
-        link_ind = np.random.randint(0, nlinks)
+        link_ind = self.cfg.rng_state.randint(0, nlinks)
         # Uniformly pick a gauge to replace
-        theta = self.system.gaugemgr.get_random_gauge_value()
+        theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
         # Store the old values
         weight_old = self.system.weight
         weight_new = self.system.calculate_weight_attempt(link_ind, theta)
-        if np.exp(weight_new - weight_old) > np.random.rand():
+        if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
             # Accept
             self.obsdict["acceptance_prob"].append(1)
             self.system.update_gauge_ind(link_ind, theta)
@@ -236,11 +251,11 @@ class MonteCarloEstimator:
         nlinks = lattice.nlinks
         for i in range(nlinks):
             # Uniformly pick a gauge to replace
-            theta = self.system.gaugemgr.get_random_gauge_value()
+            theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
             # Store the old values
             weight_old = self.system.weight
             weight_new = self.system.calculate_weight_attempt(i, theta)
-            if np.exp(weight_new - weight_old) > np.random.rand():
+            if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
                 # Accept
                 self.obsdict["acceptance_prob"].append(1)
                 self.system.update_gauge_ind(i, theta)
@@ -333,7 +348,7 @@ class MonteCarloEstimator:
         """
         data_full = {
             "version": utils.get_git_hash(),
-            "rng_state": np.random.get_state(),
+            "rng_state": self.cfg.rng_state.get_state(),
             "mc": self
         }
         with gzip.open(fname_full, "wb") as outfile:

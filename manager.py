@@ -53,12 +53,13 @@ def args2logname(args):
                 args.g2_mag, args.nlayer, args.warmup_steps, args.meas_steps)
     return fname
 
-def translate_parameters(system_cfg, params):
+def translate_parameters(system_cfg, params,rng_state):
     """Translate the parameters given on the commandline to a form useful in the code
 
     Args:
         system_cfg (SystemConfig): Configuration of the system
         params (str): Parameters as given on the command line
+        rng_state (np.random.RandomState): Input state of a PRNG
 
     Returns:
         np.array: Array of parameters that are suited for the simulation according to the command line parameters
@@ -71,7 +72,7 @@ def translate_parameters(system_cfg, params):
         dest = np.reshape(dest,(nlayer,-1))
     elif params is None or params=="rand" :
         # No parameters are given and we randomize
-        dest = np.random.rand(nlayer, nparams)
+        dest = rng_state.rand(nlayer, nparams)
     else:
         # The parameters are listed explicitly in the command line
         dest = np.asarray(params, dtype=float)
@@ -79,7 +80,7 @@ def translate_parameters(system_cfg, params):
             dest = dest.reshape((nlayer, nparams))
         except:
             logging.warning("Reshape of provided parameters impossible. Starting with random parameters.")
-            dest = np.random.rand(nlayer, nparams)
+            dest = rng_state.rand(nlayer, nparams)
     return dest
 
 
@@ -95,7 +96,12 @@ def main():
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize
     if args.seed is not None:
-        mc_config.seed = args.seed
+        seed = args.seed
+    else:
+        seed = np.random.randint(np.iinfo(np.int32).max)
+
+    rngstate = np.random.RandomState(seed)
+    mc_config.seed = seed
 
     #Set up the logger
     logging.basicConfig(
@@ -115,7 +121,6 @@ def main():
     logging.info("============================")
 
     #Set up the simulation
-    np.random.seed(mc_config.seed)
     L = args.L
     g2 = args.g2
     g_gm = args.g_gm
@@ -144,7 +149,7 @@ def main():
     else:
         logging.error("Not Implemented: Only 1 or two copies are possible")
         sys.exit(1)
-    paramvec = translate_parameters(system_cfg, args.params)
+    paramvec = translate_parameters(system_cfg, args.params, rngstate)
     system_cfg.paramvec = paramvec
 
     # Ensure pure guage (setting t parameter to zero) if enabled
