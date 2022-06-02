@@ -10,8 +10,7 @@ def main():
         if fname is not None and os.path.isfile(fname):
             fname_base=os.path.basename(fname)
             name,ext=os.path.splitext(fname_base)
-            g2_el = utils.fname2g2el(name)
-            g2 = 2 * g2_el
+            g2 = utils.fname2g2(name)
             if name.startswith("result_min"):
                 with open(fname, "rb") as infile:
                     data = pickle.load(infile)
