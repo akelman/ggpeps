@@ -59,10 +59,14 @@ def main(args):
                         label="{}, {}, L={}, nc={}, nl={}".format(type,obs,L,ncopy,nlayer))
 
             # We can add the ED data to the plot to compare the curves
-            if args.exact is not None and os.path.isfile(args.exact):
-                df_exact_filtered=df_exact[df_exact.name==obs]
-                for name, group in df_exact_filtered.groupby("L"):
-                    ax.plot(df_exact_filtered["g2_ham"],df_exact_filtered["value"],"-",label="ED, {}, L={}".format(obs,name))
+            if args.exact is not None:
+                if os.path.isfile(args.exact):
+                    df_exact_filtered=df_exact[df_exact.name==obs]
+                    for name, group in df_exact_filtered.groupby("L"):
+                        ax.plot(df_exact_filtered["g2_ham"],df_exact_filtered["value"],"-",label="ED, {}, L={}".format(obs,name))
+                else:
+                    print(
+                        f"File {args.exact} not found. Continuing without exact data.", file=sys.stderr)
     if args.logx:
         ax.set_xscale("log")
     if args.logy:
