@@ -140,7 +140,7 @@ class TestModeArray(unittest.TestCase):
         perm = generate_permutation_matrix(old_modes,new_modes)
         self.assertTrue(utils.is_permutation(perm))
     
-    def test_permute_3x3_rows(self):
+    def test_permute_3x3_rows_full_permute_fct(self):
         old_modes = ["1","2","3"]
         new_modes = ["3","1","2"]
         arr = ModeArray(np.array([[1,2,3],[4,5,6],[7,8,9]]),[old_modes,old_modes])
@@ -150,7 +150,7 @@ class TestModeArray(unittest.TestCase):
         self.assertTrue(dest.modes == ref_modes)
         self.assertTrue(np.allclose(np.asarray(dest), np.asarray( [[7, 8, 9], [1, 2, 3], [4, 5, 6]])))
 
-    def test_permute_3x3_cols(self):
+    def test_permute_3x3_cols_full_permute_fct(self):
         old_modes = ["1","2","3"]
         new_modes = ["3","1","2"]
         arr = ModeArray(np.array([[1,2,3],[4,5,6],[7,8,9]]),[old_modes,old_modes])
@@ -159,3 +159,23 @@ class TestModeArray(unittest.TestCase):
         ref_modes = [old_modes, new_modes]
         self.assertTrue(list(dest.modes) == ref_modes)
         self.assertTrue(np.allclose(np.asarray(dest), np.asarray( [[3, 1, 2], [6, 4, 5], [9, 7, 8]])))
+
+    def test_permute_3x3_cols(self):
+        old_modes = ["1","2","3"]
+        new_modes = ["3","1","2"]
+        arr = ModeArray(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), [old_modes, old_modes])
+        dest = arr.permute_cols(new_modes)
+
+        ref_modes = [old_modes, new_modes]
+        self.assertTrue(list(dest.modes) == ref_modes)
+        self.assertTrue(np.allclose(np.asarray(dest), np.asarray( [[3, 1, 2], [6, 4, 5], [9, 7, 8]])))
+
+    def test_permute_3x3_rows(self):
+        old_modes = ["1","2","3"]
+        new_modes = ["3","1","2"]
+        arr = ModeArray(np.array([[1,2,3],[4,5,6],[7,8,9]]),[old_modes,old_modes])
+        dest = arr.permute_rows(new_modes)
+
+        ref_modes = [new_modes, old_modes]
+        self.assertTrue(list(dest.modes) == ref_modes)
+        self.assertTrue(np.allclose(np.asarray(dest), np.asarray( [[7, 8, 9], [1, 2, 3], [4, 5, 6]])))

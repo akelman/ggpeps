@@ -210,10 +210,10 @@ class ModeArray(np.ndarray):
         The modes given in new_modes must be named the same way as the ones in the original matrix.
 
         Args:
-            new_modes (list): List of new mode names. Order matters.
+            new_modes (list): List of new mode names for the rows. This is not a list of lists, but only a list. Order matters.
         """
-        self._verify_modes_permutation(new_modes)
-        permutation_rows = generate_permutation_matrix(self.modes[0],new_modes[0])
+        self._verify_modes_permutation([new_modes,self.modes[1]])
+        permutation_rows = generate_permutation_matrix(self.modes[0],new_modes)
         
         return np.transpose(permutation_rows) @ self
 
@@ -222,10 +222,10 @@ class ModeArray(np.ndarray):
         The modes given in new_modes must be named the same way as the ones in the original matrix.
 
         Args:
-            new_modes (list): List of new mode names for rows and columns [row_names]. Order matters.
+            new_modes (list): List of new mode names for columns. This is not a list of lists, but only a list. Order matters.
         """
-        self._verify_modes_permutation(new_modes)
-        permutation_cols = generate_permutation_matrix(self.modes[1],new_modes[1])
+        self._verify_modes_permutation([self.modes[0],new_modes])
+        permutation_cols = generate_permutation_matrix(self.modes[1],new_modes)
         
         return self @ permutation_cols
 
