@@ -210,10 +210,10 @@ class ModeArray(np.ndarray):
         The modes given in new_modes must be named the same way as the ones in the original matrix.
 
         Args:
-            new_modes (list): List of new mode names. Order matters.
+            new_modes (list): List of new mode names for the rows. This is not a list of lists, but only a list. Order matters.
         """
-        self._verify_modes_permutation(new_modes)
-        permutation_rows = generate_permutation_matrix(self.modes[0],new_modes[0])
+        self._verify_modes_permutation([new_modes,self.modes[1]])
+        permutation_rows = generate_permutation_matrix(self.modes[0],new_modes)
         
         return np.transpose(permutation_rows) @ self
 
@@ -222,10 +222,10 @@ class ModeArray(np.ndarray):
         The modes given in new_modes must be named the same way as the ones in the original matrix.
 
         Args:
-            new_modes (list): List of new mode names for rows and columns [row_names]. Order matters.
+            new_modes (list): List of new mode names for columns. This is not a list of lists, but only a list. Order matters.
         """
-        self._verify_modes_permutation(new_modes)
-        permutation_cols = generate_permutation_matrix(self.modes[1],new_modes[1])
+        self._verify_modes_permutation([self.modes[0],new_modes])
+        permutation_cols = generate_permutation_matrix(self.modes[1],new_modes)
         
         return self @ permutation_cols
 
@@ -254,6 +254,18 @@ class ModeArray(np.ndarray):
 
 
 def generate_permutation_matrix(start_modes, end_modes):
+    """This function returns a permutation that permutes columns from start order to end order (when acting on a matrix from the right):
+        M -> M' = M @ P, where M' has permuted columns 
+    To permute rows, act with the transpose from the left:
+        M -> M' = transpose(P) @ M, where M' has permuted rows
+
+    Args:
+        start_modes (list): the starting mode order.
+        end_modes (list): the desired end mode order.
+
+    Returns:
+        ModeArray: the permutation matrix that transforms from start order to end order in columns if applied from the right
+    """
 
     # Do checks to ensure the given mode orders are valid and compatible
     # could probably use ModeArray methods for this
