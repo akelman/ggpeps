@@ -51,7 +51,7 @@ def args2logname(args):
             fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_g2mag_{:.3f}_nlayer_{:02d}_wsteps_{:06d}_msteps_{:06d}.log".format(
                 shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
                 args.g2_mag, args.nlayer, args.warmup_steps, args.meas_steps)
-    return fname
+    return os.path.join(args.output, fname)
 
 def translate_parameters(system_cfg, params,rng_state):
     """Translate the parameters given on the commandline to a form useful in the code
@@ -102,6 +102,14 @@ def main():
 
     rngstate = np.random.RandomState(seed)
     mc_config.seed = seed
+
+    if os.path.exists(args.output):
+        if not os.path.isdir(args.output):
+            print(
+                f"Output directory '{args.output}' exists and is not a directory. Aborting.", file=sys.stderr)
+            sys.exit(1)
+    else:
+        os.makedirs(args.output)
 
     #Set up the logger
     h_stdout = logging.StreamHandler(stream=sys.stdout)
@@ -184,7 +192,7 @@ def main():
         mc_result = mc_mgr.simulate()
         stop = timer()
         mc_result.print_stats()
-        mc_result.save()
+        mc_result.save(output_dir = args.output)
 
         logging.info("==== Acceptance prob =======")
         logging.info("Acceptance probability: {}".format(
@@ -212,14 +220,14 @@ def main():
         result = minimizer.minimize()
         stop = timer()
         print(result)
-        minimizer.save()
+        minimizer.save(output_dir = args.output)
     elif args.mode == "exact":
         system=system_type(system_cfg)
         start = timer()
         ex_eval = exacteval.ExactEvaluator(system)
         dest_dict = ex_eval.evaluate()
         stop = timer()
-        ex_eval.save()
+        ex_eval.save(output_dir = args.output)
         for key,val in dest_dict.items():
             print("{}: {}".format(key,val))
     elif args.mode == "minexact":
@@ -244,7 +252,7 @@ def main():
         result = minimizer.minimize()
         stop = timer()
         print(result)
-        minimizer.save()
+        minimizer.save(output_dir = args.output)
     elif args.mode == "minmult":
         #Set the parameters of the minimizer according to the command line
         min_cfg = MinimizerConfig()
@@ -266,12 +274,12 @@ def main():
             system_cfg.paramvec = resultvec[-1].paramvec
         stop = timer()
         #TODO: We can merge the resultvec to get a full result
-        minimizer.save()
+        minimizer.save(output_dir = args.output)
         # We run a final iteration of the MC simulation with all observables
         mc_config.minimizer_mode = False
         mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
         mc_result = mc_mgr.simulate()
-        mc_result.save()
+        mc_result.save(output_dir = args.output)
     else:
         logging.error("Mode '{}' unkown.".format(args.mode))
 
@@ -310,6 +318,8 @@ if __name__ == "__main__":
         default=False,
         action="store_true",
         help="Use the standard EOM instead of a rebinning analysis")
+    parser.add_argument("--output", type=str, default='.',
+                        help="Output Directory")
     parser.add_argument("--nlayer",
                         default=1,
                         type=int,

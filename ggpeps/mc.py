@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from datetime import datetime
 import time
 import logging
@@ -354,7 +355,7 @@ class MonteCarloEstimator:
         with gzip.open(fname_full, "wb") as outfile:
             pickle.dump(data_full, outfile)
 
-    def save(self):
+    def save(self, output_dir = "."):
         """Convenience function to combine saving the MonteCarloEstimator and the summary of the observables
         """
         syscfg = self.system.cfg
@@ -366,8 +367,8 @@ class MonteCarloEstimator:
         fname_summary = "summary_mc_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_g2mag_{:.3f}_nlayer_{:02d}_wsteps_{:07d}_msteps_{:07d}.pkl".format(
             syscfg.lattice.nx, syscfg.lattice.ny, 2*syscfg.g2_el, syscfg.g_gm,
             syscfg.g2_mag, syscfg.nlayer, warmup_steps, meas_steps)
-        self.save_full(fname_full)
-        self.save_summary(fname_summary)
+        self.save_full(os.path.join(fname_full,output_dir))
+        self.save_summary(os.path.join(fname_summary,output_dir))
 
     #### Output (plots or on the commandline) ####
 

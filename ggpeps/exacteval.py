@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import itertools as it
 import ggpeps.lattice as lattice
 import pandas as pd
@@ -171,7 +172,7 @@ class ExactEvaluator():
         df = pd.DataFrame(dest)
         return df
 
-    def save(self):
+    def save(self, output_dir="."):
         """Convenience function to generate a filename and save the summary in one step
         """
         syscfg = self.system.cfg
@@ -183,7 +184,7 @@ class ExactEvaluator():
         zstr="-".join([str(z) for z in zvec])
         fname_summary = "summary_exact_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{}_y_{}_z_{}.pkl".format(
             syscfg.lattice.nx,syscfg.lattice.ny, syscfg.g2, syscfg.g_gm, syscfg.g2_mag, tstr, ystr, zstr)
-        self.save_summary(fname_summary)
+        self.save_summary(os.path.join(output_dir,fname_summary))
 
     def save_summary(self, fname_summary: str):
         """Save the summary of the computation to a given filename

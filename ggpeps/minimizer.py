@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import logging
 import pickle
 from scipy.optimize import minimize
@@ -168,7 +169,7 @@ class Minimizer():
         return mag_energy_grad + el_energy_grad
 
 
-    def save(self):
+    def save(self, output_dir = "."):
         if self.min_result is not None:
             sys_cfg=self.evaluator.system_cfg
 
@@ -179,9 +180,9 @@ class Minimizer():
                 sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g2,
                 sys_cfg.g_gm, sys_cfg.ncopy, sys_cfg.nlayer)
 
-            self.last_result.save_summary(fname_mc_summary)
+            self.last_result.save_summary(os.path.join(output_dir,fname_mc_summary))
             with open(fname_result_min,"wb") as outfile:
-                pickle.dump(self.min_result,outfile)
+                pickle.dump(os.path.join(output_dir,self.min_result),outfile)
 
 def print_callback(x,minimizer):
     res=minimizer.last_result
