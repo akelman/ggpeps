@@ -181,8 +181,8 @@ class Minimizer():
                 sys_cfg.g_gm, sys_cfg.ncopy, sys_cfg.nlayer)
 
             self.last_result.save_summary(os.path.join(output_dir,fname_mc_summary))
-            with open(fname_result_min,"wb") as outfile:
-                pickle.dump(os.path.join(output_dir,self.min_result),outfile)
+            with open(os.path.join(output_dir, fname_result_min),"wb") as outfile:
+                pickle.dump(self.min_result,outfile)
 
 def print_callback(x,minimizer):
     res=minimizer.last_result
