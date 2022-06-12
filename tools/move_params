@@ -1,0 +1,13 @@
+#!/bin/bash
+set -eu
+for fname in $@
+do
+  subs1=${fname##paramvec_}
+  foldername=${subs1%%.npy}
+  if [ ! -d $foldername ]
+  then
+    mkdir $foldername
+  fi
+  mv "$fname" "$foldername/paramvec.npy"
+done
+
