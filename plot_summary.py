@@ -52,10 +52,18 @@ def main(args):
 
             for name, group in df_filtered.groupby(["type","L","nlayer", "ncopy"]):
                 type, L, nlayer, ncopy = name
+
+                # show errors for MC
+                if type == 'MC':
+                    error = group['err']
+                else:
+                    error = None
+
                 # We calculate the coupling g^2 from g2_el
-                ax.plot(group["g2_el"]*2,
+                ax.errorbar(group["g2_el"]*2,
                         group["mean"],
-                        'o',
+                        fmt='o', 
+                        yerr=error,
                         label="{}, {}, L={}, nc={}, nl={}".format(type,obs,L,ncopy,nlayer))
 
             # We can add the ED data to the plot to compare the curves
