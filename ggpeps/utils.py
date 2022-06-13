@@ -10,6 +10,7 @@ import logging
 import subprocess  # Start process for git hash
 import re
 from pfapack import pfaffian as pf
+import sys
 
 from matplotlib.colors import LogNorm
 
@@ -690,6 +691,55 @@ def show_eigenvalues(mat):
         ax[0].set_title("Imaginary part")
         ax[1].plot(np.imag(eigvals), 'o')
     plt.show()
+
+
+# ========== Tooling Functions ====================
+
+def extract_params_from_results_file(fname, dest_dir='') -> bool:
+    """Extract parameters from a results file and save to a new .npy file
+
+    Args:
+        fname (str): results file path
+        dest_dir (str, optional): destination directory for param file. If none is given, defaults to current directory.
+    
+    Returns:
+        bool: True if succesful, false otherwise.
+    """
+    if fname is not None and os.path.isfile(fname):
+        fname_base=os.path.basename(fname)
+        name,ext=os.path.splitext(fname_base)
+        g2 = fname2g2(name)
+        if name.startswith("result_min"):
+            with open(fname, "rb") as infile:
+                data = pickle.load(infile)
+                #Deal with renaming
+                if hasattr(data,"paramvec"):
+                    np.save( os.path.join(dest_dir, "paramvec_g2_{}.npy".format(g2)), data.paramvec)
+                elif hasattr(data,"parametervec"):
+                    np.save( os.path.join(dest_dir,"paramvec_g2_{}.npy".format(g2)), data.parametervec)
+    else:
+        print("File '{}' not found. Aborting.".format(fname),file=sys.stderr)
+        return False
+    
+    return True
+
+def extract_params_from_run(source_dir, dest_dir):
+    """Extracts all the parameters from the results files of a run (with varying g2 couplings), and stores them as .npy files.
+
+    Args:
+        source_dir (str): a source directory containing directories, each of which is the result of a run.
+        dest_dir (str): a destination directory to story the resulting .npy files.
+    """
+
+    for dir in os.listdir(source_dir):
+        if os.path.isdir(os.path.join(source_dir, dir)):
+            inner_dir = os.path.join(source_dir, dir)
+            files = os.listdir(inner_dir)
+            for f in files:
+                if os.path.isfile(os.path.join(inner_dir, f)):
+                    extract_params_from_results_file(os.path.join(inner_dir, f), dest_dir)
+
+
 
 #========== Testing Functions ====================
 

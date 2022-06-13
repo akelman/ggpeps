@@ -3,6 +3,7 @@ Further details about the usage of the script can be found in README.md.
 """
 
 # Imports of things that we later need
+from cProfile import run
 from ggpeps.system import Z2System2D2C,Z2System2D2CConfig
 from ggpeps.system import Z2System2D, Z2System2DConfig
 from ggpeps.measurement import Measurement
@@ -84,7 +85,7 @@ def translate_parameters(system_cfg, params,rng_state):
     return dest
 
 
-def main():
+def main(args):
     #Set up ray before we actually start with the simulation
     #Ray uses randomness internally and we don't want it to mix up the setting of the seed
     if args.nrunner > 0:
@@ -288,6 +289,7 @@ def main():
     logging.info("============================")
 
 
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(
@@ -353,4 +355,4 @@ if __name__ == "__main__":
                         help="Number of parallel MC runners")
     args = parser.parse_args()
 
-    main()
+    main(args)

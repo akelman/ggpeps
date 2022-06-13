@@ -1,26 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import pickle
-import numpy as np
-import os, sys
+
 from ggpeps import utils
 
 def main():
     for fname in args.fname:
-        if fname is not None and os.path.isfile(fname):
-            fname_base=os.path.basename(fname)
-            name,ext=os.path.splitext(fname_base)
-            g2 = utils.fname2g2(name)
-            if name.startswith("result_min"):
-                with open(fname, "rb") as infile:
-                    data = pickle.load(infile)
-                    #Deal with renaming
-                    if hasattr(data,"paramvec"):
-                        np.save("paramvec_g2_{}.npy".format(g2),data.paramvec)
-                    elif hasattr(data,"parametervec"):
-                        np.save("paramvec_g2_{}.npy".format(g2),data.parametervec)
-        else:
-            print("File '{}' not found. Aborting.".format(fname),file=sys.stderr)
+        utils.extract_params_from_results_file(fname)
+        
 
 if __name__ == "__main__":
     import argparse
