@@ -7,7 +7,7 @@ import os
 
 command_default=""
 time_default="24:00:00"
-num_threads_default="40"
+num_threads_default="4"
 
 def name_from_path(prefix,path):
     return prefix+path
@@ -67,13 +67,13 @@ def main(args):
 
 if __name__=="__main__":
     import argparse
-    parser=argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     parser.add_argument("-f","--folders",dest="folders",type=str,nargs="+",help="List of folders to modify",default=None)
     parser.add_argument("-i","--slurmfile",dest="slurmfile",type=str,help="Master slurm file",default=None)
-    parser.add_argument("-t","--time",dest="time",type=str,help="time attribute",default=None)
+    parser.add_argument("-t","--time",dest="time",type=str,help="time attribute (default: 24:00:00)",default=None)
     parser.add_argument("-c","--command",dest="command",type=str,help="command",default=None)
-    parser.add_argument("-n","--num_threads",dest="num_threads",type=str,help="number of OMP threads",default=None)
-    parser.add_argument("--prefix",type=str,help="name prefix",default="")
+    parser.add_argument("-n","--num_threads",dest="num_threads",type=str,help="number of OMP threads (default: 4)",default=None)
+    parser.add_argument("--prefix",type=str,help="name prefix (default: empty string)",default="")
     args=parser.parse_args()
     main(args)
 
