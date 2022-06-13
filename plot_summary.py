@@ -97,7 +97,7 @@ if __name__ == "__main__":
     parser.add_argument("--show", action="store_true", default=False, help="Show the plot")
     parser.add_argument("--no-save", action="store_true", default=False, help="Do not save the plot")
     parser.add_argument("--logx", action="store_true", default=False, help="Use logarithmic scaling for x axis")
-    parser.add_argument("--logy", action="store_true", default=False, help="Use logarithmix scaling for y axis")
+    parser.add_argument("--logy", action="store_true", default=False, help="Use logarithmic scaling for y axis")
     parser.add_argument("--obs",
                         type=str,
                         nargs="+",
