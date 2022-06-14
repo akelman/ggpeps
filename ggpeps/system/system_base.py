@@ -776,9 +776,7 @@ class System2DBase(ABC):
             float: Weight of the MC configuration
         """
         if self._weight is None:
-            self._weight = 1.0
-            for ind in range(self.cfg.nlayer):
-                self._weight *= 0.5 * self.incdet_vec[ind].det()
+            self._weight = self.calculate_lognorm_inc()
         return self._weight
 
     @weight.setter
