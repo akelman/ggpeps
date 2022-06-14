@@ -5,7 +5,7 @@ import numpy as np
 import gzip
 import os,sys
 import pickle
-from fgauss import utils
+from ggpeps import utils
 
 def main():
     #Collect all dataframes into a single one
