@@ -24,7 +24,8 @@ The virtual environment can be deactivated with `deactivate`.
 You can obtain the code by cloning the repo with
 ```
 git clone git@gitlab.mpcdf.mpg.de:pemonts/gaussian-peps.git
-```.
+```
+
 Note that you have to be a member of the project to clone it.
 Cloning via SSH works only if you have added a (public) SSH key to the repository.
 

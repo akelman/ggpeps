@@ -101,9 +101,12 @@ def main(args):
     else:
         seed = np.random.randint(np.iinfo(np.int32).max)
 
+    # We use a local random number generator instead of the global numpy one to assure
+    # reproducibility across different runs, even when using mulitple processes
     rngstate = np.random.RandomState(seed)
     mc_config.seed = seed
 
+    # Make sure that the output directory is fine
     if os.path.exists(args.output):
         if not os.path.isdir(args.output):
             print(
@@ -162,6 +165,8 @@ def main(args):
     else:
         logging.error("Not Implemented: Only 1 or two copies are possible")
         sys.exit(1)
+
+    # Translate the command line input to a valid parameter vector
     paramvec = translate_parameters(system_cfg, args.params, rngstate)
     system_cfg.paramvec = paramvec
 
@@ -187,6 +192,7 @@ def main(args):
 
     # Call different functions depending on the mode specified via CLI
     if args.mode == "eval":
+        # Evaluate a given set of parameters with Monte Carlo
         mc_config.minimizer_mode = False
         mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
         start = timer()
@@ -200,6 +206,7 @@ def main(args):
             mc_result.get_obs_mean("acceptance_prob")))
         logging.info("============================")
     elif args.mode == "minimize" or args.mode == "min":
+        # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
         logging.info("====== MINIMIZER INFO ======")
         logging.info("Max Iterations: {}".format(args.maxiter))
         logging.info("Learning rate: {}".format(args.alpha))
@@ -223,15 +230,17 @@ def main(args):
         print(result)
         minimizer.save(output_dir = args.output)
     elif args.mode == "exact":
-        system=system_type(system_cfg)
+        # Evaluate a given set of parameters with exact contraction (equivalent to the mode "eval", just exact)
+        system = system_type(system_cfg)
         start = timer()
         ex_eval = exacteval.ExactEvaluator(system)
         dest_dict = ex_eval.evaluate()
         stop = timer()
-        ex_eval.save(output_dir = args.output)
-        for key,val in dest_dict.items():
-            print("{}: {}".format(key,val))
+        ex_eval.save(output_dir=args.output)
+        for key, val in dest_dict.items():
+            print("{}: {}".format(key, val))
     elif args.mode == "minexact":
+        # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
         logging.info("====== MINIMIZER INFO ======")
         logging.info("Max Iterations: {}".format(args.maxiter))
         logging.info("Learning rate: {}".format(args.alpha))
@@ -255,12 +264,14 @@ def main(args):
         print(result)
         minimizer.save(output_dir = args.output)
     elif args.mode == "minmult":
+        # Optimize the parameters with multiple runs (useful if BFGS has problems with the Hessian)
+
         #Set the parameters of the minimizer according to the command line
         min_cfg = MinimizerConfig()
-        min_cfg.method=args.method
-        min_cfg.max_iter=args.maxiter
-        min_cfg.delta=args.delta
-        min_cfg.use_metric=args.use_metric
+        min_cfg.method = args.method
+        min_cfg.max_iter = args.maxiter
+        min_cfg.delta = args.delta
+        min_cfg.use_metric = args.use_metric
 
         start = timer()
         resultvec = []
@@ -294,11 +305,11 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        epilog="""Possible modes: eval, minimize (min), exact, minexact. Possible logging levels are critical, error, warning, info, debug."""
+        epilog="""Possible modes: eval, minimize (min), exact, minexact, minmult. Possible logging levels are critical, error, warning, info, debug."""
     )
     parser.add_argument("mode",
                         type=str,
-                        choices=["eval", "min", "exact", "minexact"],
+                        choices=["eval", "min", "exact", "minexact", "minmult"],
                         help="Mode of the program")
     parser.add_argument(
         "L", type=int, help="Size of the square system (one side)")
