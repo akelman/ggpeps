@@ -796,7 +796,7 @@ class System2DBase(ABC):
             all_factors (bool, optional): Include all constant factors. Defaults to False.
 
         Returns:
-            float: Weight of the proposed configuration
+            float: Logarithm of the weight of the proposed configuration
         """
         # There are two directions per vertex and two Majoranas per link
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
