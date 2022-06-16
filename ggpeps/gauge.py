@@ -2,6 +2,10 @@ import numpy as np
 
 
 class ZNGauge:
+    """Implements a Z_N gauge group, under a convenient representation in which values are chosen on the unit circle
+    and given in multiples of 2pi/N. 
+    """
+
     def __init__(self, n):
         self.n = n
 

@@ -19,6 +19,8 @@ __pycache__
 *.out
 *.snm
 *.toc
+#No need to include parameter files
+paramvec*
 #Ignore the vscode files
 .vscode
 #
