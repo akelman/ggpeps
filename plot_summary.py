@@ -1,7 +1,8 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-import os, sys
+import os
+import sys
 from ggpeps import utils
 
 def len_arr(x):
@@ -15,72 +16,104 @@ def main(args):
     if args.ec is not None:
         for fname in args.ec:
             if os.path.isfile(fname):
-                df = pd.read_pickle(fname)
-                df['type'] = "EC"
-                if not "nlayer" in df.columns:
-                    df["nlayer"] = utils.fname2nlayer(fname)
-                if not "ncopy" in df.columns:
-                    df["ncopy"] = utils.fname2ncopy(fname)
-                dfvec.append(df)
+                df_tmp = pd.read_pickle(fname)
+                df_tmp['type'] = "EC"
+                df_tmp['err'] = np.nan # Append an empty column to make merges work
+                if not "nlayer" in df_tmp.columns:
+                    df_tmp["nlayer"] = utils.fname2nlayer(fname)
+                if not "ncopy" in df_tmp.columns:
+                    df_tmp["ncopy"] = utils.fname2ncopy(fname)
+                dfvec.append(df_tmp)
     if args.mc is not None:
         for fname in args.mc:
             if os.path.isfile(fname):
-                df = pd.read_pickle(fname)
-                df['type'] = "MC"
-                if not "nlayer" in df.columns:
-                    df["nlayer"] = utils.fname2nlayer(fname)
-                if not "ncopy" in df.columns:
-                    df["ncopy"] = utils.fname2ncopy(fname)
-                dfvec.append(df)
-    df = pd.concat(dfvec)
+                df_tmp = pd.read_pickle(fname)
+                df_tmp['type'] = "MC"
+                if not "nlayer" in df_tmp.columns:
+                    df_tmp["nlayer"] = utils.fname2nlayer(fname)
+                if not "ncopy" in df_tmp.columns:
+                    df_tmp["ncopy"] = utils.fname2ncopy(fname)
+                dfvec.append(df_tmp)
+    df_mc_ec = pd.concat(dfvec)
 
     #Enrich dataset
-    df["L"] = df["nx"].astype("str") + "-" + df["ny"].astype("str")
-    df.rename(columns={"g_el":"g2_el", "g_mag":"g2_mag"},inplace=True)
-    obsnamevec = df.name.unique()
+    df_mc_ec["L"] = df_mc_ec["nx"].astype("str") + "-" + df_mc_ec["ny"].astype("str")
+    df_mc_ec.rename(columns={"g_el":"g2_el", "g_mag":"g2_mag"},inplace=True)
+    obsnamevec = df_mc_ec.name.unique()
 
     if args.exact is not None and os.path.isfile(args.exact):
         df_exact = pd.read_pickle(args.exact)
         df_exact["L"] = df_exact["nx"].astype("str") + "-" + df_exact["ny"].astype("str")
+        df_exact["type"] = "ED"
+        # Add numbers to the grouping columns to enable grouping
+        df_exact["nlayer"] = -1
+        df_exact["ncopy"]= -1
 
-    #f,ax=plt.subplots(1,1,figsize=(4.14,2.66))
-    f,ax=plt.subplots(1,1)
+        # Adapt the naming convention between the ED and the MC/EC data
+        df_exact.rename(columns={"g2_ham":"g2","value":"mean"},inplace=True)
+        df_exact.drop(columns=["nz","gauge"],inplace=True)
+
+        df = pd.concat([df_mc_ec,df_exact])
+        
+        # Compute the differences
+        df_mc_ec_approx = df_mc_ec.copy()
+        df_ed_approx = df_exact.copy()
+        df_mc_ec_approx.g2 = np.round(df_mc_ec_approx.g2, decimals=3)
+        df_ed_approx.g2 = np.round(df_ed_approx.g2, decimals=3)
+        df_merged = pd.merge(df_mc_ec_approx,df_ed_approx,on=["g2","L","name","nx","ny"],suffixes=("_mc_ec","_ed"))
+        df_merged["diff"] = df_merged["mean_mc_ec"]-df_merged["mean_ed"]
+        df_diff = df_merged[["name","g2","ncopy_mc_ec","nlayer_mc_ec","L","diff","type_mc_ec","err"]].copy()
+        df_diff.rename(columns={"nlayer_mc_ec": "nlayer", "ncopy_mc_ec": "ncopy","type_mc_ec":"type"}, inplace=True)
+
+    f, ax = plt.subplots(1, 1)
     for obs in args.obs:
         if obs in obsnamevec:
-            df_filtered = df[df.name == obs]
+            df_filtered = df[df["name"] == obs]
             df_filtered.reset_index(drop=True, inplace=True)
 
-            for name, group in df_filtered.groupby(["type","L","nlayer", "ncopy"]):
-                type, L, nlayer, ncopy = name
+            df_diff_filtered = df_diff[df_diff["name"] == obs]
+            df_diff_filtered.reset_index(drop=True, inplace=True)
 
+            if args.diff:
                 # show errors for MC
-                if type == 'MC':
-                    error = group['err']
-                else:
-                    error = None
+                for name, group in df_diff_filtered.groupby(["type","L","nlayer", "ncopy"]):
+                    type, L, nlayer, ncopy = name
+                    if type == 'MC':
+                        error = group['err']
+                    else:
+                        error = None
+                    ax.errorbar(group["g2"],
+                            group["diff"],
+                            fmt='o', 
+                            yerr=error,
+                            label="{}, {}, L={}, nc={}, nl={}".format(type,obs,L,ncopy,nlayer))
+            else:
+                for name, group in df_filtered.groupby(["type","L","nlayer", "ncopy"]):
+                    type, L, nlayer, ncopy = name
+                    if type == "ED":
+                        ax.plot(group["g2"],
+                                group["mean"],
+                                label="ED, {}, L={}".format(type,obs,L))
+                    else:
+                        if type == 'MC':
+                            error = group['err']
+                        else:
+                            error = None
+                        ax.errorbar(group["g2"],
+                                group["mean"],
+                                fmt='o', 
+                                yerr=error,
+                                label="{}, {}, L={}, nc={}, nl={}".format(type,obs,L,ncopy,nlayer))
 
-                # We calculate the coupling g^2 from g2_el
-                ax.errorbar(group["g2_el"]*2,
-                        group["mean"],
-                        fmt='o', 
-                        yerr=error,
-                        label="{}, {}, L={}, nc={}, nl={}".format(type,obs,L,ncopy,nlayer))
-
-            # We can add the ED data to the plot to compare the curves
-            if args.exact is not None:
-                if os.path.isfile(args.exact):
-                    df_exact_filtered=df_exact[df_exact.name==obs]
-                    for name, group in df_exact_filtered.groupby("L"):
-                        ax.plot(df_exact_filtered["g2_ham"],df_exact_filtered["value"],"-",label="ED, {}, L={}".format(obs,name))
-                else:
-                    print(
-                        f"File {args.exact} not found. Continuing without exact data.", file=sys.stderr)
     if args.logx:
         ax.set_xscale("log")
     if args.logy:
         ax.set_yscale("log")
     ax.set_xlabel("$g^2$", fontsize=10)
-    ax.set_ylabel("Value", fontsize=10)
+    if args.diff:
+        ax.set_ylabel("Value - ED", fontsize=10)
+    else:
+        ax.set_ylabel("Value", fontsize=10)
     ax.legend(fontsize=8)
     f.tight_layout()
     if not args.no_save:
@@ -96,6 +129,7 @@ if __name__ == "__main__":
     parser.add_argument("--ec", nargs="+", help="EC data")
     parser.add_argument("--show", action="store_true", default=False, help="Show the plot")
     parser.add_argument("--no-save", action="store_true", default=False, help="Do not save the plot")
+    parser.add_argument("--diff", action="store_true", default=False, help="Plot the difference to the exact results")
     parser.add_argument("--logx", action="store_true", default=False, help="Use logarithmic scaling for x axis")
     parser.add_argument("--logy", action="store_true", default=False, help="Use logarithmic scaling for y axis")
     parser.add_argument("--obs",
