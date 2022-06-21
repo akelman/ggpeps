@@ -64,6 +64,14 @@ def main(args):
         df_merged["diff"] = df_merged["mean_mc_ec"]-df_merged["mean_ed"]
         df_diff = df_merged[["name","g2","ncopy_mc_ec","nlayer_mc_ec","L","diff","type_mc_ec","err"]].copy()
         df_diff.rename(columns={"nlayer_mc_ec": "nlayer", "ncopy_mc_ec": "ncopy","type_mc_ec":"type"}, inplace=True)
+    else:
+        df = df_mc_ec
+        df_diff = None
+        if args.diff:
+            print(f"File {args.exact} not found. We need it for the differences. Aborting." )
+            sys.exit(1)
+        else:
+            print(f"File {args.exact} not found. Skipping." )
 
     f, ax = plt.subplots(1, 1)
     for obs in args.obs:
@@ -71,8 +79,9 @@ def main(args):
             df_filtered = df[df["name"] == obs]
             df_filtered.reset_index(drop=True, inplace=True)
 
-            df_diff_filtered = df_diff[df_diff["name"] == obs]
-            df_diff_filtered.reset_index(drop=True, inplace=True)
+            if df_diff is not None:
+                df_diff_filtered = df_diff[df_diff["name"] == obs]
+                df_diff_filtered.reset_index(drop=True, inplace=True)
 
             if args.diff:
                 # show errors for MC
@@ -117,7 +126,10 @@ def main(args):
     ax.legend(fontsize=8)
     f.tight_layout()
     if not args.no_save:
-        f.savefig("summary_{}.pdf".format("-".join(args.obs)))
+        if args.diff:
+            f.savefig("summary_diff_{}.pdf".format("-".join(args.obs)))
+        else:
+            f.savefig("summary_{}.pdf".format("-".join(args.obs)))
     if args.show:
         plt.show()
 
