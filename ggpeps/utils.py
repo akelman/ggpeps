@@ -693,7 +693,7 @@ def show_eigenvalues(mat):
     plt.show()
 
 
-# ========== Tooling Functions ====================
+# ========== Workflow & Tooling Functions ====================
 
 def extract_params_from_results_file(fname, dest_dir='') -> bool:
     """Extract parameters from a results file and save to a new .npy file
