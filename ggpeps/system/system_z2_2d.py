@@ -90,7 +90,7 @@ class Z2System2D(System2DBase):
         tmat_symb=sympy.Matrix([[0, -1.j * (tr+1.j*ti), 1.j * (tr+1.j*ti), (tr+1.j*ti), -(tr+1.j*ti)],
                             [1.j * (tr+1.j*ti), 0, 1.j * (yr+1.j*yi), (zr+1.j*zi), 1.j * (zr+1.j*zi)],
                             [-1.j * (tr+1.j*ti), -1.j * (yr+1.j*yi), 0, -1.j * (zr+1.j*zi), -(zr+1.j*zi)],
-                            [-(tr+1.j*ti), -(zr+1.j*ti), 1.j * (zr+1.j*ti), 0, -(yr+1.j*yi)], 
+                            [-(tr+1.j*ti), -(zr+1.j*zi), 1.j * (zr+1.j*zi), 0, -(yr+1.j*yi)], 
                             [(tr+1.j*ti), -1.j * (zr+1.j*zi), (zr+1.j*zi), (yr+1.j*yi), 0]])
         return tmat_symb
 
