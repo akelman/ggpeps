@@ -16,7 +16,7 @@ from warnings import warn # Used for deprecation warnings
 
 
 class Z2System2DConfig(Config2DBase):
-    _nparams = 3
+    _nparams = 6
     ncopy = 1
     nvirtmodes_vertex = 4 # We have one virtual mode per direction (1 mode x 4 directions)
     nvirtmodes_link = 2 # We have two virtual modes per link (l/r or u/d)
@@ -36,7 +36,7 @@ class Z2System2D(System2DBase):
 
         Some general notes about conventions:
 
-        Order of the paramvec: [t,y,z]
+        Order of the paramvec: [tr,yr,zr,ti,yi,zi]   # We split the real and the imaginary part of the parameters into independent variables
         Mode order of T: {p,l,r,d,u}
         Mode Order of gamma_dirac:  {p,l,r,d,u,p_dag,l_dag,r_dag,d_dag,u_dag}.
         Mode Order of gamma_maj: {p_1,p_2,l_1,l_2,r_1,r_2,d_1,d_2,u_1,u_2}.
@@ -57,10 +57,13 @@ class Z2System2D(System2DBase):
         Returns:
             list: List of all analytic symbols
         """
-        t = sympy.Symbol("t", real=True)
-        y = sympy.Symbol("y", real=True)
-        z = sympy.Symbol("z", real=True)
-        return [t,y,z]
+        tr = sympy.Symbol("tr", real=True)
+        yr = sympy.Symbol("yr", real=True)
+        zr = sympy.Symbol("zr", real=True)
+        ti = sympy.Symbol("ti", real=True)
+        yi = sympy.Symbol("yi", real=True)
+        zi = sympy.Symbol("zi", real=True)
+        return [tr,yr,zr, ti, yi, zi]
 
 
     @property
@@ -83,11 +86,12 @@ class Z2System2D(System2DBase):
         Returns:
             sympy.Matrix: Analytic T matrix of the fiducial state
         """
-        [t, y, z] = self.symbolvec
-        tmat_symb=sympy.Matrix([[0, -1.j * t, 1.j * t, t, -t],
-                            [1.j * t, 0, 1.j * y, z, 1.j * z],
-                            [-1.j * t, -1.j * y, 0, -1.j * z, -z],
-                            [-t, -z, 1.j * z, 0, -y], [t, -1.j * z, z, y, 0]])
+        [tr, yr, zr, ti, yi, zi] = self.symbolvec
+        tmat_symb=sympy.Matrix([[0, -1.j * (tr+1.j*ti), 1.j * (tr+1.j*ti), (tr+1.j*ti), -(tr+1.j*ti)],
+                            [1.j * (tr+1.j*ti), 0, 1.j * (yr+1.j*yi), (zr+1.j*zi), 1.j * (zr+1.j*zi)],
+                            [-1.j * (tr+1.j*ti), -1.j * (yr+1.j*yi), 0, -1.j * (zr+1.j*zi), -(zr+1.j*zi)],
+                            [-(tr+1.j*ti), -(zr+1.j*ti), 1.j * (zr+1.j*ti), 0, -(yr+1.j*yi)], 
+                            [(tr+1.j*ti), -1.j * (zr+1.j*zi), (zr+1.j*zi), (yr+1.j*yi), 0]])
         return tmat_symb
 
 

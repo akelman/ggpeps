@@ -8,7 +8,7 @@ class TestSystemBase(unittest.TestCase):
     def setUp(self):
         lat = lattice.Lattice2D(2,3)
 
-        paramvec = [[0.3, 0.5, 0.8]]
+        paramvec = [[0.3, 0.5, 0.8,0,0,0]]
         cfg = system.Z2System2DConfig(lat, 0, 0, 0)
         cfg.paramvec = paramvec
         self.system_z2_1c = system.Z2System2D(cfg)
