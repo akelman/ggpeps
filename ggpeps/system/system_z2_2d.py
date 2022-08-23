@@ -28,7 +28,10 @@ class Z2System2DConfig(Config2DBase):
     def make_pure_gauge(self):
         #The order of the parameters is [t,y,z]
         for ind in range(self.nlayer):
+            # t real
             self.paramvec[ind, 0] = 0
+            # t imag
+            self.paramvec[ind, 3] = 0
 
 
 class Z2System2D(System2DBase):
