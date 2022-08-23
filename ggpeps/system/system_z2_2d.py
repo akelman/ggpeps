@@ -87,11 +87,14 @@ class Z2System2D(System2DBase):
             sympy.Matrix: Analytic T matrix of the fiducial state
         """
         [tr, yr, zr, ti, yi, zi] = self.symbolvec
-        tmat_symb=sympy.Matrix([[0, -1.j * (tr+1.j*ti), 1.j * (tr+1.j*ti), (tr+1.j*ti), -(tr+1.j*ti)],
-                            [1.j * (tr+1.j*ti), 0, 1.j * (yr+1.j*yi), (zr+1.j*zi), 1.j * (zr+1.j*zi)],
-                            [-1.j * (tr+1.j*ti), -1.j * (yr+1.j*yi), 0, -1.j * (zr+1.j*zi), -(zr+1.j*zi)],
-                            [-(tr+1.j*ti), -(zr+1.j*zi), 1.j * (zr+1.j*zi), 0, -(yr+1.j*yi)], 
-                            [(tr+1.j*ti), -1.j * (zr+1.j*zi), (zr+1.j*zi), (yr+1.j*yi), 0]])
+        t = tr+1.j*ti
+        y = yr+1.j*yi
+        z = zr+1.j*zi
+        tmat_symb=sympy.Matrix([[0, -1.j * t, 1.j * t, t, -t],
+                            [1.j * t, 0, 1.j * y, z, 1.j * z],
+                            [-1.j * t, -1.j * y, 0, -1.j * z, -z],
+                            [-t, -z, 1.j * z, 0, -y], 
+                            [t, -1.j * z, z, y, 0]])
         return tmat_symb
 
 
