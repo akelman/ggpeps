@@ -1086,7 +1086,7 @@ class System2DBase(ABC):
         theta_sum = 0.
         for ind, conj in path:
             if conj:
-                theta_sum += self.gaugefieldvec[ind]
+                theta_sum -= self.gaugefieldvec[ind]
             else:
                 theta_sum += self.gaugefieldvec[ind]
         return np.exp(1.j*theta_sum)
