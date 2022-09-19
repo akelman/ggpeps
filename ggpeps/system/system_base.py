@@ -23,7 +23,7 @@ class Config2DBase(ABC):
         self.nlayer = nlayer
         self.lattice = lattice
 
-        self._parmvec = None
+        self._paramvec = None
 
         # Parameters of the Hamiltonian
         self.g2 = g2
@@ -36,12 +36,12 @@ class Config2DBase(ABC):
 
     @property
     def paramvec(self):
-        return self._parmvec
+        return self._paramvec
 
     @paramvec.setter
     def paramvec(self, val):
         if self.check_params(val):
-            self._parmvec = val
+            self._paramvec = val
             self.nlayer = len(val)
         else:
             logging.error("The set of parameters is not consistent.")
@@ -68,7 +68,7 @@ class Config2DBase(ABC):
             symbolvec (list): List of the symbolvecs
         """
         for ind in range(self.nlayer):
-            for symb, val in zip(symbolvec, self._parmvec[ind]):
+            for symb, val in zip(symbolvec, self._paramvec[ind]):
                 print(str(symb), val)
 
     @abstractmethod

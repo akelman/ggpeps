@@ -26,7 +26,7 @@ class MinimizerConfig():
     def __init__(self):
         self.max_iter = 100
         self.min_grad = 1e-5
-        self.delta = 1e-2
+        self.alpha = 1e-2
         self._method = "CG"
 
     @property
@@ -81,6 +81,7 @@ class Minimizer():
             max_grad_paramvec = np.max(np.abs(grad_paramvec))
             logging.info("Parametervec: {}".format(paramvec))
             logging.info("It: {:03d}, Energy: {:.5f}, Max grad paramvec: {:.5f} acceptance prob: {:.5f} ".format(ind,energy,max_grad_paramvec,acceptance_prob))
+            self.last_result = result
 
             #Check if the maximum of the gradient is smaller than min_grad
             if max_grad_paramvec < abs(self.cfg.min_grad):
@@ -91,7 +92,7 @@ class Minimizer():
             # TODO: Implement stochastic reconfiguration
 
             # We have to use the internal name of the paramvec if we write to it since it is a property and not just an array
-            self.evaluator.system_cfg.paramvec-=self.alpha*grad_paramvec
+            self.evaluator.system_cfg.paramvec-=self.cfg.alpha*grad_paramvec
 
         logging.warn("Reached maximum number of iterations without convergence")
         self.min_result = MinimizerResult(paramvec,self.cfg.method,energy,grad_paramvec,False)

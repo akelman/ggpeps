@@ -19,20 +19,22 @@ class Z2System2D2CConfig(Config2DBase):
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
     """
 
-    _nparams = 10
+    _nparams = 20
     ncopy = 2
     nvirtmodes_vertex = 8 # We have two virtual modes per direction (4 directions x 2 modes)
     nvirtmodes_link = 4 #Number of virtual modes per link (2 copies and l/r or u/d)
 
     def __init__(self, lattice, g2, g_gm, g_mag, nlayer=1):
-        #The parameters have the following order: [[t1,y1,z1,t2,y2,z2,a,b,c,d],[..next layer..],....]
+        #The parameters have the following order: [[t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i...],[..next layer..],....]
         super().__init__(lattice, g2, g_gm, g_mag, nlayer)
 
     def make_pure_gauge(self):
-        #The order of the parameters is [t1,y1,z1,t2,y2,z2,a,b,c,d]
+        #The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
         for ind in range(self.nlayer):
-            self.paramvec[ind, 0] = 0 # Set t1 to 0
-            self.paramvec[ind, 3] = 0 # Set t2 to 0
+            self.paramvec[ind, 0] = 0 # Set t1r to 0
+            self.paramvec[ind, 10] = 0 # Set t1i to 0
+            self.paramvec[ind, 3] = 0 # Set t2r to 0
+            self.paramvec[ind, 13] = 0 # Set t2i to 0
 
 
 class Z2System2D2C(System2DBase):
@@ -40,7 +42,7 @@ class Z2System2D2C(System2DBase):
 
     Some general notes about conventions:
 
-    Order of the paramvec: [t1,y1,z1,t2,y2,z2,a,b,c,d]
+    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
     Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
     Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
     Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
@@ -63,17 +65,28 @@ class Z2System2D2C(System2DBase):
         Returns:
             list: List of all analytic symbols
         """
-        t1 = sympy.Symbol("t1", real=True)
-        y1 = sympy.Symbol("y1", real=True)
-        z1 = sympy.Symbol("z1", real=True)
-        t2 = sympy.Symbol("t2", real=True)
-        y2 = sympy.Symbol("y2", real=True)
-        z2 = sympy.Symbol("z2", real=True)
-        a  = sympy.Symbol("a", real=True)
-        b  = sympy.Symbol("b", real=True)
-        c  = sympy.Symbol("c", real=True)
-        d  = sympy.Symbol("d", real=True)
-        return [t1, y1, z1, t2, y2, z2, a, b, c, d]
+        t1r = sympy.Symbol("t1r", real=True)
+        y1r = sympy.Symbol("y1r", real=True)
+        z1r = sympy.Symbol("z1r", real=True)
+        t2r = sympy.Symbol("t2r", real=True)
+        y2r = sympy.Symbol("y2r", real=True)
+        z2r = sympy.Symbol("z2r", real=True)
+        ar  = sympy.Symbol("ar", real=True)
+        br  = sympy.Symbol("br", real=True)
+        cr  = sympy.Symbol("cr", real=True)
+        dr  = sympy.Symbol("dr", real=True)
+
+        t1i = sympy.Symbol("t1i", real=True)
+        y1i = sympy.Symbol("y1i", real=True)
+        z1i = sympy.Symbol("z1i", real=True)
+        t2i = sympy.Symbol("t2i", real=True)
+        y2i = sympy.Symbol("y2i", real=True)
+        z2i = sympy.Symbol("z2i", real=True)
+        ai  = sympy.Symbol("ai", real=True)
+        bi  = sympy.Symbol("bi", real=True)
+        ci  = sympy.Symbol("ci", real=True)
+        di  = sympy.Symbol("di", real=True)
+        return [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i, z1i, t2i, y2i, z2i, ai, bi, ci, di]
 
 
     @property
@@ -94,7 +107,18 @@ class Z2System2D2C(System2DBase):
         Returns:
             sympy.Matrix: Analytic T matrix of the fiducial state
         """
-        [t1, y1, z1, t2, y2, z2, a, b, c, d]=self.symbolvec
+        [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i,
+            z1i, t2i, y2i, z2i, ai, bi, ci, di] = self.symbolvec
+        t1 = t1r+1.j*t1i
+        y1 = y1r+1.j*y1i
+        z1 = z1r+1.j*z1i
+        t2 = t2r+1.j*t2i
+        y2 = y2r+1.j*y2i
+        z2 = z2r+1.j*z2i
+        a = ar+1.j*ai
+        b = br+1.j*bi
+        c = cr+1.j*ci
+        d = dr+1.j*di
         tmat_symb=sympy.Matrix([
             [0, -1.j*t1, 1.j*t1, t1, -t1, -1.j*t2, 1.j*t2, t2, -t2],
             [1.j*t1, 0, 1.j*y1, z1, 1.j*z1, -1.j*a, -1.j*c, -1.j*b, -1.j*d],
