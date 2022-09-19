@@ -270,7 +270,7 @@ def main(args):
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method
         min_cfg.max_iter = args.maxiter
-        min_cfg.delta = args.delta
+        min_cfg.alpha = args.alpha
         min_cfg.use_metric = args.use_metric
 
         start = timer()
