@@ -7,8 +7,8 @@ import numpy as np
 class TestLattice(unittest.TestCase):
 
     def setUp(self):
-        self.lat2d=lattice.Lattice2D(8,8)
-        self.lat3d=lattice.Lattice3D(8,8,8)
+        self.lat2d = lattice.Lattice2D(8,8)
+        self.lat3d = lattice.Lattice3D(8,8,8)
 
     def test_ind2coord_2d(self):
         ref=(3,4)
@@ -58,6 +58,87 @@ class TestLattice(unittest.TestCase):
             ]
         path=self.lat2d.generate_wilson_loop((7,7),(1,1),False)
         self.assertEqual(ref,path)
+    
+    def test_wilson_loop_generation_2x2_lattice(self):
+        """Test that all expected wilson loops are generated for a 2x2 lattice.
+        """
+        lat = lattice.Lattice2D(2,2)
+        refs = [ 
+            [   (((0,0),lattice.Direction.X),False),
+                (((1,0),lattice.Direction.Y),False),
+                (((0,1),lattice.Direction.X),True),
+                (((0,0),lattice.Direction.Y),True)     ]
+        ]
+        paths = lat.generate_all_wilson_loops((0,0), False)
+        self.assertEqual(refs,paths)
+
+    def test_wilson_loop_generation_4x4_lattice(self):
+        """Test that all expected wilson loops are generated for a 4x4 lattice.
+        Note that the order of the loops is set to match the expected output from Lattice2D.generate_all_wilson_loops()
+        """
+        lat = lattice.Lattice2D(4,4)
+        refs = [ 
+            [   (((0,0),lattice.Direction.X),False),
+                (((1,0),lattice.Direction.Y),False),
+                (((0,1),lattice.Direction.X),True),
+                (((0,0),lattice.Direction.Y),True)     ], # 1x1 loop
+            [   (((0,0),lattice.Direction.X),False),
+                (((1,0),lattice.Direction.Y),False),
+                (((1,1),lattice.Direction.Y),False),
+                (((0,2),lattice.Direction.X),True),
+                (((0,1),lattice.Direction.Y),True),
+                (((0,0),lattice.Direction.Y),True)     ], # 1x2 loop
+            [   (((0,0),lattice.Direction.X),False),
+                (((1,0),lattice.Direction.X),False),
+                (((2,0),lattice.Direction.Y),False),
+                (((1,1),lattice.Direction.X),True),
+                (((0,1),lattice.Direction.X),True),
+                (((0,0),lattice.Direction.Y),True)     ], # 2x1 loop
+            [   (((0,0),lattice.Direction.X),False),
+                (((1,0),lattice.Direction.X),False),
+                (((2,0),lattice.Direction.Y),False),
+                (((2,1),lattice.Direction.Y),False),
+                (((1,2),lattice.Direction.X),True),
+                (((0,2),lattice.Direction.X),True),
+                (((0,1),lattice.Direction.Y),True),
+                (((0,0),lattice.Direction.Y),True)    ], # 2x2 loop
+        ]
+        paths = lat.generate_all_wilson_loops((0,0), False)
+        self.assertEqual(refs,paths)
+    
+    def test_wilson_loop_generation_5x5_lattice(self):
+        """Test that all expected wilson loops are generated for a 5x5 lattice.
+        Note that the order of the loops is set to match the expected output from Lattice2D.generate_all_wilson_loops()
+        """
+        lat = lattice.Lattice2D(5,5)
+        refs = [ 
+            [   (((0,0),lattice.Direction.X),False),
+                (((1,0),lattice.Direction.Y),False),
+                (((0,1),lattice.Direction.X),True),
+                (((0,0),lattice.Direction.Y),True)     ], # 1x1 loop
+            [   (((0,0),lattice.Direction.X),False),
+                (((1,0),lattice.Direction.Y),False),
+                (((1,1),lattice.Direction.Y),False),
+                (((0,2),lattice.Direction.X),True),
+                (((0,1),lattice.Direction.Y),True),
+                (((0,0),lattice.Direction.Y),True)     ], # 1x2 loop
+            [   (((0,0),lattice.Direction.X),False),
+                (((1,0),lattice.Direction.X),False),
+                (((2,0),lattice.Direction.Y),False),
+                (((1,1),lattice.Direction.X),True),
+                (((0,1),lattice.Direction.X),True),
+                (((0,0),lattice.Direction.Y),True)     ], # 2x1 loop
+            [   (((0,0),lattice.Direction.X),False),
+                (((1,0),lattice.Direction.X),False),
+                (((2,0),lattice.Direction.Y),False),
+                (((2,1),lattice.Direction.Y),False),
+                (((1,2),lattice.Direction.X),True),
+                (((0,2),lattice.Direction.X),True),
+                (((0,1),lattice.Direction.Y),True),
+                (((0,0),lattice.Direction.Y),True)    ], # 2x2 loop
+        ]
+        paths = lat.generate_all_wilson_loops((0,0), False)
+        self.assertEqual(refs,paths)
 
     def test_polyakov_loop_hor(self):
         ref=[(((0,0),lattice.Direction.X),False),

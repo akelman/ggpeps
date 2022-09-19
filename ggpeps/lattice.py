@@ -211,6 +211,33 @@ class Lattice2D:
             #Transform the coordinates to indices
             dest=[(self.coord2ind_dir(*coorddir),conj) for (coorddir,conj) in dest]
         return dest
+    
+    def generate_all_wilson_loops(self, coord: tuple, use_indices=True) -> list:
+        """Generate all rectangular Wilson loops with bottom left corner at coord, up to a size determined by the lattice size.
+        This method is aware of the periodic boundary conditions of the lattice.
+        The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
+        The <link_id> can be either a tuple of coordinates or an integer id of a link (depending on use_indices).
+        The bool in the tuples returned by this function signifies the orientation.
+        "True" means flip gauge field, "False" means no flip.
+
+        Args:
+            coord (tuple): bottom left corner (x,y) of the Wilson loop
+            use_indices (bool, optional): Use link indices instead of coordinate representation. Defaults to True.
+
+        Returns:
+            list of lists: List of list of tuples of the form (link_id,<bool>). Each element is a complete Wilson loop.
+        """
+        loops = []
+
+        max_x = self.nx // 2
+        max_y = self.ny // 2
+
+        for size_x in range(1, max_x + 1):
+            for size_y in range(1, max_y + 1):
+                loop = self.generate_wilson_loop(coord, (size_x, size_y), use_indices)
+                loops.append(loop)
+
+        return loops
 
 
 class Lattice3D:
