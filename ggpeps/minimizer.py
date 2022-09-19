@@ -103,7 +103,7 @@ class Minimizer():
         def energy_wrapper(paramvec):
             #Energy wrapper
             #print("Entered energy wrapper")
-            if self.last_paramvec is None or not np.allclose(self.last_paramvec,paramvec):
+            if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = paramvec
                 self.evaluator.system_cfg.paramvec = np.reshape(paramvec,(-1,self.evaluator.system_cfg._nparams))

@@ -191,7 +191,7 @@ def multiply_except(arr, ind: int):
 
 
 def derivative_pfaffian(mat, d_mat):
-    """Compute the derivative of a Pfaffian of a matrix.
+    """Compute the derivative of a Pfaffian of a matrix A.
     The explicit derivative dA/dx is given as a second argument
 
     The given formula is only valid if A is not singular.
@@ -493,7 +493,7 @@ class BgbTransform():
     @property
     def mat_out(self):
         if self._mat_out is None:
-            wn,s,wp=svd(self.mat_in, full_matrices=True, compute_uv=True)
+            wn,s,wp=svd(self.mat_in, full_matrices=True, compute_uv=True) # self.mat_in is the T matrix
             wp = herm_conj(wp)
             if not self.is_pure_gauge:
                 #TODO: Fix this

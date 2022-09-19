@@ -250,7 +250,7 @@ def main(args):
         logging.info("============================")
 
         start = timer()
-        ex_mgr=exacteval.ExactEvaluatorManager(system_type, system_cfg)
+        ex_mgr = exacteval.ExactEvaluatorManager(system_type, system_cfg)
 
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()

@@ -239,7 +239,7 @@ class MonteCarloEstimator:
         lattice = self.system.cfg.lattice
         nlinks = lattice.nlinks
         link_ind = self.cfg.rng_state.randint(0, nlinks)
-        # Uniformly pick a gauge to replace
+        # Uniformly pick a gauge value
         theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
         # Store the old values
         weight_old = self.system.weight

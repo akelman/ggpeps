@@ -113,6 +113,25 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Minimize (MC) L=2, cp=2, nl=1",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "args": [
+                "min",
+                "2",
+                "--g2",
+                "2.0",
+                "--method",
+                "BFGS",
+                "--ncopy",
+                "2",
+                "--nlayer",
+                "1"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Exact L=2, cp=2, nl=1, neg. el.energy",
             "type": "python",
             "request": "launch",

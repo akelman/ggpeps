@@ -60,7 +60,7 @@ class ExactEvaluator():
         if self.obsdict is None:
             poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
             nlinks = self.system.cfg.lattice.nlinks
-            configvec = it.product(poss_gauges, repeat=nlinks)
+            configvec = it.product(poss_gauges, repeat=nlinks) # an iterable object with all possible field configurations for the entire lattice
 
             polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
                 (0, 0), lattice.Direction.X)
@@ -102,7 +102,7 @@ class ExactEvaluator():
             normvec = np.exp(data["norm"])
 
             # Transpose to enable broadcasting
-            grad_norm_transposed=np.transpose(data["grad_norm"],[2,1,0])
+            grad_norm_transposed = np.transpose(data["grad_norm"],[2,1,0])
 
             dest["energy"] = self.compute_expval(data["energy"], normvec)
             dest["mag_energy"] = self.compute_expval(data["mag_energy"], normvec)
