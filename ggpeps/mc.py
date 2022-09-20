@@ -167,7 +167,6 @@ class MonteCarloEstimator:
         self.obsdict["el_energy"] = Measurement("Electric Energy", binsize)
         self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
         self.obsdict["el_energy_op"] = Measurement("Electric Energy Operator (bare)", binsize)
-        self.obsdict["wilson_00_11"] = Measurement("Wilson (0,0) 1x1", binsize)
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x",
                                                     binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
@@ -187,11 +186,7 @@ class MonteCarloEstimator:
         """Measure the corresponding observables in the dictionary"""
         polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
             (0, 0), lattice.Direction.X)
-        wilson_loop = self.system.cfg.lattice.generate_wilson_loop((0, 0),
-                                                                   (1, 1))
-
-        self.obsdict["wilson_00_11"].append(
-            np.real(self.system.compute_path(wilson_loop)))
+        
         self.obsdict["polyakov_00_x"].append(
             np.real(self.system.compute_path(polyakov_loop)))
         #self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
@@ -206,7 +201,7 @@ class MonteCarloEstimator:
 
         # Wilson loops
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
-        loops = self.system.cfg.lattice.generate_all_wilson_loops((0,0))
+        loops = self.system.cfg.lattice.generate_all_wilson_loops((0,0), sizes)
         for k in range(len(sizes)):
             loop_name = "wilson_loop_(0, 0)_" + str(sizes[k])
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))

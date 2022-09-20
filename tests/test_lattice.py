@@ -69,7 +69,7 @@ class TestLattice(unittest.TestCase):
                 (((0,1),lattice.Direction.X),True),
                 (((0,0),lattice.Direction.Y),True)     ]
         ]
-        paths = lat.generate_all_wilson_loops((0,0), False)
+        paths = lat.generate_all_wilson_loops((0,0), use_indices=False)
         self.assertEqual(refs,paths)
 
     def test_wilson_loop_generation_4x4_lattice(self):
@@ -103,7 +103,7 @@ class TestLattice(unittest.TestCase):
                 (((0,1),lattice.Direction.Y),True),
                 (((0,0),lattice.Direction.Y),True)    ], # 2x2 loop
         ]
-        paths = lat.generate_all_wilson_loops((0,0), False)
+        paths = lat.generate_all_wilson_loops((0,0), use_indices=False)
         self.assertEqual(refs,paths)
     
     def test_wilson_loop_generation_5x5_lattice(self):
@@ -137,7 +137,7 @@ class TestLattice(unittest.TestCase):
                 (((0,1),lattice.Direction.Y),True),
                 (((0,0),lattice.Direction.Y),True)    ], # 2x2 loop
         ]
-        paths = lat.generate_all_wilson_loops((0,0), False)
+        paths = lat.generate_all_wilson_loops((0,0), use_indices=False)
         self.assertEqual(refs,paths)
 
     def test_polyakov_loop_hor(self):

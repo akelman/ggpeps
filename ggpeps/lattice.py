@@ -138,7 +138,7 @@ class Lattice2D:
             yn = (y+orient.value+self.ny) % self.ny
         return (xn,yn)
 
-    def generate_polyakov_loop(self, coord: tuple, dir: Direction, use_indices=True) -> list:
+    def generate_polyakov_loop(self, coord: tuple, dir: Direction, use_indices: bool = True) -> list:
         """Generate a Polyakov loop, a loop around the full system.
         We only need one point so start from and a direction.
         The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
@@ -176,7 +176,7 @@ class Lattice2D:
                     for (coorddir, conj) in dest]
         return dest
 
-    def generate_wilson_loop(self, coord: tuple, size: tuple, use_indices=True) -> list:
+    def generate_wilson_loop(self, coord: tuple, size: tuple, use_indices: bool = True) -> list:
         """Generate a Wilson loop with bottom left corner at coord and an extend specified by the tuple size.
         This method is aware of the periodic boundary conditions of the lattice.
         The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
@@ -230,24 +230,25 @@ class Lattice2D:
 
         return sizes
 
-    def generate_all_wilson_loops(self, coord: tuple, use_indices=True) -> list:
+    def generate_all_wilson_loops(self, coord: tuple, sizes: list = [], use_indices: bool = True) -> list:
         """Generate all rectangular Wilson loops with bottom left corner at coord, up to a size determined by the lattice size.
         This method is aware of the periodic boundary conditions of the lattice.
-        The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
+        Each loop is returned in the format [(link_id,bool),...,(link_id,bool)].
         The <link_id> can be either a tuple of coordinates or an integer id of a link (depending on use_indices).
-        The bool in the tuples returned by this function signifies the orientation.
-        "True" means flip gauge field, "False" means no flip.
+        The bool in the tuples returned by this function signifies the orientation: "True" means flip gauge field, "False" means no flip.
 
         Args:
             coord (tuple): bottom left corner (x,y) of the Wilson loop
+            sizes (list): list of tuples (size_x, size_y) of desired loop sizes. If sizes is empty, all allowed loops will be generated. Defaults to an empty list.
             use_indices (bool, optional): Use link indices instead of coordinate representation. Defaults to True.
 
         Returns:
             list of lists: List of list of tuples of the form (link_id,<bool>). Each element is a complete Wilson loop.
         """
         loops = []
-
-        sizes = self.generate_allowed_loop_dimensions()
+        
+        if len(sizes) == 0:
+            sizes = self.generate_allowed_loop_dimensions()
 
         for size in sizes:
             loop = self.generate_wilson_loop(coord, size, use_indices)
