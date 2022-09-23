@@ -212,21 +212,25 @@ class Lattice2D:
             dest=[(self.coord2ind_dir(*coorddir),conj) for (coorddir,conj) in dest]
         return dest
     
-    def generate_allowed_loop_dimensions(self) -> list:
+    def generate_allowed_loop_dimensions(self, include_all: bool = False) -> list:
         """Generate all rectangular loop dimensions. 
         The max loop size (that we care about) is half the lattice size because of the periodic boundary conditions
         This function is separated out from generate_all_wilson_loops() so that it can be used in managing observables.
+
+        Args:
+            include_all (bool): True if loops should include those that are rotations of each other (e.g. 2x1 and 1x2 loops). Defaults to False.
 
         Returns:
             list: A list of tuples will allowed loop sizes.
         """
         sizes = []
-        max_x = self.nx // 2
+        max_x = self.nx // 2 # due to periodic boundary conditions, loops should only go up to half the system size
         max_y = self.ny // 2
 
         for size_x in range(1, max_x + 1):
             for size_y in range(1, max_y + 1):
-                sizes.append( (size_x, size_y) )
+                if include_all or size_y <= size_x:
+                    sizes.append( (size_x, size_y) )
 
         return sizes
 

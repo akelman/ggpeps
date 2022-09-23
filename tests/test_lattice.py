@@ -83,12 +83,6 @@ class TestLattice(unittest.TestCase):
                 (((0,1),lattice.Direction.X),True),
                 (((0,0),lattice.Direction.Y),True)     ], # 1x1 loop
             [   (((0,0),lattice.Direction.X),False),
-                (((1,0),lattice.Direction.Y),False),
-                (((1,1),lattice.Direction.Y),False),
-                (((0,2),lattice.Direction.X),True),
-                (((0,1),lattice.Direction.Y),True),
-                (((0,0),lattice.Direction.Y),True)     ], # 1x2 loop
-            [   (((0,0),lattice.Direction.X),False),
                 (((1,0),lattice.Direction.X),False),
                 (((2,0),lattice.Direction.Y),False),
                 (((1,1),lattice.Direction.X),True),
@@ -117,12 +111,6 @@ class TestLattice(unittest.TestCase):
                 (((0,1),lattice.Direction.X),True),
                 (((0,0),lattice.Direction.Y),True)     ], # 1x1 loop
             [   (((0,0),lattice.Direction.X),False),
-                (((1,0),lattice.Direction.Y),False),
-                (((1,1),lattice.Direction.Y),False),
-                (((0,2),lattice.Direction.X),True),
-                (((0,1),lattice.Direction.Y),True),
-                (((0,0),lattice.Direction.Y),True)     ], # 1x2 loop
-            [   (((0,0),lattice.Direction.X),False),
                 (((1,0),lattice.Direction.X),False),
                 (((2,0),lattice.Direction.Y),False),
                 (((1,1),lattice.Direction.X),True),
@@ -137,6 +125,16 @@ class TestLattice(unittest.TestCase):
                 (((0,1),lattice.Direction.Y),True),
                 (((0,0),lattice.Direction.Y),True)    ], # 2x2 loop
         ]
+
+        ''' # Not included by default
+            [   (((0,0),lattice.Direction.X),False),
+                (((1,0),lattice.Direction.Y),False),
+                (((1,1),lattice.Direction.Y),False),
+                (((0,2),lattice.Direction.X),True),
+                (((0,1),lattice.Direction.Y),True),
+                (((0,0),lattice.Direction.Y),True)     ], # 1x2 loop
+        '''
+
         paths = lat.generate_all_wilson_loops((0,0), use_indices=False)
         self.assertEqual(refs,paths)
 
