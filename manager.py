@@ -96,6 +96,8 @@ def main(args):
     mc_config.warmup_steps = args.warmup_steps
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize
+    mc_config.use_systemsize_update = args.use_systemsize_updates
+
     if args.seed is not None:
         seed = args.seed
     else:
