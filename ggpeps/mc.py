@@ -177,8 +177,9 @@ class MonteCarloEstimator:
         #self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
 
         # Wilson loops (of various sizes)
-        for size in self.system.cfg.lattice.generate_allowed_loop_dimensions():
-            loop_name = "wilson_loop_(0, 0)_" + str(size)
+        sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
+        for size in sizes: 
+            loop_name = f"wilson_loop_0-0_{size[0]}x{size[1]}"
             self.obsdict[loop_name] = Measurement(loop_name, binsize)
         
 
@@ -203,7 +204,7 @@ class MonteCarloEstimator:
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
         loops = self.system.cfg.lattice.generate_all_wilson_loops((0,0), sizes)
         for k in range(len(sizes)):
-            loop_name = "wilson_loop_(0, 0)_" + str(sizes[k])
+            loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
 
         if self.cfg.minimizer_mode:
