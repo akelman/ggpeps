@@ -102,10 +102,12 @@ class MonteCarloManager:
         resultvec = []
         if self.nrunner > 0:
             system_cfg_id = ray.put(self.system_cfg)
+            reduced_meas_steps = self.mc_cfg.meas_steps // self.nrunner
+            logging.info(f"Starting {self.nrunner} runner with {reduced_meas_steps} measurment steps each (total: {self.mc_cfg.meas_steps}).")
             for i in range(self.nrunner):
                 cfg = copy.deepcopy(self.mc_cfg)
                 cfg.seed = self.mc_cfg.seed + i
-                cfg.meas_steps = self.mc_cfg.meas_steps // self.nrunner
+                cfg.meas_steps = reduced_meas_steps
                 resultvec.append(
                     run_mc.remote(i, cfg, self.system_cls, system_cfg_id))
             resultvec = ray.get(resultvec)
