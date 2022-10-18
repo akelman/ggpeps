@@ -26,7 +26,7 @@ class Z2System2DConfig(Config2DBase):
         super().__init__(lattice, g2, g_gm, g2_mag,nlayer)
 
     def make_pure_gauge(self):
-        #The order of the parameters is [t,y,z]
+        #The order of the parameters is [tr,yr,zr,ti,yi,zi] ({r,i} referring to the real/imaginary components)
         for ind in range(self.nlayer):
             # t real
             self.paramvec[ind, 0] = 0

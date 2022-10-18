@@ -328,11 +328,10 @@ if __name__ == "__main__":
     parser.add_argument("--level", default="info", help="logging level")
     parser.add_argument("--binsize", default=1, type=int,
                         help="Binsize used in the MC computation")
-    parser.add_argument(
-        "--no-bin-eom",
-        default=False,
-        action="store_true",
-        help="Use the standard EOM instead of a rebinning analysis")
+    parser.add_argument("--no-bin-eom",
+                        default=False,
+                        action="store_true",
+                        help="Use the standard EOM instead of a rebinning analysis")
     parser.add_argument("--output", type=str, default='.',
                         help="Output Directory")
     parser.add_argument("--nlayer",
