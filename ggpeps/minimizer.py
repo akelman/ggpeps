@@ -196,4 +196,4 @@ def print_callback(x,minimizer):
         energy=res.get_obs_mean("energy")
         grad_paramvec=minimizer.energy_gradient_mc(res)
     max_grad_paramvec=np.max(np.abs(grad_paramvec))
-    logging.info("Energy: {:.5f}, Max grad paramvec: {:.5f}, acceptance prob: {:.5f} ".format(energy,max_grad_paramvec,acceptance_prob))
+    logging.info("Energy: {:.8f}, Max grad paramvec: {:.8f}, acceptance prob: {:.5f} ".format(energy,max_grad_paramvec,acceptance_prob))
