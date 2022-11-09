@@ -72,6 +72,7 @@ class ExactEvaluator():
                 "norm": [],
                 "mag_energy": [],
                 "el_energy": [],
+                "mass_energy_op": [],
                 "mag_energy_op": [],
                 "el_energy_op": [],
                 "el_energy_op_grad": [],
@@ -85,6 +86,7 @@ class ExactEvaluator():
                 data["energy"].append(self.system.energy)
                 data["mag_energy"].append(self.system.mag_energy)
                 data["el_energy"].append(self.system.el_energy)
+                data["mass_energy_op"].append(self.system.mass_energy_op) 
                 data["mag_energy_op"].append(self.system.mag_energy_op)
                 data["el_energy_op"].append(self.system.el_energy_op)
                 data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)

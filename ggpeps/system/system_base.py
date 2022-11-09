@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
+from typing import Union
 import numpy as np
 import logging
 import sys
 import sympy
 from ggpeps import gauge, utils
-from ggpeps.lattice import Direction
+from ggpeps.lattice import Direction, Lattice2D, Lattice3D
 
 
 class Config2DBase(ABC):
@@ -18,7 +19,17 @@ class Config2DBase(ABC):
     # This will be overwritten by the specifications
     _nparams = 1
 
-    def __init__(self, lattice, g2, g_gm, g2_mag, nlayer=1):
+    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g2:float, g_gm:float, g2_mag:float, nlayer:int=1, mass:float=1.0):
+        """Constructor.
+
+        Args:
+            lattice (Union[Lattice2D, Lattice3D]): lattice. 
+            g2 (float): Hamiltonian prefactor for electric energy
+            g_gm (float): prefactor for gauge-matter coupling
+            g2_mag (float): prefactor for magnetic energy
+            nlayer (int, optional): number of layers. Defaults to 1.
+            mass (float, optional): mass of physical fermions (i.e. prefactor on the mass term). Defaults to 0.
+        """
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         self.nlayer = nlayer
         self.lattice = lattice
@@ -33,6 +44,7 @@ class Config2DBase(ABC):
         else:
             self.g2_mag = g2_mag
         self.g_gm = g_gm
+        self.mass = mass
 
     @property
     def paramvec(self):
@@ -218,6 +230,7 @@ class System2DBase(ABC):
         self._el_energy_op = None
         self._el_energy_op_vec = None
         self._mag_energy_op = None
+        self._mass_energy_op = None
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in_vec = None  # Tracks (D^-1 - gammain)^-1
@@ -987,17 +1000,32 @@ class System2DBase(ABC):
         This is an abstract method and has to be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
+    
+    @abstractmethod
+    def _compute_mass_energy_op_and_grad(self):
+        """Compute the mass energy and the gradient (for a single layer).
+        This is an abstract method and has to be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @property
     def energy(self):
-        """Compute the electric energy by adding the magnetic and the electric energy
+        """Compute the energy by adding the magnetic and the electric energy
         This is a get function.
 
         Returns:
             float: Energy of the system
         """
         if self._energy is None:
-            self._energy = self.el_energy + self.mag_energy
+            self._energy = 0.0
+            if self.cfg.g2 != 0.0:
+                self._energy += self.el_energy
+            if self.cfg.g2_mag != 0.0:
+                self._energy += self.mag_energy
+            if self.cfg.g_gm != 0.0:
+                self._energy += self.gauge_matter_energy
+            if self.cfg.mass != 0.0:
+                self._energy += self.mass_energy
         return self._energy
 
     @property
@@ -1022,10 +1050,24 @@ class System2DBase(ABC):
             float: electric energy for the whole system w/o shift
         """
         if self._el_energy_op is None:
-            # The different layers can be separated into separate PEPS.
+            # The different layers can be separated into separate PEPS and then multiplied together.
             nlinks = self.cfg.lattice.nlinks
             self._el_energy_op = nlinks * np.prod(self.el_energy_op_vec)
         return self._el_energy_op
+
+    @property
+    def mass_energy_op(self):
+        """Compute the mass energy operator for the whole system without shift.
+        This is a get function.
+
+        Returns:
+            float: Mass energy operator (w/o shift) for the whole system
+        """
+        if self._mass_energy_op is None:
+            nsites = self.cfg.lattice.nx * self.cfg.lattice.ny
+            self._mass_energy_op, _ =  self._compute_mass_energy_op_and_grad()
+            self._mass_energy_op = nsites * self._mass_energy_op
+        return self._mass_energy_op
 
     @property
     def el_energy_op_vec(self):
@@ -1064,6 +1106,17 @@ class System2DBase(ABC):
         nlinks = self.cfg.lattice.nlinks
         el_energy = self.cfg.g2_el * (2*nlinks - 2*self.el_energy_op)
         return el_energy
+
+    @property
+    def mass_energy(self):
+        """Compute mass energy for the whole system
+        This is a get function.
+
+        Returns:
+            float: mass energy
+        """
+        mass_energy = self.cfg.mass * self.mass_energy_op
+        return mass_energy
 
     @property
     def el_energy_op_grad_vec(self):

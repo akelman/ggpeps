@@ -339,6 +339,9 @@ class Z2System2D2C(System2DBase):
 
 
     # Observables
+    def _compute_mass_energy_op_and_grad(self, use_trans_inv=True):
+        dest, dest_grad = 10, 0
+        return dest, dest_grad
 
     def _compute_el_energy_op_vec_and_grad(self, use_trans_inv=True):
         """Computation of the electric energy and the electric gradient in a single method.
