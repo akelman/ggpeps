@@ -1023,7 +1023,7 @@ class System2DBase(ABC):
             if self.cfg.g2_mag != 0.0:
                 self._energy += self.mag_energy
             if self.cfg.g_gm != 0.0:
-                self._energy += self.gauge_matter_energy
+                self._energy += 0.0 #self.gauge_matter_energy
             if self.cfg.mass != 0.0:
                 self._energy += self.mass_energy
         return self._energy

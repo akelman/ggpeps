@@ -254,6 +254,12 @@ class U1System2D(System2DBase):
 
 
     ################## Observables ######################
+    def _compute_mass_energy_op_and_grad(self, use_trans_inv=True):
+        raise NotImplementedError("The mass term has not yet been implemented for U1.")
+        
+        dest, dest_grad = 0, 0 #Needs to be calculated properly
+        return dest, dest_grad
+    
     def _compute_mag_energy_op(self,use_trans_inv=True):
         if use_trans_inv:
             # Evaluate one plaquette and multiply by number of plaquettes

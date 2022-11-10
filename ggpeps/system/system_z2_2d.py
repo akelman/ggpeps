@@ -297,6 +297,11 @@ class Z2System2D(System2DBase):
 
     # Calculating the norm
 
+    def _compute_mass_energy_op_and_grad(self, use_trans_inv=True):
+        raise NotImplementedError("The mass term has not yet been implemented for Z2 with 1 copy.")
+
+        dest, dest_grad = 0, 0 #Needs to be calculated properly
+        return dest, dest_grad
 
     def _compute_el_energy_op_vec(self, use_trans_inv=True):
         """Computation of the electric energy operators (w/o shift).
