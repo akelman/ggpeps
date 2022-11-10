@@ -372,7 +372,7 @@ class Z2System2D2C(System2DBase):
             for layerind in range(self.cfg.nlayer):
                 layer_derivative=[]
                 #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
-                mat_a = self.mat_a_mod_vec[layerind]
+                mat_a = self.mat_a_mod_vec[layerind] # dim: 2*nsites (for majorana) + 8 (= 4 virtual modes per link x2 for majorana)
                 mat_b = self.mat_b_mod_vec[layerind]
                 diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
                 diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()

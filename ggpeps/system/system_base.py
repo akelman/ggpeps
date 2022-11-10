@@ -939,7 +939,7 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def update_gauge_ind(self, link_ind, theta):
+    def update_gauge_ind(self, link_ind, theta): #
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     def update_gauge_full_system(self, gaugeconfig):
@@ -981,6 +981,7 @@ class System2DBase(ABC):
         """Reset the values of computed quantitities to avoid spillover from previous computations.
         """
         self._energy = None
+        self._mass_energy_op = None
         self._mag_energy_op = None
         self._el_energy_op = None
         self._el_energy_op_vec = None
@@ -1018,13 +1019,13 @@ class System2DBase(ABC):
         """
         if self._energy is None:
             self._energy = 0.0
-            if self.cfg.g2 != 0.0:
+            if not np.isclose(self.cfg.g2, 0):
                 self._energy += self.el_energy
-            if self.cfg.g2_mag != 0.0:
+            if not np.isclose(self.cfg.g2_mag, 0):
                 self._energy += self.mag_energy
-            if self.cfg.g_gm != 0.0:
-                self._energy += 0.0 #self.gauge_matter_energy
-            if self.cfg.mass != 0.0:
+            if not np.isclose(self.cfg.g_gm, 0):
+                self._energy += 0.0 # self.gauge_matter_energy
+            if not np.isclose(self.cfg.mass, 0):
                 self._energy += self.mass_energy
         return self._energy
 
@@ -1065,7 +1066,7 @@ class System2DBase(ABC):
         """
         if self._mass_energy_op is None:
             nsites = self.cfg.lattice.nx * self.cfg.lattice.ny
-            self._mass_energy_op, _ =  self._compute_mass_energy_op_and_grad()
+            self._mass_energy_op, __ =  self._compute_mass_energy_op_and_grad()
             self._mass_energy_op = nsites * self._mass_energy_op
         return self._mass_energy_op
 
