@@ -19,7 +19,7 @@ class Config2DBase(ABC):
     # This will be overwritten by the specifications
     _nparams = 1
 
-    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g2:float, g_gm:float, g2_mag:float, nlayer:int=1, mass:float=1.0):
+    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g2:float, g_gm:float, g2_mag:float, nlayer:int=1, g_mass:float=1.0):
         """Constructor.
 
         Args:
@@ -44,7 +44,7 @@ class Config2DBase(ABC):
         else:
             self.g2_mag = g2_mag
         self.g_gm = g_gm
-        self.mass = mass
+        self.g_mass = g_mass
 
     @property
     def paramvec(self):
@@ -939,7 +939,7 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def update_gauge_ind(self, link_ind, theta): #
+    def update_gauge_ind(self, link_ind, theta):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     def update_gauge_full_system(self, gaugeconfig):
@@ -1025,7 +1025,7 @@ class System2DBase(ABC):
                 self._energy += self.mag_energy
             if not np.isclose(self.cfg.g_gm, 0):
                 self._energy += 0.0 # self.gauge_matter_energy
-            if not np.isclose(self.cfg.mass, 0):
+            if not np.isclose(self.cfg.g_mass, 0):
                 self._energy += self.mass_energy
         return self._energy
 
@@ -1116,7 +1116,7 @@ class System2DBase(ABC):
         Returns:
             float: mass energy
         """
-        mass_energy = self.cfg.mass * self.mass_energy_op
+        mass_energy = self.cfg.g_mass * self.mass_energy_op
         return mass_energy
 
     @property

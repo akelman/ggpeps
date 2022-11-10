@@ -23,7 +23,7 @@ class Z2System2DConfig(Config2DBase):
 
     def __init__(self, lattice, g2, g_gm, g2_mag, nlayer=1):
         #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
-        super().__init__(lattice, g2, g_gm, g2_mag,nlayer)
+        super().__init__(lattice, g2, g_gm, g2_mag, nlayer)
 
     def make_pure_gauge(self):
         #The order of the parameters is [tr,yr,zr,ti,yi,zi] ({r,i} referring to the real/imaginary components)
@@ -298,7 +298,8 @@ class Z2System2D(System2DBase):
     # Calculating the norm
 
     def _compute_mass_energy_op_and_grad(self, use_trans_inv=True):
-        raise NotImplementedError("The mass term has not yet been implemented for Z2 with 1 copy.")
+        # Really, the error should be raised here, but commented out now for testing purposes
+        # raise NotImplementedError("The mass term has not yet been implemented for Z2 with 1 copy.")
 
         dest, dest_grad = 0, 0 #Needs to be calculated properly
         return dest, dest_grad
