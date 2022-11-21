@@ -143,18 +143,23 @@ def main(args):
     g2 = args.g2
     g_gm = args.g_gm
     g2_mag = args.g2_mag
+    g_mass = args.g_mass
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 
     # Depending on the parameters, we instantiate different systems
     # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.ncopy == 1:
+        if g_mass != 0:
+            logging.error("Not Implemented: the mass term has not yet been implemented for the 1 copy case")
+            sys.exit(1)
         # Z2 system with one copy of virtual fermions on the links
         system_type = Z2System2D
         system_cfg = Z2System2DConfig(lattice,
                                       g2,
                                       g_gm,
                                       g2_mag,
+                                      g_mass,
                                       nlayer=args.nlayer)
     elif args.ncopy == 2:
         # Z2 system with two copies of virtual fermions on the links
@@ -163,6 +168,7 @@ def main(args):
                                         g2,
                                         g_gm,
                                         g2_mag,
+                                        g_mass,
                                         nlayer=args.nlayer)
     else:
         logging.error("Not Implemented: Only 1 or two copies are possible")
@@ -188,6 +194,7 @@ def main(args):
     logging.info("g^2: {}".format(g2))
     logging.info("g^2_mag: {}".format(g2_mag))
     logging.info("g_gm: {}".format(g_gm))
+    logging.info("g_mass: {}".format(g_mass))
     logging.info("Rebinning EOM: {}".format(Measurement.use_rebinning))
     logging.info("============================")
 
@@ -304,36 +311,27 @@ def main(args):
 
 
 if __name__ == "__main__":
+
     import argparse
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        epilog="""Possible modes: eval, minimize (min), exact, minexact, minmult. Possible logging levels are critical, error, warning, info, debug."""
+        formatter_class = argparse.ArgumentDefaultsHelpFormatter,
+        epilog = """Possible modes: eval, minimize (min), exact, minexact, minmult. Possible logging levels: critical, error, warning, info, debug."""
     )
+
+    # Mode and lattice size
     parser.add_argument("mode",
                         type=str,
                         choices=["eval", "min", "exact", "minexact", "minmult"],
                         help="Mode of the program")
-    parser.add_argument(
-        "L", type=int, help="Size of the square system (one side)")
-    parser.add_argument("--g2", type=float, default=1.0,
-                        help="coupling constant")
-    parser.add_argument("--g2_mag", type=float, help="magnetic coupling constant (if not given, computed from g2)")
-    parser.add_argument("--g_gm", type=float, default=0.0,
-                        help="gauge matter coupling")
-    parser.add_argument("--seed", type=int, help="Seed for the MC simulation")
-    parser.add_argument("--warmup_steps", type=int,
-                        default=int(1e5), help="Number of warmup steps")
-    parser.add_argument("--meas_steps", type=int,
-                        default=int(1e5), help="Number of run steps")
-    parser.add_argument("--level", default="info", help="logging level")
-    parser.add_argument("--binsize", default=1, type=int,
-                        help="Binsize used in the MC computation")
-    parser.add_argument("--no-bin-eom",
-                        default=False,
-                        action="store_true",
-                        help="Use the standard EOM instead of a rebinning analysis")
-    parser.add_argument("--output", type=str, default='.',
-                        help="Output Directory")
+    parser.add_argument("L", type=int, help="Size of the square system (one side)")
+    
+    # Hamiltonian parameters
+    parser.add_argument("--g2", type=float, default=1.0, help="coupling constant")
+    parser.add_argument("--g2_mag", type=float, help="magnetic coupling constant (if not given, computed as 1/g2)")
+    parser.add_argument("--g_gm", type=float, default=0.0, help="gauge matter coupling")
+    parser.add_argument("--g_mass", type=float, default=0.0, help="matter constant")
+
+    # Other system parameters
     parser.add_argument("--nlayer",
                         default=1,
                         type=int,
@@ -344,27 +342,36 @@ if __name__ == "__main__":
                         help="Number of virtual fermions on the links")
     parser.add_argument("--params",
                         nargs="+",
-                        help="Parameters passed as a starting configuration (Order for one copy: [t1, t2,..., y1, y2,..., z1, z2...])")
+                        help="Parameters passed as a starting configuration (Order for one copy: [t1r, t2r,..., y1r, y2r,..., z1r, z2r..., t1i, t2i, ..., y1i, ... z1i])")
     parser.add_argument("--pure-gauge",
                         action="store_true",
                         default=False,
                         help="Force the coupling of physical and virtual fermions (t-parameters) to be 0")
+
+    # Computation settings
+    parser.add_argument("--seed", type=int, help="Seed for the MC simulation")
+    parser.add_argument("--warmup_steps", type=int, default=int(1e5), help="Number of warmup steps")
+    parser.add_argument("--meas_steps", type=int, default=int(1e5), help="Number of run steps")
+    parser.add_argument("--level", default="info", help="logging level")
+    parser.add_argument("--binsize", default=1, type=int, help="Binsize used in the MC computation")
+    parser.add_argument("--output", type=str, default='.', help="Output Directory")
+    parser.add_argument("--no-bin-eom",
+                        default=False,
+                        action="store_true",
+                        help="Use the standard EOM instead of a rebinning analysis")
     parser.add_argument("--use-systemsize-updates",
                         action="store_true",
                         default=False,
                         help="Update every spin of the system between each update step")
-    #Arguments for the minimizer
-    parser.add_argument("--method", type=str,
-                        default="bfgs", help="Minimization method")
-    parser.add_argument("--maxiter", type=int, default=100,
-                        help="Number of steps for the minimizer (if custom is used)")
-    parser.add_argument("--alpha", type=float, default=0.1,
-                        help="Learning rate")
-    parser.add_argument("--min-grad", type=float, default=1e-5,
-                        help="Minimal gradient to use a stopping criterion")
-    #Arguments for ray
-    parser.add_argument("--nrunner", type=int, default=0,
-                        help="Number of parallel MC runners")
+    
+    # Arguments for the minimizer
+    parser.add_argument("--method", type=str, default="bfgs", help="Minimization method")
+    parser.add_argument("--maxiter", type=int, default=100, help="Number of steps for the minimizer (if custom is used)")
+    parser.add_argument("--alpha", type=float, default=0.1, help="Learning rate")
+    parser.add_argument("--min-grad", type=float, default=1e-5, help="Minimal gradient to use a stopping criterion")
+    
+    # Arguments for ray
+    parser.add_argument("--nrunner", type=int, default=0, help="Number of parallel MC runners")
+    
     args = parser.parse_args()
-
     main(args)

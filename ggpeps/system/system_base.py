@@ -19,7 +19,7 @@ class Config2DBase(ABC):
     # This will be overwritten by the specifications
     _nparams = 1
 
-    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g2:float, g_gm:float, g2_mag:float, nlayer:int=1, g_mass:float=1.0):
+    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g2:float, g_gm:float, g2_mag:float, g_mass:float, nlayer:int=1):
         """Constructor.
 
         Args:
@@ -27,8 +27,8 @@ class Config2DBase(ABC):
             g2 (float): Hamiltonian prefactor for electric energy
             g_gm (float): prefactor for gauge-matter coupling
             g2_mag (float): prefactor for magnetic energy
+            g_mass (float): mass of physical fermions (i.e. prefactor on the mass term).
             nlayer (int, optional): number of layers. Defaults to 1.
-            mass (float, optional): mass of physical fermions (i.e. prefactor on the mass term). Defaults to 0.
         """
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         self.nlayer = nlayer
