@@ -545,3 +545,8 @@ class Z2System2D(System2DBase):
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
             mag_energy_bare = None
         return mag_energy_bare
+    
+    def _compute_int_energy_op(self):
+        # This function is not implemented yet!
+        raise NotImplementedError("The interaction energy is not implemented yet for the 1 copy case.")
+        return 0

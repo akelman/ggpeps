@@ -231,13 +231,14 @@ class System2DBase(ABC):
         self._el_energy_op_vec = None
         self._mag_energy_op = None
         self._mass_energy_op = None
+        self._int_energy_op = None
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in_vec = None  # Tracks (D^-1 - gammain)^-1
         self._wi_gamma_out_vec = None  # Tracks (D - gammain)^-1
         self._incdet_vec = None  # Tracks det(D^-1 - gammain)
 
-        self._wi_gamma_in_mod_vec = None  # Tracks(Dmod^-1 - gammain)^-1
+        self._wi_gamma_in_mod_vec = None  # Tracks (Dmod^-1 - gammain)^-1
         self._wi_gamma_out_mod_vec = None  # Tracks (Dmod - gammain)^-1
         self._incdet_mod_vec = None  # Tracks det(Dmod^-1 - gammain)
 
@@ -253,8 +254,7 @@ class System2DBase(ABC):
         mat_b_vec = []
         mat_d_vec = []
         for ind in range(self.cfg.nlayer):
-            mat_a, mat_b, mat_d = extract_partial_covmats(
-                self.gamma_maj_sys_vec[ind], offset)
+            mat_a, mat_b, mat_d = extract_partial_covmats(self.gamma_maj_sys_vec[ind], offset)
             mat_a_vec.append(mat_a)
             mat_b_vec.append(mat_b)
             mat_d_vec.append(mat_d)
@@ -265,7 +265,7 @@ class System2DBase(ABC):
         """
         Function to define the list of parameters as sympy variables.
         We need these symbols to analytically derive T automatically.
-        This function has to overwritten in the child-class.
+        This function has to be overwritten in the child-class.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
@@ -982,6 +982,7 @@ class System2DBase(ABC):
         """
         self._energy = None
         self._mass_energy_op = None
+        self._int_energy_op = None
         self._mag_energy_op = None
         self._el_energy_op = None
         self._el_energy_op_vec = None
@@ -1009,6 +1010,13 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    @abstractmethod
+    def _compute_int_energy_op(self):
+        """Compute the interaction energy and the gradient (for a single layer).
+        This is an abstract method and has to be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
     @property
     def energy(self):
         """Compute the energy by adding the magnetic and the electric energy
@@ -1024,7 +1032,7 @@ class System2DBase(ABC):
             if not np.isclose(self.cfg.g2_mag, 0):
                 self._energy += self.mag_energy
             if not np.isclose(self.cfg.g_gm, 0):
-                self._energy += 0.0 # self.gauge_matter_energy
+                self._energy += self.int_energy
             if not np.isclose(self.cfg.g_mass, 0):
                 self._energy += self.mass_energy
         return self._energy
@@ -1067,8 +1075,21 @@ class System2DBase(ABC):
         if self._mass_energy_op is None:
             nsites = self.cfg.lattice.nx * self.cfg.lattice.ny
             self._mass_energy_op, __ =  self._compute_mass_energy_op_and_grad()
-            self._mass_energy_op = nsites * self._mass_energy_op
+            # self._mass_energy_op *= nsites
         return self._mass_energy_op
+    
+    @property
+    def int_energy_op(self):
+        """Compute the interaction energy operator for the whole system without shift.
+        This is a get function.
+
+        Returns:
+            float: Interaction energy operator (w/o shift) for the whole system
+        """
+        if self._int_energy_op is None:
+            self._int_energy_op, __ =  self._compute_int_energy_op()
+            # Do for whole system...
+        return self._int_energy_op
 
     @property
     def el_energy_op_vec(self):
@@ -1120,6 +1141,17 @@ class System2DBase(ABC):
         return mass_energy
 
     @property
+    def int_energy(self):
+        """Compute interaction (of matter and gauge fields) energy for the whole system
+        This is a get function.
+
+        Returns:
+            float: interaction energy
+        """
+        int_energy = self.cfg.g_gm * self.int_energy_op
+        return int_energy
+
+    @property
     def el_energy_op_grad_vec(self):
         """Compute the gradient of the electric operator (w/o shift) for all layers
 
@@ -1147,7 +1179,7 @@ class System2DBase(ABC):
 
     def compute_ferm_cov(self):
         """Compute the covariance matrix of the fermions in the system """
-        return self.mat_a + self.mat_b@self.wi_gamma_out.inv()@np.transpose(self.mat_b)
+        return self.mat_a_vec[0] + (self.mat_b_vec[0] @ self._wi_gamma_out_vec[0].inv() @ np.transpose(self.mat_b_vec[0]))
 
 
 

@@ -340,8 +340,29 @@ class Z2System2D2C(System2DBase):
 
     # Observables
     def _compute_mass_energy_op_and_grad(self, use_trans_inv=True):
-        dest, dest_grad = 10, 0
-        return dest, dest_grad
+        """Compute the mass term of the Hamiltonian for a single site (at the moment set for all sites!!!).
+
+        Args:
+            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
+
+        Returns:
+            _type_: _description_
+        """
+        if not use_trans_inv:
+            raise NotImplementedError("Translation invariance must be set to True.")
+        if self.cfg.nlayer != 1:
+            raise NotImplementedError("Only one layer can be used with physical fermions.")
+
+        nsites = self.cfg.lattice.size
+        covmat = self.compute_ferm_cov()
+        mass_energy_op = 0.
+
+        for k in range(nsites):
+            ind = 2*k
+            mass_energy_op += covmat[ind,ind+1] 
+        mass_energy_op *= 2 * np.exp(self.calculate_lognormvec_inc(all_factors=True)[0]) 
+        dest_grad = 0 # Fix
+        return mass_energy_op, dest_grad
 
     def _compute_el_energy_op_vec_and_grad(self, use_trans_inv=True):
         """Computation of the electric energy and the electric gradient in a single method.
@@ -472,3 +493,33 @@ class Z2System2D2C(System2DBase):
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
             mag_energy_bare = None
         return mag_energy_bare
+    
+    def _compute_int_energy_op(self):
+        """Calculate the energy due to the interaction of the physical fermions with the gauge fields.
+        Currently a DRAFT!!!
+
+        Returns:
+            float: the interaction energy
+        """
+        # We calculate the hopping between 
+        nlinks = self.cfg.lattice.nlinks
+        covmat = self.compute_ferm_cov
+        int_energy_op = 0.
+        for i in range(nlinks):
+            for j in range(nlinks):
+                if i != j:
+                    #TODO: Check that gaugemgr indices match to fermion indices
+                    #Consider the horizontal link
+                    ind_field_hor = self.cfg.lattice.coord2link((i,j), Direction.X)
+                    ind_hor_site = self.cfg.lattice.coord2ind((i,j))
+                    ind_hor_site_n = self.cfg.lattice.coord2ind((i+1,j))
+                    gaugefield_hor = self.gaugefieldvec[ind_field_hor]
+                    int_energy_op += 0.25 * np.exp(1.j * gaugefield_hor) * (covmat[ind_hor_site,ind_hor_site_n] - covmat[ind_hor_site+1, ind_hor_site_n+1])
+                    
+                    #Consider the vertical link
+                    ind_field_ver = self.cfg.lattice.coord2link((i,j), Direction.Y)
+                    ind_ver_site = self.cfg.lattice.coord2ind((i,j))
+                    ind_ver_site_n = self.cfg.lattice.coord2ind((i,j+1))
+                    gaugefield_hor = self.gaugefieldvec[ind_field_ver]
+                    int_energy_op += 0.25 * np.exp(1.j * gaugefield_hor) * (covmat[ind_ver_site,ind_ver_site_n] - covmat[ind_ver_site+1, ind_ver_site_n+1])
+        return int_energy_op
