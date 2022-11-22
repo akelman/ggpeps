@@ -285,7 +285,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
 
-                    system_z2_2_2_left= system.Z2System2D2C(system_cfg_left)
+                    system_z2_2_2_left = system.Z2System2D2C(system_cfg_left)
                     system_z2_2_2_right = system.Z2System2D2C(system_cfg_right)
 
                     val_left = system_z2_2_2_left.el_energy_op
