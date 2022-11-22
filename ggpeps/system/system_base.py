@@ -224,6 +224,7 @@ class System2DBase(ABC):
         # Gradients
         self._gamma_maj_sys_deriv_dict = None
         self._el_energy_op_grad_vec = None
+        self._mass_energy_op_grad = None
 
         # Observables
         self._energy = None
@@ -987,6 +988,7 @@ class System2DBase(ABC):
         self._el_energy_op = None
         self._el_energy_op_vec = None
         self._el_energy_op_grad_vec = None
+        self._mass_energy_op_grad = None
 
     ################## Observables ######################
     @abstractmethod
@@ -1073,10 +1075,24 @@ class System2DBase(ABC):
             float: Mass energy operator (w/o shift) for the whole system
         """
         if self._mass_energy_op is None:
-            nsites = self.cfg.lattice.nx * self.cfg.lattice.ny
-            self._mass_energy_op, __ =  self._compute_mass_energy_op_and_grad()
-            # self._mass_energy_op *= nsites
+            self._mass_energy_op, self._mass_energy_op_grad =  self._compute_mass_energy_op_and_grad()
+            nsites = self.cfg.size
+            self._mass_energy_op *= nsites
         return self._mass_energy_op
+    
+    @property
+    def mass_energy_op_grad(self):
+        """Compute the gradient of the mass energy operator for the whole system without shift.
+        This is a get function.
+
+        Returns:
+            float: gradient of the mass energy operator (w/o shift) for the whole system
+        """
+        if self._mass_energy_op_grad is None:
+            self._mass_energy_op, self._mass_energy_op_grad =  self._compute_mass_energy_op_and_grad()
+            nsites = self.cfg.size
+            self._mass_energy_op_grad *= nsites
+        return self._mass_energy_op_grad
     
     @property
     def int_energy_op(self):

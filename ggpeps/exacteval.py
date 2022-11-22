@@ -73,6 +73,7 @@ class ExactEvaluator():
                 "mag_energy": [],
                 "el_energy": [],
                 "mass_energy_op": [],
+                "mass_energy_op_grad": [],
                 "mag_energy_op": [],
                 "el_energy_op": [],
                 "el_energy_op_grad": [],
@@ -87,6 +88,7 @@ class ExactEvaluator():
                 data["mag_energy"].append(self.system.mag_energy)
                 data["el_energy"].append(self.system.el_energy)
                 data["mass_energy_op"].append(self.system.mass_energy_op) 
+                data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad) 
                 data["mag_energy_op"].append(self.system.mag_energy_op)
                 data["el_energy_op"].append(self.system.el_energy_op)
                 data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
@@ -123,19 +125,23 @@ class ExactEvaluator():
             expval_prod_mag = self.compute_expval(prod_mag_op_norm, normvec)
             prod_expval_mag = self.compute_expval(data["mag_energy_op"],normvec) * dest["grad_norm"]
             mag_op_grad = expval_prod_mag - prod_expval_mag
-            mag_energy_grad = -2*self.system.cfg.g2_mag * mag_op_grad
+            mag_energy_grad = -2 * self.system.cfg.g2_mag * mag_op_grad
             dest["mag_energy_grad"] = mag_energy_grad
 
             # Electric gradient
             prod_el_op_norm = data["el_energy_op"] * grad_norm_transposed
             expval_prod_el = self.compute_expval(prod_el_op_norm, normvec)
-            prod_expval_el = self.compute_expval(data["el_energy_op"],normvec) * dest["grad_norm"]
-            el_op_grad = expval_prod_el - prod_expval_el + self.compute_expval(np.transpose(data["el_energy_op_grad"],[2,1,0]),normvec)
-            el_energy_grad = - 2 *self.system.cfg.g2_el * el_op_grad
+            prod_expval_el = self.compute_expval(data["el_energy_op"], normvec) * dest["grad_norm"]
+            el_op_grad = expval_prod_el - prod_expval_el + self.compute_expval(np.transpose(data["el_energy_op_grad"],[2,1,0]), normvec)
+            el_energy_grad = - 2 * self.system.cfg.g2_el * el_op_grad
             dest["el_energy_grad"] = el_energy_grad
 
-            # Add for the full electric gradient
-            dest["energy_grad"] = mag_energy_grad + el_energy_grad
+            # Mass gradient
+            mass_energy_grad = self.system.cfg.g_mass * self.compute_expval(data["mass_energy_op_grad"], normvec)
+            dest["mass_energy_grad"] = mass_energy_grad
+
+            # Add for the full gradient
+            dest["energy_grad"] = mag_energy_grad + el_energy_grad + mass_energy_grad
             self.obsdict = dest
 
         return self.obsdict

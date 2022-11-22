@@ -381,7 +381,7 @@ class Z2System2D2C(System2DBase):
                     - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
             
             d_gamma_out_symbolvec[symbol] = d_gamma_out
-            d_norm[symbol] = compute_grad_over_norm(symbol, layerind) * norm
+            d_norm[symbol] = self.compute_grad_over_norm(symbol, layerind) * norm
 
         # Calculate mass term with gradients
         for k in range(1): # range(nsites)
@@ -398,7 +398,6 @@ class Z2System2D2C(System2DBase):
 
         mass_energy_op *= 2 * norm
 
-        gradients = np.asarray(gradients)
         return mass_energy_op, gradients
 
     def _compute_el_energy_op_vec_and_grad(self, use_trans_inv=True):
