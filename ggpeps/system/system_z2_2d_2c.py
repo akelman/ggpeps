@@ -29,6 +29,8 @@ class Z2System2D2CConfig(Config2DBase):
         super().__init__(lattice, g2, g_gm, g_mag, g_mass, nlayer)
 
     def make_pure_gauge(self):
+        """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t. 
+        """
         #The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
         for ind in range(self.nlayer):
             self.paramvec[ind, 0] = 0 # Set t1r to 0
@@ -340,7 +342,7 @@ class Z2System2D2C(System2DBase):
 
     # Observables
     def _compute_mass_energy_op_and_grad(self, use_trans_inv=True):
-        """Compute the mass term of the Hamiltonian for a single site (at the moment set for all sites!!!).
+        """Compute the mass term of the Hamiltonian for a single site.
 
         Args:
             use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
@@ -353,16 +355,51 @@ class Z2System2D2C(System2DBase):
         if self.cfg.nlayer != 1:
             raise NotImplementedError("Only one layer can be used with physical fermions.")
 
+        # Calculation prelimaries
         nsites = self.cfg.lattice.size
         covmat = self.compute_ferm_cov()
         mass_energy_op = 0.
+        gradients = [0]*len(self.symbolvec)
+        
+        layerind = 0 # only one layer can be used
+        mat_b = self.mat_b_vec[layerind]
+        norm = np.exp(self.calculate_lognormvec_inc(all_factors=True)[layerind]) 
 
-        for k in range(nsites):
+
+        # Calculate derivatives
+        d_gamma_out_symbolvec = {} # will hold derivatives of gamma_out for each symbol
+        d_norm = {} # will hold derivatives of the norm with respect to each symbol
+        for symbol in self.symbolvec:
+            # Many of the following matrices are calculated for the electric energy and gradient - efficiency would be improved if those computations were saved
+            deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
+            offset = 2 * self.cfg.lattice.size
+            d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
+            diff_d_gamma_inv = self.wi_gamma_out_vec[layerind].inv()
+            d_gamma_out = d_mat_a \
+                    + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
+                    + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
+                    - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+            
+            d_gamma_out_symbolvec[symbol] = d_gamma_out
+            d_norm[symbol] = compute_grad_over_norm(symbol, layerind) * norm
+
+        # Calculate mass term with gradients
+        for k in range(1): # range(nsites)
             ind = 2*k
             mass_energy_op += covmat[ind,ind+1] 
-        mass_energy_op *= 2 * np.exp(self.calculate_lognormvec_inc(all_factors=True)[0]) 
-        dest_grad = 0 # Fix
-        return mass_energy_op, dest_grad
+
+            # update gradients
+            for k in range(len(self.symbolvec)):
+                symbol = self.symbolvec[k]
+                gradients[k] += 2 * d_gamma_out_symbolvec[symbol][ind,ind+1] * norm # should replace this with the multiplications at the end (for efficiency reasons)
+                gradients[k] += 2 * covmat[ind,ind+1] * d_norm[symbol]
+
+                # further terms of the derivative must be added here
+
+        mass_energy_op *= 2 * norm
+
+        gradients = np.asarray(gradients)
+        return mass_energy_op, gradients
 
     def _compute_el_energy_op_vec_and_grad(self, use_trans_inv=True):
         """Computation of the electric energy and the electric gradient in a single method.

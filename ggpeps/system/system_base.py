@@ -713,12 +713,12 @@ class System2DBase(ABC):
         gamma_dirac_deriv = self.compute_gamma_dirac_deriv(symb, layerind)
         m, _ = gamma_dirac_deriv.shape
         smat = utils.generate_smat(m)
-        return np.real(smat@gamma_dirac_deriv@np.transpose(smat))
+        return np.real(smat @ gamma_dirac_deriv @ np.transpose(smat))
 
     def _generate_gamma_maj_sys_deriv_dict(self):
         """Internal function to generate a dictionary of all possible derivatives of gamma_maj_sys, the system-wide covariance matrix of the fiducial state.
         The key to the dictionary is the symbol with respect to which we derived.
-        Each entry contains a list with len(list)=nlayer.
+        Each entry contains a list with len(list) = nlayer.
 
         Returns:
             dict: Dictionary with all derivatives
