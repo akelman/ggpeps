@@ -84,8 +84,34 @@ def translate_parameters(system_cfg, params,rng_state):
             dest = rng_state.rand(nlayer, nparams)
     return dest
 
+def validate_inputs(args) -> bool:
+
+    if args.nlayer > 1:
+        logging.error("Now that physical fermions are included, only 1 layer can be used.")
+        return False
+
+    return True
 
 def main(args):
+
+    #Set up the logger
+    h_stdout = logging.StreamHandler(stream=sys.stdout)
+    h_stderr = logging.StreamHandler(stream=sys.stderr)
+    h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
+    logging.basicConfig(
+        level=args.level.upper(),
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(args2logname(args)),
+            h_stdout,
+            h_stderr
+        ]
+    )
+
+    # Validate input arguments
+    if not validate_inputs(args):
+        sys.exit(1)
+
     #Set up ray before we actually start with the simulation
     #Ray uses randomness internally and we don't want it to mix up the setting of the seed
     if args.nrunner > 0:
@@ -116,20 +142,6 @@ def main(args):
             sys.exit(1)
     else:
         os.makedirs(args.output)
-
-    #Set up the logger
-    h_stdout = logging.StreamHandler(stream=sys.stdout)
-    h_stderr = logging.StreamHandler(stream=sys.stderr)
-    h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
-    logging.basicConfig(
-        level=args.level.upper(),
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(args2logname(args)),
-            h_stdout,
-            h_stderr
-        ]
-    )
 
     logging.info("Git hash: {}".format(utils.get_git_hash()))
     logging.info("========= MC INFO ==========")
@@ -331,7 +343,7 @@ if __name__ == "__main__":
     parser.add_argument("--g_gm", type=float, default=0.0, help="gauge matter coupling")
     parser.add_argument("--g_mass", type=float, default=0.0, help="matter constant")
 
-    # Other system parameters
+    # Ansatz parameters
     parser.add_argument("--nlayer",
                         default=1,
                         type=int,
@@ -340,6 +352,8 @@ if __name__ == "__main__":
                         default=1,
                         type=int,
                         help="Number of virtual fermions on the links")
+
+    # Other system parameters
     parser.add_argument("--params",
                         nargs="+",
                         help="Parameters passed as a starting configuration (Order for one copy: [t1r, t2r,..., y1r, y2r,..., z1r, z2r..., t1i, t2i, ..., y1i, ... z1i])")
