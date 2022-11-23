@@ -127,7 +127,7 @@ class ExactEvaluator():
             # Magnetic gradient
             prod_mag_op_norm = data["mag_energy_op"] * grad_norm_transposed
             expval_prod_mag = self.compute_expval(prod_mag_op_norm, normvec)
-            prod_expval_mag = self.compute_expval(data["mag_energy_op"],normvec) * dest["grad_norm"]
+            prod_expval_mag = self.compute_expval(data["mag_energy_op"], normvec) * dest["grad_norm"]
             mag_op_grad = expval_prod_mag - prod_expval_mag
             mag_energy_grad = -2 * self.system.cfg.g2_mag * mag_op_grad
             dest["mag_energy_grad"] = mag_energy_grad
@@ -137,19 +137,19 @@ class ExactEvaluator():
             expval_prod_el = self.compute_expval(prod_el_op_norm, normvec)
             prod_expval_el = self.compute_expval(data["el_energy_op"], normvec) * dest["grad_norm"]
             el_op_grad = expval_prod_el - prod_expval_el + self.compute_expval(np.transpose(data["el_energy_op_grad"],[2,1,0]), normvec)
-            el_energy_grad = - 2 * self.system.cfg.g2_el * el_op_grad
+            el_energy_grad = -2 * self.system.cfg.g2_el * el_op_grad
             dest["el_energy_grad"] = el_energy_grad
 
             # Mass gradient
-            mass_energy_grad = self.system.cfg.g_mass * self.compute_expval(data["mass_energy_op_grad"], normvec)
+            mass_energy_grad = self.system.cfg.g_mass * self.compute_expval(np.transpose(data["mass_energy_op_grad"], [2,1,0]), normvec)
             dest["mass_energy_grad"] = mass_energy_grad
 
             # Interaction gradient
-            int_energy_grad = self.system.cfg.g_gm * self.compute_expval(data["int_energy_op_grad"], normvec)
+            int_energy_grad = self.system.cfg.g_gm * self.compute_expval(np.transpose(data["int_energy_op_grad"], [2,1,0]), normvec)
             dest["int_energy_grad"] = int_energy_grad
 
             # Add for the full gradient
-            dest["energy_grad"] = mag_energy_grad + el_energy_grad + mass_energy_grad # to do: add interaction gradient
+            dest["energy_grad"] = mag_energy_grad + el_energy_grad + mass_energy_grad #TODO: add interaction gradient
             self.obsdict = dest
 
         return self.obsdict

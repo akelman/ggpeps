@@ -394,10 +394,13 @@ class Z2System2D2C(System2DBase):
                 gradients[k] += 2 * d_gamma_out_symbolvec[symbol][ind,ind+1] * norm # should replace this with the multiplications at the end (for efficiency reasons)
                 gradients[k] += 2 * covmat[ind,ind+1] * d_norm[symbol]
 
-                # further terms of the derivative must be added here
+                # further terms of the derivative will be included higher up in the computation stack 
+                # because computing them requires knowing various expectation values, which are not available here
 
         mass_energy_op *= 2 * norm
 
+        mass_energy_op = np.asarray(mass_energy_op)
+        gradients = np.asarray([gradients]) # extra list is to get correct dimensions (gradients should be a list of gradients for each layer)
         return mass_energy_op, gradients
 
     def _compute_el_energy_op_vec_and_grad(self, use_trans_inv:bool=True):
@@ -537,6 +540,8 @@ class Z2System2D2C(System2DBase):
         Returns:
             tuple: Tuple of (interaction energy for a single link, gradients)
         """
+        return np.asarray(0), np.asarray([[0]*20])
+
         # We calculate the hopping between 
         nlinks = self.cfg.lattice.nlinks
         covmat = self.compute_ferm_cov

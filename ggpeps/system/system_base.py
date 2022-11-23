@@ -1078,7 +1078,7 @@ class System2DBase(ABC):
         """
         if self._mass_energy_op is None:
             self._mass_energy_op, self._mass_energy_op_grad =  self._compute_mass_energy_op_and_grad()
-            nsites = self.cfg.size
+            nsites = self.cfg.lattice.size
             self._mass_energy_op *= nsites
         return self._mass_energy_op
     
@@ -1092,7 +1092,7 @@ class System2DBase(ABC):
         """
         if self._mass_energy_op_grad is None:
             self._mass_energy_op, self._mass_energy_op_grad =  self._compute_mass_energy_op_and_grad()
-            nsites = self.cfg.size
+            nsites = self.cfg.lattice.size
             self._mass_energy_op_grad *= nsites
         return self._mass_energy_op_grad
     
