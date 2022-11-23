@@ -12,7 +12,6 @@ from ggpeps.utils import compare_array_elementwise
 
 class TestZ2C2SystemMethods(unittest.TestCase):
     def setUp(self):
-        np.random.seed(42) # apparently it is bad numpy practice to do this, but it works and enforces reproducibility, so good enough for now.
 
         lat=lattice.Lattice2D(2,2)
         paramvec_real = np.random.rand(1, 10)
