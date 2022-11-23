@@ -383,21 +383,19 @@ class Z2System2D2C(System2DBase):
             d_gamma_out_symbolvec[symbol] = d_gamma_out
             d_norm[symbol] = self.compute_grad_over_norm(symbol, layerind) * norm
 
-        # Calculate mass term with gradients
-        for k in range(1): # range(nsites)
-            ind = 2*k
-            mass_energy_op += covmat[ind,ind+1] 
-
-            # update gradients
-            for k in range(len(self.symbolvec)):
-                symbol = self.symbolvec[k]
-                gradients[k] += 2 * d_gamma_out_symbolvec[symbol][ind,ind+1] * norm # should replace this with the multiplications at the end (for efficiency reasons)
-                gradients[k] += 2 * covmat[ind,ind+1] * d_norm[symbol]
-
-                # further terms of the derivative will be included higher up in the computation stack 
-                # because computing them requires knowing various expectation values, which are not available here
-
+        # Calculate mass term
+        site_ind = 0 
+        mass_energy_op += covmat[site_ind,site_ind+1] 
         mass_energy_op *= 2 * norm
+
+        # Update gradients
+        for k in range(len(self.symbolvec)):
+            symbol = self.symbolvec[k]
+            gradients[k] += 2 * d_gamma_out_symbolvec[symbol][site_ind,site_ind+1] * norm # should replace this with the multiplications at the end (for efficiency reasons)
+            gradients[k] += 2 * covmat[site_ind,site_ind+1] * d_norm[symbol]
+
+            # further terms of the derivative are included higher up in the computation stack 
+            # because computing them requires knowing various expectation values, which are not available here
 
         mass_energy_op = np.asarray(mass_energy_op)
         gradients = np.asarray([gradients]) # extra list is to get correct dimensions (gradients should be a list of gradients for each layer)

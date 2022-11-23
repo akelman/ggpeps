@@ -141,7 +141,11 @@ class ExactEvaluator():
             dest["el_energy_grad"] = el_energy_grad
 
             # Mass gradient
-            mass_energy_grad = self.system.cfg.g_mass * self.compute_expval(np.transpose(data["mass_energy_op_grad"], [2,1,0]), normvec)
+            prod_mass_op_norm = data["mass_energy_op"] * grad_norm_transposed
+            expval_prod_mass = self.compute_expval(prod_mass_op_norm, normvec)
+            prod_expval_mass = self.compute_expval(data["mass_energy_op"], normvec) * dest["grad_norm"]
+            mass_energy_grad = expval_prod_mass - prod_expval_mass + self.compute_expval(np.transpose(data["mass_energy_op_grad"], [2,1,0]), normvec)
+            mass_energy_grad *= self.system.cfg.g_mass
             dest["mass_energy_grad"] = mass_energy_grad
 
             # Interaction gradient
