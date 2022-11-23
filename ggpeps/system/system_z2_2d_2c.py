@@ -258,7 +258,7 @@ class Z2System2D2C(System2DBase):
 
     #Gauging
 
-    def generate_rotmat(self,theta,coord):
+    def generate_rotmat(self, theta, coord):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
         The mode order is (as for gamma_in_neutral) {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}, depending on whether the link is vertical or horizontal.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
@@ -341,14 +341,14 @@ class Z2System2D2C(System2DBase):
 
 
     # Observables
-    def _compute_mass_energy_op_and_grad(self, use_trans_inv=True):
+    def _compute_mass_energy_op_and_grad(self, use_trans_inv:bool=True):
         """Compute the mass term of the Hamiltonian for a single site.
 
         Args:
             use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
 
         Returns:
-            _type_: _description_
+            tuple: Tuple of (mass energy for a single site, gradients)
         """
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
@@ -400,7 +400,7 @@ class Z2System2D2C(System2DBase):
 
         return mass_energy_op, gradients
 
-    def _compute_el_energy_op_vec_and_grad(self, use_trans_inv=True):
+    def _compute_el_energy_op_vec_and_grad(self, use_trans_inv:bool=True):
         """Computation of the electric energy and the electric gradient in a single method.
         Since many operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
 
@@ -505,7 +505,7 @@ class Z2System2D2C(System2DBase):
         return dest, dest_grad
 
 
-    def _compute_mag_energy_op(self, use_trans_inv=True):
+    def _compute_mag_energy_op(self, use_trans_inv:bool=True):
         """Computation of the magnetic energy operator (w/o shift).
         This operator is diagonal in the gauge field (group element) basis and can thus be computed easily.
 
@@ -530,12 +530,12 @@ class Z2System2D2C(System2DBase):
             mag_energy_bare = None
         return mag_energy_bare
     
-    def _compute_int_energy_op(self):
-        """Calculate the energy due to the interaction of the physical fermions with the gauge fields.
+    def _compute_int_energy_op_and_grad(self):
+        """Calculate the energy and energy gradient due to the interaction of the physical fermions with the gauge fields.
         Currently a DRAFT!!!
 
         Returns:
-            float: the interaction energy
+            tuple: Tuple of (interaction energy for a single link, gradients)
         """
         # We calculate the hopping between 
         nlinks = self.cfg.lattice.nlinks
@@ -558,4 +558,6 @@ class Z2System2D2C(System2DBase):
                     ind_ver_site_n = self.cfg.lattice.coord2ind((i,j+1))
                     gaugefield_hor = self.gaugefieldvec[ind_field_ver]
                     int_energy_op += 0.25 * np.exp(1.j * gaugefield_hor) * (covmat[ind_ver_site,ind_ver_site_n] - covmat[ind_ver_site+1, ind_ver_site_n+1])
-        return int_energy_op
+        
+        gradients = None
+        return int_energy_op, gradients

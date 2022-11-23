@@ -73,7 +73,9 @@ class ExactEvaluator():
                 "mag_energy": [],
                 "el_energy": [],
                 "mass_energy_op": [],
+                "int_energy_op": [],
                 "mass_energy_op_grad": [],
+                "int_energy_op_grad": [],
                 "mag_energy_op": [],
                 "el_energy_op": [],
                 "el_energy_op_grad": [],
@@ -88,7 +90,9 @@ class ExactEvaluator():
                 data["mag_energy"].append(self.system.mag_energy)
                 data["el_energy"].append(self.system.el_energy)
                 data["mass_energy_op"].append(self.system.mass_energy_op) 
+                data["int_energy_op"].append(self.system.int_energy_op) 
                 data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad) 
+                data["int_energy_op_grad"].append(self.system.int_energy_op_grad) 
                 data["mag_energy_op"].append(self.system.mag_energy_op)
                 data["el_energy_op"].append(self.system.el_energy_op)
                 data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
@@ -140,8 +144,12 @@ class ExactEvaluator():
             mass_energy_grad = self.system.cfg.g_mass * self.compute_expval(data["mass_energy_op_grad"], normvec)
             dest["mass_energy_grad"] = mass_energy_grad
 
+            # Interaction gradient
+            int_energy_grad = self.system.cfg.g_gm * self.compute_expval(data["int_energy_op_grad"], normvec)
+            dest["int_energy_grad"] = int_energy_grad
+
             # Add for the full gradient
-            dest["energy_grad"] = mag_energy_grad + el_energy_grad + mass_energy_grad
+            dest["energy_grad"] = mag_energy_grad + el_energy_grad + mass_energy_grad # to do: add interaction gradient
             self.obsdict = dest
 
         return self.obsdict

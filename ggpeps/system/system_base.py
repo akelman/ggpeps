@@ -231,8 +231,9 @@ class System2DBase(ABC):
         self._el_energy_op = None
         self._el_energy_op_vec = None
         self._mag_energy_op = None
-        self._mass_energy_op = None
+        self._mass_energy_op_grad = None
         self._int_energy_op = None
+        self._int_energy_op_grad = None
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in_vec = None  # Tracks (D^-1 - gammain)^-1
@@ -677,7 +678,7 @@ class System2DBase(ABC):
 
     ################## Computation of derivatives ######################
 
-    def compute_gamma_dirac_deriv(self, symb, layerind: int):
+    def compute_gamma_dirac_deriv(self, symb: sympy.Symbol, layerind: int):
         """Return the numerical derivative of the gamma_dirac, the Dirac covariance matrix of one fiducial state.
 
         Args:
@@ -701,7 +702,7 @@ class System2DBase(ABC):
         d_rb = -np.conjugate(d_lt)
         return 1.j*np.block([[d_lt, d_rt], [d_lb, d_rb]])
 
-    def compute_gamma_maj_deriv(self, symb, layerind):
+    def compute_gamma_maj_deriv(self, symb: sympy.Symbol, layerind: int):
         """Return the numerical derivative of the gamma_maj, the Majorana covariance matrix of one fiducial state.
 
         Args:
@@ -989,6 +990,7 @@ class System2DBase(ABC):
         self._el_energy_op_vec = None
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad = None
+        self._int_energy_op_grad = None
 
     ################## Observables ######################
     @abstractmethod
@@ -1013,7 +1015,7 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def _compute_int_energy_op(self):
+    def _compute_int_energy_op_and_grad(self):
         """Compute the interaction energy and the gradient (for a single layer).
         This is an abstract method and has to be overwritten in a subclass.
         """
@@ -1103,9 +1105,22 @@ class System2DBase(ABC):
             float: Interaction energy operator (w/o shift) for the whole system
         """
         if self._int_energy_op is None:
-            self._int_energy_op, __ =  self._compute_int_energy_op()
+            self._int_energy_op, self._int_energy_op_grad =  self._compute_int_energy_op_and_grad()
             # Do for whole system...
         return self._int_energy_op
+    
+    @property
+    def int_energy_op_grad(self):
+        """Compute the gradient of the interaction energy operator for the whole system without shift.
+        This is a get function.
+
+        Returns:
+            float: Gradient of the interaction energy operator (w/o shift) for the whole system
+        """
+        if self._int_energy_op is None:
+            self._int_energy_op, self._int_energy_op_grad =  self._compute_int_energy_op_and_grad()
+            # Do for whole system...
+        return self._int_energy_op_grad
 
     @property
     def el_energy_op_vec(self):
