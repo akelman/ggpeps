@@ -363,10 +363,10 @@ class Z2System2D2C(System2DBase):
         
         layerind = 0 # only one layer can be used
         mat_b = self.mat_b_vec[layerind]
-        norm = np.exp(self.calculate_lognormvec_inc(all_factors=True)[layerind]) 
-
+        # norm = np.exp(self.calculate_lognormvec_inc(all_factors=True)[layerind]) 
 
         # Calculate derivatives
+        # now that the mass calculation is done only for a single site, this pre-calculation can be moved below with the remaining derivative calculation
         d_gamma_out_symbolvec = {} # will hold derivatives of gamma_out for each symbol
         d_norm = {} # will hold derivatives of the norm with respect to each symbol
         for symbol in self.symbolvec:
@@ -381,18 +381,19 @@ class Z2System2D2C(System2DBase):
                     - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
             
             d_gamma_out_symbolvec[symbol] = d_gamma_out
-            d_norm[symbol] = self.compute_grad_over_norm(symbol, layerind) * norm
+            # d_norm[symbol] = self.compute_grad_over_norm(symbol, layerind) * norm
 
         # Calculate mass term
-        site_ind = 0 
-        mass_energy_op += covmat[site_ind,site_ind+1] 
-        mass_energy_op *= 2 * norm
+        site_ind = 0 # just do calculation for a single site
+        mass_energy_op += 0.25 * (covmat[site_ind+1, site_ind] - covmat[site_ind,site_ind+1] ) # these two entries are negatives of each other, because of anti-symmetry
+        # mass_energy_op *= norm # this should not be included, as the norm is absorbed into p(G)
 
         # Update gradients
         for k in range(len(self.symbolvec)):
             symbol = self.symbolvec[k]
-            gradients[k] += 2 * d_gamma_out_symbolvec[symbol][site_ind,site_ind+1] * norm # should replace this with the multiplications at the end (for efficiency reasons)
-            gradients[k] += 2 * covmat[site_ind,site_ind+1] * d_norm[symbol]
+            gradients[k] += 0.25 * (d_gamma_out_symbolvec[symbol][site_ind+1, site_ind] - d_gamma_out_symbolvec[symbol][site_ind,site_ind+1])
+            # gradients[k] *= norm # not included, as above
+            #gradients[k] += 0.25 * covmat[site_ind,site_ind+1] * d_norm[symbol] # not included, as above
 
             # further terms of the derivative are included higher up in the computation stack 
             # because computing them requires knowing various expectation values, which are not available here
@@ -533,34 +534,60 @@ class Z2System2D2C(System2DBase):
     
     def _compute_int_energy_op_and_grad(self):
         """Calculate the energy and energy gradient due to the interaction of the physical fermions with the gauge fields.
-        Currently a DRAFT!!!
+        Note: this function works for any gauge group that is represented as a phase (including Z2).
+            When the group is larger than Z2, the relevant lines below must be uncommented (and added to the derivatives)
 
         Returns:
             tuple: Tuple of (interaction energy for a single link, gradients)
         """
-        return np.asarray(0), np.asarray([[0]*20])
 
-        # We calculate the hopping between 
-        nlinks = self.cfg.lattice.nlinks
-        covmat = self.compute_ferm_cov
-        int_energy_op = 0.
-        for i in range(nlinks):
-            for j in range(nlinks):
-                if i != j:
-                    #TODO: Check that gaugemgr indices match to fermion indices
-                    #Consider the horizontal link
-                    ind_field_hor = self.cfg.lattice.coord2link((i,j), Direction.X)
-                    ind_hor_site = self.cfg.lattice.coord2ind((i,j))
-                    ind_hor_site_n = self.cfg.lattice.coord2ind((i+1,j))
-                    gaugefield_hor = self.gaugefieldvec[ind_field_hor]
-                    int_energy_op += 0.25 * np.exp(1.j * gaugefield_hor) * (covmat[ind_hor_site,ind_hor_site_n] - covmat[ind_hor_site+1, ind_hor_site_n+1])
-                    
-                    #Consider the vertical link
-                    ind_field_ver = self.cfg.lattice.coord2link((i,j), Direction.Y)
-                    ind_ver_site = self.cfg.lattice.coord2ind((i,j))
-                    ind_ver_site_n = self.cfg.lattice.coord2ind((i,j+1))
-                    gaugefield_hor = self.gaugefieldvec[ind_field_ver]
-                    int_energy_op += 0.25 * np.exp(1.j * gaugefield_hor) * (covmat[ind_ver_site,ind_ver_site_n] - covmat[ind_ver_site+1, ind_ver_site_n+1])
+        covmat = self.compute_ferm_cov()
+        int_energy_op = 0.0
+        nsites = self.cfg.lattice.size
+        for site_ind in range(1): # no need to loop over all sites
+            coord = self.cfg.lattice.ind2coord(site_ind)
+
+            # Horizontal link
+            ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X) # index of the horizontal link
+            neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X) # coordinates of neighboring site
+            neighborX_ind = self.cfg.lattice.coord2ind(neighborX_coord) # index of neighboring site
+            gaugefield_hor = self.gaugefieldvec[ind_field_hor]
+            cos_factor_hor = np.cos(gaugefield_hor)
+            int_energy_op += 0.5 * cos_factor_hor * (covmat[neighborX_ind+1, site_ind] - covmat[neighborX_ind,site_ind+1])
+            # The sin contribution vanishes for Z2, but must be included for Zn.
+            #sin_factor_hor = np.sin(gaugefield_hor)
+            #int_energy_op += 0.5 * sin_factor_hor * (covmat[neighborX_ind+1, site_ind+1] - covmat[neighborX_ind,site_ind])
+
+            # Vertical link
+            ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
+            neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
+            neighborY_ind = self.cfg.lattice.coord2ind(neighborY_coord)
+            gaugefield_vert = self.gaugefieldvec[ind_field_vert]
+            cos_factor_vert = np.cos(gaugefield_vert)
+            int_energy_op += 0.5 * cos_factor_vert * (covmat[neighborY_ind+1, site_ind] - covmat[neighborY_ind,site_ind+1])
+            #sin_factor_vert = np.sin(gaugefield_vert)
+            #int_energy_op += 0.5 * sin_factor_vert * (covmat[neighborY_ind+1, site_ind+1] - covmat[neighborY_ind,site_ind])
+
+            # Calculate derivatives
+            layerind = 0 # only one layer can be used
+            mat_b = self.mat_b_vec[layerind]
+            gradients = []
+            for symbol in self.symbolvec:
+                # Many of the following matrices are calculated for the electric energy and gradient - efficiency would be improved if those computations were saved
+                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
+                offset = 2 * self.cfg.lattice.size
+                d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                diff_d_gamma_inv = self.wi_gamma_out_vec[layerind].inv()
+                d_gamma_out = d_mat_a \
+                        + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
+                        + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
+                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+                
+                grad = 0.5 * cos_factor_hor * (d_gamma_out[neighborX_ind+1, site_ind] - d_gamma_out[neighborX_ind,site_ind+1])
+                grad += 0.5 * cos_factor_vert * (d_gamma_out[neighborY_ind+1, site_ind] - d_gamma_out[neighborY_ind,site_ind+1])
+                # for groups other than Z2, need to add the sin terms here
+                gradients.append(grad)
         
-        gradients = None
+        int_energy_op = np.asarray(int_energy_op)
+        gradients = np.asarray([gradients]) # extra list is to get correct dimensions (gradients should be a list of gradients for each layer)
         return int_energy_op, gradients

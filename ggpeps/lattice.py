@@ -123,19 +123,19 @@ class Lattice2D:
 
         Args:
             coord (tuple): (x,y) coordinates of the original point
-            orient (Direction): _description_
+            orient (Direction): direction of the desired neighbor
 
         Returns:
             tuple: (x,y) coordinate of the next point
         """
         # We assume periodic boundary conditions
         x, y = coord
-        if dir == Direction.X:
-            xn = (x+orient.value+self.nx) % self.nx
+        if orient == Direction.X:
+            xn = (x+1) % self.nx
             yn = y
-        elif dir == Direction.Y:
+        elif orient == Direction.Y:
             xn = x
-            yn = (y+orient.value+self.ny) % self.ny
+            yn = (y+1) % self.ny
         return (xn,yn)
 
     def generate_polyakov_loop(self, coord: tuple, dir: Direction, use_indices: bool = True) -> list:
