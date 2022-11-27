@@ -6,6 +6,7 @@ import sys
 import sympy
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
+from ggpeps.utils import ZERO_TOL
 
 
 class Config2DBase(ABC):
@@ -1031,14 +1032,14 @@ class System2DBase(ABC):
         """
         if self._energy is None:
             self._energy = 0.0
-            if not np.isclose(self.cfg.g2, 0):
-                self._energy += self.el_energy
-            if not np.isclose(self.cfg.g2_mag, 0):
-                self._energy += self.mag_energy
-            if not np.isclose(self.cfg.g_gm, 0):
-                self._energy += self.int_energy
-            if not np.isclose(self.cfg.g_mass, 0):
-                self._energy += self.mass_energy
+        if abs(self.cfg.g2) < ZERO_TOL:
+            self._energy += self.el_energy
+        if abs(self.cfg.g2_mag) < ZERO_TOL:
+            self._energy += self.mag_energy
+        if abs(self.cfg.g_gm) < ZERO_TOL:
+            self._energy += self.int_energy
+        if abs(self.cfg.g_mass) < ZERO_TOL:
+            self._energy += self.mass_energy
         return self._energy
 
     @property
@@ -1077,7 +1078,7 @@ class System2DBase(ABC):
             float: Mass energy operator (w/o shift) for the whole system
         """
         if self._mass_energy_op is None:
-            self._mass_energy_op, self._mass_energy_op_grad =  self._compute_mass_energy_op_and_grad()
+            self._mass_energy_op, self._mass_energy_op_grad = self._compute_mass_energy_op_and_grad()
             nsites = self.cfg.lattice.size
             self._mass_energy_op *= nsites
         return self._mass_energy_op
@@ -1091,7 +1092,7 @@ class System2DBase(ABC):
             float: gradient of the mass energy operator (w/o shift) for the whole system
         """
         if self._mass_energy_op_grad is None:
-            self._mass_energy_op, self._mass_energy_op_grad =  self._compute_mass_energy_op_and_grad()
+            self._mass_energy_op, self._mass_energy_op_grad = self._compute_mass_energy_op_and_grad()
             nsites = self.cfg.lattice.size
             self._mass_energy_op_grad *= nsites
         return self._mass_energy_op_grad
@@ -1105,7 +1106,7 @@ class System2DBase(ABC):
             float: Interaction energy operator (w/o shift) for the whole system
         """
         if self._int_energy_op is None:
-            self._int_energy_op, self._int_energy_op_grad =  self._compute_int_energy_op_and_grad()
+            self._int_energy_op, self._int_energy_op_grad = self._compute_int_energy_op_and_grad()
             # Do for whole system...
         return self._int_energy_op
     
@@ -1118,7 +1119,7 @@ class System2DBase(ABC):
             float: Gradient of the interaction energy operator (w/o shift) for the whole system
         """
         if self._int_energy_op is None:
-            self._int_energy_op, self._int_energy_op_grad =  self._compute_int_energy_op_and_grad()
+            self._int_energy_op, self._int_energy_op_grad = self._compute_int_energy_op_and_grad()
             # Do for whole system...
         return self._int_energy_op_grad
 

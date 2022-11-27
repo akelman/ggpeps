@@ -414,96 +414,100 @@ class Z2System2D2C(System2DBase):
         Returns:
             tuple: Tuple of (list of electric energies for a single link, list of gradients for the full system)
         """
-        if use_trans_inv:
-            lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
-            # This is the usual norm without any modifications
-            lognorm_default = np.sum(lognormvec_default)
-            # Number of fermions = # of sites
-            # Since we have 2 copies, we get 8 virtual fermions per site
-            single_link_offset = 2 * self.cfg.nvirtmodes_link
-            offset = 2 * self.cfg.lattice.size + single_link_offset
-            # We have to cut one link from gamma_in_sys as well
-            gamma_in_sys_mod = self.gamma_in_sys_mod
-            nlinks = self.cfg.lattice.nlinks
-            dest = []
-            dest_grad = []
-
-            for layerind in range(self.cfg.nlayer):
-                layer_derivative=[]
-                #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
-                mat_a = self.mat_a_mod_vec[layerind] # dim: 2*nsites (for majorana) + 8 (= 4 virtual modes per link x2 for majorana)
-                mat_b = self.mat_b_mod_vec[layerind]
-                diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
-                diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
-
-                ###################### Calculation of <P> ########################
-                covmat_out = mat_a + \
-                    mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
-                covmat_out_virt = covmat_out[-single_link_offset:, -
-                                            single_link_offset:]
-
-                # The library pfapack is rather picky about the anti-symmtrization (to 1e-14)
-                covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
-                # For the modified norm, we still have to take into account the other contributions from the unmodified parts
-                norm_mod = calculate_lognorm_inc(
-                    [self.incdet_mod_vec[layerind]],
-                    [self.det_mat_d_mod_vec[layerind]],
-                    gamma_in_sys_mod.shape[0],
-                    all_factors=True)
-                norm_mod += np.sum(utils.select_except(lognormvec_default,layerind))
-                # The matrix elements yield only the real part of <P>
-                # If we use the log formulation, we can calculate the log of single terms.
-
-                # Instead of writing down all the terms explicitly, we build tuples of the prefactors and the indices of the covariance matrix.
-                # Then, we compute all terms in a list comprehension.
-                idxarr= [ (   1, [0,2,4,6]), (  -1, [1,2,4,7]), (-1.j, [0,1,2,4]), (-1.j,[2,4,6,7]),
-                          (  -1, [0,3,5,6]), (   1, [1,3,5,7]), ( 1.j, [0,1,3,5]), ( 1.j,[3,5,6,7]),
-                          ( 1.j, [0,4,5,6]), (-1.j, [1,4,5,7]), (   1, [0,1,4,5]), (   1,[4,5,6,7]),
-                          ( 1.j, [0,2,3,6]), (-1.j, [1,2,3,7]), (   1, [0,1,2,3]), (   1,[2,3,6,7])]
-                pfarr = [prefactor * pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
-                el_energy_full = 1/16 * np.sum(pfarr)
-                
-                el_energy_layer = np.real(el_energy_full) * np.exp(norm_mod - lognorm_default)
-                dest.append(el_energy_layer)
-
-                ###################### Calculation of the derivative ########################
-                for symbol in self.symbolvec:
-                    deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
-                    d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
-                    d_gamma_out = d_mat_a + \
-                            d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
-                            + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
-                            - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
-                    # The virtual mode is the last link on the bottom right of the covariance matrix
-                    d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
-                    # Summand with derivative of the covariance matrix
-                    # We re-use the list comprehension from above to use the indices
-                    deriv_pfarr = [prefactor * utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)],d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
-                    d_el_energy = 1/16 * np.real(np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
-                                  
-                    # Summand with derivative of norms
-                    trace_def = self.compute_grad_over_norm(symbol, layerind)
-                    trace_mod = compute_grad_over_norm(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
-                    # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
-                    d_el_energy += dest[layerind] * (trace_mod - trace_def)
-                    # Scale to system size
-                    d_el_energy *= nlinks
-                    layer_derivative.append(np.real(d_el_energy))
-                dest_grad.append(layer_derivative)
-            # We have to weight the different layers with the electric energy operator expectation of the other layers.
-            # They act as a prefactor in the derivative
-            dest = np.asarray(dest)
-            dest_grad = np.asarray(dest_grad)
-            if self.cfg.nlayer > 1:
-                for i in range(self.cfg.nlayer):
-                    prod_other_layers = utils.multiply_except(dest, i)
-                    dest_grad[i] *= prod_other_layers
-        else:
+        if not use_trans_inv:
             # Evaluate every link of the system
-            logging.error("compute_el_energy: not implemented yet")
+            logging.error("compute_el_energy: The non-translational invariant case is not implemented yet")
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
             dest = np.asarray([None]*self.cfg.nlayer)
             dest_grad = np.asarray([[None]*len(self.symbolvec)]*self.cfg.nlayer)
+
+
+        lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
+        # This is the usual norm without any modifications
+        lognorm_default = np.sum(lognormvec_default)
+        # Number of fermions = # of sites
+        # Since we have 2 copies, we get 8 virtual fermions per site
+        single_link_offset = 2 * self.cfg.nvirtmodes_link
+        offset = 2 * self.cfg.lattice.size + single_link_offset
+        # We have to cut one link from gamma_in_sys as well
+        gamma_in_sys_mod = self.gamma_in_sys_mod
+        nlinks = self.cfg.lattice.nlinks
+        dest = []
+        dest_grad = []
+
+        # build array for list comprehension outside the loop
+        idxarr = [ (   1, [0,2,4,6]), (  -1, [1,2,4,7]), (-1.j, [0,1,2,4]), (-1.j,[2,4,6,7]),
+                        (  -1, [0,3,5,6]), (   1, [1,3,5,7]), ( 1.j, [0,1,3,5]), ( 1.j,[3,5,6,7]),
+                        ( 1.j, [0,4,5,6]), (-1.j, [1,4,5,7]), (   1, [0,1,4,5]), (   1,[4,5,6,7]),
+                        ( 1.j, [0,2,3,6]), (-1.j, [1,2,3,7]), (   1, [0,1,2,3]), (   1,[2,3,6,7])]
+
+        for layerind in range(self.cfg.nlayer):
+            layer_derivative=[]
+            #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
+            mat_a = self.mat_a_mod_vec[layerind] # dim: 2*nsites (for majorana) + 8 (= 4 virtual modes per link x2 for majorana)
+            mat_b = self.mat_b_mod_vec[layerind]
+            diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
+            diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
+
+            ###################### Calculation of <P> ########################
+            covmat_out = mat_a + \
+                mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
+            covmat_out_virt = covmat_out[-single_link_offset:, -
+                                        single_link_offset:]
+
+            # The library pfapack is rather picky about the anti-symmtrization (to 1e-14)
+            covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
+            # For the modified norm, we still have to take into account the other contributions from the unmodified parts
+            norm_mod = calculate_lognorm_inc(
+                [self.incdet_mod_vec[layerind]],
+                [self.det_mat_d_mod_vec[layerind]],
+                gamma_in_sys_mod.shape[0],
+                all_factors=True)
+            norm_mod += np.sum(utils.select_except(lognormvec_default,layerind))
+            # The matrix elements yield only the real part of <P>
+            # If we use the log formulation, we can calculate the log of single terms.
+
+            # Instead of writing down all the terms explicitly, we build tuples of the prefactors and the indices of the covariance matrix.
+            # Then, we compute all terms in a list comprehension.
+            pfarr = [prefactor * pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
+            el_energy_full = 1/16 * np.sum(pfarr)
+            
+            el_energy_layer = np.real(el_energy_full) * np.exp(norm_mod - lognorm_default)
+            dest.append(el_energy_layer)
+
+            ###################### Calculation of the derivative ########################
+            for symbol in self.symbolvec:
+                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
+                d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                d_gamma_out = d_mat_a + \
+                        d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
+                        + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
+                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+                # The virtual mode is the last link on the bottom right of the covariance matrix
+                d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
+                # Summand with derivative of the covariance matrix
+                # We re-use the list comprehension from above to use the indices
+                deriv_pfarr = [prefactor * utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)],d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
+                d_el_energy = 1/16 * np.real(np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
+                                
+                # Summand with derivative of norms
+                trace_def = self.compute_grad_over_norm(symbol, layerind)
+                trace_mod = compute_grad_over_norm(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
+                # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
+                d_el_energy += dest[layerind] * (trace_mod - trace_def)
+                # Scale to system size
+                d_el_energy *= nlinks
+                layer_derivative.append(np.real(d_el_energy))
+            dest_grad.append(layer_derivative)
+        # We have to weight the different layers with the electric energy operator expectation of the other layers.
+        # They act as a prefactor in the derivative
+        dest = np.asarray(dest)
+        dest_grad = np.asarray(dest_grad)
+        if self.cfg.nlayer > 1:
+            for i in range(self.cfg.nlayer):
+                prod_other_layers = utils.multiply_except(dest, i)
+                dest_grad[i] *= prod_other_layers
+
         return dest, dest_grad
 
 

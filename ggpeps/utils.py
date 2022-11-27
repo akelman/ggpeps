@@ -14,6 +14,9 @@ import sys
 
 from matplotlib.colors import LogNorm
 
+# Global constants
+ZERO_TOL = 10**-5 # tolerance for replacing np.isclose()
+
 paulix = np.array([[0, 1], [1, 0]])
 pauliy = np.array([[0, -1.j], [1.j, 0]])
 pauliz = np.array([[1, 0], [0, -1]])
@@ -204,7 +207,7 @@ def derivative_pfaffian(mat, d_mat):
         np.ndarray: d(Pf(A))/dx
     """
     pfaval = pf.pfaffian(mat)
-    if not np.isclose(pfaval, 0):
+    if abs(pfaval) <= ZERO_TOL:
         return 0.5 *pfaval*np.trace(np.linalg.inv(mat)@d_mat)
     else:
         return 0.0
