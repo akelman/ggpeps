@@ -207,7 +207,7 @@ def derivative_pfaffian(mat, d_mat):
         np.ndarray: d(Pf(A))/dx
     """
     pfaval = pf.pfaffian(mat)
-    if abs(pfaval) <= ZERO_TOL:
+    if abs(pfaval) > ZERO_TOL:
         return 0.5 *pfaval*np.trace(np.linalg.inv(mat)@d_mat)
     else:
         return 0.0

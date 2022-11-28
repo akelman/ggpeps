@@ -86,6 +86,9 @@ def translate_parameters(system_cfg, params,rng_state):
 
 def validate_inputs(args) -> bool:
 
+    if args.L % 2 != 0:
+        logging.error("The lattice dimension must currently be an even number.") # this is important when staggering
+        return False
     if args.nlayer > 1:
         logging.error("Now that physical fermions are included, only 1 layer can be used.")
         return False
@@ -154,8 +157,11 @@ def main(args):
     L = args.L
     g2 = args.g2
     g_gm = args.g_gm
-    g2_mag = args.g2_mag
     g_mass = args.g_mass
+    if args.g2_mag is None:
+        g2_mag = 1./(2*g2)
+    else:
+        g2_mag = g2_mag
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 

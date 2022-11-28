@@ -40,10 +40,7 @@ class Config2DBase(ABC):
         # Parameters of the Hamiltonian
         self.g2 = g2
         self.g2_el = g2/2
-        if g2_mag is None:
-            self.g2_mag = 1./(2*g2)
-        else:
-            self.g2_mag = g2_mag
+        self.g2_mag = g2_mag
         self.g_gm = g_gm
         self.g_mass = g_mass
 
@@ -1032,13 +1029,13 @@ class System2DBase(ABC):
         """
         if self._energy is None:
             self._energy = 0.0
-        if abs(self.cfg.g2) < ZERO_TOL:
+        if abs(self.cfg.g2) > ZERO_TOL:
             self._energy += self.el_energy
-        if abs(self.cfg.g2_mag) < ZERO_TOL:
+        if abs(self.cfg.g2_mag) > ZERO_TOL:
             self._energy += self.mag_energy
-        if abs(self.cfg.g_gm) < ZERO_TOL:
+        if abs(self.cfg.g_gm) > ZERO_TOL:
             self._energy += self.int_energy
-        if abs(self.cfg.g_mass) < ZERO_TOL:
+        if abs(self.cfg.g_mass) > ZERO_TOL:
             self._energy += self.mass_energy
         return self._energy
 

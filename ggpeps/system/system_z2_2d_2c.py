@@ -525,10 +525,8 @@ class Z2System2D2C(System2DBase):
         """
         if use_trans_inv:
             # Evaluate one plaquette and multiply by number of plaquettes
-            wilson_plaquette = self.cfg.lattice.generate_wilson_loop(
-                (0, 0), (1, 1))
-            mag_energy_bare = np.real(
-                self.compute_path(wilson_plaquette))
+            wilson_plaquette = self.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
+            mag_energy_bare = np.real(self.compute_path(wilson_plaquette))
         else:
             # Evaluate every plaquette of the system
             logging.error("compute_mag_energy: not implemented yet")
