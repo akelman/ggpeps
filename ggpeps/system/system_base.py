@@ -203,6 +203,9 @@ class System2DBase(ABC):
         self._det_mat_d_vec = None
         self._mat_d_inv_vec = None
 
+        # Full covariance matrix (gamma_out) of the fermions
+        self._ferm_covmat = None
+
         # Parameter dependent quantities for the electric energy
         self._mat_a_mod_vec = None
         self._mat_b_mod_vec = None
@@ -223,6 +226,7 @@ class System2DBase(ABC):
         self._gamma_maj_sys_deriv_dict = None
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad = None
+        self._d_gamma_out_symbolvec = None # gradients of gamma_out for all symbols
 
         # Observables
         self._energy = None
@@ -373,6 +377,30 @@ class System2DBase(ABC):
             covmat (np.array): Covariance matrix for the single site
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    def d_gamma_out_symbolvec(self):
+        """Return a vector containing the derivatives of gamma_out for each symbol.
+
+        Returns:
+            [List]: List of np.arrays, with length equal to the number of symbols.
+        """
+        if self._d_gamma_out_symbolvec is None:
+            layerind = 0 # only works with a single layer
+            self._d_gamma_out_symbolvec = []
+            offset = 2 * self.cfg.lattice.size
+
+            for symbol in self.symbolvec:
+                mat_b = self.mat_b_vec[layerind]
+                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
+                d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                diff_d_gamma_inv = self.wi_gamma_out_vec[layerind].inv()
+                d_gamma_out = d_mat_a \
+                        + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
+                        + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
+                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+                self._d_gamma_out_symbolvec.append(d_gamma_out)
+        
+        return self._d_gamma_out_symbolvec
 
     @property
     def gamma_maj_sys_vec(self):
@@ -980,6 +1008,8 @@ class System2DBase(ABC):
     def invalidate_gauge_update(self):
         """Reset the values of computed quantitities to avoid spillover from previous computations.
         """
+        self._ferm_covmat = None # maybe it's possible to update this locally?
+        self._d_gamma_out_symbolvec = None # maybe it's possible to update this locally?
         self._energy = None
         self._mass_energy_op = None
         self._int_energy_op = None
@@ -1207,8 +1237,10 @@ class System2DBase(ABC):
         return np.exp(1.j*theta_sum)
 
     def compute_ferm_cov(self):
-        """Compute the covariance matrix of the fermions in the system """
-        return self.mat_a_vec[0] + (self.mat_b_vec[0] @ self._wi_gamma_out_vec[0].inv() @ np.transpose(self.mat_b_vec[0]))
+        """Compute the covariance matrix of the fermions in the system (for the first layer)."""
+        if self._ferm_covmat is None:
+            self._ferm_covmat = self.mat_a_vec[0] + (self.mat_b_vec[0] @ self._wi_gamma_out_vec[0].inv() @ np.transpose(self.mat_b_vec[0]))
+        return self._ferm_covmat
 
 
 

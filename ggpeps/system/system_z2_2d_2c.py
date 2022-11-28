@@ -361,39 +361,14 @@ class Z2System2D2C(System2DBase):
         mass_energy_op = 0.
         gradients = [0]*len(self.symbolvec)
         
-        layerind = 0 # only one layer can be used
-        mat_b = self.mat_b_vec[layerind]
-        # norm = np.exp(self.calculate_lognormvec_inc(all_factors=True)[layerind]) 
-
-        # Calculate derivatives
-        # now that the mass calculation is done only for a single site, this pre-calculation can be moved below with the remaining derivative calculation
-        d_gamma_out_symbolvec = {} # will hold derivatives of gamma_out for each symbol
-        d_norm = {} # will hold derivatives of the norm with respect to each symbol
-        for symbol in self.symbolvec:
-            # Many of the following matrices are calculated for the electric energy and gradient - efficiency would be improved if those computations were saved
-            deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
-            offset = 2 * self.cfg.lattice.size
-            d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
-            diff_d_gamma_inv = self.wi_gamma_out_vec[layerind].inv()
-            d_gamma_out = d_mat_a \
-                    + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
-                    + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
-                    - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
-            
-            d_gamma_out_symbolvec[symbol] = d_gamma_out
-            # d_norm[symbol] = self.compute_grad_over_norm(symbol, layerind) * norm
-
         # Calculate mass term
         site_ind = 0 # just do calculation for a single site
-        mass_energy_op += 0.25 * (covmat[site_ind+1, site_ind] - covmat[site_ind,site_ind+1] ) # these two entries are negatives of each other, because of anti-symmetry
-        # mass_energy_op *= norm # this should not be included, as the norm is absorbed into p(G)
+        mass_energy_op += 0.25 * (covmat[site_ind+1, site_ind] - covmat[site_ind,site_ind+1] ) # these two entries happen to be negatives of each other, because of anti-symmetry
 
         # Update gradients
-        for k in range(len(self.symbolvec)):
-            symbol = self.symbolvec[k]
-            gradients[k] += 0.25 * (d_gamma_out_symbolvec[symbol][site_ind+1, site_ind] - d_gamma_out_symbolvec[symbol][site_ind,site_ind+1])
-            # gradients[k] *= norm # not included, as above
-            #gradients[k] += 0.25 * covmat[site_ind,site_ind+1] * d_norm[symbol] # not included, as above
+        for symbol_ind in range(len(self.symbolvec)):
+            d_gamma_out = self.d_gamma_out_symbolvec()[symbol_ind]
+            gradients[symbol_ind] += 0.25 * (d_gamma_out[site_ind+1, site_ind] - d_gamma_out[site_ind,site_ind+1])
 
             # further terms of the derivative are included higher up in the computation stack 
             # because computing them requires knowing various expectation values, which are not available here
@@ -571,19 +546,9 @@ class Z2System2D2C(System2DBase):
             #int_energy_op += 0.5 * sin_factor_vert * (covmat[neighborY_ind+1, site_ind+1] - covmat[neighborY_ind,site_ind])
 
             # Calculate derivatives
-            layerind = 0 # only one layer can be used
-            mat_b = self.mat_b_vec[layerind]
             gradients = []
-            for symbol in self.symbolvec:
-                # Many of the following matrices are calculated for the electric energy and gradient - efficiency would be improved if those computations were saved
-                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
-                offset = 2 * self.cfg.lattice.size
-                d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
-                diff_d_gamma_inv = self.wi_gamma_out_vec[layerind].inv()
-                d_gamma_out = d_mat_a \
-                        + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
-                        + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
-                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+            for symbol_ind in range(len(self.symbolvec)):
+                d_gamma_out = self.d_gamma_out_symbolvec()[symbol_ind]
                 
                 grad = 0.5 * cos_factor_hor * (d_gamma_out[neighborX_ind+1, site_ind] - d_gamma_out[neighborX_ind,site_ind+1])
                 grad += 0.5 * cos_factor_vert * (d_gamma_out[neighborY_ind+1, site_ind] - d_gamma_out[neighborY_ind,site_ind+1])
