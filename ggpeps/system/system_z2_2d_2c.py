@@ -430,7 +430,7 @@ class Z2System2D2C(System2DBase):
             covmat_out_virt = covmat_out[-single_link_offset:, -
                                         single_link_offset:]
 
-            # The library pfapack is rather picky about the anti-symmtrization (to 1e-14)
+            # The library pfapack is rather picky about the anti-symmetrization (to 1e-14)
             covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
             # For the modified norm, we still have to take into account the other contributions from the unmodified parts
             norm_mod = calculate_lognorm_inc(
