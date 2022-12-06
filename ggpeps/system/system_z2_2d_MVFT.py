@@ -19,38 +19,38 @@ class Z2System2D_MVFT_Config(Config2DBase):
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
     """
 
-    _nparams = 20
-    ncopy = 2
-    nvirtmodes_vertex = 8 # We have two virtual modes per direction (4 directions x 2 modes)
-    nvirtmodes_link = 4 #Number of virtual modes per link (2 copies and l/r or u/d)
+    _nparams = 26
+    ncopy = 4
+    nvirtmodes_vertex = 16 # We have 4 virtual modes per direction (4 directions x 4 modes)
+    nvirtmodes_link = 8 #Number of virtual modes per link (2 copies and l/r or u/d, plus the same for coupling to physical fermions)
 
     def __init__(self, lattice, g2, g_gm, g_mag, g_mass, nlayer=1):
-        #The parameters have the following order: [[t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i...],[..next layer..],....]
+        if nlayer != 1:
+            raise ValueError("When including physical fermions, only 1 layer is allowed.")
         super().__init__(lattice, g2, g_gm, g_mag, g_mass, nlayer)
 
     def make_pure_gauge(self):
         """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t. 
         """
-        #The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
+        #The order of the parameters is [tr, y1r, z1r, y2r, z2r, ar, br, cr, dr, fr, gr, hr, kr, ti, y1i, z1i, y2i, z2i, ai, bi, ci, di, fi, gi, hi, ki]
         for ind in range(self.nlayer):
-            self.paramvec[ind, 0] = 0 # Set t1r to 0
-            self.paramvec[ind, 10] = 0 # Set t1i to 0
-            self.paramvec[ind, 3] = 0 # Set t2r to 0
-            self.paramvec[ind, 13] = 0 # Set t2i to 0
+            # for this class, nlayer is always 1
+            self.paramvec[ind, 0] = 0 # Set tr to 0
+            self.paramvec[ind, 13] = 0 # Set ti to 0
 
 
 class Z2System2D_MVFT(System2DBase):
-    """ 2 copy version of the Z2 system GGPEPS ansatz
+    """ 2 copy version of the Z2 system GGPEPS ansatz with multiple type of virtual fermions
 
     Some general notes about conventions:
 
-    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
-    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
-    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
-    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
+    Order of the paramvec: [tr, y1r, z1r, y2r, z2r, ar, br, cr, dr, fr, gr, hr, kr, ti, y1i, z1i, y2i, z2i, ai, bi, ci, di, fi, gi, hi, ki]
+    Mode order of tmat: {Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, l_3, r_3, d_3, u_3, l_4, r_4, d_4, u_4}.
+    Mode order of gamma_dirac: p, {l,r,d,u}1, {l,r,d,u}2, {l,r,d,u}3, {l,r,d,u}4, p_dag, {l_dag,r_dag,d_dag,u_dag}1, ...
+    Mode order of gamma_maj: p1,p2, l1_1, l2_2, r1_1, r2_2... l2_1, l2_2... l3_1, l3_2... l4_1, l4_2... u4_2
     """
 
-    def __init__(self, cfg: Z2System2D2CConfig):
+    def __init__(self, cfg: Z2System2D_MVFT_Config):
         """Constructor of a Z2System2D2C system.
         We call only the constructor of the super class, since we do not have any class-specific setup.
 
@@ -67,28 +67,42 @@ class Z2System2D_MVFT(System2DBase):
         Returns:
             list: List of all analytic symbols
         """
-        t1r = sympy.Symbol("t1r", real=True)
-        y1r = sympy.Symbol("y1r", real=True)
+        # Coupling physical fermions among themselves (different flavors)
+
+        # Coupling of physical fermions to virtual fermions of type II
+        tr = sympy.Symbol("tr", real=True)
+        ti = sympy.Symbol("ti", real=True)
+
+        # Coupling of virtual fermions of type IIa to those of type IIa
+        fr  = sympy.Symbol("fr", real=True) 
+        fi  = sympy.Symbol("fi", real=True)
+        gr  = sympy.Symbol("gr", real=True)
+        gi  = sympy.Symbol("gi", real=True)
+        hr  = sympy.Symbol("hr", real=True)
+        hi  = sympy.Symbol("hi", real=True)
+        kr  = sympy.Symbol("kr", real=True)
+        ki  = sympy.Symbol("ki", real=True)
+
+        # Coupling of virtual fermions of type I (with themselves)
+        y1r = sympy.Symbol("y1r", real=True) # type Ia with type Ia
         z1r = sympy.Symbol("z1r", real=True)
-        t2r = sympy.Symbol("t2r", real=True)
-        y2r = sympy.Symbol("y2r", real=True)
+        y2r = sympy.Symbol("y2r", real=True) # type Ib with type Ib
         z2r = sympy.Symbol("z2r", real=True)
-        ar  = sympy.Symbol("ar", real=True)
+        ar  = sympy.Symbol("ar", real=True) # type Ia with type Ib
         br  = sympy.Symbol("br", real=True)
         cr  = sympy.Symbol("cr", real=True)
         dr  = sympy.Symbol("dr", real=True)
 
-        t1i = sympy.Symbol("t1i", real=True)
         y1i = sympy.Symbol("y1i", real=True)
         z1i = sympy.Symbol("z1i", real=True)
-        t2i = sympy.Symbol("t2i", real=True)
         y2i = sympy.Symbol("y2i", real=True)
         z2i = sympy.Symbol("z2i", real=True)
         ai  = sympy.Symbol("ai", real=True)
         bi  = sympy.Symbol("bi", real=True)
         ci  = sympy.Symbol("ci", real=True)
         di  = sympy.Symbol("di", real=True)
-        return [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i, z1i, t2i, y2i, z2i, ai, bi, ci, di]
+
+        return [tr, y1r, z1r, y2r, z2r, ar, br, cr, dr, fr, gr, hr, kr, ti, y1i, z1i, y2i, z2i, ai, bi, ci, di, fi, gi, hi, ki]
 
 
     @property
@@ -101,37 +115,52 @@ class Z2System2D_MVFT(System2DBase):
         This is one of two analytic inputs into the code. 
         The other input is the structure and the parametrization of the projectors.
 
-        The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2
+        The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, l_3, r_3, d_3, u_3, l_4, r_4, d_4, u_4
 
         The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
-        The permutation matrices are prone for errors.
 
         Returns:
             sympy.Matrix: Analytic T matrix of the fiducial state
         """
-        [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i,
-            z1i, t2i, y2i, z2i, ai, bi, ci, di] = self.symbolvec
-        t1 = t1r+1.j*t1i
+        [tr, y1r, z1r, y2r, z2r, ar, br, cr, dr, fr, gr, hr, kr, 
+            ti, y1i, z1i, y2i, z2i, ai, bi, ci, di, fi, gi, hi, ki] = self.symbolvec
+        t = tr+1.j*ti
         y1 = y1r+1.j*y1i
         z1 = z1r+1.j*z1i
-        t2 = t2r+1.j*t2i
         y2 = y2r+1.j*y2i
         z2 = z2r+1.j*z2i
         a = ar+1.j*ai
         b = br+1.j*bi
         c = cr+1.j*ci
         d = dr+1.j*di
-        tmat_symb=sympy.Matrix([
-            [0, -1.j*t1, 1.j*t1, t1, -t1, -1.j*t2, 1.j*t2, t2, -t2],
-            [1.j*t1, 0, 1.j*y1, z1, 1.j*z1, -1.j*a, -1.j*c, -1.j*b, -1.j*d],
-            [-1.j*t1, -1.j*y1, 0, -1.j*z1, -z1, 1.j*c, 1.j*a, 1.j*d, 1.j*b],
-            [-t1, -z1, 1.j*z1, 0, -y1, d, b, a, c],
-            [t1, -1.j*z1, z1, y1, 0, -b, -d, -c, -a],
-            [1.j*t2, 1.j*a, -1.j*c, -d, b, 0, 1.j*y2, z2, 1.j*z2],
-            [-1.j*t2, 1.j*c, -1.j*a, -b, d, -1.j*y2, 0, -1.j*z2, -z2],
-            [-t2, 1.j*b, -1.j*d, -a, c, -z2, 1.j*z2, 0, -y2],
-            [t2, 1.j*d, -1.j*b, -c, a, -1.j*z2, z2, y2, 0]
+        f = fr+1.j*fi
+        g = gr+1.j*gi
+        h = hr+1.j*hi
+        k = kr+1.j*ki
+
+        # Build T out of submatrices
+        Block_T_PP = sympy.Matrix([0])
+        Block_T_PV = sympy.Matrix([0,0,0,0,0,0,0,0, -1.j*t, -t, 1.j*t, t, 0,0,0,0])
+        Block_I = sympy.Matrix([
+            [0,          1.j*y1,     z1,     1.j*z1, -1.j*a,     -1.j*c,     -1.j*b,     -1.j*d],
+            [-1.j*y1,    0,          -1.j*z1, -z1,   1.j*c,      1.j*a,      1.j*d,      1.j*b],
+            [-z1,        1.j*z1,     0,      -y1,    d,          b,          a,          c],
+            [-1.j*z1,    z1,         y1,     0,      -b,         -d,         -c,         -a],
+            [1.j*a,      -1.j*c,     -d,     b,      0,          1.j*y2,     z2,         1.j*z2],
+            [1.j*c,      -1.j*a,     -b,     d,      -1.j*y2,    0,          -1.j*z2,    -z2],
+            [1.j*b,      -1.j*d,     -a,     c,      -z2,        1.j*z2,     0,          -y2],
+            [1.j*d,      -1.j*b,     -c,     a,      -1.j*z2,    z2,         y2,         0]
             ])
+        sub = sympy.Matrix([ 
+            [1.j*f,     1.j*g,  1.j*h,  1.j*k], 
+            [-k,        -f,     -g,     -h], 
+            [-1.j*h,    -1.j*k, -1.j*f, -1.j*g], 
+            [g,         h,      k,      f] 
+            ])
+        Block_II = sympy.Matrix( sympy.BlockMatrix( [ [sympy.zeros(4), sub], [-sub.T, sympy.zeros(4)] ] ))
+        Block_T_VV = sympy.Matrix( sympy.BlockMatrix([ [Block_I, sympy.zeros(8)], [sympy.zeros(8), Block_II] ]) )
+
+        tmat_symb = sympy.Matrix( sympy.BlockMatrix([[Block_T_PP, Block_T_PV],[-Block_T_PV.T, Block_T_VV]]) )
         return tmat_symb
 
 
@@ -156,13 +185,13 @@ class Z2System2D_MVFT(System2DBase):
         modes_link_order = self.get_link_based_mode_order()
         modes_site_order = self.get_site_based_mode_order()
         mat_perm_links = generate_permutation_matrix( modes_site_order, modes_link_order) # be careful with the convention of the permutation matrix vs its transpose; this way works with the code below.
-        sites_perm = np.eye( 2 * self.cfg.lattice.nx * self.cfg.lattice.ny ) # total number of physical fermionic modes on all the sites together
+        sites_perm = np.eye( 2 * self.cfg.lattice.nx * self.cfg.lattice.ny ) # total number of physical fermionic majorana modes on all the sites together
         mat_perm = block_diag(sites_perm, mat_perm_links)
 
         nsites=self.cfg.lattice.size
         id = np.eye(nsites)
         # Extract the parts of the covariance matrix
-        amat = covmat[:2, :2]
+        amat = covmat[:2, :2] # assumes 1 fermion per site (two majorana modes)
         bmat = covmat[:2, 2:]
         dmat = covmat[2:, 2:]
         #Expand them
