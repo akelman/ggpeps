@@ -1,4 +1,4 @@
 from system_z2_2d import Z2System2D, Z2System2DConfig
 from system_z2_2d_2c import Z2System2D2CConfig, Z2System2D2C
-from system_z2_2d_MVFT import Z2System2D4C_Config, Z2System2D4C
+from system_z2_2d_4c import Z2System2D4C_Config, Z2System2D4C
 from system_u1_2d import U1System2DConfig, U1System2D
