@@ -14,7 +14,7 @@ from .system_base import calculate_lognorm_inc, compute_grad_over_norm, extract_
 ###################### Z2System2D ##########################
 
 
-class Z2System2D_MVFT_Config(Config2DBase):
+class Z2System2D4C_Config(Config2DBase):
     """Configuration of the Z2 system in 2D with 2 copies of virtual fermions on the links.
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
     """
@@ -39,7 +39,7 @@ class Z2System2D_MVFT_Config(Config2DBase):
             self.paramvec[ind, 13] = 0 # Set ti to 0
 
 
-class Z2System2D_MVFT(System2DBase):
+class Z2System2D4C(System2DBase):
     """ 2 copy version of the Z2 system GGPEPS ansatz with multiple type of virtual fermions
 
     Some general notes about conventions:
@@ -50,7 +50,7 @@ class Z2System2D_MVFT(System2DBase):
     Mode order of gamma_maj: p1,p2, l1_1, l2_2, r1_1, r2_2... l2_1, l2_2... l3_1, l3_2... l4_1, l4_2... u4_2
     """
 
-    def __init__(self, cfg: Z2System2D_MVFT_Config):
+    def __init__(self, cfg: Z2System2D4C_Config):
         """Constructor of a Z2System2D2C system.
         We call only the constructor of the super class, since we do not have any class-specific setup.
 
