@@ -140,7 +140,7 @@ class Z2System2D_MVFT(System2DBase):
 
         # Build T out of submatrices
         Block_T_PP = sympy.Matrix([0])
-        Block_T_PV = sympy.Matrix([0,0,0,0,0,0,0,0, -1.j*t, -t, 1.j*t, t, 0,0,0,0])
+        Block_T_PV = sympy.Matrix([0,0,0,0,0,0,0,0, -1.j*t, -t, 1.j*t, t, 0,0,0,0]) # this is a column matrix
         Block_I = sympy.Matrix([
             [0,          1.j*y1,     z1,     1.j*z1, -1.j*a,     -1.j*c,     -1.j*b,     -1.j*d],
             [-1.j*y1,    0,          -1.j*z1, -z1,   1.j*c,      1.j*a,      1.j*d,      1.j*b],
@@ -160,7 +160,7 @@ class Z2System2D_MVFT(System2DBase):
         Block_II = sympy.Matrix( sympy.BlockMatrix( [ [sympy.zeros(4), sub], [-sub.T, sympy.zeros(4)] ] ))
         Block_T_VV = sympy.Matrix( sympy.BlockMatrix([ [Block_I, sympy.zeros(8)], [sympy.zeros(8), Block_II] ]) )
 
-        tmat_symb = sympy.Matrix( sympy.BlockMatrix([[Block_T_PP, Block_T_PV],[-Block_T_PV.T, Block_T_VV]]) )
+        tmat_symb = sympy.Matrix( sympy.BlockMatrix([[Block_T_PP, Block_T_PV.T],[-Block_T_PV, Block_T_VV]]) )
         return tmat_symb
 
 
@@ -231,7 +231,6 @@ class Z2System2D_MVFT(System2DBase):
         Each constituent in the list above refers to two Majorana modes.
 
         This method overwrites an abstract method in System2DBase.
-
         """
 
         # Initialize gamma_in_sys for the full system (and trackers)
@@ -281,8 +280,8 @@ class Z2System2D_MVFT(System2DBase):
             np.ndarray: Covariance matrix of the ungauged projector on a single link
         """
         dest={}
-        dest[Direction.X]= np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
-        dest[Direction.Y]= np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
+        dest[Direction.X] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
+        dest[Direction.Y] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
         return dest
 
     #Gauging
