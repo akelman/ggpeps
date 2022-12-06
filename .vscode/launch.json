@@ -115,6 +115,25 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Minexact L=2, cp=4",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "args": [
+                "minexact",
+                "2",
+                "--g2",
+                "2.0",
+                "--g_mass",
+                "1.0",
+                "--method",
+                "BFGS",
+                "--ncopy",
+                "4"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Minimize (MC) L=2, cp=2, nl=1",
             "type": "python",
             "request": "launch",

@@ -1,15 +1,16 @@
-import numpy as np
 import logging
 import sympy
-from ggpeps import lattice as lat
-import sympy
+import numpy as np
 from scipy.linalg import block_diag
+from pfapack import pfaffian as pf
+from warnings import warn # Used for deprecation warnings
+
+from ggpeps import lattice as lat
 from ggpeps import utils
-from .system_base import Config2DBase, System2DBase
 from ggpeps.lattice import Direction
 from ggpeps.modearray import generate_permutation_matrix
+from .system_base import Config2DBase, System2DBase
 from .system_base import calculate_lognorm, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats, calculate_lognorm_inc
-from warnings import warn # Used for deprecation warnings
 
 
 ###################### Z2System2D ##########################

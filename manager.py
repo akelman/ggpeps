@@ -2,22 +2,26 @@
 Further details about the usage of the script can be found in README.md.
 """
 
-# Imports of things that we later need
-from cProfile import run
-from ggpeps.system import Z2System2D2C,Z2System2D2CConfig
-from ggpeps.system import Z2System2D, Z2System2DConfig
-from ggpeps.measurement import Measurement
+# Imports 
 import os
 import sys
-from timeit import default_timer as timer
 import ray
-from ggpeps import utils, exacteval
 import logging
+from cProfile import run
+from timeit import default_timer as timer
+
+import numpy as np
+np.set_printoptions(linewidth=200)
+
+from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
+from ggpeps.system import Z2System2DConfig, Z2System2D
+from ggpeps.system import Z2System2D_MVFT_Config, Z2System2D_MVFT
+from ggpeps.measurement import Measurement
+
+from ggpeps import utils, exacteval
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloManager
 from ggpeps import lattice as lat
-import numpy as np
-np.set_printoptions(linewidth=200)
 
 
 def args2logname(args):
@@ -91,6 +95,9 @@ def validate_inputs(args) -> bool:
         return False
     if args.nlayer > 1:
         logging.error("Now that physical fermions are included, only 1 layer can be used.")
+        return False
+    if args.ncopy == 1 and args.g_mass != 0:
+        logging.error("Not Implemented: the mass term has not yet been implemented for the 1 copy case")
         return False
 
     return True
@@ -168,28 +175,19 @@ def main(args):
     # Depending on the parameters, we instantiate different systems
     # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.ncopy == 1:
-        if g_mass != 0:
-            logging.error("Not Implemented: the mass term has not yet been implemented for the 1 copy case")
-            sys.exit(1)
         # Z2 system with one copy of virtual fermions on the links
         system_type = Z2System2D
-        system_cfg = Z2System2DConfig(lattice,
-                                      g2,
-                                      g_gm,
-                                      g2_mag,
-                                      g_mass,
-                                      nlayer=args.nlayer)
+        system_cfg = Z2System2DConfig(lattice, g2, g_gm, g2_mag, g_mass, nlayer=args.nlayer)
     elif args.ncopy == 2:
         # Z2 system with two copies of virtual fermions on the links
         system_type = Z2System2D2C
-        system_cfg = Z2System2D2CConfig(lattice,
-                                        g2,
-                                        g_gm,
-                                        g2_mag,
-                                        g_mass,
-                                        nlayer=args.nlayer)
+        system_cfg = Z2System2D2CConfig(lattice, g2, g_gm, g2_mag, g_mass, nlayer=args.nlayer)
+    elif args.ncopy == 4:
+        # Z2 system with 4 copies of virtual fermions on the links (2 for the pure gauge case, 2 for interacting with physical fermions)
+        system_type = Z2System2D_MVFT
+        system_cfg = Z2System2D_MVFT_Config(lattice, g2, g_gm, g2_mag, g_mass)
     else:
-        logging.error("Not Implemented: Only 1 or two copies are possible")
+        logging.error("Not Implemented: Only 1, 2, or 4 copies are possible.")
         sys.exit(1)
 
     # Translate the command line input to a valid parameter vector
@@ -229,8 +227,7 @@ def main(args):
         mc_result.save(output_dir = args.output)
 
         logging.info("==== Acceptance prob =======")
-        logging.info("Acceptance probability: {}".format(
-            mc_result.get_obs_mean("acceptance_prob")))
+        logging.info("Acceptance probability: {}".format(mc_result.get_obs_mean("acceptance_prob")))
         logging.info("============================")
     elif args.mode == "minimize" or args.mode == "min":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
@@ -305,8 +302,7 @@ def main(args):
         mc_config.minimizer_mode = True
         for i in range(args.minmult_iter):
             logging.info("Minimization iteration: {:02d}".format(i))
-            mc = MonteCarloManager(mc_config, system_type, system_cfg,
-                               args.nrunner, port=args.port)
+            mc = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
             minimizer = Minimizer(mc, min_cfg)
 
             resultvec.append(minimizer.minimize())

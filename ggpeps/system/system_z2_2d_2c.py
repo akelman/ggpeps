@@ -1,15 +1,15 @@
-import numpy as np
 import logging
 import sympy
-from ggpeps import lattice as lat
-import sympy
+import numpy as np
 from scipy.linalg import block_diag
+from pfapack import pfaffian as pf
+
+from ggpeps import lattice as lat
 from ggpeps import utils
-from .system_base import System2DBase, Config2DBase
 from ggpeps.lattice import Direction
 from ggpeps.modearray import generate_permutation_matrix
+from .system_base import Config2DBase, System2DBase
 from .system_base import calculate_lognorm_inc, compute_grad_over_norm, extract_partial_covmats
-from pfapack import pfaffian as pf
 
 ###################### Z2System2D ##########################
 

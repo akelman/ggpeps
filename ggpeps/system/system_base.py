@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Union
-import numpy as np
 import logging
 import sys
 import sympy
+import numpy as np
+
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
 from ggpeps.utils import ZERO_TOL
