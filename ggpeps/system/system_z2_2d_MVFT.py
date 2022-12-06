@@ -395,7 +395,7 @@ class Z2System2D_MVFT(System2DBase):
         mass_energy_op += 0.25 * (covmat[site_ind+1, site_ind] - covmat[site_ind,site_ind+1] ) # these two entries happen to be negatives of each other, because of anti-symmetry
 
         # Update gradients
-        for symbol_ind in range(len(self.symbolvec)):
+        for symbol_ind, symbol in enumerate(self.symbolvec):
             d_gamma_out = self.d_gamma_out_symbolvec()[symbol_ind]
             gradients[symbol_ind] += 0.25 * (d_gamma_out[site_ind+1, site_ind] - d_gamma_out[site_ind,site_ind+1])
 
@@ -576,7 +576,7 @@ class Z2System2D_MVFT(System2DBase):
 
             # Calculate derivatives
             gradients = []
-            for symbol_ind in range(len(self.symbolvec)):
+            for symbol_ind, symbol in enumerate(self.symbolvec):
                 d_gamma_out = self.d_gamma_out_symbolvec()[symbol_ind]
                 
                 grad = 0.5 * cos_factor_hor * (d_gamma_out[neighborX_ind+1, site_ind] - d_gamma_out[neighborX_ind,site_ind+1])
