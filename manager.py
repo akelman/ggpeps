@@ -171,7 +171,7 @@ def main(args):
     if args.g2_mag is None:
         g2_mag = 1./(2*g2)
     else:
-        g2_mag = g2_mag
+        g2_mag = args.g2_mag
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 

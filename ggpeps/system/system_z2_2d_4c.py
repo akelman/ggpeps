@@ -160,8 +160,14 @@ class Z2System2D4C(System2DBase):
         Block_II = sympy.Matrix( sympy.BlockMatrix( [ [sympy.zeros(4), sub], [-sub.T, sympy.zeros(4)] ] ))
         Block_T_VV = sympy.Matrix( sympy.BlockMatrix([ [Block_I, sympy.zeros(8)], [sympy.zeros(8), Block_II] ]) )
 
-        tmat_symb = sympy.Matrix( sympy.BlockMatrix([[Block_T_PP, Block_T_PV.T],[-Block_T_PV, Block_T_VV]]) )
-        return tmat_symb
+        # Build full tmat
+        tmat_symb_full = sympy.Matrix( sympy.BlockMatrix([[Block_T_PP, Block_T_PV.T],[-Block_T_PV, Block_T_VV]]) )
+        
+        # Build tmat for I and II separately
+        tmat_symb_I = Block_I
+        tmp = sympy.Matrix([-1.j*t, -t, 1.j*t, t, 0,0,0,0])
+        tmat_symb_II = sympy.Matrix( sympy.BlockMatrix([[Block_T_PP, tmp.T],[-tmp, Block_II]]) )
+        return tmat_symb_full, tmat_symb_I, tmat_symb_II
 
 
     def _expand_gamma_maj_to_system(self,covmat):
@@ -266,8 +272,8 @@ class Z2System2D4C(System2DBase):
         return gamma_in_sys, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
     def _generate_gamma_gauge_neutral_dict(self):
-        """Generate the the covariance matrix of the ungauged projectors.
-        The morde order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}.
+        """Generate the covariance matrix of the ungauged projectors.
+        The mode order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
         We order first by link and then by copy. 
         Modes of copy one are coupled to modes of copy 2. The projectors mix copies.
