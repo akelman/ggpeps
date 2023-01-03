@@ -387,7 +387,7 @@ class Z2System2D4C(System2DBase):
 
             # Update gradients
             for symbol_ind, symbol in enumerate(self.symbolvec):
-                d_gamma_out = self.d_gamma_out_symbolvec()[symbol_ind]
+                d_gamma_out = self.d_gamma_out_symbolvec(ind)[symbol_ind]
                 grads[symbol_ind] += 0.25 * (d_gamma_out[site_ind+1, site_ind] - d_gamma_out[site_ind,site_ind+1])
 
                 # further terms of the derivative are included higher up in the computation stack 
@@ -569,7 +569,8 @@ class Z2System2D4C(System2DBase):
             # Calculate derivatives
             gradients = []
             for symbol_ind, symbol in enumerate(self.symbolvec):
-                d_gamma_out = self.d_gamma_out_symbolvec()[symbol_ind]
+                layerind = 0 #Fix - use multiple layers
+                d_gamma_out = self.d_gamma_out_symbolvec(layerind)[symbol_ind]
                 
                 grad = 0.5 * cos_factor_hor * (d_gamma_out[neighborX_ind+1, site_ind] - d_gamma_out[neighborX_ind,site_ind+1])
                 grad += 0.5 * cos_factor_vert * (d_gamma_out[neighborY_ind+1, site_ind] - d_gamma_out[neighborY_ind,site_ind+1])

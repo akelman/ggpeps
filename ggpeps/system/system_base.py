@@ -228,7 +228,7 @@ class System2DBase(ABC):
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad = None
         self._int_energy_op_grad = None
-        self._d_gamma_out_symbolvec = None # gradients of gamma_out for all symbols
+        self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # gradients of gamma_out for all symbols
 
         # Observables
         self._energy = None
@@ -380,29 +380,28 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
-    def d_gamma_out_symbolvec(self):
-        """Return a vector containing the derivatives of gamma_out for each symbol.
+    def d_gamma_out_symbolvec(self, layer:int) -> np.ndarray:
+        """Return a vector containing the derivatives of gamma_out (for the given layer) for each symbol.
 
         Returns:
             [List]: List of np.arrays, with length equal to the number of symbols.
         """
-        if self._d_gamma_out_symbolvec is None:
-            layerind = 0 # only works with a single layer
-            self._d_gamma_out_symbolvec = []
+        if self._d_gamma_out_symbolvec[layer] is None:
+            self._d_gamma_out_symbolvec[layer] = []
             offset = 2 * self.cfg.lattice.size
 
             for symbol in self.symbolvec:
-                mat_b = self.mat_b_vec[layerind]
-                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
+                mat_b = self.mat_b_vec[layer]
+                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layer]
                 d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
-                diff_d_gamma_inv = self.wi_gamma_out_vec[layerind].inv()
+                diff_d_gamma_inv = self.wi_gamma_out_vec[layer].inv()
                 d_gamma_out = d_mat_a \
                         + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
                         + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
                         - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
-                self._d_gamma_out_symbolvec.append(d_gamma_out)
+                self._d_gamma_out_symbolvec[layer].append(d_gamma_out)
         
-        return self._d_gamma_out_symbolvec
+        return self._d_gamma_out_symbolvec[layer]
 
     @property
     def gamma_maj_sys_vec(self):
@@ -1022,7 +1021,7 @@ class System2DBase(ABC):
         """Reset the values of computed quantitities to avoid spillover from previous computations.
         """
         self._ferm_covmat = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
-        self._d_gamma_out_symbolvec = None # maybe it's possible to update this locally?
+        self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
         self._energy = None
         self._mass_energy_op = None
         self._int_energy_op = None

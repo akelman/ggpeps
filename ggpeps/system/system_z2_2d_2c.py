@@ -341,7 +341,7 @@ class Z2System2D2C(System2DBase):
 
 
     # Observables
-    def _compute_mass_energy_op_and_grad(self, use_trans_inv:bool=True):
+    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv:bool=True):
         """Compute the mass term of the Hamiltonian for a single site.
 
         Args:
