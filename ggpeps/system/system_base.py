@@ -205,7 +205,7 @@ class System2DBase(ABC):
         self._mat_d_inv_vec = None
 
         # Full covariance matrix (gamma_out) of the fermions
-        self._ferm_covmat = None
+        self._ferm_covmat = [None]*self.cfg.nlayer
 
         # Parameter dependent quantities for the electric energy
         self._mat_a_mod_vec = None
@@ -234,7 +234,6 @@ class System2DBase(ABC):
         self._el_energy_op = None
         self._el_energy_op_vec = None
         self._mag_energy_op = None
-        self._mass_energy_op_grad = None
         self._int_energy_op = None
         self._int_energy_op_grad = None
 
@@ -857,6 +856,17 @@ class System2DBase(ABC):
             float: Logarithm of the norm
         """
         return calculate_lognorm(self.gamma_in_sys, self.mat_d_vec, all_factors=all_factors)
+    
+    def calculate_lognormvec(self, all_factors=False):
+        """Compute the logarithm of the norm for each layer
+
+        Args:
+            all_factors (bool, optional): Include all constant prefactors. Defaults to False.
+
+        Returns:
+            float: Logarithm of the norm
+        """
+        return calculate_lognormvec(self.gamma_in_sys, self.mat_d_vec, all_factors=all_factors)
 
     def calculate_lognormvec_inc(self, all_factors=False):
         """Compute the logarithm of the norm for all layers by incrementally updating the previous value (using IncDet and Woodbury)
@@ -1009,7 +1019,7 @@ class System2DBase(ABC):
     def invalidate_gauge_update(self):
         """Reset the values of computed quantitities to avoid spillover from previous computations.
         """
-        self._ferm_covmat = None # maybe it's possible to update this locally?
+        self._ferm_covmat = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
         self._d_gamma_out_symbolvec = None # maybe it's possible to update this locally?
         self._energy = None
         self._mass_energy_op = None
@@ -1237,11 +1247,15 @@ class System2DBase(ABC):
                 theta_sum += self.gaugefieldvec[ind]
         return np.exp(1.j*theta_sum)
 
-    def compute_ferm_cov(self):
-        """Compute the covariance matrix of the fermions in the system (for the first layer)."""
-        if self._ferm_covmat is None:
-            self._ferm_covmat = self.mat_a_vec[0] + (self.mat_b_vec[0] @ self._wi_gamma_out_vec[0].inv() @ np.transpose(self.mat_b_vec[0]))
-        return self._ferm_covmat
+    def compute_ferm_cov(self, layer:int) -> np.ndarray:
+        """Compute the covariance matrix of the fermions in the system for the given layer
+
+        Args:
+            layer (int): the layer for which the covmat should be calculated
+        """
+        if self._ferm_covmat[layer] is None:
+            self._ferm_covmat[layer] = self.mat_a_vec[layer] + (self.mat_b_vec[layer] @ self._wi_gamma_out_vec[layer].inv() @ np.transpose(self.mat_b_vec[layer]))
+        return self._ferm_covmat[layer]
 
 
 

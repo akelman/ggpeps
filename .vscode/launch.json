@@ -115,7 +115,7 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Minexact L=2, cp=4",
+            "name": "Minexact L=2, cp=4, nl=2",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
@@ -129,7 +129,11 @@
                 "--method",
                 "BFGS",
                 "--ncopy",
-                "4"
+                "4",
+                "--nlayer",
+                "2",
+                "--seed",
+                "1438378742"
             ],
             "console": "integratedTerminal"
         },

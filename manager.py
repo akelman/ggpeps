@@ -93,9 +93,6 @@ def validate_inputs(args) -> bool:
     if args.L % 2 != 0:
         logging.error("The lattice dimension must currently be an even number.") # this is important when staggering
         return False
-    if args.ncopy != 1 and args.nlayer > 1:
-        logging.error("Now that physical fermions are included (for ncopy >= 2), only 1 layer can be used.")
-        return False
     if args.ncopy == 1 and args.g_mass != 0:
         logging.error("Not Implemented: the mass term has not yet been implemented for the 1 copy case.")
         return False
@@ -106,6 +103,15 @@ def validate_inputs(args) -> bool:
     return True
 
 def main(args):
+
+    # Make sure that the output directory is fine
+    if os.path.exists(args.output):
+        if not os.path.isdir(args.output):
+            print(
+                f"Output directory '{args.output}' exists and is not a directory. Aborting.", file=sys.stderr)
+            sys.exit(1)
+    else:
+        os.makedirs(args.output)
 
     #Set up the logger
     h_stdout = logging.StreamHandler(stream=sys.stdout)
@@ -146,15 +152,6 @@ def main(args):
     # reproducibility across different runs, even when using mulitple processes
     rngstate = np.random.RandomState(seed)
     mc_config.seed = seed
-
-    # Make sure that the output directory is fine
-    if os.path.exists(args.output):
-        if not os.path.isdir(args.output):
-            print(
-                f"Output directory '{args.output}' exists and is not a directory. Aborting.", file=sys.stderr)
-            sys.exit(1)
-    else:
-        os.makedirs(args.output)
 
     logging.info("Git hash: {}".format(utils.get_git_hash()))
     logging.info("========= MC INFO ==========")
@@ -201,6 +198,10 @@ def main(args):
     if args.pure_gauge:
         system_cfg.make_pure_gauge()
 
+    # For the ansatz with ncopy = 4, enforce the required parameter conditions to get the correct use of layers
+    if args.ncopy == 4:
+        system_cfg.enforce_parameter_conditions()
+
     # Switch to control the binning analysis on EOM (Error of mean)
     if args.no_bin_eom:
         Measurement.use_rebinning = False
@@ -209,6 +210,7 @@ def main(args):
     logging.info("L: {}".format(L))
     logging.info("# of layers: {}".format(system_cfg.nlayer))
     logging.info("# of copies: {}".format(args.ncopy))
+    logging.info("pure-gauge: {}".format(args.pure_gauge))
     logging.info("parameters: {}".format(paramvec))
     logging.info("g^2: {}".format(g2))
     logging.info("g^2_mag: {}".format(g2_mag))
