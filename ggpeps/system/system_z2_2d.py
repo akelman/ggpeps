@@ -298,7 +298,7 @@ class Z2System2D(System2DBase):
 
     # Calculating the norm
 
-    def _compute_mass_energy_op_and_grad(self, use_trans_inv=True):
+    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv=True):
         # Really, the error should be raised here, but commented out now for testing purposes
         # raise NotImplementedError("The mass term has not yet been implemented for Z2 with 1 copy.")
 

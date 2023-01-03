@@ -358,7 +358,7 @@ class Z2System2D4C(System2DBase):
 
 
     # Observables
-    def _compute_mass_energy_op_and_grad(self, use_trans_inv:bool=True):
+    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv:bool=True):
         """Compute the mass term of the Hamiltonian for a single site.
 
         Args:
@@ -372,26 +372,32 @@ class Z2System2D4C(System2DBase):
         if self.cfg.nlayer != 2:
             raise NotImplementedError("Two layers must be used with physical fermions.")
 
+        mass_energy_op = []
+        gradients = []
+
         # Calculation prelimaries
-        nsites = self.cfg.lattice.size
-        covmat = self.compute_ferm_cov(0)
-        mass_energy_op = 0.
-        gradients = [0]*len(self.symbolvec)
-        
-        # Calculate mass term
-        site_ind = 0 # just do calculation for a single site
-        mass_energy_op += 0.25 * (covmat[site_ind+1, site_ind] - covmat[site_ind,site_ind+1] ) # these two entries happen to be negatives of each other, because of anti-symmetry
+        for ind in range(self.cfg.nlayer):
+            covmat = self.compute_ferm_cov(ind)
+            mass_energy = 0.
+            grads = [0]*len(self.symbolvec)
+            
+            # Calculate mass term
+            site_ind = 0 # just do calculation for a single site
+            mass_energy += 0.25 * (covmat[site_ind+1, site_ind] - covmat[site_ind,site_ind+1] ) # these two entries happen to be negatives of each other, because of anti-symmetry
 
-        # Update gradients
-        for symbol_ind, symbol in enumerate(self.symbolvec):
-            d_gamma_out = self.d_gamma_out_symbolvec()[symbol_ind]
-            gradients[symbol_ind] += 0.25 * (d_gamma_out[site_ind+1, site_ind] - d_gamma_out[site_ind,site_ind+1])
+            # Update gradients
+            for symbol_ind, symbol in enumerate(self.symbolvec):
+                d_gamma_out = self.d_gamma_out_symbolvec()[symbol_ind]
+                grads[symbol_ind] += 0.25 * (d_gamma_out[site_ind+1, site_ind] - d_gamma_out[site_ind,site_ind+1])
 
-            # further terms of the derivative are included higher up in the computation stack 
-            # because computing them requires knowing various expectation values, which are not available here
+                # further terms of the derivative are included higher up in the computation stack 
+                # because computing them requires knowing various expectation values, which are not available here
+
+            mass_energy_op.append(np.asarray(mass_energy))
+            gradients.append(np.asarray(grads))
 
         mass_energy_op = np.asarray(mass_energy_op)
-        gradients = np.asarray([gradients]) # extra list is to get correct dimensions (gradients should be a list of gradients for each layer)
+        gradients = np.asarray(gradients)
         return mass_energy_op, gradients
 
     def _compute_el_energy_op_vec_and_grad(self, use_trans_inv:bool=True):
@@ -408,11 +414,8 @@ class Z2System2D4C(System2DBase):
         """
         if not use_trans_inv:
             # Evaluate every link of the system
-            logging.error("compute_el_energy: The non-translational invariant case is not implemented yet")
+            logging.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
-            dest = np.asarray([None]*self.cfg.nlayer)
-            dest_grad = np.asarray([[None]*len(self.symbolvec)]*self.cfg.nlayer)
-
 
         lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
         # This is the usual norm without any modifications
@@ -495,6 +498,12 @@ class Z2System2D4C(System2DBase):
         dest = np.asarray(dest)
         dest_grad = np.asarray(dest_grad)
 
+        ## Should this be here!? maybe also in mass and interaction terms?
+        #if self.cfg.nlayer > 1:
+        #    for i in range(self.cfg.nlayer):
+        #        prod_other_layers = utils.multiply_except(dest, i)
+        #        dest_grad[i] *= prod_other_layers
+        
         return dest, dest_grad
 
 

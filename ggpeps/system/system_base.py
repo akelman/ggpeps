@@ -227,15 +227,17 @@ class System2DBase(ABC):
         self._gamma_maj_sys_deriv_dict = None
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad = None
+        self._int_energy_op_grad = None
         self._d_gamma_out_symbolvec = None # gradients of gamma_out for all symbols
 
         # Observables
         self._energy = None
         self._el_energy_op = None
         self._el_energy_op_vec = None
+        self._mass_energy_op = None
+        self._mass_energy_op_vec = None
         self._mag_energy_op = None
         self._int_energy_op = None
-        self._int_energy_op_grad = None
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in_vec = None  # Tracks (D^-1 - gammain)^-1
@@ -1027,6 +1029,8 @@ class System2DBase(ABC):
         self._mag_energy_op = None
         self._el_energy_op = None
         self._el_energy_op_vec = None
+        self._mass_energy_op = None
+        self._mass_energy_op_vec = None
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad = None
         self._int_energy_op_grad = None
@@ -1047,7 +1051,7 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
     
     @abstractmethod
-    def _compute_mass_energy_op_and_grad(self):
+    def _compute_mass_energy_op_vec_and_grad(self):
         """Compute the mass energy and the gradient (for a single layer).
         This is an abstract method and has to be overwritten in a subclass.
         """
@@ -1116,9 +1120,8 @@ class System2DBase(ABC):
             float: Mass energy operator (w/o shift) for the whole system
         """
         if self._mass_energy_op is None:
-            self._mass_energy_op, self._mass_energy_op_grad = self._compute_mass_energy_op_and_grad()
             nsites = self.cfg.lattice.size
-            self._mass_energy_op *= nsites
+            self._mass_energy_op = nsites * np.prod(self.mass_energy_op_vec)
         return self._mass_energy_op
     
     @property
@@ -1130,7 +1133,7 @@ class System2DBase(ABC):
             float: gradient of the mass energy operator (w/o shift) for the whole system
         """
         if self._mass_energy_op_grad is None:
-            self._mass_energy_op, self._mass_energy_op_grad = self._compute_mass_energy_op_and_grad()
+            self._mass_energy_op, self._mass_energy_op_grad = self._compute_mass_energy_op_vec_and_grad()
             nsites = self.cfg.lattice.size
             self._mass_energy_op_grad *= nsites
         return self._mass_energy_op_grad
@@ -1174,6 +1177,19 @@ class System2DBase(ABC):
             # Otherwise, we get a power of nlinks in the product and the electric energy term (with prefactors) gets negative
             self._el_energy_op_vec, self._el_energy_op_grad_vec = self._compute_el_energy_op_vec_and_grad()
         return self._el_energy_op_vec
+    
+    @property
+    def mass_energy_op_vec(self):
+        """Compute mass energy operator w/o shift for all layers for the whole system.
+        This is a get function.
+
+        Returns:
+            list: Layer-resolved mass energy w/o shift
+        """
+        if self._mass_energy_op_vec is None:
+            # This vector is the electric energy on a single site.
+            self._mass_energy_op_vec, self._mass_energy_op_grad_vec = self._compute_mass_energy_op_vec_and_grad()
+        return self._mass_energy_op_vec
 
     @property
     def mag_energy(self):
