@@ -474,10 +474,12 @@ class Z2System2D2C(System2DBase):
                 d_el_energy *= nlinks
                 layer_derivative.append(np.real(d_el_energy))
             dest_grad.append(layer_derivative)
-        # We have to weight the different layers with the electric energy operator expectation of the other layers.
-        # They act as a prefactor in the derivative
+        
         dest = np.asarray(dest)
         dest_grad = np.asarray(dest_grad)
+        
+        # We have to weigh the different layers with the electric energy operator expectation of the other layers.
+        # They act as a prefactor in the derivative
         if self.cfg.nlayer > 1:
             for i in range(self.cfg.nlayer):
                 prod_other_layers = utils.multiply_except(dest, i)

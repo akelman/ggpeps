@@ -398,6 +398,14 @@ class Z2System2D4C(System2DBase):
 
         mass_energy_op = np.asarray(mass_energy_op)
         gradients = np.asarray(gradients)
+
+        # We have to weigh the different layers with the electric energy operator expectation of the other layers.
+        # They act as a prefactor in the derivative
+        if self.cfg.nlayer > 1:
+            for i in range(self.cfg.nlayer):
+                prod_other_layers = utils.multiply_except(mass_energy_op, i)
+                gradients[i] *= prod_other_layers
+
         return mass_energy_op, gradients
 
     def _compute_el_energy_op_vec_and_grad(self, use_trans_inv:bool=True):
@@ -498,11 +506,12 @@ class Z2System2D4C(System2DBase):
         dest = np.asarray(dest)
         dest_grad = np.asarray(dest_grad)
 
-        ## Should this be here!? maybe also in mass and interaction terms?
-        #if self.cfg.nlayer > 1:
-        #    for i in range(self.cfg.nlayer):
-        #        prod_other_layers = utils.multiply_except(dest, i)
-        #        dest_grad[i] *= prod_other_layers
+        # We have to weigh the different layers with the electric energy operator expectation of the other layers.
+        # They act as a prefactor in the derivative
+        if self.cfg.nlayer > 1:
+            for i in range(self.cfg.nlayer):
+                prod_other_layers = utils.multiply_except(dest, i)
+                dest_grad[i] *= prod_other_layers
         
         return dest, dest_grad
 
