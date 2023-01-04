@@ -226,7 +226,7 @@ class System2DBase(ABC):
         # Gradients
         self._gamma_maj_sys_deriv_dict = None
         self._el_energy_op_grad_vec = None
-        self._mass_energy_op_grad = None
+        self._mass_energy_op_grad_vec = None
         self._int_energy_op_grad = None
         self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # gradients of gamma_out for all symbols
 
@@ -1031,7 +1031,7 @@ class System2DBase(ABC):
         self._mass_energy_op = None
         self._mass_energy_op_vec = None
         self._el_energy_op_grad_vec = None
-        self._mass_energy_op_grad = None
+        self._mass_energy_op_grad_vec = None
         self._int_energy_op_grad = None
 
     ################## Observables ######################
@@ -1063,9 +1063,13 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+
+
+    ################## Energy Calculations ######################
+
     @property
     def energy(self):
-        """Compute the energy by adding the magnetic and the electric energy
+        """Compute the total energy by adding all terms in the Hamiltonian
         This is a get function.
 
         Returns:
@@ -1077,12 +1081,74 @@ class System2DBase(ABC):
             self._energy += self.el_energy
         if abs(self.cfg.g2_mag) > ZERO_TOL:
             self._energy += self.mag_energy
-        if abs(self.cfg.g_gm) > ZERO_TOL:
-            self._energy += self.int_energy
         if abs(self.cfg.g_mass) > ZERO_TOL:
             self._energy += self.mass_energy
+        if abs(self.cfg.g_gm) > ZERO_TOL:
+            self._energy += self.int_energy
         return self._energy
 
+    # Functions that return a term of the energy in the Hamiltonian, including all prefactors and energy from the entire lattice.
+    @property
+    def el_energy(self):
+        """Compute electric energy with shift for the whole system
+        This is a get function.
+
+        Returns:
+            float: electric energy
+        """
+        nlinks = self.cfg.lattice.nlinks
+        el_energy = self.cfg.g2_el * (2*nlinks - 2*self.el_energy_op)
+        return el_energy
+    
+    @property
+    def mag_energy(self):
+        """Compute magnetic energy with shift for the whole system
+        This is a get function.
+
+        Returns:
+            float: magnetic energy
+        """
+        nplaq = self.cfg.lattice.nplaquettes
+        mag_energy = self.cfg.g2_mag * (2*nplaq - 2*self.mag_energy_op)
+        return mag_energy
+
+    @property
+    def mass_energy(self):
+        """Compute mass energy for the whole system
+        This is a get function.
+
+        Returns:
+            float: mass energy
+        """
+        mass_energy = self.cfg.g_mass * self.mass_energy_op
+        return mass_energy
+
+    @property
+    def int_energy(self):
+        """Compute interaction (of matter and gauge fields) energy for the whole system
+        This is a get function.
+
+        Returns:
+            float: interaction energy
+        """
+        int_energy = self.cfg.g_gm * self.int_energy_op
+        return int_energy
+
+    # Functions that return the energy for the operator part of a term in the Hamiltonian, including the energy for the entire lattice, but not any shifts or prefactors.
+    @property
+    def el_energy_op(self):
+        """Compute electric energy (w/o shift) for the whole system.
+        This is a get function.
+
+        Returns:
+            float: electric energy for the whole system w/o shift
+        """
+        if self._el_energy_op is None:
+            # The different layers can be separated into separate PEPS and then multiplied together.
+            nlinks = self.cfg.lattice.nlinks
+            self._el_energy_op = nlinks * np.prod(self.el_energy_op_vec)
+        return self._el_energy_op
+    
     @property
     def mag_energy_op(self):
         """Compute the magnetic energy operator for the whole system without shift.
@@ -1097,20 +1163,6 @@ class System2DBase(ABC):
         return self._mag_energy_op
 
     @property
-    def el_energy_op(self):
-        """Compute electric energy (w/o shift) for the whole system.
-        This is a get function.
-
-        Returns:
-            float: electric energy for the whole system w/o shift
-        """
-        if self._el_energy_op is None:
-            # The different layers can be separated into separate PEPS and then multiplied together.
-            nlinks = self.cfg.lattice.nlinks
-            self._el_energy_op = nlinks * np.prod(self.el_energy_op_vec)
-        return self._el_energy_op
-
-    @property
     def mass_energy_op(self):
         """Compute the mass energy operator for the whole system without shift.
         This is a get function.
@@ -1122,21 +1174,7 @@ class System2DBase(ABC):
             nsites = self.cfg.lattice.size
             self._mass_energy_op = nsites * np.prod(self.mass_energy_op_vec)
         return self._mass_energy_op
-    
-    @property
-    def mass_energy_op_grad(self):
-        """Compute the gradient of the mass energy operator for the whole system without shift.
-        This is a get function.
 
-        Returns:
-            float: gradient of the mass energy operator (w/o shift) for the whole system
-        """
-        if self._mass_energy_op_grad is None:
-            self._mass_energy_op, self._mass_energy_op_grad = self._compute_mass_energy_op_vec_and_grad()
-            nsites = self.cfg.lattice.size
-            self._mass_energy_op_grad *= nsites
-        return self._mass_energy_op_grad
-    
     @property
     def int_energy_op(self):
         """Compute the interaction energy operator for the whole system without shift.
@@ -1150,19 +1188,7 @@ class System2DBase(ABC):
             # Do for whole system...
         return self._int_energy_op
     
-    @property
-    def int_energy_op_grad(self):
-        """Compute the gradient of the interaction energy operator for the whole system without shift.
-        This is a get function.
-
-        Returns:
-            float: Gradient of the interaction energy operator (w/o shift) for the whole system
-        """
-        if self._int_energy_op is None:
-            self._int_energy_op, self._int_energy_op_grad = self._compute_int_energy_op_and_grad()
-            # Do for whole system...
-        return self._int_energy_op_grad
-
+    # Functions that return the layer-resolved energies of each energy operator
     @property
     def el_energy_op_vec(self):
         """Compute electric energy operator w/o shift for all layers for the whole system.
@@ -1190,52 +1216,21 @@ class System2DBase(ABC):
             self._mass_energy_op_vec, self._mass_energy_op_grad_vec = self._compute_mass_energy_op_vec_and_grad()
         return self._mass_energy_op_vec
 
+    # Functions that return the gradients of the operator part of terms in the Hamiltonian
     @property
-    def mag_energy(self):
-        """Compute magnetic energy with shift for the whole system
+    def int_energy_op_grad(self):
+        """Compute the gradient of the interaction energy operator for the whole system without shift.
         This is a get function.
 
         Returns:
-            float: magnetic energy
+            float: Gradient of the interaction energy operator (w/o shift) for the whole system
         """
-        nplaq = self.cfg.lattice.nplaquettes
-        mag_energy = self.cfg.g2_mag * (2*nplaq - 2*self.mag_energy_op)
-        return mag_energy
+        if self._int_energy_op is None:
+            self._int_energy_op, self._int_energy_op_grad = self._compute_int_energy_op_and_grad()
+            # Do for whole system...
+        return self._int_energy_op_grad
 
-    @property
-    def el_energy(self):
-        """Compute electric energy with shift for the whole system
-        This is a get function.
-
-        Returns:
-            float: electric energy
-        """
-        nlinks = self.cfg.lattice.nlinks
-        el_energy = self.cfg.g2_el * (2*nlinks - 2*self.el_energy_op)
-        return el_energy
-
-    @property
-    def mass_energy(self):
-        """Compute mass energy for the whole system
-        This is a get function.
-
-        Returns:
-            float: mass energy
-        """
-        mass_energy = self.cfg.g_mass * self.mass_energy_op
-        return mass_energy
-
-    @property
-    def int_energy(self):
-        """Compute interaction (of matter and gauge fields) energy for the whole system
-        This is a get function.
-
-        Returns:
-            float: interaction energy
-        """
-        int_energy = self.cfg.g_gm * self.int_energy_op
-        return int_energy
-
+    # Functions that return the layer-resolved gradients of each energy operator
     @property
     def el_energy_op_grad_vec(self):
         """Compute the gradient of the electric operator (w/o shift) for all layers
@@ -1246,6 +1241,24 @@ class System2DBase(ABC):
         if self._el_energy_op_grad_vec is None:
             self._el_energy_op_vec, self._el_energy_op_grad_vec = self._compute_el_energy_op_vec_and_grad()
         return self._el_energy_op_grad_vec
+    
+    @property
+    def mass_energy_op_grad_vec(self):
+        """Compute the gradient of the mass energy operator for the whole system without shift.
+        This is a get function.
+
+        Returns:
+            float: gradient of the mass energy operator (w/o shift) for the whole system
+        """
+        if self._mass_energy_op_grad_vec is None:
+            self._mass_energy_op_vec, self._mass_energy_op_grad_vec = self._compute_mass_energy_op_vec_and_grad()
+            self._mass_energy_op_grad_vec *= self.cfg.lattice.size
+        return self._mass_energy_op_grad_vec
+
+
+
+
+    ##################  ######################
 
     def compute_path(self, path):
         """Compute the observable corresponding the path given as an argument

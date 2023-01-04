@@ -91,7 +91,7 @@ class ExactEvaluator():
                 data["el_energy"].append(self.system.el_energy)
                 data["mass_energy_op"].append(self.system.mass_energy_op) 
                 data["int_energy_op"].append(self.system.int_energy_op) 
-                data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad) 
+                data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec) 
                 data["int_energy_op_grad"].append(self.system.int_energy_op_grad) 
                 data["mag_energy_op"].append(self.system.mag_energy_op)
                 data["el_energy_op"].append(self.system.el_energy_op)
