@@ -547,7 +547,7 @@ class Z2System2D(System2DBase):
             mag_energy_bare = None
         return mag_energy_bare
     
-    def _compute_int_energy_op_and_grad(self):
+    def _compute_int_energy_op_vec_and_grad(self):
         # This function is not implemented yet!
         raise NotImplementedError("The interaction energy is not implemented yet for the 1 copy case.")
         return 0

@@ -86,16 +86,19 @@ class ExactEvaluator():
             for config in configvec:
                 self.system.update_gauge_full_system(config)
                 logging.debug("Configuration: {}".format(config))
+                
                 data["energy"].append(self.system.energy)
                 data["mag_energy"].append(self.system.mag_energy)
                 data["el_energy"].append(self.system.el_energy)
                 data["mass_energy_op"].append(self.system.mass_energy_op) 
                 data["int_energy_op"].append(self.system.int_energy_op) 
-                data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec) 
-                data["int_energy_op_grad"].append(self.system.int_energy_op_grad) 
                 data["mag_energy_op"].append(self.system.mag_energy_op)
                 data["el_energy_op"].append(self.system.el_energy_op)
+                
                 data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
+                data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec) 
+                data["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec) 
+                
                 data["norm"].append(self.system.calculate_lognorm(all_factors=True))
                 data["grad_norm"].append(self.system.compute_grad_norm_vec())
                 data["wilson_00_11"].append(np.real(self.system.compute_path(wilson_loop)))

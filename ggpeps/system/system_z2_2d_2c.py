@@ -477,7 +477,7 @@ class Z2System2D2C(System2DBase):
         
         dest = np.asarray(dest)
         dest_grad = np.asarray(dest_grad)
-        
+
         # We have to weigh the different layers with the electric energy operator expectation of the other layers.
         # They act as a prefactor in the derivative
         if self.cfg.nlayer > 1:
@@ -511,7 +511,7 @@ class Z2System2D2C(System2DBase):
             mag_energy_bare = None
         return mag_energy_bare
     
-    def _compute_int_energy_op_and_grad(self):
+    def _compute_int_energy_op_vec_and_grad(self):
         """Calculate the energy and energy gradient due to the interaction of the physical fermions with the gauge fields.
         Note: this function works for any gauge group that is represented as a phase (including Z2).
             When the group is larger than Z2, the relevant lines below must be uncommented (and added to the derivatives)

@@ -227,17 +227,18 @@ class System2DBase(ABC):
         self._gamma_maj_sys_deriv_dict = None
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad_vec = None
-        self._int_energy_op_grad = None
+        self._int_energy_op_grad_vec = None
         self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # gradients of gamma_out for all symbols
 
         # Observables
         self._energy = None
         self._el_energy_op = None
         self._el_energy_op_vec = None
+        self._mag_energy_op = None
         self._mass_energy_op = None
         self._mass_energy_op_vec = None
-        self._mag_energy_op = None
         self._int_energy_op = None
+        self._int_energy_op_vec = None
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in_vec = None  # Tracks (D^-1 - gammain)^-1
@@ -1022,17 +1023,19 @@ class System2DBase(ABC):
         """
         self._ferm_covmat = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
         self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
+        
         self._energy = None
-        self._mass_energy_op = None
-        self._int_energy_op = None
-        self._mag_energy_op = None
         self._el_energy_op = None
         self._el_energy_op_vec = None
+        self._mag_energy_op = None
         self._mass_energy_op = None
         self._mass_energy_op_vec = None
+        self._int_energy_op = None
+        self._int_energy_op_vec = None
+        
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad_vec = None
-        self._int_energy_op_grad = None
+        self._int_energy_op_grad_vec = None
 
     ################## Observables ######################
     @abstractmethod
@@ -1057,7 +1060,7 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def _compute_int_energy_op_and_grad(self):
+    def _compute_int_energy_op_vec_and_grad(self):
         """Compute the interaction energy and the gradient (for a single layer).
         This is an abstract method and has to be overwritten in a subclass.
         """
@@ -1066,7 +1069,6 @@ class System2DBase(ABC):
 
 
     ################## Energy Calculations ######################
-
     @property
     def energy(self):
         """Compute the total energy by adding all terms in the Hamiltonian
@@ -1184,8 +1186,8 @@ class System2DBase(ABC):
             float: Interaction energy operator (w/o shift) for the whole system
         """
         if self._int_energy_op is None:
-            self._int_energy_op, self._int_energy_op_grad = self._compute_int_energy_op_and_grad()
-            # Do for whole system...
+            nsites = self.cfg.lattice.size
+            self._int_energy_op = nsites * np.prod(self.int_energy_op_vec)
         return self._int_energy_op
     
     # Functions that return the layer-resolved energies of each energy operator
@@ -1215,20 +1217,19 @@ class System2DBase(ABC):
             # This vector is the electric energy on a single site.
             self._mass_energy_op_vec, self._mass_energy_op_grad_vec = self._compute_mass_energy_op_vec_and_grad()
         return self._mass_energy_op_vec
-
-    # Functions that return the gradients of the operator part of terms in the Hamiltonian
+    
     @property
-    def int_energy_op_grad(self):
-        """Compute the gradient of the interaction energy operator for the whole system without shift.
+    def int_energy_op_vec(self):
+        """Compute interaction energy operator w/o shift for all layers for the whole system.
         This is a get function.
 
         Returns:
-            float: Gradient of the interaction energy operator (w/o shift) for the whole system
+            list: Layer-resolved interaction energy w/o shift
         """
-        if self._int_energy_op is None:
-            self._int_energy_op, self._int_energy_op_grad = self._compute_int_energy_op_and_grad()
-            # Do for whole system...
-        return self._int_energy_op_grad
+        if self._int_energy_op_vec is None:
+            # This vector is the electric energy on a single site.
+            self._int_energy_op_vec, self._int_energy_op_grad_vec = self._compute_int_energy_op_vec_and_grad()
+        return self._int_energy_op_vec
 
     # Functions that return the layer-resolved gradients of each energy operator
     @property
@@ -1254,6 +1255,19 @@ class System2DBase(ABC):
             self._mass_energy_op_vec, self._mass_energy_op_grad_vec = self._compute_mass_energy_op_vec_and_grad()
             self._mass_energy_op_grad_vec *= self.cfg.lattice.size
         return self._mass_energy_op_grad_vec
+    
+    @property
+    def int_energy_op_grad_vec(self):
+        """Compute the gradient of the interaction energy operator for the whole system without shift.
+        This is a get function.
+
+        Returns:
+            float: Gradient of the interaction energy operator (w/o shift) for the whole system
+        """
+        if self._int_energy_op_vec is None:
+            self._int_energy_op_vec, self._int_energy_op_grad_vec = self._compute_int_energy_op_vec_and_grad()
+            # Do for whole system...
+        return self._int_energy_op_grad_vec
 
 
 
