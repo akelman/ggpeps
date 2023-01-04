@@ -72,13 +72,15 @@ class ExactEvaluator():
                 "norm": [],
                 "mag_energy": [],
                 "el_energy": [],
-                "mass_energy_op": [],
-                "int_energy_op": [],
-                "mass_energy_op_grad": [],
-                "int_energy_op_grad": [],
+                "mass_energy": [],
+                "int_energy": [],
                 "mag_energy_op": [],
                 "el_energy_op": [],
+                "mass_energy_op": [],
+                "int_energy_op": [],
                 "el_energy_op_grad": [],
+                "mass_energy_op_grad": [],
+                "int_energy_op_grad": [],
                 "grad_norm": [],
                 "wilson_00_11": [],
                 "polyakov_00_x": []
@@ -90,10 +92,12 @@ class ExactEvaluator():
                 data["energy"].append(self.system.energy)
                 data["mag_energy"].append(self.system.mag_energy)
                 data["el_energy"].append(self.system.el_energy)
-                data["mass_energy_op"].append(self.system.mass_energy_op) 
-                data["int_energy_op"].append(self.system.int_energy_op) 
+                data["mass_energy"].append(self.system.mass_energy) 
+                data["int_energy"].append(self.system.int_energy) 
                 data["mag_energy_op"].append(self.system.mag_energy_op)
                 data["el_energy_op"].append(self.system.el_energy_op)
+                data["mass_energy_op"].append(self.system.mass_energy_op) 
+                data["int_energy_op"].append(self.system.int_energy_op) 
                 
                 data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
                 data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec) 
@@ -118,6 +122,8 @@ class ExactEvaluator():
             dest["energy"] = self.compute_expval(data["energy"], normvec)
             dest["mag_energy"] = self.compute_expval(data["mag_energy"], normvec)
             dest["el_energy"] = self.compute_expval(data["el_energy"], normvec)
+            dest["mass_energy"] = self.compute_expval(data["mass_energy"], normvec)
+            dest["int_energy"] = self.compute_expval(data["int_energy"], normvec)
             dest["wilson_00_11"] = self.compute_expval(data["wilson_00_11"], normvec)
             dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
             dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)

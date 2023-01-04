@@ -247,7 +247,7 @@ def main(args):
         #Set the parameters of the minimizer according to the command line
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
-        min_cfg.max_it = args.maxiter
+        min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
         min_cfg.min_grad = args.min_grad
 
@@ -281,7 +281,7 @@ def main(args):
 
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
-        min_cfg.max_it = args.maxiter
+        min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
         min_cfg.min_grad = args.min_grad
 

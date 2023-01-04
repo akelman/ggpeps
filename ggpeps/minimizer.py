@@ -137,7 +137,8 @@ class Minimizer():
                               paramvec,
                               method=self.cfg.method,
                               jac=gradient_wrapper,
-                              callback=lambda x: print_callback(x, self))
+                              callback=lambda x: print_callback(x, self),
+                              options={"maxiter": self.cfg.max_iter})
         paramvec = min_result.x
         energygrad = min_result.jac
         energy = min_result.fun
