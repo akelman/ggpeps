@@ -211,12 +211,12 @@ def main(args):
     logging.info("# of layers: {}".format(system_cfg.nlayer))
     logging.info("# of copies: {}".format(args.ncopy))
     logging.info("pure-gauge: {}".format(args.pure_gauge))
-    logging.info("parameters: {}".format(paramvec))
     logging.info("g^2: {}".format(g2))
     logging.info("g^2_mag: {}".format(g2_mag))
     logging.info("g_gm: {}".format(g_gm))
     logging.info("g_mass: {}".format(g_mass))
     logging.info("Rebinning EOM: {}".format(Measurement.use_rebinning))
+    logging.info("Starting parameters: {}".format(paramvec))
     logging.info("============================")
 
 
