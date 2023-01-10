@@ -436,8 +436,7 @@ class System2DBase(ABC):
         """
         if self._mat_a_vec is None:
             offset = 2 * self.cfg.lattice.size
-            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = self._exract_partial_covmatvec(
-                offset)
+            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = self._exract_partial_covmatvec(offset)
         return self._mat_a_vec
 
     @property

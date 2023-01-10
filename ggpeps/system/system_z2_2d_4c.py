@@ -382,16 +382,18 @@ class Z2System2D4C(System2DBase):
             layer_grads = [0]*len(self.symbolvec)
             
             # Calculate mass term
-            site_ind = 0 # just do calculation for a single site
-            layer_mass_energy += 0.25 * (covmat[site_ind+1, site_ind] - covmat[site_ind,site_ind+1] ) # these two entries happen to be negatives of each other, because of anti-symmetry
+            # This could probably be sped up with better matrix manipulations
+            for site_ind in range(self.cfg.lattice.size):
+                #site_ind = 0 # just do calculation for a single site
+                layer_mass_energy += 0.25 * (covmat[site_ind+1, site_ind] - covmat[site_ind,site_ind+1] ) # these two entries happen to be negatives of each other, because of anti-symmetry
 
-            # Update gradients
-            for symbol_ind, symbol in enumerate(self.symbolvec):
-                d_gamma_out = self.d_gamma_out_symbolvec(ind)[symbol_ind]
-                layer_grads[symbol_ind] += 0.25 * (d_gamma_out[site_ind+1, site_ind] - d_gamma_out[site_ind,site_ind+1])
+                # Update gradients
+                for symbol_ind, symbol in enumerate(self.symbolvec):
+                    d_gamma_out = self.d_gamma_out_symbolvec(ind)[symbol_ind]
+                    layer_grads[symbol_ind] += 0.25 * (d_gamma_out[site_ind+1, site_ind] - d_gamma_out[site_ind,site_ind+1])
 
-                # further terms of the derivative are included higher up in the computation stack 
-                # because computing them requires knowing various expectation values, which are not available here
+                    # further terms of the derivative are included higher up in the computation stack 
+                    # because computing them requires knowing various expectation values, which are not available here
 
             mass_energy_op.append(np.asarray(layer_mass_energy))
             gradients.append(np.asarray(layer_grads))
