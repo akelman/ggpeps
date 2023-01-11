@@ -294,6 +294,10 @@ class Z2System2D4C(System2DBase):
             np.ndarray: Rotation matrix for gamma_in_neutral
         """
         # TODO: Do we want to stagger here?
+        if (-1)**(coord[0] + coord[1]) == -1:
+            # We are on an odd site, so stagger by flipping theta
+            theta = -theta
+
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
         rot_right = np.array([[np.cos(theta), np.sin(theta)],
