@@ -403,7 +403,7 @@ class Z2System2D4C(System2DBase):
                 # because computing them requires knowing various expectation values, which are not available here
 
         mass_energy_op.append(np.asarray(layer1_norm * layer_mass_energy))
-        gradients.append(np.asarray(layer1_norm * layer_grads))
+        gradients.append(layer1_norm * np.asarray(layer_grads))
 
         mass_energy_op = np.asarray(mass_energy_op)
         gradients = np.asarray(gradients)
