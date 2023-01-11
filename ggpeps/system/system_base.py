@@ -1173,7 +1173,7 @@ class System2DBase(ABC):
         """
         if self._mass_energy_op is None:
             nsites = self.cfg.lattice.size
-            self._mass_energy_op = nsites * np.prod(self.mass_energy_op_vec)
+            self._mass_energy_op = np.prod(self.mass_energy_op_vec) # don't multiply by the number of sites; for the mass term this is assumed to happen lower down in the stack.
         return self._mass_energy_op
 
     @property

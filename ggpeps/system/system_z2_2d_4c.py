@@ -376,41 +376,41 @@ class Z2System2D4C(System2DBase):
         if self.cfg.nlayer != 2:
             raise NotImplementedError("Two layers must be used with physical fermions.")
 
-        mass_energy_op = []
-        gradients = []
+        mass_energy_op = [1] # later we take the product of all layers.
+        gradients = [[0]*len(self.symbolvec)]
+
+        layer1_norm = np.exp(self.calculate_lognormvec(all_factors=True)[0])
 
         # Calculation prelimaries
-        for ind in range(self.cfg.nlayer):
-            covmat = self.compute_ferm_cov(ind)
-            layer_mass_energy = 0.0
-            layer_grads = [0]*len(self.symbolvec)
-            
-            # Calculate mass term
-            # This could probably be sped up with better matrix manipulations
-            for site_ind in range(self.cfg.lattice.size):
-                #site_ind = 0 # just do calculation for a single site
-                layer_mass_energy += 0.25 * (covmat[site_ind+1, site_ind] - covmat[site_ind,site_ind+1] ) # these two entries happen to be negatives of each other, because of anti-symmetry
+        #for layer_ind in range(self.cfg.nlayer):
+        layer_ind = 1 # only the second layer directly contributes to the mass
+        covmat = self.compute_ferm_cov(layer_ind)
+        layer_mass_energy = 0.0
+        layer_grads = [0]*len(self.symbolvec)
+        
+        # Calculate mass term
+        # This could probably be sped up with better matrix manipulations
+        for site_ind in range(0, self.cfg.lattice.size, 2):
+            #site_ind = 0 # just do calculation for a single site
+            layer_mass_energy += 0.25 * (covmat[site_ind,site_ind+1] - covmat[site_ind+1, site_ind] ) # these two entries happen to be negatives of each other, because of anti-symmetry
 
-                # Update gradients
-                for symbol_ind, symbol in enumerate(self.symbolvec):
-                    d_gamma_out = self.d_gamma_out_symbolvec(ind)[symbol_ind]
-                    layer_grads[symbol_ind] += 0.25 * (d_gamma_out[site_ind+1, site_ind] - d_gamma_out[site_ind,site_ind+1])
+            # Update gradients
+            for symbol_ind, symbol in enumerate(self.symbolvec):
+                d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
+                layer_grads[symbol_ind] += 0.25 * (d_gamma_out[site_ind+1, site_ind] - d_gamma_out[site_ind,site_ind+1])
 
-                    # further terms of the derivative are included higher up in the computation stack 
-                    # because computing them requires knowing various expectation values, which are not available here
+                # further terms of the derivative are included higher up in the computation stack 
+                # because computing them requires knowing various expectation values, which are not available here
 
-            mass_energy_op.append(np.asarray(layer_mass_energy))
-            gradients.append(np.asarray(layer_grads))
+        mass_energy_op.append(np.asarray(layer1_norm * layer_mass_energy))
+        gradients.append(np.asarray(layer1_norm * layer_grads))
 
         mass_energy_op = np.asarray(mass_energy_op)
         gradients = np.asarray(gradients)
 
         # We have to weigh the different layers with the electric energy operator expectation of the other layers.
-        # They act as a prefactor in the derivative
-        if self.cfg.nlayer > 1:
-            for i in range(self.cfg.nlayer):
-                prod_other_layers = utils.multiply_except(mass_energy_op, i)
-                gradients[i] *= prod_other_layers
+        # They act as a prefactor in the derivative,
+        # However, here, because the mass term only acts on the second layer, we simply multiply the mass_energy and grads by the norm of the first layer (done above).
 
         return mass_energy_op, gradients
 
