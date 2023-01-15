@@ -257,6 +257,14 @@ def is_antisymmetric(mat):
     else:
         return np.allclose(-np.transpose(mat), mat)
 
+def is_covmat(mat:np.ndarray) -> bool:
+    """Returns true if the given matrix satisfies all the conditions to be a covariance matrix."""
+    m, n = mat.shape
+    if m == n and is_antisymmetric(mat) and np.allclose(mat@mat,-np.eye(m)) and np.allclose(mat@np.transpose(mat), np.eye(m)):
+        # note that the last check should be mat @ mat^dagger = 1, but transpose gets the same information for a matrix with real elements
+        return True
+    return False
+
 def anti_symmetrize(mat):
     """Force a matrix to be anti-symmetirc."""
     if issparse(mat):
