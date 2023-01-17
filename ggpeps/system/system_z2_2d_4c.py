@@ -376,7 +376,7 @@ class Z2System2D4C(System2DBase):
         if self.cfg.nlayer != 2:
             raise NotImplementedError("Two layers must be used with physical fermions.")
 
-        mass_energy_op = [1] # later we take the product of all layers.
+        mass_energy_op = [1] # Really the mass energy for the first layer is zero, but later we take the product of all layers, so we put a 1 here
         gradients = [[0]*len(self.symbolvec)]
 
         #layer1_norm = np.exp(self.calculate_lognormvec(all_factors=True)[0]) #not needed; accounted for higher in the stack
@@ -409,9 +409,10 @@ class Z2System2D4C(System2DBase):
         mass_energy_op = np.asarray(mass_energy_op)
         gradients = np.asarray(gradients)
 
-        # We have to weigh the different layers with the electric energy operator expectation of the other layers.
-        # They act as a prefactor in the derivative,
-        # However, here, because the mass term only acts on the second layer, we simply multiply the mass_energy and grads by the norm of the first layer (done above).
+        # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
+        # They act as a prefactor in the derivative.
+        # However, here, because the mass term only acts on the second layer, we simply multiply the mass_energy and grads by the norm of the first layer 
+        # (this is handled higher up in the computation stack).
 
         return mass_energy_op, gradients
 
@@ -555,58 +556,57 @@ class Z2System2D4C(System2DBase):
             tuple: Tuple of (interaction energy for a single link, gradients)
         """
 
-        int_energy_op = []
-        gradients = []
+        int_energy_op = [1] # Really the interaction energy for the first layer is zero, but later we take the product of all layers, so we put a 1 here
+        gradients = [[0]*len(self.symbolvec)]
 
-        for layer in range(self.cfg.nlayer):
-            layer_int_energy = 0.0
-            covmat = self.compute_ferm_cov(layer)
-            
-            for site_ind in range(1): # no need to loop over all sites
-                coord = self.cfg.lattice.ind2coord(site_ind)
+        #for layer_ind in range(self.cfg.nlayer):
+        layer_ind = 1 #only the second layer contributes
+        layer_int_energy = 0.0
+        covmat = self.compute_ferm_cov(layer_ind)
+        
+        for site_ind in range(1): # no need to loop over all sites
+            coord = self.cfg.lattice.ind2coord(site_ind)
 
-                # Horizontal link
-                ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X) # index of the horizontal link
-                neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X) # coordinates of neighboring site
-                neighborX_ind = self.cfg.lattice.coord2ind(neighborX_coord) # index of neighboring site
-                gaugefield_hor = self.gaugefieldvec[ind_field_hor]
-                cos_factor_hor = np.cos(gaugefield_hor)
-                layer_int_energy += 0.5 * cos_factor_hor * (covmat[neighborX_ind+1, site_ind] - covmat[neighborX_ind,site_ind+1])
-                # The sin contribution vanishes for Z2, but must be included for Zn.
-                #sin_factor_hor = np.sin(gaugefield_hor)
-                #int_energy_op += 0.5 * sin_factor_hor * (covmat[neighborX_ind+1, site_ind+1] - covmat[neighborX_ind,site_ind])
+            # Horizontal link
+            ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X) # index of the horizontal link
+            neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X) # coordinates of neighboring site
+            neighborX_ind = self.cfg.lattice.coord2ind(neighborX_coord) # index of neighboring site
+            gaugefield_hor = self.gaugefieldvec[ind_field_hor]
+            cos_factor_hor = np.cos(gaugefield_hor)
+            layer_int_energy += 0.5 * cos_factor_hor * (covmat[neighborX_ind+1, site_ind] - covmat[neighborX_ind,site_ind+1])
+            # The sin contribution vanishes for Z2, but must be included for Zn.
+            #sin_factor_hor = np.sin(gaugefield_hor)
+            #int_energy_op += 0.5 * sin_factor_hor * (covmat[neighborX_ind+1, site_ind+1] - covmat[neighborX_ind,site_ind])
 
-                # Vertical link
-                ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
-                neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
-                neighborY_ind = self.cfg.lattice.coord2ind(neighborY_coord)
-                gaugefield_vert = self.gaugefieldvec[ind_field_vert]
-                cos_factor_vert = np.cos(gaugefield_vert)
-                layer_int_energy += 0.5 * cos_factor_vert * (covmat[neighborY_ind+1, site_ind] - covmat[neighborY_ind,site_ind+1])
-                #sin_factor_vert = np.sin(gaugefield_vert)
-                #int_energy_op += 0.5 * sin_factor_vert * (covmat[neighborY_ind+1, site_ind+1] - covmat[neighborY_ind,site_ind])
+            # Vertical link
+            ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
+            neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
+            neighborY_ind = self.cfg.lattice.coord2ind(neighborY_coord)
+            gaugefield_vert = self.gaugefieldvec[ind_field_vert]
+            cos_factor_vert = np.cos(gaugefield_vert)
+            layer_int_energy += 0.5 * cos_factor_vert * (covmat[neighborY_ind+1, site_ind] - covmat[neighborY_ind,site_ind+1])
+            #sin_factor_vert = np.sin(gaugefield_vert)
+            #int_energy_op += 0.5 * sin_factor_vert * (covmat[neighborY_ind+1, site_ind+1] - covmat[neighborY_ind,site_ind])
 
-                # Calculate derivatives
-                layer_gradients = []
-                for symbol_ind, symbol in enumerate(self.symbolvec):
-                    d_gamma_out = self.d_gamma_out_symbolvec(layer)[symbol_ind]
-                    
-                    grad = 0.5 * cos_factor_hor * (d_gamma_out[neighborX_ind+1, site_ind] - d_gamma_out[neighborX_ind,site_ind+1])
-                    grad += 0.5 * cos_factor_vert * (d_gamma_out[neighborY_ind+1, site_ind] - d_gamma_out[neighborY_ind,site_ind+1])
-                    # for groups other than Z2, need to add the sin terms here
-                    layer_gradients.append(grad)
-            
-            int_energy_op.append(layer_int_energy)
-            gradients.append(layer_gradients)
+            # Calculate derivatives
+            layer_gradients = []
+            for symbol_ind, symbol in enumerate(self.symbolvec):
+                d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
+                
+                grad = 0.5 * cos_factor_hor * (d_gamma_out[neighborX_ind+1, site_ind] - d_gamma_out[neighborX_ind,site_ind+1])
+                grad += 0.5 * cos_factor_vert * (d_gamma_out[neighborY_ind+1, site_ind] - d_gamma_out[neighborY_ind,site_ind+1])
+                # for groups other than Z2, need to add the sin terms here
+                layer_gradients.append(grad)
+        
+        int_energy_op.append(layer_int_energy)
+        gradients.append(layer_gradients)
         
         int_energy_op = np.asarray(int_energy_op)
         gradients = np.asarray(gradients) 
     
-        # We have to weigh the different layers with the electric energy operator expectation of the other layers.
-        # They act as a prefactor in the derivative
-        if self.cfg.nlayer > 1:
-            for i in range(self.cfg.nlayer):
-                prod_other_layers = utils.multiply_except(int_energy_op, i)
-                gradients[i] *= prod_other_layers
+        # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
+        # They act as a prefactor in the derivative.
+        # However, here (just as in the mass case), because the interaction term only acts on the second layer, we simply multiply the mass_energy and grads by the norm of the first layer 
+        # (this is handled higher up in the computation stack).
 
         return int_energy_op, gradients
