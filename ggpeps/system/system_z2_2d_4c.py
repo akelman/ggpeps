@@ -549,8 +549,8 @@ class Z2System2D4C(System2DBase):
     
     def _compute_int_energy_op_vec_and_grad(self):
         """Calculate the energy and energy gradient due to the interaction of the physical fermions with the gauge fields.
-        Note: this function works for any gauge group that is represented as a phase (including Z2).
-            When the group is larger than Z2, the relevant lines below must be uncommented (and added to the derivatives)
+        Note: this function assumes that U = U^dagger, which is valid only for Z2. 
+        For other groups, the calculation will not be as simple.
 
         Returns:
             tuple: Tuple of (interaction energy for a single link, gradients)
@@ -564,19 +564,18 @@ class Z2System2D4C(System2DBase):
         layer_int_energy = 0.0
         covmat = self.compute_ferm_cov(layer_ind)
         
-        for site_ind in range(1): # no need to loop over all sites
+        for site_ind in range(self.cfg.lattice.size): 
             coord = self.cfg.lattice.ind2coord(site_ind)
+            sublattice_factor = (-1)**(coord[0] + coord[0]) # the odd sublattice gets a minus sign because of the particle-hole transformation
 
             # Horizontal link
             ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X) # index of the horizontal link
             neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X) # coordinates of neighboring site
             neighborX_ind = self.cfg.lattice.coord2ind(neighborX_coord) # index of neighboring site
             gaugefield_hor = self.gaugefieldvec[ind_field_hor]
-            cos_factor_hor = np.cos(gaugefield_hor)
-            layer_int_energy += 0.5 * cos_factor_hor * (covmat[neighborX_ind+1, site_ind] - covmat[neighborX_ind,site_ind+1])
-            # The sin contribution vanishes for Z2, but must be included for Zn.
-            #sin_factor_hor = np.sin(gaugefield_hor)
-            #int_energy_op += 0.5 * sin_factor_hor * (covmat[neighborX_ind+1, site_ind+1] - covmat[neighborX_ind,site_ind])
+            cos_factor_hor = np.cos(gaugefield_hor) # simple way to get U from gauge value
+            hor_link_energy = 0.5 * (covmat[site_ind+1, neighborX_ind] + covmat[site_ind, neighborX_ind+1])
+            layer_int_energy += sublattice_factor * hor_link_energy * cos_factor_hor
 
             # Vertical link
             ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
@@ -584,17 +583,16 @@ class Z2System2D4C(System2DBase):
             neighborY_ind = self.cfg.lattice.coord2ind(neighborY_coord)
             gaugefield_vert = self.gaugefieldvec[ind_field_vert]
             cos_factor_vert = np.cos(gaugefield_vert)
-            layer_int_energy += 0.5 * cos_factor_vert * (covmat[neighborY_ind+1, site_ind] - covmat[neighborY_ind,site_ind+1])
-            #sin_factor_vert = np.sin(gaugefield_vert)
-            #int_energy_op += 0.5 * sin_factor_vert * (covmat[neighborY_ind+1, site_ind+1] - covmat[neighborY_ind,site_ind])
+            vert_link_energy = 0.5 * (covmat[site_ind+1, neighborY_ind] + covmat[site_ind, neighborY_ind+1])
+            layer_int_energy += sublattice_factor * vert_link_energy * cos_factor_vert
 
             # Calculate derivatives
             layer_gradients = []
             for symbol_ind, symbol in enumerate(self.symbolvec):
                 d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
                 
-                grad = 0.5 * cos_factor_hor * (d_gamma_out[neighborX_ind+1, site_ind] - d_gamma_out[neighborX_ind,site_ind+1])
-                grad += 0.5 * cos_factor_vert * (d_gamma_out[neighborY_ind+1, site_ind] - d_gamma_out[neighborY_ind,site_ind+1])
+                grad = 0.5 * sublattice_factor * cos_factor_hor * (d_gamma_out[site_ind+1, neighborX_ind] + d_gamma_out[site_ind, neighborX_ind+1])
+                grad += 0.5 * sublattice_factor * cos_factor_vert * (d_gamma_out[site_ind+1, neighborY_ind] + d_gamma_out[site_ind, neighborY_ind+1])
                 # for groups other than Z2, need to add the sin terms here
                 layer_gradients.append(grad)
         
