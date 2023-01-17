@@ -566,24 +566,25 @@ class Z2System2D4C(System2DBase):
         
         for site_ind in range(self.cfg.lattice.size): 
             coord = self.cfg.lattice.ind2coord(site_ind)
+            site_ind_cov = 2 * site_ind # this is the index to use when accessing elements of the covariance matrix, which has 2 Majorana modes per site
             sublattice_factor = (-1)**(coord[0] + coord[1]) # the odd sublattice gets a minus sign because of the particle-hole transformation
 
             # Horizontal link
             ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X) # index of the horizontal link
             neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X) # coordinates of neighboring site
-            neighborX_ind = self.cfg.lattice.coord2ind(neighborX_coord) # index of neighboring site
+            neighborX_ind = 2 * self.cfg.lattice.coord2ind(neighborX_coord) # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
             gaugefield_hor = self.gaugefieldvec[ind_field_hor]
             cos_factor_hor = np.cos(gaugefield_hor) # simple way to get U from gauge value
-            hor_link_energy = 0.5 * (covmat[site_ind+1, neighborX_ind] + covmat[site_ind, neighborX_ind+1])
+            hor_link_energy = 0.5 * (covmat[site_ind_cov+1, neighborX_ind] + covmat[site_ind_cov, neighborX_ind+1])
             layer_int_energy += sublattice_factor * hor_link_energy * cos_factor_hor
 
             # Vertical link
             ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
             neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
-            neighborY_ind = self.cfg.lattice.coord2ind(neighborY_coord)
+            neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
             gaugefield_vert = self.gaugefieldvec[ind_field_vert]
             cos_factor_vert = np.cos(gaugefield_vert)
-            vert_link_energy = 0.5 * (covmat[site_ind+1, neighborY_ind] + covmat[site_ind, neighborY_ind+1])
+            vert_link_energy = 0.5 * (covmat[site_ind_cov+1, neighborY_ind] + covmat[site_ind_cov, neighborY_ind+1])
             layer_int_energy += sublattice_factor * vert_link_energy * cos_factor_vert
 
             # Calculate derivatives
@@ -591,9 +592,8 @@ class Z2System2D4C(System2DBase):
             for symbol_ind, symbol in enumerate(self.symbolvec):
                 d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
                 
-                grad = 0.5 * sublattice_factor * cos_factor_hor * (d_gamma_out[site_ind+1, neighborX_ind] + d_gamma_out[site_ind, neighborX_ind+1])
-                grad += 0.5 * sublattice_factor * cos_factor_vert * (d_gamma_out[site_ind+1, neighborY_ind] + d_gamma_out[site_ind, neighborY_ind+1])
-                # for groups other than Z2, need to add the sin terms here
+                grad = 0.5 * sublattice_factor * cos_factor_hor * (d_gamma_out[site_ind_cov+1, neighborX_ind] + d_gamma_out[site_ind_cov, neighborX_ind+1])
+                grad += 0.5 * sublattice_factor * cos_factor_vert * (d_gamma_out[site_ind_cov+1, neighborY_ind] + d_gamma_out[site_ind_cov, neighborY_ind+1])
                 layer_gradients.append(grad)
         
         int_energy_op.append(layer_int_energy)
