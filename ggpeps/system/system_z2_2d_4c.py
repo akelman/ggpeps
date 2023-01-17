@@ -566,7 +566,7 @@ class Z2System2D4C(System2DBase):
         
         for site_ind in range(self.cfg.lattice.size): 
             coord = self.cfg.lattice.ind2coord(site_ind)
-            sublattice_factor = (-1)**(coord[0] + coord[0]) # the odd sublattice gets a minus sign because of the particle-hole transformation
+            sublattice_factor = (-1)**(coord[0] + coord[1]) # the odd sublattice gets a minus sign because of the particle-hole transformation
 
             # Horizontal link
             ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X) # index of the horizontal link
