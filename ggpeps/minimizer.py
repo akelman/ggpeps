@@ -198,3 +198,9 @@ def print_callback(x,minimizer):
         grad_paramvec=minimizer.energy_gradient_mc(res)
     max_grad_paramvec=np.max(np.abs(grad_paramvec))
     logging.info("Energy: {:.8f}, Max grad paramvec: {:.8f}, acceptance prob: {:.5f} ".format(energy,max_grad_paramvec,acceptance_prob))
+    
+    mass_energy = res.obsdict["mass_energy"]
+    int_energy = res.obsdict["int_energy"]
+    el_energy = res.obsdict["el_energy"]
+    mag_energy = res.obsdict["mag_energy"]
+    logging.debug("el: {:.8f}, mag: {:.8f}, mass: {:.8f}, int: {:.8f}".format(el_energy, mag_energy, mass_energy, int_energy))
