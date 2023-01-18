@@ -1186,7 +1186,7 @@ class System2DBase(ABC):
         """
         if self._int_energy_op is None:
             nsites = self.cfg.lattice.size
-            self._int_energy_op = nsites * np.prod(self.int_energy_op_vec)
+            self._int_energy_op = np.prod(self.int_energy_op_vec)
         return self._int_energy_op
     
     # Functions that return the layer-resolved energies of each energy operator
