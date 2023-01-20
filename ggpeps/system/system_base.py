@@ -215,8 +215,8 @@ class System2DBase(ABC):
         self._mat_d_mod_inv_vec = None
 
         # Management of the gaugefields
-        self._gamma_gauge_neutral_dict = None
-        self._gamma_in_sys = None
+        self._gamma_gauge_neutral_list_dict = None # list for various possible choices of projectors (not "vec", since that is used for layers), dict for directions
+        self._gamma_in_sys_vec = None # this will not always be a vec; only when necessary (i.e. when different projectors are used for different layers)
         self._gaugefieldvec = np.zeros(self.cfg.lattice.nlinks)
         self.gaugemgr = gauge.ZNGauge(2) # needs to be changed for cases other than Z2
 
@@ -596,11 +596,11 @@ class System2DBase(ABC):
         Returns:
             np.array: Gauged covariance matrix of the system
         """
-        if self._gamma_in_sys is None:
-            self._gamma_in_sys, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
+        if self._gamma_in_sys_vec is None:
+            self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             self._wi_gamma_in_mod_vec, self._wi_gamma_out_mod_vec, self._incdet_mod_vec = mod_tuple
-        return self._gamma_in_sys
+        return self._gamma_in_sys_vec
 
     @property
     def incdet_vec(self):
@@ -612,7 +612,7 @@ class System2DBase(ABC):
             list: List of incremental determinant trackers
         """
         if self._incdet_vec is None:
-            self._gamma_in_sys, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
+            self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             self._wi_gamma_in_mod_vec, self._wi_gamma_out_mod_vec, self._incdet_mod_vec = mod_tuple
         return self._incdet_vec
@@ -627,7 +627,7 @@ class System2DBase(ABC):
             list: List of Woodbury inverters
         """
         if self._wi_gamma_in_vec is None:
-            self._gamma_in_sys, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
+            self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             self._wi_gamma_in_mod_vec, self._wi_gamma_out_mod_vec, self._incdet_mod_vec = mod_tuple
         return self._wi_gamma_in_vec
@@ -642,7 +642,7 @@ class System2DBase(ABC):
             list: List of Woodbury inverters
         """
         if self._wi_gamma_out_vec is None:
-            self._gamma_in_sys, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
+            self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             self._wi_gamma_in_mod_vec, self._wi_gamma_out_mod_vec, self._incdet_mod_vec = mod_tuple
         return self._wi_gamma_out_vec
@@ -668,7 +668,7 @@ class System2DBase(ABC):
             list: List of incremental determinant trackers
         """
         if self._incdet_mod_vec is None:
-            self._gamma_in_sys, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
+            self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             self._wi_gamma_in_mod_vec, self._wi_gamma_out_mod_vec, self._incdet_mod_vec = mod_tuple
         return self._incdet_mod_vec
@@ -683,7 +683,7 @@ class System2DBase(ABC):
             list: List of Woodbury inverters
         """
         if self._wi_gamma_in_mod_vec is None:
-            self._gamma_in_sys, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
+            self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             self._wi_gamma_in_mod_vec, self._wi_gamma_out_mod_vec, self._incdet_mod_vec = mod_tuple
         return self._wi_gamma_in_mod_vec
@@ -698,7 +698,7 @@ class System2DBase(ABC):
             list: List of Woodbury inverters
         """
         if self._wi_gamma_out_mod_vec is None:
-            self._gamma_in_sys, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
+            self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             self._wi_gamma_in_mod_vec, self._wi_gamma_out_mod_vec, self._incdet_mod_vec = mod_tuple
         return self._wi_gamma_out_mod_vec
@@ -829,6 +829,9 @@ class System2DBase(ABC):
     def calculate_weight_attempt(self, link_ind: int, theta: float, all_factors=False):
         """Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
+        
+        Currently this function does not work when physical fermions are included, because it does not use the 
+        correct projectors. However, this function is not currently set to be used outside of tests.
 
         Args:
             link_ind (int): Link index
@@ -957,9 +960,9 @@ class System2DBase(ABC):
 
     @property
     def gamma_gauge_neutral(self):
-        if not self._gamma_gauge_neutral_dict:
-            self._gamma_gauge_neutral_dict = self._generate_gamma_gauge_neutral_dict()
-        return self._gamma_gauge_neutral_dict
+        if not self._gamma_gauge_neutral_list_dict:
+            self._gamma_gauge_neutral_list_dict = self._generate_gamma_gauge_neutral_dict()
+        return self._gamma_gauge_neutral_list_dict
 
     @abstractmethod
     def _generate_gamma_gauge_neutral_dict(self):

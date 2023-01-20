@@ -222,56 +222,79 @@ class Z2System2D4C(System2DBase):
         This method overwrites an abstract method in System2DBase.
         """
 
+        # Initialize empty lists
+        gamma_in_sys_vec = []
+        wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec = [], [], []
+        wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec = [], [], []
+
         # Initialize gamma_in_sys for the full system (and trackers)
         size = self.cfg.lattice.size # number of sites
         id = np.eye(size) 
-        neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral[Direction.X] )
-        neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral[Direction.Y] )
-        gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y)
 
-        diffvec = [
-            mat_d_inv - gamma_in_sys for mat_d_inv in self.mat_d_inv_vec
-        ]
-        wi_gamma_in_vec = [utils.WoodburyInverter(diff) for diff in diffvec]
-        wi_gamma_out_vec = [
-            utils.WoodburyInverter(mat_d - gamma_in_sys)
-            for mat_d in self.mat_d_vec
-        ]
-        incdet_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec]
+        for layer in range(self.cfg.nlayer):
+            neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral[layer][Direction.X] )
+            neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral[layer][Direction.Y] )
+            gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y)
+            gamma_in_sys_vec.append(gamma_in_sys)
 
-        # Initialize the modified gamma_in_sys for the full system (and trackers)
-        single_link_offset = 2 * self.cfg.nvirtmodes_link
-        gamma_in_sys_mod = gamma_in_sys[single_link_offset:, single_link_offset:]
-        diffvec_mod = [
-            mat_d_inv - gamma_in_sys_mod for mat_d_inv in self.mat_d_mod_inv_vec
-        ]
-        wi_gamma_in_mod_vec = [utils.WoodburyInverter(diff) for diff in diffvec_mod]
-        wi_gamma_out_mod_vec = [
-            utils.WoodburyInverter(mat_d - gamma_in_sys_mod)
-            for mat_d in self.mat_d_mod_vec
-        ]
-        incdet_mod_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec_mod]
+            wi_gamma_in_vec.append( utils.WoodburyInverter(self.mat_d_inv_vec - gamma_in_sys) )
+            wi_gamma_out_vec.append( utils.WoodburyInverter(self.mat_d_vec[layer] - gamma_in_sys) )
+            incdet_vec.append( utils.IncLogAbsDeterminant(self.mat_d_inv_vec - gamma_in_sys) )
 
-        return gamma_in_sys, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
+            # Initialize the modified gamma_in_sys for the full system (and trackers)
+            single_link_offset = 2 * self.cfg.nvirtmodes_link
+            gamma_in_sys_mod = gamma_in_sys[single_link_offset:, single_link_offset:]
+            wi_gamma_in_mod_vec.append( utils.WoodburyInverter(self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod) )
+            wi_gamma_out_mod_vec.append( utils.WoodburyInverter(self.mat_d_mod_vec[layer] - gamma_in_sys_mod) )
+            incdet_mod_vec.append( utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod) )
+
+        return gamma_in_sys_vec, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
     def _generate_gamma_gauge_neutral_dict(self):
         """Generate the covariance matrix of the ungauged projectors.
-        The mode order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}.
+        The mode order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
         We order first by link and then by copy. 
-        Modes of copy one are coupled to modes of copy 2. The projectors mix copies.
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
+
+        This function returns two different covariance matrices for ungauged projectors:
+        In the first, modes of copy 1 are coupled to modes of copy 2. 
+        In the second, the projectors don't mix copies.
+        The first option is used for the pure-gauge layer, the second for the fermionic layer.
 
         This method overwrites an abstract method in System2DBase.
 
         Returns:
             np.ndarray: Covariance matrix of the ungauged projector on a single link
         """
-        dest={}
-        dest[Direction.X] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
-        dest[Direction.Y] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
-        return dest
+        
+        dest_mixed={} # mixes copies
+        dest_unmixed={} # does not mix copies 
+        
+        # We want to give the projectors for the pure gauge part, which mix copies
+        dest_mixed[Direction.X] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
+        dest_mixed[Direction.Y] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
+
+        # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
+        dest_unmixed[Direction.X] = np.array([  [ 0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.],
+                                        [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
+                                        [ 0., -1.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                        [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                        [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  1.],
+                                        [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
+                                        [ 0.,  0.,  0.,  0.,  0., -1.,  0.,  0.],
+                                        [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.]])
+        dest_unmixed[Direction.Y] = np.array([  [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
+                                        [ 0., -0.,  0., -1.,  0., -0.,  0., 0.],
+                                        [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                        [ 0.,  1.,  0., -0.,  0.,  0.,  0., -0.],
+                                        [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
+                                        [ 0., -0.,  0.,  0.,  0., -0.,  0., -1.],
+                                        [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.],
+                                        [ 0.,  0.,  0., -0.,  0.,  1.,  0., -0.]])
+        
+        return [dest_mixed, dest_unmixed]
 
     #Gauging
 
@@ -327,36 +350,42 @@ class Z2System2D4C(System2DBase):
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord)
-        gamma_neutral_gauge = self.gamma_gauge_neutral[dir]
-        gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
-        update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
+
+        update_vec = []
+        for layer in range(self.cfg.nlayer):
+            gamma_neutral_gauge = self.gamma_gauge_neutral[layer][dir]
+            gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
+            update_vec.append( self.calculate_update_gamma_in(ind_mat, gamma_in_subst) )
+
+            # Substitute in the array
+            self.gamma_in_sys[ind_mat:ind_mat + rotmat.shape[0],
+                            ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
+
         # Update the determinant
         mat_inv_vec = [
             wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec
         ]
         detval_vec = [
             incdet.update_index(mat_inv, update, ind_mat, ind_mat)
-            for mat_inv, incdet in zip(mat_inv_vec, self.incdet_vec)
+            for mat_inv, update, incdet in zip(mat_inv_vec, update_vec, self.incdet_vec)
         ]
         # Update the modified determinant
         offset = 2* self.cfg.nvirtmodes_link
         if ind_mat - offset >=0:
-            for wi, incdet in zip(self.wi_gamma_in_mod_vec,self.incdet_mod_vec):
+            for wi, update, incdet in zip(self.wi_gamma_in_mod_vec, update_vec, self.incdet_mod_vec):
                 mat_inv = wi.inv()
                 incdet.update_index(mat_inv, update, ind_mat-offset, ind_mat-offset)
         # Update the weight
         self.weight = 0.5 * np.sum(detval_vec)
         # Update the matrix inversion
-        [ wi_gamma_in.update_index(update, ind_mat, ind_mat) for wi_gamma_in in self.wi_gamma_in_vec ]
-        [ wi_gamma_out.update_index(update, ind_mat, ind_mat) for wi_gamma_out in self.wi_gamma_out_vec ]
+        [ wi_gamma_in.update_index(update, ind_mat, ind_mat) for wi_gamma_in, update in zip(self.wi_gamma_in_vec, update_vec) ]
+        [ wi_gamma_out.update_index(update, ind_mat, ind_mat) for wi_gamma_out, update in zip(self.wi_gamma_out_vec, update_vec) ]
 
         if ind_mat - offset >= 0:
             # We do not update the matrix if the first link is updated (it is just not there)
-            [ wi_gamma_in_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_in_mod in self.wi_gamma_in_mod_vec ]
-            [ wi_gamma_out_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_out_mod in self.wi_gamma_out_mod_vec ]
-        # Substitute in the array
-        self.gamma_in_sys[ind_mat:ind_mat + rotmat.shape[0],
-                          ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
+            [ wi_gamma_in_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_in_mod, update in zip(self.wi_gamma_in_mod_vec, update_vec) ]
+            [ wi_gamma_out_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_out_mod, update in zip(self.wi_gamma_out_mod_vec, update_vec) ]
+        
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
 
