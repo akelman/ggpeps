@@ -358,8 +358,8 @@ class Z2System2D4C(System2DBase):
             update_vec.append( self.calculate_update_gamma_in(ind_mat, gamma_in_subst) )
 
             # Substitute in the array
-            self.gamma_in_sys[ind_mat:ind_mat + rotmat.shape[0],
-                            ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
+            self.gamma_in_sys_vec[layer][ind_mat:ind_mat + rotmat.shape[0],
+                                         ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
 
         # Update the determinant
         mat_inv_vec = [

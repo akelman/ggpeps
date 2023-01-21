@@ -591,10 +591,26 @@ class System2DBase(ABC):
 
     @property
     def gamma_in_sys(self):
-        """Get function ot return the gauged gamma_in_sys, the covariance matrix of the links for the whole system.
+        """Get function to return the gauged gamma_in_sys, the covariance matrix of the links for the whole system.
+        This is required to maintain compatibility with early development, in which gamma_in did not vary between layers.
+        Possibly the code should be modified to use gamma_in_sys_vec everywhere; this can be done without significant memory cost.
 
         Returns:
             np.array: Gauged covariance matrix of the system
+        """
+        if self._gamma_in_sys_vec is None:
+            self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
+            self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
+            self._wi_gamma_in_mod_vec, self._wi_gamma_out_mod_vec, self._incdet_mod_vec = mod_tuple
+        return self._gamma_in_sys_vec[0]
+
+    @property
+    def gamma_in_sys_vec(self):
+        """Get function to return the gauged gamma_in_sys_vec, the covariance matrices of the links for the whole system for each layer.
+        This function is required to allow for gamma_in to vary between layers.
+
+        Returns:
+            np.array: vector of gauged covariance matrices of the system
         """
         if self._gamma_in_sys_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_sys()

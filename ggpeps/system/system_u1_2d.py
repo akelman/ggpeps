@@ -183,7 +183,7 @@ class U1System2D(System2DBase):
         ]
         incdet_mod_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec_mod]
 
-        return gamma_in_sys, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
+        return (gamma_in_sys,), (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
 
 
