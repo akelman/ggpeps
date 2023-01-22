@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Union, List # used in type hints; this approach might be deprecated in later python versions
 import logging
 import sys
 import sympy
@@ -108,13 +108,18 @@ def extract_partial_covmats(mat, corner):
     return mat_a, mat_b, mat_d
 
 
-def calculate_lognormvec(gamma_in_sys: np.ndarray,
-                         mat_d_vec: np.ndarray,
-                         all_factors=False) -> float:
+def calculate_lognormvec(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarray, all_factors=False) -> float:
     # This is still the plain formula, without any update mechanism
     nlayer = len(mat_d_vec)
     dest = np.zeros(nlayer)
+
+    # for some ansatz's, gamma_in_sys_vec will only have one element, because gamma_in_sys is shared between all layers
+    # if so, we extend it to a vector 
+    if len(gamma_in_sys_vec) != nlayer:
+        gamma_in_sys_vec = [gamma_in_sys_vec[0]]*nlayer
+
     for ind in range(nlayer):
+        gamma_in_sys = gamma_in_sys_vec[ind]
         mat_d = mat_d_vec[ind]
         if all_factors:
             sign, logval = np.linalg.slogdet(
@@ -128,12 +133,9 @@ def calculate_lognormvec(gamma_in_sys: np.ndarray,
     return dest / 2
 
 
-def calculate_lognorm(gamma_in_sys: np.ndarray,
-                      mat_d_vec: np.ndarray,
-                      all_factors=False) -> float:
+def calculate_lognorm(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarray, all_factors=False) -> float:
     # This is still the plain formula, without any update mechanism
-    normvec = calculate_lognormvec(
-        gamma_in_sys, mat_d_vec, all_factors=all_factors)
+    normvec = calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
     return np.sum(normvec)
 
 
@@ -889,7 +891,7 @@ class System2DBase(ABC):
         Returns:
             float: Logarithm of the norm
         """
-        return calculate_lognorm(self.gamma_in_sys, self.mat_d_vec, all_factors=all_factors)
+        return calculate_lognorm(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
     
     def calculate_lognormvec(self, all_factors=False):
         """Compute the logarithm of the norm for each layer
@@ -900,7 +902,7 @@ class System2DBase(ABC):
         Returns:
             float: Logarithm of the norm
         """
-        return calculate_lognormvec(self.gamma_in_sys, self.mat_d_vec, all_factors=all_factors)
+        return calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
 
     def calculate_lognormvec_inc(self, all_factors=False):
         """Compute the logarithm of the norm for all layers by incrementally updating the previous value (using IncDet and Woodbury)
@@ -911,10 +913,7 @@ class System2DBase(ABC):
         Returns:
             list: Vector of the incrementally updated norms for all layers
         """
-        return calculate_lognormvec_inc(self.incdet_vec,
-                                        self.det_mat_d_vec,
-                                        self.gamma_in_sys.shape[0],
-                                        all_factors=all_factors)
+        return calculate_lognormvec_inc(self.incdet_vec, self.det_mat_d_vec, self.gamma_in_sys.shape[0], all_factors=all_factors)
 
     def calculate_lognorm_inc(self, all_factors=False):
         """Update the logarithm of the norm incrementally (using IncDet and Woodbury)
@@ -941,8 +940,7 @@ class System2DBase(ABC):
         """
         cumval = 0
         for ind in range(self.cfg.nlayer):
-            detval = self.incdet_vec[ind].update_index(self.wi_gamma_in_vec[ind].inv(), update,
-                                                       offset, offset, store=False)
+            detval = self.incdet_vec[ind].update_index(self.wi_gamma_in_vec[ind].inv(), update, offset, offset, store=False)
             if all_factors:
                 detval -= self.gamma_in_sys.shape[0]*np.log(2)
                 detval += np.linalg.slogdet(self.mat_d_vec[ind])[1]
