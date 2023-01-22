@@ -470,7 +470,7 @@ class Z2System2D4C(System2DBase):
         single_link_offset = 2 * self.cfg.nvirtmodes_link
         offset = 2 * self.cfg.lattice.size + single_link_offset
         # We have to cut one link from gamma_in_sys as well
-        gamma_in_sys_mod = self.gamma_in_sys_mod
+        gamma_in_sys_mod_vec = self.gamma_in_sys_mod_vec
         nlinks = self.cfg.lattice.nlinks
         dest = []
         dest_grad = []
@@ -488,6 +488,8 @@ class Z2System2D4C(System2DBase):
             mat_b = self.mat_b_mod_vec[layerind]
             diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
             diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
+
+            gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
 
             ###################### Calculation of <P> ########################
             covmat_out = mat_a + \

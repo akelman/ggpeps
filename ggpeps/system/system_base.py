@@ -675,6 +675,20 @@ class System2DBase(ABC):
         return self.gamma_in_sys[single_link_offset:, single_link_offset:]
 
     @property
+    def gamma_in_sys_mod_vec(self):
+        """Get function ot return the gauged gamma_in_sys_vec with a single link modification (to compute the electric energy), 
+        the covariance matrix of the links for the whole system.
+
+        Returns:
+            np.array: Gauged, modified covariance matrices of the system for each layer
+        """
+        gamma_in_sys_mod_vec = []
+        single_link_offset = 2 * self.cfg.nvirtmodes_link # we can use the same offset for all layers, since all dimensions, mode ordering, etc. are the same
+        for layer in range(self.cfg.nlayer):
+            gamma_in_sys_mod_vec.append(self.gamma_in_sys_vec[layer][single_link_offset:, single_link_offset:])
+        return gamma_in_sys_mod_vec
+
+    @property
     def incdet_mod_vec(self):
         """Return the vector of incremental determinants for the modified matrices for the different layers.
         The length of the list is equal to the number of layers.
