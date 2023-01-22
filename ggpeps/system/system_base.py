@@ -113,11 +113,6 @@ def calculate_lognormvec(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarr
     nlayer = len(mat_d_vec)
     dest = np.zeros(nlayer)
 
-    # for some ansatz's, gamma_in_sys_vec will only have one element, because gamma_in_sys is shared between all layers
-    # if so, we extend it to a vector 
-    if len(gamma_in_sys_vec) != nlayer:
-        gamma_in_sys_vec = [gamma_in_sys_vec[0]]*nlayer
-
     for ind in range(nlayer):
         gamma_in_sys = gamma_in_sys_vec[ind]
         mat_d = mat_d_vec[ind]
@@ -588,6 +583,9 @@ class System2DBase(ABC):
     def initialize_gamma_in_sys(self):
         """Abstract function to initialize gamma_in (the covariance matrix of the projectors) in a child class
         This function has to be overwritten in a child class.
+
+        This function returns gamma_in_sys_vec even for cases where gamma_in_sys does not vary between layers.
+        In that case, each element of gamma_in_sys_vec points to the same gamma_in_sys
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 

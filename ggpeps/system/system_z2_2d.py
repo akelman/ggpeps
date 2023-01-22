@@ -197,7 +197,11 @@ class Z2System2D(System2DBase):
         ]
         incdet_mod_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec_mod]
 
-        return (gamma_in_sys,), (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
+        # Though for this ansatz gamma_in_sys does not vary between layers, it is convenient to have gamma_in_sys_vec available as a vector with length = nlayers
+        # for general methods in system base
+        gamma_in_sys_vec = [gamma_in_sys]*self.cfg.nlayer
+
+        return gamma_in_sys_vec, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
 
     def _generate_gamma_gauge_neutral_dict(self):
