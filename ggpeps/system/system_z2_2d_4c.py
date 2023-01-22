@@ -237,9 +237,9 @@ class Z2System2D4C(System2DBase):
             gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y)
             gamma_in_sys_vec.append(gamma_in_sys)
 
-            wi_gamma_in_vec.append( utils.WoodburyInverter(self.mat_d_inv_vec - gamma_in_sys) )
+            wi_gamma_in_vec.append( utils.WoodburyInverter(self.mat_d_inv_vec[layer] - gamma_in_sys) )
             wi_gamma_out_vec.append( utils.WoodburyInverter(self.mat_d_vec[layer] - gamma_in_sys) )
-            incdet_vec.append( utils.IncLogAbsDeterminant(self.mat_d_inv_vec - gamma_in_sys) )
+            incdet_vec.append( utils.IncLogAbsDeterminant(self.mat_d_inv_vec[layer] - gamma_in_sys) )
 
             # Initialize the modified gamma_in_sys for the full system (and trackers)
             single_link_offset = 2 * self.cfg.nvirtmodes_link
