@@ -1031,18 +1031,21 @@ class System2DBase(ABC):
         ind = self.cfg.lattice.coord2ind_dir(coord, dir)
         self.update_gauge_ind(ind, theta)
 
-    def calculate_update_gamma_in(self,offset,update_mat):
+    def calculate_update_gamma_in(self,offset,update_mat,gamma_in_sys=None):
         """Compute an update between the current gamma_in and the new gamma_in
 
         Args:
             offset (int): Offset in the matrix
             update_mat (np.array): Array to replace the current content of gamma_in at offset
+            gamma_in_sys (np.array): gamma_in_sys. This is given as an argument so that different gamma_in_sys can be passed in when gamma_in_sys differs between layers.
 
         Returns:
             np.array: Additional update to reach update_mat at gamma_in[offset:,offset:]
         """
+        if gamma_in_sys is None:
+            gamma_in_sys = self.gamma_in_sys
         m_up, n_up = update_mat.shape
-        gamma_in_old = self.gamma_in_sys[offset:offset + m_up,
+        gamma_in_old = gamma_in_sys[offset:offset + m_up,
                                          offset:offset + n_up] 
         return -(update_mat - gamma_in_old)
 

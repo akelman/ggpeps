@@ -355,7 +355,7 @@ class Z2System2D4C(System2DBase):
         for layer in range(self.cfg.nlayer):
             gamma_neutral_gauge = self.gamma_gauge_neutral[layer][dir]
             gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
-            update_vec.append( self.calculate_update_gamma_in(ind_mat, gamma_in_subst) )
+            update_vec.append( self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]) )
 
             # Substitute in the array
             self.gamma_in_sys_vec[layer][ind_mat:ind_mat + rotmat.shape[0],
