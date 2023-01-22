@@ -966,7 +966,7 @@ class System2DBase(ABC):
         mat_d_inv = self.mat_d_inv_vec[layerind]
 
         # TODO: We might save one matrix-matrix multiplication here
-        return compute_grad_over_norm(self.gamma_in_sys, diff, deriv_d, mat_d_inv)
+        return compute_grad_over_norm(self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv)
 
     ################## Local Gauge ######################
 
@@ -1043,7 +1043,7 @@ class System2DBase(ABC):
         """
         m_up, n_up = update_mat.shape
         gamma_in_old = self.gamma_in_sys[offset:offset + m_up,
-                                         offset:offset + n_up]
+                                         offset:offset + n_up] 
         return -(update_mat - gamma_in_old)
 
     def invalidate_gauge_update(self):

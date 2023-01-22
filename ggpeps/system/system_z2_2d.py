@@ -326,7 +326,7 @@ class Z2System2D(System2DBase):
         """
         warn("This method is deprecated. Use _compute_el_energy_op_vec_and_grad instead.",DeprecationWarning,stacklevel=2)
         if use_trans_inv:
-            normvec_default = calculate_lognormvec(self.gamma_in_sys,
+            normvec_default = calculate_lognormvec(self.gamma_in_sys_vec,
                                                 self.mat_d_vec,all_factors=True)
             # This is the usual norm without any modifications
             norm_default = np.sum(normvec_default)
@@ -385,7 +385,7 @@ class Z2System2D(System2DBase):
         # We have to cut one link from gamma_in_sys as well
         gamma_in_sys_tilde = self.gamma_in_sys[single_site_offset:,
                                                single_site_offset:]
-        normvec_default = calculate_lognormvec(self.gamma_in_sys,
+        normvec_default = calculate_lognormvec(self.gamma_in_sys_vec,
                                                self.mat_d_vec,all_factors=True)
 
         # This is the usual norm without any modifications
