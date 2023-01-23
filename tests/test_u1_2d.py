@@ -73,9 +73,7 @@ class TestU1SystemMethods(unittest.TestCase):
         # Test that the incremental update is equivalent to the re-calculation of the norm
         # This update is a nullop since we initialize the gauge-field with 0
         zeroarr = np.zeros((1, 1))
-        weight_inc = self.system_u1_2_2.update_lognorm_inc(0,
-                                                              zeroarr,
-                                                              all_factors=True)
+        weight_inc = self.system_u1_2_2.update_lognorm_inc(0, zeroarr, all_factors=True)
         weight_recalc = self.system_u1_2_2.calculate_lognorm(all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
@@ -83,8 +81,7 @@ class TestU1SystemMethods(unittest.TestCase):
         # Test that the incremental update is equivalent to the re-calculation of the norm
         ind = 0
         theta = np.pi
-        weight_inc = self.system_u1_2_2.calculate_weight_attempt(
-            ind, theta, all_factors=True)
+        weight_inc = self.system_u1_2_2.calculate_weight_attempt(ind, theta, all_factors=True)
         self.system_u1_2_2.update_gauge_ind(ind, theta)
         weight_recalc = self.system_u1_2_2.calculate_lognorm(all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)

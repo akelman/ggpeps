@@ -553,8 +553,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         # Test that the incremental update is equivalent to the re-calculation of the norm
         ind = 0
         theta = np.pi
-        weight_inc = self.system_z2_2_2_real.calculate_weight_attempt(
-            ind, theta, all_factors=True)
+        weight_inc = self.system_z2_2_2_real.calculate_weight_attempt(ind, theta, all_factors=True)
         self.system_z2_2_2_real.update_gauge_ind(ind, theta)
         weight_recalc = self.system_z2_2_2_real.calculate_lognorm(all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
