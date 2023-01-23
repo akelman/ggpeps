@@ -87,7 +87,7 @@ class ExactEvaluator():
             }
             for config in configvec:
                 self.system.update_gauge_full_system(config)
-                logging.debug("Configuration: {}".format(config))
+                #logging.debug("Configuration: {}".format(config))
                 
                 data["energy"].append(self.system.energy)
                 data["mag_energy"].append(self.system.mag_energy)

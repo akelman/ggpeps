@@ -361,7 +361,7 @@ class Z2System2D2C(System2DBase):
 
         # Calculation prelimaries
         nsites = self.cfg.lattice.size
-        covmat = self.compute_ferm_cov()
+        covmat = self.compute_ferm_cov(0)
         mass_energy_op = 0.
         gradients = [0]*len(self.symbolvec)
         
@@ -371,7 +371,7 @@ class Z2System2D2C(System2DBase):
 
         # Update gradients
         for symbol_ind, symbol in enumerate(self.symbolvec):
-            d_gamma_out = self.d_gamma_out_symbolvec()[symbol_ind]
+            d_gamma_out = self.d_gamma_out_symbolvec(0)[symbol_ind]
             gradients[symbol_ind] += 0.25 * (d_gamma_out[site_ind+1, site_ind] - d_gamma_out[site_ind,site_ind+1])
 
             # further terms of the derivative are included higher up in the computation stack 
@@ -524,7 +524,7 @@ class Z2System2D2C(System2DBase):
             tuple: Tuple of (interaction energy for a single link, gradients)
         """
 
-        covmat = self.compute_ferm_cov()
+        covmat = self.compute_ferm_cov(0)
         int_energy_op = 0.0
         nsites = self.cfg.lattice.size
         for site_ind in range(1): # no need to loop over all sites
@@ -554,7 +554,7 @@ class Z2System2D2C(System2DBase):
             # Calculate derivatives
             gradients = []
             for symbol_ind, symbol in enumerate(self.symbolvec):
-                d_gamma_out = self.d_gamma_out_symbolvec()[symbol_ind]
+                d_gamma_out = self.d_gamma_out_symbolvec(0)[symbol_ind]
                 
                 grad = 0.5 * cos_factor_hor * (d_gamma_out[neighborX_ind+1, site_ind] - d_gamma_out[neighborX_ind,site_ind+1])
                 grad += 0.5 * cos_factor_vert * (d_gamma_out[neighborY_ind+1, site_ind] - d_gamma_out[neighborY_ind,site_ind+1])
