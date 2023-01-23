@@ -213,7 +213,7 @@ class System2DBase(ABC):
 
         # Management of the gaugefields
         self._gamma_gauge_neutral_list_dict = None # list for various possible choices of projectors (not "vec", since that is used for layers), dict for directions
-        self._gamma_in_sys_vec = None # this will not always be a vec; only when necessary (i.e. when different projectors are used for different layers)
+        self._gamma_in_sys_vec = None # in cases when different layers use the same projectors, all elements will point to the same gamma_in_sys
         self._gaugefieldvec = np.zeros(self.cfg.lattice.nlinks)
         self.gaugemgr = gauge.ZNGauge(2) # needs to be changed for cases other than Z2
 
@@ -665,7 +665,7 @@ class System2DBase(ABC):
 
     @property
     def gamma_in_sys_mod(self):
-        """Get function ot return the gauged gamma_in_sys with a single link modification (to compute the electric energy), 
+        """Get function to return the gauged gamma_in_sys with a single link modification (to compute the electric energy), 
         the covariance matrix of the links for the whole system.
 
         Returns:
@@ -676,7 +676,7 @@ class System2DBase(ABC):
 
     @property
     def gamma_in_sys_mod_vec(self):
-        """Get function ot return the gauged gamma_in_sys_vec with a single link modification (to compute the electric energy), 
+        """Get function to return the gauged gamma_in_sys_vec with a single link modification (to compute the electric energy), 
         the covariance matrix of the links for the whole system.
 
         Returns:
@@ -1043,7 +1043,7 @@ class System2DBase(ABC):
             np.array: Additional update to reach update_mat at gamma_in[offset:,offset:]
         """
         if gamma_in_sys is None:
-            gamma_in_sys = self.gamma_in_sys
+            gamma_in_sys = self.gamma_in_sys # take the first element, which is shared between all the layers
         m_up, n_up = update_mat.shape
         gamma_in_old = gamma_in_sys[offset:offset + m_up,
                                          offset:offset + n_up] 
