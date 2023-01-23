@@ -1327,7 +1327,7 @@ class System2DBase(ABC):
             layer (int): the layer for which the covmat should be calculated
         """
         if self._ferm_covmat[layer] is None:
-            self._ferm_covmat[layer] = self.mat_a_vec[layer] + (self.mat_b_vec[layer] @ self._wi_gamma_out_vec[layer].inv() @ np.transpose(self.mat_b_vec[layer]))
+            self._ferm_covmat[layer] = self.mat_a_vec[layer] + (self.mat_b_vec[layer] @ self.wi_gamma_out_vec[layer].inv() @ np.transpose(self.mat_b_vec[layer]))
         return self._ferm_covmat[layer]
 
 
