@@ -33,28 +33,32 @@ class Z2System2D4C_Config(Config2DBase):
         for ind in range(self._nparams):
             self.paramvec[1, ind] = 0 
     
-    def enforce_parameter_conditions(self):
+    def enforce_parameter_conditions(self, mat):
         """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz.
         """
         #The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
         
-        # Set 1st layer (type I) t params to 0
-        self.paramvec[0, 0] = 0 # Set t1r to 0
-        self.paramvec[0, 3] = 0 # Set t2r to 0
-        self.paramvec[0, 10] = 0 # Set t1i to 0
-        self.paramvec[0, 13] = 0 # Set t2i to 0
+        zeroed_params = [
+                        # Set 1st layer (type I) t params to 0
+                        (0,0), # t1r
+                        (0,3),  # t2r
+                        (0,10), # t1i
+                        (0,13), # t2i 
+                        # Set 2nd layer (type II) conditions
+                        (1,3),  # t2r
+                        (1,13), # t2i
+                        (1,1),  # y1r
+                        (1,2),  # z1r
+                        (1,4),  # y2r
+                        (1,5),  # z2r
+                        (1,11), # y1i
+                        (1,12), # z1i
+                        (1,14), # y2i
+                        (1,15)  # z2i
+                        ]
 
-        # Set 2nd layer (type II) conditions
-        self.paramvec[1, 3] = 0 # Set t2r to 0
-        self.paramvec[1, 13] = 0 # Set t2i to 0
-        self.paramvec[1, 1] = 0 # Set y1r to 0
-        self.paramvec[1, 2] = 0 # Set z1r to 0
-        self.paramvec[1, 4] = 0 # Set y2r to 0
-        self.paramvec[1, 5] = 0 # Set z2r to 0
-        self.paramvec[1, 11] = 0 # Set y1i to 0
-        self.paramvec[1, 12] = 0 # Set z1i to 0
-        self.paramvec[1, 14] = 0 # Set y2i to 0
-        self.paramvec[1, 15] = 0 # Set z2i to 0
+        for coord in zeroed_params:
+            mat[coord] = 0
 
 
 class Z2System2D4C(System2DBase):
@@ -439,6 +443,8 @@ class Z2System2D4C(System2DBase):
         mass_energy_op = np.asarray(mass_energy_op)
         gradients = np.asarray(gradients)
 
+        self.cfg.enforce_parameter_conditions(gradients)
+
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
         # They act as a prefactor in the derivative.
         # However, here, because the mass term only acts on the second layer, we simply multiply the mass_energy and grads by the norm of the first layer 
@@ -553,6 +559,8 @@ class Z2System2D4C(System2DBase):
                 prod_other_layers = utils.multiply_except(dest, i)
                 dest_grad[i] *= prod_other_layers
         
+        self.cfg.enforce_parameter_conditions(dest_grad)
+
         return dest, dest_grad
 
 
@@ -633,6 +641,8 @@ class Z2System2D4C(System2DBase):
         
         int_energy_op = np.asarray(int_energy_op)
         gradients = np.asarray(gradients) 
+
+        self.cfg.enforce_parameter_conditions(gradients)
     
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
         # They act as a prefactor in the derivative.

@@ -88,6 +88,10 @@ class Config2DBase(ABC):
         This abstract method must be overwritten by a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
+    
+    def enforce_parameter_conditions(self, mat):
+        """In some cases, there are extra conditions we wish to impose on the parameters."""
+        return
 
 ################## Utility Functions ######################
 

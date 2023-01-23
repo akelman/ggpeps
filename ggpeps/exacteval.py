@@ -165,8 +165,10 @@ class ExactEvaluator():
             int_energy_grad *= self.system.cfg.g_gm
             dest["int_energy_grad"] = int_energy_grad
 
-            # Add for the full gradient
-            dest["energy_grad"] = mag_energy_grad + el_energy_grad + mass_energy_grad + int_energy_grad
+            # Add for the full gradient, subject to conditions on parameterization
+            total_grad = mag_energy_grad + el_energy_grad + mass_energy_grad + int_energy_grad
+            self.system.cfg.enforce_parameter_conditions(total_grad)
+            dest["energy_grad"] = total_grad
             self.obsdict = dest
 
         return self.obsdict

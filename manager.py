@@ -200,7 +200,7 @@ def main(args):
 
     # For the ansatz with ncopy = 4, enforce the required parameter conditions to get the correct use of layers
     if args.ncopy == 4:
-        system_cfg.enforce_parameter_conditions()
+        system_cfg.enforce_parameter_conditions(system_cfg.paramvec)
 
     # Switch to control the binning analysis on EOM (Error of mean)
     if args.no_bin_eom:
