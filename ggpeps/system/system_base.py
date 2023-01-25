@@ -1050,7 +1050,7 @@ class System2DBase(ABC):
             gamma_in_sys = self.gamma_in_sys # take the first element, which is shared between all the layers
         m_up, n_up = update_mat.shape
         gamma_in_old = gamma_in_sys[offset:offset + m_up,
-                                         offset:offset + n_up] 
+                                    offset:offset + n_up] 
         return -(update_mat - gamma_in_old)
 
     def invalidate_gauge_update(self):

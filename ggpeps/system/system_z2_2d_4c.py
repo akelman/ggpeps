@@ -30,8 +30,24 @@ class Z2System2D4C_Config(Config2DBase):
         super().__init__(lattice, g2, g_gm, g_mag, g_mass, nlayer)
 
     def make_pure_gauge(self):
-        for ind in range(self._nparams):
-            self.paramvec[1, ind] = 0 
+        reproduce_2C1L = False # zero out the second layer (used for physical fermions); this should reproduce the 2 copy, 1 layer ansatz
+        if reproduce_2C1L:
+            for ind in range(self._nparams):
+                self.paramvec[1, ind] = 0 
+        zeroed_params = [
+                        # Set 1st layer (type I) t params to 0
+                        (0,0),  # t1r
+                        (0,3),  # t2r
+                        (0,10), # t1i
+                        (0,13), # t2i 
+                        # Set 2nd layer (type II) t params to 0
+                        (1, 0), # t1r
+                        (1,3),  # t2r
+                        (1, 10),# t1i
+                        (1,13), # t2i
+                        ]
+        for coord in zeroed_params:
+            self.paramvec[coord] = 0
     
     def enforce_parameter_conditions(self, mat):
         """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz.
@@ -40,7 +56,7 @@ class Z2System2D4C_Config(Config2DBase):
         
         zeroed_params = [
                         # Set 1st layer (type I) t params to 0
-                        (0,0), # t1r
+                        (0,0),  # t1r
                         (0,3),  # t2r
                         (0,10), # t1i
                         (0,13), # t2i 
@@ -270,7 +286,7 @@ class Z2System2D4C(System2DBase):
         This method overwrites an abstract method in System2DBase.
 
         Returns:
-            np.ndarray: Covariance matrix of the ungauged projector on a single link
+            List[np.ndarray]: Covariance matrices of the ungauged projector on a single link
         """
         
         dest_mixed={} # mixes copies
