@@ -19,7 +19,7 @@ class TestZ2C4System(unittest.TestCase):
         cfg = system.Z2System2D4C_Config(lat, 0, 0, 0, 0)
         cfg.paramvec = paramvec
         self.system_z2 = system.Z2System2D4C(cfg) 
-        self.system_z2.cfg.enforce_parameter_conditions()   
+        self.system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)   
         
     
     def test_covmat_for_no_fermions(self):
