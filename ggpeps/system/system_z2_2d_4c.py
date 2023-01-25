@@ -160,15 +160,15 @@ class Z2System2D4C(System2DBase):
         c = cr+1.j*ci
         d = dr+1.j*di
         tmat_symb=sympy.Matrix([
-            [0, 1.j*t1, -t1, -1.j*t1, t1, 1.j*t2, -t2, -1.j*t2, t2],
-            [-1.j*t1, 0, 1.j*y1, z1, 1.j*z1, -1.j*a, -1.j*c, -1.j*b, -1.j*d],
-            [t1, -1.j*y1, 0, -1.j*z1, -z1, 1.j*c, 1.j*a, 1.j*d, 1.j*b],
-            [1.j*t1, -z1, 1.j*z1, 0, -y1, d, b, a, c],
-            [-t1, -1.j*z1, z1, y1, 0, -b, -d, -c, -a],
-            [-1.j*t2, 1.j*a, -1.j*c, -d, b, 0, 1.j*y2, z2, 1.j*z2],
-            [t2, 1.j*c, -1.j*a, -b, d, -1.j*y2, 0, -1.j*z2, -z2],
-            [1.j*t2, 1.j*b, -1.j*d, -a, c, -z2, 1.j*z2, 0, -y2],
-            [-t2, 1.j*d, -1.j*b, -c, a, -1.j*z2, z2, y2, 0]
+            [0, -1.j*t1, 1.j*t1, t1, -t1, -1.j*t2, 1.j*t2, t2, -t2],
+            [1.j*t1, 0, 1.j*y1, z1, 1.j*z1, -1.j*a, -1.j*c, -1.j*b, -1.j*d],
+            [-1.j*t1, -1.j*y1, 0, -1.j*z1, -z1, 1.j*c, 1.j*a, 1.j*d, 1.j*b],
+            [-t1, -z1, 1.j*z1, 0, -y1, d, b, a, c],
+            [t1, -1.j*z1, z1, y1, 0, -b, -d, -c, -a],
+            [1.j*t2, 1.j*a, -1.j*c, -d, b, 0, 1.j*y2, z2, 1.j*z2],
+            [-1.j*t2, 1.j*c, -1.j*a, -b, d, -1.j*y2, 0, -1.j*z2, -z2],
+            [-t2, 1.j*b, -1.j*d, -a, c, -z2, 1.j*z2, 0, -y2],
+            [t2, 1.j*d, -1.j*b, -c, a, -1.j*z2, z2, y2, 0]
             ])
         return tmat_symb
 
