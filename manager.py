@@ -387,7 +387,7 @@ if __name__ == "__main__":
     
     # Arguments for the minimizer
     parser.add_argument("--method", type=str, default="bfgs", help="Minimization method")
-    parser.add_argument("--maxiter", type=int, default=100, help="Number of steps for the minimizer (if custom is used)")
+    parser.add_argument("--maxiter", type=int, default=100, help="Number of steps for the minimizer")
     parser.add_argument("--alpha", type=float, default=0.1, help="Learning rate")
     parser.add_argument("--min-grad", type=float, default=1e-5, help="Minimal gradient to use a stopping criterion")
     
