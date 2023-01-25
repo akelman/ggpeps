@@ -41,3 +41,8 @@ class TestZ2C4System(unittest.TestCase):
 
     # TESTS TO ADD
     # get the correct gamma_in_sys for all layers
+    # mass energy is zero when t = 0
+    # int energy is zero when t = 0
+    # when interaction is off, ground state is: no fermions, pure-gauge ground state
+    # ensure covmat is not the no-fermions one in cases where t != 0
+    # required parameters are zero (i.e. the ones that are zero by def of the ansatz) - before starting, and remain that way through minimization
