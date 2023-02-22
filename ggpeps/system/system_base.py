@@ -878,7 +878,7 @@ class System2DBase(ABC):
         # There are two directions per vertex and two Majoranas per link
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord)
+        rotmat = self.generate_rotmat(theta, coord, dir)
         gamma_neutral_gauge = self.gamma_gauge_neutral[dir]
         gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
@@ -1004,7 +1004,7 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def generate_rotmat(self, theta, coord):
+    def generate_rotmat(self, theta, coord, dir):
         """Abstract method to define the rotation matrix of a single link.
         The substitution method must ensure a consistent order of the modes.
         This method must be overwritten in a subclass.

@@ -319,7 +319,7 @@ class Z2System2D4C(System2DBase):
 
     #Gauging
 
-    def generate_rotmat(self, theta, coord):
+    def generate_rotmat(self, theta: float, coord: tuple, dir: Direction):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
         The mode order is (as for gamma_in_neutral) {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}, depending on whether the link is vertical or horizontal.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
@@ -333,14 +333,14 @@ class Z2System2D4C(System2DBase):
         Args:
             theta (float): Angle of rotation
             coord (tuple): (x,y) coordinate on the lattice
+            dir (lattice.Direction): direction of the link
 
         Returns:
             np.ndarray: Rotation matrix for gamma_in_neutral
         """
-        # Stagger here
-        if (-1)**(coord[0] + coord[1]) == -1:
-            # We are on an odd site, so stagger by flipping theta
-            theta = -theta
+        # Guaging is different on even/odd sublattice, and in X/Y directions. See notes for details
+        if dir == Direction.X and (-1)**(coord[0] + coord[1]) == -1:
+            theta += np.pi 
 
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
@@ -370,7 +370,7 @@ class Z2System2D4C(System2DBase):
         # There are two directions per vertex
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord)
+        rotmat = self.generate_rotmat(theta, coord, dir)
 
         update_vec = []
         for layer in range(self.cfg.nlayer):

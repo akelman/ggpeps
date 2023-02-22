@@ -211,7 +211,7 @@ class U1System2D(System2DBase):
         dest = block_diag(rot_left, rot_right)
         return dest
 
-    def generate_rotmat(self, theta, coord):
+    def generate_rotmat(self, theta, coord, dir):
         gauge_field = theta * pow(-1,np.sum(coord))
         rot_plus = self._generate_rotmat_half(gauge_field)
         rot_minus = self._generate_rotmat_half(-gauge_field)
@@ -223,7 +223,7 @@ class U1System2D(System2DBase):
         # There are two directions per vertex
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord)
+        rotmat = self.generate_rotmat(theta, coord, dir)
         gamma_in_subst = rotmat @ self.gamma_gauge_neutral[dir] @ np.transpose(rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
         # Update the determinant
@@ -363,7 +363,7 @@ class U1System2D(System2DBase):
         increment = -self.gaugemgr.get_increment()
         dest = self.gamma_in_sys.astype(complex).copy()
         adapted_no_gauge = self.generate_electric_full(increment)
-        rotmat = self.generate_rotmat(current_phase, coord)
+        rotmat = self.generate_rotmat(current_phase, coord, dir)
         adapted = rotmat @ adapted_no_gauge @ rotmat.transpose()
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         dest[ind_mat:ind_mat+adapted.shape[0],

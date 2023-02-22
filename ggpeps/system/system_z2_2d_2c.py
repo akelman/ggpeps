@@ -262,7 +262,7 @@ class Z2System2D2C(System2DBase):
 
     #Gauging
 
-    def generate_rotmat(self, theta, coord):
+    def generate_rotmat(self, theta, coord, dir):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
         The mode order is (as for gamma_in_neutral) {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}, depending on whether the link is vertical or horizontal.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
@@ -309,7 +309,7 @@ class Z2System2D2C(System2DBase):
         # There are two directions per vertex
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord)
+        rotmat = self.generate_rotmat(theta, coord, dir)
         gamma_neutral_gauge = self.gamma_gauge_neutral[dir]
         gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)

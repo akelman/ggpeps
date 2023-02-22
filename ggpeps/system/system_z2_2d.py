@@ -222,7 +222,7 @@ class Z2System2D(System2DBase):
 
     #Gauging
 
-    def generate_rotmat(self, theta, coord):
+    def generate_rotmat(self, theta, coord, dir):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
         The mode order is (as for gamma_in_neutral) {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2}, depending on whether the link is vertical or horizontal.
 
@@ -263,7 +263,7 @@ class Z2System2D(System2DBase):
         # There are two directions per vertex and two Majoranas per link
         ind_mat = 4 * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord)
+        rotmat = self.generate_rotmat(theta, coord, dir)
         gamma_neutral_gauge = self.gamma_gauge_neutral[dir] # calling every time (rather than storing) will cause some innefficiency 
         gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(
             rotmat)
