@@ -498,11 +498,24 @@ class Z2System2D4C(System2DBase):
         dest = []
         dest_grad = []
 
-        # build array for list comprehension outside the loop
-        idxarr = [ (   1, [0,2,4,6]), (  -1, [1,2,4,7]), (-1.j, [0,1,2,4]), (-1.j,[2,4,6,7]),
+        # build arrays for list comprehension outside the loop
+        # the layers differ because they use different projectors
+        # first layer:
+        idxarr_lay1 = [ (   1, [0,2,4,6]), (  -1, [1,2,4,7]), (-1.j, [0,1,2,4]), (-1.j,[2,4,6,7]),
                         (  -1, [0,3,5,6]), (   1, [1,3,5,7]), ( 1.j, [0,1,3,5]), ( 1.j,[3,5,6,7]),
                         ( 1.j, [0,4,5,6]), (-1.j, [1,4,5,7]), (   1, [0,1,4,5]), (   1,[4,5,6,7]),
                         ( 1.j, [0,2,3,6]), (-1.j, [1,2,3,7]), (   1, [0,1,2,3]), (   1,[2,3,6,7])]
+        # second layer: this can be obtained explicitely, or by switching indices (2 <--> 6 and 3 <--> 7) and then reordering (which affects the prefactors)
+        idxarr_lay2 = [ (  -1, [0,2,4,6]), (   1, [1,3,4,6]), ( 1.j, [0,1,4,6]), ( 1.j,[2,3,4,6]),
+                        (   1, [0,2,5,7]), (  -1, [1,3,5,7]), (-1.j, [0,1,5,7]), (-1.j,[2,3,5,7]),
+                        ( 1.j, [0,2,4,5]), (-1.j, [1,3,4,5]), (   1, [0,1,4,5]), (   1,[2,3,4,5]),
+                        ( 1.j, [0,2,6,7]), (-1.j, [1,3,6,7]), (   1, [0,1,6,7]), (   1,[2,3,6,7])]
+        # just switch indices (2 <--> 6 and 3 <--> 7): it turns out that numpy does not care about the ordering, so this is equivalent
+        #idxarr_lay2 = [ (   1, [0,6,4,2]), (  -1, [1,6,4,3]), (-1.j, [0,1,6,4]), (-1.j,[6,4,2,3]),
+        #                (  -1, [0,7,5,2]), (   1, [1,7,5,3]), ( 1.j, [0,1,7,5]), ( 1.j,[7,5,2,3]),
+        #                ( 1.j, [0,4,5,2]), (-1.j, [1,4,5,3]), (   1, [0,1,4,5]), (   1,[4,5,2,3]),
+        #                ( 1.j, [0,6,7,2]), (-1.j, [1,6,7,3]), (   1, [0,1,6,7]), (   1,[6,7,2,3])]
+        idxarrs = [idxarr_lay1, idxarr_lay2]
 
         for layerind in range(self.cfg.nlayer):
             layer_derivative=[]
@@ -513,6 +526,8 @@ class Z2System2D4C(System2DBase):
             diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
 
             gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
+
+            idxarr = idxarrs[layerind]
 
             ###################### Calculation of <P> ########################
             covmat_out = mat_a + \
@@ -538,8 +553,6 @@ class Z2System2D4C(System2DBase):
             el_energy_full = 1/16 * np.sum(pfarr)
             
             el_energy_layer = np.real(el_energy_full) * np.exp(norm_mod - lognorm_default)
-            if layerind == 1:
-                el_energy_layer *= -1
             dest.append(el_energy_layer)
 
             ###################### Calculation of the derivative ########################
@@ -564,8 +577,6 @@ class Z2System2D4C(System2DBase):
                 d_el_energy += dest[layerind] * (trace_mod - trace_def)
                 # Scale to system size
                 d_el_energy *= nlinks
-                if layerind == 1:
-                    d_el_energy *= -1
                 layer_derivative.append(np.real(d_el_energy))
             dest_grad.append(layer_derivative)
         
