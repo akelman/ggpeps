@@ -538,6 +538,8 @@ class Z2System2D4C(System2DBase):
             el_energy_full = 1/16 * np.sum(pfarr)
             
             el_energy_layer = np.real(el_energy_full) * np.exp(norm_mod - lognorm_default)
+            if layerind == 1:
+                el_energy_layer *= -1
             dest.append(el_energy_layer)
 
             ###################### Calculation of the derivative ########################
@@ -562,6 +564,8 @@ class Z2System2D4C(System2DBase):
                 d_el_energy += dest[layerind] * (trace_mod - trace_def)
                 # Scale to system size
                 d_el_energy *= nlinks
+                if layerind == 1:
+                    d_el_energy *= -1
                 layer_derivative.append(np.real(d_el_energy))
             dest_grad.append(layer_derivative)
         
