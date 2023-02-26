@@ -113,7 +113,7 @@ def main(args):
     else:
         os.makedirs(args.output)
 
-    #Set up the logger
+    # Set up the logger
     h_stdout = logging.StreamHandler(stream=sys.stdout)
     h_stderr = logging.StreamHandler(stream=sys.stderr)
     h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
@@ -131,12 +131,12 @@ def main(args):
     if not validate_inputs(args):
         sys.exit(1)
 
-    #Set up ray before we actually start with the simulation
-    #Ray uses randomness internally and we don't want it to mix up the setting of the seed
+    # Set up ray before we actually start with the simulation
+    # Ray uses randomness internally and we don't want it to mix up the setting of the seed
     if args.nrunner > 0:
         ray.init()
 
-    #Set up the MC Config
+    # Set up the MC Config
     mc_config = MonteCarloEstimatorConfig()
     mc_config.warmup_steps = args.warmup_steps
     mc_config.meas_steps = args.meas_steps
@@ -160,7 +160,7 @@ def main(args):
     logging.info("Measurement steps: {}".format(mc_config.meas_steps))
     logging.info("============================")
 
-    #Set up the simulation
+    # Set up the simulation
     L = args.L
     g2 = args.g2
     g_gm = args.g_gm
@@ -244,7 +244,7 @@ def main(args):
 
         mc_config.minimizer_mode = True
         mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
-        #Set the parameters of the minimizer according to the command line
+        # Set the parameters of the minimizer according to the command line
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
         min_cfg.max_iter = args.maxiter
@@ -295,7 +295,7 @@ def main(args):
     elif args.mode == "minmult":
         # Optimize the parameters with multiple runs (useful if BFGS has problems with the Hessian)
 
-        #Set the parameters of the minimizer according to the command line
+        # Set the parameters of the minimizer according to the command line
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method
         min_cfg.max_iter = args.maxiter
@@ -313,7 +313,7 @@ def main(args):
             resultvec.append(minimizer.minimize())
             system_cfg.paramvec = resultvec[-1].paramvec
         stop = timer()
-        #TODO: We can merge the resultvec to get a full result
+        # TODO: We can merge the resultvec to get a full result
         minimizer.save(output_dir = args.output)
         # We run a final iteration of the MC simulation with all observables
         mc_config.minimizer_mode = False

@@ -620,8 +620,7 @@ class Z2System2D4C(System2DBase):
     
     def _compute_int_energy_op_vec_and_grad(self):
         """Calculate the energy and energy gradient due to the interaction of the physical fermions with the gauge fields.
-        Note: this function assumes that U = U^dagger, which is valid only for Z2. 
-        For other groups, the calculation will not be as simple.
+        Note: this function assumes that U = U^dagger, which is valid only for Z2. For other groups, the calculation will not be as simple.
 
         Returns:
             tuple: Tuple of (interaction energy for a single link, gradients)

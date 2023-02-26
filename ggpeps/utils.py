@@ -110,7 +110,7 @@ def mergeDict(dict1, dict2):
     dest = {}
     for key in dict1:
         if key in dict2:
-            #We assume that there are only lists in the dictionaries
+            # We assume that there are only lists in the dictionaries
             dest[key] = merge_measurements(dict1[key], dict2[key])
         else:
             dest[key] = dict1[key]
@@ -148,7 +148,7 @@ def get_git_hash():
     Returns:
         str: git hash
     """
-    #This assumes that .git is in the parent folder of util.py 
+    # This assumes that .git is in the parent folder of util.py 
     packagedir = os.path.dirname(os.path.realpath(__file__))
     rootdir = os.path.join(packagedir,os.path.pardir)
     gitdir = os.path.join(rootdir, ".git")
@@ -167,7 +167,7 @@ def select_except(arr, ind: int):
     Returns:
         np.array: Array with all elements of arr except for arr[ind]
     """
-    #This function works only on the outer-most layer
+    # This function works only on the outer-most layer
     if isinstance(arr,list):
         arr = np.asarray(arr)
     mask = np.ones(len(arr), dtype=bool)
@@ -189,7 +189,7 @@ def multiply_except(arr, ind: int):
         others = select_except(arr, ind)
         return np.prod(others)
     else:
-        #It does not make sense to execute this function with only one element
+        # It does not make sense to execute this function with only one element
         return arr[0]
 
 
@@ -308,8 +308,8 @@ def anticommutator(mat1, mat2):
     """
     return mat1@mat2+mat2@mat1
 
-# =========== Covariance Utility Funcitons ===========
 
+# =========== Covariance Utility Funcitons ===========
 
 def tmat_to_covariance_matrix(tmat):
     """Transforms a T matrix into the corresponding covariance matrix in terms of Dirac modes.
@@ -369,7 +369,7 @@ class CacheServer:
                 self.store = pickle.load(infile)
 
     def save(self, fname):
-        #We only save if the file does not exist yet
+        # We only save if the file does not exist yet
         if not os.path.isfile(fname):
             with gzip.open(fname, "wb") as outfile:
                 pickle.dump(self.store, outfile)
@@ -393,14 +393,14 @@ class WoodburyInverter:
     def update(self, u, c, v):
         # We ware updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
         if not np.allclose(c, 0):
-            #We cannot update with C being zero since this matrix has no inverse
+            # We cannot update with C being zero since this matrix has no inverse
             cinv = np.linalg.inv(c)
             self.ainv -= ((self.ainv@u)@np.linalg.inv(cinv +
                                                       v@self.ainv@u))@(v@self.ainv)
         return self.ainv
 
     def update_index(self, m, indi, indj):
-        #Construct two matrices to shift M to the correct position in A
+        # Construct two matrices to shift M to the correct position in A
         if not np.allclose(m, 0):
             # We cannot update with C being zero since this matrix has no inverse
             m_m, n_m = m.shape
@@ -421,7 +421,7 @@ class IncDeterminant:
         self.detval = np.linalg.det(a)
 
     def update(self, ainv, u, c, v, store=True):
-        #We ware updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
+        # We ware updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
         dest = self.detval
         if not np.allclose(c, 0):
             cinv = np.linalg.inv(c)
@@ -436,7 +436,7 @@ class IncDeterminant:
 
 
 def update_index(self, ainv, m, indi, indj, store=True):
-    #Construct two matrices to shift M to the correct position in A
+    # Construct two matrices to shift M to the correct position in A
     if not np.allclose(m, 0):
         m_m, n_m = m.shape
         m_a, n_a = ainv.shape
@@ -480,7 +480,7 @@ class IncLogAbsDeterminant:
         return dest
 
     def update_index(self, ainv, m, indi, indj, store=True):
-        #Construct two matrices to shift M to the correct position in A
+        # Construct two matrices to shift M to the correct position in A
         if not np.allclose(m, 0):
             # We cannot update if m is zero because we cannot invert it
             m_m, n_m = m.shape
@@ -507,7 +507,7 @@ class BgbTransform():
             wn,s,wp=svd(self.mat_in, full_matrices=True, compute_uv=True) # self.mat_in is the T matrix
             wp = herm_conj(wp)
             if not self.is_pure_gauge:
-                #TODO: Fix this
+                # TODO: Fix this
                 # We are shuffling the physical mode to the front again
                 # It would look like s=perm*s
                 #TODO: This does not work properly yet. But the function is not used anywhere.
@@ -572,14 +572,14 @@ def rebin_array(a, R):
     R=int(R)
     max_fit = int(len(a) - len(a) % R)
     if a.ndim == 1:
-        #Shape (N): N samples of scalars
+        # Shape (N): N samples of scalars
         dest = np.mean(a[:max_fit].reshape(-1, R), axis=1)
     elif a.ndim==2:
-        #Shape (N,n,m): N samples of m-dim vecotrs
+        # Shape (N,n,m): N samples of m-dim vecotrs
         N,m=a.shape
         dest = np.mean(a[:max_fit].reshape(-1, m, R), axis=2)
     elif a.ndim == 3:
-        #Shape (N,n,m): N samples of n x m matrices
+        # Shape (N,n,m): N samples of n x m matrices
         N,m,n=a.shape
         dest = np.mean(a[:max_fit].reshape(-1, m, n, R), axis=3)
     else:
@@ -625,7 +625,7 @@ def rebin_eom(arr):
         float or arr: Best estimate of the EOM on the given array. The output shape depends on the input shape of arr.
     """
     N = len(arr)
-    #We want to leave a sufficient number of samples to build a reasonable mean
+    # We want to leave a sufficient number of samples to build a reasonable mean
     max_exp = int(np.floor(np.log2(N / 10)))
     if max_exp > 0:
         binsize= 2**(max_exp-1)
@@ -660,7 +660,7 @@ def show_matrixvec(matvec, title=None, log=False):
         if log:
             minval = np.min(mat)
             if minval == 0:
-                #This is a dirty hack to display the 0 in a log plot
+                # This is a dirty hack to display the 0 in a log plot
                 mat += 1e-10
                 minval += 1e-10
             matax = axvec[ind].matshow(
@@ -689,12 +689,12 @@ def print_mat_stats(mat, title=None):
 def show_eigenvalues(mat):
     """Display the eigenvalues of a matrix"""
     if is_hermitian(mat):
-        #Plot the real eigenvalues
+        # Plot the real eigenvalues
         f, ax = plt.subplots(1, 1)
         eigvals = np.linalg.eigvalsh(mat)
         ax.plot(eigvals, 'o')
     else:
-        #Plot the real eigenvalues
+        # Plot the real eigenvalues
         f, ax = plt.subplots(1, 2)
         eigvals = np.linalg.eigvals(mat)
         ax[0].set_title("Real part")
@@ -723,7 +723,7 @@ def extract_params_from_results_file(fname, dest_dir='') -> bool:
         if name.startswith("result_min"):
             with open(fname, "rb") as infile:
                 data = pickle.load(infile)
-                #Deal with renaming
+                # Deal with renaming
                 if hasattr(data,"paramvec"):
                     np.save( os.path.join(dest_dir, "paramvec_g2_{}.npy".format(g2)), data.paramvec)
                 elif hasattr(data,"parametervec"):
