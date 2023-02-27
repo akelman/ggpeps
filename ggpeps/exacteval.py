@@ -87,7 +87,7 @@ class ExactEvaluator():
             }
             for config in configvec:
                 self.system.update_gauge_full_system(config)
-                #logging.debug("Configuration: {}".format(config))
+                #logging.debug(f"Configuration: {config}")
                 
                 data["energy"].append(self.system.energy)
                 data["mag_energy"].append(self.system.mag_energy)
@@ -214,11 +214,11 @@ class ExactEvaluator():
         tvec = syscfg.paramvec[:,0]
         yvec = syscfg.paramvec[:,1]
         zvec = syscfg.paramvec[:,2]
-        tstr="-".join([str(t) for t in tvec])
-        ystr="-".join([str(y) for y in yvec])
-        zstr="-".join([str(z) for z in zvec])
-        fname_summary = "summary_exact_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{}_y_{}_z_{}.pkl".format(
-            syscfg.lattice.nx,syscfg.lattice.ny, syscfg.g2, syscfg.g_gm, syscfg.g2_mag, tstr, ystr, zstr)
+        tstr = "-".join([str(t) for t in tvec])
+        ystr = "-".join([str(y) for y in yvec])
+        zstr = "-".join([str(z) for z in zvec])
+
+        fname_summary = f"summary_exact_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_g2_{syscfg.g2:.3f}_gm_{syscfg.g_gm:.3f}_gmag_{syscfg.g2_mag:.3f}_t_{tstr}_y_{ystr}_z_{zstr}.pkl"
         self.save_summary(os.path.join(output_dir,fname_summary))
 
     def save_summary(self, fname_summary: str):

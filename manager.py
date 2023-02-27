@@ -42,20 +42,14 @@ def args2logname(args):
     }
     if "exact" in args.mode:
         if args.g2_mag == None:
-            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}.log".format(
-                shorthands[args.mode], args.L, args.L, args.g2, args.g_gm)
+            fname = f"log_{shorthands[args.mode]}_L={args.L}x{args.L}_g2={args.g2}_gm={args.g_gm}.log"
         else:
-            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_g2mag_{:.3f}.log".format(
-                shorthands[args.mode], args.L, args.L, args.g2, args.g_gm, args.g2_mag)
+            fname = f"log_{shorthands[args.mode]}_L={args.L}x{args.L}_g2={args.g2}_g2mag={args.g2_mag}_gm={args.g_gm}.log"
     else:
         if args.g2_mag == None:
-            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_nlayer_{:02d}_wsteps_{:06d}_msteps_{:06d}.log".format(
-                shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
-                args.nlayer, args.warmup_steps, args.meas_steps)
+            f"log_{shorthands[args.mode]}_L={args.L}x{args.L}_g2={args.g2}_gm={args.g_gm}_nlayer={args.nlayer}_wsteps={args.warmup_steps}_msteps={args.meas_steps}.log"
         else:
-            fname = "log_{}_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_g2mag_{:.3f}_nlayer_{:02d}_wsteps_{:06d}_msteps_{:06d}.log".format(
-                shorthands[args.mode], args.L, args.L, args.g2, args.g_gm,
-                args.g2_mag, args.nlayer, args.warmup_steps, args.meas_steps)
+            f"log_{shorthands[args.mode]}_L={args.L}x{args.L}_g2={args.g2}_g2mag={args.g2_mag}_gm={args.g_gm}_nlayer={args.nlayer}_wsteps={args.warmup_steps}_msteps={args.meas_steps}.log"
     return os.path.join(args.output, fname)
 
 def translate_parameters(system_cfg, params,rng_state):
@@ -153,11 +147,11 @@ def main(args):
     rngstate = np.random.RandomState(seed)
     mc_config.seed = seed
 
-    logging.info("Git hash: {}".format(utils.get_git_hash()))
+    logging.info(f"Git hash: {utils.get_git_hash()}")
     logging.info("========= MC INFO ==========")
-    logging.info("Seed: {}".format(mc_config.seed))
-    logging.info("Warmup steps: {}".format(mc_config.warmup_steps))
-    logging.info("Measurement steps: {}".format(mc_config.meas_steps))
+    logging.info(f"Seed: {mc_config.seed}")
+    logging.info(f"Warmup steps: {mc_config.warmup_steps}")
+    logging.info(f"Measurement steps: {mc_config.meas_steps}")
     logging.info("============================")
 
     # Set up the simulation
@@ -207,16 +201,16 @@ def main(args):
         Measurement.use_rebinning = False
 
     logging.info("======= SYSTEM INFO ========")
-    logging.info("L: {}".format(L))
-    logging.info("# of layers: {}".format(system_cfg.nlayer))
-    logging.info("# of copies: {}".format(args.ncopy))
-    logging.info("pure-gauge: {}".format(args.pure_gauge))
-    logging.info("g^2: {}".format(g2))
-    logging.info("g^2_mag: {}".format(g2_mag))
-    logging.info("g_gm: {}".format(g_gm))
-    logging.info("g_mass: {}".format(g_mass))
-    logging.info("Rebinning EOM: {}".format(Measurement.use_rebinning))
-    logging.info("Starting parameters: {}".format(paramvec))
+    logging.info(f"L: {L}")
+    logging.info(f"# of layers: {system_cfg.nlayer}")
+    logging.info(f"# of copies: {args.ncopy}")
+    logging.info(f"pure-gauge: {args.pure_gauge}")
+    logging.info(f"g^2: {g2}")
+    logging.info(f"g^2_mag: {g2_mag}")
+    logging.info(f"g_gm: {g_gm}")
+    logging.info(f"g_mass: {g_mass}")
+    logging.info(f"Rebinning EOM: {Measurement.use_rebinning}")
+    logging.info(f"Starting parameters: {paramvec}")
     logging.info("============================")
 
 
@@ -232,14 +226,14 @@ def main(args):
         mc_result.save(output_dir = args.output)
 
         logging.info("==== Acceptance prob =======")
-        logging.info("Acceptance probability: {}".format(mc_result.get_obs_mean("acceptance_prob")))
+        logging.info(f"Acceptance probability: {mc_result.get_obs_mean('acceptance_prob')}")
         logging.info("============================")
     elif args.mode == "minimize" or args.mode == "min":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
         logging.info("====== MINIMIZER INFO ======")
-        logging.info("Max Iterations: {}".format(args.maxiter))
-        logging.info("Learning rate: {}".format(args.alpha))
-        logging.info("Method: {}".format(args.method.upper()))
+        logging.info(f"Max Iterations: {args.maxiter}")
+        logging.info(f"Learning rate: {args.alpha}")
+        logging.info(f"Method: {args.method.upper()}")
         logging.info("============================")
 
         mc_config.minimizer_mode = True
@@ -267,13 +261,13 @@ def main(args):
         stop = timer()
         ex_eval.save(output_dir=args.output)
         for key, val in dest_dict.items():
-            print("{}: {}".format(key, val))
+            print(f"{key}: {val}")
     elif args.mode == "minexact":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
         logging.info("====== MINIMIZER INFO ======")
-        logging.info("Max Iterations: {}".format(args.maxiter))
-        logging.info("Learning rate: {}".format(args.alpha))
-        logging.info("Method: {}".format(args.method.upper()))
+        logging.info(f"Max Iterations: {args.maxiter}")
+        logging.info(f"Learning rate: {args.alpha}")
+        logging.info(f"Method: {args.method.upper()}")
         logging.info("============================")
 
         start = timer()
@@ -306,7 +300,7 @@ def main(args):
         resultvec = []
         mc_config.minimizer_mode = True
         for i in range(args.minmult_iter):
-            logging.info("Minimization iteration: {:02d}".format(i))
+            logging.info(f"Minimization iteration: {i:02d}")
             mc = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
             minimizer = Minimizer(mc, min_cfg)
 
@@ -321,10 +315,10 @@ def main(args):
         mc_result = mc_mgr.simulate()
         mc_result.save(output_dir = args.output)
     else:
-        logging.error("Mode '{}' unkown.".format(args.mode))
+        logging.error(f"Mode '{args.mode}' unkown.")
 
     logging.info("========== TIME ============")
-    logging.info("The simulation took {}s".format(stop-start))
+    logging.info(f"The simulation took {stop - start}s")
     logging.info("============================")
 
 

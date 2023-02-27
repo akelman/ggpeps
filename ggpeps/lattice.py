@@ -44,8 +44,7 @@ class Lattice2D:
             x, y = self.ind2coord(ind)
             x_link = self.coord2ind_dir((x, y), Direction.X)
             y_link = self.coord2ind_dir((x, y), Direction.Y)
-            dest += ("{:02d}, ({:02d},{:02d}): {:02d},{:02d}\n".format(ind,
-                     x, y, x_link, y_link))
+            dest += (f"{ind:02d}, ({x:02d},{y:02d}): {x_link:02d},{y_link:02d}\n")
         return dest
 
     def ind2coord(self, ind: int) -> tuple:
