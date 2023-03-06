@@ -14,19 +14,46 @@ def name_from_path(prefix,path):
 
 def folder2coupling(foldername):
     import re
-    pattern=r"(?<=g2_)[\d]*.[\d]*"
+    pattern=r"(?<=g2=)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
         return "--g2 {}".format(float(result.group(0)))
     else:
         return ""
 
-def folder2mass(foldername):
+def folder2el(foldername):
     import re
-    pattern=r"(?<=m_)[\d]*.[\d]*"
+    pattern=r"(?<=el=)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
-        return "--mass {}".format(float(result.group(0)))
+        return "--g2_el {}".format(float(result.group(0)))
+    else:
+        return ""
+
+def folder2mag(foldername):
+    import re
+    pattern=r"(?<=mag=)[\d]*.[\d]*"
+    result = re.search(pattern, foldername)
+    if result is not None:
+        return "--g2_mag {}".format(float(result.group(0)))
+    else:
+        return ""
+
+def folder2mass(foldername):
+    import re
+    pattern=r"(?<=m=)[\d]*.[\d]*"
+    result = re.search(pattern, foldername)
+    if result is not None:
+        return "--g_mass {}".format(float(result.group(0)))
+    else:
+        return ""
+
+def folder2int(foldername):
+    import re
+    pattern=r"(?<=int=)[\d]*.[\d]*"
+    result = re.search(pattern, foldername)
+    if result is not None:
+        return "--g_int {}".format(float(result.group(0)))
     else:
         return ""
 
@@ -40,10 +67,13 @@ def folder2chempot(foldername):
         return ""
 
 def format_slurmfile(slurmfile, name, folder, time=time_default,command=command_default, num_threads=num_threads_default):
-    coupling=folder2coupling(folder)
-    mass=folder2mass(folder)
-    chempot=folder2chempot(folder)
-    return slurmfile.format(jobname=name,time=time,command=command,ncpu=num_threads, coupling=coupling, mass=mass, chempot=chempot)
+    coupling = folder2coupling(folder)
+    mass = folder2mass(folder)
+    int = folder2int(folder)
+    el = folder2el(folder)
+    mag = folder2mag(folder)
+    chempot = folder2chempot(folder)
+    return slurmfile.format(jobname=name,time=time,command=command,ncpu=num_threads, coupling=coupling, mass=mass, chempot=chempot, el=el, mag=mag, int=int)
 
 def main(args):
     if os.path.isfile(args.slurmfile):
