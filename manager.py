@@ -157,12 +157,19 @@ def main(args):
     # Set up the simulation
     L = args.L
     g2 = args.g2
-    g_gm = args.g_gm
-    g_mass = args.g_mass
+    if args.g2_el is None and g2 is not None:
+        g2_el = g2/2.0
+    else:
+        g2_el = args.g2_el
     if args.g2_mag is None:
-        g2_mag = 1./(2*g2)
+        if g2 is not None:
+            g2_mag = 1./(2*g2)
+        else:
+            g2_mag = 1/(4*g2_el)
     else:
         g2_mag = args.g2_mag
+    g_gm = args.g_gm
+    g_mass = args.g_mass
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 
@@ -171,15 +178,15 @@ def main(args):
     if args.ncopy == 1:
         # Z2 system with one copy of virtual fermions on the links
         system_type = Z2System2D
-        system_cfg = Z2System2DConfig(lattice, g2, g_gm, g2_mag, g_mass, nlayer=args.nlayer)
+        system_cfg = Z2System2DConfig(lattice, g2_el, g_gm, g2_mag, g_mass, nlayer=args.nlayer)
     elif args.ncopy == 2:
         # Z2 system with two copies of virtual fermions on the links
         system_type = Z2System2D2C
-        system_cfg = Z2System2D2CConfig(lattice, g2, g_gm, g2_mag, g_mass, nlayer=args.nlayer)
+        system_cfg = Z2System2D2CConfig(lattice, g2_el, g_gm, g2_mag, g_mass, nlayer=args.nlayer)
     elif args.ncopy == 4:
         # Z2 system with 4 copies of virtual fermions on the links (2 for the pure gauge case, 2 for interacting with physical fermions)
         system_type = Z2System2D4C
-        system_cfg = Z2System2D4C_Config(lattice, g2, g_gm, g2_mag, g_mass)
+        system_cfg = Z2System2D4C_Config(lattice, g2_el, g_gm, g2_mag, g_mass)
     else:
         logging.error("Not Implemented: Only 1, 2, or 4 copies are possible.")
         sys.exit(1)
@@ -205,7 +212,8 @@ def main(args):
     logging.info(f"# of layers: {system_cfg.nlayer}")
     logging.info(f"# of copies: {args.ncopy}")
     logging.info(f"pure-gauge: {args.pure_gauge}")
-    logging.info(f"g^2: {g2}")
+    logging.info(f"g^2 (lambda): {g2}")
+    logging.info(f"g^2_el: {g2_el}")
     logging.info(f"g^2_mag: {g2_mag}")
     logging.info(f"g_gm: {g_gm}")
     logging.info(f"g_mass: {g_mass}")
@@ -339,8 +347,9 @@ if __name__ == "__main__":
     parser.add_argument("L", type=int, help="Size of the square system (one side)")
     
     # Hamiltonian parameters
-    parser.add_argument("--g2", type=float, default=1.0, help="coupling constant")
-    parser.add_argument("--g2_mag", type=float, help="magnetic coupling constant (if not given, computed as 1/g2)")
+    parser.add_argument("--g2", type=float, help="coupling constant (equal to lambda)")
+    parser.add_argument("--g2_el", type=float, help="electric coupling constant (if not given, computed as g2/2)")
+    parser.add_argument("--g2_mag", type=float, help="magnetic coupling constant (if not given, computed as [2*g2]^-1)")
     parser.add_argument("--g_gm", type=float, default=0.0, help="gauge matter coupling")
     parser.add_argument("--g_mass", type=float, default=0.0, help="matter constant")
 

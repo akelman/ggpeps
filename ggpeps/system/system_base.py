@@ -21,7 +21,7 @@ class Config2DBase(ABC):
     # This will be overwritten by the specifications
     _nparams = 1
 
-    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g2:float, g_gm:float, g2_mag:float, g_mass:float, nlayer:int=1):
+    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g2_el:float, g_gm:float, g2_mag:float, g_mass:float, nlayer:int=1):
         """Constructor.
 
         Args:
@@ -39,8 +39,7 @@ class Config2DBase(ABC):
         self._paramvec = None
 
         # Parameters of the Hamiltonian
-        self.g2 = g2
-        self.g2_el = g2/2
+        self.g2_el = g2_el
         self.g2_mag = g2_mag
         self.g_gm = g_gm
         self.g_mass = g_mass
@@ -1114,7 +1113,7 @@ class System2DBase(ABC):
         """
         if self._energy is None:
             self._energy = 0.0
-        if abs(self.cfg.g2) > ZERO_TOL:
+        if abs(self.cfg.g2_el) > ZERO_TOL:
             self._energy += self.el_energy
         if abs(self.cfg.g2_mag) > ZERO_TOL:
             self._energy += self.mag_energy
