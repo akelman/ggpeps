@@ -14,7 +14,7 @@ def name_from_path(prefix,path):
 
 def folder2coupling(foldername):
     import re
-    pattern=r"(?<=g2=)[\d]*.[\d]*"
+    pattern=r"(?<=g2_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
         return "--g2 {}".format(float(result.group(0)))
@@ -23,7 +23,7 @@ def folder2coupling(foldername):
 
 def folder2el(foldername):
     import re
-    pattern=r"(?<=el=)[\d]*.[\d]*"
+    pattern=r"(?<=el_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
         return "--g2_el {}".format(float(result.group(0)))
@@ -32,7 +32,7 @@ def folder2el(foldername):
 
 def folder2mag(foldername):
     import re
-    pattern=r"(?<=mag=)[\d]*.[\d]*"
+    pattern=r"(?<=mag_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
         return "--g2_mag {}".format(float(result.group(0)))
@@ -41,7 +41,7 @@ def folder2mag(foldername):
 
 def folder2mass(foldername):
     import re
-    pattern=r"(?<=m=)[\d]*.[\d]*"
+    pattern=r"(?<=m_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
         return "--g_mass {}".format(float(result.group(0)))
@@ -50,7 +50,7 @@ def folder2mass(foldername):
 
 def folder2int(foldername):
     import re
-    pattern=r"(?<=int=)[\d]*.[\d]*"
+    pattern=r"(?<=int_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
         return "--g_int {}".format(float(result.group(0)))
