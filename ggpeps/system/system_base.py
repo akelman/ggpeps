@@ -21,7 +21,7 @@ class Config2DBase(ABC):
     # This will be overwritten by the specifications
     _nparams = 1
 
-    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g2_el:float, g_gm:float, g2_mag:float, g_mass:float, nlayer:int=1):
+    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g2_el:float, g_int:float, g2_mag:float, g_mass:float, nlayer:int=1):
         """Constructor.
 
         Args:
@@ -41,7 +41,7 @@ class Config2DBase(ABC):
         # Parameters of the Hamiltonian
         self.g2_el = g2_el
         self.g2_mag = g2_mag
-        self.g_gm = g_gm
+        self.g_int = g_int
         self.g_mass = g_mass
 
     @property
@@ -1119,7 +1119,7 @@ class System2DBase(ABC):
             self._energy += self.mag_energy
         if abs(self.cfg.g_mass) > ZERO_TOL:
             self._energy += self.mass_energy
-        if abs(self.cfg.g_gm) > ZERO_TOL:
+        if abs(self.cfg.g_int) > ZERO_TOL:
             self._energy += self.int_energy
         return self._energy
 
@@ -1167,7 +1167,7 @@ class System2DBase(ABC):
         Returns:
             float: interaction energy
         """
-        int_energy = self.cfg.g_gm * self.int_energy_op
+        int_energy = self.cfg.g_int * self.int_energy_op
         return int_energy
 
     # Functions that return the energy for the operator part of a term in the Hamiltonian, including the energy for the entire lattice, but not any shifts or prefactors.
