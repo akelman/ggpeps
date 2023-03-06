@@ -62,7 +62,7 @@ def main(args):
             mc_config.minimizer_mode = False
             mc_mgr = MonteCarloManager(mc_config, system_cls, system_cfg, 0)
             mc_result = mc_mgr.simulate()
-            fname_summary = "summary_mc_L_{:02d}-{:02d}_g2_{:.3f}_int_{:.3f}_gmag_{:.3f}_t_{}_y_{}_z_{}.pkl".format(
+            fname_summary = "summary_mc_L_{:02d}-{:02d}_g2el_{:.3f}_int_{:.3f}_gmag_{:.3f}_t_{}_y_{}_z_{}.pkl".format(
                 system_cfg.lattice.nx,system_cfg.lattice.ny, system_cfg.g2_el, system_cfg.g_int, system_cfg.g2_mag, paramvec[0], paramvec[1], paramvec[2])
             mc_result.save_summary(fname_summary)
 

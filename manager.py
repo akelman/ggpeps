@@ -42,14 +42,14 @@ def args2logname(args):
     }
     if "exact" in args.mode:
         if args.g2_mag == None:
-            fname = f"log_{shorthands[args.mode]}_L={args.L}x{args.L}_g2={args.g2}_int={args.g_int}.log"
+            fname = f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_g2_{args.g2}_int_{args.g_int}.log"
         else:
-            fname = f"log_{shorthands[args.mode]}_L={args.L}x{args.L}_g2={args.g2}_g2mag={args.g2_mag}_int={args.g_int}.log"
+            fname = f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_g2el_{args.g2}_g2mag_{args.g2_mag}_int_{args.g_int}.log"
     else:
         if args.g2_mag == None:
-            f"log_{shorthands[args.mode]}_L={args.L}x{args.L}_g2={args.g2}_int={args.g_int}_nlayer={args.nlayer}_wsteps={args.warmup_steps}_msteps={args.meas_steps}.log"
+            f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_g2_{args.g2}_int_{args.g_int}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
         else:
-            f"log_{shorthands[args.mode]}_L={args.L}x{args.L}_g2={args.g2}_g2mag={args.g2_mag}_int={args.g_int}_nlayer={args.nlayer}_wsteps={args.warmup_steps}_msteps={args.meas_steps}.log"
+            f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_g2el_{args.g2}_g2mag_{args.g2_mag}_int_{args.g_int}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
     return os.path.join(args.output, fname)
 
 def translate_parameters(system_cfg, params,rng_state):
