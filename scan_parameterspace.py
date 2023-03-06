@@ -11,7 +11,7 @@ import sys
 def main(args):
     L = args.L
     g2 = 1
-    g_gm = 0
+    g_int = 0
     g_mag = 1
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
@@ -22,7 +22,7 @@ def main(args):
         system_cls = Z2System2D
         system_cfg = Z2System2DConfig(lattice,
                                       g2,
-                                      g_gm,
+                                      g_int,
                                       g_mag,
                                       nlayer=args.nlayer)
         nparams = system_cfg.nvarparams()
@@ -34,7 +34,7 @@ def main(args):
         system_cls = Z2System2D2C
         system_cfg = Z2System2D2CConfig(lattice,
                                         g2,
-                                        g_gm,
+                                        g_int,
                                         g_mag,
                                         nlayer=args.nlayer)
         nparams = system_cfg.nvarparams()
@@ -62,8 +62,8 @@ def main(args):
             mc_config.minimizer_mode = False
             mc_mgr = MonteCarloManager(mc_config, system_cls, system_cfg, 0)
             mc_result = mc_mgr.simulate()
-            fname_summary = "summary_mc_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_gmag_{:.3f}_t_{}_y_{}_z_{}.pkl".format(
-                system_cfg.lattice.nx,system_cfg.lattice.ny, system_cfg.g2_el, system_cfg.g_gm, system_cfg.g2_mag, paramvec[0], paramvec[1], paramvec[2])
+            fname_summary = "summary_mc_L_{:02d}-{:02d}_g2_{:.3f}_int_{:.3f}_gmag_{:.3f}_t_{}_y_{}_z_{}.pkl".format(
+                system_cfg.lattice.nx,system_cfg.lattice.ny, system_cfg.g2_el, system_cfg.g_int, system_cfg.g2_mag, paramvec[0], paramvec[1], paramvec[2])
             mc_result.save_summary(fname_summary)
 
 
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     #parser.add_argument("--g2", type=float, default=1.0,
                         #help="coupling constant")
     #parser.add_argument("--g_mag", type=float, help="coupling constant")
-    #parser.add_argument("--g_gm", type=float, default=0.0,
+    #parser.add_argument("--g_int", type=float, default=0.0,
                         #help="gauge matter coupling")
     parser.add_argument("--seed", type=int, help="Seed for the MC simulation")
     parser.add_argument("--warmup_steps", type=int,

@@ -27,7 +27,7 @@ class Config2DBase(ABC):
         Args:
             lattice (Union[Lattice2D, Lattice3D]): lattice. 
             g2 (float): Hamiltonian prefactor for electric energy
-            g_gm (float): prefactor for gauge-matter coupling
+            g_int (float): prefactor for gauge-matter coupling
             g2_mag (float): prefactor for magnetic energy
             g_mass (float): mass of physical fermions (i.e. prefactor on the mass term).
             nlayer (int, optional): number of layers. Defaults to 1.

@@ -24,10 +24,10 @@ class Z2System2D4C_Config(Config2DBase):
     nvirtmodes_vertex = 8
     nvirtmodes_link = 4
 
-    def __init__(self, lattice, g2, g_gm, g_mag, g_mass, nlayer=2):
+    def __init__(self, lattice, g2, g_int, g_mag, g_mass, nlayer=2):
         if nlayer != 2:
             raise ValueError("When including physical fermions, 2 layers is required.")
-        super().__init__(lattice, g2, g_gm, g_mag, g_mass, nlayer)
+        super().__init__(lattice, g2, g_int, g_mag, g_mass, nlayer)
 
     def make_pure_gauge(self):
         reproduce_2C1L = False # zero out the second layer (used for physical fermions); this should reproduce the 2 copy, 1 layer ansatz

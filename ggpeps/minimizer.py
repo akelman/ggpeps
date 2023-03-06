@@ -175,12 +175,12 @@ class Minimizer():
         if self.min_result is not None:
             sys_cfg=self.evaluator.system_cfg
 
-            fname_mc_summary = "summary_min_L_{:02d}-{:02d}_g2_{:.4f}_gm_{:.4f}_ncopy_{:02d}_nlayer_{:02d}.pkl".format(
+            fname_mc_summary = "summary_min_L_{:02d}-{:02d}_g2_{:.4f}_int_{:.4f}_ncopy_{:02d}_nlayer_{:02d}.pkl".format(
                 sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g2,
-                sys_cfg.g_gm, sys_cfg.ncopy, sys_cfg.nlayer)
-            fname_result_min = "result_min_L_{:02d}-{:02d}_g2_{:.4f}_gm_{:.4f}_ncopy_{:02d}_nlayer_{:02d}.pkl".format(
+                sys_cfg.g_int, sys_cfg.ncopy, sys_cfg.nlayer)
+            fname_result_min = "result_min_L_{:02d}-{:02d}_g2_{:.4f}_int_{:.4f}_ncopy_{:02d}_nlayer_{:02d}.pkl".format(
                 sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g2,
-                sys_cfg.g_gm, sys_cfg.ncopy, sys_cfg.nlayer)
+                sys_cfg.g_int, sys_cfg.ncopy, sys_cfg.nlayer)
 
             self.last_result.save_summary(os.path.join(output_dir,fname_mc_summary))
             with open(os.path.join(output_dir, fname_result_min),"wb") as outfile:

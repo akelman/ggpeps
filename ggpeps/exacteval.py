@@ -162,7 +162,7 @@ class ExactEvaluator():
             expval_prod_int = self.compute_expval(prod_int_op_norm, normvec)
             prod_expval_int = self.compute_expval(data["int_energy_op"], normvec) * dest["grad_norm"]
             int_energy_grad = expval_prod_int - prod_expval_int + self.compute_expval(np.transpose(data["int_energy_op_grad"], [2,1,0]), normvec)
-            int_energy_grad *= self.system.cfg.g_gm
+            int_energy_grad *= self.system.cfg.g_int
             dest["int_energy_grad"] = int_energy_grad
 
             # Add for the full gradient, subject to conditions on parameterization
@@ -188,7 +188,7 @@ class ExactEvaluator():
             "nlayer":[],
             "g2": [],
             "g2_el": [],
-            "g_gm": [],
+            "g_int": [],
             "g2_mag": [],
             "mean": []
         }
@@ -198,7 +198,7 @@ class ExactEvaluator():
             dest['ny'].append(self.system.cfg.lattice.ny)
             dest['g2'].append(self.system.cfg.g2)
             dest['g2_el'].append(self.system.cfg.g2_el)
-            dest['g_gm'].append(self.system.cfg.g_gm)
+            dest['g_int'].append(self.system.cfg.g_int)
             dest['g2_mag'].append(self.system.cfg.g2_mag)
             dest['paramvec'].append(self.system.cfg.paramvec)
             dest['ncopy'].append(self.system.cfg.ncopy)
@@ -218,7 +218,7 @@ class ExactEvaluator():
         ystr = "-".join([str(y) for y in yvec])
         zstr = "-".join([str(z) for z in zvec])
 
-        fname_summary = f"summary_exact_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_g2_{syscfg.g2:.3f}_gm_{syscfg.g_gm:.3f}_gmag_{syscfg.g2_mag:.3f}_t_{tstr}_y_{ystr}_z_{zstr}.pkl"
+        fname_summary = f"summary_exact_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_g2_{syscfg.g2:.3f}_int_{syscfg.g_int:.3f}_gmag_{syscfg.g2_mag:.3f}_t_{tstr}_y_{ystr}_z_{zstr}.pkl"
         self.save_summary(os.path.join(output_dir,fname_summary))
 
     def save_summary(self, fname_summary: str):

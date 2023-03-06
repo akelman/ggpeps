@@ -372,11 +372,11 @@ class MonteCarloEstimator:
         syscfg = self.system.cfg
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
-        fname_full = "data_mc_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_g2mag_{:.3f}_nlayer_{:02d}_wsteps_{:07d}_msteps_{:07d}.pkl.gz".format(
-            syscfg.lattice.nx, syscfg.lattice.ny, syscfg.g2_el, syscfg.g_gm,
+        fname_full = "data_mc_L_{:02d}-{:02d}_g2_{:.3f}_int_{:.3f}_g2mag_{:.3f}_nlayer_{:02d}_wsteps_{:07d}_msteps_{:07d}.pkl.gz".format(
+            syscfg.lattice.nx, syscfg.lattice.ny, syscfg.g2_el, syscfg.g_int,
             syscfg.g2_mag, syscfg.nlayer, warmup_steps, meas_steps)
-        fname_summary = "summary_mc_L_{:02d}-{:02d}_g2_{:.3f}_gm_{:.3f}_g2mag_{:.3f}_nlayer_{:02d}_wsteps_{:07d}_msteps_{:07d}.pkl".format(
-            syscfg.lattice.nx, syscfg.lattice.ny, 2*syscfg.g2_el, syscfg.g_gm,
+        fname_summary = "summary_mc_L_{:02d}-{:02d}_g2_{:.3f}_int_{:.3f}_g2mag_{:.3f}_nlayer_{:02d}_wsteps_{:07d}_msteps_{:07d}.pkl".format(
+            syscfg.lattice.nx, syscfg.lattice.ny, 2*syscfg.g2_el, syscfg.g_int,
             syscfg.g2_mag, syscfg.nlayer, warmup_steps, meas_steps)
         self.save_full(os.path.join(output_dir, fname_full))
         self.save_summary(os.path.join(output_dir, fname_summary))
@@ -406,7 +406,7 @@ class MonteCarloEstimator:
             "nlayer":[],
             "g2": [],
             "g2_el": [],
-            "g_gm": [],
+            "g_int": [],
             "g2_mag": [],
             "warmup_steps": [],
             "meas_steps": [],
@@ -420,7 +420,7 @@ class MonteCarloEstimator:
             dest['ny'].append(self.system.cfg.lattice.ny)
             dest['g2'].append(2*self.system.cfg.g2_el)
             dest['g2_el'].append(self.system.cfg.g2_el)
-            dest['g_gm'].append(self.system.cfg.g_gm)
+            dest['g_int'].append(self.system.cfg.g_int)
             dest['g2_mag'].append(self.system.cfg.g2_mag)
             dest['paramvec'].append(self.system.cfg.paramvec)
             dest['ncopy'].append(self.system.cfg.ncopy)
