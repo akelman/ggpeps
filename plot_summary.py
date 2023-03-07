@@ -38,7 +38,8 @@ def main(args):
 
     #Enrich dataset
     df_mc_ec["L"] = df_mc_ec["nx"].astype("str") + "-" + df_mc_ec["ny"].astype("str")
-    df_mc_ec.rename(columns={"g_el":"g2_el", "g_mag":"g2_mag"},inplace=True)
+    df_mc_ec["g2"] = df_mc_ec.g2_el * 2
+    df_mc_ec.rename(columns={"g_mag":"g2_mag"},inplace=True)
     obsnamevec = df_mc_ec.name.unique()
 
     if args.exact is not None and os.path.isfile(args.exact):
