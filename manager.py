@@ -40,17 +40,26 @@ def args2logname(args):
         "exact": "exact",
         "minexact": "minexact"
     }
-    if "exact" in args.mode:
-        if args.g2_mag == None:
-            fname = f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_g2_{args.g2}_int_{args.g_int}.log"
-        else:
-            fname = f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_g2el_{args.g2}_g2mag_{args.g2_mag}_int_{args.g_int}.log"
-    else:
-        if args.g2_mag == None:
-            f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_g2_{args.g2}_int_{args.g_int}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
-        else:
-            f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_g2el_{args.g2}_g2mag_{args.g2_mag}_int_{args.g_int}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
-    return os.path.join(args.output, fname)
+
+    logname = f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}"
+
+    # Hamiltonian params
+    if args.g2 is not None:
+        logname += f"_g2_{args.g2}"
+    if args.g2_el is not None:
+        logname += f"_g2el_{args.g2_el}"
+    if args.g2_mag is not None:
+        logname += f"_g2mag_{args.g2_mag}"
+    if args.g_mass is not None:
+        logname += f"_int_{args.g_mass}"
+    if args.g_int is not None:
+        logname += f"_mass_{args.g_int}"
+
+    if "exact" not in args.mode:
+        logname += f"_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}"
+    
+    logname += ".log"
+    return os.path.join(args.output, logname)
 
 def translate_parameters(system_cfg, params,rng_state):
     """Translate the parameters given on the commandline to a form useful in the code
