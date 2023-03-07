@@ -218,7 +218,7 @@ class ExactEvaluator():
         ystr = "-".join([str(y) for y in yvec])
         zstr = "-".join([str(z) for z in zvec])
 
-        fname_summary = f"summary_exact_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_g2el_{syscfg.g2_el:.3f}_int_{syscfg.g_int:.3f}_gmag_{syscfg.g2_mag:.3f}_t_{tstr}_y_{ystr}_z_{zstr}.pkl"
+        fname_summary = f"summary_exact_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_g2el_{syscfg.g2_el:.3f}_int_{syscfg.g_int:.3f}_g2mag_{syscfg.g2_mag:.3f}_t_{tstr}_y_{ystr}_z_{zstr}.pkl"
         self.save_summary(os.path.join(output_dir,fname_summary))
 
     def save_summary(self, fname_summary: str):
