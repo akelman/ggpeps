@@ -404,7 +404,7 @@ class MonteCarloEstimator:
             "paramvec":[],
             "ncopy":[],
             "nlayer":[],
-            "g2": [],
+            "g_mass": [],
             "g2_el": [],
             "g_int": [],
             "g2_mag": [],
