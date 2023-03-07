@@ -418,7 +418,7 @@ class MonteCarloEstimator:
             dest['name'].append(key)
             dest['nx'].append(self.system.cfg.lattice.nx)
             dest['ny'].append(self.system.cfg.lattice.ny)
-            dest['g2'].append(2*self.system.cfg.g2_el)
+            dest['g_mass'].append(2*self.system.cfg.g_mass)
             dest['g2_el'].append(self.system.cfg.g2_el)
             dest['g_int'].append(self.system.cfg.g_int)
             dest['g2_mag'].append(self.system.cfg.g2_mag)
