@@ -91,7 +91,7 @@ def main(args):
                         error = group['err']
                     else:
                         error = None
-                    ax.errorbar(group["g_el"],
+                    ax.errorbar(group[args.xaxis],
                             group["diff"],
                             fmt='o', 
                             yerr=error,
@@ -100,7 +100,7 @@ def main(args):
                 for name, group in df_filtered.groupby(["type","L","nlayer", "ncopy"]):
                     type, L, nlayer, ncopy = name
                     if type == "ED":
-                        ax.plot(group["g_el"],
+                        ax.plot(group[args.xaxis],
                                 group["mean"],
                                 label="ED, {}, L={}".format(type,obs,L))
                     else:
@@ -108,7 +108,7 @@ def main(args):
                             error = group['err']
                         else:
                             error = None
-                        ax.errorbar(group["g_el"],
+                        ax.errorbar(group[args.xaxis],
                                 group["mean"],
                                 fmt='o', 
                                 yerr=error,
@@ -118,7 +118,7 @@ def main(args):
         ax.set_xscale("log")
     if args.logy:
         ax.set_yscale("log")
-    ax.set_xlabel("$g_\mathrm{el}$", fontsize=10)
+    ax.set_xlabel(args.xaxis, fontsize=10)
     if args.diff:
         ax.set_ylabel("Value - ED", fontsize=10)
     else:
@@ -144,6 +144,7 @@ if __name__ == "__main__":
     parser.add_argument("--diff", action="store_true", default=False, help="Plot the difference to the exact results")
     parser.add_argument("--logx", action="store_true", default=False, help="Use logarithmic scaling for x axis")
     parser.add_argument("--logy", action="store_true", default=False, help="Use logarithmic scaling for y axis")
+    parser.add_argument("--xaxis", type=str, default="g_el", help="Quantity to be plotted on the x axis")
     parser.add_argument("--obs",
                         type=str,
                         nargs="+",
