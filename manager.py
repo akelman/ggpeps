@@ -44,7 +44,7 @@ def args2logname(args,params):
     if "exact" in args.mode:
         fname = f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_gel_{params['g_el']}_gmag_{params['g_mag']}_gint_{params['g_int']}_gmass{params['g_mass']}.log"
     else:
-        f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_gel_{params['g_el']}_gmag_{params['g_mag']}_gint_{params['g_int']}_gmass{params['g_mass']}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
+        fname = f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_gel_{params['g_el']}_gmag_{params['g_mag']}_gint_{params['g_int']}_gmass{params['g_mass']}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
     return os.path.join(args.output, fname)
 
 def translate_parameters(system_cfg, params,rng_state):
