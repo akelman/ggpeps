@@ -7,7 +7,6 @@ import numpy as np
 
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
-from ggpeps.utils import ZERO_TOL
 
 
 class Config2DBase(ABC):
@@ -1113,13 +1112,13 @@ class System2DBase(ABC):
         """
         if self._energy is None:
             self._energy = 0.0
-        if abs(self.cfg.g_el) > ZERO_TOL:
+        if not utils.isclose(self.cfg.g_el, 0):
             self._energy += self.el_energy
-        if abs(self.cfg.g_mag) > ZERO_TOL:
+        if not utils.isclose(self.cfg.g_mag, 0):
             self._energy += self.mag_energy
-        if abs(self.cfg.g_mass) > ZERO_TOL:
+        if not utils.isclose(self.cfg.g_mass, 0):
             self._energy += self.mass_energy
-        if abs(self.cfg.g_int) > ZERO_TOL:
+        if not utils.isclose(self.cfg.g_int, 0):
             self._energy += self.int_energy
         return self._energy
 
