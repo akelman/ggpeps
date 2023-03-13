@@ -138,7 +138,7 @@ class ExactEvaluator():
             expval_prod_mag = self.compute_expval(prod_mag_op_norm, normvec)
             prod_expval_mag = self.compute_expval(data["mag_energy_op"], normvec) * dest["grad_norm"]
             mag_op_grad = expval_prod_mag - prod_expval_mag
-            mag_energy_grad = -2 * self.system.cfg.g2_mag * mag_op_grad
+            mag_energy_grad = -2 * self.system.cfg.g_mag * mag_op_grad
             dest["mag_energy_grad"] = mag_energy_grad
 
             # Electric gradient
@@ -146,7 +146,7 @@ class ExactEvaluator():
             expval_prod_el = self.compute_expval(prod_el_op_norm, normvec)
             prod_expval_el = self.compute_expval(data["el_energy_op"], normvec) * dest["grad_norm"]
             el_op_grad = expval_prod_el - prod_expval_el + self.compute_expval(np.transpose(data["el_energy_op_grad"],[2,1,0]), normvec)
-            el_energy_grad = -2 * self.system.cfg.g2_el * el_op_grad
+            el_energy_grad = -2 * self.system.cfg.g_el * el_op_grad
             dest["el_energy_grad"] = el_energy_grad
 
             # Mass gradient
@@ -186,20 +186,20 @@ class ExactEvaluator():
             "paramvec":[],
             "ncopy":[],
             "nlayer":[],
-            "g_mass": [],
-            "g2_el": [],
+            "g_el": [],
+            "g_mag": [],
             "g_int": [],
-            "g2_mag": [],
+            "g_mass": [],
             "mean": []
         }
         for key in self.obsdict.keys():
             dest['name'].append(key)
             dest['nx'].append(self.system.cfg.lattice.nx)
             dest['ny'].append(self.system.cfg.lattice.ny)
-            dest['g_mass'].append(self.system.cfg.g_mass)
-            dest['g2_el'].append(self.system.cfg.g2_el)
+            dest['g_el'].append(self.system.cfg.g_el)
+            dest['g_mag'].append(self.system.cfg.g_mag)
             dest['g_int'].append(self.system.cfg.g_int)
-            dest['g2_mag'].append(self.system.cfg.g2_mag)
+            dest['g_mass'].append(self.system.cfg.g_mass)
             dest['paramvec'].append(self.system.cfg.paramvec)
             dest['ncopy'].append(self.system.cfg.ncopy)
             dest['nlayer'].append(self.system.cfg.nlayer)
@@ -218,7 +218,7 @@ class ExactEvaluator():
         ystr = "-".join([str(y) for y in yvec])
         zstr = "-".join([str(z) for z in zvec])
 
-        fname_summary = f"summary_exact_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_g2el_{syscfg.g2_el:.3f}_int_{syscfg.g_int:.3f}_g2mag_{syscfg.g2_mag:.3f}_t_{tstr}_y_{ystr}_z_{zstr}.pkl"
+        fname_summary = f"summary_exact_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_t_{tstr}_y_{ystr}_z_{zstr}.pkl"
         self.save_summary(os.path.join(output_dir,fname_summary))
 
     def save_summary(self, fname_summary: str):

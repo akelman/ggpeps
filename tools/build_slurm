@@ -14,10 +14,10 @@ def name_from_path(prefix,path):
 
 def folder2coupling(foldername):
     import re
-    pattern=r"(?<=g2_)[\d]*.[\d]*"
+    pattern=r"(?<=g_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
-        return "--g2 {}".format(float(result.group(0)))
+        return "--g {}".format(float(result.group(0)))
     else:
         return ""
 
@@ -26,7 +26,7 @@ def folder2el(foldername):
     pattern=r"(?<=el_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
-        return "--g2_el {}".format(float(result.group(0)))
+        return "--gel {}".format(float(result.group(0)))
     else:
         return ""
 
@@ -35,7 +35,7 @@ def folder2mag(foldername):
     pattern=r"(?<=mag_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
-        return "--g2_mag {}".format(float(result.group(0)))
+        return "--gmag {}".format(float(result.group(0)))
     else:
         return ""
 

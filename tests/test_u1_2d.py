@@ -13,7 +13,7 @@ class TestU1SystemMethods(unittest.TestCase):
     def setUp(self):
         lat = lattice.Lattice2D(2, 2)
         paramvec = [[0.1, 0.3, 0.4]]
-        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
+        cfg = system.U1System2DConfig(lat, 1.0, 1.0, 0.0)
         cfg.paramvec = paramvec
         self.system_u1_2_2 = system.U1System2D(cfg)
 
