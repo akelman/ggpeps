@@ -41,6 +41,11 @@ def main(args):
     df_mc_ec.rename(columns={"g2_el":"g_el", "g2_mag":"g_mag","g2":"g"},inplace=True)
     obsnamevec = df_mc_ec.name.unique()
 
+    if 'g' not in df_mc_ec.columns:
+        df_mc_ec['g'] = df_mc_ec.g_el * 2
+    if 'g_mag' not in df_mc_ec.columns:
+        df_mc_ec['g_mag'] = 1 / (df_tmp.g_el * 4)
+
     if args.exact is not None and os.path.isfile(args.exact):
         df_exact = pd.read_pickle(args.exact)
         df_exact["L"] = df_exact["nx"].astype("str") + "-" + df_exact["ny"].astype("str")
@@ -52,6 +57,8 @@ def main(args):
         # Adapt the naming convention between the ED and the MC/EC data
         df_exact.rename(columns={"g2_ham":"g","value":"mean"},inplace=True)
         df_exact.drop(columns=["nz","gauge"],inplace=True)
+        if 'g_el' not in df_exact.columns:
+            df_exact['g_el'] = df_exact.g / 2
 
         df = pd.concat([df_mc_ec,df_exact])
         
