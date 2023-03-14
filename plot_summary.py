@@ -38,8 +38,7 @@ def main(args):
 
     #Enrich dataset
     df_mc_ec["L"] = df_mc_ec["nx"].astype("str") + "-" + df_mc_ec["ny"].astype("str")
-    df_mc_ec["g2"] = df_mc_ec.g2_el * 2
-    df_mc_ec.rename(columns={"g_mag":"g2_mag"},inplace=True)
+    df_mc_ec.rename(columns={"g2_el":"g_el", "g2_mag":"g_mag","g2":"g"},inplace=True)
     obsnamevec = df_mc_ec.name.unique()
 
     if args.exact is not None and os.path.isfile(args.exact):
@@ -51,7 +50,7 @@ def main(args):
         df_exact["ncopy"]= -1
 
         # Adapt the naming convention between the ED and the MC/EC data
-        df_exact.rename(columns={"g2_ham":"g2","value":"mean"},inplace=True)
+        df_exact.rename(columns={"g2_ham":"g","value":"mean"},inplace=True)
         df_exact.drop(columns=["nz","gauge"],inplace=True)
 
         df = pd.concat([df_mc_ec,df_exact])
@@ -59,11 +58,11 @@ def main(args):
         # Compute the differences
         df_mc_ec_approx = df_mc_ec.copy()
         df_ed_approx = df_exact.copy()
-        df_mc_ec_approx.g2 = np.round(df_mc_ec_approx.g2, decimals=3)
-        df_ed_approx.g2 = np.round(df_ed_approx.g2, decimals=3)
-        df_merged = pd.merge(df_mc_ec_approx,df_ed_approx,on=["g2","L","name","nx","ny"],suffixes=("_mc_ec","_ed"))
+        df_mc_ec_approx.g = np.round(df_mc_ec_approx.g, decimals=3)
+        df_ed_approx.g = np.round(df_ed_approx.g, decimals=3)
+        df_merged = pd.merge(df_mc_ec_approx,df_ed_approx,on=["g","L","name","nx","ny"],suffixes=("_mc_ec","_ed"))
         df_merged["diff"] = df_merged["mean_mc_ec"]-df_merged["mean_ed"]
-        df_diff = df_merged[["name","g2","ncopy_mc_ec","nlayer_mc_ec","L","diff","type_mc_ec","err"]].copy()
+        df_diff = df_merged[["name","g","ncopy_mc_ec","nlayer_mc_ec","L","diff","type_mc_ec","err"]].copy()
         df_diff.rename(columns={"nlayer_mc_ec": "nlayer", "ncopy_mc_ec": "ncopy","type_mc_ec":"type"}, inplace=True)
     else:
         df = df_mc_ec
@@ -92,7 +91,7 @@ def main(args):
                         error = group['err']
                     else:
                         error = None
-                    ax.errorbar(group["g2"],
+                    ax.errorbar(group[args.xaxis],
                             group["diff"],
                             fmt='o', 
                             yerr=error,
@@ -101,7 +100,7 @@ def main(args):
                 for name, group in df_filtered.groupby(["type","L","nlayer", "ncopy"]):
                     type, L, nlayer, ncopy = name
                     if type == "ED":
-                        ax.plot(group["g2"],
+                        ax.plot(group[args.xaxis],
                                 group["mean"],
                                 label="ED, {}, L={}".format(type,obs,L))
                     else:
@@ -109,7 +108,7 @@ def main(args):
                             error = group['err']
                         else:
                             error = None
-                        ax.errorbar(group["g2"],
+                        ax.errorbar(group[args.xaxis],
                                 group["mean"],
                                 fmt='o', 
                                 yerr=error,
@@ -119,7 +118,7 @@ def main(args):
         ax.set_xscale("log")
     if args.logy:
         ax.set_yscale("log")
-    ax.set_xlabel("$g^2$", fontsize=10)
+    ax.set_xlabel(args.xaxis, fontsize=10)
     if args.diff:
         ax.set_ylabel("Value - ED", fontsize=10)
     else:
@@ -145,6 +144,7 @@ if __name__ == "__main__":
     parser.add_argument("--diff", action="store_true", default=False, help="Plot the difference to the exact results")
     parser.add_argument("--logx", action="store_true", default=False, help="Use logarithmic scaling for x axis")
     parser.add_argument("--logy", action="store_true", default=False, help="Use logarithmic scaling for y axis")
+    parser.add_argument("--xaxis", type=str, default="g_el", help="Quantity to be plotted on the x axis")
     parser.add_argument("--obs",
                         type=str,
                         nargs="+",

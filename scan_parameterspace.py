@@ -10,7 +10,7 @@ import sys
 
 def main(args):
     L = args.L
-    g2 = 1
+    g_el = 1
     g_int = 0
     g_mag = 1
     # We are focussing on 2 dimensions for the moment
@@ -21,7 +21,7 @@ def main(args):
     if args.ncopy == 1:
         system_cls = Z2System2D
         system_cfg = Z2System2DConfig(lattice,
-                                      g2,
+                                      g_el,
                                       g_int,
                                       g_mag,
                                       nlayer=args.nlayer)
@@ -33,7 +33,7 @@ def main(args):
     elif args.ncopy == 2:
         system_cls = Z2System2D2C
         system_cfg = Z2System2D2CConfig(lattice,
-                                        g2,
+                                        g_el,
                                         g_int,
                                         g_mag,
                                         nlayer=args.nlayer)

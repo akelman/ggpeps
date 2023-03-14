@@ -7,7 +7,6 @@ import numpy as np
 
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
-from ggpeps.utils import ZERO_TOL
 
 
 class Config2DBase(ABC):
@@ -21,14 +20,14 @@ class Config2DBase(ABC):
     # This will be overwritten by the specifications
     _nparams = 1
 
-    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g2_el:float, g_int:float, g2_mag:float, g_mass:float, nlayer:int=1):
+    def __init__(self, lattice: Union[Lattice2D, Lattice3D], g_el: float, g_mag: float, g_int: float,  g_mass: float, nlayer: int = 1):
         """Constructor.
 
         Args:
             lattice (Union[Lattice2D, Lattice3D]): lattice. 
-            g2 (float): Hamiltonian prefactor for electric energy
+            g (float): Hamiltonian prefactor for electric energy
+            g_mag (float): prefactor for magnetic energy
             g_int (float): prefactor for gauge-matter coupling
-            g2_mag (float): prefactor for magnetic energy
             g_mass (float): mass of physical fermions (i.e. prefactor on the mass term).
             nlayer (int, optional): number of layers. Defaults to 1.
         """
@@ -39,8 +38,8 @@ class Config2DBase(ABC):
         self._paramvec = None
 
         # Parameters of the Hamiltonian
-        self.g2_el = g2_el
-        self.g2_mag = g2_mag
+        self.g_el = g_el
+        self.g_mag = g_mag
         self.g_int = g_int
         self.g_mass = g_mass
 
@@ -1113,13 +1112,13 @@ class System2DBase(ABC):
         """
         if self._energy is None:
             self._energy = 0.0
-        if abs(self.cfg.g2_el) > ZERO_TOL:
+        if not utils.isclose(self.cfg.g_el, 0):
             self._energy += self.el_energy
-        if abs(self.cfg.g2_mag) > ZERO_TOL:
+        if not utils.isclose(self.cfg.g_mag, 0):
             self._energy += self.mag_energy
-        if abs(self.cfg.g_mass) > ZERO_TOL:
+        if not utils.isclose(self.cfg.g_mass, 0):
             self._energy += self.mass_energy
-        if abs(self.cfg.g_int) > ZERO_TOL:
+        if not utils.isclose(self.cfg.g_int, 0):
             self._energy += self.int_energy
         return self._energy
 
@@ -1133,7 +1132,7 @@ class System2DBase(ABC):
             float: electric energy
         """
         nlinks = self.cfg.lattice.nlinks
-        el_energy = self.cfg.g2_el * (2*nlinks - 2*self.el_energy_op)
+        el_energy = self.cfg.g_el * (2*nlinks - 2*self.el_energy_op)
         return el_energy
     
     @property
@@ -1145,7 +1144,7 @@ class System2DBase(ABC):
             float: magnetic energy
         """
         nplaq = self.cfg.lattice.nplaquettes
-        mag_energy = self.cfg.g2_mag * (2*nplaq - 2*self.mag_energy_op)
+        mag_energy = self.cfg.g_mag * (2*nplaq - 2*self.mag_energy_op)
         return mag_energy
 
     @property

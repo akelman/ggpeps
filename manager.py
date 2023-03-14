@@ -24,11 +24,12 @@ from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloManager
 from ggpeps import lattice as lat
 
 
-def args2logname(args):
+def args2logname(args,params):
     """Convert arguments to a name for the log file
 
     Args:
         args (namespace): Namespace of arguments as provided by argparse
+        params (dict): Dictionary of all couplings
 
     Returns:
         str: Filename of the log file
@@ -40,26 +41,11 @@ def args2logname(args):
         "exact": "exact",
         "minexact": "minexact"
     }
-
-    logname = f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}"
-
-    # Hamiltonian params
-    if args.g2 is not None:
-        logname += f"_g2_{args.g2}"
-    if args.g2_el is not None:
-        logname += f"_g2el_{args.g2_el}"
-    if args.g2_mag is not None:
-        logname += f"_g2mag_{args.g2_mag}"
-    if args.g_mass is not None:
-        logname += f"_int_{args.g_mass}"
-    if args.g_int is not None:
-        logname += f"_mass_{args.g_int}"
-
-    if "exact" not in args.mode:
-        logname += f"_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}"
-    
-    logname += ".log"
-    return os.path.join(args.output, logname)
+    if "exact" in args.mode:
+        fname = f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_gel_{params['g_el']}_gmag_{params['g_mag']}_gint_{params['g_int']}_gmass{params['g_mass']}.log"
+    else:
+        fname = f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_gel_{params['g_el']}_gmag_{params['g_mag']}_gint_{params['g_int']}_gmass{params['g_mass']}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
+    return os.path.join(args.output, fname)
 
 def translate_parameters(system_cfg, params,rng_state):
     """Translate the parameters given on the commandline to a form useful in the code
@@ -116,6 +102,24 @@ def main(args):
     else:
         os.makedirs(args.output)
 
+    # Set up the simulation
+    L = args.L
+    g = args.g
+    if args.g_el is None and g is not None:
+        g_el = g/2.0
+    else:
+        g_el = args.g_el
+    if args.g_mag is None:
+        if g is not None:
+            g_mag = 1./(2*g)
+        else:
+            g_mag = 1/(4*g_el)
+    else:
+        g_mag = args.g_mag
+    g_int = args.g_int
+    g_mass = args.g_mass
+    params = {"g_el":g_el, "g_mag":g_mag, "g_int":g_int, "g_mass":g_mass}
+
     # Set up the logger
     h_stdout = logging.StreamHandler(stream=sys.stdout)
     h_stderr = logging.StreamHandler(stream=sys.stderr)
@@ -124,7 +128,7 @@ def main(args):
         level=args.level.upper(),
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[
-            logging.FileHandler(args2logname(args)),
+            logging.FileHandler(args2logname(args,params)),
             h_stdout,
             h_stderr
         ]
@@ -163,22 +167,6 @@ def main(args):
     logging.info(f"Measurement steps: {mc_config.meas_steps}")
     logging.info("============================")
 
-    # Set up the simulation
-    L = args.L
-    g2 = args.g2
-    if args.g2_el is None and g2 is not None:
-        g2_el = g2/2.0
-    else:
-        g2_el = args.g2_el
-    if args.g2_mag is None:
-        if g2 is not None:
-            g2_mag = 1./(2*g2)
-        else:
-            g2_mag = 1/(4*g2_el)
-    else:
-        g2_mag = args.g2_mag
-    g_int = args.g_int
-    g_mass = args.g_mass
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 
@@ -187,15 +175,15 @@ def main(args):
     if args.ncopy == 1:
         # Z2 system with one copy of virtual fermions on the links
         system_type = Z2System2D
-        system_cfg = Z2System2DConfig(lattice, g2_el, g_int, g2_mag, g_mass, nlayer=args.nlayer)
+        system_cfg = Z2System2DConfig(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
     elif args.ncopy == 2:
         # Z2 system with two copies of virtual fermions on the links
         system_type = Z2System2D2C
-        system_cfg = Z2System2D2CConfig(lattice, g2_el, g_int, g2_mag, g_mass, nlayer=args.nlayer)
+        system_cfg = Z2System2D2CConfig(lattice, g_el, g_mag, g_int,  g_mass, nlayer=args.nlayer)
     elif args.ncopy == 4:
         # Z2 system with 4 copies of virtual fermions on the links (2 for the pure gauge case, 2 for interacting with physical fermions)
         system_type = Z2System2D4C
-        system_cfg = Z2System2D4C_Config(lattice, g2_el, g_int, g2_mag, g_mass)
+        system_cfg = Z2System2D4C_Config(lattice, g_el, g_mag, g_int, g_mass)
     else:
         logging.error("Not Implemented: Only 1, 2, or 4 copies are possible.")
         sys.exit(1)
@@ -221,9 +209,9 @@ def main(args):
     logging.info(f"# of layers: {system_cfg.nlayer}")
     logging.info(f"# of copies: {args.ncopy}")
     logging.info(f"pure-gauge: {args.pure_gauge}")
-    logging.info(f"g^2 (lambda): {g2}")
-    logging.info(f"g^2_el: {g2_el}")
-    logging.info(f"g^2_mag: {g2_mag}")
+    logging.info(f"g (lambda): {g}")
+    logging.info(f"g_el: {g_el}")
+    logging.info(f"g_mag: {g_mag}")
     logging.info(f"g_int: {g_int}")
     logging.info(f"g_mass: {g_mass}")
     logging.info(f"Rebinning EOM: {Measurement.use_rebinning}")
@@ -356,11 +344,16 @@ if __name__ == "__main__":
     parser.add_argument("L", type=int, help="Size of the square system (one side)")
     
     # Hamiltonian parameters
-    parser.add_argument("--g2", type=float, help="coupling constant (equal to lambda)")
-    parser.add_argument("--g2_el", type=float, help="electric coupling constant (if not given, computed as g2/2)")
-    parser.add_argument("--g2_mag", type=float, help="magnetic coupling constant (if not given, computed as [2*g2]^-1)")
-    parser.add_argument("--g_int", type=float, default=0.0, help="gauge matter coupling")
-    parser.add_argument("--g_mass", type=float, default=0.0, help="matter constant")
+    parser.add_argument("--g", type=float, default=1.0,
+                        help="coupling constant (equal to lambda)")
+    parser.add_argument("--g_el", type=float,
+                        help="electric coupling constant (if not given, computed as g/2)")
+    parser.add_argument("--g_mag", type=float,
+                        help="magnetic coupling constant (if not given, computed as [2*g]^-1)")
+    parser.add_argument("--g_int", type=float, default=0.0,
+                        help="gauge matter coupling")
+    parser.add_argument("--g_mass", type=float,
+                        default=0.0, help="matter constant")
 
     # Ansatz parameters
     parser.add_argument("--nlayer",

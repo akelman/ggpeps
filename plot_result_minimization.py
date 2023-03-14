@@ -4,17 +4,7 @@ import os
 import sys
 import matplotlib.pyplot as plt
 import re
-
-def fname2L(fname):
-    pattern=r"(?<=L_)[\d]*"
-    result = re.search(pattern, fname)
-    return int(result.group(0))
-
-def fname2g2(fname):
-    """Extract the electric coupling from a filename"""
-    pattern=r"(?<=gel_)[\d]*.[\d]"
-    result = re.search(pattern, fname)
-    return float(result.group(0))
+from ggpeps import utils
 
 def res2df(fname,res):
     resdict={}
@@ -23,8 +13,8 @@ def res2df(fname,res):
     resdict["method"]=res.method
     resdict["energy"]=res.value
     resdict["converged"]=res.converged
-    resdict["g2"]=fname2g2(fname)
-    resdict["L"]=fname2L(fname)
+    resdict["g"]=utils.fname2g(fname)
+    resdict["L"]=utils.fname2size(fname)
     return pd.DataFrame(resdict)
 
 def main(args):

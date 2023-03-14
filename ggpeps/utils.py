@@ -15,7 +15,6 @@ import sys
 from matplotlib.colors import LogNorm
 
 # Global constants
-ZERO_TOL = 10**-5 # tolerance for replacing np.isclose()
 
 paulix = np.array([[0, 1], [1, 0]])
 pauliy = np.array([[0, -1.j], [1.j, 0]])
@@ -33,7 +32,7 @@ def fname2nlayer(fname):
         return None
 
 def fname2ncopy(fname):
-    """Extract the number of layers from a filename"""
+    """Extract the number of copies from a filename"""
     pattern=r"(?<=ncopy_)[\d]*"
     result = re.search(pattern, fname)
     if result is not None:
@@ -41,23 +40,33 @@ def fname2ncopy(fname):
     else:
         return None
 
-def fname2g2(fname):
-    """Extract the number of layers from a filename"""
-    pattern=r"(?<=g2_)[\d]*\.[\d]*"
+def fname2g(fname):
+    """Extract the coupling from a filename"""
+    pattern=r"(?<=g_)[\d]*\.[\d]*"
     result = re.search(pattern, fname)
     if result is not None:
         return float(result.group(0))
     else:
         return None
 
-def fname2g2el(fname):
-    """Extract the number of layers from a filename"""
-    pattern=r"(?<=g2el_)[\d]*\.[\d]*"
+def fname2gel(fname):
+    """Extract the electric coupling from a filename"""
+    pattern=r"(?<=gel_)[\d]*\.[\d]*"
     result = re.search(pattern, fname)
     if result is not None:
         return float(result.group(0))
     else:
         return None
+
+def fname2L(fname):
+    """Extract the system size from a filename"""
+    pattern=r"(?<=L_)[\d]*"
+    result = re.search(pattern, fname)
+    return int(result.group(0))
+
+
+def isclose(x, y, rtol=1.e-5, atol=1.e-8):
+    return abs(x-y) <= atol + rtol * abs(y)
 
 
 def load_matrix_dat_fmt(path,is_complex=True):
@@ -207,7 +216,7 @@ def derivative_pfaffian(mat, d_mat):
         np.ndarray: d(Pf(A))/dx
     """
     pfaval = pf.pfaffian(mat)
-    if abs(pfaval) > ZERO_TOL:
+    if not isclose(pfaval,0):
         return 0.5 *pfaval*np.trace(np.linalg.inv(mat)@d_mat)
     else:
         return 0.0
@@ -719,15 +728,15 @@ def extract_params_from_results_file(fname, dest_dir='') -> bool:
     if fname is not None and os.path.isfile(fname):
         fname_base=os.path.basename(fname)
         name,ext=os.path.splitext(fname_base)
-        g2 = fname2g2(name)
+        g = fname2g(name)
         if name.startswith("result_min"):
             with open(fname, "rb") as infile:
                 data = pickle.load(infile)
                 # Deal with renaming
                 if hasattr(data,"paramvec"):
-                    np.save( os.path.join(dest_dir, "paramvec_g2_{}.npy".format(g2)), data.paramvec)
+                    np.save( os.path.join(dest_dir, "paramvec_g_{}.npy".format(g)), data.paramvec)
                 elif hasattr(data,"parametervec"):
-                    np.save( os.path.join(dest_dir,"paramvec_g2_{}.npy".format(g2)), data.parametervec)
+                    np.save( os.path.join(dest_dir,"paramvec_g_{}.npy".format(g)), data.parametervec)
     else:
         print("File '{}' not found. Aborting.".format(fname),file=sys.stderr)
         return False
@@ -735,7 +744,7 @@ def extract_params_from_results_file(fname, dest_dir='') -> bool:
     return True
 
 def extract_params_from_run(source_dir, dest_dir):
-    """Extracts all the parameters from the results files of a run (with varying g2 couplings), and stores them as .npy files.
+    """Extracts all the parameters from the results files of a run (with varying g couplings), and stores them as .npy files.
 
     Args:
         source_dir (str): a source directory containing directories, each of which is the result of a run.
