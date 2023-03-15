@@ -217,7 +217,7 @@ class MonteCarloEstimator:
         """Warm up phase without measurement"""
         while self.step < self.cfg.warmup_steps:
             if self.step % 1000 == 0:
-                logging.debug("Warmup: {}".format(self.step))
+                logging.info("Warmup: {}".format(self.step))
             self.update()
             self.step += 1
 
@@ -225,7 +225,7 @@ class MonteCarloEstimator:
         """Meaurement phase phase (with measurement)"""
         while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
             if self.step % 1000 == 0:
-                logging.debug("Run: {}".format(self.step))
+                logging.info("Run: {}".format(self.step))
             self.update()
             self.measure()
             self.step += 1
