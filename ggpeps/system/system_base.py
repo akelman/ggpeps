@@ -4,6 +4,7 @@ import logging
 import sys
 import sympy
 import numpy as np
+import itertools as it
 
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
@@ -228,6 +229,7 @@ class System2DBase(ABC):
         self._mass_energy_op_grad_vec = None
         self._int_energy_op_grad_vec = None
         self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # gradients of gamma_out for all symbols
+        self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
 
         # Observables
         self._energy = None
@@ -960,15 +962,18 @@ class System2DBase(ABC):
         Returns:
             float: Value of the gradient divided by the norm of the state
         """
-        diff = self.wi_gamma_in_vec[layerind].inv()
-        # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
-        offset = 2 * self.cfg.lattice.size
-        # Extract only the part of the virtual-virtual correlations
-        deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:]
-        mat_d_inv = self.mat_d_inv_vec[layerind]
+        if self._grad_over_norm_dict[(var,layerind)] is None:
+            diff = self.wi_gamma_in_vec[layerind].inv()
+            # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
+            offset = 2 * self.cfg.lattice.size
+            # Extract only the part of the virtual-virtual correlations
+            deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:]
+            mat_d_inv = self.mat_d_inv_vec[layerind]
 
-        # TODO: We might save one matrix-matrix multiplication here
-        return compute_grad_over_norm(self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv)
+            # TODO: We might save one matrix-matrix multiplication here
+            # The derivd and mat_d_inv are constant
+            self._grad_over_norm_dict[(var,layerind)]=compute_grad_over_norm(self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv)
+        return self._grad_over_norm_dict[(var,layerind)]
 
     ################## Local Gauge ######################
 
@@ -1069,6 +1074,7 @@ class System2DBase(ABC):
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad_vec = None
         self._int_energy_op_grad_vec = None
+        self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
 
     ################## Observables ######################
     @abstractmethod
