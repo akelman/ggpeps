@@ -415,11 +415,12 @@ class Z2System2D2C(System2DBase):
         dest_grad = []
 
         # build array for list comprehension outside the loop
-        idxarr = [ (   1, [0,2,4,6]), (  -1, [1,2,4,7]), (-1.j, [0,1,2,4]), (-1.j,[2,4,6,7]),
-                        (  -1, [0,3,5,6]), (   1, [1,3,5,7]), ( 1.j, [0,1,3,5]), ( 1.j,[3,5,6,7]),
-                        ( 1.j, [0,4,5,6]), (-1.j, [1,4,5,7]), (   1, [0,1,4,5]), (   1,[4,5,6,7]),
-                        ( 1.j, [0,2,3,6]), (-1.j, [1,2,3,7]), (   1, [0,1,2,3]), (   1,[2,3,6,7])]
-
+        idx_pref_vec = [(1, [0, 2, 4, 6]), (-1, [1, 2, 4, 7]), (-1.j, [0, 1, 2, 4]), (-1.j, [2, 4, 6, 7]),
+                        (-1, [0, 3, 5, 6]), (1, [1, 3, 5, 7]), (1.j, [0, 1, 3, 5]), (1.j, [3, 5, 6, 7]),
+                        (1.j, [0, 4, 5, 6]), (-1.j, [1, 4, 5, 7]), (1, [0, 1, 4, 5]), (1, [4, 5, 6, 7]),
+                        (1.j, [0, 2, 3, 6]), (-1.j, [1, 2, 3, 7]), (1, [0, 1, 2, 3]), (1, [2, 3, 6, 7])]
+        prefactorvec = [x[0] for x in idx_pref_vec]
+        idxvec = [x[1] for x in idx_pref_vec]
         for layerind in range(self.cfg.nlayer):
             layer_derivative=[]
             #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
@@ -429,10 +430,8 @@ class Z2System2D2C(System2DBase):
             diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
 
             ###################### Calculation of <P> ########################
-            covmat_out = mat_a + \
-                mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
-            covmat_out_virt = covmat_out[-single_link_offset:, -
-                                        single_link_offset:]
+            covmat_out = mat_a + mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
+            covmat_out_virt = covmat_out[-single_link_offset:, -single_link_offset:]
 
             # The library pfapack is rather picky about the anti-symmetrization (to 1e-14)
             covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
@@ -443,12 +442,14 @@ class Z2System2D2C(System2DBase):
                 gamma_in_sys_mod.shape[0],
                 all_factors=True)
             norm_mod += np.sum(utils.select_except(lognormvec_default,layerind))
+
             # The matrix elements yield only the real part of <P>
             # If we use the log formulation, we can calculate the log of single terms.
 
             # Instead of writing down all the terms explicitly, we build tuples of the prefactors and the indices of the covariance matrix.
             # Then, we compute all terms in a list comprehension.
-            pfarr = [prefactor * pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
+            matvec = [covmat_out_virt[np.ix_(ind,ind)] for ind in idxvec]
+            pfarr = [prefactor *  utils.pfaffian_explicit_4x4(mat) for mat,prefactor in zip(matvec,prefactorvec)]
             el_energy_full = 1/16 * np.sum(pfarr)
             
             el_energy_layer = np.real(el_energy_full) * np.exp(norm_mod - lognorm_default)
@@ -466,8 +467,11 @@ class Z2System2D2C(System2DBase):
                 d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
                 # Summand with derivative of the covariance matrix
                 # We re-use the list comprehension from above to use the indices
-                deriv_pfarr = [prefactor * utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)],d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
-                d_el_energy = 1/16 * np.real(np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
+                d_matvec = [d_covmat_out_virt[np.ix_(ind,ind)] for ind in idxvec]
+
+                deriv_pfarr = np.real(utils.derivative_pfaffian_covariance_mat(pfarr,matvec,d_matvec))
+                # deriv_pfarr = [prefactor * utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)],d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
+                d_el_energy = 1/16 * np.real(deriv_pfarr) * np.exp(norm_mod - lognorm_default)
                                 
                 # Summand with derivative of norms
                 trace_def = self.compute_grad_over_norm(symbol, layerind)
