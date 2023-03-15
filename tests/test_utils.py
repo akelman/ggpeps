@@ -171,3 +171,17 @@ class TestPfaffian(unittest.TestCase):
         pfaffian = pf.pfaffian(self.mat)
         self.assertAlmostEqual(np.real(pfaffian), -4)
         self.assertAlmostEqual(np.imag(pfaffian), 12)
+    
+    def test_pfaffian_explicit(self):
+        val = utils.pfaffian_explicit_4x4(self.mat)
+        ref = pf.pfaffian(self.mat)
+        self.assertAlmostEqual(val, ref)
+
+    def test_pfaffian_explicit_masked(self):
+        a = np.random.rand(16,16)
+        a = a-a.T
+        indarr =  np.array([0,7,8,10])
+        val = utils.pfaffian_explicit_4x4_masked(a,indarr)
+        a_part = a[np.ix_(indarr,indarr)]
+        ref = pf.pfaffian(a_part)
+        self.assertAlmostEqual(val, ref)

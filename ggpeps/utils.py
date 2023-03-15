@@ -10,6 +10,7 @@ import logging
 import subprocess  # Start process for git hash
 import re
 from pfapack import pfaffian as pf
+import numba as nb
 import sys
 
 from matplotlib.colors import LogNorm
@@ -201,6 +202,23 @@ def multiply_except(arr, ind: int):
         # It does not make sense to execute this function with only one element
         return arr[0]
 
+@nb.njit(cache = True)
+def pfaffian_explicit_4x4_masked(mat,ind):
+    i0, i1, i2, i3 = ind
+    return mat[i0, i1]*mat[i2, i3]-mat[i0, i2]*mat[i1, i3]+mat[i1, i2]*mat[i0, i3]
+
+@nb.njit(cache = True)
+def pfaffian_explicit_4x4(mat):
+    return mat[0, 1]*mat[2, 3]-mat[0, 2]*mat[1, 3]+mat[1, 2]*mat[0, 3]
+
+#@nb.njit(cache=True)
+def derivative_pfaffian_covariance_mat(pfarr,matvec,d_matvec):
+    dest = 0.0
+    for pfaval,mat,d_mat in zip(pfarr,matvec,d_matvec):
+        if not isclose(pfaval,0):
+            mat_inv = np.linalg.inv(mat)
+            dest += 0.5 * pfaval * np.trace(mat_inv@d_mat)
+    return dest
 
 def derivative_pfaffian(mat, d_mat):
     """Compute the derivative of a Pfaffian of a matrix A.
@@ -217,7 +235,7 @@ def derivative_pfaffian(mat, d_mat):
     """
     pfaval = pf.pfaffian(mat)
     if not isclose(pfaval,0):
-        return 0.5 *pfaval*np.trace(np.linalg.inv(mat)@d_mat)
+        return 0.5 * pfaval*np.trace(np.linalg.inv(mat)@d_mat)
     else:
         return 0.0
 
