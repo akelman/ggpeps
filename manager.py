@@ -7,7 +7,6 @@ import os
 import sys
 import ray
 import logging
-from cProfile import run
 from timeit import default_timer as timer
 
 import numpy as np
