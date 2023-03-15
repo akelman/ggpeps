@@ -1112,14 +1112,14 @@ class System2DBase(ABC):
         """
         if self._energy is None:
             self._energy = 0.0
-        if not utils.isclose(self.cfg.g_el, 0):
-            self._energy += self.el_energy
-        if not utils.isclose(self.cfg.g_mag, 0):
-            self._energy += self.mag_energy
-        if not utils.isclose(self.cfg.g_mass, 0):
-            self._energy += self.mass_energy
-        if not utils.isclose(self.cfg.g_int, 0):
-            self._energy += self.int_energy
+            if not utils.isclose(self.cfg.g_el, 0):
+                self._energy += self.el_energy
+            if not utils.isclose(self.cfg.g_mag, 0):
+                self._energy += self.mag_energy
+            if not utils.isclose(self.cfg.g_mass, 0):
+                self._energy += self.mass_energy
+            if not utils.isclose(self.cfg.g_int, 0):
+                self._energy += self.int_energy
         return self._energy
 
     # Functions that return a term of the energy in the Hamiltonian, including all prefactors and energy from the entire lattice.
