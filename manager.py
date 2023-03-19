@@ -141,7 +141,7 @@ def main(args):
     # Set up ray before we actually start with the simulation
     # Ray uses randomness internally and we don't want it to mix up the setting of the seed
     if args.nrunner > 0:
-        ray.init()
+        ray.init(num_cpus=args.nrunner)
 
     # Set up the MC Config
     mc_config = MonteCarloEstimatorConfig()
