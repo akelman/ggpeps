@@ -43,7 +43,14 @@
                 "--meas_steps",
                 "1000",
                 "--seed",
-                "15"
+                "15", 
+                "--ncopy",
+                "4",
+                "--nlayer", 
+                "2", 
+                "--g_el", "3", 
+                "--g_int", "0",
+                "--g_mass", "3"
             ],
             "console": "integratedTerminal"
         },
@@ -66,7 +73,7 @@
             "args": [
                 "minexact",
                 "2",
-                "--g2",
+                "--g",
                 "2.0",
                 "--method",
                 "BFGS",
@@ -84,7 +91,7 @@
             "args": [
                 "minexact",
                 "2",
-                "--g2",
+                "--g",
                 "2.0",
                 "--g_mass",
                 "1.0",
@@ -103,7 +110,7 @@
             "args": [
                 "minexact",
                 "2",
-                "--g2",
+                "--g",
                 "2.0",
                 "--method",
                 "BFGS",
@@ -122,8 +129,10 @@
             "args": [
                 "minexact",
                 "2",
-                "--g2",
-                "1.0",
+                "--g_el",
+                "0.5",
+                "--g_mag",
+                "0.5",
                 "--g_mass",
                 "1.0",
                 "--g_int",
@@ -147,7 +156,7 @@
             "args": [
                 "min",
                 "2",
-                "--g2",
+                "--g",
                 "2.0",
                 "--method",
                 "BFGS",
@@ -158,33 +167,5 @@
             ],
             "console": "integratedTerminal"
         },
-        {
-            "name": "Exact L=2, cp=2, nl=1, neg. el.energy",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/manager.py",
-            "args": [
-                "exact",
-                "2",
-                "--g2",
-                "2.0",
-                "--ncopy",
-                "2",
-                "--nlayer",
-                "1",
-                "--params",
-                "0",
-                "0",
-                "0",
-                "10",
-                "10",
-                "10",
-                "0",
-                "0.7",
-                "0",
-                "0"
-            ],
-            "console": "integratedTerminal"
-        }
     ]
 }
