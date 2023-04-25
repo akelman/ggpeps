@@ -265,7 +265,7 @@ def main(args):
         stop = timer()
         ex_eval.save(output_dir=args.output)
         for key, val in dest_dict.items():
-            print(f"{key}: {val}")
+            logging.info(f"{key}: {val}")
     elif args.mode == "minexact":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
         logging.info("====== MINIMIZER INFO ======")
