@@ -680,3 +680,27 @@ class Z2System2D4C(System2DBase):
         # (this is handled higher up in the computation stack).
 
         return int_energy_op, gradients
+    
+    
+    def compute_mass_per_site(self):
+        """Compute the number operator for all sites.
+
+        Args:
+
+        Returns:
+            res (list): mass on each site
+        """
+        layer_ind = 1 # only the second layer directly contributes to the mass
+        covmat = self.compute_ferm_cov(layer_ind)
+        mass_per_site = []
+        
+        # Calculate mass term
+        # This could probably be sped up with better matrix manipulations
+        for site_ind in range(0, 2*self.cfg.lattice.size, 2):
+            mass = 0.25 * (covmat[site_ind+1, site_ind] - covmat[site_ind, site_ind+1] ) + 0.5 # see calculation of mass energy term for details
+
+            mass_per_site.append(mass)
+
+        mass_per_site = np.asarray(mass_per_site)
+
+        return [mass_per_site*0, mass_per_site]

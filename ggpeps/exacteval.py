@@ -83,7 +83,8 @@ class ExactEvaluator():
                 "int_energy_op_grad": [],
                 "grad_norm": [],
                 "wilson_00_11": [],
-                "polyakov_00_x": []
+                "polyakov_00_x": [],
+                "mass_per_site": []
             }
             for config in configvec:
                 self.system.update_gauge_full_system(config)
@@ -108,6 +109,8 @@ class ExactEvaluator():
                 data["wilson_00_11"].append(np.real(self.system.compute_path(wilson_loop)))
                 data["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
 
+                data["mass_per_site"].append(np.real(self.system.compute_mass_per_site()))
+
             # Expectation values
             dest = {}
             # Convert all lists to arrays
@@ -118,6 +121,7 @@ class ExactEvaluator():
 
             # Transpose to enable broadcasting
             grad_norm_transposed = np.transpose(data["grad_norm"],[2,1,0])
+            mass_per_site_transposed = np.transpose(data["mass_per_site"],[2,1,0])
 
             dest["energy"] = self.compute_expval(data["energy"], normvec)
             dest["mag_energy"] = self.compute_expval(data["mag_energy"], normvec)
@@ -126,6 +130,7 @@ class ExactEvaluator():
             dest["int_energy"] = self.compute_expval(data["int_energy"], normvec)
             dest["wilson_00_11"] = self.compute_expval(data["wilson_00_11"], normvec)
             dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
+            dest["mass_per_site"] = self.compute_expval(mass_per_site_transposed, normvec)
             dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)
 
             #The norm that we turn in the end is the actual norm, not the lognorm!
