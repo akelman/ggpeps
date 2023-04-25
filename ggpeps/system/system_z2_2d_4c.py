@@ -440,15 +440,15 @@ class Z2System2D4C(System2DBase):
         
         # Calculate mass term
         # This could probably be sped up with better matrix manipulations
-        for site_ind in range(0, self.cfg.lattice.size, 2):
-            #site_ind = 0 # just do calculation for a single site
-            layer_mass_energy += 0.25 * (covmat[site_ind+1, site_ind] - covmat[site_ind, site_ind+1] ) # these two entries happen to be negatives of each other, because of anti-symmetry
+        for ind in range(0, 2*self.cfg.lattice.size, 2):
+            #ind = 0 # just do calculation for a single site
+            layer_mass_energy += 0.25 * (covmat[ind+1, ind] - covmat[ind, ind+1] ) # these two entries happen to be negatives of each other, because of anti-symmetry
             layer_mass_energy += 0.5 # this ultimately comes from the anti-commutation relations
 
             # Update gradients
             for symbol_ind, symbol in enumerate(self.symbolvec):
                 d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                layer_grads[symbol_ind] += 0.25 * (d_gamma_out[site_ind+1, site_ind] - d_gamma_out[site_ind,site_ind+1])
+                layer_grads[symbol_ind] += 0.25 * (d_gamma_out[ind+1, ind] - d_gamma_out[ind,ind+1])
 
                 # further terms of the derivative are included higher up in the computation stack 
                 # because computing them requires knowing various expectation values, which are not available here
