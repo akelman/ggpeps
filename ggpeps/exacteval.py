@@ -109,7 +109,7 @@ class ExactEvaluator():
                 data["wilson_00_11"].append(np.real(self.system.compute_path(wilson_loop)))
                 data["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
 
-                data["mass_per_site"].append(np.real(self.system.compute_number_per_site()))
+                data["number_per_site"].append(np.real(self.system.compute_number_per_site()))
 
             # Expectation values
             dest = {}
@@ -121,7 +121,7 @@ class ExactEvaluator():
 
             # Transpose to enable broadcasting
             grad_norm_transposed = np.transpose(data["grad_norm"],[2,1,0])
-            number_per_site_transposed = np.transpose(data["mass_per_site"],[2,1,0])
+            number_per_site_transposed = np.transpose(data["number_per_site"],[2,1,0])
 
             dest["energy"] = self.compute_expval(data["energy"], normvec)
             dest["mag_energy"] = self.compute_expval(data["mag_energy"], normvec)
@@ -130,7 +130,7 @@ class ExactEvaluator():
             dest["int_energy"] = self.compute_expval(data["int_energy"], normvec)
             dest["wilson_00_11"] = self.compute_expval(data["wilson_00_11"], normvec)
             dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
-            dest["mass_per_site"] = self.compute_expval(number_per_site_transposed, normvec)
+            dest["number_per_site"] = self.compute_expval(number_per_site_transposed, normvec)
             dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)
 
             #The norm that we turn in the end is the actual norm, not the lognorm!
