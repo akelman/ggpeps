@@ -682,8 +682,9 @@ class Z2System2D4C(System2DBase):
         return int_energy_op, gradients
     
     
-    def compute_mass_per_site(self):
+    def compute_number_per_site(self):
         """Compute the number operator for all sites.
+        For translation-invariant states, this should be the same for all sites.
 
         Args:
 
