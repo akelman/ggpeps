@@ -84,7 +84,7 @@ class ExactEvaluator():
                 "grad_norm": [],
                 "wilson_00_11": [],
                 "polyakov_00_x": [],
-                "mass_per_site": []
+                "number_per_site": []
             }
             for config in configvec:
                 self.system.update_gauge_full_system(config)
