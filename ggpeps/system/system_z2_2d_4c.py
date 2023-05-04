@@ -645,7 +645,7 @@ class Z2System2D4C(System2DBase):
             neighborX_ind = 2 * self.cfg.lattice.coord2ind(neighborX_coord) # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
             gaugefield_hor = self.gaugefieldvec[ind_field_hor]
             cos_factor_hor = np.cos(gaugefield_hor) # simple way to get U from gauge value
-            hor_link_energy = 0.5 * (covmat[site_ind_cov+1, neighborX_ind] + covmat[site_ind_cov, neighborX_ind+1])
+            hor_link_energy = 0.5 * (covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov+1, neighborX_ind+1])
             layer_int_energy += sublattice_factor * hor_link_energy * cos_factor_hor
 
             # Vertical link
@@ -654,7 +654,7 @@ class Z2System2D4C(System2DBase):
             neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
             gaugefield_vert = self.gaugefieldvec[ind_field_vert]
             cos_factor_vert = np.cos(gaugefield_vert)
-            vert_link_energy = 0.5 * (covmat[site_ind_cov, neighborY_ind] + covmat[site_ind_cov+1, neighborY_ind+1])
+            vert_link_energy = 0.5 * (covmat[site_ind_cov, neighborY_ind+1] + covmat[site_ind_cov+1, neighborY_ind])
             layer_int_energy -= vert_link_energy * cos_factor_vert
 
             # Calculate derivatives
@@ -662,8 +662,8 @@ class Z2System2D4C(System2DBase):
             for symbol_ind, symbol in enumerate(self.symbolvec):
                 d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
                 
-                grad = 0.5 * sublattice_factor * cos_factor_hor * (d_gamma_out[site_ind_cov+1, neighborX_ind] + d_gamma_out[site_ind_cov, neighborX_ind+1])
-                grad += - 0.5 * cos_factor_vert * (d_gamma_out[site_ind_cov, neighborY_ind] + d_gamma_out[site_ind_cov+1, neighborY_ind+1])
+                grad = 0.5 * sublattice_factor * cos_factor_hor * (d_gamma_out[site_ind_cov, neighborX_ind] - d_gamma_out[site_ind_cov+1, neighborX_ind+1])
+                grad += - 0.5 * cos_factor_vert * (d_gamma_out[site_ind_cov, neighborY_ind+1] + d_gamma_out[site_ind_cov+1, neighborY_ind])
                 layer_gradients.append(grad)
         
         int_energy_op.append(layer_int_energy)
