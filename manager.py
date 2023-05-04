@@ -351,8 +351,8 @@ if __name__ == "__main__":
                         help="magnetic coupling constant (if not given, computed as [2*g]^-1)")
     parser.add_argument("--g_int", type=float, default=0.0,
                         help="gauge matter coupling")
-    parser.add_argument("--g_mass", type=float,
-                        default=0.0, help="matter constant")
+    parser.add_argument("--g_mass", type=float, default=0.0, 
+                        help="matter constant")
 
     # Ansatz parameters
     parser.add_argument("--nlayer",
