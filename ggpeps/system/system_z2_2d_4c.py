@@ -429,26 +429,21 @@ class Z2System2D4C(System2DBase):
         mass_energy_op = [1] # Really the mass energy for the first layer is zero, but later we take the product of all layers, so we put a 1 here
         gradients = [[0]*len(self.symbolvec)]
 
-        #layer1_norm = np.exp(self.calculate_lognormvec(all_factors=True)[0]) #not needed; accounted for higher in the stack
-
         # Calculation prelimaries
-        #for layer_ind in range(self.cfg.nlayer):
         layer_ind = 1 # only the second layer directly contributes to the mass
         covmat = self.compute_ferm_cov(layer_ind)
         layer_mass_energy = 0.0
         layer_grads = [0]*len(self.symbolvec)
         
         # Calculate mass term
-        # This could probably be sped up with better matrix manipulations
-        for ind in range(0, 2*self.cfg.lattice.size, 2):
-            #ind = 0 # just do calculation for a single site
-            layer_mass_energy += 0.25 * (covmat[ind+1, ind] - covmat[ind, ind+1] ) # these two entries happen to be negatives of each other, because of anti-symmetry
-            layer_mass_energy += 0.5 # this ultimately comes from the anti-commutation relations
+        # Since the system is translationally invariant, we could just calculate it for one site and multiply by nsites instead
+        for site_ind in range(self.cfg.lattice.size):
+            layer_mass_energy += 0.5 * (1 + covmat[site_ind+1, site_ind] )
 
             # Update gradients
             for symbol_ind, symbol in enumerate(self.symbolvec):
                 d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                layer_grads[symbol_ind] += 0.25 * (d_gamma_out[ind+1, ind] - d_gamma_out[ind,ind+1])
+                layer_grads[symbol_ind] += 0.5 * d_gamma_out[site_ind+1, site_ind] 
 
                 # further terms of the derivative are included higher up in the computation stack 
                 # because computing them requires knowing various expectation values, which are not available here
