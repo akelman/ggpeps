@@ -437,7 +437,7 @@ class Z2System2D4C(System2DBase):
         
         # Calculate mass term
         # Since the system is translationally invariant, we could just calculate it for one site and multiply by nsites instead
-        for site_ind in range(self.cfg.lattice.size):
+        for site_ind in range(0, 2*self.cfg.lattice.size, 2):
             layer_mass_energy += 0.5 * (1 + covmat[site_ind+1, site_ind] )
 
             # Update gradients
