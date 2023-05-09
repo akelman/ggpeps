@@ -26,7 +26,7 @@ class Config2DBase(ABC):
 
         Args:
             lattice (Union[Lattice2D, Lattice3D]): lattice. 
-            g (float): Hamiltonian prefactor for electric energy
+            g_el (float): Hamiltonian prefactor for electric energy
             g_mag (float): prefactor for magnetic energy
             g_int (float): prefactor for gauge-matter coupling
             g_mass (float): mass of physical fermions (i.e. prefactor on the mass term).
@@ -1138,7 +1138,7 @@ class System2DBase(ABC):
             float: electric energy
         """
         nlinks = self.cfg.lattice.nlinks
-        el_energy = self.cfg.g_el * (2*nlinks - 2*self.el_energy_op)
+        el_energy = self.cfg.g_el * 2 * (nlinks - self.el_energy_op)
         return el_energy
     
     @property
@@ -1150,7 +1150,7 @@ class System2DBase(ABC):
             float: magnetic energy
         """
         nplaq = self.cfg.lattice.nplaquettes
-        mag_energy = self.cfg.g_mag * (2*nplaq - 2*self.mag_energy_op)
+        mag_energy = self.cfg.g_mag * 2 * (nplaq - self.mag_energy_op)
         return mag_energy
 
     @property
@@ -1253,7 +1253,6 @@ class System2DBase(ABC):
             list: Layer-resolved mass energy w/o shift
         """
         if self._mass_energy_op_vec is None:
-            # This vector is the electric energy on a single site.
             self._mass_energy_op_vec, self._mass_energy_op_grad_vec = self._compute_mass_energy_op_vec_and_grad()
         return self._mass_energy_op_vec
     
