@@ -338,9 +338,10 @@ class Z2System2D4C(System2DBase):
         Returns:
             np.ndarray: Rotation matrix for gamma_in_neutral
         """
-        # Guaging is different on even/odd sublattice, and in X/Y directions. See notes for details
+        # Gauging might be different depending on sublattice or link direction
         if dir == Direction.X and (-1)**(coord[0] + coord[1]) == -1:
-            theta += np.pi 
+            #theta += np.pi 
+            pass
 
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
@@ -632,7 +633,7 @@ class Z2System2D4C(System2DBase):
         for site_ind in range(self.cfg.lattice.size): 
             coord = self.cfg.lattice.ind2coord(site_ind)
             site_ind_cov = 2 * site_ind # this is the index to use when accessing elements of the covariance matrix, which has 2 Majorana modes per site
-            sublattice_factor = (-1)**(coord[0] + coord[1]) # the odd sublattice gets a minus sign because of the particle-hole transformation
+            sublattice_factor = 1 #(-1)**(coord[0] + coord[1]) # the odd sublattice gets a minus sign because of the particle-hole transformation
 
             # Horizontal link
             ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X) # index of the horizontal link
