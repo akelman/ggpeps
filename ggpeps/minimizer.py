@@ -67,20 +67,23 @@ class Minimizer():
         for ind in range(self.cfg.max_iter):
             if self.last_paramvec is None or not np.allclose(self.last_paramvec,paramvec):
                 # We copy here to get a new set of variables. We will paramvec below and do not want to change last_paramvec
-                self.last_paramvec=np.copy(paramvec)
-                result=self.evaluator.simulate()
+                self.last_paramvec = np.copy(paramvec)
+                result = self.evaluator.simulate()
 
             if self.use_exact:
                 energy = result.obsdict["energy"]
+                number_per_site = result.obsdict["number_per_site"]
                 grad_paramvec = result.obsdict["energy_grad"]
                 acceptance_prob = np.nan
             else:
                 energy = result.get_obs_mean("energy")
+                number_per_site = result.get_obs_mean("number_per_site")
                 grad_paramvec = self.energy_gradient_mc(result)
                 acceptance_prob = result.get_obs_mean("acceptance_prob")
+            
             max_grad_paramvec = np.max(np.abs(grad_paramvec))
-            logging.debug("Parametervec: {}".format(paramvec))
-            logging.info("Iter: {:03d}, Energy: {:.5f}, Max grad paramvec: {:.5f} acceptance prob: {:.5f} ".format(ind,energy,max_grad_paramvec,acceptance_prob))
+            logging.debug(f"Parametervec: {paramvec}")
+            logging.info(f"Iter: {ind:03d}, Energy: {energy:.5f}, Occupation: {number_per_site:.5f}, Max grad paramvec: {max_grad_paramvec:.5f} acceptance prob: {acceptance_prob:.5f}")
             self.last_result = result
 
             #Check if the maximum of the gradient is smaller than min_grad
