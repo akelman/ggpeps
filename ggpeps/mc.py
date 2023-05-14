@@ -162,20 +162,20 @@ class MonteCarloEstimator:
     def init_measurements(self):
         """Add empty measurement vectors to the measurement dictionary"""
         binsize = self.cfg.binsize
-        self.obsdict["acceptance_prob"] = Measurement("Acceptance Probablity",
-                                                      binsize)
+
+        self.obsdict["acceptance_prob"] = Measurement("Acceptance Probablity", binsize)
         self.obsdict["energy"] = Measurement("Energy", binsize)
         self.obsdict["mag_energy"] = Measurement("Magnetic Energy", binsize)
         self.obsdict["el_energy"] = Measurement("Electric Energy", binsize)
         self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
         self.obsdict["el_energy_op"] = Measurement("Electric Energy Operator (bare)", binsize)
-        self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x",
-                                                    binsize)
+        self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
+        self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
+
         if self.cfg.minimizer_mode:
             self.obsdict["el_energy_op_grad"] = Measurement("Electric Energy Operator Gradient", binsize)
-            self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm",
-                                                        binsize)
+            self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm", binsize)
         #self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
 
         # Wilson loops (of various sizes)
@@ -187,11 +187,9 @@ class MonteCarloEstimator:
 
     def measure(self):
         """Measure the corresponding observables in the dictionary"""
-        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
-            (0, 0), lattice.Direction.X)
+        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
         
-        self.obsdict["polyakov_00_x"].append(
-            np.real(self.system.compute_path(polyakov_loop)))
+        self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
         #self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
@@ -201,6 +199,7 @@ class MonteCarloEstimator:
         self.obsdict["el_energy"].append(self.system.el_energy)
         self.obsdict["mag_energy"].append(self.system.mag_energy)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
+        self.obsdict["number_per_site"].append(self.system.number_per_site)
 
         # Wilson loops
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
