@@ -26,7 +26,7 @@ def folder2el(foldername):
     pattern=r"(?<=el_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
-        return "--gel {}".format(float(result.group(0)))
+        return "--g_el {}".format(float(result.group(0)))
     else:
         return ""
 
@@ -35,7 +35,7 @@ def folder2mag(foldername):
     pattern=r"(?<=mag_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
-        return "--gmag {}".format(float(result.group(0)))
+        return "--g_mag {}".format(float(result.group(0)))
     else:
         return ""
 
