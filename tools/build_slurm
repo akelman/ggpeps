@@ -5,16 +5,16 @@ import numpy as np
 import sys
 import os
 
-command_default=""
-time_default="24:00:00"
-num_threads_default="4"
+command_default = ""
+time_default = "24:00:00"
+num_threads_default = "4"
 
 def name_from_path(prefix,path):
-    return prefix+path
+    return prefix + path
 
 def folder2coupling(foldername):
     import re
-    pattern=r"(?<=g_)[\d]*.[\d]*"
+    pattern = r"(?<=g_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
         return "--g {}".format(float(result.group(0)))
@@ -23,7 +23,7 @@ def folder2coupling(foldername):
 
 def folder2el(foldername):
     import re
-    pattern=r"(?<=el_)[\d]*.[\d]*"
+    pattern = r"(?<=el_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
         return "--g_el {}".format(float(result.group(0)))
@@ -32,7 +32,7 @@ def folder2el(foldername):
 
 def folder2mag(foldername):
     import re
-    pattern=r"(?<=mag_)[\d]*.[\d]*"
+    pattern = r"(?<=mag_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
         return "--g_mag {}".format(float(result.group(0)))
@@ -41,7 +41,7 @@ def folder2mag(foldername):
 
 def folder2mass(foldername):
     import re
-    pattern=r"(?<=m_)[\d]*.[\d]*"
+    pattern = r"(?<=m_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
         return "--g_mass {}".format(float(result.group(0)))
@@ -50,7 +50,7 @@ def folder2mass(foldername):
 
 def folder2int(foldername):
     import re
-    pattern=r"(?<=int_)[\d]*.[\d]*"
+    pattern = r"(?<=int_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
         return "--g_int {}".format(float(result.group(0)))
@@ -59,40 +59,40 @@ def folder2int(foldername):
 
 def folder2chempot(foldername):
     import re
-    pattern=r"(?<=mu_)[\d]*.[\d]*"
+    pattern = r"(?<=mu_)[\d]*.[\d]*"
     result = re.search(pattern, foldername)
     if result is not None:
         return "--chempot {}".format(float(result.group(0)))
     else:
         return ""
 
-def format_slurmfile(slurmfile, name, folder, time=time_default,command=command_default, num_threads=num_threads_default):
-    coupling = folder2coupling(folder)
+def format_slurmfile(slurmfile, name, folder, time=time_default, command=command_default, num_threads=num_threads_default):
+    #coupling = folder2coupling(folder) # not used anymore
     mass = folder2mass(folder)
     int = folder2int(folder)
     el = folder2el(folder)
     mag = folder2mag(folder)
     chempot = folder2chempot(folder)
-    return slurmfile.format(jobname=name,time=time,command=command,ncpu=num_threads, coupling=coupling, mass=mass, chempot=chempot, el=el, mag=mag, int=int)
+    return slurmfile.format(jobname=name, time=time, command=command, ncpu=num_threads, mass=mass, chempot=chempot, el=el, mag=mag, int=int)
 
 def main(args):
     if os.path.isfile(args.slurmfile):
-        with open(args.slurmfile,mode='r') as infile:
-            slurmfile_str= infile.read()
-        command=args.command if args.command is not None else command_default
-        time=args.time if args.time is not None else time_default
-        num_threads=args.num_threads if args.num_threads is not None else num_threads_default
+        with open(args.slurmfile, mode='r') as infile:
+            slurmfile_str = infile.read()
+        command = args.command if args.command is not None else command_default
+        time = args.time if args.time is not None else time_default
+        num_threads = args.num_threads if args.num_threads is not None else num_threads_default
         for folder in args.folders:
             if os.path.isdir(folder):
-                with open(os.path.join(folder,"slurmjob"),'w') as f:
-                    name=name_from_path(args.prefix,folder)
-                    slurmfile_format=format_slurmfile(slurmfile_str,name, folder, time, command, num_threads)
-                    print(slurmfile_format,file=f)
+                with open(os.path.join(folder, "slurmjob"), 'w') as f:
+                    name = name_from_path(args.prefix, folder)
+                    slurmfile_format = format_slurmfile(slurmfile_str, name, folder, time, command, num_threads)
+                    print(slurmfile_format, file=f)
             else:
-                print("Folder '{}' does not exist".format(folder))
+                print(f"Folder '{folder}' does not exist")
 
     else:
-        print("Master slurmfile not found at '{}'".format(args.slurmfile))
+        print(f"Master slurmfile not found at '{args.slurmfile}'")
 
 
 if __name__=="__main__":
@@ -104,6 +104,6 @@ if __name__=="__main__":
     parser.add_argument("-c","--command",dest="command",type=str,help="command",default=None)
     parser.add_argument("-n","--num_threads",dest="num_threads",type=str,help="number of OMP threads (default: 4)",default=None)
     parser.add_argument("--prefix",type=str,help="name prefix (default: empty string)",default="")
-    args=parser.parse_args()
+    args = parser.parse_args()
     main(args)
 
