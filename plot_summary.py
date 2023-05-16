@@ -38,7 +38,7 @@ def main(args):
 
     #Enrich dataset
     df_mc_ec["L"] = df_mc_ec["nx"].astype("str") + "-" + df_mc_ec["ny"].astype("str")
-    df_mc_ec.rename(columns={"g2_el":"g_el", "g2_mag":"g_mag","g2":"g"},inplace=True)
+    df_mc_ec.rename(columns={"g2_el":"g_el", "g2_mag":"g_mag", "g2":"g"}, inplace=True)
     obsnamevec = df_mc_ec.name.unique()
 
     if 'g' not in df_mc_ec.columns:
@@ -52,13 +52,15 @@ def main(args):
         df_exact["type"] = "ED"
         # Add numbers to the grouping columns to enable grouping
         df_exact["nlayer"] = -1
-        df_exact["ncopy"]= -1
+        df_exact["ncopy"] = -1
 
         # Adapt the naming convention between the ED and the MC/EC data
-        df_exact.rename(columns={"g2_ham":"g","value":"mean"},inplace=True)
-        df_exact.drop(columns=["nz","gauge"],inplace=True)
-        if 'g_el' not in df_exact.columns:
+        df_exact.rename(columns={"g2_ham":"g", "value":"mean"}, inplace=True)
+        df_exact.drop(columns=["nz", "gauge"], inplace=True)
+        if 'g_el' not in df_exact.columns: # the next four lines should be handled in a more robust way
             df_exact['g_el'] = df_exact.g / 2
+        if 'g' not in df_exact.columns:
+            df_exact['g'] = df_exact.g_el * 2
 
         df = pd.concat([df_mc_ec,df_exact])
         
@@ -67,10 +69,10 @@ def main(args):
         df_ed_approx = df_exact.copy()
         df_mc_ec_approx.g = np.round(df_mc_ec_approx.g, decimals=3)
         df_ed_approx.g = np.round(df_ed_approx.g, decimals=3)
-        df_merged = pd.merge(df_mc_ec_approx,df_ed_approx,on=["g","L","name","nx","ny"],suffixes=("_mc_ec","_ed"))
-        df_merged["diff"] = df_merged["mean_mc_ec"]-df_merged["mean_ed"]
-        df_diff = df_merged[["name","g","ncopy_mc_ec","nlayer_mc_ec","L","diff","type_mc_ec","err"]].copy()
-        df_diff.rename(columns={"nlayer_mc_ec": "nlayer", "ncopy_mc_ec": "ncopy","type_mc_ec":"type"}, inplace=True)
+        df_merged = pd.merge(df_mc_ec_approx, df_ed_approx, on=["g", "L", "name", "nx", "ny"], suffixes=("_mc_ec", "_ed"))
+        df_merged["diff"] = df_merged["mean_mc_ec"] - df_merged["mean_ed"]
+        df_diff = df_merged[["name", "g", "ncopy_mc_ec", "nlayer_mc_ec", "L", "diff", "type_mc_ec", "err"]].copy()
+        df_diff.rename(columns={"nlayer_mc_ec": "nlayer", "ncopy_mc_ec": "ncopy", "type_mc_ec":"type"}, inplace=True)
     else:
         df = df_mc_ec
         df_diff = None
@@ -100,16 +102,16 @@ def main(args):
                         error = None
                     ax.errorbar(group[args.xaxis],
                             group["diff"],
-                            fmt='o', 
-                            yerr=error,
-                            label="{}, {}, L={}, nc={}, nl={}".format(type,obs,L,ncopy,nlayer))
+                            fmt = 'o', 
+                            yerr = error,
+                            label = "{}, {}, L={}, nc={}, nl={}".format(type, obs, L, ncopy, nlayer))
             else:
-                for name, group in df_filtered.groupby(["type","L","nlayer", "ncopy"]):
+                for name, group in df_filtered.groupby(["type", "L", "nlayer", "ncopy"]):
                     type, L, nlayer, ncopy = name
                     if type == "ED":
                         ax.plot(group[args.xaxis],
                                 group["mean"],
-                                label="ED, {}, L={}".format(type,obs,L))
+                                label = "ED, {}, L={}".format(type, obs, L))
                     else:
                         if type == 'MC':
                             error = group['err']
@@ -117,9 +119,9 @@ def main(args):
                             error = None
                         ax.errorbar(group[args.xaxis],
                                 group["mean"],
-                                fmt='o', 
-                                yerr=error,
-                                label="{}, {}, L={}, nc={}, nl={}".format(type,obs,L,ncopy,nlayer))
+                                fmt = 'o', 
+                                yerr = error,
+                                label = "{}, {}, L={}, nc={}, nl={}".format(type, obs, L, ncopy, nlayer))
 
     if args.logx:
         ax.set_xscale("log")

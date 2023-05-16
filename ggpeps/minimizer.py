@@ -86,7 +86,7 @@ class Minimizer():
             logging.info(f"Iter: {ind:03d}, Energy: {energy:.5f}, Occupation: {number_per_site:.5f}, Max grad paramvec: {max_grad_paramvec:.5f} acceptance prob: {acceptance_prob:.5f}")
             self.last_result = result
 
-            #Check if the maximum of the gradient is smaller than min_grad
+            # Check if the maximum of the gradient is smaller than min_grad
             if max_grad_paramvec < abs(self.cfg.min_grad):
                 self.min_result = MinimizerResult(paramvec,self.cfg.method,energy,grad_paramvec,True)
                 return self.min_result
