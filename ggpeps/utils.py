@@ -1,22 +1,24 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.sparse import issparse
-from scipy.linalg import svd, block_diag
 import os
-import ggpeps.measurement as meas
+import re
+import sys
 import gzip
 import pickle
 import logging
 import subprocess  # Start process for git hash
-import re
-from pfapack import pfaffian as pf
-import numba as nb
-import sys
 
+import numpy as np
+import numba as nb
+from scipy.sparse import issparse
+from scipy.linalg import svd, block_diag
+
+from pfapack import pfaffian as pf
+
+import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
-# Global constants
+import ggpeps.measurement as meas
 
+# Global constants
 paulix = np.array([[0, 1], [1, 0]])
 pauliy = np.array([[0, -1.j], [1.j, 0]])
 pauliz = np.array([[1, 0], [0, -1]])
@@ -25,7 +27,7 @@ pauliz = np.array([[1, 0], [0, -1]])
 
 def fname2nlayer(fname):
     """Extract the number of layers from a filename"""
-    pattern=r"(?<=nlayer_)[\d]*"
+    pattern = r"(?<=nlayer_)[\d]*"
     result = re.search(pattern, fname)
     if result is not None:
         return int(result.group(0))
@@ -34,7 +36,7 @@ def fname2nlayer(fname):
 
 def fname2ncopy(fname):
     """Extract the number of copies from a filename"""
-    pattern=r"(?<=ncopy_)[\d]*"
+    pattern = r"(?<=ncopy_)[\d]*"
     result = re.search(pattern, fname)
     if result is not None:
         return int(result.group(0))
@@ -43,7 +45,7 @@ def fname2ncopy(fname):
 
 def fname2g(fname):
     """Extract the coupling from a filename"""
-    pattern=r"(?<=g_)[\d]*\.[\d]*"
+    pattern = r"(?<=g_)[\d]*\.[\d]*"
     result = re.search(pattern, fname)
     if result is not None:
         return float(result.group(0))
@@ -52,7 +54,7 @@ def fname2g(fname):
 
 def fname2gel(fname):
     """Extract the electric coupling from a filename"""
-    pattern=r"(?<=gel_)[\d]*\.[\d]*"
+    pattern = r"(?<=gel_)[\d]*\.[\d]*"
     result = re.search(pattern, fname)
     if result is not None:
         return float(result.group(0))
@@ -83,17 +85,17 @@ def load_matrix_dat_fmt(path,is_complex=True):
         return complex(*map(float, complexptrn.match(s).groups()))
     def parse_real(s):
         return float(s)
-    dest=[]
+    dest = []
     with open(path,'r') as f:
         for line in f:
-            line_short=re.sub(' +', ' ', line.strip())
-            strvec=line_short.split(" ")
-            numvec=[]
+            line_short = re.sub(' +', ' ', line.strip())
+            strvec = line_short.split(" ")
+            numvec = []
             for s in strvec:
                 if is_complex:
-                    num=parse_complex(s)
+                    num = parse_complex(s)
                 else:
-                    num=parse_real(s)
+                    num = parse_real(s)
                 numvec.append(num)
             dest.append(numvec)
     return np.array(dest)
@@ -178,7 +180,7 @@ def select_except(arr, ind: int):
         np.array: Array with all elements of arr except for arr[ind]
     """
     # This function works only on the outer-most layer
-    if isinstance(arr,list):
+    if isinstance(arr, list):
         arr = np.asarray(arr)
     mask = np.ones(len(arr), dtype=bool)
     mask[ind] = False
@@ -205,11 +207,11 @@ def multiply_except(arr, ind: int):
 @nb.njit(cache = True)
 def pfaffian_explicit_4x4_masked(mat,ind):
     i0, i1, i2, i3 = ind
-    return mat[i0, i1]*mat[i2, i3]-mat[i0, i2]*mat[i1, i3]+mat[i1, i2]*mat[i0, i3]
+    return (mat[i0, i1] * mat[i2, i3]) - (mat[i0, i2] * mat[i1, i3]) + (mat[i1, i2] * mat[i0, i3])
 
 @nb.njit(cache = True)
 def pfaffian_explicit_4x4(mat):
-    return mat[0, 1]*mat[2, 3]-mat[0, 2]*mat[1, 3]+mat[1, 2]*mat[0, 3]
+    return (mat[0, 1] * mat[2, 3]) - (mat[0, 2] * mat[1, 3]) + (mat[1, 2] * mat[0, 3])
 
 #@nb.njit(cache=True)
 def derivative_pfaffian_covariance_mat(pfarr,matvec,d_matvec):
@@ -217,7 +219,7 @@ def derivative_pfaffian_covariance_mat(pfarr,matvec,d_matvec):
     for pfaval,mat,d_mat in zip(pfarr,matvec,d_matvec):
         if not isclose(pfaval,0):
             mat_inv = np.linalg.inv(mat)
-            dest += 0.5 * pfaval * np.trace(mat_inv@d_mat)
+            dest += 0.5 * pfaval * np.trace(mat_inv @ d_mat)
     return dest
 
 def derivative_pfaffian(mat, d_mat):
@@ -235,7 +237,7 @@ def derivative_pfaffian(mat, d_mat):
     """
     pfaval = pf.pfaffian(mat)
     if not isclose(pfaval,0):
-        return 0.5 * pfaval*np.trace(np.linalg.inv(mat)@d_mat)
+        return 0.5 * pfaval * np.trace(np.linalg.inv(mat) @ d_mat)
     else:
         return 0.0
 
@@ -287,7 +289,7 @@ def is_antisymmetric(mat):
 def is_covmat(mat:np.ndarray) -> bool:
     """Returns true if the given matrix satisfies all the conditions to be a covariance matrix."""
     m, n = mat.shape
-    if m == n and is_antisymmetric(mat) and np.allclose(mat@mat,-np.eye(m)) and np.allclose(mat@np.transpose(mat), np.eye(m)):
+    if m == n and is_antisymmetric(mat) and np.allclose(mat@mat, -np.eye(m)) and np.allclose(mat @ np.transpose(mat), np.eye(m)):
         # note that the last check should be mat @ mat^dagger = 1, but transpose gets the same information for a matrix with real elements
         return True
     return False
@@ -295,9 +297,9 @@ def is_covmat(mat:np.ndarray) -> bool:
 def anti_symmetrize(mat):
     """Force a matrix to be anti-symmetirc."""
     if issparse(mat):
-        return 0.5*(mat-mat.T)
+        return 0.5*(mat - mat.T)
     else:
-        return 0.5*(mat-np.transpose(mat))
+        return 0.5*(mat - np.transpose(mat))
 
 
 def get_nonzero_fraction(mat):
@@ -320,7 +322,7 @@ def commutator(mat1, mat2):
     Returns:
         2d np.ndarray: Commutator
     """
-    return mat1@mat2-mat2@mat1
+    return (mat1 @ mat2) - (mat2 @ mat1)
 
 
 def anticommutator(mat1, mat2):
@@ -333,7 +335,7 @@ def anticommutator(mat1, mat2):
     Returns:
         2d np.ndarray: Anti-commutator
     """
-    return mat1@mat2+mat2@mat1
+    return (mat1 @ mat2) + (mat2 @ mat1)
 
 
 # =========== Covariance Utility Funcitons ===========
@@ -350,11 +352,11 @@ def tmat_to_covariance_matrix(tmat):
     """
     m, n = tmat.shape
     id = np.eye(m)
-    idinv = np.linalg.inv(id-tmat@np.conjugate(tmat))
-    lt = -idinv@tmat
-    rt = 0.5*idinv@(id+tmat@np.conjugate(tmat))
-    lb = -np.conjugate(rt)
-    rb = -np.conjugate(lt)
+    idinv = np.linalg.inv(id - tmat @ np.conjugate(tmat))
+    lt = -idinv @ tmat
+    rt = 0.5 * idinv @ (id + tmat @ np.conjugate(tmat))
+    lb = - np.conjugate(rt)
+    rb = - np.conjugate(lt)
     return 1.j*np.block([[lt, rt], [lb, rb]])
 
 
@@ -422,8 +424,7 @@ class WoodburyInverter:
         if not np.allclose(c, 0):
             # We cannot update with C being zero since this matrix has no inverse
             cinv = np.linalg.inv(c)
-            self.ainv -= ((self.ainv@u)@np.linalg.inv(cinv +
-                                                      v@self.ainv@u))@(v@self.ainv)
+            self.ainv -= ((self.ainv @ u) @ np.linalg.inv(cinv + v @ self.ainv @ u)) @ (v @ self.ainv)
         return self.ainv
 
     def update_index(self, m, indi, indj):
@@ -574,7 +575,7 @@ class BgbTransform():
             gamma0 = np.zeros((2 * trafo_size, 2 * trafo_size), dtype=complex)
             gamma0=np.block([[q0,r0],[np.conj(r0),np.conj(q0)]])
             trafo_0 = block_diag(herm_conj(unitary_transform),np.transpose(unitary_transform))
-            trafo_1 = block_diag(np.conj(unitary_transform),unitary_transform)
+            trafo_1 = block_diag(np.conj(unitary_transform), unitary_transform)
             # This matrix has the following order: psi, r+, u-, l-, d+,t,b, r-, l+,
             # u+, d-,t,b psi_dag, r+_dag, l-_dag, u-_dag, d+_dag,t_dag,b_dag,
             # r-_dag, l+_dag, u+_dag, d-_dag, t_dag, b_dag.
@@ -586,9 +587,9 @@ class BgbTransform():
 
 
 def autocorr_fft(arr):
-    arr = arr-np.mean(arr)
+    arr = arr - np.mean(arr)
     fft_vals = np.fft.fft(arr)
-    spectrum = fft_vals*np.conjugate(fft_vals)
+    spectrum = fft_vals * np.conjugate(fft_vals)
     dest = np.fft.ifft(spectrum)
     return dest/dest[0]
 
@@ -596,18 +597,18 @@ def rebin_array(a, R):
     """Rebin an array into bins of length R"""
     if isinstance(a, list):
         a = np.asarray(a)
-    R=int(R)
+    R = int(R)
     max_fit = int(len(a) - len(a) % R)
     if a.ndim == 1:
         # Shape (N): N samples of scalars
         dest = np.mean(a[:max_fit].reshape(-1, R), axis=1)
-    elif a.ndim==2:
+    elif a.ndim == 2:
         # Shape (N,n,m): N samples of m-dim vecotrs
-        N,m=a.shape
+        N, m = a.shape
         dest = np.mean(a[:max_fit].reshape(-1, m, R), axis=2)
     elif a.ndim == 3:
         # Shape (N,n,m): N samples of n x m matrices
-        N,m,n=a.shape
+        N,m,n = a.shape
         dest = np.mean(a[:max_fit].reshape(-1, m, n, R), axis=3)
     else:
         logging.error("rebin_array not implemented for dimensions greater than 3.")
@@ -655,7 +656,7 @@ def rebin_eom(arr):
     # We want to leave a sufficient number of samples to build a reasonable mean
     max_exp = int(np.floor(np.log2(N / 10)))
     if max_exp > 0:
-        binsize= 2**(max_exp-1)
+        binsize= 2**(max_exp - 1)
         data_rebin = rebin_array(arr, binsize)
     else:
         # We cannot rebin if we have too few data. We will just return the normal EOM
@@ -676,13 +677,13 @@ def show_vector(vec, title=None):
 
 def show_matrix(mat, title=None, **kwargs):
     """Display a matrix and interrupt the program. """
-    show_matrixvec([mat],title=[title],**kwargs)
+    show_matrixvec([mat],title=[title], **kwargs)
 
 def show_matrixvec(matvec, title=None, log=False):
     """Display a matrix and interrupt the program. """
     f, axvec = plt.subplots(1, len(matvec))
-    if len(matvec)==1:
-        axvec=[axvec]
+    if len(matvec) == 1:
+        axvec = [axvec]
     for ind, mat in enumerate(matvec):
         if log:
             minval = np.min(mat)
@@ -744,8 +745,8 @@ def extract_params_from_results_file(fname, dest_dir='') -> bool:
         bool: True if succesful, false otherwise.
     """
     if fname is not None and os.path.isfile(fname):
-        fname_base=os.path.basename(fname)
-        name,ext=os.path.splitext(fname_base)
+        fname_base = os.path.basename(fname)
+        name,ext = os.path.splitext(fname_base)
         g = fname2g(name)
         if name.startswith("result_min"):
             with open(fname, "rb") as infile:
@@ -787,5 +788,5 @@ def compare_array_elementwise(testcase,ref,res,print_vals=True):
         for i in range(ref.shape[0]):
             for j in range(ref.shape[1]):
                 if not np.isclose(ref[i, j] , res[i, j]):
-                    print("{},{}: ref: {},res:{}".format(i,j,ref[i,j],res[i,j]))
+                    print("{},{}: ref: {},res:{}".format(i,j, ref[i,j], res[i,j]))
     testcase.assertTrue(np.allclose(ref,res))

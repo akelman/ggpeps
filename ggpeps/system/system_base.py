@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Union, List # used in type hints; this approach might be deprecated in later python versions
-import logging
+
 import sys
+import logging
+import itertools as it
+
 import sympy
 import numpy as np
-import itertools as it
 
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
@@ -121,7 +123,7 @@ def calculate_lognormvec(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarr
         mat_d = mat_d_vec[ind]
         if all_factors:
             sign, logval = np.linalg.slogdet(
-                (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d))-mat_d.shape[0]*np.log(2)
+                (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d)) - mat_d.shape[0] * np.log(2)
         else:
             # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
             sign, logval = np.linalg.slogdet(
@@ -325,7 +327,7 @@ class System2DBase(ABC):
     @property
     def tmat_vec(self):
         """
-        Generate the T-matrix vector(single virtual fermion on the link).
+        Generate the T-matrix vector (single virtual fermion on the link).
         Analytically, this mode order is not advantageous, 
         but is makes the reshuffling of the modes easier for gamma_in and M_D in the covariance matrix.
 
