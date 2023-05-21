@@ -1,8 +1,10 @@
-import numpy as np
 import os
-import logging
 import pickle
+import logging
+
+import numpy as np
 from scipy.optimize import minimize
+
 
 class MinimizerResult:
     def __init__(self, paramvec, energygrad, method, value, converged):
@@ -14,10 +16,10 @@ class MinimizerResult:
 
     def __str__(self):
         dest = "==== Minimizer Result ====\n"
-        dest += "converged: {}\n".format(self.converged)
-        dest += "Value: {}\n".format(self.value)
-        dest += "Method: {}\n".format(self.method)
-        dest += "Parameters: {}\n".format(self.paramvec)
+        dest += f"converged: {self.converged}\n"
+        dest += f"Value: {self.value}\n"
+        dest += f"Method: {self.method}\n"
+        dest += f"Parameters: {self.paramvec}\n"
         dest += "==========================\n"
         return dest
 
@@ -38,7 +40,7 @@ class MinimizerConfig():
         self._method = val.upper()
 
 class Minimizer():
-    supported_methods = ["CG","BFGS","L-BFGS-B"]
+    supported_methods = ["CG", "BFGS", "L-BFGS-B"]
 
     def __init__(self, cfg, evaluator, use_exact=False):
         self.cfg = cfg
@@ -58,7 +60,7 @@ class Minimizer():
         elif self.cfg.method in self.supported_methods:
             return self.minimize_scipy()
         else:
-            logging.error("Unkown minimization method '{}'. Aborting...".format(self.cfg.method))
+            logging.error(f"Unkown minimization method '{self.cfg.method}'. Aborting...")
             return None
 
     def minimize_custom(self):
@@ -171,11 +173,8 @@ class Minimizer():
             sys_cfg = self.evaluator.system_cfg
 
             #FIXME: Adapt the filenames here
-            fname_mc_summary = "summary_min_L_{:02d}-{:02d}_gel_{:.4f}_gmag_{:.4f}_gint_{:.4f}_ncopy_{:02d}_nlayer_{:02d}.pkl".format(
-                sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g_el, sys_cfg.g_mag, sys_cfg.g_int, sys_cfg.ncopy, sys_cfg.nlayer)
-            fname_result_min = "result_min_L_{:02d}-{:02d}_gel_{:.4f}_gmag_{:.4f}_gint_{:.4f}_ncopy_{:02d}_nlayer_{:02d}.pkl".format(
-                sys_cfg.lattice.nx, sys_cfg.lattice.ny, sys_cfg.g_el,sys_cfg.g_mag,
-                sys_cfg.g_int, sys_cfg.ncopy, sys_cfg.nlayer)
+            fname_mc_summary = f"summary_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_gel_{sys_cfg.g_el:.4f}_gmag_{sys_cfg.g_mag:.4f}_gint_{sys_cfg.g_int:.4f}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
+            fname_result_min = f"result_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_gel_{sys_cfg.g_el:.4f}_gmag_{sys_cfg.g_mag:.4f}_gint_{sys_cfg.g_int:.4f}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
 
             self.last_result.save_summary(os.path.join(output_dir, fname_mc_summary))
             with open(os.path.join(output_dir, fname_result_min), "wb") as outfile:
@@ -186,6 +185,7 @@ def print_callback(x, minimizer):
     
     res = minimizer.last_result
     paramvec = minimizer.evaluator.system_cfg.paramvec
+    
     if minimizer.use_exact:
         acceptance_prob = np.nan
         energy = res.obsdict["energy"]
@@ -210,11 +210,11 @@ def print_callback(x, minimizer):
 
     if minimizer.cfg.method == 'CUSTOM':
         # We only have access to the iteration number if we are handling the minimization (via the CUSTOM method)
-        logging.info(f"Iter: {x:03d}, Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Max grad paramvec: {max_grad_paramvec:.6f} acceptance prob: {acceptance_prob:.5f}")
+        logging.info(f"Iter: {x:03d}, Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}, acceptance prob: {acceptance_prob:.5f}")
     else: 
-        logging.info(f"Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Max grad paramvec: {max_grad_paramvec:.6f} acceptance prob: {acceptance_prob:.5f}")
+        logging.info(f"Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}, acceptance prob: {acceptance_prob:.6f}")
 
-    logging.debug("el: {:.8f}, mag: {:.8f}, mass: {:.8f}, int: {:.8f}".format(el_energy, mag_energy, mass_energy, int_energy))
+    logging.debug(f"el: {el_energy:.9f}, mag: {mag_energy:.9f}, mass: {mass_energy:.9f}, int: {int_energy:.9f}")
     logging.debug(f"Parametervec: {paramvec}")
 
     # If we're at the lowest energy seen so far, log the parameters
