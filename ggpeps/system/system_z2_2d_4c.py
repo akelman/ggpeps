@@ -1,13 +1,14 @@
 import logging
+
 import sympy
 import numpy as np
-from scipy.linalg import block_diag
 from pfapack import pfaffian as pf
+from scipy.linalg import block_diag
 
-from ggpeps import lattice as lat
 from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.modearray import generate_permutation_matrix
+
 from .system_base import Config2DBase, System2DBase
 from .system_base import calculate_lognorm_inc, compute_grad_over_norm, extract_partial_covmats
 

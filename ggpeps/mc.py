@@ -1,14 +1,14 @@
-import numpy as np
 import os
-from datetime import datetime
-import time
-import logging
-import pickle
-import pandas as pd
-import gzip
-import ggpeps.utils as utils
-import copy
 import ray
+import copy
+import gzip
+import pickle
+import logging
+
+import numpy as np
+import pandas as pd
+
+import ggpeps.utils as utils
 import ggpeps.lattice as lattice
 from ggpeps.measurement import Measurement
 
@@ -49,16 +49,16 @@ class MonteCarloEstimatorConfig:
         return self._rng_state
 
     @rng_state.setter
-    def rng_state(self,state):
+    def rng_state(self, state):
         logging.error("MonteCarloEstimatorConfig: Do not set the state directly. Use a seed instead.")
         self.rng_state = None
         self.seed = None
 
     def __str__(self):
         dest = ""
-        dest += "Seed: {}\n".format(self.seed)
-        dest += "Warmup steps: {}\n".format(self.warmup_steps)
-        dest += "Measurement steps: {}\n".format(self.meas_steps)
+        dest += f"Seed: {self.seed}\n"
+        dest += f"Warmup steps: {self.warmup_steps}\n"
+        dest += f"Measurement steps: {self.meas_steps}\n"
         return dest
 
 
@@ -131,8 +131,7 @@ class MonteCarloManager:
         system = self.system_cls(self.system_cfg)
         dest = MonteCarloEstimator(self.mc_cfg, system)
         if len(resultvec) > 1:
-            dest.obsdict = utils.mergeDict(resultvec[0].obsdict,
-                                           resultvec[1].obsdict)
+            dest.obsdict = utils.mergeDict(resultvec[0].obsdict, resultvec[1].obsdict)
             for mc_runner in resultvec[2:]:
                 dest.obsdict = utils.mergeDict(dest.obsdict, mc_runner.obsdict)
         else:
@@ -216,7 +215,7 @@ class MonteCarloEstimator:
         """Warm up phase without measurement"""
         while self.step < self.cfg.warmup_steps:
             if self.step % 1000 == 0:
-                logging.info("Warmup: {}".format(self.step))
+                logging.info(f"Warmup: {self.step}")
             self.update()
             self.step += 1
 
@@ -224,7 +223,7 @@ class MonteCarloEstimator:
         """Meaurement phase phase (with measurement)"""
         while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
             if self.step % 1000 == 0:
-                logging.info("Run: {}".format(self.step))
+                logging.info(f"Run: {self.step}")
             self.update()
             self.measure()
             self.step += 1
@@ -371,10 +370,10 @@ class MonteCarloEstimator:
         syscfg = self.system.cfg
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
-        fname_full = "data_mc_L_{:02d}-{:02d}_gel_{:.3f}_gmag_{:.3f}_gint_{:.3f}_nlayer_{:02d}_wsteps_{:07d}_msteps_{:07d}.pkl.gz".format(
-            syscfg.lattice.nx, syscfg.lattice.ny, syscfg.g_el, syscfg.g_mag, syscfg.g_int,  syscfg.nlayer, warmup_steps, meas_steps)
-        fname_summary = "summary_mc_L_{:02d}-{:02d}_gel_{:.3f}_gmag_{:.3f}_gint_{:.3f}_nlayer_{:02d}_wsteps_{:07d}_msteps_{:07d}.pkl".format(
-            syscfg.lattice.nx, syscfg.lattice.ny, syscfg.g_el, syscfg.g_mag, syscfg.g_int, syscfg.nlayer, warmup_steps, meas_steps)
+
+        fname_full = f"data_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl.gz"
+        fname_summary = f"summary_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl"
+        
         self.save_full(os.path.join(output_dir, fname_full))
         self.save_summary(os.path.join(output_dir, fname_summary))
 
@@ -386,7 +385,7 @@ class MonteCarloEstimator:
         for key in self.obsdict.keys():
             val = self.obsdict[key]
             if val is not None and len(val) > 0:
-                logging.info("<{}>: {}".format(key, self.obsdict[key].mean()))
+                logging.info(f"<{key}>: {self.obsdict[key].mean()}")
 
     def summary(self):
         """Generate a summary of the simulation in the form of a pandas dataframe

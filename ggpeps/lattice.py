@@ -1,8 +1,8 @@
-import numpy as np
-from enum import Enum
 import sys
 import logging
-from scipy.linalg import block_diag
+from enum import Enum
+
+import numpy as np
 
 
 class Direction(Enum):
@@ -193,7 +193,7 @@ class Lattice2D:
         """
         ext_x, ext_y = size
         x, y = coord
-        dest=[]
+        dest = []
         for i in range(ext_x):
             coord_link = ((x+i) % self.nx, y)
             dest.append(((coord_link, Direction.X), False))
@@ -208,7 +208,7 @@ class Lattice2D:
             dest.append(((coord_link, Direction.Y), True))
         if use_indices:
             #Transform the coordinates to indices
-            dest=[(self.coord2ind_dir(*coorddir),conj) for (coorddir,conj) in dest]
+            dest = [(self.coord2ind_dir(*coorddir), conj) for (coorddir, conj) in dest]
         return dest
     
     def generate_allowed_loop_dimensions(self, include_all: bool = False) -> list:

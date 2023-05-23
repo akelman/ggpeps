@@ -12,15 +12,15 @@ from timeit import default_timer as timer
 import numpy as np
 np.set_printoptions(linewidth=200)
 
-from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
 from ggpeps.system import Z2System2DConfig, Z2System2D
+from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
 from ggpeps.system import Z2System2D4C_Config, Z2System2D4C
-from ggpeps.measurement import Measurement
 
+from ggpeps import lattice as lat
 from ggpeps import utils, exacteval
+from ggpeps.measurement import Measurement
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloManager
-from ggpeps import lattice as lat
 
 
 def args2logname(args,params):

@@ -1,5 +1,5 @@
-import numpy as np
 import copy
+import numpy as np
 import ggpeps.utils as utils
 
 class Measurement:
@@ -28,20 +28,20 @@ class Measurement:
             data: Data to be added
         """
         #We assume that the data stored in one measurement is homogeneous
-        if self.counter==0:
+        if self.counter == 0:
             #We set the first element
-            self.acc=copy.deepcopy(data)
+            self.acc = copy.deepcopy(data)
         else:
             #Subsequent elements are added
-            self.acc+=data
-        if self.counter==self.binsize-1:
+            self.acc += data
+        if self.counter == self.binsize-1:
             #We just filled up the array
             self.datavec.append(self.acc/self.binsize)
-            self.counter=0
+            self.counter = 0
         else:
-            self.counter+=1
+            self.counter += 1
 
-    def extend(self,data):
+    def extend(self, data):
         """Extends the internal datavec directly wihtout binning
 
         Args:
@@ -63,7 +63,7 @@ class Measurement:
         Returns:
             float: Mean of the measurement
         """
-        return np.mean(self.datavec,axis=0)
+        return np.mean(self.datavec, axis=0)
 
     def mean_err(self, use_binning=True):
         """Computation of the error on the mean
@@ -77,7 +77,7 @@ class Measurement:
         if use_binning:
             return utils.rebin_eom(self.datavec)
         else:
-            return np.std(self.datavec,ddof=1,axis=0)/np.sqrt(len(self.datavec))
+            return np.std(self.datavec, ddof=1, axis=0)/np.sqrt(len(self.datavec))
 
     def std(self):
         """Computation of the standard deviation of the timeseries.
@@ -86,7 +86,7 @@ class Measurement:
         Returns:
             float: Standard deviation of the timeseries
         """
-        return np.std(self.datavec,ddof=1,axis=0)
+        return np.std(self.datavec, ddof=1, axis=0)
 
     def var(self):
         """Computation of the variance of the timeseries.
@@ -95,7 +95,7 @@ class Measurement:
         Returns:
             float: Variance of the timeseries
         """
-        return np.var(self.datavec,ddof=1,axis=0)
+        return np.var(self.datavec, ddof=1, axis=0)
 
     def __len__(self):
         """Returns the length of the datavec (aka timeseries)
@@ -105,7 +105,7 @@ class Measurement:
         """
         return len(self.datavec)
 
-    def __mul__(self,other):
+    def __mul__(self, other):
         """Multiplication specialization for two Measurements.
         The datavecs are multiplied.
         If the binsize is not 1, the result of binning and then multiplying will be different from first multiplying and then binning the result.

@@ -1,9 +1,10 @@
-import numpy as np
 import os
 import itertools as it
-import ggpeps.lattice as lattice
+
+import numpy as np
 import pandas as pd
-import logging
+
+import ggpeps.lattice as lattice
 
 class ExactEvaluatorManager:
     """Wrapper Class for the ExactEvaluator.

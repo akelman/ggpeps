@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import numpy as np
+
 import os
-import sys
+import numpy as np
 
 def main(fnames):
     for fname in fnames:
         if os.path.isfile(fname):
-            data=np.load(fname)
-            basename=os.path.basename(fname)
-            name,ext=os.path.splitext(basename)
-            name_out=name+".txt"
+            data = np.load(fname)
+            basename = os.path.basename(fname)
+            name, ext = os.path.splitext(basename)
+            name_out = name+".txt"
             np.savetxt(name_out,data, delimiter="\n")
         else:
-            print("File '{}' not found. Skipping.".format(fname))
+            print(f"File '{fname}' not found. Skipping.")
     
 
 
@@ -24,6 +24,6 @@ if __name__=="__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
-    parser.add_argument("fnames",nargs="+",type=str,help="Numpy files")
+    parser.add_argument("fnames", nargs="+", type=str, help="Numpy files")
     args = parser.parse_args()
     main(args.fnames)
