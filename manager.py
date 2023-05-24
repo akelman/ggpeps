@@ -160,6 +160,7 @@ def main(args):
     mc_config.seed = seed
 
     logging.info(f"Git hash: {utils.get_git_hash()}")
+    logging.info(f"Logging level: {args.level}")
     logging.info("========= MC INFO ==========")
     logging.info(f"Seed: {mc_config.seed}")
     logging.info(f"Warmup steps: {mc_config.warmup_steps}")
