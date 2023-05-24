@@ -323,7 +323,7 @@ def main(args):
         logging.error(f"Mode '{args.mode}' unkown.")
 
     logging.info("========== TIME ============")
-    logging.info(f"The simulation took {stop - start}s")
+    logging.info(f"The simulation took {stop - start}s.")
     logging.info("============================")
 
 
@@ -344,34 +344,22 @@ if __name__ == "__main__":
     parser.add_argument("L", type=int, help="Size of the square system (one side)")
     
     # Hamiltonian parameters
-    parser.add_argument("--g", type=float, default=1.0,
-                        help="coupling constant (equal to lambda)")
-    parser.add_argument("--g_el", type=float,
-                        help="electric coupling constant (if not given, computed as g/2)")
-    parser.add_argument("--g_mag", type=float,
-                        help="magnetic coupling constant (if not given, computed as [2*g]^-1)")
-    parser.add_argument("--g_int", type=float, default=0.0,
-                        help="gauge matter coupling")
-    parser.add_argument("--g_mass", type=float, default=0.0, 
-                        help="matter constant")
+    parser.add_argument("--g", type=float, default=1.0, help="coupling constant (equal to lambda)")
+    parser.add_argument("--g_el", "--el", type=float, help="electric coupling constant (if not given, computed as g/2)")
+    parser.add_argument("--g_mag", "--mag", type=float, help="magnetic coupling constant (if not given, computed as [2*g]^-1)")
+    parser.add_argument("--g_int", "--int", type=float, default=0.0, help="gauge matter coupling")
+    parser.add_argument("--g_mass", "--mass", "--m", type=float, default=0.0, help="matter constant")
 
     # Ansatz parameters
-    parser.add_argument("--nlayer",
-                        default=1,
-                        type=int,
+    parser.add_argument("--nlayer", default=1, type=int,
                         help="Number of PEPS layers for the variational state")
-    parser.add_argument("--ncopy",
-                        default=1,
-                        type=int,
+    parser.add_argument("--ncopy", default=1, type=int,
                         help="Number of virtual fermions on the links")
 
     # Other system parameters
-    parser.add_argument("--params",
-                        nargs="+",
+    parser.add_argument("--params", nargs="+",
                         help="Parameters passed as a starting configuration (Order for one copy: [t1r, t2r,..., y1r, y2r,..., z1r, z2r..., t1i, t2i, ..., y1i, ... z1i])")
-    parser.add_argument("--pure-gauge",
-                        action="store_true",
-                        default=False,
+    parser.add_argument("--pure-gauge", action="store_true", default=False,
                         help="Force the coupling of physical and virtual fermions (t-parameters) to be 0")
 
     # Computation settings
@@ -381,19 +369,15 @@ if __name__ == "__main__":
     parser.add_argument("--level", default="info", help="logging level")
     parser.add_argument("--binsize", default=1, type=int, help="Binsize used in the MC computation")
     parser.add_argument("--output", type=str, default='.', help="Output Directory")
-    parser.add_argument("--no-bin-eom",
-                        default=False,
-                        action="store_true",
+    parser.add_argument("--no-bin-eom", default=False, action="store_true",
                         help="Use the standard EOM instead of a rebinning analysis")
-    parser.add_argument("--use-systemsize-updates",
-                        action="store_true",
-                        default=False,
+    parser.add_argument("--use-systemsize-updates", action="store_true", default=False,
                         help="Update every spin of the system between each update step")
     
     # Arguments for the minimizer
     parser.add_argument("--method", type=str, default="bfgs", help="Minimization method")
     parser.add_argument("--maxiter", type=int, default=100, help="Number of steps for the minimizer")
-    parser.add_argument("--alpha", type=float, default=0.1, help="Learning rate")
+    parser.add_argument("--alpha", "--lr", type=float, default=0.1, help="Learning rate")
     parser.add_argument("--min-grad", type=float, default=1e-5, help="Minimal gradient to use a stopping criterion")
     
     # Arguments for ray
