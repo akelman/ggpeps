@@ -7,12 +7,13 @@ from scipy.optimize import minimize
 
 
 class MinimizerResult:
-    def __init__(self, paramvec, energygrad, method, value, converged):
+    def __init__(self, paramvec, energygrad, method, value, converged, message):
         self.paramvec = paramvec
         self.energygrad = energygrad
         self.method = method
         self.value = value
         self.converged = converged
+        self.message = message
 
     def __str__(self):
         dest = "==== Minimizer Result ====\n"
@@ -20,6 +21,7 @@ class MinimizerResult:
         dest += f"Value: {self.value}\n"
         dest += f"Method: {self.method}\n"
         dest += f"Parameters: {self.paramvec}\n"
+        dest += f"Message: {self.message}\n"
         dest += "==========================\n"
         return dest
 
@@ -97,8 +99,9 @@ class Minimizer():
             # We have to use the internal name of the paramvec if we write to it since it is a property and not just an array
             self.evaluator.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
 
-        logging.warn("Reached maximum number of iterations without convergence.")
-        self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, False)
+        message = "Reached maximum number of iterations without convergence."
+        logging.warn(message)
+        self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, False, message)
         return self.min_result
 
 
@@ -142,8 +145,9 @@ class Minimizer():
         energygrad = min_result.jac
         energy = min_result.fun
         converged = min_result.success
+        message = min_result.message
 
-        dest = MinimizerResult(paramvec, energygrad, self.cfg.method, energy, converged)
+        dest = MinimizerResult(paramvec, energygrad, self.cfg.method, energy, converged, message)
         self.min_result = dest
         return dest
 
