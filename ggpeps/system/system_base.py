@@ -881,10 +881,10 @@ class System2DBase(ABC):
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord, dir)
-        gamma_neutral_gauge = self.gamma_gauge_neutral[dir]
-        gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
-        update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
-        return self.update_lognorm_inc(ind_mat, update, all_factors)
+        gamma_neutral_gauge_layers = self.gamma_gauge_neutral
+        gamma_in_subst_layers = [rotmat @ gamma_neutral_gauge[dir] @ np.transpose(rotmat) for gamma_neutral_gauge in gamma_neutral_gauge_layers]
+        updates = [self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys) for gamma_in_subst, gamma_in_sys in zip(gamma_in_subst_layers, self.gamma_in_sys_vec) ] 
+        return self.update_lognorm_inc(ind_mat, updates, all_factors)
 
     def calculate_lognorm(self, all_factors=False):
         """Compute the logarithm of the norm
@@ -931,7 +931,7 @@ class System2DBase(ABC):
         normvec = self.calculate_lognormvec_inc(all_factors=all_factors)
         return np.sum(normvec)
 
-    def update_lognorm_inc(self, offset, update, all_factors=False):
+    def update_lognorm_inc(self, offset, updates, all_factors=False):
         """Updat the logarithm of the norm incrementally with the given update.
 
         Args:
@@ -944,7 +944,7 @@ class System2DBase(ABC):
         """
         cumval = 0
         for ind in range(self.cfg.nlayer):
-            detval = self.incdet_vec[ind].update_index(self.wi_gamma_in_vec[ind].inv(), update, offset, offset, store=False)
+            detval = self.incdet_vec[ind].update_index(self.wi_gamma_in_vec[ind].inv(), updates[ind], offset, offset, store=False)
             if all_factors:
                 detval -= self.gamma_in_sys.shape[0]*np.log(2)
                 detval += np.linalg.slogdet(self.mat_d_vec[ind])[1]
@@ -1040,7 +1040,7 @@ class System2DBase(ABC):
         ind = self.cfg.lattice.coord2ind_dir(coord, dir)
         self.update_gauge_ind(ind, theta)
 
-    def calculate_update_gamma_in(self,offset,update_mat,gamma_in_sys=None):
+    def calculate_update_gamma_in(self, offset, update_mat, gamma_in_sys=None):
         """Compute an update between the current gamma_in and the new gamma_in
 
         Args:
