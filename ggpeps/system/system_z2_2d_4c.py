@@ -27,7 +27,7 @@ class Z2System2D4C_Config(Config2DBase):
 
     def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, nlayer=2):
         if nlayer != 2:
-            raise ValueError("When including physical fermions, exactly 2 layers are required.")
+            raise ValueError("When including physical fermions, 2 layers is required.")
         super().__init__(lattice, g_el, g_mag, g_int, g_mass, nlayer)
 
     def make_pure_gauge(self):
@@ -76,63 +76,6 @@ class Z2System2D4C_Config(Config2DBase):
 
         for coord in zeroed_params:
             mat[coord] = 0
-    
-    def remove_zeroed_params(self, params):
-        zeroed_params = [
-                        # Set 1st layer (type I) t params to 0
-                        (0,0),  # t1r
-                        (0,3),  # t2r
-                        (0,10), # t1i
-                        (0,13), # t2i 
-                        # Set 2nd layer (type II) conditions
-                        (1,3),  # t2r
-                        (1,13), # t2i
-                        (1,1),  # y1r
-                        (1,2),  # z1r
-                        (1,4),  # y2r
-                        (1,5),  # z2r
-                        (1,11), # y1i
-                        (1,12), # z1i
-                        (1,14), # y2i
-                        (1,15)  # z2i
-                        ]
-        flattened_params = []
-        it = np.nditer(params, flags=['multi_index'])
-        for x in it:
-            if it.multi_index not in zeroed_params:
-                flattened_params.append(params[it.multi_index])
-
-        return np.array(flattened_params)
-    
-    def reshape_from_flattened_params(self, flattened_params):
-        zeroed_params = [
-                        # Set 1st layer (type I) t params to 0
-                        (0,0),  # t1r
-                        (0,3),  # t2r
-                        (0,10), # t1i
-                        (0,13), # t2i 
-                        # Set 2nd layer (type II) conditions
-                        (1,3),  # t2r
-                        (1,13), # t2i
-                        (1,1),  # y1r
-                        (1,2),  # z1r
-                        (1,4),  # y2r
-                        (1,5),  # z2r
-                        (1,11), # y1i
-                        (1,12), # z1i
-                        (1,14), # y2i
-                        (1,15)  # z2i
-                        ]
-        params = np.zeros((self.nlayer, self._nparams))
-        it = np.nditer(params, flags=['multi_index'])
-        k = 0
-        for x in it:
-            if it.multi_index not in zeroed_params:
-                params[it.multi_index] = flattened_params[k]
-                k += 1
-        
-        return params
-
 
 
 class Z2System2D4C(System2DBase):
