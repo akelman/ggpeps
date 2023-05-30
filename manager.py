@@ -255,7 +255,7 @@ def main(args):
         start = timer()
         result = minimizer.minimize()
         stop = timer()
-        print(result)
+        logging.info(result)
         minimizer.save(output_dir = args.output)
     elif args.mode == "exact":
         # Evaluate a given set of parameters with exact contraction (equivalent to the mode "eval", just exact)
@@ -289,7 +289,7 @@ def main(args):
         start = timer()
         result = minimizer.minimize()
         stop = timer()
-        print(result)
+        logging.info(result)
         minimizer.save(output_dir = args.output)
     elif args.mode == "minmult":
         # Optimize the parameters with multiple runs (useful if BFGS has problems with the Hessian)
