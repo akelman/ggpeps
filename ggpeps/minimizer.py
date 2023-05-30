@@ -87,7 +87,7 @@ class Minimizer():
             # Check if the maximum of the gradient is smaller than min_grad
             if max_grad_paramvec < abs(self.cfg.min_grad):
                 logging.info(f"Reached convergence: max grad paramvec < {self.cfg.min_grad}")
-                self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, True)
+                self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, True, '')
                 return self.min_result
 
             #Adapt the parametervec according to the gradient
@@ -106,12 +106,15 @@ class Minimizer():
 
 
     def minimize_scipy(self):
-        def energy_wrapper(paramvec):
+        def energy_wrapper(params):
+            # reshape params
+            paramvec = self.evaluator.system_cfg.reshape_from_flattened_params(params)
+
             # Energy wrapper
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = paramvec
-                self.evaluator.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator.system_cfg._nparams))
+                self.evaluator.system_cfg.paramvec = np.reshape(paramvec, (-1, self.evaluator.system_cfg._nparams))
                 self.last_result = self.evaluator.simulate()
             if self.use_exact:
                 energy = self.last_result.obsdict["energy"]
@@ -119,22 +122,27 @@ class Minimizer():
                 energy = self.last_result.get_obs_mean("energy")
             return energy
 
-        def gradient_wrapper(paramvec):
+        def gradient_wrapper(params):
+            paramvec = self.evaluator.system_cfg.reshape_from_flattened_params(params)
+
             # Jacobian wrapper
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = paramvec
-                self.evaluator.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator.system_cfg._nparams))
+                self.evaluator.system_cfg.paramvec = np.reshape(paramvec, (-1, self.evaluator.system_cfg._nparams))
                 self.last_result = self.evaluator.simulate()
             if self.use_exact:
                 parametergrad = self.last_result.obsdict["energy_grad"]
             else:
                 parametergrad = self.energy_gradient_mc(self.last_result)
-            return parametergrad.reshape((-1))
+            #return parametergrad.reshape((-1))
+            return self.evaluator.system_cfg.remove_zeroed_params(parametergrad)
 
         # Use the random initialization from the system.initialize as first guess.
         # We might want to change this later.
-        paramvec = np.reshape(self.evaluator.system_cfg.paramvec, (-1))
+        params = np.reshape(self.evaluator.system_cfg.paramvec, (-1))
+        paramvec = self.evaluator.system_cfg.remove_zeroed_params(self.evaluator.system_cfg.paramvec)
+        paramvec = np.reshape(paramvec, (-1))
         min_result = minimize(energy_wrapper,
                               paramvec,
                               method=self.cfg.method,
