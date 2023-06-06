@@ -217,7 +217,7 @@ class System2DBase(ABC):
         self._mat_d_mod_inv_vec = None
 
         # Management of the gaugefields
-        self._gamma_gauge_neutral_list_dict = None # list for various possible choices of projectors (not "vec", since that is used for layers), dict for directions
+        self._gamma_gauge_neutral_vec_dict = None # vec for layers (choices of projectors may be different for each layer), dict for directions
         self._gamma_in_sys_vec = None # in cases when different layers use the same projectors, all elements will point to the same gamma_in_sys
         self._gaugefieldvec = np.zeros(self.cfg.lattice.nlinks)
         self.gaugemgr = gauge.ZNGauge(2) # needs to be changed for cases other than Z2
@@ -995,9 +995,9 @@ class System2DBase(ABC):
 
     @property
     def gamma_gauge_neutral(self):
-        if not self._gamma_gauge_neutral_list_dict:
-            self._gamma_gauge_neutral_list_dict = self._generate_gamma_gauge_neutral_dict()
-        return self._gamma_gauge_neutral_list_dict
+        if not self._gamma_gauge_neutral_vec_dict:
+            self._gamma_gauge_neutral_vec_dict = self._generate_gamma_gauge_neutral_dict()
+        return self._gamma_gauge_neutral_vec_dict
 
     @abstractmethod
     def _generate_gamma_gauge_neutral_dict(self):

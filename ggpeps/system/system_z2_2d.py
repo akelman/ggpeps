@@ -169,8 +169,8 @@ class Z2System2D(System2DBase):
 
         # Initialize gamma_in_sys for the full system 
         id = np.eye(size) 
-        neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral[Direction.X] )
-        neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral[Direction.Y] )
+        neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral[0][Direction.X] ) # just use the first gamma_gauge_neutral, since they're shared by all layers
+        neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral[0][Direction.Y] )
         gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y) # for the 3D case, simply add in the Z covariance matrix as well
 
         # Initialize all the trackers of inverses and determinants
@@ -218,7 +218,7 @@ class Z2System2D(System2DBase):
         dest={}
         dest[Direction.X] = np.real_if_close(1.j*np.kron(utils.pauliy, utils.paulix)) # this just happens to be a convenient way to generate the covariance matrix that was calculated by hand
         dest[Direction.Y] = np.real_if_close(np.kron(1.j*utils.pauliy, utils.pauliz))
-        return dest
+        return [dest]*self.cfg.nlayer
 
     #Gauging
 
@@ -264,7 +264,8 @@ class Z2System2D(System2DBase):
         ind_mat = 4 * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord, dir)
-        gamma_neutral_gauge = self.gamma_gauge_neutral[dir] # calling every time (rather than storing) will cause some innefficiency 
+        gamma_neutral_gauge = self.gamma_gauge_neutral[0][dir]  # calling every time (rather than storing) will cause some innefficiency 
+                                                                # just use the first gamma_gauge_neutral, since they're shared by all layers
         gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(
             rotmat)
 
