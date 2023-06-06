@@ -23,30 +23,23 @@ from ggpeps.minimizer import Minimizer, MinimizerConfig
 from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloManager
 
 
-def args2logname(args,params):
+def args2logname(args, couplings):
     """Convert arguments to a name for the log file
 
     Args:
         args (namespace): Namespace of arguments as provided by argparse
-        params (dict): Dictionary of all couplings
+        couplings (dict): Dictionary of all couplings
 
     Returns:
         str: Filename of the log file
     """
-    shorthands = {
-        "min": "min",
-        "minimize": "min",
-        "eval": "eval",
-        "exact": "exact",
-        "minexact": "minexact"
-    }
     if "exact" in args.mode:
-        fname = f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_gel_{params['g_el']}_gmag_{params['g_mag']}_gint_{params['g_int']}_gmass{params['g_mass']}.log"
+        fname = f"log_{args.mode}_L_{args.L}x{args.L}_gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass{couplings['g_mass']}.log"
     else:
-        fname = f"log_{shorthands[args.mode]}_L_{args.L}x{args.L}_gel_{params['g_el']}_gmag_{params['g_mag']}_gint_{params['g_int']}_gmass{params['g_mass']}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
+        fname = f"log_{args.mode}_L_{args.L}x{args.L}_gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass{couplings['g_mass']}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
     return os.path.join(args.output, fname)
 
-def translate_parameters(system_cfg, params,rng_state):
+def translate_parameters(system_cfg, params, rng_state):
     """Translate the parameters given on the commandline to a form useful in the code
 
     Args:
@@ -117,17 +110,17 @@ def main(args):
         g_mag = args.g_mag
     g_int = args.g_int
     g_mass = args.g_mass
-    params = {"g_el":g_el, "g_mag":g_mag, "g_int":g_int, "g_mass":g_mass}
+    couplings = {"g_el":g_el, "g_mag":g_mag, "g_int":g_int, "g_mass":g_mass}
 
     # Set up the logger
     h_stdout = logging.StreamHandler(stream=sys.stdout)
     h_stderr = logging.StreamHandler(stream=sys.stderr)
     h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
     logging.basicConfig(
-        level=args.level.upper(),
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(args2logname(args,params)),
+        level = args.level.upper(),
+        format = "%(asctime)s [%(levelname)s] %(message)s",
+        handlers = [
+            logging.FileHandler(args2logname(args, couplings)),
             h_stdout,
             h_stderr
         ]
@@ -220,7 +213,7 @@ def main(args):
 
 
     # Call different functions depending on the mode specified via CLI
-    if args.mode == "eval":
+    if args.mode == "eval-mc":
         # Evaluate a given set of parameters with Monte Carlo
         mc_config.minimizer_mode = False
         mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
@@ -233,7 +226,7 @@ def main(args):
         logging.info("==== Acceptance prob =======")
         logging.info(f"Acceptance probability: {mc_result.get_obs_mean('acceptance_prob')}")
         logging.info("============================")
-    elif args.mode == "minimize" or args.mode == "min":
+    elif args.mode == "min-mc":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
         logging.info("====== MINIMIZER INFO ======")
         logging.info(f"Max Iterations: {args.maxiter}")
@@ -250,14 +243,14 @@ def main(args):
         min_cfg.alpha = args.alpha
         min_cfg.min_grad = args.min_grad
 
-        minimizer = Minimizer(min_cfg,mc_mgr)
+        minimizer = Minimizer(min_cfg, mc_mgr)
 
         start = timer()
         result = minimizer.minimize()
         stop = timer()
         logging.info(result)
         minimizer.save(output_dir = args.output)
-    elif args.mode == "exact":
+    elif args.mode == "eval-exact":
         # Evaluate a given set of parameters with exact contraction (equivalent to the mode "eval", just exact)
         system = system_type(system_cfg)
         start = timer()
@@ -267,7 +260,7 @@ def main(args):
         ex_eval.save(output_dir=args.output)
         for key, val in dest_dict.items():
             logging.info(f"{key}: {val}")
-    elif args.mode == "minexact":
+    elif args.mode == "min-exact":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
         logging.info("====== MINIMIZER INFO ======")
         logging.info(f"Max Iterations: {args.maxiter}")
@@ -333,13 +326,14 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(
         formatter_class = argparse.ArgumentDefaultsHelpFormatter,
-        epilog = """Possible modes: eval, minimize (min), exact, minexact, minmult. Possible logging levels: critical, error, warning, info, debug."""
+        epilog = """Possible modes: eval-mc, eval-exact, min-mc (minimize with MC), min-exact, minmult. \
+                    Possible logging levels: critical, error, warning, info, debug."""
     )
 
     # Mode and lattice size
     parser.add_argument("mode",
                         type=str,
-                        choices=["eval", "min", "exact", "minexact", "minmult"],
+                        choices=["eval-mc", "eval-exact", "min-mc", "min-exact", "minmult"],
                         help="Mode of the program")
     parser.add_argument("L", type=int, help="Size of the square system (one side)")
     
