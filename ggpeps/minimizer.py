@@ -204,13 +204,13 @@ def print_callback(x, minimizer):
     else:
         acceptance_prob = res.get_obs_mean("acceptance_prob")
         energy = res.get_obs_mean("energy")
-        number_per_site = minimizer.get_obs_mean("number_per_site")
+        number_per_site = res.get_obs_mean("number_per_site")
         grad_paramvec = minimizer.energy_gradient_mc(res)
 
-        mass_energy = minimizer.get_obs_mean("mass_energy")
-        int_energy = minimizer.get_obs_mean("int_energy")
-        el_energy = minimizer.get_obs_mean("el_energy")
-        mag_energy = minimizer.get_obs_mean("mag_energy")
+        mass_energy = res.get_obs_mean("mass_energy")
+        int_energy = res.get_obs_mean("int_energy")
+        el_energy = res.get_obs_mean("el_energy")
+        mag_energy = res.get_obs_mean("mag_energy")
     max_grad_paramvec = np.max(np.abs(grad_paramvec))
 
     if minimizer.cfg.method == 'CUSTOM':
@@ -219,7 +219,7 @@ def print_callback(x, minimizer):
     else: 
         logging.info(f"Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}, acceptance prob: {acceptance_prob:.6f}")
 
-    logging.debug(f"el: {el_energy:.9f}, mag: {mag_energy:.9f}, mass: {mass_energy:.9f}, int: {int_energy:.9f}")
+    logging.debug(f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}")
     logging.debug(f"Parametervec: {paramvec}")
 
     # If we're at the lowest energy seen so far, log the parameters
