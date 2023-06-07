@@ -152,14 +152,10 @@ def main(args):
     rngstate = np.random.RandomState(seed)
     mc_config.seed = seed
 
+    # Log basic info
     logging.info(f"Git hash: {utils.get_git_hash()}")
     logging.info(f"Logging level: {args.level}")
     logging.info(f"Mode: {args.mode}")
-    logging.info("========= MC INFO ==========")
-    logging.info(f"Seed: {mc_config.seed}")
-    logging.info(f"Warmup steps: {mc_config.warmup_steps}")
-    logging.info(f"Measurement steps: {mc_config.meas_steps}")
-    logging.info("============================")
 
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
@@ -198,6 +194,8 @@ def main(args):
     if args.no_bin_eom:
         Measurement.use_rebinning = False
 
+
+    # Update Log
     logging.info("======= SYSTEM INFO ========")
     logging.info(f"L: {L}")
     logging.info(f"# of layers: {system_cfg.nlayer}")
@@ -211,6 +209,19 @@ def main(args):
     logging.info(f"Rebinning EOM: {Measurement.use_rebinning}")
     logging.info(f"Starting parameters: {paramvec}")
     logging.info("============================")
+    
+    if "mc" in args.mode:
+        logging.info("========= MC INFO ==========")
+        logging.info(f"Seed: {mc_config.seed}")
+        logging.info(f"Warmup steps: {mc_config.warmup_steps}")
+        logging.info(f"Measurement steps: {mc_config.meas_steps}")
+        logging.info("============================")
+    if "min" in args.mode:
+        logging.info("====== MINIMIZER INFO ======")
+        logging.info(f"Max Iterations: {args.maxiter}")
+        logging.info(f"Learning rate: {args.alpha}")
+        logging.info(f"Method: {args.method.upper()}")
+        logging.info("============================")
 
 
     # Call different functions depending on the mode specified via CLI
@@ -229,11 +240,6 @@ def main(args):
         logging.info("============================")
     elif args.mode == "min-mc":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
-        logging.info("====== MINIMIZER INFO ======")
-        logging.info(f"Max Iterations: {args.maxiter}")
-        logging.info(f"Learning rate: {args.alpha}")
-        logging.info(f"Method: {args.method.upper()}")
-        logging.info("============================")
 
         mc_config.minimizer_mode = True
         mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
@@ -263,11 +269,6 @@ def main(args):
             logging.info(f"{key}: {val}")
     elif args.mode == "min-exact":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
-        logging.info("====== MINIMIZER INFO ======")
-        logging.info(f"Max Iterations: {args.maxiter}")
-        logging.info(f"Learning rate: {args.alpha}")
-        logging.info(f"Method: {args.method.upper()}")
-        logging.info("============================")
 
         start = timer()
         ex_mgr = exacteval.ExactEvaluatorManager(system_type, system_cfg)
@@ -285,7 +286,7 @@ def main(args):
         stop = timer()
         logging.info(result)
         minimizer.save(output_dir = args.output)
-    elif args.mode == "minmult":
+    elif args.mode == "minmult-mc":
         # Optimize the parameters with multiple runs (useful if BFGS has problems with the Hessian)
 
         # Set the parameters of the minimizer according to the command line
@@ -327,14 +328,14 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(
         formatter_class = argparse.ArgumentDefaultsHelpFormatter,
-        epilog = """Possible modes: eval-mc, eval-exact, min-mc (minimize with MC), min-exact, minmult. \
+        epilog = """Possible modes: eval-mc, eval-exact, min-mc (minimize with MC), min-exact, minmult-mc. \
                     Possible logging levels: critical, error, warning, info, debug."""
     )
 
     # Mode and lattice size
     parser.add_argument("mode",
                         type=str,
-                        choices=["eval-mc", "eval-exact", "min-mc", "min-exact", "minmult"],
+                        choices=["eval-mc", "eval-exact", "min-mc", "min-exact", "minmult-mc"],
                         help="Mode of the program")
     parser.add_argument("L", type=int, help="Size of the square system (one side)")
     
