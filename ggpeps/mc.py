@@ -164,9 +164,11 @@ class MonteCarloEstimator:
 
         self.obsdict["acceptance_prob"] = Measurement("Acceptance Probablity", binsize)
         self.obsdict["energy"] = Measurement("Energy", binsize)
+        self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
         self.obsdict["mag_energy"] = Measurement("Magnetic Energy", binsize)
         self.obsdict["el_energy"] = Measurement("Electric Energy", binsize)
-        self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
+        self.obsdict["int_energy"] = Measurement("Interaction Energy", binsize)
+        self.obsdict["mass_energy"] = Measurement("Mass Energy", binsize)
         self.obsdict["el_energy_op"] = Measurement("Electric Energy Operator (bare)", binsize)
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
@@ -197,6 +199,8 @@ class MonteCarloEstimator:
         self.obsdict["energy"].append(self.system.energy)
         self.obsdict["el_energy"].append(self.system.el_energy)
         self.obsdict["mag_energy"].append(self.system.mag_energy)
+        self.obsdict["int_energy"].append(self.system.int_energy)
+        self.obsdict["mass_energy"].append(self.system.mass_energy)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
         self.obsdict["number_per_site"].append(self.system.number_per_site)
 
