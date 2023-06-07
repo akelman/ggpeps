@@ -149,21 +149,27 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Minimize (MC) L=2, cp=2, nl=1",
+            "name": "Minimize (MC) L=2, cp=4, nl=1",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "args": [
                 "min",
                 "2",
-                "--g",
-                "2.0",
+                "--g_el",
+                "0.5",
+                "--g_mag",
+                "0.5",
+                "--g_mass",
+                "1.0",
+                "--g_int",
+                "1.0",
                 "--method",
                 "BFGS",
                 "--ncopy",
-                "2",
+                "4",
                 "--nlayer",
-                "1"
+                "2"
             ],
             "console": "integratedTerminal"
         },
