@@ -34,7 +34,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "args": [
-                "eval",
+                "eval-mc",
                 "2",
                 "--level",
                 "debug",
@@ -60,7 +60,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "args": [
-                "exact",
+                "eval-exact",
                 "2"
             ],
             "console": "integratedTerminal"
@@ -71,7 +71,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "args": [
-                "minexact",
+                "min-exact",
                 "2",
                 "--g",
                 "2.0",
@@ -89,7 +89,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "args": [
-                "minexact",
+                "min-exact",
                 "2",
                 "--g",
                 "2.0",
@@ -108,7 +108,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "args": [
-                "minexact",
+                "min-exact",
                 "2",
                 "--g",
                 "2.0",
@@ -127,7 +127,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "args": [
-                "minexact",
+                "min-exact",
                 "2",
                 "--g_el",
                 "0.5",
@@ -154,7 +154,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "args": [
-                "min",
+                "min-mc",
                 "2",
                 "--g_el",
                 "0.5",
