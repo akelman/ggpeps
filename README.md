@@ -1,7 +1,7 @@
 # Gaussian PEPS simulation
 
 This repository contains the code for simulations with Gaussian Fermionic Projected Entangled Pair States (GGPEPS).
-The aim is to simulation $Z_N$ lattice gauge theories.
+The aim is to simulate $Z_N$ lattice gauge theories.
 
 ## Installation
 The code is written for Python 3 and tested to work with Python 3.8.
@@ -54,7 +54,7 @@ All scripts in the main folder call parts of the package and provide the infrast
 The package `ggpeps` is divided into several parts:
 
 - `plot`: Helper scripts for plots
-- `system`: Module containing all system implementations. Currently, two-dimensional systems for $Z_2$ are implemented with one and two copies of virtual fermions on the links are implemented.
+- `system`: Module containing all system implementations. Currently, two-dimensional systems for $Z_2$ with one and two copies of virtual fermions on the links are implemented.
 The implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
 - `exacteval.py`: For small systems and finite gauge groups, the expectation values of the states can be evaluated exactly by contracting the full PEPS.
 - `gauge.py`: Implementation of the gauge groups
@@ -70,11 +70,11 @@ TODO: Fill
 
 ## Data Generation
 
-The script `manager.py` is the central point for data generation. It supports different modes: `eval`, `exact`, `min` and `minexact`.
+The script `manager.py` is the central point for data generation. It supports different modes: `eval`, and `min` where both can be evaluated with `exact` and `mc`.
 
 All modes are writing log files to disk and to console. 
 The files are named according to the parameters that were provided via the commandline. 
-In addition to the progress of the computation, they also store a git hash which enables to identify them with a certain version of the code later.
+In addition to the progress of the computation, they also store a git hash which enables to identify which version of the code was used.
 
 All data is stored in the form of pandas dataframes in pickle (`.pkl`) files.
 While these files are convenient to work with in Python, they are a bit unintuitive to inspect on the commandline.
@@ -82,7 +82,7 @@ The tool `inspect_data.py` takes all output files generated with this code and d
 
 In the following, we will describe the different modes in more detail.
 
-`eval`: 
+`eval-mc`: 
 The evaluation mode computes the expectation value of a set of observables with given set of parameters using Monte Carlo.
 To simulate a $2\times 2$ system with MC, we can call
 ```
@@ -97,7 +97,7 @@ It is compressed by default to save disk space
 
 The summary file is most relevant for most plots since it contains the mean values of observables including errors (computed via binning analysis).
 
-`exact`:
+`eval-exact`:
 The exact evaluation mode computes the expectation value of a set of observables with given set of parameters using exact contraction.
 This works only for small systems of $L=2$.
 
@@ -105,7 +105,7 @@ This works only for small systems of $L=2$.
 python manager.py eval 2
 ```
 
-`min`:
+`min-mc`:
 In minimization mode, the Kogut-Susskind Hamiltonian for the gauge theory in question is minimized by using different minimizers. 
 The expectation values for a given set of parameters are computed with Monte Carlo.
 The update according to the computed energy and gradients is controlled by the optimizer.
@@ -115,7 +115,7 @@ Currently, scipy optimizers like `BFGS` and a custom gradient based optimizer is
 python manager.py min 2 --method BFGS
 ```
 
-`minexact`:
+`min-exact`:
 For small systems, we can substitute the Monte Carlo evaluation part in the minimization (just as we did in `eval` mode) with an exact contraction.
 Exact contraction are only available for systems of size 2x2.
 
@@ -138,9 +138,9 @@ All scripts prefixed with `plot_*` will plot some aspect of the provided dataset
 The most used script is `plot_summary.py` which displays the data of a `summary_*.pkl` file.
 Minimization and evalautions of single parameters produce summary files.
 
-A typical can look like
+A typical use can look like
 ```
-python ../../../../plot_summary.py --ec summary_min* --obs el_energy mag_energy energy --show
+python plot_summary.py --ec summary_min* --obs el_energy mag_energy energy --show
 ```
 The option `--show` displays the interactive matplotlib plot before saving the plot to disk.
 This script is meant for data exploration and should not be used to produce paper-style plots.
