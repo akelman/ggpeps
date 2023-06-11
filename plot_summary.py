@@ -1,12 +1,14 @@
-import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 import sys
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
 from ggpeps import utils
 
 def len_arr(x):
-    if isinstance(x,list) or isinstance(x,np.ndarray):
+    if isinstance(x, list) or isinstance(x, np.ndarray):
         return len(x)
     else:
         return 1
@@ -36,8 +38,8 @@ def main(args):
                 dfvec.append(df_tmp)
     df_mc_ec = pd.concat(dfvec)
 
-    #Enrich dataset
-    df_mc_ec["L"] = df_mc_ec["nx"].astype("str") + "-" + df_mc_ec["ny"].astype("str")
+    # Enrich dataset
+    df_mc_ec["L"] = df_mc_ec["nx"].astype("str") + "x" + df_mc_ec["ny"].astype("str")
     df_mc_ec.rename(columns={"g2_el":"g_el", "g2_mag":"g_mag", "g2":"g"}, inplace=True)
     obsnamevec = df_mc_ec.name.unique()
 
@@ -48,7 +50,7 @@ def main(args):
 
     if args.exact is not None and os.path.isfile(args.exact):
         df_exact = pd.read_pickle(args.exact)
-        df_exact["L"] = df_exact["nx"].astype("str") + "-" + df_exact["ny"].astype("str")
+        df_exact["L"] = df_exact["nx"].astype("str") + "x" + df_exact["ny"].astype("str")
         df_exact["type"] = "ED"
         # Add numbers to the grouping columns to enable grouping
         df_exact["nlayer"] = -1
@@ -77,7 +79,7 @@ def main(args):
         df = df_mc_ec
         df_diff = None
         if args.diff:
-            print(f"File {args.exact} not found. We need it for the differences. Aborting." )
+            print(f"File {args.exact} not found. We need it for the differences. Aborting.")
             sys.exit(1)
         else:
             print(f"File {args.exact} not found. Skipping." )
@@ -94,7 +96,7 @@ def main(args):
 
             if args.diff:
                 # show errors for MC
-                for name, group in df_diff_filtered.groupby(["type","L","nlayer", "ncopy"]):
+                for name, group in df_diff_filtered.groupby(["type", "L", "nlayer", "ncopy"]):
                     type, L, nlayer, ncopy = name
                     if type == 'MC':
                         error = group['err']
@@ -104,14 +106,14 @@ def main(args):
                             group["diff"],
                             fmt = 'o', 
                             yerr = error,
-                            label = "{}, {}, L={}, nc={}, nl={}".format(type, obs, L, ncopy, nlayer))
+                            label = f"{type}, obs={obs}, L={L}")
             else:
                 for name, group in df_filtered.groupby(["type", "L", "nlayer", "ncopy"]):
                     type, L, nlayer, ncopy = name
                     if type == "ED":
                         ax.plot(group[args.xaxis],
                                 group["mean"],
-                                label = "ED, {}, L={}".format(type, obs, L))
+                                label = f"ED, obs={obs}, L={L}")
                     else:
                         if type == 'MC':
                             error = group['err']
@@ -121,7 +123,7 @@ def main(args):
                                 group["mean"],
                                 fmt = 'o', 
                                 yerr = error,
-                                label = "{}, {}, L={}, nc={}, nl={}".format(type, obs, L, ncopy, nlayer))
+                                label = f"{type}, obs={obs}, L={L}")
 
     if args.logx:
         ax.set_xscale("log")
@@ -136,29 +138,25 @@ def main(args):
     f.tight_layout()
     if not args.no_save:
         if args.diff:
-            f.savefig("summary_diff_{}.pdf".format("-".join(args.obs)))
+            f.savefig(f"summary_diff_{'-'.join(args.obs)}.pdf")
         else:
-            f.savefig("summary_{}.pdf".format("-".join(args.obs)))
+            f.savefig(f"summary_{'-'.join(args.obs)}.pdf")
     if args.show:
         plt.show()
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--exact", help="ED data")
+    parser.add_argument("--ed", "--exact", help="ED data", dest="exact")
     parser.add_argument("--mc", nargs="+", help="MC data")
     parser.add_argument("--ec", nargs="+", help="EC data")
-    parser.add_argument("--show", action="store_true", default=False, help="Show the plot")
-    parser.add_argument("--no-save", action="store_true", default=False, help="Do not save the plot")
     parser.add_argument("--diff", action="store_true", default=False, help="Plot the difference to the exact results")
     parser.add_argument("--logx", action="store_true", default=False, help="Use logarithmic scaling for x axis")
     parser.add_argument("--logy", action="store_true", default=False, help="Use logarithmic scaling for y axis")
+    parser.add_argument("--show", action="store_true", default=False, help="Show the plot")
+    parser.add_argument("--no-save", action="store_true", default=False, help="Do not save the plot")
     parser.add_argument("--xaxis", type=str, default="g_el", help="Quantity to be plotted on the x axis")
-    parser.add_argument("--obs",
-                        type=str,
-                        nargs="+",
-                        default=["energy"],
-                        help="Observable")
+    parser.add_argument("--obs", type=str, nargs="+", default=["energy"], help="Observables to plot")
 
     args = parser.parse_args()
 
