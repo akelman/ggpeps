@@ -1,7 +1,6 @@
 import os
 import pickle
 import logging
-import functools
 
 import numpy as np
 from scipy.optimize import minimize
@@ -120,7 +119,7 @@ class Minimizer():
                 energy = self.last_result.get_obs_mean("energy")
             return energy
 
-        def gradient_wrapper_parent(paramvec, zero_layers=None):
+        def gradient_wrapper(paramvec):
             # Jacobian wrapper
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
@@ -131,44 +130,15 @@ class Minimizer():
                 parametergrad = self.last_result.obsdict["energy_grad"]
             else:
                 parametergrad = self.energy_gradient_mc(self.last_result)
-
-            # If we only want to optimize one layer, impose that here
-            if zero_layers is None:
-                zero_layers = []
-            for layer in zero_layers:
-                zeroed = [(layer, ind) for ind in range(len(parametergrad[layer]))]
-                for coord in zeroed:
-                    parametergrad[coord] = 0
             return parametergrad.reshape((-1))
-
-        ind = 0
-        max_minimizations = 6
-        paramvec = np.reshape(self.evaluator.system_cfg.paramvec, (-1))
-        while ind < max_minimizations:
-            if ind % 2 == 0:
-                gradient_wrapper = functools.partial(gradient_wrapper_parent, zero_layers=[1])
-            else:
-                gradient_wrapper = functools.partial(gradient_wrapper_parent, zero_layers=[0])
-            logging.info(f"STARTING NEW MIN: min {ind+1} of {max_minimizations+1}")
-            min_result = minimize(energy_wrapper,
-                              paramvec,
-                              method=self.cfg.method,
-                              jac=gradient_wrapper,
-                              callback=lambda x: print_callback(x, self),
-                              options={"maxiter": self.cfg.max_iter})
-            logging.info(f"Minimization finished. Value: {min_result.fun}, message: {min_result.message}")
-            paramvec = min_result.x
-            self.last_paramvec = None # get ready for next minimization
-            ind += 1
 
         # Use the random initialization from the system.initialize as first guess.
         # We might want to change this later.
-        logging.info(f"STARTING FINAL MIN")
-        #paramvec = np.reshape(self.evaluator.system_cfg.paramvec, (-1))
+        paramvec = np.reshape(self.evaluator.system_cfg.paramvec, (-1))
         min_result = minimize(energy_wrapper,
                               paramvec,
                               method=self.cfg.method,
-                              jac=gradient_wrapper_parent,
+                              jac=gradient_wrapper,
                               callback=lambda x: print_callback(x, self),
                               options={"maxiter": self.cfg.max_iter})
         paramvec = min_result.x
@@ -249,7 +219,7 @@ def print_callback(x, minimizer):
     else: 
         logging.info(f"Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}, acceptance prob: {acceptance_prob:.6f}")
 
-    logging.info(f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}")
+    logging.debug(f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}")
     logging.debug(f"Parametervec: {paramvec}")
 
     # If we're at the lowest energy seen so far, log the parameters
