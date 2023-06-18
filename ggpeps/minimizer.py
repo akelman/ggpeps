@@ -42,7 +42,7 @@ class MinimizerConfig():
         self._method = val.upper()
 
 class Minimizer():
-    supported_methods = ["CG", "BFGS", "L-BFGS-B"]
+    supported_methods = ["CG", "BFGS", "L-BFGS-B", "Powell", "Nelder-Mead", "TNC", "dogleg", "trust-ncg"]
 
     def __init__(self, cfg, evaluator, use_exact=False):
         self.cfg = cfg
