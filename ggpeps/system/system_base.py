@@ -70,6 +70,10 @@ class Config2DBase(ABC):
         # We know that we need _nparams parameters for each layer
         return np.all(lenvec == self._nparams)
 
+    @property
+    def nparams_per_layer(self):
+        return self._nparams
+
     def nvarparams(self):
         return self._nparams*self.nlayer
 

@@ -745,7 +745,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec = [[0, 0, 0, 0, 0, 0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
-        system_cfg.paramvec=paramvec
+        system_cfg.paramvec = paramvec
         mc_config = MonteCarloEstimatorConfig()
         mc_config.warmup_steps = 10
         mc_config.meas_steps = 10
