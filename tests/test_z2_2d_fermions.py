@@ -7,7 +7,7 @@ from ggpeps.lattice import Direction
 from ggpeps import system, exacteval
 from ggpeps import utils
 from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloEstimator, MonteCarloManager
-from ggpeps.system import Z2System2D4C_Config, Z2System2D4C
+from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D_G2C_F2C
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 from ggpeps.utils import compare_array_elementwise
 
@@ -18,9 +18,9 @@ class TestZ2C4System(unittest.TestCase):
 
         lat = lattice.Lattice2D(2,2)
         paramvec = np.random.rand(2, 20)
-        cfg = system.Z2System2D4C_Config(lat, 1,1,1,1)
+        cfg = system.Z2System2D_G2C_F2C_Config(lat, 1,1,1,1)
         cfg.paramvec = paramvec
-        self.system_z2 = system.Z2System2D4C(cfg) 
+        self.system_z2 = system.Z2System2D_G2C_F2C(cfg) 
         self.system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)   
         
     
