@@ -1,4 +1,5 @@
-"""Main script to control the simulation. 
+"""
+Main script to control the simulation. 
 Further details about the usage of the script can be found in README.md.
 """
 
@@ -162,7 +163,14 @@ def main(args):
 
     # Depending on the parameters, we instantiate different systems
     # Since they all share the same interface, we do not care much about the details of the system after this point
-    if args.ncopy == 1:
+    if args.fermions:
+        if args.ncopy == 2:
+            # Z2 system with 4 copies of virtual fermions on the links (2 for the pure gauge case, 2 for interacting with physical fermions)
+            system_type = Z2System2D_G2C_F2C
+            system_cfg = Z2System2D_G2C_F2C_Config(lattice, g_el, g_mag, g_int, g_mass)
+        if args.ncopy == 4:
+            raise NotImplementedError("This case is not yet implemented. Coming Soon!")
+    elif args.ncopy == 1:
         # Z2 system with one copy of virtual fermions on the links
         system_type = Z2System2D
         system_cfg = Z2System2DConfig(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
@@ -170,10 +178,6 @@ def main(args):
         # Z2 system with two copies of virtual fermions on the links
         system_type = Z2System2D2C
         system_cfg = Z2System2D2CConfig(lattice, g_el, g_mag, g_int,  g_mass, nlayer=args.nlayer)
-    elif args.ncopy == 4:
-        # Z2 system with 4 copies of virtual fermions on the links (2 for the pure gauge case, 2 for interacting with physical fermions)
-        system_type = Z2System2D_G2C_F2C
-        system_cfg = Z2System2D_G2C_F2C_Config(lattice, g_el, g_mag, g_int, g_mass)
     else:
         logging.error("Not Implemented: Only 1, 2, or 4 copies are possible.")
         sys.exit(1)
@@ -357,6 +361,8 @@ if __name__ == "__main__":
                         help="Parameters passed as a starting configuration (Order for one copy: [t1r, t2r,..., y1r, y2r,..., z1r, z2r..., t1i, t2i, ..., y1i, ... z1i])")
     parser.add_argument("--pure-gauge", action="store_true", default=False,
                         help="Force the coupling of physical and virtual fermions (t-parameters) to be 0")
+    parser.add_argument("--fermions", action="store_true", default=False, 
+                        help="Use an ansatz that allows for the inclusion of fermions") # TODO: improve handling of pure-gauge and fermions arguments
 
     # Computation settings
     parser.add_argument("--seed", type=int, help="Seed for the MC simulation")
