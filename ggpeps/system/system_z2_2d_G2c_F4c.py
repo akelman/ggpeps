@@ -265,7 +265,7 @@ class Z2System2D_G2C_F4C(System2DBase):
         Block_1 = sympy.Matrix([-1.j*t1, -t1, 1.j*t1, t1, 0,0,0,0]) # this is a column matrix
         substitutions = [(z1, z3), (z2, z4), (y1, y3), (y2, y4), (a, a2), (b, b2), (c, c2), (d, d2)]
 
-        tmat_symb = sympy.Matrix( sympy.BlockMatrix([ [sympy.zeros(1), Block_1.T, Block_1.subs(t1, t2).T], [Block_1, Block_2, zeros_8], [Block_1.subs(t1, t2), zeros_8, Block_2.subs(substitutions)]]) )
+        tmat_symb = sympy.Matrix( sympy.BlockMatrix([ [sympy.zeros(1), -Block_1.T, -Block_1.subs(t1, t2).T], [Block_1, Block_2, zeros_8], [Block_1.subs(t1, t2), zeros_8, Block_2.subs(substitutions)]]) )
 
         return tmat_symb
 
