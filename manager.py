@@ -16,6 +16,7 @@ np.set_printoptions(linewidth=200)
 from ggpeps.system import Z2System2DConfig, Z2System2D
 from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
 from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D_G2C_F2C
+from ggpeps.system import Z2System2D_G2C_F4C_Config, Z2System2D_G2C_F4C
 
 from ggpeps import lattice as lat
 from ggpeps import utils, exacteval
@@ -169,7 +170,9 @@ def main(args):
             system_type = Z2System2D_G2C_F2C
             system_cfg = Z2System2D_G2C_F2C_Config(lattice, g_el, g_mag, g_int, g_mass)
         if args.ncopy == 4:
-            raise NotImplementedError("This case is not yet implemented. Coming Soon!")
+            # Z2 system with 6 copies of virtual fermions on the links (2 for the pure gauge case, 4 for interacting with physical fermions)
+            system_type = Z2System2D_G2C_F4C
+            system_cfg = Z2System2D_G2C_F4C_Config(lattice, g_el, g_mag, g_int, g_mass)
     elif args.ncopy == 1:
         # Z2 system with one copy of virtual fermions on the links
         system_type = Z2System2D
