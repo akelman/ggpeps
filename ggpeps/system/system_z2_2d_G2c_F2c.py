@@ -16,8 +16,7 @@ from .system_base import calculate_lognorm_inc, compute_grad_over_norm, extract_
 ###################### Z2System2D ##########################
 
 class Z2System2D_G2C_F2C_Config(Config2DBase):
-    """Configuration of the Z2 system in 2D with 2 copies of virtual fermions on the links.
-    More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
+    """Configuration of the Z2 system in 2D with 2 copies of virtual fermions on the links for the gauge fields, and another two for the fermions.
     """
 
     _nparams = 20
@@ -79,7 +78,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
 
 class Z2System2D_G2C_F2C(System2DBase):
-    """ 2 copy version of the Z2 system GGPEPS ansatz with multiple type of virtual fermions
+    """ 2 copy version of the Z2 system GGPEPS ansatz with multiple types of virtual fermions
 
     Some general notes about conventions:
 
@@ -90,11 +89,11 @@ class Z2System2D_G2C_F2C(System2DBase):
     """
 
     def __init__(self, cfg: Z2System2D_G2C_F2C_Config):
-        """Constructor of a Z2System2D2C system.
+        """Constructor of a Z2System2D2C system, with two virtual fermions per site per link for the gauge fields, and another two for the fermions.
         We call only the constructor of the super class, since we do not have any class-specific setup.
 
         Args:
-            cfg (Z2System2D2CConfig): Configuration containing all system-related parameters
+            cfg (Z2System2D_G2C_F2C_Config): Configuration containing all system-related parameters
         """
         super().__init__(cfg)
 
