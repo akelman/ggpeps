@@ -158,6 +158,7 @@ def main(args):
     logging.info(f"Git hash: {utils.get_git_hash()}")
     logging.info(f"Logging level: {args.level}")
     logging.info(f"Mode: {args.mode}")
+    logging.info(f"Seed: {seed}") # used for both MC and randomizing parameters
 
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
