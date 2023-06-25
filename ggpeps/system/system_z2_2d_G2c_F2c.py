@@ -97,6 +97,13 @@ class Z2System2D_G2C_F2C(System2DBase):
         """
         super().__init__(cfg)
 
+        prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
+        indices_layer1 = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)]]
+        indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)]]
+        idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors)
+        idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors) 
+        self.idxarr_vec = [idxarr_lay1, idxarr_lay2]
+
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
@@ -496,13 +503,7 @@ class Z2System2D_G2C_F2C(System2DBase):
 
         # Indices and prefactors for building the required Pfaffians
         overall_factors = [-1/16, -1/16] # this arises due to normalization and the i^(# of modes/2) in the expression Tr[1^# * rho * (modes)]
-        prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
-        indices_layer1 = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)]]
-        indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)]]
-        idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors)
-        idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors) 
-        idxarrs = [idxarr_lay1, idxarr_lay2]
-        
+        idxarrs = self.idxarr_vec
 
         for layerind in range(self.cfg.nlayer):
             layer_derivative = []
