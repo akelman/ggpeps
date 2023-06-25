@@ -518,13 +518,14 @@ class Z2System2D_G2C_F2C(System2DBase):
         prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
         indices_layer1 = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)]]
         indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)]]
-        idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors, neg=1)
-        idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors, neg=-1) # there is something fishy going on with the minus signs that needs to be figured out
+        idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors, neg=-1)
+        idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors, neg=-1) 
         idxarrs = [idxarr_lay1, idxarr_lay2]
         
 
         for layerind in range(self.cfg.nlayer):
-            layer_derivative=[]
+            layer_derivative = []
+
             #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
             mat_a = self.mat_a_mod_vec[layerind] # dim: 2*nsites (for majorana) + 8 (= 4 virtual modes per link x2 for majorana)
             mat_b = self.mat_b_mod_vec[layerind]
