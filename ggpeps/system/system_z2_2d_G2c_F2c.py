@@ -494,12 +494,13 @@ class Z2System2D_G2C_F2C(System2DBase):
         dest = []
         dest_grad = []
 
-        #overall_factor = -1 # this arises due to the i^(# of modes/2) in the expression Tr[1^# * rho * (modes)]
+        # Indices and prefactors for building the required Pfaffians
+        overall_factors = [-1/16, -1/16] # this arises due to normalization and the i^(# of modes/2) in the expression Tr[1^# * rho * (modes)]
         prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
         indices_layer1 = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)]]
         indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)]]
-        idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors, neg=-1)
-        idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors, neg=-1) 
+        idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors)
+        idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors) 
         idxarrs = [idxarr_lay1, idxarr_lay2]
         
 
@@ -515,6 +516,7 @@ class Z2System2D_G2C_F2C(System2DBase):
             gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
 
             idxarr = idxarrs[layerind]
+            overall_factor = overall_factors[layerind]
 
             ###################### Calculation of <P> ########################
             covmat_out = mat_a + \
@@ -537,7 +539,7 @@ class Z2System2D_G2C_F2C(System2DBase):
             # Instead of writing down all the terms explicitly, we build tuples of the prefactors and the indices of the covariance matrix.
             # Then, we compute all terms in a list comprehension.
             pfarr = [prefactor * pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
-            el_energy_full = 1/16 * np.sum(pfarr)
+            el_energy_full = overall_factor * np.sum(pfarr)
             
             el_energy_layer = np.real(el_energy_full) * np.exp(norm_mod - lognorm_default)
             dest.append(el_energy_layer)
@@ -555,7 +557,7 @@ class Z2System2D_G2C_F2C(System2DBase):
                 # Summand with derivative of the covariance matrix
                 # We re-use the list comprehension from above to use the indices
                 deriv_pfarr = [prefactor * utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)],d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
-                d_el_energy = 1/16 * np.real(np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
+                d_el_energy = overall_factor * np.real(np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
                                 
                 # Summand with derivative of norms
                 trace_def = self.compute_grad_over_norm(symbol, layerind)

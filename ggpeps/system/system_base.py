@@ -1471,7 +1471,7 @@ class System2DBase(ABC):
 
         return mode_order_str
     
-    def get_pfaffian_arrays(self, modes, coefficients, neg=1):
+    def get_pfaffian_arrays(self, modes, coefficients):
         """Generate the arrays used for list comprehension to extract the required pfaffians, with the correct
         prefactors, used in the calculation of the electric energy and electric gradients.
 
@@ -1494,7 +1494,7 @@ class System2DBase(ABC):
         indices = [sum(sub, ()) for sub in submatrices]
 
         factors = [k for k in it.product(*coefficients)]
-        prefactors = [neg*np.product(k) for k in factors]
+        prefactors = [np.product(k) for k in factors]
         idxarr = [(p, i) for p, i in zip(prefactors, indices)]
         
         return idxarr
