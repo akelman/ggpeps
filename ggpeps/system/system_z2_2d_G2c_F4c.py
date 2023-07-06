@@ -215,6 +215,8 @@ class Z2System2D_G2C_F4C(System2DBase):
         c2 = c2r+1.j*c2i
         d2 = d2r+1.j*d2i
 
+        zeros_8 = sympy.zeros(8)
+        Block_1 = sympy.Matrix([-1.j*t1, -t1, 1.j*t1, t1, 0,0,0,0]) # this is a column matrix
         Block_2 = sympy.Matrix([
             [0, 1.j*y1, z1, 1.j*z1, -1.j*a, -1.j*c, -1.j*b, -1.j*d],
             [-1.j*y1, 0, -1.j*z1, -z1, 1.j*c, 1.j*a, 1.j*d, 1.j*b],
@@ -225,12 +227,15 @@ class Z2System2D_G2C_F4C(System2DBase):
             [1.j*b, -1.j*d, -a, c, -z2, 1.j*z2, 0, -y2],
             [1.j*d, -1.j*b, -c, a, -1.j*z2, z2, y2, 0]
             ])
+        
+        substitutionsB = [(z1, z3), (z2, z4), (y1, y3), (y2, y4), (a, a2), (b, b2), (c, c2), (d, d2)]
+        Block_2B = Block_2.subs(substitutionsB)
 
-        zeros_8 = sympy.zeros(8)
-        Block_1 = sympy.Matrix([-1.j*t1, -t1, 1.j*t1, t1, 0,0,0,0]) # this is a column matrix
-        substitutions = [(z1, z3), (z2, z4), (y1, y3), (y2, y4), (a, a2), (b, b2), (c, c2), (d, d2)]
+        # To be used for coupling between 1-2 and 3-4 layers
+        #substitutionsC = [(z1, z3), (z2, z4), (y1, y3), (y2, y4), (a, a2), (b, b2), (c, c2), (d, d2)]
+        #Block_2C = Block_2.subs(substitutionsC)
 
-        tmat_symb = sympy.Matrix( sympy.BlockMatrix([ [sympy.zeros(1), -Block_1.T, -Block_1.subs(t1, t2).T], [Block_1, Block_2, zeros_8], [Block_1.subs(t1, t2), zeros_8, Block_2.subs(substitutions)]]) )
+        tmat_symb = sympy.Matrix( sympy.BlockMatrix([ [sympy.zeros(1), -Block_1.T, -Block_1.subs(t1, t2).T], [Block_1, Block_2, zeros_8], [Block_1.subs(t1, t2), zeros_8, Block_2B]]) )
 
         return tmat_symb
 
