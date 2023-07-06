@@ -215,48 +215,6 @@ class Z2System2D_G2C_F4C(System2DBase):
         c2 = c2r+1.j*c2i
         d2 = d2r+1.j*d2i
 
-        '''
-        tmat_symb=sympy.Matrix([
-            [0, -1.j*t1, 1.j*t1, t1, -t1, -1.j*t2, 1.j*t2, t2, -t2],
-            [1.j*t1, 0, 1.j*y1, z1, 1.j*z1, -1.j*a, -1.j*c, -1.j*b, -1.j*d],
-            [-1.j*t1, -1.j*y1, 0, -1.j*z1, -z1, 1.j*c, 1.j*a, 1.j*d, 1.j*b],
-            [-t1, -z1, 1.j*z1, 0, -y1, d, b, a, c],
-            [t1, -1.j*z1, z1, y1, 0, -b, -d, -c, -a],
-            [1.j*t2, 1.j*a, -1.j*c, -d, b, 0, 1.j*y2, z2, 1.j*z2],
-            [-1.j*t2, 1.j*c, -1.j*a, -b, d, -1.j*y2, 0, -1.j*z2, -z2],
-            [-t2, 1.j*b, -1.j*d, -a, c, -z2, 1.j*z2, 0, -y2],
-            [t2, 1.j*d, -1.j*b, -c, a, -1.j*z2, z2, y2, 0]
-            ])
-        '''
-        
-        '''
-        # Build T out of submatrices
-        Block_T_PP = sympy.Matrix([0])
-        Block_T_PV = sympy.Matrix([0,0,0,0,0,0,0,0, -1.j*t1, -t1, 1.j*t1, t1, 0,0,0,0]) # this is a column matrix
-        Block_I = sympy.Matrix([
-            [0, -1.j*t1, 1.j*t1, t1, -t1, -1.j*t2, 1.j*t2, t2, -t2],
-            [1.j*t1, 0, 1.j*y1, z1, 1.j*z1, -1.j*a, -1.j*c, -1.j*b, -1.j*d],
-            [-1.j*t1, -1.j*y1, 0, -1.j*z1, -z1, 1.j*c, 1.j*a, 1.j*d, 1.j*b],
-            [-t1, -z1, 1.j*z1, 0, -y1, d, b, a, c],
-            [t1, -1.j*z1, z1, y1, 0, -b, -d, -c, -a],
-            [1.j*t2, 1.j*a, -1.j*c, -d, b, 0, 1.j*y2, z2, 1.j*z2],
-            [-1.j*t2, 1.j*c, -1.j*a, -b, d, -1.j*y2, 0, -1.j*z2, -z2],
-            [-t2, 1.j*b, -1.j*d, -a, c, -z2, 1.j*z2, 0, -y2],
-            [t2, 1.j*d, -1.j*b, -c, a, -1.j*z2, z2, y2, 0]
-            ])
-        sub = sympy.Matrix([ 
-            [1.j*a,     1.j*b,  1.j*c,  1.j*d], 
-            [-d,        -a,     -b,     -c], 
-            [-1.j*c,    -1.j*d, -1.j*a, -1.j*b], 
-            [b,         c,      d,      a] 
-            ])
-        Block_II = sympy.Matrix( sympy.BlockMatrix( [ [sympy.zeros(4), sub], [-sub.T, sympy.zeros(4)] ] ))
-        Block_T_VV = sympy.Matrix( sympy.BlockMatrix([ [Block_I, sympy.zeros(8)], [sympy.zeros(8), Block_II] ]) )
-
-        tmat_symb = sympy.Matrix( sympy.BlockMatrix([ [Block_T_PP, Block_T_PV.T], [-Block_T_PV, Block_T_VV]]) )
-        '''
-
-
         Block_2 = sympy.Matrix([
             [0, 1.j*y1, z1, 1.j*z1, -1.j*a, -1.j*c, -1.j*b, -1.j*d],
             [-1.j*y1, 0, -1.j*z1, -z1, 1.j*c, 1.j*a, 1.j*d, 1.j*b],
