@@ -218,14 +218,14 @@ class Z2System2D_G2C_F4C(System2DBase):
         zeros_8 = sympy.zeros(8)
         Block_1 = sympy.Matrix([-1.j*t1, -t1, 1.j*t1, t1, 0,0,0,0]) # this is a column matrix
         Block_2 = sympy.Matrix([
-            [0, 1.j*y1, z1, 1.j*z1, -1.j*a, -1.j*c, -1.j*b, -1.j*d],
-            [-1.j*y1, 0, -1.j*z1, -z1, 1.j*c, 1.j*a, 1.j*d, 1.j*b],
-            [-z1, 1.j*z1, 0, -y1, d, b, a, c],
-            [-1.j*z1, z1, y1, 0, -b, -d, -c, -a],
-            [1.j*a, -1.j*c, -d, b, 0, 1.j*y2, z2, 1.j*z2],
-            [1.j*c, -1.j*a, -b, d, -1.j*y2, 0, -1.j*z2, -z2],
-            [1.j*b, -1.j*d, -a, c, -z2, 1.j*z2, 0, -y2],
-            [1.j*d, -1.j*b, -c, a, -1.j*z2, z2, y2, 0]
+            [0,         1.j*y1, z1,         1.j*z1,  -1.j*a,   -1.j*c,  -1.j*b,  -1.j*d],
+            [-1.j*y1,   0,      -1.j*z1,    -z1,     1.j*c,    1.j*a,   1.j*d,   1.j*b],
+            [-z1,       1.j*z1, 0,          -y1,     d,        b,       a,       c],
+            [-1.j*z1,   z1,     y1,         0,       -b,       -d,      -c,      -a],
+            [1.j*a,     -1.j*c, -d,         b,       0,        1.j*y2,  z2,      1.j*z2],
+            [1.j*c,     -1.j*a, -b,         d,       -1.j*y2,  0,       -1.j*z2, -z2],
+            [1.j*b,     -1.j*d, -a,         c,       -z2,      1.j*z2,  0,       -y2],
+            [1.j*d,     -1.j*b, -c,         a,       -1.j*z2,  z2,      y2,      0]
             ])
         
         substitutionsB = [(z1, z3), (z2, z4), (y1, y3), (y2, y4), (a, a2), (b, b2), (c, c2), (d, d2)]
