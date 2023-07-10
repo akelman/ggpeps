@@ -339,6 +339,7 @@ class System2DBase(ABC):
             np.array: parameter matrix T
         """
         if self._tmat_vec is None:
+            self.cfg.enforce_parameter_conditions(self.cfg.paramvec)
             self._tmat_vec = [
                 self._eval_tmat_symb(params) for params in self.cfg.paramvec
             ]
