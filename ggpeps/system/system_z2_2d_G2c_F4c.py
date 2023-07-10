@@ -267,18 +267,18 @@ class Z2System2D_G2C_F4C(System2DBase):
         sites_perm = np.eye( 2 * self.cfg.lattice.nx * self.cfg.lattice.ny ) # total number of physical fermionic majorana modes on all the sites together
         mat_perm = block_diag(sites_perm, mat_perm_links)
 
-        nsites=self.cfg.lattice.size
+        nsites = self.cfg.lattice.size
         id = np.eye(nsites)
         # Extract the parts of the covariance matrix
         amat = covmat[:2, :2] # assumes 1 fermion per site (two majorana modes)
         bmat = covmat[:2, 2:]
         dmat = covmat[2:, 2:]
-        #Expand them
+        # Expand them
         amat_sys = np.kron(id, amat)
         bmat_sys = np.kron(id, bmat)
         dmat_sys = np.kron(id, dmat)
-        #Reassemble them in the correct order
-        mat_sys_unordered= np.block(
+        # Reassemble them in the correct order
+        mat_sys_unordered = np.block(
             [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
         dest = np.transpose(mat_perm) @ mat_sys_unordered @ mat_perm
         return dest
@@ -359,8 +359,8 @@ class Z2System2D_G2C_F4C(System2DBase):
             List[np.ndarray]: Covariance matrices of the ungauged projector on a single link
         """
         
-        dest_mixed={} # mixes copies
-        dest_unmixed={} # does not mix copies 
+        dest_mixed = {} # mixes copies
+        dest_unmixed = {} # does not mix copies 
 
         zeros_8 = np.zeros((8,8))
         
@@ -474,7 +474,7 @@ class Z2System2D_G2C_F4C(System2DBase):
         ]
         # Update the modified determinant
         offset = 2* self.cfg.nvirtmodes_link
-        if ind_mat - offset >=0:
+        if ind_mat - offset >= 0:
             for wi, update, incdet in zip(self.wi_gamma_in_mod_vec, update_vec, self.incdet_mod_vec):
                 mat_inv = wi.inv()
                 incdet.update_index(mat_inv, update, ind_mat-offset, ind_mat-offset)
@@ -607,7 +607,7 @@ class Z2System2D_G2C_F4C(System2DBase):
                 [self.det_mat_d_mod_vec[layerind]],
                 gamma_in_sys_mod.shape[0],
                 all_factors=True)
-            norm_mod += np.sum(utils.select_except(lognormvec_default,layerind))
+            norm_mod += np.sum(utils.select_except(lognormvec_default, layerind))
             # The matrix elements yield only the real part of <P>
             # If we use the log formulation, we can calculate the log of single terms.
 
@@ -631,7 +631,7 @@ class Z2System2D_G2C_F4C(System2DBase):
                 d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
                 # Summand with derivative of the covariance matrix
                 # We re-use the list comprehension from above to use the indices
-                deriv_pfarr = [prefactor * utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)],d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
+                deriv_pfarr = [prefactor * utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)], d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
                 d_el_energy = overall_factor * np.real(np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
                                 
                 # Summand with derivative of norms
