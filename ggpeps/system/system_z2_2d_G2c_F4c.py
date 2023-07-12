@@ -219,7 +219,7 @@ class Z2System2D_G2C_F4C(System2DBase):
         d2 = d2r+1.j*d2i
 
         zeros_8 = sympy.zeros(8)
-        Block_1 = sympy.Matrix([-1.j*t1, -t1, 1.j*t1, t1, 0,0,0,0]) # this is a column matrix
+        Block_1 = sympy.Matrix([-1.j*t1, 1.j*t1, t1, -t1, 0,0,0,0]) # this is a column matrix
         Block_2 = sympy.Matrix([
             [0,         1.j*y1, z1,         1.j*z1,  -1.j*a,   -1.j*c,  -1.j*b,  -1.j*d],
             [-1.j*y1,   0,      -1.j*z1,    -z1,     1.j*c,    1.j*a,   1.j*d,   1.j*b],
