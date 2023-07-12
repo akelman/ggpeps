@@ -87,8 +87,9 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
                         ]
         zeroed_params += [(0, k) for k in range(20, 36) ] # -- z3, y3, a2, b2, c2, d2
 
-        zeroed_params += [(1, k) for k in range(20, 36) ] # test if we reproduce earlier results
-        zeroed_params += [(1, 3), (1,13) ]
+        # Uncomment to test 2-copy ansatz within this ansatz
+        #zeroed_params += [(1, k) for k in range(20, 36) ] 
+        #zeroed_params += [(1, 3), (1,13) ]
 
         for coord in zeroed_params:
             mat[coord] = 0
