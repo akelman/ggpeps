@@ -20,7 +20,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
     """
 
-    _nparams = 36
+    _nparams = 52 #36
     ncopy = 4
     nvirtmodes_vertex = 16
     nvirtmodes_link = 8
@@ -86,6 +86,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
                         (1, 31)
                         ]
         zeroed_params += [(0, k) for k in range(20, 36) ] # -- z3, y3, a2, b2, c2, d2
+        zeroed_params += [(0, k) for k in range(36, 52) ] # -- p,q,r,s
 
         # Uncomment to test 2-copy ansatz within this ansatz
         #zeroed_params += [(1, k) for k in range(20, 36) ] 
@@ -170,11 +171,32 @@ class Z2System2D_G2C_F4C(System2DBase):
         c2i = sympy.Symbol("c2i", real=True)
         d2i = sympy.Symbol("d2i", real=True)
 
+        # symbols to couple the third and fourth copy with the first and second, for the fermions
+        p14r  = sympy.Symbol("p14r", real=True) # couple copy 1 with 4, real part
+        q14r  = sympy.Symbol("q14r", real=True)
+        r14r  = sympy.Symbol("r14r", real=True)
+        s14r  = sympy.Symbol("s14r", real=True)
+        p14i  = sympy.Symbol("p14i", real=True) 
+        q14i  = sympy.Symbol("q14i", real=True)
+        r14i  = sympy.Symbol("r14i", real=True)
+        s14i  = sympy.Symbol("s14i", real=True)
+        p23r  = sympy.Symbol("p23r", real=True) # couple copy 2 with 3, real part
+        q23r  = sympy.Symbol("q23r", real=True)
+        r23r  = sympy.Symbol("r23r", real=True)
+        s23r  = sympy.Symbol("s23r", real=True)
+        p23i  = sympy.Symbol("p23i", real=True) 
+        q23i  = sympy.Symbol("q23i", real=True)
+        r23i  = sympy.Symbol("r23i", real=True)
+        s23i  = sympy.Symbol("s23i", real=True)
+        
+
         #return [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i, z1i, t2i, y2i, z2i, ai, bi, ci, di]
         return [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i,
             z1i, t2i, y2i, z2i, ai, bi, ci, di,
             z3r, z4r, y3r, y4r, a2r, b2r, c2r, d2r,
-            z3i, z4i, y3i, y4i, a2i, b2i, c2i, d2i]
+            z3i, z4i, y3i, y4i, a2i, b2i, c2i, d2i,
+            p14r, q14r, r14r, s14r, p14i, q14i, r14i, s14i,
+            p23r, q23r, r23r, s23r, p23i, q23i, r23i, s23i]
 
 
     @property
@@ -198,7 +220,9 @@ class Z2System2D_G2C_F4C(System2DBase):
         [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i,
             z1i, t2i, y2i, z2i, ai, bi, ci, di,
             z3r, z4r, y3r, y4r, a2r, b2r, c2r, d2r,
-            z3i, z4i, y3i, y4i, a2i, b2i, c2i, d2i  ] = self.symbolvec
+            z3i, z4i, y3i, y4i, a2i, b2i, c2i, d2i,
+            p14r, q14r, r14r, s14r, p14i, q14i, r14i, s14i,
+            p23r, q23r, r23r, s23r, p23i, q23i, r23i, s23i  ] = self.symbolvec
         t1 = t1r+1.j*t1i
         y1 = y1r+1.j*y1i
         z1 = z1r+1.j*z1i
@@ -219,8 +243,29 @@ class Z2System2D_G2C_F4C(System2DBase):
         c2 = c2r+1.j*c2i
         d2 = d2r+1.j*d2i
 
+        p14 = p14r+1.j*p14i
+        q14 = q14r+1.j*q14i
+        r14 = r14r+1.j*r14i
+        s14 = s14r+1.j*s14i
+        p23 = p23r+1.j*p23i
+        q23 = q23r+1.j*q23i
+        r23 = r23r+1.j*r23i
+        s23 = s23r+1.j*s23i
+
         zeros_8 = sympy.zeros(8)
         Block_1 = sympy.Matrix([-1.j*t1, 1.j*t1, t1, -t1, 0,0,0,0]) # this is a column matrix
+        Block_2a = sympy.Matrix([
+            [0,         1.j*y1, z1,         1.j*z1],
+            [-1.j*y1,   0,      -1.j*z1,    -z1],
+            [-z1,       1.j*z1, 0,          -y1],
+            [-1.j*z1,   z1,     y1,         0],
+            ])
+        Block_2b = sympy.Matrix([
+            [-1.j*a,   -1.j*c,  -1.j*b,  -1.j*d],
+            [1.j*c,    1.j*a,   1.j*d,   1.j*b],
+            [d,        b,       a,       c],
+            [-b,       -d,      -c,      -a],
+            ])
         Block_2 = sympy.Matrix([
             [0,         1.j*y1, z1,         1.j*z1,  -1.j*a,   -1.j*c,  -1.j*b,  -1.j*d],
             [-1.j*y1,   0,      -1.j*z1,    -z1,     1.j*c,    1.j*a,   1.j*d,   1.j*b],
@@ -231,15 +276,17 @@ class Z2System2D_G2C_F4C(System2DBase):
             [1.j*b,     -1.j*d, -a,         c,       -z2,      1.j*z2,  0,       -y2],
             [1.j*d,     -1.j*b, -c,         a,       -1.j*z2,  z2,      y2,      0]
             ])
+        Block_2 = sympy.Matrix( sympy.BlockMatrix([[Block_2a, Block_2b], [-Block_2b.T, -Block_2a.subs([(z1, z2), (y1, y2)]).T]]) )
         
         substitutionsB = [(z1, z3), (z2, z4), (y1, y3), (y2, y4), (a, a2), (b, b2), (c, c2), (d, d2)]
         Block_2B = Block_2.subs(substitutionsB)
 
         # To be used for coupling between 1-2 and 3-4 layers
-        #substitutionsC = [(z1, z3), (z2, z4), (y1, y3), (y2, y4), (a, a2), (b, b2), (c, c2), (d, d2)]
-        #Block_2C = Block_2.subs(substitutionsC)
+        zeros_4 = sympy.zeros(4)
+        Block_2C = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b.subs([(a,p14), (b,q14), (c, r14), (d,s14)])], [Block_2b.subs([(a,p23), (b,q23), (c, r23), (d,s23)]), zeros_4]]) )
+        #Block_2C = sympy.zeros(8)
 
-        tmat_symb = sympy.Matrix( sympy.BlockMatrix([ [sympy.zeros(1), -Block_1.T, -Block_1.subs(t1, t2).T], [Block_1, Block_2, zeros_8], [Block_1.subs(t1, t2), zeros_8, Block_2B]]) )
+        tmat_symb = sympy.Matrix( sympy.BlockMatrix([ [sympy.zeros(1), -Block_1.T, -Block_1.subs(t1, t2).T], [Block_1, Block_2, Block_2C], [Block_1.subs(t1, t2), -Block_2C.T, Block_2B]]) )
 
         return tmat_symb
 
