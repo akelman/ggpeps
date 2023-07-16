@@ -782,8 +782,7 @@ class Z2System2D_G2C_F4C(System2DBase):
         gradients.append(layer_gradients)
         
         int_energy_op = np.asarray(int_energy_op)
-        # !!! the extra factor of 10 is just for temporarily playing around; it is incorrect and should be removed !!!
-        gradients = 10*np.asarray(gradients) 
+        gradients = np.asarray(gradients) 
 
         self.cfg.enforce_parameter_conditions(gradients)
     
