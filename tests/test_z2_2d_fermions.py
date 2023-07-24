@@ -74,7 +74,7 @@ class TestZ2C4System(unittest.TestCase):
 
 
 
-    # TESTS TAKEN FROM OTHER ANSATZ'S
+    ##
 
     def test_grad_int_energy_2C(self):
         # This is comparison of the analytic derivative against the numeric derivative
@@ -88,6 +88,8 @@ class TestZ2C4System(unittest.TestCase):
         deriv_ana = system_z2_2_2.int_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
         for layerind in range(2):
+            # we could skip the first layer, since the first layer does not contribute to the
+            # interaction energy
             for ind in range(len(symbolvec)):
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
@@ -121,6 +123,8 @@ class TestZ2C4System(unittest.TestCase):
         deriv_ana = system_z2_2_2.int_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
         for layerind in range(2):
+            # we could skip the first layer, since the first layer does not contribute to the
+            # interaction energy
             for ind in range(len(symbolvec)):
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
