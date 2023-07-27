@@ -76,7 +76,6 @@ class TestZ2C4System(unittest.TestCase):
 
     ##
 
-
     def test_grad_el_energy_2C(self):
         # This is comparison of the analytic derivative against the numeric derivative
         # for the 2 copy fermionic ansatz
