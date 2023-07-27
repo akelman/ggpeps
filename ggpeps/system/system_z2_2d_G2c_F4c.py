@@ -71,8 +71,8 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
                             (layer,10), # t1i
                             (layer,13), # t2i 
                             ]
-            zeroed_params += [(layer, k) for k in range(20, 36) ] # -- z3, y3, z4, y4, a2, b2, c2, d2
-            zeroed_params += [(layer, k) for k in range(36, 52) ] # -- p,q,r,s (all of them)
+            #zeroed_params += [(layer, k) for k in range(20, 36) ] # -- z3, y3, z4, y4, a2, b2, c2, d2
+            #zeroed_params += [(layer, k) for k in range(36, 52) ] # -- p,q,r,s (all of them)
 
         # conditions for fermionic
         zeroed_params += [
