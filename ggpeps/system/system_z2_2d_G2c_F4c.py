@@ -26,9 +26,10 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
     nvirtmodes_link = 8
 
     def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, nlayer=2):
-        if nlayer != 2:
-            raise ValueError("When including physical fermions, 2 layers is required.")
+        #if nlayer != 2:
+        #    raise ValueError("When including physical fermions, 2 layers is required.")
         super().__init__(lattice, g_el, g_mag, g_int, g_mass, nlayer)
+        self.num_pg_layers = self.nlayer - 1
 
     def make_pure_gauge(self):
         raise NotImplementedError("Haven't yet implemented parameter conditions for pure gauge.")
@@ -59,38 +60,46 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
         #    z3r, z4r, y3r, y4r, a2r, b2r, c2r, d2r,
         #    z3i, z4i, y3i, y4i, a2i, b2i, c2i, d2i]
         
-        zeroed_params = [
-                        # Set 1st layer (type I) 
-                        (0,0),  # t1r -- t params to 0
-                        (0,3),  # t2r
-                        (0,10), # t1i
-                        (0,13), # t2i 
+        zeroed_params = []
+        fli = self.nlayer - 1 # = self.num_pg_layers = fermionic_layer_ind
+
+        # Set pure gauge conditions layer (type I) 
+        for layer in range(fli):
+            zeroed_params += [
+                            (layer,0),  # t1r -- t params to 0
+                            (layer,3),  # t2r
+                            (layer,10), # t1i
+                            (layer,13), # t2i 
+                            ]
+            zeroed_params += [(layer, k) for k in range(20, 36) ] # -- z3, y3, z4, y4, a2, b2, c2, d2
+            zeroed_params += [(layer, k) for k in range(36, 52) ] # -- p,q,r,s (all of them)
+
+        # conditions for fermionic
+        zeroed_params += [
                         # Set 2nd layer (type II) conditions
-                        # (1,3),  # t2r
-                        # (1,13), # t2i
-                        (1,1),  # y1r
-                        (1,2),  # z1r
-                        (1,4),  # y2r
-                        (1,5),  # z2r
-                        (1,11), # y1i
-                        (1,12), # z1i
-                        (1,14), # y2i
-                        (1,15),  # z2i
-                        (1, 20), # z3r -- z3, z4, y3, y4
-                        (1, 21),
-                        (1, 22),
-                        (1, 23),
-                        (1, 28),
-                        (1, 29),
-                        (1, 30),
-                        (1, 31)
+                        # (fli,3),  # t2r
+                        # (fli,13), # t2i
+                        (fli,1),  # y1r
+                        (fli,2),  # z1r
+                        (fli,4),  # y2r
+                        (fli,5),  # z2r
+                        (fli,11), # y1i
+                        (fli,12), # z1i
+                        (fli,14), # y2i
+                        (fli,15),  # z2i
+                        (fli, 20), # z3r -- z3, z4, y3, y4
+                        (fli, 21),
+                        (fli, 22),
+                        (fli, 23),
+                        (fli, 28),
+                        (fli, 29),
+                        (fli, 30),
+                        (fli, 31)
                         ]
-        zeroed_params += [(0, k) for k in range(20, 36) ] # -- z3, y3, a2, b2, c2, d2
-        zeroed_params += [(0, k) for k in range(36, 52) ] # -- p,q,r,s
 
         # Uncomment to test 2-copy ansatz within this ansatz
-        #zeroed_params += [(1, k) for k in range(20, 36) ] 
-        #zeroed_params += [(1, 3), (1,13) ]
+        #zeroed_params += [(fermionic_layer_ind, k) for k in range(20, 36) ] 
+        #zeroed_params += [(fermionic_layer_ind, 3), (fermionic_layer_ind, 13) ]
 
         for coord in zeroed_params:
             mat[coord] = 0
@@ -119,9 +128,9 @@ class Z2System2D_G2C_F4C(System2DBase):
         prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
         indices_layer1 = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)], [(10,12), (11,13), (12,13), (10,11)], [(14,8), (15,9), (8,9), (14,15)]]
         indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)], [(10,8), (11,9), (8,9), (10,11)], [(14,12), (15,13), (12,13), (14,15)]]
-        idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors)
-        idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors) 
-        self.idxarr_vec = [idxarr_lay1, idxarr_lay2]
+        idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors) # pure gauge layers
+        idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors) # fermionic layers
+        self.idxarr_vec = [idxarr_lay1]*(self.cfg.num_pg_layers) + [idxarr_lay2]
 
 
     def _create_symbolvec(self):
@@ -441,7 +450,7 @@ class Z2System2D_G2C_F4C(System2DBase):
         dest_unmixed[Direction.X] = np.block([ [unmixed_X, zeros_8], [zeros_8, unmixed_X] ])
         dest_unmixed[Direction.Y] = np.block([ [unmixed_Y, zeros_8], [zeros_8, unmixed_Y] ])
         
-        return [dest_mixed, dest_unmixed]
+        return [dest_mixed]*(self.cfg.nlayer -1) + [dest_unmixed]
 
     #Gauging
 
@@ -553,14 +562,14 @@ class Z2System2D_G2C_F4C(System2DBase):
         """
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
-        if self.cfg.nlayer != 2:
-            raise NotImplementedError("Two layers must be used with physical fermions.")
+        #if self.cfg.nlayer != 2:
+        #    raise NotImplementedError("Two layers must be used with physical fermions.")
 
-        mass_energy_op = [1] # Really the mass energy for the first layer is zero, but later we take the product of all layers, so we put a 1 here
-        gradients = [[0]*len(self.symbolvec)]
+        mass_energy_op = [1]*(self.cfg.num_pg_layers) # Really the mass energy for the first layer is zero, but later we take the product of all layers, so we put a 1 here
+        gradients = [[0]*len(self.symbolvec)]*(self.cfg.num_pg_layers)
 
         # Calculation prelimaries
-        layer_ind = 1 # only the second layer directly contributes to the mass
+        layer_ind = self.cfg.nlayer - 1 # = num_pg_layers; only the "fermionic" layer directly contributes to the mass
         covmat = self.compute_ferm_cov(layer_ind)
         layer_mass_energy = 0.0
         layer_grads = [0]*len(self.symbolvec)
@@ -624,7 +633,7 @@ class Z2System2D_G2C_F4C(System2DBase):
         dest_grad = []
 
         # Indices and prefactors for building the required Pfaffians
-        overall_factors = [1/256, 1/256] # this arises due to normalization and the i^(# of modes/2) in the expression Tr[1^# * rho * (modes)]
+        overall_factors = [1/256]*(self.cfg.nlayer) # this arises due to normalization and the i^(# of modes/2) in the expression Tr[1^# * rho * (modes)]
         idxarrs = self.idxarr_vec
 
         for layerind in range(self.cfg.nlayer):
@@ -738,11 +747,11 @@ class Z2System2D_G2C_F4C(System2DBase):
             tuple: Tuple of (interaction energy for a single link, gradients)
         """
 
-        int_energy_op = [1] # Really the interaction energy for the first layer is zero, but later we take the product of all layers, so we put a 1 here
-        gradients = [[0]*len(self.symbolvec)]
+        int_energy_op = [1]*(self.cfg.num_pg_layers) # Really the interaction energy for the pure gauge layers is zero, but later we take the product of all layers, so we put a 1 here
+        gradients = [[0]*len(self.symbolvec)]*(self.cfg.num_pg_layers)
 
         #for layer_ind in range(self.cfg.nlayer):
-        layer_ind = 1 #only the second layer contributes
+        layer_ind = self.cfg.nlayer - 1 # = num_pg_layers; only the "fermionic" layer contributes
         layer_int_energy = 0.0
         covmat = self.compute_ferm_cov(layer_ind)
         

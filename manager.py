@@ -169,11 +169,11 @@ def main(args):
         if args.ncopy == 2:
             # Z2 system with 4 copies of virtual fermions on the links (2 for the pure gauge case, 2 for interacting with physical fermions)
             system_type = Z2System2D_G2C_F2C
-            system_cfg = Z2System2D_G2C_F2C_Config(lattice, g_el, g_mag, g_int, g_mass)
+            system_cfg = Z2System2D_G2C_F2C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
         if args.ncopy == 4:
             # Z2 system with 6 copies of virtual fermions on the links (2 for the pure gauge case, 4 for interacting with physical fermions)
             system_type = Z2System2D_G2C_F4C
-            system_cfg = Z2System2D_G2C_F4C_Config(lattice, g_el, g_mag, g_int, g_mass)
+            system_cfg = Z2System2D_G2C_F4C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
     elif args.ncopy == 1:
         # Z2 system with one copy of virtual fermions on the links
         system_type = Z2System2D
