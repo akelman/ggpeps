@@ -400,39 +400,37 @@ class Z2System2D_8C(System2DBase):
         
         dest_mixed = {} # mixes copies
         dest_unmixed = {} # does not mix copies 
-
-        zeros_8 = np.zeros((8,8))
         
         # We want to give the projectors for the pure gauge part, which mix copies
         mixed_X = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
         mixed_Y = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
 
-        dest_mixed[Direction.X] = np.block([ [mixed_X, zeros_8], [zeros_8, mixed_X] ])
-        dest_mixed[Direction.Y] = np.block([ [mixed_Y, zeros_8], [zeros_8, mixed_Y] ])
+        dest_unmixed[Direction.X] = np.kron(np.eye(4), mixed_X)
+        dest_unmixed[Direction.Y] = np.kron(np.eye(4), mixed_Y)
 
         # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
         unmixed_X = np.array([  [ 0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.],
-                                                [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
-                                                [ 0., -1.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                                [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                                [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  1.],
-                                                [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
-                                                [ 0.,  0.,  0.,  0.,  0., -1.,  0.,  0.],
-                                                [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.]])
+                                [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
+                                [ 0., -1.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  1.],
+                                [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
+                                [ 0.,  0.,  0.,  0.,  0., -1.,  0.,  0.],
+                                [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.]])
 
         unmixed_Y = np.array([  [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
-                                                [ 0.,  0.,  0., -1.,  0., -0.,  0.,  0.],
-                                                [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                                [ 0.,  1.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                                [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
-                                                [ 0.,  0.,  0.,  0.,  0., -0.,  0., -1.],
-                                                [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.],
-                                                [ 0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.]])
+                                [ 0.,  0.,  0., -1.,  0., -0.,  0.,  0.],
+                                [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                [ 0.,  1.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
+                                [ 0.,  0.,  0.,  0.,  0., -0.,  0., -1.],
+                                [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.],
+                                [ 0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.]])
         
-        dest_unmixed[Direction.X] = np.block([ [unmixed_X, zeros_8], [zeros_8, unmixed_X] ])
-        dest_unmixed[Direction.Y] = np.block([ [unmixed_Y, zeros_8], [zeros_8, unmixed_Y] ])
+        dest_unmixed[Direction.X] = np.kron(np.eye(4), unmixed_X)
+        dest_unmixed[Direction.Y] = np.kron(np.eye(4), unmixed_Y)
         
-        return [dest_mixed]*(self.cfg.nlayer -1) + [dest_unmixed]
+        return [dest_mixed]*(self.cfg.nlayer - 1) + [dest_unmixed]
 
     #Gauging
 
