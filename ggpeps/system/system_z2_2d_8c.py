@@ -213,9 +213,13 @@ class Z2System2D_8C(System2DBase):
 
         # Extract params as variables for convenience
         z1 = all_params['z1']
-        z2 = all_params['z1']
-        y1 = all_params['z1']
-        y2 = all_params['z1']
+        z2 = all_params['z2']
+        y1 = all_params['y1']
+        y2 = all_params['y2']
+        z3 = all_params['z3']
+        z4 = all_params['z4']
+        y3 = all_params['y3']
+        y4 = all_params['y4']
 
         p12, q12, r12, s12 = all_params['p12'], all_params['q12'], all_params['r12'], all_params['s12']
         p14, q14, r14, s14 = all_params['p14'], all_params['q14'], all_params['r14'], all_params['s14']
@@ -262,7 +266,7 @@ class Z2System2D_8C(System2DBase):
 
         # second row
         M10 = -M01.T
-        M11 = sympy.Matrix( sympy.BlockMatrix([[Block_2a, Block_2b], [-Block_2b.T, -Block_2a.subs([(z1, z2), (y1, y2)]).T]]) )
+        M11 = sympy.Matrix( sympy.BlockMatrix([[Block_2a, Block_2b], [-Block_2b.T, Block_2a.subs([(z1, z2), (y1, y2)]) ]]) )
         M12 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b.subs([(p12, p14), (q12,q14), (r12, r14), (s12,s14)])], [Block_2b.subs([(p12,p32), (q12,q32), (r12, r32), (s12,s32)]), zeros_4]]) )
         M13 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b.subs([(p12, p16), (q12,q16), (r12, r16), (s12,s16)])], [Block_2b.subs([(p12,p52), (q12,q52), (r12, r52), (s12,s52)]), zeros_4]]) )
         M14 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b.subs([(p12, p18), (q12,q18), (r12, r18), (s12,s18)])], [Block_2b.subs([(p12,p72), (q12,q72), (r12, r72), (s12,s72)]), zeros_4]]) )
@@ -271,7 +275,7 @@ class Z2System2D_8C(System2DBase):
         M20 = -M02.T
         M21 = -M12.T
         Block_2b_22 = Block_2b.subs([(p12, p34), (q12,q34), (r12, r34), (s12,s34)])
-        M22 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b_22], [-Block_2b_22.T, zeros_4]]) ) #z3,y3 should go here
+        M22 = sympy.Matrix(sympy.BlockMatrix([[Block_2a.subs([(z1,z3), (y1,y3)]), Block_2b_22], [-Block_2b_22.T, Block_2a.subs([(z1,z4), (y1,y4)])]]) ) #z3,y3 should go here
         M23 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b.subs([(p12, p36), (q12,q36), (r12, r36), (s12,s36)])], [Block_2b.subs([(p12,p54), (q12,q54), (r12, r54), (s14,s54)]), zeros_4]]) )
         M24 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b.subs([(p12, p38), (q12,q38), (r12, r38), (s12,s38)])], [Block_2b.subs([(p12,p74), (q12,q74), (r12, r74), (s14,s74)]), zeros_4]]) )
 
