@@ -17,6 +17,7 @@ from ggpeps.system import Z2System2DConfig, Z2System2D
 from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
 from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D_G2C_F2C
 from ggpeps.system import Z2System2D_G2C_F4C_Config, Z2System2D_G2C_F4C
+from ggpeps.system import Z2System2D_8C_Config, Z2System2D_8C
 
 from ggpeps import lattice as lat
 from ggpeps import utils, exacteval
@@ -79,8 +80,8 @@ def validate_inputs(args) -> bool:
     if args.ncopy == 1 and args.g_mass != 0:
         logging.error("Not Implemented: the mass term has not yet been implemented for the 1 copy case.")
         return False
-    if args.ncopy not in [1,2,4]:
-        logging.error("Not Implemented: only 1,2, or 4 copies are possible.")
+    if args.ncopy not in [1,2,4,8]:
+        logging.error("Not Implemented: only 1,2,4, or 8 copies are possible.")
         return False
 
     return True
@@ -174,6 +175,9 @@ def main(args):
             # Z2 system with 6 copies of virtual fermions on the links (2 for the pure gauge case, 4 for interacting with physical fermions)
             system_type = Z2System2D_G2C_F4C
             system_cfg = Z2System2D_G2C_F4C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
+        if args.ncopy == 8:
+            system_type = Z2System2D_8C
+            system_cfg = Z2System2D_8C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
     elif args.ncopy == 1:
         # Z2 system with one copy of virtual fermions on the links
         system_type = Z2System2D
