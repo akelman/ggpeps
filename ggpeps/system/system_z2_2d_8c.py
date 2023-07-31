@@ -188,6 +188,7 @@ class Z2System2D_8C(System2DBase):
             sympy.Matrix: Analytic T matrix of the fiducial state
         """
 
+        # Build dictionary of parameters
         all_params = {}
         ind = 0
 
@@ -210,6 +211,7 @@ class Z2System2D_8C(System2DBase):
                     all_params[f"{l}{r}{c}"] = self.symbolvec[ind] + 1.j*self.symbolvec[ind+1]
                     ind += 2
 
+        # Extract params as variables for convenience
         z1 = all_params['z1']
         z2 = all_params['z1']
         y1 = all_params['z1']
@@ -235,6 +237,7 @@ class Z2System2D_8C(System2DBase):
         p76, q76, r76, s76 = all_params['p76'], all_params['q76'], all_params['r76'], all_params['s76']
         p78, q78, r78, s78 = all_params['p78'], all_params['q78'], all_params['r78'], all_params['s78']
 
+        # Block matrices that appear many times in the T matrix
         Block_1 = sympy.Matrix([-1.j*all_params['t1'], 1.j*all_params['t1'], all_params['t1'], -all_params['t1'], 0,0,0,0]) # this is a column matrix
         Block_2a = sympy.Matrix([
             [0,         1.j*y1, z1,         1.j*z1],
@@ -248,18 +251,7 @@ class Z2System2D_8C(System2DBase):
             [s12,        q12,       p12,       r12],
             [-q12,       -s12,      -r12,      -p12],
             ])
-        
-        Block_2A = sympy.Matrix( sympy.BlockMatrix([[Block_2a, Block_2b], [-Block_2b.T, -Block_2a.subs([(z1, z2), (y1, y2)]).T]]) )
-        
-        #substitutionsB = [(z1, z3), (z2, z4), (y1, y3), (y2, y4), (a, a2), (b, b2), (c, c2), (d, d2)]
-        #Block_2B = Block_2A.subs(substitutionsB)
-
-        # To be used for coupling between 1-2 and 3-4 layers
         zeros_4 = sympy.zeros(4)
-        #Block_2C = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b.subs([(a,p14), (b,q14), (c, r14), (d,s14)])], [Block_2b.subs([(a,p23), (b,q23), (c, r23), (d,s23)]), zeros_4]]) )
-        #Block_2C = sympy.zeros(8)
-
-        #tmat_symb = sympy.Matrix( sympy.BlockMatrix([ [sympy.zeros(1), -Block_1.T, -Block_1.subs(t1, t2).T], [Block_1, Block_2, Block_2C], [Block_1.subs(t1, t2), -Block_2C.T, Block_2B]]) )
 
         # first row
         M00 = sympy.zeros(1)
@@ -299,6 +291,7 @@ class Z2System2D_8C(System2DBase):
         Block_2b_44 = Block_2b.subs([(p12, p78), (q12,q78), (r12, r78), (s12,s78)])
         M44 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b_44], [-Block_2b_44.T, zeros_4]]) )
 
+        # Full T matrix
         tmat_symb = sympy.Matrix( sympy.BlockMatrix([[M00, M01, M02, M03, M04], [M10, M11, M12, M13, M14], [M20, M21, M22, M23, M24], [M30, M31, M32, M33, M34], [M40, M41, M42, M43, M44]]) )
 
         return tmat_symb
