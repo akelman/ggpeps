@@ -405,8 +405,8 @@ class Z2System2D_8C(System2DBase):
         mixed_X = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
         mixed_Y = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
 
-        dest_unmixed[Direction.X] = np.kron(np.eye(4), mixed_X)
-        dest_unmixed[Direction.Y] = np.kron(np.eye(4), mixed_Y)
+        dest_mixed[Direction.X] = np.kron(np.eye(4), mixed_X)
+        dest_mixed[Direction.Y] = np.kron(np.eye(4), mixed_Y)
 
         # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
         unmixed_X = np.array([  [ 0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.],
