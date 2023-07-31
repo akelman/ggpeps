@@ -20,10 +20,10 @@ class Z2System2D_8C_Config(Config2DBase):
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
     """
 
-    _nparams = 52 #36
-    ncopy = 4
-    nvirtmodes_vertex = 16
-    nvirtmodes_link = 8
+    _nparams = 152 
+    ncopy = 8
+    nvirtmodes_vertex = 32
+    nvirtmodes_link = 16
 
     def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, nlayer=2):
         #if nlayer != 2:
@@ -149,7 +149,8 @@ class Z2System2D_8C(System2DBase):
                         symbol = sympy.Symbol(f"{l}{r}{c}{com}", real=True)
                         off_diag_symbols.append(symbol)
 
-        return phy_virt_symbols + on_diag_symbols + off_diag_symbols
+        all_symbols = phy_virt_symbols + on_diag_symbols + off_diag_symbols
+        return all_symbols
 
 
     @property
