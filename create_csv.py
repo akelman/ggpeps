@@ -4,20 +4,15 @@ import pandas as pd
 
 def main(args):
 
-    cols = ['el', 'mag', 'int', 'mass', 'energy', 'el_energy', 'mag_energy', 'mass_energy', 'int_energy', 'mass_energy', 'tag']
+    #cols = ['el', 'mag', 'int', 'mass', 'energy', 'el_energy', 'mag_energy', 'mass_energy', 'int_energy', 'mass_energy', 'tag']
     data = pd.DataFrame()
-    #data = None
     obs = ['energy', 'el_energy', 'mag_energy', 'int_energy', 'mass_energy']
 
     for fname in args.files:
-        if os.path.isfile(fname) and '10grad' in fname:
+        if os.path.isfile(fname):
             df = pd.read_pickle(fname)
             vals = df.loc[:, 'mean']
             keys = df.loc[:, 'name']
-            #el = df.loc[0, 'g_el']
-            #mag = df.loc[0, 'g_mag']
-            #int = df.loc[0, 'g_int']
-            #mass = df.loc[0, 'g_mass']
             tag = ''
 
             d = {'el': df.loc[0, 'g_el'], 'mag': df.loc[0, 'g_mag'], 'int': df.loc[0, 'g_int'], 'mass': df.loc[0, 'g_mass'], 'tag': tag}
