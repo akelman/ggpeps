@@ -106,9 +106,11 @@ class Z2System2D_8C(System2DBase):
         """
         super().__init__(cfg)
 
-        prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
-        indices_layer1 = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)], [(10,12), (11,13), (12,13), (10,11)], [(14,8), (15,9), (8,9), (14,15)]]
-        indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)], [(10,8), (11,9), (8,9), (10,11)], [(14,12), (15,13), (12,13), (14,15)]]
+        prefactors = [[1, -1, 1.j, 1.j]]*8
+        indices_layer1 = [  [(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)], [(10,12), (11,13), (12,13), (10,11)], [(14,8), (15,9), (8,9), (14,15)], 
+                            [(18, 20), (19, 21), (20, 21), (18, 19)], [(22, 16), (23, 17), (16, 17), (22, 23)], [(26, 28), (27, 29), (28, 29), (26, 27)], [(30, 24), (31, 25), (24, 25), (30, 31)]]
+        indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)], [(10,8), (11,9), (8,9), (10,11)], [(14,12), (15,13), (12,13), (14,15)],
+                          [(18, 16), (19, 17), (16, 17), (18, 19)], [(22, 20), (23, 21), (20, 21), (22, 23)], [(26, 24), (27, 25), (24, 25), (26, 27)], [(30, 28), (31, 29), (28, 29), (30, 31)]]
         idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors) # pure gauge layers
         idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors) # fermionic layers
         self.idxarr_vec = [idxarr_lay1]*(self.cfg.num_pg_layers) + [idxarr_lay2]
@@ -613,7 +615,7 @@ class Z2System2D_8C(System2DBase):
         dest_grad = []
 
         # Indices and prefactors for building the required Pfaffians
-        overall_factors = [1/256]*(self.cfg.nlayer) # this arises due to normalization and the i^(# of modes/2) in the expression Tr[1^# * rho * (modes)]
+        overall_factors = [1/256**2]*(self.cfg.nlayer) # this arises due to normalization and the i^(# of modes/2) in the expression Tr[1^# * rho * (modes)]
         idxarrs = self.idxarr_vec
 
         for layerind in range(self.cfg.nlayer):
