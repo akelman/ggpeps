@@ -296,7 +296,7 @@ class Z2System2D_8C(System2DBase):
         M41 = -M14.T
         M42 = -M24.T
         M43 = -M34.T
-        Block_2b_44 = Block_2b.subs([(p12, p56), (q12,q56), (r12, r56), (s12,s56)])
+        Block_2b_44 = Block_2b.subs([(p12, p78), (q12,q78), (r12, r78), (s12,s78)])
         M44 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b_44], [-Block_2b_44.T, zeros_4]]) )
 
         tmat_symb = sympy.Matrix( sympy.BlockMatrix([[M00, M01, M02, M03, M04], [M10, M11, M12, M13, M14], [M20, M21, M22, M23, M24], [M30, M31, M32, M33, M34], [M40, M41, M42, M43, M44]]) )
