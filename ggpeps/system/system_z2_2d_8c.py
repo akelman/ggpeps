@@ -470,8 +470,7 @@ class Z2System2D_8C(System2DBase):
         # We rotate the different copies in the SAME way.
         dest = block_diag(rot_left, rot_right, rot_left, rot_right)
 
-        zeros_8 = np.zeros((8,8))
-        rotmat = np.block( [[dest, zeros_8], [zeros_8, dest]])
+        rotmat = np.kron( np.eye(4), dest)
         return rotmat
 
 
