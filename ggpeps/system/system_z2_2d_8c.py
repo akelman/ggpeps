@@ -55,54 +55,35 @@ class Z2System2D_8C_Config(Config2DBase):
     def enforce_parameter_conditions(self, mat):
         """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz.
         """
-        # The order of the parameters is [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i,
-        #    z1i, t2i, y2i, z2i, ai, bi, ci, di,
-        #    z3r, z4r, y3r, y4r, a2r, b2r, c2r, d2r,
-        #    z3i, z4i, y3i, y4i, a2i, b2i, c2i, d2i]
         
-        zeroed_params = []
         fli = self.nlayer - 1 # = self.num_pg_layers = fermionic_layer_ind
 
         # Set pure gauge conditions layer (type I) 
         for layer in range(fli):
-            zeroed_params += [
-                            (layer,0),  # t1r -- t params to 0
-                            (layer,3),  # t2r
-                            (layer,10), # t1i
-                            (layer,13), # t2i 
-                            ]
-            #zeroed_params += [(layer, k) for k in range(20, 36) ] # -- z3, y3, z4, y4, a2, b2, c2, d2
-            #zeroed_params += [(layer, k) for k in range(36, 52) ] # -- p,q,r,s (all of them)
+            ind = 0
 
-        # conditions for fermionic
-        zeroed_params += [
-                        # Set 2nd layer (type II) conditions
-                        # (fli,3),  # t2r
-                        # (fli,13), # t2i
-                        (fli,1),  # y1r
-                        (fli,2),  # z1r
-                        (fli,4),  # y2r
-                        (fli,5),  # z2r
-                        (fli,11), # y1i
-                        (fli,12), # z1i
-                        (fli,14), # y2i
-                        (fli,15),  # z2i
-                        (fli, 20), # z3r -- z3, z4, y3, y4
-                        (fli, 21),
-                        (fli, 22),
-                        (fli, 23),
-                        (fli, 28),
-                        (fli, 29),
-                        (fli, 30),
-                        (fli, 31)
-                        ]
+            copies = [1,3,5,7] # copies which couple to physical modes
+            for cop in copies:
+                for com in ['r', 'i']: # real or imaginary
+                    mat[layer, ind] = 0
+                    ind += 1
 
-        # Uncomment to test 2-copy ansatz within this ansatz
-        #zeroed_params += [(fermionic_layer_ind, k) for k in range(20, 36) ] 
-        #zeroed_params += [(fermionic_layer_ind, 3), (fermionic_layer_ind, 13) ]
+        # fermionic layer
+        ind = 0
+        copies = [1,3,5,7] # copies which couple to physical modes
+        for cop in copies:
+            for com in ['r', 'i']: 
+                ind += 1 # don't zero out t params
 
-        for coord in zeroed_params:
-            mat[coord] = 0
+        on_diag_symbols = []
+        copies = [1,2,3,4] # copies which couple to themselves
+        for cop in copies:
+            for l in ['z', 'y']:
+                for com in ['r', 'i']:
+                    mat[fli, ind] = 0
+                    ind += 1
+
+        return
 
 
 class Z2System2D_8C(System2DBase):
