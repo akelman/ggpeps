@@ -746,18 +746,17 @@ def extract_params_from_results_file(fname, dest_dir='') -> bool:
     """
     if fname is not None and os.path.isfile(fname):
         fname_base = os.path.basename(fname)
-        name,ext = os.path.splitext(fname_base)
-        g = fname2g(name)
+        name, ext = os.path.splitext(fname_base)
         if name.startswith("result_min"):
             with open(fname, "rb") as infile:
                 data = pickle.load(infile)
                 # Deal with renaming
-                if hasattr(data,"paramvec"):
-                    np.save( os.path.join(dest_dir, "paramvec_g_{}.npy".format(g)), data.paramvec)
-                elif hasattr(data,"parametervec"):
-                    np.save( os.path.join(dest_dir,"paramvec_g_{}.npy".format(g)), data.parametervec)
+                if hasattr(data, "paramvec"):
+                    np.save( os.path.join(dest_dir, "extracted_paramvec.npy"), data.paramvec)
+                elif hasattr(data, "parametervec"):
+                    np.save( os.path.join(dest_dir, "extracted_paramvec.npy"), data.parametervec)
     else:
-        print("File '{}' not found. Aborting.".format(fname),file=sys.stderr)
+        print(f"File '{fname}' not found. Aborting.", file=sys.stderr)
         return False
     
     return True
