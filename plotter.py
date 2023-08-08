@@ -2,10 +2,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def extract_data(data:pd.DataFrame, xaxis:str, obs:str, restrictions:dict):
+def extract_data(data:pd.DataFrame, xaxis:str, obs:str, restrictions:dict, require_g:bool):
 
     for key, val in restrictions.items():
         data = data[data[key] == val]
+    
+    if require_g:
+        data = data[data["mag"] == 1/(4*data["el"])]
 
     xvals = data.loc[:, xaxis].values
     yvals = data.loc[:, obs].values 
@@ -26,7 +29,7 @@ def main(args):
 
     if args.ed is not None:
         data = pd.read_csv(args.ed)
-        xvals, yvals = extract_data(data, args.xaxis, args.obs, restrictions)
+        xvals, yvals = extract_data(data, args.xaxis, args.obs, restrictions, args.require_g)
 
         # reorder
         # this is important when points are connected by lines (as is done for ED data)
@@ -37,11 +40,11 @@ def main(args):
     if args.ec is not None:
         for ind, ec_data in enumerate(args.ec):
             data = pd.read_csv(ec_data)
-            xvals, yvals = extract_data(data, args.xaxis, args.obs, restrictions)
+            xvals, yvals = extract_data(data, args.xaxis, args.obs, restrictions, args.require_g)
             ax.scatter(xvals, yvals, label = f"EC, obs={args.obs}, {args.ec_labels[ind]}")
     
     if args.mc is not None:
-        xvals, yvals = extract_data(args.mc, args.xaxis, args.obs, restrictions)
+        xvals, yvals = extract_data(args.mc, args.xaxis, args.obs, restrictions, args.require_g)
         ax.errorbar(xvals, yvals, label = f"MC, obs={args.obs}")
         # TODO: add support for errorbars
 
@@ -81,6 +84,8 @@ if __name__ == "__main__":
     
     parser.add_argument("--ec_labels", nargs="+", help="Label tags for EC data")
     parser.add_argument("--restrict", nargs="+", help="Data restrictions - only plot data that has these couplings. Format: key=val, e.g. mass=1")
+    parser.add_argument("--require_g", action="store_true", default=False, help="Restricts data to cases where el and mag have the required relationship (both derived from g)")
+
 
     args = parser.parse_args()
 
