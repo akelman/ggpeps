@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -16,7 +17,11 @@ def extract_data(data:pd.DataFrame, xaxis:str, obs:str, restrictions:dict):
 def main(args):
     
     f, ax = plt.subplots(1, 1)
-    restrictions = {"mass": 0, "int": 0}
+    restrictions = {}
+    for r in args.restrict:
+        key, val = r.split("=")
+        restrictions[key] = float(val)
+    print(f"Plotting with the restrictions: {restrictions}")
 
     if args.ec_labels is None:
         args.ec_labels = ['']*len(args.ec)
@@ -77,6 +82,7 @@ if __name__ == "__main__":
     parser.add_argument("--obs", type=str, nargs="+", default=["energy"], help="Observables to plot")
     
     parser.add_argument("--ec_labels", nargs="+", help="Label tags for EC data")
+    parser.add_argument("--restrict", nargs="+", help="Data restrictions - only plot data that has these couplings. Format: key=val, e.g. mass=1")
 
     args = parser.parse_args()
 
