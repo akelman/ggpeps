@@ -28,9 +28,8 @@ def main(args):
             file_data = pd.DataFrame.from_dict(d, orient='columns')
             data = pd.concat([data, file_data])
             
-
     data.to_csv(args.out)
-    print(data.shape)
+    print(f"Data: {data.shape}")
 
     return
 
