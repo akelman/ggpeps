@@ -107,6 +107,8 @@ class TestZ2C4System(unittest.TestCase):
                     val_right = system_z2_2_2_right.el_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
+                    print(f"left: {val_left}, right: {val_right}")
+                    print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
 
     def test_grad_el_energy_4C(self):
@@ -223,6 +225,12 @@ class TestZ2C4System(unittest.TestCase):
         system_cfg = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 0.0)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D_G2C_F2C(system_cfg)
+
+        # the interaction energy vanishes for the default configuration (no flux on any link)
+        # so we choose a configuration where we know the interaction energy is not negligible 
+        config = np.array([0]*7 + [np.pi]*1)
+        system_z2_2_2.update_gauge_full_system(config)
+
         deriv_ana = system_z2_2_2.int_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
         for layerind in range(2):
@@ -242,11 +250,15 @@ class TestZ2C4System(unittest.TestCase):
 
                     system_z2_2_2_left = system.Z2System2D_G2C_F2C(system_cfg_left)
                     system_z2_2_2_right = system.Z2System2D_G2C_F2C(system_cfg_right)
+                    system_z2_2_2_left.update_gauge_full_system(config)
+                    system_z2_2_2_right.update_gauge_full_system(config)
 
                     val_left = system_z2_2_2_left.int_energy_op
                     val_right = system_z2_2_2_right.int_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
+                    print(f"left: {val_left}, right: {val_right}")
+                    print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
 
     def test_grad_int_energy_4C(self):
