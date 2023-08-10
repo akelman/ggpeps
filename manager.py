@@ -26,6 +26,15 @@ from ggpeps.minimizer import Minimizer, MinimizerConfig
 from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloManager
 
 
+# set up to allow execution to end gracefully if process is signalled appropriately
+import signal
+def signal_handler(signum, frame):
+    Minimizer.STOP_AFTER_CURRENT_ITERATION = True
+    logging.info(f"Recieved signal {signum}, stopping at the end of the current iteration.")
+signal.signal(signal.SIGUSR1, signal_handler) # register the signal handler
+#signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
+
+
 def args2logname(args, couplings):
     """Convert arguments to a name for the log file
 

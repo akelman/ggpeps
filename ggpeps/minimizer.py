@@ -42,6 +42,7 @@ class MinimizerConfig():
         self._method = val.upper()
 
 class Minimizer():
+    STOP_AFTER_CURRENT_ITERATION = False # this is a flag to catch interrupts to end minimization
     supported_methods = ["CG", "BFGS", "L-BFGS-B", "POWELL", "NELDER-MEAD", "TNC"]
 
     def __init__(self, cfg, evaluator, use_exact=False):
@@ -88,6 +89,12 @@ class Minimizer():
             if max_grad_paramvec < abs(self.cfg.min_grad):
                 logging.info(f"Reached convergence: max grad paramvec < {self.cfg.min_grad}")
                 self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, True)
+                return self.min_result
+
+            if self.STOP_AFTER_CURRENT_ITERATION:
+                message = f"Recieved interrupt signal from user. Ending minimization."
+                logging.info(message)
+                self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, True, message)
                 return self.min_result
 
             #Adapt the parametervec according to the gradient
@@ -225,5 +232,13 @@ def print_callback(x, minimizer):
     # If we're at the lowest energy seen so far, log the parameters
     #if current_iter == 0 or energy < lowest_energy:
     #    lowest_energy = energy
-    #    #logging.info(f"New best energy. Parametervec: {paramvec}")     
+    #    #logging.info(f"New best energy. Parametervec: {paramvec}")   
+
+    # If python recieves a signal to stop computation gracefully, we catch it here.
+    # There have been recent developments within scipy's handling of these callbacks.
+    # See (eg): https://github.com/scipy/scipy/issues/9412 
+    #           https://github.com/scipy/scipy/issues/7306#issuecomment-301183706 
+    #if STOP_AFTER_CURRENT_ITERATION:
+    #    return True  
+    #    raise StopIteration
 
