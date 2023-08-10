@@ -450,18 +450,12 @@ class Z2System2D_G2C_F2C(System2DBase):
         for site_ind in range(0, 2*self.cfg.lattice.size, 2):
             layer_mass_energy += 0.5 * (1 + covmat[site_ind+1, site_ind] )
 
-            CALC_INT_GRADS_NUM = False
-            if CALC_INT_GRADS_NUM:
-                layer_grads = self.get_grads(self.symbolvec, self.cfg.paramvec, 1, 'mass')
-            else: 
-                #layer_grads = [0]*len(self.symbolvec)
-                # Update gradients
-                for symbol_ind, symbol in enumerate(self.symbolvec):
-                    d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                    layer_grads[symbol_ind] += 0.5 * d_gamma_out[site_ind+1, site_ind] 
+            for symbol_ind, symbol in enumerate(self.symbolvec):
+                d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
+                layer_grads[symbol_ind] += 0.5 * d_gamma_out[site_ind+1, site_ind] 
 
-                    # further terms of the derivative are included higher up in the computation stack 
-                    # because computing them requires knowing various expectation values, which are not available here
+                # further terms of the derivative are included higher up in the computation stack 
+                # because computing them requires knowing various expectation values, which are not available here
                 
 
         mass_energy_op.append(np.asarray(layer_mass_energy))
@@ -658,18 +652,12 @@ class Z2System2D_G2C_F2C(System2DBase):
             layer_int_energy -= vert_link_energy * cos_factor_vert
 
             # Calculate derivatives
-            CALC_INT_GRADS_NUM = False
-            if CALC_INT_GRADS_NUM:
-                layer_gradients = self.get_grads(self.symbolvec, self.cfg.paramvec, 1, 'int')
-            else: 
-                #pass
-                #layer_gradients = []
-                for symbol_ind, symbol in enumerate(self.symbolvec):
-                    d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                    
-                    grad = 0.5 * sublattice_factor * cos_factor_hor * (d_gamma_out[site_ind_cov, neighborX_ind] - d_gamma_out[site_ind_cov+1, neighborX_ind+1])
-                    grad += - 0.5 * cos_factor_vert * (d_gamma_out[site_ind_cov, neighborY_ind+1] + d_gamma_out[site_ind_cov+1, neighborY_ind])
-                    layer_gradients[symbol_ind] += grad
+            for symbol_ind, symbol in enumerate(self.symbolvec):
+                d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
+                
+                grad = 0.5 * sublattice_factor * cos_factor_hor * (d_gamma_out[site_ind_cov, neighborX_ind] - d_gamma_out[site_ind_cov+1, neighborX_ind+1])
+                grad += - 0.5 * cos_factor_vert * (d_gamma_out[site_ind_cov, neighborY_ind+1] + d_gamma_out[site_ind_cov+1, neighborY_ind])
+                layer_gradients[symbol_ind] += grad
                 
         
         int_energy_op.append(layer_int_energy)
