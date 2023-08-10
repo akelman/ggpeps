@@ -450,13 +450,18 @@ class Z2System2D_G2C_F2C(System2DBase):
         for site_ind in range(0, 2*self.cfg.lattice.size, 2):
             layer_mass_energy += 0.5 * (1 + covmat[site_ind+1, site_ind] )
 
-            # Update gradients
+            if CALC_INT_GRADS_NUM:
+                layer_grads = self.get_grads(self.symbolvec, self.cfg.paramvec, 1, 'mass')
+            else: 
+                layer_grads = [0]*len(self.symbolvec)
+            '''# Update gradients
             for symbol_ind, symbol in enumerate(self.symbolvec):
                 d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
                 layer_grads[symbol_ind] += 0.5 * d_gamma_out[site_ind+1, site_ind] 
 
                 # further terms of the derivative are included higher up in the computation stack 
                 # because computing them requires knowing various expectation values, which are not available here
+            '''
 
         mass_energy_op.append(np.asarray(layer_mass_energy))
         gradients.append(np.asarray(layer_grads))
@@ -652,7 +657,7 @@ class Z2System2D_G2C_F2C(System2DBase):
 
             # Calculate derivatives
             if CALC_INT_GRADS_NUM:
-                layer_gradients = self.get_grads(self.symbolvec, self.cfg.paramvec, 1)
+                layer_gradients = self.get_grads(self.symbolvec, self.cfg.paramvec, 1, 'int')
             else: 
                 layer_gradients = [0]*len(self.symbolvec)
                 '''
@@ -681,7 +686,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         return int_energy_op, gradients
 
 
-    def get_grads(self, symbolvec, paramvec, layerind):
+    def get_grads(self, symbolvec, paramvec, layerind, obs):
         from ggpeps import system, lattice
         global CALC_INT_GRADS_NUM
 
@@ -694,8 +699,8 @@ class Z2System2D_G2C_F2C(System2DBase):
             paramvec_right = np.copy(paramvec)
             paramvec_left[layerind, ind] -= eps
             paramvec_right[layerind, ind] += eps
-            system_cfg_left = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 0.0)
-            system_cfg_right = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 0.0)
+            system_cfg_left = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0)
+            system_cfg_right = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0)
 
             system_cfg_left.paramvec = paramvec_left
             system_cfg_right.paramvec = paramvec_right
@@ -705,8 +710,12 @@ class Z2System2D_G2C_F2C(System2DBase):
             system_z2_2_2_left.update_gauge_full_system(self._gaugefieldvec)
             system_z2_2_2_right.update_gauge_full_system(self._gaugefieldvec)
 
-            val_left = system_z2_2_2_left.int_energy_op
-            val_right = system_z2_2_2_right.int_energy_op
+            if obs == 'int':
+                val_left = system_z2_2_2_left.int_energy_op
+                val_right = system_z2_2_2_right.int_energy_op
+            elif obs == 'mass':
+                val_left = system_z2_2_2_left.mass_energy_op
+                val_right = system_z2_2_2_right.mass_energy_op
             deriv_num = (val_right - val_left) / (2 * eps)
 
             grads.append(deriv_num)

@@ -1298,7 +1298,7 @@ class System2DBase(ABC):
         """
         if self._mass_energy_op_grad_vec is None:
             self._mass_energy_op_vec, self._mass_energy_op_grad_vec = self._compute_mass_energy_op_vec_and_grad()
-            self._mass_energy_op_grad_vec *= self.cfg.lattice.size
+            #self._mass_energy_op_grad_vec *= self.cfg.lattice.size
         return self._mass_energy_op_grad_vec
     
     @property
