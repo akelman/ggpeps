@@ -85,6 +85,9 @@ class Minimizer():
             max_grad_paramvec = np.max(np.abs(grad_paramvec))
             self.last_result = result
 
+            # Update logs
+            print_callback(ind, self)
+
             # Check if the maximum of the gradient is smaller than min_grad
             if max_grad_paramvec < abs(self.cfg.min_grad):
                 logging.info(f"Reached convergence: max grad paramvec < {self.cfg.min_grad}")
@@ -99,9 +102,6 @@ class Minimizer():
 
             #Adapt the parametervec according to the gradient
             # TODO: Implement stochastic reconfiguration
-
-            # Update logs
-            print_callback(ind, self)
 
             # We have to use the internal name of the paramvec if we write to it since it is a property and not just an array
             self.evaluator.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
