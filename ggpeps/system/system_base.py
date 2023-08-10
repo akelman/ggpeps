@@ -592,11 +592,11 @@ class System2DBase(ABC):
 
     @abstractmethod
     def initialize_gamma_in_sys(self):
-        """Abstract function to initialize gamma_in (the covariance matrix of the projectors) in a child class
-        This function has to be overwritten in a child class.
+        """Abstract function to initialize gamma_in (the covariance matrix of the projectors) in a child class;
+        this function has to be overwritten in a child class.
 
         This function returns gamma_in_sys_vec even for cases where gamma_in_sys does not vary between layers.
-        In that case, each element of gamma_in_sys_vec points to the same gamma_in_sys
+        In that case, each element of gamma_in_sys_vec points to the same gamma_in_sys.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
