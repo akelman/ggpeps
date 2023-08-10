@@ -401,7 +401,7 @@ class Z2System2D_G2C_F2C(System2DBase):
             for mat_inv, update, incdet in zip(mat_inv_vec, update_vec, self.incdet_vec)
         ]
         # Update the modified determinant
-        offset = 2* self.cfg.nvirtmodes_link
+        offset = 2 * self.cfg.nvirtmodes_link
         if ind_mat - offset >= 0:
             for wi, update, incdet in zip(self.wi_gamma_in_mod_vec, update_vec, self.incdet_mod_vec):
                 mat_inv = wi.inv()
@@ -655,7 +655,7 @@ class Z2System2D_G2C_F2C(System2DBase):
                 layer_gradients = self.get_grads(self.symbolvec, self.cfg.paramvec, 1)
             else: 
                 layer_gradients = [0]*len(self.symbolvec)
-            '''
+                '''
                 layer_gradients = []
                 for symbol_ind, symbol in enumerate(self.symbolvec):
                     d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
@@ -663,7 +663,7 @@ class Z2System2D_G2C_F2C(System2DBase):
                     grad = 0.5 * sublattice_factor * cos_factor_hor * (d_gamma_out[site_ind_cov, neighborX_ind] - d_gamma_out[site_ind_cov+1, neighborX_ind+1])
                     grad += - 0.5 * cos_factor_vert * (d_gamma_out[site_ind_cov, neighborY_ind+1] + d_gamma_out[site_ind_cov+1, neighborY_ind])
                     layer_gradients.append(grad)
-            '''
+                '''
         
         int_energy_op.append(layer_int_energy)
         gradients.append(layer_gradients)
@@ -675,7 +675,7 @@ class Z2System2D_G2C_F2C(System2DBase):
     
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
         # They act as a prefactor in the derivative.
-        # However, here (just as in the mass case), because the interaction term only acts on the second layer, we simply multiply the mass_energy and grads by the norm of the first layer 
+        # However, here (just as in the mass case), because the interaction term only acts on the second layer, we simply multiply the int_energy and grads by the norm of the first layer 
         # (this is handled higher up in the computation stack).
 
         return int_energy_op, gradients
