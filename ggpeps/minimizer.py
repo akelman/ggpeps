@@ -239,6 +239,7 @@ def print_callback(x, minimizer):
     # There have been recent developments within scipy's handling of these callbacks.
     # See (eg): https://github.com/scipy/scipy/issues/9412 
     #           https://github.com/scipy/scipy/issues/7306#issuecomment-301183706 
+    # If/when this is implemented for scipy minimize, the handling of this should only be done here (not in the CUSTOM methods above)
     #if STOP_AFTER_CURRENT_ITERATION:
     #    return True  
     #    raise StopIteration
