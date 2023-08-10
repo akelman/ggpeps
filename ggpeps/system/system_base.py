@@ -1081,7 +1081,7 @@ class System2DBase(ABC):
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad_vec = None
         self._int_energy_op_grad_vec = None
-        self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
+        self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec, range(self.cfg.nlayer))}
 
     ################## Observables ######################
     @abstractmethod
