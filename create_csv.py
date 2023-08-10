@@ -13,7 +13,7 @@ def main(args):
             df = pd.read_pickle(fname)
             vals = df.loc[:, 'mean']
             keys = df.loc[:, 'name']
-            tag = ''
+            tag = args.tag
 
             d = {'el': df.loc[0, 'g_el'], 'mag': df.loc[0, 'g_mag'], 'int': df.loc[0, 'g_int'], 'mass': df.loc[0, 'g_mass'], 'tag': tag}
             for key, val in zip(keys, vals):
@@ -40,6 +40,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--files", nargs="+", help="Directory")
     parser.add_argument("--out", help="Output CSV file")
+    parser.add_argument("--tag", type=str, default='', help="Tag to add to each row of the CSV file")
 
     args = parser.parse_args()
 
