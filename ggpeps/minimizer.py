@@ -90,8 +90,9 @@ class Minimizer():
 
             # Check if the maximum of the gradient is smaller than min_grad
             if max_grad_paramvec < abs(self.cfg.min_grad):
-                logging.info(f"Reached convergence: max grad paramvec < {self.cfg.min_grad}")
-                self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, True)
+                message = f"Reached convergence: max grad paramvec < {self.cfg.min_grad}"
+                logging.info(message)
+                self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, True, message)
                 return self.min_result
 
             if self.STOP_AFTER_CURRENT_ITERATION:
