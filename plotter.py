@@ -38,7 +38,7 @@ def main(args):
             # reorder
             # this is important when points are connected by lines (as is done for ED data)
             yvals = yvals_dict[ob]
-            xvals_m, yvals_m = zip(*sorted(zip(xvals, yvals)))         #xvals, yvals = map(list, zip(*sorted(zip(xvals, yvals), reverse=True)))
+            xvals_m, yvals_m = zip(*sorted(zip(xvals, yvals))) # we define new variables so as not to change xvals while looping over the observables
 
             ax.plot(xvals_m, yvals_m, label = f"ED, obs={ob}", c="orange")
 
