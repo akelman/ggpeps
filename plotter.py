@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def extract_data(data:pd.DataFrame, xaxis:str, obs:str, restrictions:dict, require_g:bool):
+def extract_data(data:pd.DataFrame, xaxis:str, obs, restrictions:dict, require_g:bool):
 
     for key, val in restrictions.items():
         data = data[data[key] == val]
@@ -11,9 +11,12 @@ def extract_data(data:pd.DataFrame, xaxis:str, obs:str, restrictions:dict, requi
         data = data[data["mag"] == 1/(4*data["el"])]
 
     xvals = data.loc[:, xaxis].values
-    yvals = data.loc[:, obs].values 
+    yvals_dict = {}
+    for ob in obs:
+        yvals = data.loc[:, ob].values 
+        yvals_dict[ob] = yvals
 
-    return xvals, yvals
+    return xvals, yvals_dict
 
 def main(args):
     
@@ -27,29 +30,30 @@ def main(args):
     if args.ec_labels is None:
         args.ec_labels = ['']*len(args.ec)
 
-    for ob in args.obs:
-        # this is a slow way to loop, since we loop over the same data multiple times, but for plotting the cost is manageable
-        
-        if args.ed is not None:
-            data = pd.read_csv(args.ed)
-            xvals, yvals = extract_data(data, args.xaxis, ob, restrictions, args.require_g)
+    if args.ed is not None:
+        data = pd.read_csv(args.ed)
+        xvals, yvals_dict = extract_data(data, args.xaxis, args.obs, restrictions, args.require_g)
 
+        for ob in args.obs:
             # reorder
             # this is important when points are connected by lines (as is done for ED data)
-            xvals, yvals = zip(*sorted(zip(xvals, yvals)))         #xvals, yvals = map(list, zip(*sorted(zip(xvals, yvals), reverse=True)))
+            yvals = yvals_dict[ob]
+            xvals_m, yvals_m = zip(*sorted(zip(xvals, yvals)))         #xvals, yvals = map(list, zip(*sorted(zip(xvals, yvals), reverse=True)))
 
-            ax.plot(xvals, yvals, label = f"ED, obs={ob}", c="orange")
+            ax.plot(xvals_m, yvals_m, label = f"ED, obs={ob}", c="orange")
 
-        if args.ec is not None:
-            for ind, ec_data in enumerate(args.ec):
-                data = pd.read_csv(ec_data)
-                xvals, yvals = extract_data(data, args.xaxis, ob, restrictions, args.require_g)
-                ax.scatter(xvals, yvals, label = f"EC, obs={ob}, {args.ec_labels[ind]}")
-        
-        if args.mc is not None:
-            xvals, yvals = extract_data(args.mc, args.xaxis, ob, restrictions, args.require_g)
-            ax.errorbar(xvals, yvals, label = f"MC, obs={ob}")
-            # TODO: add support for errorbars
+    if args.ec is not None:
+        for ind, ec_data in enumerate(args.ec):
+            data = pd.read_csv(ec_data)
+            xvals, yvals_dict = extract_data(data, args.xaxis, args.obs, restrictions, args.require_g)
+            for ob in args.obs:
+                ax.scatter(xvals, yvals_dict[ob], label = f"EC, obs={ob}, {args.ec_labels[ind]}")
+    
+    if args.mc is not None:
+        xvals, yvals_dict = extract_data(args.mc, args.xaxis, args.obs, restrictions, args.require_g)
+        for ob in args.obs:
+            ax.errorbar(xvals, yvals_dict[ob], label = f"MC, obs={ob}")
+        # TODO: add support for errorbars
 
     if args.logx:
         ax.set_xscale("log")
