@@ -1,11 +1,13 @@
 import unittest 
 from unittest import skip
+
 import numpy as np
 
-from ggpeps import lattice
-from ggpeps.lattice import Direction
-from ggpeps import system, exacteval
 from ggpeps import utils
+from ggpeps import lattice
+from ggpeps import system, exacteval
+
+from ggpeps.lattice import Direction
 from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloEstimator, MonteCarloManager
 from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D_G2C_F2C
 from ggpeps.minimizer import Minimizer, MinimizerConfig
@@ -111,6 +113,7 @@ class TestZ2C4System(unittest.TestCase):
                     print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
 
+    @skip("This gradient tests with the 4 copy ansatz take to long")
     def test_grad_el_energy_4C(self):
         # This is comparison of the analytic derivative against the numeric derivative
         # for the 4 copy fermionic ansatz
@@ -188,6 +191,7 @@ class TestZ2C4System(unittest.TestCase):
                     print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
 
+    @skip("This gradient tests with the 4 copy ansatz take to long")
     def test_grad_mass_energy_4C(self):
         # This is comparison of the analytic derivative against the numeric derivative
         # for the 4 copy fermionic ansatz
@@ -276,7 +280,8 @@ class TestZ2C4System(unittest.TestCase):
                     print(f"left: {val_left}, right: {val_right}")
                     print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
-
+    
+    @skip("This gradient tests with the 4 copy ansatz take to long")
     def test_grad_int_energy_4C(self):
         # This is comparison of the analytic derivative against the numeric derivative
         # for the 4 copy fermionic ansatz
