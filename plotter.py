@@ -60,9 +60,13 @@ def main(args):
     if args.logy:
         ax.set_yscale("log")
     
-    title = f"Restrictions: {restrictions}"
+    # make a helpful title
+    title = "Restrictions-"
+    for key, val in restrictions.items():
+        title += f"{key}={val}_"
     if args.require_g:
-        title += " with mag = 1/(4*el)"
+        title += "mag=1div(4*el)_"
+    
     ax.legend(fontsize=8)
     ax.set_title(title)
     ax.set_xlabel(args.xaxis, fontsize=10)
@@ -74,7 +78,7 @@ def main(args):
     ax.set_ylabel("Value", fontsize=10)
     
     if not args.no_save:
-        f.savefig(f"summary_{'-'.join(args.obs)}.pdf")
+        f.savefig(f"summary_{title}{'-'.join(args.obs)}.pdf")
     if args.show:
         plt.show()
 
@@ -96,7 +100,6 @@ if __name__ == "__main__":
     parser.add_argument("--ec_labels", nargs="+", help="Label tags for EC data")
     parser.add_argument("--restrict", nargs="+", help="Data restrictions - only plot data that has these couplings. Format: key=val, e.g. mass=1")
     parser.add_argument("--require_g", action="store_true", default=False, help="Restricts data to cases where el and mag have the required relationship (both derived from g)")
-
 
     args = parser.parse_args()
 
