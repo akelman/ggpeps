@@ -60,9 +60,13 @@ def main(args):
     if args.logy:
         ax.set_yscale("log")
     
+    title = f"Restrictions: {restrictions}"
+    if args.require_g:
+        title += " with mag = 1/(4*el)"
     ax.legend(fontsize=8)
+    ax.set_title(title)
     ax.set_xlabel(args.xaxis, fontsize=10)
-    f.tight_layout()
+    #f.tight_layout()
 
     #if args.diff:
     #    ax.set_ylabel("Value - ED", fontsize=10)
