@@ -754,6 +754,7 @@ class Z2System2D_G2C_F4C(System2DBase):
         layer_ind = self.cfg.nlayer - 1 # = num_pg_layers; only the "fermionic" layer contributes
         layer_int_energy = 0.0
         covmat = self.compute_ferm_cov(layer_ind)
+        layer_gradients = [0]*len(self.symbolvec)
         
         for site_ind in range(self.cfg.lattice.size): 
             coord = self.cfg.lattice.ind2coord(site_ind)
@@ -779,13 +780,12 @@ class Z2System2D_G2C_F4C(System2DBase):
             layer_int_energy -= vert_link_energy * cos_factor_vert
 
             # Calculate derivatives
-            layer_gradients = []
             for symbol_ind, symbol in enumerate(self.symbolvec):
                 d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
                 
                 grad = 0.5 * sublattice_factor * cos_factor_hor * (d_gamma_out[site_ind_cov, neighborX_ind] - d_gamma_out[site_ind_cov+1, neighborX_ind+1])
                 grad += - 0.5 * cos_factor_vert * (d_gamma_out[site_ind_cov, neighborY_ind+1] + d_gamma_out[site_ind_cov+1, neighborY_ind])
-                layer_gradients.append(grad)
+                layer_gradients[symbol_ind] += grad
         
         int_energy_op.append(layer_int_energy)
         gradients.append(layer_gradients)
