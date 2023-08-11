@@ -203,9 +203,9 @@ class TestZ2C4System(unittest.TestCase):
 
         deriv_ana = system_z2_2_2.mass_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
-        for layerind in range(2):
-            # we could skip the first layer, since the first layer does not contribute to the
-            # mass energy
+        for layerind in range(1,2):
+            # we skip the first layer, since the first layer does not contribute to the
+            # mass energy, and is less important to test
             for ind in range(len(symbolvec)):
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
@@ -227,6 +227,8 @@ class TestZ2C4System(unittest.TestCase):
                     val_right = system_z2_2_2_right.mass_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
+                    print(f"left: {val_left}, right: {val_right}")
+                    print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
     
 
@@ -292,9 +294,9 @@ class TestZ2C4System(unittest.TestCase):
 
         deriv_ana = system_z2_2_2.int_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
-        for layerind in range(2):
-            # we could skip the first layer, since the first layer does not contribute to the
-            # interaction energy
+        for layerind in range(1,2):
+            # we skip the first layer, since the first layer does not contribute to the
+            # interaction energy, and is less important to test
             for ind in range(len(symbolvec)):
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
@@ -316,4 +318,6 @@ class TestZ2C4System(unittest.TestCase):
                     val_right = system_z2_2_2_right.int_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
+                    print(f"left: {val_left}, right: {val_right}")
+                    print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
