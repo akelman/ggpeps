@@ -39,7 +39,10 @@ def main(args):
             # this is important when points are connected by lines (as is done for ED data)
             yvals = yvals_dict[ob]
             xvals_m, yvals_m = zip(*sorted(zip(xvals, yvals))) # we define new variables so as not to change xvals while looping over the observables
-
+            
+            print(ob)
+            print(xvals)
+            print(yvals)
             ax.plot(xvals_m, yvals_m, label = f"ED, obs={ob}")
 
     if args.ec is not None:
@@ -61,11 +64,14 @@ def main(args):
         ax.set_yscale("log")
     
     # make a helpful title
-    title = "Restrictions-"
-    for key, val in restrictions.items():
-        title += f"{key}={val}_"
-    if args.require_g:
-        title += "mag=1div(4*el)_"
+    if args.title:
+        title = args.title
+    else:
+        title = "Restrictions-"
+        for key, val in restrictions.items():
+            title += f"{key}={val}_"
+        if args.require_g:
+            title += "mag=1div(4*el)_"
     
     ax.legend(fontsize=8)
     ax.set_title(title)
@@ -100,6 +106,7 @@ if __name__ == "__main__":
     parser.add_argument("--ec_labels", nargs="+", help="Label tags for EC data")
     parser.add_argument("--restrict", nargs="+", help="Data restrictions - only plot data that has these couplings. Format: key=val, e.g. mass=1")
     parser.add_argument("--require_g", action="store_true", default=False, help="Restricts data to cases where el and mag have the required relationship (both derived from g)")
+    parser.add_argument("--title", type=str, default="", help="Plot title")
 
     args = parser.parse_args()
 
