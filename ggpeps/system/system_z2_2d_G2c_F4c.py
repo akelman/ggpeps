@@ -131,6 +131,7 @@ class Z2System2D_G2C_F4C(System2DBase):
         idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors) # pure gauge layers
         idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors) # fermionic layers
         self.idxarr_vec = [idxarr_lay1]*(self.cfg.num_pg_layers) + [idxarr_lay2]
+        self.el_overall_factors = [1/256]*(self.cfg.nlayer) # this arises due to normalization and the i^(# of modes/2) in the expression Tr[1^# * rho * (modes)]
 
 
     def _create_symbolvec(self):
@@ -197,7 +198,6 @@ class Z2System2D_G2C_F4C(System2DBase):
         q23i  = sympy.Symbol("q23i", real=True)
         r23i  = sympy.Symbol("r23i", real=True)
         s23i  = sympy.Symbol("s23i", real=True)
-        
 
         #return [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i, z1i, t2i, y2i, z2i, ai, bi, ci, di]
         return [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i,
@@ -633,7 +633,7 @@ class Z2System2D_G2C_F4C(System2DBase):
         dest_grad = []
 
         # Indices and prefactors for building the required Pfaffians
-        overall_factors = [1/256]*(self.cfg.nlayer) # this arises due to normalization and the i^(# of modes/2) in the expression Tr[1^# * rho * (modes)]
+        overall_factors = self.el_overall_factors 
         idxarrs = self.idxarr_vec
 
         for layerind in range(self.cfg.nlayer):
