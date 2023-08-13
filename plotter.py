@@ -8,7 +8,7 @@ def extract_data(data:pd.DataFrame, xaxis:str, obs, restrictions:dict, require_g
         data = data[data[key] == val]
     
     if require_g:
-        data = data[data["mag"] == 1/(4*data["el"])]
+        data = data[data["mag"] - 1/(4*data["el"]) < 0.001] # in some of the numerical ED data, the couplings are not recorded exactly
 
     xvals = data.loc[:, xaxis].values
     yvals_dict = {}
