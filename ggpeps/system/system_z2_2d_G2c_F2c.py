@@ -13,8 +13,6 @@ from .system_base import Config2DBase, System2DBase
 from .system_base import calculate_lognorm_inc, compute_grad_over_norm, extract_partial_covmats
 
 
-CALC_INT_GRADS_NUM = True
-
 ###################### Z2System2D ##########################
 
 class Z2System2D_G2C_F2C_Config(Config2DBase):
@@ -617,7 +615,6 @@ class Z2System2D_G2C_F2C(System2DBase):
         Returns:
             tuple: Tuple of (interaction energy for a single link, gradients)
         """
-        global CALC_INT_GRADS_NUM
 
         int_energy_op = [1] # Really the interaction energy for the first layer is zero, but later we take the product of all layers, so we put a 1 here
         gradients = [[0]*len(self.symbolvec)]
@@ -675,39 +672,3 @@ class Z2System2D_G2C_F2C(System2DBase):
 
         return int_energy_op, gradients
 
-
-    def get_grads(self, symbolvec, paramvec, layerind, obs):
-        from ggpeps import system, lattice
-        global CALC_INT_GRADS_NUM
-
-        eps = 1e-5
-        lat_2x2 = lattice.Lattice2D(2, 2)
-        grads = []
-        CALC_INT_GRADS_NUM = False
-        for ind in range(len(symbolvec)):
-            paramvec_left = np.copy(paramvec)
-            paramvec_right = np.copy(paramvec)
-            paramvec_left[layerind, ind] -= eps
-            paramvec_right[layerind, ind] += eps
-            system_cfg_left = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0)
-            system_cfg_right = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0)
-
-            system_cfg_left.paramvec = paramvec_left
-            system_cfg_right.paramvec = paramvec_right
-
-            system_z2_2_2_left = system.Z2System2D_G2C_F2C(system_cfg_left)
-            system_z2_2_2_right = system.Z2System2D_G2C_F2C(system_cfg_right)
-            system_z2_2_2_left.update_gauge_full_system(self._gaugefieldvec)
-            system_z2_2_2_right.update_gauge_full_system(self._gaugefieldvec)
-
-            if obs == 'int':
-                val_left = system_z2_2_2_left.int_energy_op
-                val_right = system_z2_2_2_right.int_energy_op
-            elif obs == 'mass':
-                val_left = system_z2_2_2_left.mass_energy_op
-                val_right = system_z2_2_2_right.mass_energy_op
-            deriv_num = (val_right - val_left) / (2 * eps)
-
-            grads.append(deriv_num)
-        CALC_INT_GRADS_NUM = True
-        return grads
