@@ -741,7 +741,6 @@ class Z2System2D_8C(System2DBase):
         for site_ind in range(self.cfg.lattice.size): 
             coord = self.cfg.lattice.ind2coord(site_ind)
             site_ind_cov = 2 * site_ind # this is the index to use when accessing elements of the covariance matrix, which has 2 Majorana modes per site
-            sublattice_factor = 1 #(-1)**(coord[0] + coord[1]) # the odd sublattice gets a minus sign because of the particle-hole transformation
 
             # Horizontal link
             ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X) # index of the horizontal link
@@ -750,7 +749,7 @@ class Z2System2D_8C(System2DBase):
             gaugefield_hor = self.gaugefieldvec[ind_field_hor]
             cos_factor_hor = np.cos(gaugefield_hor) # simple way to get U from gauge value
             hor_link_energy = 0.5 * (covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov+1, neighborX_ind+1])
-            layer_int_energy += sublattice_factor * hor_link_energy * cos_factor_hor
+            layer_int_energy += hor_link_energy * cos_factor_hor
 
             # Vertical link
             ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
@@ -765,7 +764,7 @@ class Z2System2D_8C(System2DBase):
             for symbol_ind, symbol in enumerate(self.symbolvec):
                 d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
                 
-                grad = 0.5 * sublattice_factor * cos_factor_hor * (d_gamma_out[site_ind_cov, neighborX_ind] - d_gamma_out[site_ind_cov+1, neighborX_ind+1])
+                grad = 0.5 * cos_factor_hor * (d_gamma_out[site_ind_cov, neighborX_ind] - d_gamma_out[site_ind_cov+1, neighborX_ind+1])
                 grad += - 0.5 * cos_factor_vert * (d_gamma_out[site_ind_cov, neighborY_ind+1] + d_gamma_out[site_ind_cov+1, neighborY_ind])
                 layer_gradients[symbol_ind] += grad
         
