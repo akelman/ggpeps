@@ -32,7 +32,8 @@ cache
 inputfile_*
 *.pkl
 *.pkl.gz
-#
+#ignore profiling data
+*.prof
 # We do not store checkpoints of jupyter notebooks
 .ipynb_checkpoints
 
