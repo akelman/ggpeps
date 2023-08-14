@@ -420,7 +420,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         gradients = [[0]*len(self.symbolvec)]*self.cfg.num_pg_layer
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
-            # only the fermionic layers directly contributes to the mass
+            # only the fermionic layers directly contribute to the mass
             
             # Calculation prelimaries
             covmat = self.compute_ferm_cov(layer_ind)
@@ -647,7 +647,7 @@ class Z2System2D_G2C_F2C(System2DBase):
     
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
         # They act as a prefactor in the derivative.
-        # However, here (just as in the mass case), because the interaction term only acts on the second layer, we simply multiply the int_energy and grads by the norm of the first layer 
+        # However, here (just as in the mass case), because the interaction term only acts on the fermionic layers, we simply multiply the int_energy and grads by the norm of the first layer 
         # (this is handled higher up in the computation stack).
 
         return int_energy_op, gradients
