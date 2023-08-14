@@ -73,13 +73,13 @@ class Z2System2D_G2C_F2C(System2DBase):
 
     def __init__(self, cfg: Z2System2D_G2C_F2C_Config):
         """Constructor of a Z2System2D2C system, with two virtual fermions per site per link for the gauge fields, and another two for the fermions.
-        We call only the constructor of the super class, since we do not have any class-specific setup.
 
         Args:
             cfg (Z2System2D_G2C_F2C_Config): Configuration containing all system-related parameters
         """
         super().__init__(cfg)
 
+        # constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
         indices_layer_pg = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)]]
         indices_layer_fermionic = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)]]
