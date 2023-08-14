@@ -16,7 +16,9 @@ from .system_base import calculate_lognorm_inc, compute_grad_over_norm, extract_
 ###################### Z2System2D ##########################
 
 class Z2System2D_G2C_F2C_Config(Config2DBase):
-    """Configuration of the Z2 system in 2D with 2 copies of virtual fermions on the links for the gauge fields, and another two for the fermions.
+    """Configuration of the Z2 system in 2D with 2 copies of virtual fermions on the links per layer.
+    Each layer can either be pure-gauge (in which case the t-params are zeroed out), 
+    or fermionic (in which case the y,z-params are zeroed out).
     """
 
     _nparams = 20
@@ -25,64 +27,45 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
     nvirtmodes_link = 4
 
     def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, nlayer=2):
-        if nlayer != 2:
-            raise ValueError("When including physical fermions, 2 layers is required.")
         super().__init__(lattice, g_el, g_mag, g_int, g_mass, nlayer)
+        self.num_pg_layer = self.nlayer - 1 # for now, we'll allow only one fermionic layer; it may be possible to allow more if we want more fermions per site
+        self.num_fermionic_layer = 1
 
     def make_pure_gauge(self):
-        reproduce_2C1L = False # zero out the second layer (used for physical fermions); this should reproduce the 2 copy, 1 layer ansatz
-        if reproduce_2C1L:
-            for ind in range(self._nparams):
-                self.paramvec[1, ind] = 0 
-        zeroed_params = [
-                        # Set 1st layer (type I) t params to 0
-                        (0,0),  # t1r
-                        (0,3),  # t2r
-                        (0,10), # t1i
-                        (0,13), # t2i 
-                        # Set 2nd layer (type II) t params to 0
-                        (1, 0), # t1r
-                        (1,3),  # t2r
-                        (1, 10),# t1i
-                        (1,13), # t2i
-                        ]
-        for coord in zeroed_params:
-            self.paramvec[coord] = 0
+        """Make the ansatz pure gauge by setting t-params to zero.
+
+        This function is obsolete for this ansatz, and is kept for compatibility reasons.
+        """
+        t_indices = [0,3,10,13] # index of t1r, t2r, t1i, t2i in symbolvec
+        for layer_ind in range(self.nlayer):
+            for t_ind in t_indices:
+                coord = (layer_ind, t_ind)
+                self.paramvec[coord] = 0
     
     def enforce_parameter_conditions(self, mat):
         """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz.
         """
-        #The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
+        # The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
         
-        zeroed_params = [
-                        # Set 1st layer (type I) t params to 0
-                        (0,0),  # t1r
-                        (0,3),  # t2r
-                        (0,10), # t1i
-                        (0,13), # t2i 
-                        # Set 2nd layer (type II) conditions
-                        (1,3),  # t2r
-                        (1,13), # t2i
-                        (1,1),  # y1r
-                        (1,2),  # z1r
-                        (1,4),  # y2r
-                        (1,5),  # z2r
-                        (1,11), # y1i
-                        (1,12), # z1i
-                        (1,14), # y2i
-                        (1,15)  # z2i
-                        ]
-
-        for coord in zeroed_params:
-            mat[coord] = 0
+        t_indices = [0,3,10,13] # index of t1r, t2r, t1i, t2i in symbolvec
+        for layer_ind in range(self.num_pg_layer):
+            for t_ind in t_indices:
+                coord = (layer_ind, t_ind)
+                mat[coord] = 0
+        
+        zero_for_fermionic_layer = [3,13,1,2,4,5,11,12,14,15] # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
+        for layer_ind in range(self.num_pg_layer, self.nlayer):
+            for ind in zero_for_fermionic_layer:
+                coord = (layer_ind, ind)
+                mat[coord] = 0
 
 
 class Z2System2D_G2C_F2C(System2DBase):
-    """ 2 copy version of the Z2 system GGPEPS ansatz with multiple types of virtual fermions
+    """ 2 copy version of the Z2 system GGPEPS ansatz with physical fermions.
 
     Some general notes about conventions:
 
-    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
+    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di].
     Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
     Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
     Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
@@ -98,12 +81,12 @@ class Z2System2D_G2C_F2C(System2DBase):
         super().__init__(cfg)
 
         prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
-        indices_layer1 = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)]]
-        indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)]]
-        idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors)
-        idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors) 
-        self.idxarr_vec = [idxarr_lay1, idxarr_lay2]
-        self.el_overall_factors = [-1/16, -1/16] # this arises due to normalization and the i^(# of modes/2) in the expression Tr[1^# * rho * (modes)]
+        indices_layer_pg = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)]]
+        indices_layer_fermionic = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)]]
+        idxarr_lay_pg = self.get_pfaffian_arrays(indices_layer_pg, prefactors)
+        idxarr_lay_fermionic = self.get_pfaffian_arrays(indices_layer_fermionic, prefactors) 
+        self.idxarr_vec = [idxarr_lay_pg]*self.cfg.num_pg_layer + [idxarr_lay_fermionic]*self.cfg.num_fermionic_layer
+        self.el_overall_factors = [-1/16]*self.cfg.nlayer # this arises due to normalization and the i^(# of modes/2) in the expression Tr[1^# * rho * (modes)]
 
 
     def _create_symbolvec(self):
@@ -205,7 +188,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         sites_perm = np.eye( 2 * self.cfg.lattice.nx * self.cfg.lattice.ny ) # total number of physical fermionic majorana modes on all the sites together
         mat_perm = block_diag(sites_perm, mat_perm_links)
 
-        nsites=self.cfg.lattice.size
+        nsites = self.cfg.lattice.size
         id = np.eye(nsites)
         # Extract the parts of the covariance matrix
         amat = covmat[:2, :2] # assumes 1 fermion per site (two majorana modes)
@@ -216,7 +199,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         bmat_sys = np.kron(id, bmat)
         dmat_sys = np.kron(id, dmat)
         #Reassemble them in the correct order
-        mat_sys_unordered= np.block(
+        mat_sys_unordered = np.block(
             [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
         dest = np.transpose(mat_perm) @ mat_sys_unordered @ mat_perm
         return dest
@@ -323,7 +306,7 @@ class Z2System2D_G2C_F2C(System2DBase):
                                                 [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.],
                                                 [ 0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.]])
         
-        return [dest_mixed, dest_unmixed]
+        return [dest_mixed]*self.cfg.num_pg_layer + [dest_unmixed]*self.cfg.num_fermionic_layer
 
     #Gauging
 
@@ -346,7 +329,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         Returns:
             np.ndarray: Rotation matrix for gamma_in_neutral
         """
-        # Gauging might be different depending on sublattice or link direction
+        # Gauging might be different depending on sublattice or link direction, but for this system it is the same
         if dir == Direction.X and (-1)**(coord[0] + coord[1]) == -1:
             #theta += np.pi 
             pass
@@ -432,33 +415,32 @@ class Z2System2D_G2C_F2C(System2DBase):
         """
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
-        if self.cfg.nlayer != 2:
-            raise NotImplementedError("Two layers must be used with physical fermions.")
 
-        mass_energy_op = [1] # Really the mass energy for the first layer is zero, but later we take the product of all layers, so we put a 1 here
-        gradients = [[0]*len(self.symbolvec)]
+        mass_energy_op = [1]*self.cfg.num_pg_layer # the mass energy for the pg layers is zero, but later we take the product of all layers, so we put a 1 here
+        gradients = [[0]*len(self.symbolvec)]*self.cfg.num_pg_layer
 
-        # Calculation prelimaries
-        layer_ind = 1 # only the second layer directly contributes to the mass
-        covmat = self.compute_ferm_cov(layer_ind)
-        layer_mass_energy = 0.0
-        layer_grads = [0]*len(self.symbolvec)
-        
-        # Calculate mass term
-        # Since the system is translationally invariant, we could just calculate it for one site and multiply by nsites instead
-        for site_ind in range(0, 2*self.cfg.lattice.size, 2):
-            layer_mass_energy += 0.5 * (1 + covmat[site_ind+1, site_ind] )
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            # only the fermionic layers directly contributes to the mass
+            
+            # Calculation prelimaries
+            covmat = self.compute_ferm_cov(layer_ind)
+            layer_mass_energy = 0.0
+            layer_grads = [0]*len(self.symbolvec)
+            
+            # Calculate mass term
+            # Since the system is translationally invariant, we could just calculate it for one site and multiply by nsites instead
+            for site_ind in range(0, 2*self.cfg.lattice.size, 2):
+                layer_mass_energy += 0.5 * (1 + covmat[site_ind+1, site_ind] )
 
-            for symbol_ind, symbol in enumerate(self.symbolvec):
-                d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                layer_grads[symbol_ind] += 0.5 * d_gamma_out[site_ind+1, site_ind] 
+                for symbol_ind, symbol in enumerate(self.symbolvec):
+                    d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
+                    layer_grads[symbol_ind] += 0.5 * d_gamma_out[site_ind+1, site_ind] 
 
-                # further terms of the derivative are included higher up in the computation stack 
-                # because computing them requires knowing various expectation values, which are not available here
-                
+                    # further terms of the derivative are included higher up in the computation stack 
+                    # because computing them requires knowing various expectation values, which are not available here
 
-        mass_energy_op.append(np.asarray(layer_mass_energy))
-        gradients.append(np.asarray(layer_grads))
+            mass_energy_op.append(np.asarray(layer_mass_energy))
+            gradients.append(np.asarray(layer_grads))
 
         mass_energy_op = np.asarray(mass_energy_op)
         gradients = np.asarray(gradients)
@@ -467,7 +449,7 @@ class Z2System2D_G2C_F2C(System2DBase):
 
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
         # They act as a prefactor in the derivative.
-        # However, here, because the mass term only acts on the second layer, we simply multiply the mass_energy and grads by the norm of the first layer 
+        # However, here, because the mass term only acts on the fermionic layers, we simply multiply the mass_energy and grads by the norm of the first layer 
         # (this is handled higher up in the computation stack).
 
         return mass_energy_op, gradients
@@ -509,7 +491,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         for layerind in range(self.cfg.nlayer):
             layer_derivative = []
 
-            #We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
+            # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
             mat_a = self.mat_a_mod_vec[layerind] # dim: 2*nsites (for majorana) + 8 (= 4 virtual modes per link x2 for majorana)
             mat_b = self.mat_b_mod_vec[layerind]
             diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
@@ -604,7 +586,7 @@ class Z2System2D_G2C_F2C(System2DBase):
             mag_energy_bare = np.real(self.compute_path(wilson_plaquette))
         else:
             # Evaluate every plaquette of the system
-            logging.error("compute_mag_energy: not implemented yet")
+            logging.error("compute_mag_energy: non-translational invariant case not implemented yet")
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
             mag_energy_bare = None
         return mag_energy_bare
@@ -617,48 +599,46 @@ class Z2System2D_G2C_F2C(System2DBase):
             tuple: Tuple of (interaction energy for a single link, gradients)
         """
 
-        int_energy_op = [1] # Really the interaction energy for the first layer is zero, but later we take the product of all layers, so we put a 1 here
-        gradients = [[0]*len(self.symbolvec)]
+        int_energy_op = [1]*self.cfg.num_pg_layer # the interaction energy for the pg layers is zero, but later we take the product of all layers, so we put a 1 here
+        gradients = [[0]*len(self.symbolvec)]*self.cfg.num_pg_layer
 
-        #for layer_ind in range(self.cfg.nlayer):
-        layer_ind = 1 #only the second layer contributes
-        layer_int_energy = 0.0
-        covmat = self.compute_ferm_cov(layer_ind)
-        layer_gradients = [0]*len(self.symbolvec)
-        
-        for site_ind in range(self.cfg.lattice.size): 
-            coord = self.cfg.lattice.ind2coord(site_ind)
-            site_ind_cov = 2 * site_ind # this is the index to use when accessing elements of the covariance matrix, which has 2 Majorana modes per site
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            layer_int_energy = 0.0
+            covmat = self.compute_ferm_cov(layer_ind)
+            layer_gradients = [0]*len(self.symbolvec)
+            
+            for site_ind in range(self.cfg.lattice.size): 
+                coord = self.cfg.lattice.ind2coord(site_ind)
+                site_ind_cov = 2 * site_ind # this is the index to use when accessing elements of the covariance matrix, which has 2 Majorana modes per site
 
-            # Horizontal link
-            ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X) # index of the horizontal link
-            neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X) # coordinates of neighboring site
-            neighborX_ind = 2 * self.cfg.lattice.coord2ind(neighborX_coord) # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
-            gaugefield_hor = self.gaugefieldvec[ind_field_hor]
-            cos_factor_hor = np.cos(gaugefield_hor) # simple way to get U from gauge value
-            hor_link_energy = 0.5 * (covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov+1, neighborX_ind+1])
-            layer_int_energy += hor_link_energy * cos_factor_hor
+                # Horizontal link
+                ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X) # index of the horizontal link
+                neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X) # coordinates of neighboring site
+                neighborX_ind = 2 * self.cfg.lattice.coord2ind(neighborX_coord) # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
+                gaugefield_hor = self.gaugefieldvec[ind_field_hor]
+                cos_factor_hor = np.cos(gaugefield_hor) # simple way to get U from gauge value
+                hor_link_energy = 0.5 * (covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov+1, neighborX_ind+1])
+                layer_int_energy += hor_link_energy * cos_factor_hor
 
-            # Vertical link
-            ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
-            neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
-            neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
-            gaugefield_vert = self.gaugefieldvec[ind_field_vert]
-            cos_factor_vert = np.cos(gaugefield_vert)
-            vert_link_energy = 0.5 * (covmat[site_ind_cov, neighborY_ind+1] + covmat[site_ind_cov+1, neighborY_ind])
-            layer_int_energy -= vert_link_energy * cos_factor_vert
+                # Vertical link
+                ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
+                neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
+                neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
+                gaugefield_vert = self.gaugefieldvec[ind_field_vert]
+                cos_factor_vert = np.cos(gaugefield_vert)
+                vert_link_energy = 0.5 * (covmat[site_ind_cov, neighborY_ind+1] + covmat[site_ind_cov+1, neighborY_ind])
+                layer_int_energy -= vert_link_energy * cos_factor_vert
 
-            # Calculate derivatives
-            for symbol_ind, symbol in enumerate(self.symbolvec):
-                d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                
-                grad = 0.5 * cos_factor_hor * (d_gamma_out[site_ind_cov, neighborX_ind] - d_gamma_out[site_ind_cov+1, neighborX_ind+1])
-                grad += - 0.5 * cos_factor_vert * (d_gamma_out[site_ind_cov, neighborY_ind+1] + d_gamma_out[site_ind_cov+1, neighborY_ind])
-                layer_gradients[symbol_ind] += grad
-                
-        
-        int_energy_op.append(layer_int_energy)
-        gradients.append(layer_gradients)
+                # Calculate derivatives
+                for symbol_ind, symbol in enumerate(self.symbolvec):
+                    d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
+                    
+                    grad = 0.5 * cos_factor_hor * (d_gamma_out[site_ind_cov, neighborX_ind] - d_gamma_out[site_ind_cov+1, neighborX_ind+1])
+                    grad += - 0.5 * cos_factor_vert * (d_gamma_out[site_ind_cov, neighborY_ind+1] + d_gamma_out[site_ind_cov+1, neighborY_ind])
+                    layer_gradients[symbol_ind] += grad
+                    
+            int_energy_op.append(layer_int_energy)
+            gradients.append(layer_gradients)
         
         int_energy_op = np.asarray(int_energy_op)
         gradients = np.asarray(gradients) 
