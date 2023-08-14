@@ -253,11 +253,11 @@ class Z2System2D2C(System2DBase):
         This method overwrites an abstract method in System2DBase.
 
         Returns:
-            np.ndarray: Covariance matrix of the ungauged projector on a single link
+            List[np.ndarray]: Covariance matrix of the ungauged projector on a single link
         """
-        dest={}
-        dest[Direction.X]= np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
-        dest[Direction.Y]= np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
+        dest = {}
+        dest[Direction.X] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
+        dest[Direction.Y] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
         return [dest]*self.cfg.nlayer
 
     #Gauging
