@@ -40,9 +40,6 @@ def main(args):
             yvals = yvals_dict[ob]
             xvals_m, yvals_m = zip(*sorted(zip(xvals, yvals))) # we define new variables so as not to change xvals while looping over the observables
             
-            print(ob)
-            print(xvals)
-            print(yvals)
             ax.plot(xvals_m, yvals_m, label = f"ED, obs={ob}")
 
     if args.ec is not None:
