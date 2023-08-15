@@ -870,9 +870,6 @@ class System2DBase(ABC):
     def calculate_weight_attempt(self, link_ind: int, theta: float, all_factors=False):
         """Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
-        
-        Currently this function does not work when physical fermions are included, because it does not use the 
-        correct projectors. However, this function is not currently set to be used outside of tests.
 
         Args:
             link_ind (int): Link index
@@ -886,8 +883,8 @@ class System2DBase(ABC):
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord, dir)
-        gamma_neutral_gauge_layers = self.gamma_gauge_neutral
-        gamma_in_subst_layers = [rotmat @ gamma_neutral_gauge[dir] @ np.transpose(rotmat) for gamma_neutral_gauge in gamma_neutral_gauge_layers]
+        gamma_neutral_gauge_vec = self.gamma_gauge_neutral
+        gamma_in_subst_layers = [rotmat @ gamma_neutral_gauge[dir] @ np.transpose(rotmat) for gamma_neutral_gauge in gamma_neutral_gauge_vec]
         updates = [self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys) for gamma_in_subst, gamma_in_sys in zip(gamma_in_subst_layers, self.gamma_in_sys_vec) ] 
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
 
