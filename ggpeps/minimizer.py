@@ -178,7 +178,23 @@ class Minimizer():
         # Add the constants back into the expression of the electric energy
         el_energy_grad = - 2 * mc.system.cfg.g_el * el_energy_op_grad
 
-        return mag_energy_grad + el_energy_grad
+        # Gradient of the interaction energy
+        meas_int_energy_op = mc.obsdict["int_energy_op"]
+        meas_int_energy_op_grad = mc.obsdict["int_energy_op_grad"]
+        prod_int_energy_grad = meas_int_energy_op * meas_grad_over_norm
+        int_energy_op_grad = prod_int_energy_grad.mean() - meas_int_energy_op.mean()*meas_grad_over_norm.mean() + meas_int_energy_op_grad.mean()
+        # Add the constants back into the expression of the interaction energy
+        int_energy_grad = mc.system.cfg.g_int * int_energy_op_grad
+
+        # Gradient of the mass energy
+        meas_mass_energy_op = mc.obsdict["mass_energy_op"]
+        meas_mass_energy_op_grad = mc.obsdict["mass_energy_op_grad"]
+        prod_mass_energy_grad = meas_mass_energy_op * meas_grad_over_norm
+        mass_energy_op_grad = prod_mass_energy_grad.mean() - meas_mass_energy_op.mean()*meas_grad_over_norm.mean() + meas_mass_energy_op_grad.mean()
+        # Add the constants back into the expression of the mass energy
+        mass_energy_grad = mc.system.cfg.g_mass * mass_energy_op_grad
+
+        return mag_energy_grad + el_energy_grad + int_energy_grad + mass_energy_grad
 
 
     def save(self, output_dir = "."):

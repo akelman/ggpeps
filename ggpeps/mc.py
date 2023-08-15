@@ -164,18 +164,22 @@ class MonteCarloEstimator:
 
         self.obsdict["acceptance_prob"] = Measurement("Acceptance Probablity", binsize)
         self.obsdict["energy"] = Measurement("Energy", binsize)
-        self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
         self.obsdict["mag_energy"] = Measurement("Magnetic Energy", binsize)
         self.obsdict["el_energy"] = Measurement("Electric Energy", binsize)
         self.obsdict["int_energy"] = Measurement("Interaction Energy", binsize)
         self.obsdict["mass_energy"] = Measurement("Mass Energy", binsize)
+        self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
         self.obsdict["el_energy_op"] = Measurement("Electric Energy Operator (bare)", binsize)
+        self.obsdict["int_energy_op"] = Measurement("Interaction Energy Operator (bare)", binsize)
+        self.obsdict["mass_energy_op"] = Measurement("Mass Energy Operator (bare)", binsize)
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
         self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
 
         if self.cfg.minimizer_mode:
             self.obsdict["el_energy_op_grad"] = Measurement("Electric Energy Operator Gradient", binsize)
+            self.obsdict["int_energy_op_grad"] = Measurement("Interaction Energy Operator Gradient", binsize)
+            self.obsdict["mass_energy_op_grad"] = Measurement("Mass Energy Operator Gradient", binsize)
             self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm", binsize)
         #self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
 
@@ -194,6 +198,8 @@ class MonteCarloEstimator:
         #self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
+        self.obsdict["int_energy_op"].append(self.system.int_energy_op)
+        self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
 
         # These values could be calculated in a post-processing step
         self.obsdict["energy"].append(self.system.energy)
@@ -213,6 +219,8 @@ class MonteCarloEstimator:
 
         if self.cfg.minimizer_mode:
             self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
+            self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
+            self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
             self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
 
     def warmup(self):
