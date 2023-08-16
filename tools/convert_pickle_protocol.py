@@ -10,7 +10,7 @@ def main(args):
                 df = pd.read_pickle(fname)
                 df.to_pickle(fname, protocol=args.pickle_protocol)
             else:
-                print("File '{}' not found. Skipping.".format(fname), file = sys.stderr)
+                print(f"File '{fname}' not found. Skipping.", file = sys.stderr)
 
 if __name__=="__main__":
     import argparse

@@ -164,8 +164,7 @@ def get_git_hash():
     packagedir = os.path.dirname(os.path.realpath(__file__))
     rootdir = os.path.join(packagedir,os.path.pardir)
     gitdir = os.path.join(rootdir, ".git")
-    githash = subprocess.check_output(
-        ['git', '--git-dir={}'.format(gitdir), 'rev-parse', 'HEAD'])
+    githash = subprocess.check_output(['git', f'--git-dir={gitdir}', 'rev-parse', 'HEAD'])
     return githash.decode("utf-8").strip()
 
 
@@ -407,7 +406,7 @@ class CacheServer:
         print(self.store.keys)
 
     def __str__(self):
-        print("CacheServer: {} Entries".format(len(self.store)))
+        print(f"CacheServer: {len(self.store)} Entries")
 
 
 # =========================== WoodburyInverter ===============================
@@ -708,10 +707,10 @@ def show_matrixvec(matvec, title=None, log=False):
 
 def print_mat_stats(mat, title=None):
     """Display general information about matrix."""
-    print("Min:\t{}".format(np.min(mat)))
-    print("Max:\t{}".format(np.max(mat)))
-    print("Avg:\t{}".format(np.mean(mat)))
-    print("Norm:\t{}".format(np.linalg.norm(mat)))
+    print(f"Min:\t{np.min(mat)}")
+    print(f"Max:\t{np.max(mat)}")
+    print(f"Avg:\t{np.mean(mat)}")
+    print(f"Norm:\t{np.linalg.norm(mat)}")
 
 
 def show_eigenvalues(mat):
@@ -781,11 +780,11 @@ def extract_params_from_run(source_dir, dest_dir):
 
 #========== Testing Functions ====================
 
-def compare_array_elementwise(testcase,ref,res,print_vals=True):
+def compare_array_elementwise(testcase, ref, res, print_vals=True):
     testcase.assertEqual(ref.shape,res.shape)
     if print_vals:
         for i in range(ref.shape[0]):
             for j in range(ref.shape[1]):
-                if not np.isclose(ref[i, j] , res[i, j]):
-                    print("{},{}: ref: {},res:{}".format(i,j, ref[i,j], res[i,j]))
+                if not np.isclose(ref[i, j], res[i, j]):
+                    print(f"{i},{j}: ref: {ref[i,j]}, res:{res[i,j]}")
     testcase.assertTrue(np.allclose(ref,res))
