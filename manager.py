@@ -360,7 +360,7 @@ if __name__ == "__main__":
                         help="Mode of the program")
     parser.add_argument("L", type=int, help="Size of the square system (one side)")
     
-    # Hamiltonian parameters
+    # Hamiltonian couplings
     parser.add_argument("--g", type=float, default=1.0, help="coupling constant (equal to lambda)")
     parser.add_argument("--g_el", "--el", type=float, help="electric coupling constant (if not given, computed as g/2)")
     parser.add_argument("--g_mag", "--mag", type=float, help="magnetic coupling constant (if not given, computed as [2*g]^-1)")
@@ -371,7 +371,7 @@ if __name__ == "__main__":
     parser.add_argument("--nlayer", default=1, type=int,
                         help="Number of PEPS layers for the variational state")
     parser.add_argument("--ncopy", default=1, type=int,
-                        help="Number of virtual fermions on the links")
+                        help="Number of virtual fermions on the links per layer")
 
     # Other system parameters
     parser.add_argument("--params", nargs="+",
@@ -381,13 +381,11 @@ if __name__ == "__main__":
     parser.add_argument("--fermions", action="store_true", default=False, 
                         help="Use an ansatz that allows for the inclusion of fermions") # TODO: improve handling of pure-gauge and fermions arguments
 
-    # Computation settings
-    parser.add_argument("--seed", type=int, help="Seed for the MC simulation")
+    # Monte Carlo settings
+    parser.add_argument("--seed", type=int, help="Seed for the MC simulation and parameter initialization")
     parser.add_argument("--warmup_steps", type=int, default=int(1e5), help="Number of warmup steps")
     parser.add_argument("--meas_steps", type=int, default=int(1e5), help="Number of run steps")
-    parser.add_argument("--level", default="info", help="logging level")
     parser.add_argument("--binsize", default=1, type=int, help="Binsize used in the MC computation")
-    parser.add_argument("--output", type=str, default='.', help="Output Directory")
     parser.add_argument("--no-bin-eom", default=False, action="store_true",
                         help="Use the standard EOM instead of a rebinning analysis")
     parser.add_argument("--use-systemsize-updates", action="store_true", default=False,
@@ -399,6 +397,10 @@ if __name__ == "__main__":
     parser.add_argument("--alpha", "--lr", type=float, default=0.1, help="Learning rate")
     parser.add_argument("--min-grad", type=float, default=1e-5, help="Minimal gradient to use as a stopping criterion")
     
+    # Output settings
+    parser.add_argument("--level", default="info", help="logging level")
+    parser.add_argument("--output", type=str, default='.', help="Output Directory")
+
     # Arguments for ray
     parser.add_argument("--nrunner", type=int, default=0, help="Number of parallel MC runners")
     
