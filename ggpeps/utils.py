@@ -63,7 +63,7 @@ def fname2gel(fname):
 
 def fname2L(fname):
     """Extract the system size from a filename"""
-    pattern=r"(?<=L_)[\d]*"
+    pattern = r"(?<=L_)[\d]*"
     result = re.search(pattern, fname)
     return int(result.group(0))
 
@@ -79,7 +79,7 @@ def load_matrix_dat_fmt(path,is_complex=True):
         path (str): Path to file
         is_complex (bool, optional): Matrix is complex or not. Defaults to True.
     """
-    complexptrn= re.compile(r'\(([^,\)]+),([^,\)]+)\)')
+    complexptrn = re.compile(r'\(([^,\)]+),([^,\)]+)\)')
 
     def parse_complex(s):
         return complex(*map(float, complexptrn.match(s).groups()))
@@ -531,7 +531,7 @@ class BgbTransform():
     @property
     def mat_out(self):
         if self._mat_out is None:
-            wn,s,wp=svd(self.mat_in, full_matrices=True, compute_uv=True) # self.mat_in is the T matrix
+            wn,s,wp = svd(self.mat_in, full_matrices=True, compute_uv=True) # self.mat_in is the T matrix
             wp = herm_conj(wp)
             if not self.is_pure_gauge:
                 # TODO: Fix this
@@ -572,7 +572,7 @@ class BgbTransform():
             q0[start_ind + len(s): start_ind+2*len(s), start_ind:start_ind+len(s)] = q0_block
 
             gamma0 = np.zeros((2 * trafo_size, 2 * trafo_size), dtype=complex)
-            gamma0=np.block([[q0,r0],[np.conj(r0),np.conj(q0)]])
+            gamma0 = np.block([[q0,r0],[np.conj(r0),np.conj(q0)]])
             trafo_0 = block_diag(herm_conj(unitary_transform),np.transpose(unitary_transform))
             trafo_1 = block_diag(np.conj(unitary_transform), unitary_transform)
             # This matrix has the following order: psi, r+, u-, l-, d+,t,b, r-, l+,
@@ -781,7 +781,7 @@ def extract_params_from_run(source_dir, dest_dir):
 #========== Testing Functions ====================
 
 def compare_array_elementwise(testcase, ref, res, print_vals=True):
-    testcase.assertEqual(ref.shape,res.shape)
+    testcase.assertEqual(ref.shape, res.shape)
     if print_vals:
         for i in range(ref.shape[0]):
             for j in range(ref.shape[1]):
