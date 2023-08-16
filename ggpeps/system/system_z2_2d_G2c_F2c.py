@@ -133,7 +133,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2
 
         The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
-        The permutation matrices are prone for errors.
+        The permutation matrices are prone to errors.
 
         Returns:
             sympy.Matrix: Analytic T matrix of the fiducial state
