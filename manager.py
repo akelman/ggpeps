@@ -204,7 +204,7 @@ def main(args):
     system_cfg.paramvec = paramvec
 
     # Ensure pure guage (setting t parameter to zero) if enabled
-    if args.pure_gauge:
+    if not args.fermions:
         system_cfg.make_pure_gauge()
 
     # Enforce the required parameter conditions to get the correct use of layers
@@ -221,7 +221,7 @@ def main(args):
     logging.info(f"L: {L}")
     logging.info(f"# of layers: {system_cfg.nlayer}")
     logging.info(f"# of copies: {args.ncopy}")
-    logging.info(f"pure-gauge: {args.pure_gauge}")
+    logging.info(f"fermions: {args.fermions}")
     logging.info(f"g (lambda): {g}")
     logging.info(f"g_el: {g_el}")
     logging.info(f"g_mag: {g_mag}")
@@ -236,18 +236,22 @@ def main(args):
         logging.info(f"Seed: {mc_config.seed}")
         logging.info(f"Warmup steps: {mc_config.warmup_steps}")
         logging.info(f"Measurement steps: {mc_config.meas_steps}")
+        logging.info(f"Bin size: {mc_config.binsize}")
+        logging.info(f"Use systemsize updates: {mc_config.use_systemsize_update}")
+        logging.info(f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)")
         logging.info("============================")
     if "min" in args.mode:
         logging.info("====== MINIMIZER INFO ======")
+        logging.info(f"Method: {args.method.upper()}")
         logging.info(f"Max Iterations: {args.maxiter}")
         logging.info(f"Learning rate: {args.alpha}")
-        logging.info(f"Method: {args.method.upper()}")
+        logging.info(f"Min grad: {args.min_grad}")
         logging.info("============================")
 
 
     # Call different functions depending on the mode specified via CLI
     if args.mode == "eval-mc":
-        # Evaluate a given set of parameters with Monte Carlo
+        # Evaluate observables for a given set of parameters with Monte Carlo
         mc_config.minimizer_mode = False
         mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
         start = timer()
@@ -279,7 +283,7 @@ def main(args):
         logging.info(result)
         minimizer.save(output_dir = args.output)
     elif args.mode == "eval-exact":
-        # Evaluate a given set of parameters with exact contraction (equivalent to the mode "eval", just exact)
+        # Evaluate observables for a given set of parameters with exact contraction
         system = system_type(system_cfg)
         start = timer()
         ex_eval = exacteval.ExactEvaluator(system)
@@ -336,7 +340,7 @@ def main(args):
         mc_result = mc_mgr.simulate()
         mc_result.save(output_dir = args.output)
     else:
-        logging.error(f"Mode '{args.mode}' unkown.")
+        logging.error(f"Mode '{args.mode}' unknown.")
 
     logging.info("========== TIME ============")
     logging.info(f"The simulation took {stop - start}s.")
@@ -376,8 +380,6 @@ if __name__ == "__main__":
     # Other system parameters
     parser.add_argument("--params", nargs="+",
                         help="Parameters passed as a starting configuration (Order for one copy: [t1r, t2r,..., y1r, y2r,..., z1r, z2r..., t1i, t2i, ..., y1i, ... z1i])")
-    parser.add_argument("--pure-gauge", action="store_true", default=False,
-                        help="Force the coupling of physical and virtual fermions (t-parameters) to be 0")
     parser.add_argument("--fermions", action="store_true", default=False, 
                         help="Use an ansatz that allows for the inclusion of fermions") # TODO: improve handling of pure-gauge and fermions arguments
 
