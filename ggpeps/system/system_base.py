@@ -827,11 +827,14 @@ class System2DBase(ABC):
         dest = []
         for layerind in range(self.cfg.nlayer):
             dest.append(self.compute_grad_norm(layerind))
-        return np.asarray(dest)
+        dest = np.asarray(dest)
+        # Enforce ansatz conditions on the parameters
+        self.cfg.enforce_parameter_conditions(dest)
+        return dest
 
     def compute_grad_norm(self, layerind: int) -> np.ndarray:
         """Compute the gradient of the norm for a given layer wrt to all parameters.
-        The parameter order is the same as in the symbolvec [t1,y1,z1....]
+        The parameter order is the same as in the symbolvec
 
         Args:
             layerind (int): layer index
@@ -976,7 +979,7 @@ class System2DBase(ABC):
 
             # TODO: We might save one matrix-matrix multiplication here
             # The derivd and mat_d_inv are constant
-            self._grad_over_norm_dict[(var,layerind)]=compute_grad_over_norm(self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv)
+            self._grad_over_norm_dict[(var,layerind)] = compute_grad_over_norm(self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv)
         return self._grad_over_norm_dict[(var,layerind)]
 
     ################## Local Gauge ######################
