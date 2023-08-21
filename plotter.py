@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def extract_data(data:pd.DataFrame, xaxis:str, obs, restrictions:dict, require_g:bool):
+def extract_data(data:pd.DataFrame, xaxis:str, obs, restrictions:dict, require_g:bool, get_error:bool = False):
 
     for key, val in restrictions.items():
         data = data[data[key] == val]
@@ -12,11 +12,17 @@ def extract_data(data:pd.DataFrame, xaxis:str, obs, restrictions:dict, require_g
 
     xvals = data.loc[:, xaxis].values
     yvals_dict = {}
+    yvals_err_dict = {}
     for ob in obs:
         yvals = data.loc[:, ob].values 
         yvals_dict[ob] = yvals
 
-    return xvals, yvals_dict
+        # Get error
+        if get_error:
+            ob_error = f"{ob}_error"
+            yvals_err_dict[ob] = data.loc[:, ob_error].values 
+
+    return xvals, yvals_dict, yvals_err_dict
 
 def main(args):
     
@@ -27,12 +33,12 @@ def main(args):
         restrictions[key] = float(val)
     print(f"Plotting with the restrictions: {restrictions}")
 
-    if args.ec_labels is None:
+    if args.ec is not None and args.ec_labels is None:
         args.ec_labels = ['']*len(args.ec)
 
     if args.ed is not None:
         data = pd.read_csv(args.ed)
-        xvals, yvals_dict = extract_data(data, args.xaxis, args.obs, restrictions, args.require_g)
+        xvals, yvals_dict, _ = extract_data(data, args.xaxis, args.obs, restrictions, args.require_g)
 
         for ob in args.obs:
             # reorder
@@ -45,15 +51,16 @@ def main(args):
     if args.ec is not None:
         for ind, ec_data in enumerate(args.ec):
             data = pd.read_csv(ec_data)
-            xvals, yvals_dict = extract_data(data, args.xaxis, args.obs, restrictions, args.require_g)
+            xvals, yvals_dict, _ = extract_data(data, args.xaxis, args.obs, restrictions, args.require_g)
             for ob in args.obs:
-                ax.scatter(xvals, yvals_dict[ob], label = f"EC, obs={ob}, {args.ec_labels[ind]}")
+                ax.scatter(xvals, yvals_dict[ob], label=f"EC, obs={ob}, {args.ec_labels[ind]}")
     
     if args.mc is not None:
-        xvals, yvals_dict = extract_data(args.mc, args.xaxis, args.obs, restrictions, args.require_g)
-        for ob in args.obs:
-            ax.errorbar(xvals, yvals_dict[ob], label = f"MC, obs={ob}")
-        # TODO: add support for errorbars
+        for ind, mc_data in enumerate(args.mc):
+            data = pd.read_csv(mc_data)
+            xvals, yvals_dict, yvals_err_dict = extract_data(data, args.xaxis, args.obs, restrictions, args.require_g, get_error=True)
+            for ob in args.obs:
+                ax.errorbar(xvals, yvals_dict[ob], yerr=yvals_err_dict[ob], label=f"MC, obs={ob}", marker='o', linestyle='')
 
     if args.logx:
         ax.set_xscale("log")
