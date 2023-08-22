@@ -24,7 +24,24 @@ class TestZ2C4System(unittest.TestCase):
         cfg.paramvec = paramvec
         self.system_z2 = system.Z2System2D_G2C_F2C(cfg) 
         self.system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)   
+    
+    def test_required_params_are_zero(self):
+        """Ensure that the parameters that must vanish to guarantee ansatz symmetries do indeed vanish.
+        """
+        mat = self.system_z2.cfg.paramvec
+        t_indices = [0,3,10,13] # index of t1r, t2r, t1i, t2i in symbolvec
+        for layer_ind in range(self.system_z2.cfg.num_pg_layer):
+            for t_ind in t_indices:
+                with self.subTest(tind=t_ind, layerind=layer_ind):
+                    coord = (layer_ind, t_ind)
+                    self.assertAlmostEqual(mat[coord], 0)
         
+        zero_for_fermionic_layer = [3,13,1,2,4,5,11,12,14,15] # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
+        for layer_ind in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
+            for ind in zero_for_fermionic_layer:
+                with self.subTest(ind=ind, layerind=layer_ind):
+                    coord = (layer_ind, ind)
+                    self.assertAlmostEqual(mat[coord], 0)
     
     def test_covmat_for_no_fermions(self):
         """Ensure the correct covariance matrix is generated when t = 0.
@@ -42,6 +59,27 @@ class TestZ2C4System(unittest.TestCase):
                                     [ 0.,  0.,  0.,  0.,  0.,  0., -1.,  0.]])
         self.assertTrue(np.allclose(covmat_layer1, expected_covmat))
         self.assertTrue(np.allclose(covmat_layer2, expected_covmat))
+    
+    def test_covmat_with_fermions(self):
+        """Ensure the covariance matrix is not the pure-gauge one when t != 0.
+        This test must be done with a gauge configuration that includes some flux.
+        Only the fermionic layer should have a covariance matrix different than the pure-gauge one.
+        """
+        config = np.array([0]*7 + [np.pi]*1)
+        self.system_z2.update_gauge_full_system(config)
+
+        covmat_layer1 = self.system_z2.compute_ferm_cov(layer = 0)
+        covmat_layer2 = self.system_z2.compute_ferm_cov(layer = 1)
+        expected_covmat = np.array([[ 0.,  1.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                    [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                    [ 0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.],
+                                    [ 0.,  0., -1.,  0.,  0.,  0.,  0.,  0.],
+                                    [ 0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.],
+                                    [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.],
+                                    [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  1.],
+                                    [ 0.,  0.,  0.,  0.,  0.,  0., -1.,  0.]])
+        self.assertTrue(np.allclose(covmat_layer1, expected_covmat))
+        self.assertFalse(np.allclose(covmat_layer2, expected_covmat))
 
     def test_t_zero(self):
         """Ensure mass and interaction energy are zero when t = 0"""
@@ -69,14 +107,14 @@ class TestZ2C4System(unittest.TestCase):
     # TESTS TO ADD
     # get the correct gamma_in_sys for all layers
     # when interaction is off, ground state is: no fermions, pure-gauge ground state
-    # ensure covmat is not the no-fermions one in cases where t != 0
-    # required parameters are zero (i.e. the ones that are zero by def of the ansatz) - before starting, and remain that way through minimization
 
     # test site-specific mass values in limits where this is known
 
+    # T-mat has required structure
+    # test different number of pg layers
 
 
-    ##
+    ###### Test Energy Gradients ######
 
     def test_grad_el_energy_2C(self):
         # This is comparison of the analytic derivative against the numeric derivative
