@@ -152,11 +152,14 @@ class MonteCarloEstimator:
         self.init_measurements()
         self.step = 0
 
-        #This might change in the future if we implement different updates
+        # Choose how to update in each MC step
+        # (This might change in the future if we implement different updates)
         if cfg.use_systemsize_update:
             self.update = self.update_all_sites_single_site
         else:
-            self.update = self.update_single_site
+            #self.update = self.update_single_site
+            self.update_size_per_step = 1 # this can be set anywhere from 1 to nlinks (inclusive)
+            self.update = self.update_N_sites
 
     def init_measurements(self):
         """Add empty measurement vectors to the measurement dictionary"""
@@ -281,6 +284,28 @@ class MonteCarloEstimator:
                 # Accept
                 self.obsdict["acceptance_prob"].append(1)
                 self.system.update_gauge_ind(i, theta)
+            else:
+                # Reject
+                self.obsdict["acceptance_prob"].append(0)
+        
+    def update_N_sites(self):
+        """Update for the MC simulation.
+        This updates iterates over N lattice sites and updates every site once.
+        The update is local.
+        The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        """
+        nlinks = self.system.cfg.lattice.nlinks
+        links_inds = self.cfg.rng_state.choice([k for k in range(nlinks)], self.update_size_per_step, replace=False)
+        for link_ind in links_inds:
+            # Uniformly pick a gauge to replace
+            theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+            # Store the old values
+            weight_old = self.system.weight
+            weight_new = self.system.calculate_weight_attempt(link_ind, theta)
+            if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
+                # Accept
+                self.obsdict["acceptance_prob"].append(1)
+                self.system.update_gauge_ind(link_ind, theta)
             else:
                 # Reject
                 self.obsdict["acceptance_prob"].append(0)
