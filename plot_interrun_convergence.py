@@ -12,35 +12,35 @@ import matplotlib.pyplot as plt
 
 
 def main(args):
-    dfvec=[]
+    dfvec = []
     for fname in args.fnames:
         if os.path.isfile(fname):
-            df=pd.read_pickle(fname)
+            df = pd.read_pickle(fname)
             dfvec.append(df)
     df = pd.concat(dfvec)
-    obsnamevec=df.name.unique()
+    obsnamevec = df.name.unique()
     if args.obs in obsnamevec:
-        df_filtered=df[df.name==args.obs]
+        df_filtered = df[df.name==args.obs]
         df_filtered.reset_index(drop=True, inplace=True)
         print(df_filtered)
 
         # The figure size is given in inches.
         # This is exactly a half column of an a4 page in 14 to 9
-        f,ax=plt.subplots(1,1,figsize=(4.14,2.66))
+        f,ax = plt.subplots(1,1,figsize=(4.14,2.66))
         ax.errorbar(range(len(df_filtered)),
                     df_filtered["mean"],
                     fmt="o",
                     yerr=df_filtered["err"])
         ax.set_xlabel("Run", fontsize=10)
-        ax.set_ylabel("{}".format(args.obs), fontsize=10)
+        ax.set_ylabel(f"{args.obs}", fontsize=10)
         f.tight_layout()
-        f.savefig("interrun_convergence_{}.pdf".format(args.obs))
+        f.savefig(f"interrun_convergence_{args.obs}.pdf")
         plt.show()
     else:
-        print("Observable '{}' is not in the dataset".format(
-            args.obs), file=sys.stderr)
+        print(f"Observable '{args.obs}' is not in the dataset", file=sys.stderr)
 
 if __name__ == "__main__":
+
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("fnames", nargs="+", help="Filenames")
