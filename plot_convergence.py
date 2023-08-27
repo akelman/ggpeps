@@ -24,7 +24,7 @@ def main(args):
     if not df.empty:
         # Plot the convergence
         df_filtered = df[df.name==args.obs]
-        print(df_filtered)
+        #print(df_filtered)
 
         if not df_filtered.empty:
             f,ax = plt.subplots(1,1,figsize=(4.14,2.66))
@@ -41,8 +41,8 @@ def main(args):
 
             if args.show:
                 plt.show()
-            f.tight_layout()
-            fname = args2fname()
+            #f.tight_layout()
+            fname = args2fname(args.obs)
             f.savefig(fname, bbox_inches='tight')
         else:
             print(f"No data for observable '{args.obs}'.", file=sys.stderr)
