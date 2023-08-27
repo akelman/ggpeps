@@ -54,7 +54,7 @@ All scripts in the main folder call parts of the package and provide the infrast
 The package `ggpeps` is divided into several parts:
 
 - `plot`: Helper scripts for plots
-- `system`: Module containing all system implementations. Currently, two-dimensional systems for $Z_2$ with one and two copies of virtual fermions on the links are implemented.
+- `system`: Module containing all system implementations. Currently, two-dimensional systems for $Z_2$ with one and two copies of virtual fermions on the links are implemented for the pure gauge case, and 2D systems with 2,4,8 copies of virtual fermions on the links for the fermionic case.
 The implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
 - `exacteval.py`: For small systems and finite gauge groups, the expectation values of the states can be evaluated exactly by contracting the full PEPS.
 - `gauge.py`: Implementation of the gauge groups
@@ -74,7 +74,7 @@ The script `manager.py` is the central point for data generation. It supports di
 
 All modes are writing log files to disk and to console. 
 The files are named according to the parameters that were provided via the commandline. 
-In addition to the progress of the computation, they also store a git hash which enables to identify which version of the code was used.
+In addition to the progress of the computation, they also store a git hash which enables the user to identify which version of the code was used to generate particular data.
 
 All data is stored in the form of pandas dataframes in pickle (`.pkl`) files.
 While these files are convenient to work with in Python, they are a bit unintuitive to inspect on the commandline.
