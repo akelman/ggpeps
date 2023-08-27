@@ -1,12 +1,14 @@
+import sys
+import numpy as np
+import itertools as it
+
+from tqdm import tqdm
+
 import exacteval 
+import lattice as lat
 from system import Z2System2D, Z2System2DConfig
 from system import Z2System2D2C, Z2System2D2CConfig
 from mc import MonteCarloEstimatorConfig, MonteCarloManager
-import numpy as np
-import itertools as it
-import lattice as lat
-from tqdm import tqdm
-import sys
 
 def main(args):
     L = args.L
@@ -16,7 +18,7 @@ def main(args):
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 
-    paramiter=np.linspace(args.pmin,args.pmax,args.nstep)
+    paramiter = np.linspace(args.pmin, args.pmax, args.nstep)
 
     if args.ncopy == 1:
         system_cls = Z2System2D
@@ -27,9 +29,9 @@ def main(args):
                                       nlayer=args.nlayer)
         nparams = system_cfg.nvarparams()
         if args.pure_gauge:
-            paramproduct=it.product([0],*([paramiter]*(nparams-1)))
+            paramproduct = it.product([0], *([paramiter]*(nparams-1)))
         else:
-            paramproduct=it.product(paramiter,repeat=nparams)
+            paramproduct = it.product(paramiter, repeat=nparams)
     elif args.ncopy == 2:
         system_cls = Z2System2D2C
         system_cfg = Z2System2D2CConfig(lattice,
@@ -39,11 +41,11 @@ def main(args):
                                         nlayer=args.nlayer)
         nparams = system_cfg.nvarparams()
         if args.pure_gauge:
-            paramproduct=it.product([0],*([paramiter]*2),[0],*([paramiter]*6))
+            paramproduct = it.product([0],*([paramiter]*2),[0],*([paramiter]*6))
         else:
-            paramproduct=it.product(paramiter,repeat=nparams)
+            paramproduct = it.product(paramiter,repeat=nparams)
     else:
-        print("Not Implemented: Only 1 or two copies are possible", file=sys.stderr)
+        print("Not Implemented: Only 1 or 2 copies are possible", file=sys.stderr)
         sys.exit(1)
 
     for paramvec in tqdm(paramproduct):
@@ -68,12 +70,13 @@ def main(args):
 
 
 if __name__ == "__main__":
+
     import argparse
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument(
-        "L", type=int, help="Size of the square system (one side)")
+
+    parser.add_argument("L", type=int, help="Size of the square system (one side)")
 
     parser.add_argument("--pmin",
                         default=0.0,
@@ -83,13 +86,11 @@ if __name__ == "__main__":
                         default=2.0,
                         type=float,
                         help="Maximal parameter")
-    parser.add_argument(
-        "--pure-gauge",
-        action="store_true",
-        default=False,
-        help=
-        "Force the coupling of physical and virtual fermions (t-parameters) to be 0"
-    )
+    parser.add_argument("--pure-gauge",
+                        action="store_true",
+                        default=False,
+                        help=
+                        "Force the coupling of physical and virtual fermions (t-parameters) to be 0")
     parser.add_argument("--nstep",
                         default=10,
                         type=int,
@@ -113,10 +114,10 @@ if __name__ == "__main__":
                         default=1,
                         type=int,
                         help="Number of virtual fermions on the links")
-
     parser.add_argument("--exact",
                         default=False,
                         action="store_true",
                         help="Use exact contraction instead of MC")
+    
     args = parser.parse_args()
     main(args)

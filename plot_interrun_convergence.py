@@ -1,7 +1,7 @@
-import pandas as pd
-import numpy as np
 import os
 import sys
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 
 #from matplotlib import rc,rcParams
@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("fnames", nargs="+", help="Filenames")
+    parser.add_argument("--fnames", nargs="+", help="Filenames")
     parser.add_argument("--obs", type=str, default="energy", help="Observable")
 
     args = parser.parse_args()
