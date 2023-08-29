@@ -441,8 +441,12 @@ class Z2System2D_G2C_F2C(System2DBase):
                 layer_mass_energy += 0.5 * (1 + covmat[site_ind+1, site_ind] )
 
                 for symbol_ind, symbol in enumerate(self.symbolvec):
-                    d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                    layer_grads[symbol_ind] += 0.5 * d_gamma_out[site_ind+1, site_ind] 
+                    if (layer_ind, symbol_ind) not in self.cfg.zeroed_params:
+                        # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
+                        # we can skip it for parameters that are forced by the ansatz to be zero
+
+                        d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
+                        layer_grads[symbol_ind] += 0.5 * d_gamma_out[site_ind+1, site_ind] 
 
                     # further terms of the derivative are included higher up in the computation stack 
                     # because computing them requires knowing various expectation values, which are not available here
@@ -537,7 +541,7 @@ class Z2System2D_G2C_F2C(System2DBase):
             dest.append(el_energy_layer)
 
             ###################### Calculation of the derivative ########################
-            for (symbol_ind, symbol) in enumerate(self.symbolvec):
+            for symbol_ind, symbol in enumerate(self.symbolvec):
                 if (layerind, symbol_ind) in self.cfg.zeroed_params:
                     # the derivative calculation is compuationally expensive
                     # we can skip it for parameters that are forced by the ansatz to be zero
@@ -644,11 +648,14 @@ class Z2System2D_G2C_F2C(System2DBase):
 
                 # Calculate derivatives
                 for symbol_ind, symbol in enumerate(self.symbolvec):
-                    d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                    
-                    grad = 0.5 * cos_factor_hor * (d_gamma_out[site_ind_cov, neighborX_ind] - d_gamma_out[site_ind_cov+1, neighborX_ind+1])
-                    grad += - 0.5 * cos_factor_vert * (d_gamma_out[site_ind_cov, neighborY_ind+1] + d_gamma_out[site_ind_cov+1, neighborY_ind])
-                    layer_gradients[symbol_ind] += grad
+                    if (layer_ind, symbol_ind) not in self.cfg.zeroed_params:
+                        # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
+                        # we can skip it for parameters that are forced by the ansatz to be zero
+
+                        d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
+                        grad = 0.5 * cos_factor_hor * (d_gamma_out[site_ind_cov, neighborX_ind] - d_gamma_out[site_ind_cov+1, neighborX_ind+1])
+                        grad += - 0.5 * cos_factor_vert * (d_gamma_out[site_ind_cov, neighborY_ind+1] + d_gamma_out[site_ind_cov+1, neighborY_ind])
+                        layer_gradients[symbol_ind] += grad
                     
             int_energy_op.append(layer_int_energy)
             gradients.append(layer_gradients)
