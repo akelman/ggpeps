@@ -39,8 +39,9 @@ class Config2DBase(ABC):
         self.lattice = lattice
 
         self._paramvec = None
-        self.zeroed_params = None   # will store a list of the parameters forced to be zero by the ansatz
-                                    # currently this is set in self.enforce_parameter_conditions
+        self.zeroed_params = [] # will store a list of the parameters forced to be zero by the ansatz
+                                # currently this is set in self.enforce_parameter_conditions
+                                # (this only happens for the fermionic ansatz's)
 
         # Parameters of the Hamiltonian
         self.g_el = g_el
@@ -846,8 +847,11 @@ class System2DBase(ABC):
         """
 
         dest = np.zeros(len(self.symbolvec))
-        for ind, symbol in enumerate(self.symbolvec):
-            dest[ind] = self.compute_grad_over_norm(symbol, layerind)
+        for symbol_ind, symbol in enumerate(self.symbolvec):
+            if (layerind, symbol_ind) not in self.cfg.zeroed_params:
+                # the derivative calculation is compuationally expensive
+                # we can skip it for parameters that are forced by the ansatz to be zero
+                dest[symbol_ind] = self.compute_grad_over_norm(symbol, layerind)
         return dest
 
     ################## Weight management ######################
