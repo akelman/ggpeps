@@ -39,6 +39,8 @@ class Config2DBase(ABC):
         self.lattice = lattice
 
         self._paramvec = None
+        self.zeroed_params = None   # will store a list of the parameters forced to be zero by the ansatz
+                                    # currently this is set in self.enforce_parameter_conditions
 
         # Parameters of the Hamiltonian
         self.g_el = g_el

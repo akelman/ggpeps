@@ -45,19 +45,27 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
     def enforce_parameter_conditions(self, mat):
         """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz.
         """
-        # The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
-        
+        # The order of the parameters (for each layer) is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
+
+        zeroed_params = [] # we'll save the indices of the zeroed parameters
+
         t_indices = [0,3,10,13] # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.num_pg_layer):
             for t_ind in t_indices:
                 coord = (layer_ind, t_ind)
                 mat[coord] = 0
+                zeroed_params.append(coord)
         
         zero_for_fermionic_layer = [3,13,1,2,4,5,11,12,14,15] # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
         for layer_ind in range(self.num_pg_layer, self.nlayer):
             for ind in zero_for_fermionic_layer:
                 coord = (layer_ind, ind)
                 mat[coord] = 0
+                zeroed_params.append(coord)
+        
+        # save zeroed params
+        self.zeroed_params = zeroed_params
+        return
 
 
 class Z2System2D_G2C_F2C(System2DBase):
@@ -529,28 +537,33 @@ class Z2System2D_G2C_F2C(System2DBase):
             dest.append(el_energy_layer)
 
             ###################### Calculation of the derivative ########################
-            for symbol in self.symbolvec:
-                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
-                d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
-                d_gamma_out = d_mat_a + \
-                        d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
-                        + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
-                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
-                # The virtual mode is the last link on the bottom right of the covariance matrix
-                d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
-                # Summand with derivative of the covariance matrix
-                # We re-use the list comprehension from above to use the indices
-                deriv_pfarr = [prefactor * utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)], d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
-                d_el_energy = overall_factor * np.real(np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
-                                
-                # Summand with derivative of norms
-                trace_def = self.compute_grad_over_norm(symbol, layerind)
-                trace_mod = compute_grad_over_norm(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
-                # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
-                d_el_energy += dest[layerind] * (trace_mod - trace_def)
-                # Scale to system size
-                d_el_energy *= nlinks
-                layer_derivative.append(np.real(d_el_energy))
+            for (symbol_ind, symbol) in enumerate(self.symbolvec):
+                if (layerind, symbol_ind) in self.cfg.zeroed_params:
+                    # the derivative calculation is compuationally expensive
+                    # we can skip it for parameters that are forced by the ansatz to be zero
+                    layer_derivative.append(0.0)
+                else:
+                    deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
+                    d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                    d_gamma_out = d_mat_a + \
+                            d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
+                            + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
+                            - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+                    # The virtual mode is the last link on the bottom right of the covariance matrix
+                    d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
+                    # Summand with derivative of the covariance matrix
+                    # We re-use the list comprehension from above to use the indices
+                    deriv_pfarr = [prefactor * utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)], d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
+                    d_el_energy = overall_factor * np.real(np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
+                                    
+                    # Summand with derivative of norms
+                    trace_def = self.compute_grad_over_norm(symbol, layerind)
+                    trace_mod = compute_grad_over_norm(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
+                    # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
+                    d_el_energy += dest[layerind] * (trace_mod - trace_def)
+                    # Scale to system size
+                    d_el_energy *= nlinks
+                    layer_derivative.append(np.real(d_el_energy))
             dest_grad.append(layer_derivative)
         
         dest = np.asarray(dest)
