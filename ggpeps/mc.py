@@ -27,7 +27,7 @@ class MonteCarloEstimatorConfig:
         self.meas_steps = None
         self.binsize = 1
         self.minimizer_mode = False
-        self.use_systemsize_update = False
+        self.update_size_per_step = 1 # this can be set anywhere from 1 to nlinks (inclusive)
 
     @property
     def seed(self):
@@ -59,6 +59,7 @@ class MonteCarloEstimatorConfig:
         dest += f"Seed: {self.seed}\n"
         dest += f"Warmup steps: {self.warmup_steps}\n"
         dest += f"Measurement steps: {self.meas_steps}\n"
+        dest += f"Update size: {self.update_size_per_step}\n"
         return dest
 
 
@@ -154,11 +155,10 @@ class MonteCarloEstimator:
 
         # Choose how to update in each MC step
         # (This might change in the future if we implement different updates)
-        if cfg.use_systemsize_update:
+        if cfg.update_size_per_step == self.system.cfg.lattice.nlinks:
             self.update = self.update_all_sites_single_site
         else:
             #self.update = self.update_single_site
-            self.update_size_per_step = 1 # this can be set anywhere from 1 to nlinks (inclusive)
             self.update = self.update_N_sites
 
     def init_measurements(self):
@@ -295,7 +295,7 @@ class MonteCarloEstimator:
         The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
         """
         nlinks = self.system.cfg.lattice.nlinks
-        links_inds = self.cfg.rng_state.choice([k for k in range(nlinks)], self.update_size_per_step, replace=False)
+        links_inds = self.cfg.rng_state.choice([k for k in range(nlinks)], self.cfg.update_size_per_step, replace=False)
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
             theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)

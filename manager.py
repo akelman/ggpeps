@@ -152,8 +152,16 @@ def main(args):
     mc_config.warmup_steps = args.warmup_steps
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize
-    mc_config.use_systemsize_update = args.use_systemsize_updates
-
+    if args.use_systemsize_updates or args.update_size == "system":
+        mc_config.update_size_per_step = 2*L**2
+    elif args.update_size == "halfsystem":
+        mc_config.update_size_per_step = L**2
+    elif args.update_size.isdecimal():
+        mc_config.update_size_per_step = int(args.update_size)
+    else:
+        logging.error("Unrecognized value for update_size.")
+        sys.exit(1)
+    
     if args.seed is not None:
         seed = args.seed
     else:
@@ -237,7 +245,7 @@ def main(args):
         logging.info(f"Warmup steps: {mc_config.warmup_steps}")
         logging.info(f"Measurement steps: {mc_config.meas_steps}")
         logging.info(f"Bin size: {mc_config.binsize}")
-        logging.info(f"Use systemsize updates: {mc_config.use_systemsize_update}")
+        logging.info(f"Update size: {mc_config.update_size_per_step} (out of {2*L**2} total nlinks)")
         logging.info(f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)")
         logging.info("============================")
     if "min" in args.mode:
@@ -391,7 +399,9 @@ if __name__ == "__main__":
     parser.add_argument("--no-bin-eom", default=False, action="store_true",
                         help="Use the standard EOM instead of a rebinning analysis")
     parser.add_argument("--use-systemsize-updates", action="store_true", default=False,
-                        help="Update every spin of the system between each update step")
+                        help="Update every spin of the system between each update step. This option is kept for backwards compatibility")
+    parser.add_argument("--update_size", type=str, default=1,
+                        help="The number of spins to update in each step (can be an integer, or one of: system, halfsystem)")
     
     # Arguments for the minimizer
     parser.add_argument("--method", type=str, default="bfgs", help="Minimization method")
