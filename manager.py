@@ -399,7 +399,7 @@ if __name__ == "__main__":
                         help="Use the standard EOM instead of a rebinning analysis")
     parser.add_argument("--use-systemsize-updates", action="store_true", default=False,
                         help="Update every spin of the system between each update step. This option is kept for backwards compatibility")
-    parser.add_argument("--update_size", type=str, default=1,
+    parser.add_argument("--update_size", type=str, default="1",
                         help="The number of spins to update in each step (can be an integer, or one of: system, halfsystem)")
     
     # Arguments for the minimizer
