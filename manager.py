@@ -372,7 +372,7 @@ if __name__ == "__main__":
     parser.add_argument("L", type=int, help="Size of the square system (one side)")
     
     # Hamiltonian couplings
-    parser.add_argument("--g", type=float, default=1.0, help="coupling constant (equal to lambda)")
+    parser.add_argument("--g", type=float, default=None, help="coupling constant (equal to lambda)")
     parser.add_argument("--g_el", "--el", type=float, help="electric coupling constant (if not given, computed as g/2)")
     parser.add_argument("--g_mag", "--mag", type=float, help="magnetic coupling constant (if not given, computed as [2*g]^-1)")
     parser.add_argument("--g_int", "--int", type=float, default=0.0, help="gauge matter coupling")
