@@ -244,7 +244,7 @@ def main(args):
         logging.info(f"Warmup steps: {mc_config.warmup_steps}")
         logging.info(f"Measurement steps: {mc_config.meas_steps}")
         logging.info(f"Bin size: {mc_config.binsize}")
-        logging.info(f"Update size: {mc_config.update_size_per_step} (out of {2*L**2} total nlinks)")
+        logging.info(f"Update size: {mc_config.update_size_per_step} (out of {2*L**2} total links)")
         logging.info(f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)")
         logging.info("============================")
     if "min" in args.mode:
