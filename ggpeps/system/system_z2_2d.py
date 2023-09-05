@@ -304,11 +304,13 @@ class Z2System2D(System2DBase):
     # Calculating the norm
 
     def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv=True):
-        # Really, the error should be raised here, but commented out now for testing purposes
-        # raise NotImplementedError("The mass term has not yet been implemented for Z2 with 1 copy.")
-
-        dest, dest_grad = 0, 0 #Needs to be calculated properly
-        return dest, dest_grad
+        energies = [0]*self.cfg.nlayer
+        gradients = [ [0]*self.cfg.nparams_per_layer for k in range(self.cfg.nlayer) ]
+        return energies, gradients
+        # This function is not implemented yet! 
+        # (and it can't be, because the ansatz doesn't have the required parameterization).
+        # We return zeros just to not break the interface.
+        raise NotImplementedError("The mass energy is not implemented yet for the 2 copy case.")
 
     def _compute_el_energy_op_vec(self, use_trans_inv=True):
         """Computation of the electric energy operators (w/o shift).
@@ -559,5 +561,5 @@ class Z2System2D(System2DBase):
         # This function is not implemented yet! 
         # (and it can't be, because the ansatz doesn't have the required parameterization).
         # We return zeros just to not break the interface.
-        raise NotImplementedError("The interaction energy is not implemented yet for the 1 copy case.")
+        raise NotImplementedError("The interaction energy is not implemented yet for the 2 copy case.")
         
