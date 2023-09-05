@@ -146,11 +146,25 @@ def calculate_lognorm(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarray,
     return np.sum(normvec)
 
 
-def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray,
+def compute_grad_over_norm(gamma_in_sys: np.ndarray, 
+                           diff: np.ndarray,
                            deriv_d: np.ndarray,
                            mat_d_inv: np.ndarray) -> float:
     """Compute the gradient of the norm divided by the norm.
     The expression of deriv_d given to this function decides which derivative is computed
+
+    The gradient of the norm divided by the norm is given by
+        -0.5 * np.trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
+    which is very expensive to calculate.
+    To reduce the number of expensive matrix multiplications, we use the fact that 
+        Tr(A @ B.T) = \sum_ij a_ij b_ij
+    i.e. trace of a square matrix which is the product of two real matrices can be rewritten as 
+    the sum of entry-wise products of their elements, i.e. as the sum of all elements of their Hadamard product [1].
+    Note that for current systems, the input matrices are always real, but this should be checked if the system changes
+    (e.g. for other groups)
+
+    Refs:
+        [1] Trace, Wikipedia, https://en.wikipedia.org/wiki/Trace_(linear_algebra)#Trace_of_a_product
 
     Args:
         gamma_in_sys (np.ndarray): Gauged covariance matrix of the projectors
@@ -161,8 +175,9 @@ def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray,
     Returns:
         float: Gradient of the norm divided by the norm.
     """
-    # Extract only the part of the virtual-virtual correlations
-    dest = -0.5 * np.trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
+    A = gamma_in_sys @ deriv_d
+    B = mat_d_inv @ diff
+    dest = -0.5 * (A*B.T).sum()
     return dest
 
 
