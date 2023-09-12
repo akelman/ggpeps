@@ -114,26 +114,30 @@ class Minimizer():
 
 
     def minimize_scipy(self):
+        
+        # Energy wrapper
         def energy_wrapper(paramvec):
-            # Energy wrapper
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = paramvec
                 self.evaluator.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator.system_cfg._nparams))
                 self.last_result = self.evaluator.simulate()
+            
             if self.use_exact:
                 energy = self.last_result.obsdict["energy"]
             else:
                 energy = self.last_result.get_obs_mean("energy")
             return energy
-
+        
+        # Jacobian wrapper
         def gradient_wrapper(paramvec):
-            # Jacobian wrapper
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = paramvec
+                #self.evaluator.mc_cfg.minimizer_mode = True # make sure to calculate derivatives
                 self.evaluator.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator.system_cfg._nparams))
                 self.last_result = self.evaluator.simulate()
+            
             if self.use_exact:
                 parametergrad = self.last_result.obsdict["energy_grad"]
             else:
@@ -153,7 +157,7 @@ class Minimizer():
         energygrad = min_result.jac
         energy = min_result.fun
         converged = min_result.success
-        message = min_result.message
+        message = f"message: {min_result.message} Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {min_result.njev}"
 
         dest = MinimizerResult(paramvec, energygrad, self.cfg.method, energy, converged, message)
         self.min_result = dest
@@ -202,8 +206,8 @@ class Minimizer():
             sys_cfg = self.evaluator.system_cfg
 
             #FIXME: Adapt the filenames here
-            fname_mc_summary = f"summary_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_gel_{sys_cfg.g_el:.4f}_gmag_{sys_cfg.g_mag:.4f}_gint_{sys_cfg.g_int:.4f}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
-            fname_result_min = f"result_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_gel_{sys_cfg.g_el:.4f}_gmag_{sys_cfg.g_mag:.4f}_gint_{sys_cfg.g_int:.4f}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
+            fname_mc_summary = f"summary_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_gel_{sys_cfg.g_el:.4f}_gmag_{sys_cfg.g_mag:.4f}_gint_{sys_cfg.g_int:.4f}_gmass_{sys_cfg.g_mass:.4f}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
+            fname_result_min = f"result_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_gel_{sys_cfg.g_el:.4f}_gmag_{sys_cfg.g_mag:.4f}_gint_{sys_cfg.g_int:.4f}_gmass_{sys_cfg.g_mass:.4f}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
 
             self.last_result.save_summary(os.path.join(output_dir, fname_mc_summary))
             with open(os.path.join(output_dir, fname_result_min), "wb") as outfile:
