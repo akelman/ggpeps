@@ -733,6 +733,16 @@ def show_eigenvalues(mat):
 
 # ========== Workflow & Tooling Functions ====================
 
+def get_couplings_from_foldername(fname):
+    couplings = ['g', 'el', 'mag', 'int', 'mass']
+    res = ''
+    for arg in couplings:
+        pattern = fr"(?<={arg}_)[\d]*.[\d]*"
+        result = re.search(pattern, fname)
+        if result is not None:
+            res += f'{arg}_{result.group(0)}_'
+    return res
+
 def extract_params_from_results_file(fname, dest_dir='') -> bool:
     """Extract parameters from a results file and save to a new .npy file
 
@@ -749,11 +759,12 @@ def extract_params_from_results_file(fname, dest_dir='') -> bool:
         if name.startswith("result_min"):
             with open(fname, "rb") as infile:
                 data = pickle.load(infile)
+                couplings = get_couplings_from_foldername(fname)
                 # Deal with renaming
                 if hasattr(data, "paramvec"):
-                    np.save( os.path.join(dest_dir, "extracted_paramvec.npy"), data.paramvec)
+                    np.save( os.path.join(dest_dir, f"{couplings}extracted_paramvec.npy"), data.paramvec)
                 elif hasattr(data, "parametervec"):
-                    np.save( os.path.join(dest_dir, "extracted_paramvec.npy"), data.parametervec)
+                    np.save( os.path.join(dest_dir, f"{couplings}extracted_paramvec.npy"), data.parametervec)
     else:
         print(f"File '{fname}' not found. Aborting.", file=sys.stderr)
         return False
@@ -761,7 +772,7 @@ def extract_params_from_results_file(fname, dest_dir='') -> bool:
     return True
 
 def extract_params_from_run(source_dir, dest_dir):
-    """Extracts all the parameters from the results files of a run (with varying g couplings), and stores them as .npy files.
+    """Extracts all the parameters from the results files of a run (with varying couplings), and stores them as .npy files.
 
     Args:
         source_dir (str): a source directory containing directories, each of which is the result of a run.
