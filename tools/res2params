@@ -5,13 +5,14 @@ from ggpeps import utils
 
 def main():
     for fname in args.fname:
-        utils.extract_params_from_results_file(fname)
+        utils.extract_params_from_results_file(fname, args.dest)
         
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("fname", nargs="+", type=str, help="input filename")
+    parser.add_argument("--dest", type=str, default='', help="destination directory")
     args = parser.parse_args()
 
     main()
