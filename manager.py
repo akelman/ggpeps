@@ -96,6 +96,7 @@ def validate_inputs(args) -> bool:
     return True
 
 def main(args):
+    raw_command = ' '.join(sys.argv)
 
     # Make sure that the output directory is fine
     if os.path.exists(args.output):
@@ -176,6 +177,9 @@ def main(args):
     logging.info(f"Logging level: {args.level}")
     logging.info(f"Mode: {args.mode}")
     logging.info(f"Seed: {seed}") # used for both MC and randomizing parameters
+    logging.info("======= RAW COMMAND ========")
+    logging.info(raw_command)
+    logging.info("============================")
 
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
