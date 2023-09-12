@@ -3,7 +3,8 @@ set -eu
 for fname in $@
 do
   subs1=${fname##paramvec_}
-  foldername=${subs1%%.npy}
+  subs2=${subs1/_extracted_paramvec} 
+  foldername=${subs2%%.npy}
   if [ ! -d $foldername ]
   then
     mkdir $foldername
