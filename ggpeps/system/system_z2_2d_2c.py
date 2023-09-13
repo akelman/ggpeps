@@ -353,40 +353,13 @@ class Z2System2D2C(System2DBase):
 
     # Observables
     def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv:bool=True):
-        """Compute the mass term of the Hamiltonian for a single site.
-
-        Args:
-            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
-
-        Returns:
-            tuple: Tuple of (mass energy for a single site, gradients)
-        """
-        if not use_trans_inv:
-            raise NotImplementedError("Translation invariance must be set to True.")
-        if self.cfg.nlayer != 1:
-            raise NotImplementedError("Only one layer can be used with physical fermions.")
-
-        # Calculation prelimaries
-        nsites = self.cfg.lattice.size
-        covmat = self.compute_ferm_cov(0)
-        mass_energy_op = 0.
-        gradients = [0]*len(self.symbolvec)
-        
-        # Calculate mass term
-        site_ind = 0 # just do calculation for a single site
-        mass_energy_op += 0.25 * (covmat[site_ind+1, site_ind] - covmat[site_ind,site_ind+1] ) # these two entries happen to be negatives of each other, because of anti-symmetry
-
-        # Update gradients
-        for symbol_ind, symbol in enumerate(self.symbolvec):
-            d_gamma_out = self.d_gamma_out_symbolvec(0)[symbol_ind]
-            gradients[symbol_ind] += 0.25 * (d_gamma_out[site_ind+1, site_ind] - d_gamma_out[site_ind,site_ind+1])
-
-            # further terms of the derivative are included higher up in the computation stack 
-            # because computing them requires knowing various expectation values, which are not available here
-
-        mass_energy_op = np.asarray(mass_energy_op)
-        gradients = np.asarray([gradients]) # extra list is to get correct dimensions (gradients should be a list of gradients for each layer)
-        return mass_energy_op, gradients
+        energies = [0]*self.cfg.nlayer
+        gradients = [ [0]*self.cfg.nparams_per_layer for k in range(self.cfg.nlayer) ]
+        return energies, gradients
+        # This function is not implemented yet! 
+        # (and it can't be, because the ansatz doesn't have the required parameterization).
+        # We return zeros just to not break the interface.
+        raise NotImplementedError("The mass energy is not implemented yet for the selected ansatz.")
 
     def _compute_mag_energy_op(self, use_trans_inv:bool=True):
         """Computation of the magnetic energy operator (w/o shift).
@@ -412,51 +385,10 @@ class Z2System2D2C(System2DBase):
         return mag_energy_bare
     
     def _compute_int_energy_op_vec_and_grad(self):
-        """Calculate the energy and energy gradient due to the interaction of the physical fermions with the gauge fields.
-        Note: this function works for any gauge group that is represented as a phase (including Z2).
-            When the group is larger than Z2, the relevant lines below must be uncommented (and added to the derivatives)
-
-        Returns:
-            tuple: Tuple of (interaction energy for a single link, gradients)
-        """
-
-        covmat = self.compute_ferm_cov(0)
-        int_energy_op = 0.0
-        nsites = self.cfg.lattice.size
-        for site_ind in range(1): # no need to loop over all sites
-            coord = self.cfg.lattice.ind2coord(site_ind)
-
-            # Horizontal link
-            ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X) # index of the horizontal link
-            neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X) # coordinates of neighboring site
-            neighborX_ind = self.cfg.lattice.coord2ind(neighborX_coord) # index of neighboring site
-            gaugefield_hor = self.gaugefieldvec[ind_field_hor]
-            cos_factor_hor = np.cos(gaugefield_hor)
-            int_energy_op += 0.5 * cos_factor_hor * (covmat[neighborX_ind+1, site_ind] - covmat[neighborX_ind,site_ind+1])
-            # The sin contribution vanishes for Z2, but must be included for Zn.
-            #sin_factor_hor = np.sin(gaugefield_hor)
-            #int_energy_op += 0.5 * sin_factor_hor * (covmat[neighborX_ind+1, site_ind+1] - covmat[neighborX_ind,site_ind])
-
-            # Vertical link
-            ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
-            neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
-            neighborY_ind = self.cfg.lattice.coord2ind(neighborY_coord)
-            gaugefield_vert = self.gaugefieldvec[ind_field_vert]
-            cos_factor_vert = np.cos(gaugefield_vert)
-            int_energy_op += 0.5 * cos_factor_vert * (covmat[neighborY_ind+1, site_ind] - covmat[neighborY_ind,site_ind+1])
-            #sin_factor_vert = np.sin(gaugefield_vert)
-            #int_energy_op += 0.5 * sin_factor_vert * (covmat[neighborY_ind+1, site_ind+1] - covmat[neighborY_ind,site_ind])
-
-            # Calculate derivatives
-            gradients = []
-            for symbol_ind, symbol in enumerate(self.symbolvec):
-                d_gamma_out = self.d_gamma_out_symbolvec(0)[symbol_ind]
-                
-                grad = 0.5 * cos_factor_hor * (d_gamma_out[neighborX_ind+1, site_ind] - d_gamma_out[neighborX_ind,site_ind+1])
-                grad += 0.5 * cos_factor_vert * (d_gamma_out[neighborY_ind+1, site_ind] - d_gamma_out[neighborY_ind,site_ind+1])
-                # for groups other than Z2, need to add the sin terms here
-                gradients.append(grad)
-        
-        int_energy_op = np.asarray(int_energy_op)
-        gradients = np.asarray([gradients]) # extra list is to get correct dimensions (gradients should be a list of gradients for each layer)
-        return int_energy_op, gradients
+        energies = [0]*self.cfg.nlayer
+        gradients = [ [0]*self.cfg.nparams_per_layer for k in range(self.cfg.nlayer) ]
+        return energies, gradients
+        # This function is not implemented yet! 
+        # (and it can't be, because the ansatz doesn't have the required parameterization).
+        # We return zeros just to not break the interface.
+        raise NotImplementedError("The interaction energy is not implemented yet for the selected ansatz.")
