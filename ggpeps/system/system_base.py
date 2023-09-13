@@ -1280,7 +1280,7 @@ class System2DBase(ABC):
                     # Summand with derivative of the covariance matrix
                     # We re-use the list comprehension from above to use the indices
                     deriv_pfarr = [prefactor * utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)], d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
-                    d_el_energy = overall_factor * np.real(np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
+                    d_el_energy = np.real(overall_factor * np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
                                     
                     # Summand with derivative of norms
                     trace_def = self.compute_grad_over_norm(symbol, layerind)
