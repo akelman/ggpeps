@@ -1126,8 +1126,14 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def _compute_el_energy_op_vec_and_grad(self):
-        """Compute the electric energy and the gradient in each layer.
+    def _compute_el_energy_op_vec(self):
+        """Compute the electric energy in each layer.
+        This is an abstract method and has to be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    def _compute_el_grad_vec(self):
+        """Compute the electric energy gradient in each layer.
         This is an abstract method and has to be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")

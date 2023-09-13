@@ -466,10 +466,6 @@ class Z2System2D_G2C_F2C(System2DBase):
 
         return mass_energy_op, gradients
 
-    def _compute_el_energy_op_vec_and_grad(self):
-        #TODO: remove this function, and refactor SystemBase not to use it
-        pass
-
     def _compute_el_energy_op_vec(self, use_trans_inv:bool=True):
         """Computation of the electric energy and the electric gradient in a single method.
         Since many operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
