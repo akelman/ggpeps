@@ -214,7 +214,7 @@ def main(args):
     paramvec = translate_parameters(system_cfg, args.params, rngstate)
     system_cfg.paramvec = paramvec
 
-    # Ensure pure gauge (setting t parameter to zero) if enabled
+    # Ensure pure gauge (setting t parameters to zero) if enabled
     if not args.fermions:
         system_cfg.make_pure_gauge()
 
