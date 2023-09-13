@@ -467,8 +467,9 @@ class Z2System2D_G2C_F2C(System2DBase):
         return mass_energy_op, gradients
 
     def _compute_el_energy_op_vec(self, use_trans_inv:bool=True):
-        """Computation of the electric energy and the electric gradient in a single method.
-        Since many operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
+        """Computation of the electric energy.
+        Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
+        These are saved at the end of the function.
 
         This method overwrites an abstract method in System2DBase.
 
@@ -476,7 +477,7 @@ class Z2System2D_G2C_F2C(System2DBase):
             use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
 
         Returns:
-            tuple: Tuple of (list of electric energies for a single link, list of gradients for the full system)
+            list: list of electric energies for a single link
         """
         if not use_trans_inv:
             # Evaluate every link of the system
@@ -489,25 +490,20 @@ class Z2System2D_G2C_F2C(System2DBase):
         # Number of fermions = # of sites
         # Since we have 2 copies, we get 8 virtual fermions per site
         single_link_offset = 2 * self.cfg.nvirtmodes_link
-        offset = 2 * self.cfg.lattice.size + single_link_offset
         # We have to cut one link from gamma_in_sys as well
         gamma_in_sys_mod_vec = self.gamma_in_sys_mod_vec
-        nlinks = self.cfg.lattice.nlinks
         dest = []
-        dest_grad = []
 
         # Indices and prefactors for building the required Pfaffians
         overall_factors = self.el_overall_factors
         idxarrs = self.idxarr_vec
 
         for layerind in range(self.cfg.nlayer):
-            layer_derivative = []
 
             # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
             mat_a = self.mat_a_mod_vec[layerind] # dim: 2*nsites (for majorana) + 8 (= 4 virtual modes per link x2 for majorana)
             mat_b = self.mat_b_mod_vec[layerind]
             diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
-            diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
 
             gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
 
@@ -550,6 +546,19 @@ class Z2System2D_G2C_F2C(System2DBase):
 
 
     def _compute_el_grad_vec(self, use_trans_inv:bool=True):
+        """Computation of the electric energy gradients.
+        We start by calculating the electric energies, since these are needed for evaluating the gradients.
+        Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
+
+        This method overwrites an abstract method in System2DBase.
+
+        Args:
+            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
+
+        Returns:
+            list: list of gradients for the full system
+        """
+
         if not use_trans_inv:
             # Evaluate every link of the system
             logging.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
@@ -620,7 +629,6 @@ class Z2System2D_G2C_F2C(System2DBase):
                 dest_grad[i] *= prod_other_layers
         
         self.cfg.enforce_parameter_conditions(dest_grad)
-
         return dest_grad
 
 
