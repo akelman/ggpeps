@@ -9,7 +9,7 @@ from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.modearray import generate_permutation_matrix
 
-from .system_base import Config2DBase, System2DBase
+from .system_base import Config2DBase, System2DBase, ElectricEnergyIntermediateVals
 from .system_base import calculate_lognorm_inc, compute_grad_over_norm, extract_partial_covmats
 
 
@@ -466,7 +466,11 @@ class Z2System2D_G2C_F2C(System2DBase):
 
         return mass_energy_op, gradients
 
-    def _compute_el_energy_op_vec_and_grad(self, use_trans_inv:bool=True):
+    def _compute_el_energy_op_vec_and_grad(self):
+        #TODO: remove this function, and refactor SystemBase not to use it
+        pass
+
+    def _compute_el_energy_op_vec(self, use_trans_inv:bool=True):
         """Computation of the electric energy and the electric gradient in a single method.
         Since many operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
 
@@ -539,6 +543,46 @@ class Z2System2D_G2C_F2C(System2DBase):
             
             el_energy_layer = np.real(el_energy_full) * np.exp(norm_mod - lognorm_default)
             dest.append(el_energy_layer)
+            
+            # Save intermediate calculations for use in gradient calculation
+            intermediate = self._electric_energy_intermediate_vals 
+            intermediate.covmat_out_virt_vec.append(covmat_out_virt)
+            intermediate.norm_mod_vec.append(norm_mod)
+            intermediate.lognorm_default_vec.append(lognorm_default)
+        
+        return np.asarray(dest)
+
+
+    def _compute_el_grad_vec(self, use_trans_inv:bool=True):
+        if not use_trans_inv:
+            # Evaluate every link of the system
+            logging.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
+            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
+        
+        dest_grad = []
+        overall_factors = self.el_overall_factors
+        idxarrs = self.idxarr_vec
+        dest = self.el_energy_op_vec #this gets the electric energy, and ensures that the intermediate steps are calculated
+
+        for layerind in range(self.cfg.nlayer):
+            layer_derivative = []
+
+            # Abbreviations for more readable code
+            mat_b = self.mat_b_mod_vec[layerind]
+            diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv() # this does not actually do a computation, just a retrieval
+            single_link_offset = 2 * self.cfg.nvirtmodes_link
+            offset = 2 * self.cfg.lattice.size + single_link_offset
+            idxarr = idxarrs[layerind]
+            overall_factor = overall_factors[layerind]
+            nlinks = self.cfg.lattice.nlinks
+            gamma_in_sys_mod = self.gamma_in_sys_mod_vec[layerind]
+            diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
+
+            # get saved intermediate results from electric energy calculation
+            intermediate = self._electric_energy_intermediate_vals 
+            covmat_out_virt = intermediate.covmat_out_virt_vec[layerind]
+            norm_mod = intermediate.norm_mod_vec[layerind]
+            lognorm_default = intermediate.lognorm_default_vec[layerind]
 
             ###################### Calculation of the derivative ########################
             for symbol_ind, symbol in enumerate(self.symbolvec):
@@ -570,7 +614,6 @@ class Z2System2D_G2C_F2C(System2DBase):
                     layer_derivative.append(np.real(d_el_energy))
             dest_grad.append(layer_derivative)
         
-        dest = np.asarray(dest)
         dest_grad = np.asarray(dest_grad)
 
         # We have to weigh the different layers with the electric energy operator expectation of the other layers.
@@ -582,7 +625,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         
         self.cfg.enforce_parameter_conditions(dest_grad)
 
-        return dest, dest_grad
+        return dest_grad
 
 
     def _compute_mag_energy_op(self, use_trans_inv:bool=True):

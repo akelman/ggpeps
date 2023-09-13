@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Union, List # used in type hints; this approach might be deprecated in later python versions
+from dataclasses import dataclass, field
 
 import sys
 import logging
@@ -10,6 +11,15 @@ import numpy as np
 
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
+
+
+@dataclass
+class ElectricEnergyIntermediateVals:
+    """Class for keeping track of intermediate calculations of the electric energy, 
+    for re-use with the gradient calculation"""
+    covmat_out_virt_vec: List[int] = field(default_factory=list) # this is the pythonic way to use lists in dataclasses
+    norm_mod_vec: List[float] = field(default_factory=list)
+    lognorm_default_vec: List[float] = field(default_factory=list)
 
 
 class Config2DBase(ABC):
@@ -23,7 +33,7 @@ class Config2DBase(ABC):
     # This will be overwritten by the specifications
     _nparams = 1
 
-    def __init__(self, lattice: Union[Lattice2D, Lattice3D], g_el: float, g_mag: float, g_int: float,  g_mass: float, nlayer: int = 1):
+    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g_el:float, g_mag:float, g_int:float,  g_mass:float, nlayer:int=1):
         """Constructor.
 
         Args:
@@ -237,6 +247,7 @@ class System2DBase(ABC):
         self._mat_d_mod_vec = None
         self._det_mat_d_mod_vec = None
         self._mat_d_mod_inv_vec = None
+        self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
 
         # Management of the gaugefields
         self._gamma_gauge_neutral_vec_dict = None # vec for layers (choices of projectors may be different for each layer), dict for directions
@@ -1103,6 +1114,8 @@ class System2DBase(ABC):
         self._mass_energy_op_grad_vec = None
         self._int_energy_op_grad_vec = None
         self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec, range(self.cfg.nlayer))}
+        self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
+        return
 
     ################## Observables ######################
     @abstractmethod
@@ -1269,7 +1282,7 @@ class System2DBase(ABC):
         if self._el_energy_op_vec is None:
             # This vector is the electric energy on a single link.
             # Otherwise, we get a power of nlinks in the product and the electric energy term (with prefactors) gets negative
-            self._el_energy_op_vec, self._el_energy_op_grad_vec = self._compute_el_energy_op_vec_and_grad()
+            self._el_energy_op_vec = self._compute_el_energy_op_vec()
         return self._el_energy_op_vec
     
     @property
@@ -1306,7 +1319,7 @@ class System2DBase(ABC):
             list: List of all electric energy gradients (w/o shift)
         """
         if self._el_energy_op_grad_vec is None:
-            self._el_energy_op_vec, self._el_energy_op_grad_vec = self._compute_el_energy_op_vec_and_grad()
+            self._el_energy_op_grad_vec = self._compute_el_grad_vec()
         return self._el_energy_op_grad_vec
     
     @property
