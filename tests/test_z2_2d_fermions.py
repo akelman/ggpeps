@@ -113,6 +113,8 @@ class TestZ2C4System(unittest.TestCase):
     # T-mat has required structure
     # test different number of pg layers
 
+    # random parameters comparison with ED
+
 
     ###### Test Energy Gradients ######
 
