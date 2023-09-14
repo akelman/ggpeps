@@ -46,9 +46,9 @@ def args2logname(args, couplings):
         str: Filename of the log file
     """
     if "exact" in args.mode:
-        fname = f"log_{args.mode}_L_{args.L}x{args.L}_gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass{couplings['g_mass']}.log"
+        fname = f"log_{args.mode}_L_{args.L}x{args.L}_gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}.log"
     else:
-        fname = f"log_{args.mode}_L_{args.L}x{args.L}_gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass{couplings['g_mass']}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
+        fname = f"log_{args.mode}_L_{args.L}x{args.L}_gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
     return os.path.join(args.output, fname)
 
 def translate_parameters(system_cfg, params, rng_state):
