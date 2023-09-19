@@ -59,6 +59,11 @@ class Config2DBase(ABC):
         self.g_mag = g_mag
         self.g_int = g_int
         self.g_mass = g_mass
+    
+    def __str__(self):
+        # define a string method that can be used, e.g., in filenaming
+        # note that this string doesn't include the number of copies
+        return f"L_{self.lattice.nx:02d}x{self.lattice.ny:02d}_gel_{self.g_el}_gmag_{self.g_mag}_gint_{self.g_int}_gmass_{self.g_mass}_nlayer_{self.nlayer}"
 
     @property
     def paramvec(self):
