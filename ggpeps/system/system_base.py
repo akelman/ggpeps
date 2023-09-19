@@ -14,7 +14,7 @@ from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
 
 
-@dataclass
+@dataclass # if we upgrade to python 3.10 or higher, add in 'slots=True'
 class ElectricEnergyIntermediateVals:
     """Class for keeping track of intermediate calculations of the electric energy, 
     for re-use with the gradient calculation"""
