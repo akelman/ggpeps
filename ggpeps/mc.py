@@ -84,7 +84,7 @@ class MonteCarloManager:
     This is the general interface for MC simulations that is used in the manager.
     """
     def __init__(self, mc_cfg: MonteCarloEstimatorConfig, system_cls,
-                 system_cfg, nrunner):
+                 system_cfg, nrunner: int):
         """Constructor of MonteCarloManager
 
         Args:
@@ -104,7 +104,7 @@ class MonteCarloManager:
         if self.nrunner > 0:
             system_cfg_id = ray.put(self.system_cfg)
             reduced_meas_steps = self.mc_cfg.meas_steps // self.nrunner
-            logging.info(f"Starting {self.nrunner} runner with {reduced_meas_steps} measurment steps each (total: {self.mc_cfg.meas_steps}).")
+            logging.info(f"Starting {self.nrunner} runners with {reduced_meas_steps} measurment steps each (total: {self.mc_cfg.meas_steps}).")
             for i in range(self.nrunner):
                 cfg = copy.deepcopy(self.mc_cfg)
                 cfg.seed = self.mc_cfg.seed + i
