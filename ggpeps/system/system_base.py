@@ -177,14 +177,14 @@ def compute_grad_over_norm(gamma_in_sys: np.ndarray,
     i.e. trace of a square matrix which is the product of two real matrices can be rewritten as 
     the sum of entry-wise products of their elements, i.e. as the sum of all elements of their Hadamard product [1].
     Note that for current systems, the input matrices are always real, but this should be checked if the system changes
-    (e.g. for other groups)
+    (e.g. for other groups).
 
     Refs:
         [1] Trace, Wikipedia, https://en.wikipedia.org/wiki/Trace_(linear_algebra)#Trace_of_a_product
 
     Args:
         gamma_in_sys (np.ndarray): Gauged covariance matrix of the projectors
-        diff (np.ndarray): (D^{-1}-gamma_in_sys)^{-1}
+        diff (np.ndarray): (D^{-1} - gamma_in_sys)^{-1}
         deriv_d (np.ndarray): dD/d{alpha}: Derivative of the virtual-virtual covariance matrix
         mat_d_inv (np.ndarray): Inverse of D: D^{-1}
 
