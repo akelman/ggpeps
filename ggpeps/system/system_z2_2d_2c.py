@@ -355,7 +355,7 @@ class Z2System2D2C(System2DBase):
     def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv:bool=True):
         energies = [0]*self.cfg.nlayer
         gradients = [ [0]*self.cfg.nparams_per_layer for k in range(self.cfg.nlayer) ]
-        return energies, gradients
+        return np.array(energies), np.array(gradients)
         # This function is not implemented yet! 
         # (and it can't be, because the ansatz doesn't have the required parameterization).
         # We return zeros just to not break the interface.
@@ -387,7 +387,7 @@ class Z2System2D2C(System2DBase):
     def _compute_int_energy_op_vec_and_grad(self):
         energies = [0]*self.cfg.nlayer
         gradients = [ [0]*self.cfg.nparams_per_layer for k in range(self.cfg.nlayer) ]
-        return energies, gradients
+        return np.array(energies), np.array(gradients)
         # This function is not implemented yet! 
         # (and it can't be, because the ansatz doesn't have the required parameterization).
         # We return zeros just to not break the interface.
