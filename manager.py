@@ -97,6 +97,8 @@ def validate_inputs(args) -> bool:
 
 def main(args):
     raw_command = ' '.join(sys.argv)
+    ind = raw_command.index("manager.py")
+    raw_command = raw_command[ind:]
 
     # Make sure that the output directory is fine
     if os.path.exists(args.output):
