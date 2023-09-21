@@ -68,6 +68,7 @@ class MonteCarloEstimatorConfig:
 
 @ray.remote
 def run_mc(runner_id, mc_cfg, system_cls, system_cfg):
+    # TODO: get logger working within ray
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
     mc = MonteCarloEstimator(mc_cfg, system)
