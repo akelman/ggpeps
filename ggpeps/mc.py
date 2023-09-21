@@ -68,7 +68,7 @@ class MonteCarloEstimatorConfig:
 
 @ray.remote
 def run_mc(runner_id, mc_cfg, system_cls, system_cfg):
-    system = system_cls(system_cfg)
+    system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
     mc = MonteCarloEstimator(mc_cfg, system)
     mc.simulate()
@@ -102,15 +102,23 @@ class MonteCarloManager:
         """Start the simulation of the runners"""
         resultvec = []
         if self.nrunner > 0:
-            system_cfg_id = ray.put(self.system_cfg)
+            #system_cfg_id = ray.put(self.system_cfg)
             reduced_meas_steps = self.mc_cfg.meas_steps // self.nrunner
-            logging.info(f"Starting {self.nrunner} runners with {reduced_meas_steps} measurment steps each (total: {self.mc_cfg.meas_steps}).")
+            logging.info(f"Starting {self.nrunner} runners with {reduced_meas_steps} measurement steps each (total: {self.nrunner * reduced_meas_steps}).")
             for i in range(self.nrunner):
+                # Make a copy of the MC config, and change the seed for each runner
                 cfg = copy.deepcopy(self.mc_cfg)
                 cfg.seed = self.mc_cfg.seed + i
                 cfg.meas_steps = reduced_meas_steps
-                resultvec.append(
-                    run_mc.remote(i, cfg, self.system_cls, system_cfg_id))
+
+                # Make a copy of the system config 
+                # This is necessary, because otherwise an error is raised when we try to modify the params
+                # in enforce_parameter_conditions()
+                # For some unclear reason, making a deep copy here does not prevent this, so instead a deep 
+                # copy is made inside run_mc()
+                #sys_cfg = copy.deepcopy(self.system_cfg)
+                
+                resultvec.append(run_mc.remote(i, cfg, self.system_cls, self.system_cfg))
             resultvec = ray.get(resultvec)
             return self.collect(resultvec)
         else:
