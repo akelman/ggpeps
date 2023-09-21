@@ -26,7 +26,7 @@ class ElectricEnergyIntermediateVals:
 class Config2DBase(ABC):
     """ Configuration for a system in two dimensions
 
-    This class inherits from the abstract base class to enable abstract methods that has to be overwritten in a child class.
+    This class inherits from the abstract base class to enable abstract methods that have to be overwritten in a child class.
     This class cannot be instantiated directly.
     """
 
