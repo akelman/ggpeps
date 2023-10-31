@@ -10,6 +10,10 @@ import sympy
 import numpy as np
 from pfapack import pfaffian as pf
 
+# import jax
+# import jax.numpy as jnp
+# from jax import jit, device_put
+
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
 
@@ -162,7 +166,7 @@ def calculate_lognorm(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarray,
     return np.sum(normvec)
 
 
-def compute_grad_over_norm(gamma_in_sys: np.ndarray, 
+def compute_grad_over_norm(gamma_in_sys: np.ndarray,
                            diff: np.ndarray,
                            deriv_d: np.ndarray,
                            mat_d_inv: np.ndarray) -> float:
@@ -172,9 +176,9 @@ def compute_grad_over_norm(gamma_in_sys: np.ndarray,
     The gradient of the norm divided by the norm is given by
         -0.5 * np.trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
     which is very expensive to calculate.
-    To reduce the number of expensive matrix multiplications, we use the fact that 
+    To reduce the number of expensive matrix multiplications, we use the fact that
         Tr(A @ B.T) = \sum_ij a_ij b_ij
-    i.e. trace of a square matrix which is the product of two real matrices can be rewritten as 
+    i.e. trace of a square matrix which is the product of two real matrices can be rewritten as
     the sum of entry-wise products of their elements, i.e. as the sum of all elements of their Hadamard product [1].
     Note that for current systems, the input matrices are always real, but this should be checked if the system changes
     (e.g. for other groups).
@@ -195,6 +199,39 @@ def compute_grad_over_norm(gamma_in_sys: np.ndarray,
     B = mat_d_inv @ diff
     dest = -0.5 * (A*B.T).sum()
     return dest
+
+
+# Just-In-Time compilation decorator for GPU optimization
+# @jit
+# def compute_grad_over_norm_jit(gamma_in_sys, diff, deriv_d, mat_d_inv):
+#     dest = -0.5 * jnp.trace(jnp.matmul(jnp.matmul(gamma_in_sys, deriv_d), jnp.matmul(mat_d_inv, diff)))
+#     return dest
+#
+#
+# def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv_d: np.ndarray, mat_d_inv: np.ndarray):
+#     # Check if GPUs are available, and if so, use the first one. If not, default to CPU.
+#     try:
+#         # Trying to get the first available GPU
+#         available_gpus = jax.devices('gpu')
+#         preferred_device = available_gpus[0]
+#     except RuntimeError:
+#         # If GPUs are not available, falling back to the CPU.
+#         print("No GPUs found, falling back on CPU.")
+#         preferred_device = jax.devices('cpu')[0]
+#
+#     # Convert inputs to JAX arrays and explicitly move them to the selected device
+#     gamma_in_sys_jax = device_put(jnp.array(gamma_in_sys), device=preferred_device)
+#     diff_jax = device_put(jnp.array(diff), device=preferred_device)
+#     deriv_d_jax = device_put(jnp.array(deriv_d), device=preferred_device)
+#     mat_d_inv_jax = device_put(jnp.array(mat_d_inv), device=preferred_device)
+#
+#     # Call the JIT-compiled function
+#     result = compute_grad_over_norm_jit(gamma_in_sys_jax, diff_jax, deriv_d_jax, mat_d_inv_jax)
+#
+#     if not str(result.device_buffer.device()).startswith("gpu"):
+#         print("Computation was not performed on the GPU:", result.device_buffer.device())
+#
+#     return result
 
 
 def calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=False):
