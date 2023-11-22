@@ -170,41 +170,6 @@ def calculate_lognorm(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarray,
     return np.sum(normvec)
 
 
-# def compute_grad_over_norm(gamma_in_sys: np.ndarray,
-#                            diff: np.ndarray,
-#                            deriv_d: np.ndarray,
-#                            mat_d_inv: np.ndarray) -> float:
-#     """Compute the gradient of the norm divided by the norm.
-#     The expression of deriv_d given to this function decides which derivative is computed
-#
-#     The gradient of the norm divided by the norm is given by
-#         -0.5 * np.trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
-#     which is very expensive to calculate.
-#     To reduce the number of expensive matrix multiplications, we use the fact that
-#         Tr(A @ B.T) = \sum_ij a_ij b_ij
-#     i.e. trace of a square matrix which is the product of two real matrices can be rewritten as
-#     the sum of entry-wise products of their elements, i.e. as the sum of all elements of their Hadamard product [1].
-#     Note that for current systems, the input matrices are always real, but this should be checked if the system changes
-#     (e.g. for other groups).
-#
-#     Refs:
-#         [1] Trace, Wikipedia, https://en.wikipedia.org/wiki/Trace_(linear_algebra)#Trace_of_a_product
-#
-#     Args:
-#         gamma_in_sys (np.ndarray): Gauged covariance matrix of the projectors
-#         diff (np.ndarray): (D^{-1} - gamma_in_sys)^{-1}
-#         deriv_d (np.ndarray): dD/d{alpha}: Derivative of the virtual-virtual covariance matrix
-#         mat_d_inv (np.ndarray): Inverse of D: D^{-1}
-#
-#     Returns:
-#         float: Gradient of the norm divided by the norm.
-#     """
-#     A = gamma_in_sys @ deriv_d
-#     B = mat_d_inv @ diff
-#     dest = -0.5 * (A*B.T).sum()
-#     return dest
-
-
 # # Just-In-Time compilation decorator for GPU optimization
 # @jit
 # def compute_grad_over_norm_jit(gamma_in_sys, diff, deriv_d, mat_d_inv):
@@ -257,15 +222,8 @@ def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv_d: 
         preferred_device = available_gpus[0]
     except RuntimeError:
         # If GPUs are not available, falling back to the CPU.
-        # print("No GPUs found, falling back on CPU.")
+        logging.info("No GPUs found, falling back on CPU.")
         preferred_device = jax.devices('cpu')[0]
-
-    # print(f"Preferred device: {preferred_device}")  # TODO Delete in production
-
-    # print_device_of_array(gamma_in_sys, "gamma_in_sys")  # TODO Delete in production
-    # print_device_of_array(diff, "diff")  # TODO Delete in production
-    # print_device_of_array(deriv_d, "deriv_d")  # TODO Delete in production
-    # print_device_of_array(mat_d_inv, "mat_d_inv")  # TODO Delete in production
 
     # Converts the input NumPy arrays into JAX arrays and moves them to the selected device (GPU or CPU).
     # This step ensures that the computation utilizes the appropriate hardware (GPU acceleration if possible).
@@ -274,27 +232,19 @@ def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv_d: 
     deriv_d_jax = device_put(jnp.array(deriv_d), device=preferred_device)
     mat_d_inv_jax = device_put(jnp.array(mat_d_inv), device=preferred_device)
 
-    # print_device_of_array(gamma_in_sys_jax, "gamma_in_sys_jax")  # TODO Delete in production
-    # print_device_of_array(diff_jax, "diff_jax")  # TODO Delete in production
-    # print_device_of_array(deriv_d_jax, "deriv_d_jax")  # TODO Delete in production
-    # print_device_of_array(mat_d_inv_jax, "mat_d_inv_jax")  # TODO Delete in production
-
     # Calls the JIT-compiled function to perform the computation. The JIT (Just-In-Time) compilation
     # is used to optimize the function for faster execution on the selected device.
     # This step performs the actual gradient-over-norm computation.
     result = compute_grad_over_norm_jit(gamma_in_sys_jax, diff_jax, deriv_d_jax, mat_d_inv_jax)
-    # print_device_of_array(result, "result")  # TODO Delete in production
 
     # Transfers the result back to the CPU. This is necessary because the JIT-compiled function
     # may return a result on the GPU, and further CPU-based processing or analysis might be required.
     result_cpu = jax.device_get(result)
-    # print_device_of_array(result_cpu, "result_cpu")  # TODO Delete in production
 
     # Converts the result from a JAX array (which may still be an array even for scalar results)
     # to a standard Python scalar (float). This conversion simplifies further usage of the result
     # in Python code that expects standard scalar types.
     scalar_result_cpu = result_cpu.item()
-    # print_device_of_array(scalar_result_cpu, "scalar_result_cpu")  # TODO Delete in production
 
     return scalar_result_cpu
 
