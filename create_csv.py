@@ -12,7 +12,10 @@ def main(args):
         if os.path.isfile(fname):
             df = pd.read_pickle(fname)
             vals = df.loc[:, 'mean']
-            error = df.loc[:, 'err']
+            try: 
+                error = df.loc[:, 'err']
+            except:
+                error = vals
             keys = df.loc[:, 'name']
             tag = args.tag
 

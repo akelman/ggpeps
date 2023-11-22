@@ -1,5 +1,7 @@
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.collections import PolyCollection
 
 
 def extract_data(data:pd.DataFrame, xaxis:str, obs, restrictions:dict, require_g:bool, get_error:bool = False):
@@ -24,7 +26,45 @@ def extract_data(data:pd.DataFrame, xaxis:str, obs, restrictions:dict, require_g
 
     return xvals, yvals_dict, yvals_err_dict
 
-def main(args):
+
+def polygon_under_graph(x, y):
+    """
+    Construct the vertex list which defines the polygon filling the space under
+    the (x, y) line graph. This assumes x is in ascending order.
+    """
+    return [(x[0], 0.), *zip(x, y), (x[-1], 0.)]
+
+def plot_3d(args):
+    """Based on: https://matplotlib.org/stable/gallery/mplot3d/polys3d.html
+    """
+    ax = plt.figure().add_subplot(projection='3d')
+
+    ob = args.obs[0]
+    ec_data = args.ec[0]
+
+    verts = []
+    data = pd.read_csv(ec_data)
+    int_couplings = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    for interaction in int_couplings:
+        restrictions = {"mass": -2.0, "int": interaction}
+        xvals, yvals_dict, _ = extract_data(data, args.xaxis, args.obs, restrictions, args.require_g)
+        yvals = yvals_dict[ob]
+        shift = 0 #4*np.sqrt(2)
+        yvals = [k + shift for k in yvals]
+        verts.append(polygon_under_graph(xvals, yvals))
+
+    facecolors = plt.colormaps['viridis_r'](np.linspace(0, 1, len(verts)))
+
+    poly = PolyCollection(verts, facecolors=facecolors, alpha=.7)
+    ax.add_collection3d(poly, zs=int_couplings, zdir='y')
+
+    ax.set(xlim=(0, 1.5), ylim=(0, 1), zlim=(-10, 10),
+        xlabel='el', ylabel='int', zlabel=ob)
+
+    plt.show()
+
+
+def plot(args):
     
     f, ax = plt.subplots(1, 1)
     restrictions = {}
@@ -91,6 +131,9 @@ def main(args):
         f.savefig(f"summary_{title}{'-'.join(args.obs)}.pdf")
     if args.show:
         plt.show()
+
+def main(args):
+    plot(args)
 
 if __name__ == "__main__":
 
