@@ -213,7 +213,7 @@ def compute_grad_over_norm_jit(gamma_in_sys, diff, deriv_d, mat_d_inv):
 
 
 def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv_d: np.ndarray, mat_d_inv: np.ndarray):
-    # Device selection: Checks if GPUs are available. If yes, uses the first available GPU;
+    # Device selection: Checks if GPUs are available. If yes it uses the first available GPU;
     # if not, defaults to using the CPU.
     try:
         # Getting the list of available GPUs
