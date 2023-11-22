@@ -269,7 +269,7 @@ def main(args):
     # Call different functions depending on the mode specified via CLI
     if args.mode == "eval-mc":
         # Evaluate observables for a given set of parameters with Monte Carlo
-        mc_config.minimizer_mode = False
+        mc_config.minimizer_mode = args.compute_grads
         mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
         start = timer()
         mc_result = mc_mgr.simulate()
@@ -411,6 +411,8 @@ if __name__ == "__main__":
                         help="Update every spin of the system between each update step. This option is kept for backwards compatibility")
     parser.add_argument("--update_size", type=str, default="1",
                         help="The number of spins to update in each step (can be an integer, or one of: system, halfsystem)")
+    parser.add_argument("--compute-grads", action="store_true", default=False,
+                        help="Compute grads even if in eval mode")
     
     # Arguments for the minimizer
     parser.add_argument("--method", type=str, default="bfgs", help="Minimization method")
