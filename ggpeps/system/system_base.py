@@ -21,6 +21,7 @@ config.update("jax_enable_x64", True)
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
 
+LOGGED_GPU_STATUS = False
 
 @dataclass # if we upgrade to python 3.10 or higher, add in 'slots=True'
 class ElectricEnergyIntermediateVals:
@@ -213,6 +214,7 @@ def compute_grad_over_norm_jit(gamma_in_sys, diff, deriv_d, mat_d_inv):
 
 
 def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv_d: np.ndarray, mat_d_inv: np.ndarray):
+    global LOGGED_GPU_STATUS
     # Device selection: Checks if GPUs are available. If yes it uses the first available GPU;
     # if not, defaults to using the CPU.
     try:
@@ -222,7 +224,9 @@ def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv_d: 
         preferred_device = available_gpus[0]
     except RuntimeError:
         # If GPUs are not available, falling back to the CPU.
-        logging.info("No GPUs found, falling back on CPU.")
+        if not LOGGED_GPU_STATUS:
+            LOGGED_GPU_STATUS = True
+            logging.info("No GPUs found, falling back on CPU.")
         preferred_device = jax.devices('cpu')[0]
 
     # Converts the input NumPy arrays into JAX arrays and moves them to the selected device (GPU or CPU).
