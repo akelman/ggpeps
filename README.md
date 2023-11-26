@@ -44,6 +44,11 @@ where `<path_to_repo>` is the location of the repository on your computer.
 
 If you want to make the change persistent, i.e. it remains after closing the terminal, you can consider adding it to your `~/.bashrc` (for bash) or `~/.zshrc` (for zsh).
 
+### Installation with GPUs
+JAX is the library we use for running on GPUs. JAX must be installed wth jaxlib and connected to the correct versions of CUDA. The versions required will depend on what's available on a given cluster.
+TODO: fill in details
+
+
 ## Structure for the Code
 
 The repository is split into two main parts: the package `ggpeps` and utility scripts in the main folder.
