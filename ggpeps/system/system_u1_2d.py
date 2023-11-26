@@ -8,7 +8,7 @@ from ggpeps.lattice import Direction
 from scipy.linalg import block_diag
 from pfapack import pfaffian as pf
 
-from .system_base import Config2DBase, System2DBase, calculate_lognorm, calculate_lognormvec_inc, extract_partial_covmats, compute_grad_over_norm, calculate_lognorm_inc
+from .system_base import Config2DBase, System2DBase, calculate_lognorm, calculate_lognormvec_inc, extract_partial_covmats, calculate_lognorm_inc
 
 ################### U1MultilayerSystem2D ###################
 
@@ -335,7 +335,7 @@ class U1System2D(System2DBase):
                     d_el_energy = 0.25 * ( d_covmat_out_virt[0, 1] + d_covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                     # Summand with derivative of norms
                     trace_def = self.compute_grad_over_norm(symbol, layerind)
-                    trace_mod = compute_grad_over_norm(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
+                    trace_mod = self.cfg.compute_grad_over_norm_global_func(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
                     d_el_energy += dest[layerind] * (trace_mod - trace_def)
                     # Scale to system size
                     d_el_energy *= nlinks

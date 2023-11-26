@@ -9,7 +9,6 @@ from ggpeps.lattice import Direction
 from ggpeps.modearray import generate_permutation_matrix
 
 from .system_base import Config2DBase, System2DBase, ElectricEnergyIntermediateVals
-from .system_base import calculate_lognorm_inc, compute_grad_over_norm, extract_partial_covmats
 
 
 ###################### Z2System2D ##########################

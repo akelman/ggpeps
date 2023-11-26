@@ -10,7 +10,7 @@ from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.modearray import generate_permutation_matrix
 from .system_base import Config2DBase, System2DBase
-from .system_base import calculate_lognorm, compute_grad_over_norm, calculate_lognormvec, extract_partial_covmats, calculate_lognorm_inc
+from .system_base import calculate_lognorm, calculate_lognormvec, extract_partial_covmats, calculate_lognorm_inc
 
 
 ###################### Z2System2D ##########################

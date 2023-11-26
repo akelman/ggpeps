@@ -1,0 +1,2 @@
+# GPU or CPU
+PREFERRED_DEVICE = None

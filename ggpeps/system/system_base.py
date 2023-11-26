@@ -18,6 +18,7 @@ from jax import jit, device_put
 from jax.config import config
 config.update("jax_enable_x64", True)
 
+import ggpeps
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
 
@@ -68,6 +69,9 @@ class Config2DBase(ABC):
         self.g_mag = g_mag
         self.g_int = g_int
         self.g_mass = g_mass
+
+        # Function depending on which library to use and GPU availability
+        self.compute_grad_over_norm_global_func = compute_grad_over_norm_numpy # use numpy cpu version as default
     
     def __str__(self):
         # define a string method that can be used, e.g., in filenaming
@@ -170,71 +174,24 @@ def calculate_lognorm(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarray,
     normvec = calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
     return np.sum(normvec)
 
+def compute_grad_over_norm_numpy(gamma_in_sys, diff, deriv_d, mat_d_inv):
+    dest = -0.5 * np.trace(np.matmul(np.matmul(gamma_in_sys, deriv_d), np.matmul(mat_d_inv, diff)))
+    return dest
 
-# # Just-In-Time compilation decorator for GPU optimization
-# @jit
-# def compute_grad_over_norm_jit(gamma_in_sys, diff, deriv_d, mat_d_inv):
-#     dest = -0.5 * jnp.trace(jnp.matmul(jnp.matmul(gamma_in_sys, deriv_d), jnp.matmul(mat_d_inv, diff)))
-#     return dest
-#
-#
-# def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv_d: np.ndarray, mat_d_inv: np.ndarray):
-#     # Check if GPUs are available, and if so, use the first one. If not, default to CPU.
-#     try:
-#         # Trying to get the first available GPU
-#         available_gpus = jax.devices('gpu')
-#         preferred_device = available_gpus[0]
-#     except RuntimeError:
-#         # If GPUs are not available, falling back to the CPU.
-#         logging.info("No GPUs found, falling back on CPU.")
-#         # print("No GPUs found, falling back on CPU.")
-#         preferred_device = jax.devices('cpu')[0]
-#
-#     # Convert inputs to JAX arrays and explicitly move them to the selected device
-#     gamma_in_sys_jax = device_put(jnp.array(gamma_in_sys), device=preferred_device)
-#     diff_jax = device_put(jnp.array(diff), device=preferred_device)
-#     deriv_d_jax = device_put(jnp.array(deriv_d), device=preferred_device)
-#     mat_d_inv_jax = device_put(jnp.array(mat_d_inv), device=preferred_device)
-#
-#     # Call the JIT-compiled function
-#     result = compute_grad_over_norm_jit(gamma_in_sys_jax, diff_jax, deriv_d_jax, mat_d_inv_jax)
-#
-#     if not str(result.device_buffer.device()).startswith("gpu"):
-#         logging.info(f"Computation was not performed on the GPU: {result.device_buffer.device()}")
-#         # print("Computation was not performed on the GPU:", result.device_buffer.device())
-#
-#     return result
-
-
-# Just-In-Time compilation decorator for GPU optimization
-@jit
+@jit # Just-In-Time compilation decorator for GPU optimization
 def compute_grad_over_norm_jit(gamma_in_sys, diff, deriv_d, mat_d_inv):
     dest = -0.5 * jnp.trace(jnp.matmul(jnp.matmul(gamma_in_sys, deriv_d), jnp.matmul(mat_d_inv, diff)))
     return dest
 
-
-def compute_grad_over_norm(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv_d: np.ndarray, mat_d_inv: np.ndarray):
-    global LOGGED_GPU_STATUS
-    # Device selection: Checks if GPUs are available. If yes it uses the first available GPU;
-    # if not, defaults to using the CPU.
-    try:
-        # Getting the list of available GPUs
-        available_gpus = jax.devices('gpu')
-        # Use the first available GPU as the preferred device
-        preferred_device = available_gpus[0]
-    except RuntimeError:
-        # If GPUs are not available, falling back to the CPU.
-        if not LOGGED_GPU_STATUS:
-            LOGGED_GPU_STATUS = True
-            logging.info("No GPUs found, falling back on CPU.")
-        preferred_device = jax.devices('cpu')[0]
+@jit
+def compute_grad_over_norm_jax(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv_d: np.ndarray, mat_d_inv: np.ndarray):
 
     # Converts the input NumPy arrays into JAX arrays and moves them to the selected device (GPU or CPU).
     # This step ensures that the computation utilizes the appropriate hardware (GPU acceleration if possible).
-    gamma_in_sys_jax = device_put(jnp.array(gamma_in_sys), device=preferred_device)
-    diff_jax = device_put(jnp.array(diff), device=preferred_device)
-    deriv_d_jax = device_put(jnp.array(deriv_d), device=preferred_device)
-    mat_d_inv_jax = device_put(jnp.array(mat_d_inv), device=preferred_device)
+    gamma_in_sys_jax = device_put(jnp.array(gamma_in_sys), device=ggpeps.PREFERRED_DEVICE)
+    diff_jax = device_put(jnp.array(diff), device=ggpeps.PREFERRED_DEVICE)
+    deriv_d_jax = device_put(jnp.array(deriv_d), device=ggpeps.PREFERRED_DEVICE)
+    mat_d_inv_jax = device_put(jnp.array(mat_d_inv), device=ggpeps.PREFERRED_DEVICE)
 
     # Calls the JIT-compiled function to perform the computation. The JIT (Just-In-Time) compilation
     # is used to optimize the function for faster execution on the selected device.
@@ -1073,7 +1030,7 @@ class System2DBase(ABC):
 
             # TODO: We might save one matrix-matrix multiplication here
             # The derivd and mat_d_inv are constant
-            self._grad_over_norm_dict[(var,layerind)] = compute_grad_over_norm(self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv)
+            self._grad_over_norm_dict[(var,layerind)] = self.cfg.compute_grad_over_norm_global_func(self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv)
         return self._grad_over_norm_dict[(var,layerind)]
 
     ################## Local Gauge ######################
@@ -1342,10 +1299,10 @@ class System2DBase(ABC):
                     # We re-use the list comprehension from above to use the indices
                     deriv_pfarr = [prefactor * utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)], d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
                     d_el_energy = np.real(overall_factor * np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
-                                    
+                    
                     # Summand with derivative of norms
                     trace_def = self.compute_grad_over_norm(symbol, layerind)
-                    trace_mod = compute_grad_over_norm(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
+                    trace_mod = self.cfg.compute_grad_over_norm_global_func(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
                     # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
                     d_el_energy += dest[layerind] * (trace_mod - trace_def)
                     # Scale to system size

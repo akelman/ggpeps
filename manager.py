@@ -7,12 +7,14 @@ Further details about the usage of the script can be found in README.md.
 import os
 import sys
 import ray
+import jax
 import logging
 from timeit import default_timer as timer
 
 import numpy as np
 np.set_printoptions(linewidth=200)
 
+import ggpeps
 from ggpeps.system import Z2System2DConfig, Z2System2D
 from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
 from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D_G2C_F2C
@@ -232,6 +234,20 @@ def main(args):
     if args.no_bin_eom:
         Measurement.use_rebinning = False
 
+    # Device selection: Checks if GPUs are available. If yes it uses the first available GPU;
+    # if not, defaults to using the CPU.
+    logging.info("========= GPU INFO =========")
+    try:
+        available_gpus = jax.devices('gpu') # Getting the list of available GPUs
+        ggpeps.PREFERRED_DEVICE = available_gpus[0] # Use the first available GPU as the preferred device
+        system_cfg.compute_grad_over_norm_global_func = ggpeps.system.system_base.compute_grad_over_norm_jax
+        logging.info(f"Found {len(available_gpus)} GPUs, using {PREFERRED_DEVICE}.")
+    except RuntimeError:
+        # If GPUs are not available, falling back to the CPU.
+        ggpeps.PREFERRED_DEVICE = jax.devices('cpu')[0]
+        system_cfg.compute_grad_over_norm_global_func = ggpeps.system.system_base.compute_grad_over_norm_numpy
+        logging.info("No GPUs found, falling back on CPU.")
+    logging.info("============================")
 
     # Update Log
     logging.info("======= SYSTEM INFO ========")
