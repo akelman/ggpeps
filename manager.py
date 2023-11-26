@@ -241,7 +241,7 @@ def main(args):
         available_gpus = jax.devices('gpu') # Getting the list of available GPUs
         ggpeps.PREFERRED_DEVICE = available_gpus[0] # Use the first available GPU as the preferred device
         system_cfg.compute_grad_over_norm_global_func = ggpeps.system.system_base.compute_grad_over_norm_jax
-        logging.info(f"Found {len(available_gpus)} GPUs, using {PREFERRED_DEVICE}.")
+        logging.info(f"Found {len(available_gpus)} GPUs, using {ggpeps.PREFERRED_DEVICE}.")
     except RuntimeError:
         # If GPUs are not available, falling back to the CPU.
         ggpeps.PREFERRED_DEVICE = jax.devices('cpu')[0]
