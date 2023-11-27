@@ -1188,7 +1188,7 @@ class System2DBase(ABC):
         dest_grad = []
         overall_factors = self.el_overall_factors
         idxarrs = self.idxarr_vec
-        dest = self.el_energy_op_vec #this gets the electric energy, and ensures that the intermediate steps are calculated
+        el_energy_vec = self.el_energy_op_vec #this gets the electric energy, and ensures that the intermediate steps are calculated
 
         for layerind in range(self.cfg.nlayer):
             layer_derivative = []
@@ -1234,7 +1234,7 @@ class System2DBase(ABC):
                     trace_def = self.compute_grad_over_norm(symbol, layerind)
                     trace_mod = compute_grad_over_norm(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
                     # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
-                    d_el_energy += dest[layerind] * (trace_mod - trace_def)
+                    d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
                     # Scale to system size
                     d_el_energy *= nlinks
                     layer_derivative.append(np.real(d_el_energy))
@@ -1246,7 +1246,7 @@ class System2DBase(ABC):
         # They act as a prefactor in the derivative
         if self.cfg.nlayer > 1:
             for i in range(self.cfg.nlayer):
-                prod_other_layers = utils.multiply_except(dest, i)
+                prod_other_layers = utils.multiply_except(el_energy_vec, i)
                 dest_grad[i] *= prod_other_layers
         
         self.cfg.enforce_parameter_conditions(dest_grad)
