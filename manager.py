@@ -237,15 +237,9 @@ def main(args):
     # Device selection: Checks if GPUs are available. If yes it uses the first available GPU;
     # if not, defaults to using the CPU.
     logging.info("========= GPU INFO =========")
-    try:
-        available_gpus = jax.devices('gpu') # Getting the list of available GPUs
-        ggpeps.PREFERRED_DEVICE = available_gpus[0] # Use the first available GPU as the preferred device
-        system_cfg.compute_grad_over_norm_global_func = ggpeps.system.system_base.compute_grad_over_norm_jax
-        logging.info(f"Found {len(available_gpus)} GPUs, using {ggpeps.PREFERRED_DEVICE}.")
-    except RuntimeError:
-        # If GPUs are not available, falling back to the CPU.
-        ggpeps.PREFERRED_DEVICE = jax.devices('cpu')[0]
-        system_cfg.compute_grad_over_norm_global_func = ggpeps.system.system_base.compute_grad_over_norm_numpy
+    if ggpeps.GPU_AVAILABLE:
+        logging.info(f"Found GPU, using {ggpeps.PREFERRED_DEVICE}.")
+    else:
         logging.info("No GPUs found, falling back on CPU.")
     logging.info("============================")
 

@@ -335,7 +335,7 @@ class U1System2D(System2DBase):
                     d_el_energy = 0.25 * ( d_covmat_out_virt[0, 1] + d_covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                     # Summand with derivative of norms
                     trace_def = self.compute_grad_over_norm(symbol, layerind)
-                    trace_mod = self.cfg.compute_grad_over_norm_global_func(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
+                    trace_mod = compute_grad_over_norm(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
                     d_el_energy += dest[layerind] * (trace_mod - trace_def)
                     # Scale to system size
                     d_el_energy *= nlinks

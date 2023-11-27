@@ -13,8 +13,48 @@ from pfapack import pfaffian as pf
 import ggpeps
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
-from ggpeps.system.global_funcs import *
+from ggpeps.system.global_funcs import compute_grad_over_norm, calculate_lognormvec
 
+################## Utility Functions ######################
+def extract_partial_covmats(mat, corner):
+    """Extract the partial covariance matrices from a gaussian mapping
+
+    Args:
+        mat (np.ndarray): Full covariance matrix
+        corner (int): Index of the top left element of the bottom right matrix
+
+    Returns:
+        tuple: Matrices (A,B,D)
+    """
+    mat_a = mat[:corner, :corner]
+    mat_b = mat[:corner, corner:]
+    mat_d = mat[corner:, corner:]
+    return mat_a, mat_b, mat_d
+
+def calculate_lognorm(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarray, all_factors=False) -> float:
+    # This is still the plain formula, without any update mechanism
+    normvec = calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
+    return np.sum(normvec)
+
+def calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=False):
+    dest = []
+    for ind in range(len(incdet_vec)):
+        detval = incdet_vec[ind].det()
+        if all_factors:
+            detval -= n * np.log(2)
+            detval += det_mat_d_vec[ind]
+        # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
+        # The addition of the cumval is the multiplication of the indpendent PEPS
+        dest.append(0.5 * detval)
+    return dest
+
+
+def calculate_lognorm_inc(incdet_vec, det_mat_d_vec, n, all_factors=False):
+    lognormvec = calculate_lognormvec_inc(incdet_vec,
+                                          det_mat_d_vec,
+                                          n,
+                                          all_factors=all_factors)
+    return np.sum(lognormvec)
 
 @dataclass # if we upgrade to python 3.10 or higher, add in 'slots=True'
 class ElectricEnergyIntermediateVals:
@@ -25,6 +65,7 @@ class ElectricEnergyIntermediateVals:
     lognorm_default_vec: List[float] = field(default_factory=list)
 
 
+################## Config2DBase ######################
 class Config2DBase(ABC):
     """ Configuration for a system in two dimensions
 
@@ -62,9 +103,6 @@ class Config2DBase(ABC):
         self.g_int = g_int
         self.g_mass = g_mass
 
-        # Function depending on which library to use and GPU availability
-        self.compute_grad_over_norm_global_func = compute_grad_over_norm_numpy # use numpy cpu version as default
-    
     def __str__(self):
         # define a string method that can be used, e.g., in filenaming
         # note that this string doesn't include the number of copies
@@ -922,7 +960,7 @@ class System2DBase(ABC):
 
             # TODO: We might save one matrix-matrix multiplication here
             # The derivd and mat_d_inv are constant
-            self._grad_over_norm_dict[(var,layerind)] = self.cfg.compute_grad_over_norm_global_func(self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv)
+            self._grad_over_norm_dict[(var,layerind)] = compute_grad_over_norm(self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv)
         return self._grad_over_norm_dict[(var,layerind)]
 
     ################## Local Gauge ######################
@@ -1194,7 +1232,7 @@ class System2DBase(ABC):
                     
                     # Summand with derivative of norms
                     trace_def = self.compute_grad_over_norm(symbol, layerind)
-                    trace_mod = self.cfg.compute_grad_over_norm_global_func(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
+                    trace_mod = compute_grad_over_norm(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, self.mat_d_mod_inv_vec[layerind])
                     # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
                     d_el_energy += dest[layerind] * (trace_mod - trace_def)
                     # Scale to system size

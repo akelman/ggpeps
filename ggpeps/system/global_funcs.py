@@ -14,23 +14,7 @@ import ggpeps
 
 ############## NUMPY CPU VERSIONS ##############
 
-def extract_partial_covmats(mat, corner):
-    """Extract the partial covariance matrices from a gaussian mapping
-
-    Args:
-        mat (np.ndarray): Full covariance matrix
-        corner (int): Index of the top left element of the bottom right matrix
-
-    Returns:
-        tuple: Matrices (A,B,D)
-    """
-    mat_a = mat[:corner, :corner]
-    mat_b = mat[:corner, corner:]
-    mat_d = mat[corner:, corner:]
-    return mat_a, mat_b, mat_d
-
-
-def calculate_lognormvec(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarray, all_factors=False) -> float:
+def calculate_lognormvec_numpy(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarray, all_factors=False) -> float:
     # This is still the plain formula, without any update mechanism
     nlayer = len(mat_d_vec)
     dest = np.zeros(nlayer)
@@ -49,11 +33,6 @@ def calculate_lognormvec(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarr
     # The factor 1/2 is the square-root
     return dest / 2
 
-
-def calculate_lognorm(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarray, all_factors=False) -> float:
-    # This is still the plain formula, without any update mechanism
-    normvec = calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
-    return np.sum(normvec)
 
 def compute_grad_over_norm_numpy(gamma_in_sys: np.ndarray, 
                            diff: np.ndarray,
@@ -127,23 +106,10 @@ def compute_grad_over_norm_jax(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv
     return scalar_result_cpu
 
 
-def calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=False):
-    dest = []
-    for ind in range(len(incdet_vec)):
-        detval = incdet_vec[ind].det()
-        if all_factors:
-            detval -= n * np.log(2)
-            detval += det_mat_d_vec[ind]
-        # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
-        # The addition of the cumval is the multiplication of the indpendent PEPS
-        dest.append(0.5 * detval)
-    return dest
-
-
-def calculate_lognorm_inc(incdet_vec, det_mat_d_vec, n, all_factors=False):
-    lognormvec = calculate_lognormvec_inc(incdet_vec,
-                                          det_mat_d_vec,
-                                          n,
-                                          all_factors=all_factors)
-    return np.sum(lognormvec)
-
+############## SELECT APPROPRIATE VERSION ##############
+if ggpeps.GPU_AVAILABLE:
+    calculate_lognormvec = calculate_lognormvec_jax
+    compute_grad_over_norm = compute_grad_over_norm_jax
+else:
+    calculate_lognormvec = calculate_lognormvec_numpy
+    compute_grad_over_norm = compute_grad_over_norm_numpy
