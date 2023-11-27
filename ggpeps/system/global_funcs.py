@@ -91,7 +91,7 @@ def calculate_lognormvec_jax(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: List
     dest = jax.device_get(dest_jax)
     
     if all_factors:
-        dest = dest - mat_d_vec[0].shape[0] * np.log(2)
+        dest = dest - mat_d_vec[0].shape[0] * np.log(2) # add back in global factor of 2**(-n)
 
     # The factor 1/2 is the square-root
     return dest / 2
