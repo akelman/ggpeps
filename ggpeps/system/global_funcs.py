@@ -1,5 +1,6 @@
 from typing import Union, List
 import numpy as np
+from pfapack import pfaffian as pf
 
 import jax
 import jax.numpy as jnp
@@ -72,7 +73,7 @@ def compute_grad_over_norm_numpy(gamma_in_sys: np.ndarray,
     return dest
 
 
-def compute_el_grad_vec(system):
+def compute_el_grad_vec_numpy(system):
         """Computation of the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
         Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
@@ -207,11 +208,113 @@ def compute_grad_over_norm_jax(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv
 
     return scalar_result_cpu
 
+def derivative_pfaffian_jax(mat, d_mat):
+    """Compute the derivative of a Pfaffian of a matrix A.
+    The numpy version of this function is in ggpeps.utils.
+    """
+    pfaval = pf.pfaffian(mat)
+    if not ggpeps.utils.isclose(pfaval,0):
+        return 0.5 * pfaval * jnp.trace(jnp.linalg.inv(mat) @ d_mat)
+    else:
+        return 0.0
+
+def compute_el_grad_vec_jax(system):
+
+    dest_grad = []
+    overall_factors = system.el_overall_factors
+    idxarrs = system.idxarr_vec
+    el_energy_vec = system.el_energy_op_vec #this gets the electric energy, and ensures that the intermediate steps are calculated
+
+    for layerind in range(system.cfg.nlayer):
+
+        # Abbreviations for more readable code
+        el_energy = el_energy_vec[layerind]
+        mat_b = system.mat_b_mod_vec[layerind]
+        diff_d_gamma_inv = system.wi_gamma_out_mod_vec[layerind].inv() # this does not actually do a computation, just a retrieval
+        single_link_offset = 2 * system.cfg.nvirtmodes_link
+        offset = 2 * system.cfg.lattice.size + single_link_offset
+        idxarr = idxarrs[layerind]
+        overall_factor = overall_factors[layerind]
+        nlinks = system.cfg.lattice.nlinks
+        gamma_in_sys_mod = system.gamma_in_sys_mod_vec[layerind]
+        diff_d_inv_gamma_inv = system.wi_gamma_in_mod_vec[layerind].inv()
+        mat_d_mod_inv = system.mat_d_mod_inv_vec[layerind]
+
+        # get saved intermediate results from electric energy calculation
+        intermediate = system._electric_energy_intermediate_vals 
+        covmat_out_virt = intermediate.covmat_out_virt_vec[layerind]
+        norm_mod = intermediate.norm_mod_vec[layerind]
+        lognorm_default = intermediate.lognorm_default_vec[layerind]
+
+        # these depend on the symbol
+        deriv_gamma_maj_sys = jnp.asarray([system.gamma_maj_sys_deriv_vec(symbol)[layerind] for symbol in system.symbolvec])
+        trace_def = jnp.asarray([system.compute_grad_over_norm(symbol, layerind) for symbol in system.symbolvec])
+
+        # calculate the gradient for all symbols
+        layer_derivative = batch_calculate_el_grads(el_energy, mat_b, diff_d_gamma_inv, single_link_offset, offset, idxarr, overall_factor, nlinks, gamma_in_sys_mod, diff_d_inv_gamma_inv, covmat_out_virt, norm_mod, lognorm_default, deriv_gamma_maj_sys, mat_d_mod_inv, trace_def)
+        dest_grad.append(layer_derivative)
+
+    dest_grad = np.asarray(dest_grad)
+    # We have to weigh the different layers with the electric energy operator expectation of the other layers.
+    # They act as a prefactor in the derivative
+    if system.cfg.nlayer > 1:
+        for i in range(system.cfg.nlayer):
+            prod_other_layers = ggpeps.utils.multiply_except(el_energy_vec, i)
+            dest_grad[i] *= prod_other_layers
+    
+    system.cfg.enforce_parameter_conditions(dest_grad)
+    return dest_grad
+
+def compute_el_grad_onelayer_onesymbol(
+        el_energy,
+        mat_b,
+        diff_d_gamma_inv,
+        single_link_offset,
+        offset,
+        idxarr,
+        overall_factor,
+        nlinks,
+        gamma_in_sys_mod,
+        diff_d_inv_gamma_inv,
+        covmat_out_virt,
+        norm_mod,
+        lognorm_default, 
+        deriv_gamma_maj_sys,
+        mat_d_mod_inv,
+        trace_def):
+
+    ###################### Calculation of the derivative ########################
+    d_mat_a, d_mat_b, d_mat_d = ggpeps.system.system_base.extract_partial_covmats(deriv_gamma_maj_sys, offset)
+    d_gamma_out = d_mat_a + \
+            d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
+            + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
+            - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+    # The virtual mode is the last link on the bottom right of the covariance matrix
+    d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
+    # Summand with derivative of the covariance matrix
+    # We re-use the list comprehension from above to use the indices
+    deriv_pfarr = jnp.asarray([prefactor * ggpeps.utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)], d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr])
+    d_el_energy = np.real(overall_factor * np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
+    
+    # Summand with derivative of norms
+    trace_mod = compute_grad_over_norm_jit(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, mat_d_mod_inv)
+    # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
+    d_el_energy += el_energy * (trace_mod - trace_def)
+    # Scale to system size
+    d_el_energy *= nlinks
+
+    return jnp.real(d_el_energy)
+
+in_axes = (None, None, None, None, None, None, None, None, None, None, None, None, None, 0, None, 0)
+batch_calculate_el_grads = jax.vmap(compute_el_grad_onelayer_onesymbol, in_axes=in_axes) # for one layer, all symbols
+
 
 ############## SELECT APPROPRIATE VERSION ##############
 if ggpeps.GPU_AVAILABLE:
     calculate_lognormvec = calculate_lognormvec_jax
     compute_grad_over_norm = compute_grad_over_norm_jax
+    compute_el_grad_vec = compute_el_grad_vec_jax
 else:
     calculate_lognormvec = calculate_lognormvec_numpy
     compute_grad_over_norm = compute_grad_over_norm_numpy
+    compute_el_grad_vec = compute_el_grad_vec_numpy
