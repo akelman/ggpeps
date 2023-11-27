@@ -14,7 +14,7 @@ import ggpeps
 
 ############## NUMPY CPU VERSIONS ##############
 
-def calculate_lognormvec_numpy(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarray, all_factors=False) -> float:
+def calculate_lognormvec_numpy(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: List[np.ndarray], all_factors=False) -> float:
     # This is still the plain formula, without any update mechanism
     nlayer = len(mat_d_vec)
     dest = np.zeros(nlayer)
@@ -74,12 +74,33 @@ def compute_grad_over_norm_numpy(gamma_in_sys: np.ndarray,
 
 ############## JAX VERSIONS ##############
 
+def calculate_lognormvec_jit(gamma_in_sys: jnp.ndarray, mat_d: jnp.ndarray) -> float:
+    # This is still the plain formula, without any update mechanism    
+    # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
+    sign, logval = jnp.linalg.slogdet(
+        (jnp.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d))
+    return logval
+
+batch_calculate_lognormvec = jax.vmap(calculate_lognormvec_jit)
+
+def calculate_lognormvec_jax(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: List[np.ndarray], all_factors=False) -> float:
+    
+    gamma_in_sys_vec_jax = device_put(jnp.array(gamma_in_sys_vec), device=ggpeps.PREFERRED_DEVICE)
+    mat_d_vec_jax = device_put(jnp.array(mat_d_vec), device=ggpeps.PREFERRED_DEVICE)
+    dest_jax = batch_calculate_lognormvec(gamma_in_sys_vec_jax, mat_d_vec_jax)
+    dest = jax.device_get(dest_jax)
+    
+    if all_factors:
+        dest = dest - mat_d_vec[0].shape[0] * np.log(2)
+
+    # The factor 1/2 is the square-root
+    return dest / 2
+
 @jit # Just-In-Time compilation decorator for GPU optimization
 def compute_grad_over_norm_jit(gamma_in_sys, diff, deriv_d, mat_d_inv):
     dest = -0.5 * jnp.trace(jnp.matmul(jnp.matmul(gamma_in_sys, deriv_d), jnp.matmul(mat_d_inv, diff)))
     return dest
 
-@jit
 def compute_grad_over_norm_jax(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv_d: np.ndarray, mat_d_inv: np.ndarray):
 
     # Converts the input NumPy arrays into JAX arrays and moves them to the selected device (GPU or CPU).
