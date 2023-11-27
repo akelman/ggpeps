@@ -31,7 +31,7 @@ def extract_partial_covmats(mat, corner):
     mat_d = mat[corner:, corner:]
     return mat_a, mat_b, mat_d
 
-def calculate_lognorm(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: np.ndarray, all_factors=False) -> float:
+def calculate_lognorm(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: List[np.ndarray], all_factors=False) -> float:
     # This is still the plain formula, without any update mechanism
     normvec = calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
     return np.sum(normvec)
