@@ -72,6 +72,87 @@ def compute_grad_over_norm_numpy(gamma_in_sys: np.ndarray,
     return dest
 
 
+def compute_el_grad_vec(system):
+        """Computation of the electric energy gradients.
+        We start by calculating the electric energies, since these are needed for evaluating the gradients.
+        Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
+
+        This method overwrites an abstract method in System2DBase.
+
+        Args:
+            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
+
+        Returns:
+            list: list of gradients for the full system
+        """
+
+        dest_grad = []
+        overall_factors = system.el_overall_factors
+        idxarrs = system.idxarr_vec
+        el_energy_vec = system.el_energy_op_vec #this gets the electric energy, and ensures that the intermediate steps are calculated
+
+        for layerind in range(system.cfg.nlayer):
+            layer_derivative = []
+
+            # Abbreviations for more readable code
+            mat_b = system.mat_b_mod_vec[layerind]
+            diff_d_gamma_inv = system.wi_gamma_out_mod_vec[layerind].inv() # this does not actually do a computation, just a retrieval
+            single_link_offset = 2 * system.cfg.nvirtmodes_link
+            offset = 2 * system.cfg.lattice.size + single_link_offset
+            idxarr = idxarrs[layerind]
+            overall_factor = overall_factors[layerind]
+            nlinks = system.cfg.lattice.nlinks
+            gamma_in_sys_mod = system.gamma_in_sys_mod_vec[layerind]
+            diff_d_inv_gamma_inv = system.wi_gamma_in_mod_vec[layerind].inv()
+
+            # get saved intermediate results from electric energy calculation
+            intermediate = system._electric_energy_intermediate_vals 
+            covmat_out_virt = intermediate.covmat_out_virt_vec[layerind]
+            norm_mod = intermediate.norm_mod_vec[layerind]
+            lognorm_default = intermediate.lognorm_default_vec[layerind]
+
+            ###################### Calculation of the derivative ########################
+            for symbol_ind, symbol in enumerate(system.symbolvec):
+                if (layerind, symbol_ind) in system.cfg.zeroed_params:
+                    # the derivative calculation is compuationally expensive
+                    # we can skip it for parameters that are forced by the ansatz to be zero
+                    layer_derivative.append(0.0)
+                else:
+                    deriv_gamma_maj_sys = system.gamma_maj_sys_deriv_vec(symbol)[layerind]
+                    d_mat_a, d_mat_b, d_mat_d = ggpeps.system.system_base.extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                    d_gamma_out = d_mat_a + \
+                            d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
+                            + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
+                            - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+                    # The virtual mode is the last link on the bottom right of the covariance matrix
+                    d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
+                    # Summand with derivative of the covariance matrix
+                    # We re-use the list comprehension from above to use the indices
+                    deriv_pfarr = [prefactor * ggpeps.utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)], d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
+                    d_el_energy = np.real(overall_factor * np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
+                    
+                    # Summand with derivative of norms
+                    trace_def = system.compute_grad_over_norm(symbol, layerind)
+                    trace_mod = compute_grad_over_norm(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, system.mat_d_mod_inv_vec[layerind])
+                    # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
+                    d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
+                    # Scale to system size
+                    d_el_energy *= nlinks
+                    layer_derivative.append(np.real(d_el_energy))
+            dest_grad.append(layer_derivative)
+        
+        dest_grad = np.asarray(dest_grad)
+
+        # We have to weigh the different layers with the electric energy operator expectation of the other layers.
+        # They act as a prefactor in the derivative
+        if system.cfg.nlayer > 1:
+            for i in range(system.cfg.nlayer):
+                prod_other_layers = ggpeps.utils.multiply_except(el_energy_vec, i)
+                dest_grad[i] *= prod_other_layers
+        
+        system.cfg.enforce_parameter_conditions(dest_grad)
+        return dest_grad
+
 ############## JAX VERSIONS ##############
 
 def calculate_lognormvec_jit(gamma_in_sys: jnp.ndarray, mat_d: jnp.ndarray) -> float:
