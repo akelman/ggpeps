@@ -223,36 +223,33 @@ def derivative_pfaffian_jax(pfaval, mat, d_mat):
 def compute_el_grad_vec_jax(system):
 
     dest_grad = []
-    el_energy_vec = system.el_energy_op_vec #this gets the electric energy, and ensures that the intermediate steps are calculated
+    el_energy_vec = device_put(system.el_energy_op_vec, device=ggpeps.PREFERRED_DEVICE) #this gets the electric energy, and ensures that the intermediate steps are calculated
 
     layers = [k for k in range(system.cfg.nlayer)]
 
-    mat_b_vec = jnp.asarray(system.mat_b_mod_vec)
-    diff_d_gamma_inv_vec = jnp.asarray([system.wi_gamma_out_mod_vec[layerind].inv() for layerind in layers]) # this does not actually do a computation, just a retrieval
+    mat_b_vec = device_put(jnp.asarray(system.mat_b_mod_vec), device=ggpeps.PREFERRED_DEVICE)
+    diff_d_gamma_inv_vec = device_put(jnp.asarray([system.wi_gamma_out_mod_vec[layerind].inv() for layerind in layers]), device=ggpeps.PREFERRED_DEVICE) # this does not actually do a computation, just a retrieval
     single_link_offset = 2 * system.cfg.nvirtmodes_link
     offset = 2 * system.cfg.lattice.size + single_link_offset
-    overall_factors = jnp.asarray(system.el_overall_factors)
-    idxarrs_prefactors = jnp.asarray([[t[0] for t in system.idxarr_vec[layerind]] for layerind in layers])
-    idxarrs_indices = jnp.asarray([[t[1] for t in system.idxarr_vec[layerind]] for layerind in layers])
+    overall_factors = device_put(jnp.asarray(system.el_overall_factors), device=ggpeps.PREFERRED_DEVICE)
+    idxarrs_prefactors = device_put(jnp.asarray([[t[0] for t in system.idxarr_vec[layerind]] for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
+    idxarrs_indices = device_put(jnp.asarray([[t[1] for t in system.idxarr_vec[layerind]] for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
     nlinks = system.cfg.lattice.nlinks
-    gamma_in_sys_mod_vec = jnp.asarray(system.gamma_in_sys_mod_vec)
-    diff_d_inv_gamma_inv_vec = jnp.asarray([system.wi_gamma_in_mod_vec[layerind].inv() for layerind in layers])
-    mat_d_mod_inv_vec = jnp.asarray(system.mat_d_mod_inv_vec)
+    gamma_in_sys_mod_vec = device_put(jnp.asarray(system.gamma_in_sys_mod_vec), device=ggpeps.PREFERRED_DEVICE)
+    diff_d_inv_gamma_inv_vec = device_put(jnp.asarray([system.wi_gamma_in_mod_vec[layerind].inv() for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
+    mat_d_mod_inv_vec = device_put(jnp.asarray(system.mat_d_mod_inv_vec), device=ggpeps.PREFERRED_DEVICE)
 
     # get saved intermediate results from electric energy calculation
     intermediate = system._electric_energy_intermediate_vals 
-    covmat_out_virt_vec = jnp.asarray(intermediate.covmat_out_virt_vec)
-    norm_mod_vec = jnp.asarray(intermediate.norm_mod_vec)
-    lognorm_default_vec = jnp.asarray(intermediate.lognorm_default_vec)
-    pfaffian_vec = jnp.asarray(intermediate.pfaffian_vec)
+    covmat_out_virt_vec = device_put(jnp.asarray(intermediate.covmat_out_virt_vec), device=ggpeps.PREFERRED_DEVICE)
+    norm_mod_vec = device_put(jnp.asarray(intermediate.norm_mod_vec), device=ggpeps.PREFERRED_DEVICE)
+    lognorm_default_vec = device_put(jnp.asarray(intermediate.lognorm_default_vec), device=ggpeps.PREFERRED_DEVICE)
+    pfaffian_vec = device_put(jnp.asarray(intermediate.pfaffian_vec), device=ggpeps.PREFERRED_DEVICE)
 
     # these depend on the symbol
-    deriv_gamma_maj_sys_vec = jnp.asarray([[system.gamma_maj_sys_deriv_vec(symbol)[layerind] for symbol in system.symbolvec] for layerind in layers])
-    trace_def_vec = jnp.asarray([[system.compute_grad_over_norm(symbol, layerind) for symbol in system.symbolvec] for layerind in layers])
+    deriv_gamma_maj_sys_vec = device_put(jnp.asarray([[system.gamma_maj_sys_deriv_vec(symbol)[layerind] for symbol in system.symbolvec] for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
+    trace_def_vec = device_put(jnp.asarray([[system.compute_grad_over_norm(symbol, layerind) for symbol in system.symbolvec] for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
 
-    # calculate the gradient for all symbols
-    #layer_derivative = batch_calculate_el_grads_all_symbols(el_energy, mat_b, diff_d_gamma_inv, single_link_offset, offset, idxarr, overall_factor, nlinks, gamma_in_sys_mod, diff_d_inv_gamma_inv, covmat_out_virt, norm_mod, lognorm_default, deriv_gamma_maj_sys, mat_d_mod_inv, trace_def)
-    
     dest_jax = batch_calculate_el_grads_all_layers(el_energy_vec, mat_b_vec, diff_d_gamma_inv_vec, single_link_offset, offset, pfaffian_vec, idxarrs_prefactors, idxarrs_indices, overall_factors, nlinks, gamma_in_sys_mod_vec, diff_d_inv_gamma_inv_vec, covmat_out_virt_vec, norm_mod_vec, lognorm_default_vec, deriv_gamma_maj_sys_vec, mat_d_mod_inv_vec, trace_def_vec)
     #dest_grad = jax.device_get(dest_jax)
     dest_grad = np.asarray(dest_jax).copy()
