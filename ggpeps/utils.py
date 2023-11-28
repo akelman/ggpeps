@@ -221,7 +221,7 @@ def derivative_pfaffian_covariance_mat(pfarr,matvec,d_matvec):
             dest += 0.5 * pfaval * np.trace(mat_inv @ d_mat)
     return dest
 
-def derivative_pfaffian(mat, d_mat):
+def derivative_pfaffian(mat, d_mat, pfaval=None):
     """Compute the derivative of a Pfaffian of a matrix A.
     The explicit derivative dA/dx is given as a second argument
 
@@ -234,8 +234,10 @@ def derivative_pfaffian(mat, d_mat):
     Returns:
         np.ndarray: d(Pf(A))/dx
     """
-    pfaval = pf.pfaffian(mat)
-    if not isclose(pfaval,0):
+    if pfaval is None:
+        pfaval = pf.pfaffian(mat)
+    
+    if not isclose(pfaval, 0):
         return 0.5 * pfaval * np.trace(np.linalg.inv(mat) @ d_mat)
     else:
         return 0.0
