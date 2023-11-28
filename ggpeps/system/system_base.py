@@ -63,6 +63,7 @@ class ElectricEnergyIntermediateVals:
     covmat_out_virt_vec: List[int] = field(default_factory=list) # this is the pythonic way to use lists in dataclasses
     norm_mod_vec: List[float] = field(default_factory=list)
     lognorm_default_vec: List[float] = field(default_factory=list)
+    pfaffian_vec: List[float] = field(default_factory=list)
 
 
 ################## Config2DBase ######################
@@ -1163,6 +1164,7 @@ class System2DBase(ABC):
             intermediate.covmat_out_virt_vec.append(covmat_out_virt)
             intermediate.norm_mod_vec.append(norm_mod)
             intermediate.lognorm_default_vec.append(lognorm_default)
+            intermediate.pfaffian_vec.append(np.real(pfarr))
         
         return np.asarray(dest)
     
