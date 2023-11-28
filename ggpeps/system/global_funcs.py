@@ -267,6 +267,31 @@ def compute_el_grad_vec_jax(system):
     system.cfg.enforce_parameter_conditions(dest_grad)
     return dest_grad
 
+def deriv_pfarr_jax(covmat_out_virt, d_covmat_out_virt, pfaval, prefactor, ind):
+    res = prefactor * derivative_pfaffian_jax(pfaval, covmat_out_virt[jnp.ix_(ind,ind)], d_covmat_out_virt[jnp.ix_(ind,ind)]) 
+    return res
+in_axes_pfarr = (None, None, 0, 0, 0)
+batch_pfarr = jax.vmap(deriv_pfarr_jax, in_axes=in_axes_pfarr)
+
+def extract_partial_covmats_jax(mat, corner):
+    """Extract the partial covariance matrices from a gaussian mapping
+
+    Args:
+        mat (np.ndarray): Full covariance matrix
+        corner (int): Index of the top left element of the bottom right matrix
+
+    Returns:
+        tuple: Matrices (A,B,D)
+    """
+    N = mat.shape[0]
+    mat_a = jax.lax.slice(mat, (0,0), (corner, corner))
+    mat_b = jax.lax.slice(mat, (0,corner), (corner, N))
+    mat_d = jax.lax.slice(mat, (corner,corner), (N, N))
+    #mat_a = mat[:corner, :corner]
+    #mat_b = mat[:corner, corner:]
+    #mat_d = mat[corner:, corner:]
+    return mat_a, mat_b, mat_d
+
 def compute_el_grad_onelayer_onesymbol(
         el_energy,
         mat_b,
@@ -288,7 +313,7 @@ def compute_el_grad_onelayer_onesymbol(
         trace_def):
 
     ###################### Calculation of the derivative ########################
-    d_mat_a, d_mat_b, d_mat_d = ggpeps.system.system_base.extract_partial_covmats(deriv_gamma_maj_sys, offset)
+    d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats_jax(deriv_gamma_maj_sys, offset)
     d_gamma_out = d_mat_a + \
             d_mat_b @ diff_d_gamma_inv @ jnp.transpose(mat_b) \
             + mat_b @ diff_d_gamma_inv @ jnp.transpose(d_mat_b) \
@@ -297,7 +322,7 @@ def compute_el_grad_onelayer_onesymbol(
     d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
     # Summand with derivative of the covariance matrix
     # We re-use the list comprehension from above to use the indices
-    deriv_pfarr = jnp.asarray([prefactor * derivative_pfaffian_jax(pfaval, covmat_out_virt[jnp.ix_(ind,ind)], d_covmat_out_virt[jnp.ix_(ind,ind)]) for pfaval,prefactor,ind in zip(pfaffian_vals, idxarrs_prefactors, idxarrs_indices)])
+    deriv_pfarr = batch_pfarr(covmat_out_virt, d_covmat_out_virt, pfaffian_vals, idxarrs_prefactors, idxarrs_indices)
     d_el_energy = jnp.real(overall_factor * jnp.sum(deriv_pfarr)) * jnp.exp(norm_mod - lognorm_default)
     
     # Summand with derivative of norms
