@@ -378,10 +378,13 @@ def compute_el_grad_vec_jax2(system):
             covmat_out_virt = intermediate.covmat_out_virt_vec[layerind]
             norm_mod = intermediate.norm_mod_vec[layerind]
             lognorm_default = intermediate.lognorm_default_vec[layerind]
+            print('In deriv')
             pfavals = intermediate.pfaffian_vec[layerind]
 
             idxarrs_prefactors = [t[0] for t in system.idxarr_vec[layerind]]
             idxarrs_indices = [t[1] for t in system.idxarr_vec[layerind]]
+
+            pfavals = [pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)]) for ind in idxarrs_indices]
 
             ###################### Calculation of the derivative ########################
             for symbol_ind, symbol in enumerate(system.symbolvec):
@@ -400,7 +403,7 @@ def compute_el_grad_vec_jax2(system):
                     d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
                     # Summand with derivative of the covariance matrix
                     # We re-use the list comprehension from above to use the indices
-                    deriv_pfarr = [prefactor * ggpeps.utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)], d_covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in zip(idxarrs_prefactors, idxarrs_indices)]
+                    deriv_pfarr = [prefactor * ggpeps.utils.derivative_pfaffian(covmat_out_virt[np.ix_(ind,ind)], d_covmat_out_virt[np.ix_(ind,ind)], pfaval) for prefactor,ind,pfaval in zip(idxarrs_prefactors, idxarrs_indices,pfavals)]
                     d_el_energy = np.real(overall_factor * np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
                     
                     # Summand with derivative of norms

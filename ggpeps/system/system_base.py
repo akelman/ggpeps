@@ -1164,7 +1164,7 @@ class System2DBase(ABC):
             intermediate.covmat_out_virt_vec.append(covmat_out_virt)
             intermediate.norm_mod_vec.append(norm_mod)
             intermediate.lognorm_default_vec.append(lognorm_default)
-            intermediate.pfaffian_vec.append(np.real(pfarr))
+            intermediate.pfaffian_vec.append([pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr])
         
         return np.asarray(dest)
     
