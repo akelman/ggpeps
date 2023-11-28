@@ -235,16 +235,16 @@ def compute_el_grad_vec_jax(system):
     idxarrs_prefactors = jnp.asarray([[t[0] for t in system.idxarr_vec[layerind]] for layerind in layers])
     idxarrs_indices = jnp.asarray([[t[1] for t in system.idxarr_vec[layerind]] for layerind in layers])
     nlinks = system.cfg.lattice.nlinks
-    gamma_in_sys_mod_vec = jnp.asarray([system.gamma_in_sys_mod_vec[layerind] for layerind in layers])
+    gamma_in_sys_mod_vec = jnp.asarray(system.gamma_in_sys_mod_vec)
     diff_d_inv_gamma_inv_vec = jnp.asarray([system.wi_gamma_in_mod_vec[layerind].inv() for layerind in layers])
-    mat_d_mod_inv_vec = jnp.asarray([system.mat_d_mod_inv_vec[layerind] for layerind in layers])
+    mat_d_mod_inv_vec = jnp.asarray(system.mat_d_mod_inv_vec)
 
     # get saved intermediate results from electric energy calculation
     intermediate = system._electric_energy_intermediate_vals 
-    covmat_out_virt_vec = jnp.asarray([intermediate.covmat_out_virt_vec[layerind] for layerind in layers])
-    norm_mod_vec = jnp.asarray([intermediate.norm_mod_vec[layerind] for layerind in layers])
-    lognorm_default_vec = jnp.asarray([intermediate.lognorm_default_vec[layerind] for layerind in layers])
-    pfaffian_vec = jnp.asarray([intermediate.pfaffian_vec[layerind] for layerind in layers])
+    covmat_out_virt_vec = jnp.asarray(intermediate.covmat_out_virt_vec)
+    norm_mod_vec = jnp.asarray(intermediate.norm_mod_vec)
+    lognorm_default_vec = jnp.asarray(intermediate.lognorm_default_vec)
+    pfaffian_vec = jnp.asarray(intermediate.pfaffian_vec)
 
     # these depend on the symbol
     deriv_gamma_maj_sys_vec = jnp.asarray([[system.gamma_maj_sys_deriv_vec(symbol)[layerind] for symbol in system.symbolvec] for layerind in layers])
