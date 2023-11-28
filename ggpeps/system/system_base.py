@@ -1153,7 +1153,12 @@ class System2DBase(ABC):
 
             # Instead of writing down all the terms explicitly, we build tuples of the prefactors and the indices of the covariance matrix.
             # Then, we compute all terms in a list comprehension.
-            pfarr = [prefactor * pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr]
+            pfarr = []
+            pfvals = [] # without the prefactor
+            for prefactor,ind in idxarr:
+                pfaval = pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)])
+                pfarr.append(prefactor * pfaval)
+                pfvals.append(pfaval)
             el_energy_full = overall_factor * np.sum(pfarr)
             
             el_energy_layer = np.real(el_energy_full) * np.exp(norm_mod - lognorm_default)
@@ -1164,7 +1169,7 @@ class System2DBase(ABC):
             intermediate.covmat_out_virt_vec.append(covmat_out_virt)
             intermediate.norm_mod_vec.append(norm_mod)
             intermediate.lognorm_default_vec.append(lognorm_default)
-            intermediate.pfaffian_vec.append([pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)]) for prefactor,ind in idxarr])
+            intermediate.pfaffian_vec.append(pfvals)
         
         return np.asarray(dest)
     
