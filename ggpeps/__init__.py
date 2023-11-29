@@ -7,4 +7,4 @@ try:
 except RuntimeError:
     # If GPUs are not available, fall back to the CPU.
     PREFERRED_DEVICE = jax.devices('cpu')[0]
-    GPU_AVAILABLE = True # For testing purposes, use JAX even if no GPU is available
+    GPU_AVAILABLE = False
