@@ -29,6 +29,10 @@ class MonteCarloEstimatorConfig:
         self.minimizer_mode = False
         self.update_size_per_step = 1 # this can be set anywhere from 1 to nlinks (inclusive)
 
+        # Logging frequency
+        self.warmup_log_freq = 5000 # log every X steps
+        self.run_log_freq = 20000
+
     @property
     def seed(self):
         if self._seed is None:
@@ -238,7 +242,7 @@ class MonteCarloEstimator:
     def warmup(self):
         """Warm up phase without measurement"""
         while self.step < self.cfg.warmup_steps:
-            if self.step % 2000 == 0:
+            if self.step % self.cfg.warmup_log_freq == 0:
                 logging.info(f"Warmup: {self.step}")
             self.update()
             self.step += 1
@@ -246,7 +250,7 @@ class MonteCarloEstimator:
     def run(self):
         """Meaurement phase phase (with measurement)"""
         while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
-            if self.step % 50 == 0:
+            if self.step % self.cfg.run_log_freq == 0:
                 logging.info(f"Run: {self.step}")
             self.update()
             self.measure()

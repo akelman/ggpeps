@@ -267,6 +267,8 @@ def main(args):
         logging.info(f"Update size: {mc_config.update_size_per_step} (out of {2*L**2} total links)")
         logging.info(f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)")
         logging.info("============================")
+        mc_config.warmup_log_freq = args.warmup_log_freq
+        mc_config.run_log_freq = args.run_log_freq
     if "min" in args.mode:
         logging.info("====== MINIMIZER INFO ======")
         logging.info(f"Method: {args.method.upper()}")
@@ -432,6 +434,8 @@ if __name__ == "__main__":
     
     # Output settings
     parser.add_argument("--level", default="info", help="logging level")
+    parser.add_argument("--warmup_log_freq", type=int, default=2000, help="frequency at which to log completed warmup steps")
+    parser.add_argument("--run_log_freq", type=int, default=50, help="frequency at which to log completed run steps")
     parser.add_argument("--output", type=str, default='.', help="Output Directory")
 
     # Arguments for ray
