@@ -1,3 +1,7 @@
+# Create logger
+import logging
+logger = logging.getLogger('ggpeps')
+
 # GPU or CPU
 import jax
 try:

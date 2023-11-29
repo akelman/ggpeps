@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 import ggpeps.lattice as lattice
+from ggpeps import logger
 
 class ExactEvaluatorManager:
     """Wrapper Class for the ExactEvaluator.
@@ -89,7 +90,7 @@ class ExactEvaluator():
             }
             for config in configvec:
                 self.system.update_gauge_full_system(config)
-                #logging.debug(f"Configuration: {config}")
+                #logger.debug(f"Configuration: {config}")
                 
                 data["energy"].append(self.system.energy)
                 data["mag_energy"].append(self.system.mag_energy)

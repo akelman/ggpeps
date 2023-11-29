@@ -7,6 +7,7 @@ from warnings import warn # Used for deprecation warnings
 
 from ggpeps import lattice as lat
 from ggpeps import utils
+from ggpeps import logger
 from ggpeps.lattice import Direction
 from ggpeps.modearray import generate_permutation_matrix
 from .system_base import Config2DBase, System2DBase
@@ -338,7 +339,7 @@ class Z2System2D(System2DBase):
                 self.compute_path(wilson_plaquette))
         else:
             # Evaluate every plaquette of the system
-            logging.error("compute_mag_energy: not implemented yet")
+            logger.error("compute_mag_energy: not implemented yet")
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
             mag_energy_bare = None
         return mag_energy_bare

@@ -1,12 +1,14 @@
-import numpy as np
 import sys
-import logging
 import sympy
-from ggpeps import utils, gauge
-import ggpeps.lattice as lat
-from ggpeps.lattice import Direction
+import numpy as np
+
 from scipy.linalg import block_diag
 from pfapack import pfaffian as pf
+
+import ggpeps.lattice as lat
+from ggpeps import logger
+from ggpeps import utils, gauge
+from ggpeps.lattice import Direction
 
 from .system_base import Config2DBase, System2DBase, calculate_lognorm, calculate_lognormvec_inc, extract_partial_covmats, calculate_lognorm_inc
 
@@ -273,7 +275,7 @@ class U1System2D(System2DBase):
                 self.compute_path(wilson_plaquette))
         else:
             # Evaluate every plaquette of the system
-            logging.error("compute_mag_energy: not implemented yet")
+            logger.error("compute_mag_energy: not implemented yet")
             mag_energy_bare = None
         return mag_energy_bare
 
@@ -351,7 +353,7 @@ class U1System2D(System2DBase):
                     dest_grad[i] *= prod_other_layers
         else:
             # Evaluate every link of the system
-            logging.error("compute_el_energy: not implemented yet")
+            logger.error("compute_el_energy: not implemented yet")
             dest = np.asarray([None]*self.cfg.nlayer)
             dest_grad = np.asarray([[None]*len(self.symbolvec)]*self.cfg.nlayer)
         return dest, dest_grad
@@ -421,7 +423,7 @@ class U1System2D(System2DBase):
             dest_grad = np.asarray([[None]*len(self.symbolvec)]*self.cfg.nlayer)
         else:
             # Evaluate every link of the system
-            logging.error("compute_el_energy: not implemented yet")
+            logger.error("compute_el_energy: not implemented yet")
             dest = np.asarray([None]*self.cfg.nlayer)
             dest_grad = np.asarray([[None]*len(self.symbolvec)]*self.cfg.nlayer)
         return dest, dest_grad

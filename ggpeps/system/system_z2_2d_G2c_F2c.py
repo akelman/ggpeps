@@ -5,6 +5,7 @@ import numpy as np
 from scipy.linalg import block_diag
 
 from ggpeps import utils
+from ggpeps import logger
 from ggpeps.lattice import Direction
 from ggpeps.modearray import generate_permutation_matrix
 
@@ -483,7 +484,7 @@ class Z2System2D_G2C_F2C(System2DBase):
             mag_energy_bare = np.real(self.compute_path(wilson_plaquette))
         else:
             # Evaluate every plaquette of the system
-            logging.error("compute_mag_energy: non-translational invariant case not implemented yet")
+            logger.error("compute_mag_energy: non-translational invariant case not implemented yet")
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
             mag_energy_bare = None
         return mag_energy_bare

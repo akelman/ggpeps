@@ -3,7 +3,6 @@ from typing import Union, List # used in type hints; this approach might be depr
 from dataclasses import dataclass, field
 
 import sys
-import logging
 import itertools as it
 
 import sympy
@@ -11,6 +10,7 @@ import numpy as np
 from pfapack import pfaffian as pf
 
 import ggpeps
+from ggpeps import logger
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
 from ggpeps.system.global_funcs import compute_grad_over_norm, calculate_lognormvec, compute_el_grad_vec
@@ -119,7 +119,7 @@ class Config2DBase(ABC):
             self._paramvec = val
             self.nlayer = len(val)
         else:
-            logging.error("The set of parameters is not consistent.")
+            logger.error("The set of parameters is not consistent.")
             sys.exit(1)
 
     def check_params(self, params):
@@ -1104,7 +1104,7 @@ class System2DBase(ABC):
         """
         if not use_trans_inv:
             # Evaluate every link of the system
-            logging.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
+            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
         lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
@@ -1189,7 +1189,7 @@ class System2DBase(ABC):
 
         if not use_trans_inv:
             # Evaluate every link of the system
-            logging.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
+            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
         
         res = compute_el_grad_vec(self)

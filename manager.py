@@ -15,6 +15,7 @@ import numpy as np
 np.set_printoptions(linewidth=200)
 
 import ggpeps
+from ggpeps import logger
 from ggpeps.system import Z2System2DConfig, Z2System2D
 from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
 from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D_G2C_F2C
@@ -32,7 +33,7 @@ from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloManager
 import signal
 def signal_handler(signum, frame):
     Minimizer.STOP_AFTER_CURRENT_ITERATION = True
-    logging.info(f"Recieved signal {signum}, stopping at the end of the current iteration.")
+    logger.info(f"Recieved signal {signum}, stopping at the end of the current iteration.")
 signal.signal(signal.SIGUSR1, signal_handler) # register the signal handler
 #signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
 
@@ -79,20 +80,20 @@ def translate_parameters(system_cfg, params, rng_state):
         try:
             dest = dest.reshape((nlayer, nparams))
         except:
-            logging.warning("Reshape of provided parameters impossible. Starting with random parameters.")
+            logger.warning("Reshape of provided parameters impossible. Starting with random parameters.")
             dest = rng_state.rand(nlayer, nparams)
     return dest
 
 def validate_inputs(args) -> bool:
 
     if args.L % 2 != 0:
-        logging.error("The lattice dimension must currently be an even number.") # this is important when staggering
+        logger.error("The lattice dimension must currently be an even number.") # this is important when staggering
         return False
     if args.ncopy == 1 and args.g_mass != 0:
-        logging.error("Not Implemented: the mass term has not yet been implemented for the 1 copy case.")
+        logger.error("Not Implemented: the mass term has not yet been implemented for the 1 copy case.")
         return False
     if args.ncopy not in [1,2,4,8]:
-        logging.error("Not Implemented: only 1,2,4, or 8 copies are possible.")
+        logger.error("Not Implemented: only 1,2,4, or 8 copies are possible.")
         return False
 
     return True
@@ -129,18 +130,29 @@ def main(args):
     couplings = {"g_el":g_el, "g_mag":g_mag, "g_int":g_int, "g_mass":g_mass}
 
     # Set up the logger
+    log_file_handler = logging.FileHandler(args2logname(args, couplings))
     h_stdout = logging.StreamHandler(stream=sys.stdout)
     h_stderr = logging.StreamHandler(stream=sys.stderr)
     h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
-    logging.basicConfig(
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    h_stdout.setFormatter(formatter)
+    log_file_handler.setFormatter(formatter)
+    logger.addHandler(h_stdout)
+    logger.addHandler(h_stderr)
+    logger.addHandler(log_file_handler)
+    logger.setLevel(args.level.upper())
+    
+    '''
+    logger.basicConfig(
         level = args.level.upper(),
         format = "%(asctime)s [%(levelname)s] %(message)s",
         handlers = [
-            logging.FileHandler(args2logname(args, couplings)),
+            logger.FileHandler(args2logname(args, couplings)),
             h_stdout,
             h_stderr
         ]
     )
+    '''
 
     # Validate input arguments
     if not validate_inputs(args):
@@ -163,7 +175,7 @@ def main(args):
     elif args.update_size.isdecimal():
         mc_config.update_size_per_step = int(args.update_size)
     else:
-        logging.error("Unrecognized value for update_size.")
+        logger.error("Unrecognized value for update_size.")
         sys.exit(1)
     
     if args.seed is not None:
@@ -177,13 +189,13 @@ def main(args):
     mc_config.seed = seed
 
     # Log basic info
-    logging.info(f"Git hash: {utils.get_git_hash()}")
-    logging.info(f"Logging level: {args.level}")
-    logging.info(f"Mode: {args.mode}")
-    logging.info(f"Seed: {seed}") # used for both MC and randomizing parameters
-    logging.info("======= RAW COMMAND ========")
-    logging.info(raw_command)
-    logging.info("============================")
+    logger.info(f"Git hash: {utils.get_git_hash()}")
+    logger.info(f"Logging level: {args.level}")
+    logger.info(f"Mode: {args.mode}")
+    logger.info(f"Seed: {seed}") # used for both MC and randomizing parameters
+    logger.info("======= RAW COMMAND ========")
+    logger.info(raw_command)
+    logger.info("============================")
 
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
@@ -203,7 +215,7 @@ def main(args):
             system_type = Z2System2D_8C
             system_cfg = Z2System2D_8C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
         else:
-            logging.error("Not Implemented: Only 2, 4, or 8 copies are possible with fermions.")
+            logger.error("Not Implemented: Only 2, 4, or 8 copies are possible with fermions.")
             sys.exit(1)
     else:
         if args.ncopy == 1:
@@ -215,7 +227,7 @@ def main(args):
             system_type = Z2System2D2C
             system_cfg = Z2System2D2CConfig(lattice, g_el, g_mag, g_int,  g_mass, nlayer=args.nlayer)
         else:
-            logging.error("Not Implemented: Only 1, 2, or 4 copies are possible without fermions.")
+            logger.error("Not Implemented: Only 1, 2, or 4 copies are possible without fermions.")
             sys.exit(1)
 
     # Translate the command line input to a valid parameter vector
@@ -236,46 +248,46 @@ def main(args):
 
     # Device selection: Checks if GPUs are available. If yes it uses the first available GPU;
     # if not, defaults to using the CPU.
-    logging.info("========= GPU INFO =========")
+    logger.info("========= GPU INFO =========")
     if ggpeps.GPU_AVAILABLE:
-        logging.info(f"Found GPU, using {ggpeps.PREFERRED_DEVICE}.")
+        logger.info(f"Found GPU, using {ggpeps.PREFERRED_DEVICE}.")
     else:
-        logging.info("No GPUs found, falling back on CPU.")
-    logging.info("============================")
+        logger.info("No GPUs found, falling back on CPU.")
+    logger.info("============================")
 
     # Update Log
-    logging.info("======= SYSTEM INFO ========")
-    logging.info(f"L: {L}")
-    logging.info(f"# of layers: {system_cfg.nlayer}")
-    logging.info(f"# of copies: {args.ncopy}")
-    logging.info(f"fermions: {args.fermions}")
-    logging.info(f"g (lambda): {g}")
-    logging.info(f"g_el: {g_el}")
-    logging.info(f"g_mag: {g_mag}")
-    logging.info(f"g_int: {g_int}")
-    logging.info(f"g_mass: {g_mass}")
-    logging.info(f"Rebinning EOM: {Measurement.use_rebinning}")
-    logging.info(f"Starting parameters: {paramvec}")
-    logging.info("============================")
+    logger.info("======= SYSTEM INFO ========")
+    logger.info(f"L: {L}")
+    logger.info(f"# of layers: {system_cfg.nlayer}")
+    logger.info(f"# of copies: {args.ncopy}")
+    logger.info(f"fermions: {args.fermions}")
+    logger.info(f"g (lambda): {g}")
+    logger.info(f"g_el: {g_el}")
+    logger.info(f"g_mag: {g_mag}")
+    logger.info(f"g_int: {g_int}")
+    logger.info(f"g_mass: {g_mass}")
+    logger.info(f"Rebinning EOM: {Measurement.use_rebinning}")
+    logger.info(f"Starting parameters: {paramvec}")
+    logger.info("============================")
     
     if "mc" in args.mode:
-        logging.info("========= MC INFO ==========")
-        logging.info(f"Seed: {mc_config.seed}")
-        logging.info(f"Warmup steps: {mc_config.warmup_steps}")
-        logging.info(f"Measurement steps: {mc_config.meas_steps}")
-        logging.info(f"Bin size: {mc_config.binsize}")
-        logging.info(f"Update size: {mc_config.update_size_per_step} (out of {2*L**2} total links)")
-        logging.info(f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)")
-        logging.info("============================")
+        logger.info("========= MC INFO ==========")
+        logger.info(f"Seed: {mc_config.seed}")
+        logger.info(f"Warmup steps: {mc_config.warmup_steps}")
+        logger.info(f"Measurement steps: {mc_config.meas_steps}")
+        logger.info(f"Bin size: {mc_config.binsize}")
+        logger.info(f"Update size: {mc_config.update_size_per_step} (out of {2*L**2} total links)")
+        logger.info(f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)")
+        logger.info("============================")
         mc_config.warmup_log_freq = args.warmup_log_freq
         mc_config.run_log_freq = args.run_log_freq
     if "min" in args.mode:
-        logging.info("====== MINIMIZER INFO ======")
-        logging.info(f"Method: {args.method.upper()}")
-        logging.info(f"Max Iterations: {args.maxiter}")
-        logging.info(f"Learning rate: {args.alpha}")
-        logging.info(f"Min grad: {args.min_grad}")
-        logging.info("============================")
+        logger.info("====== MINIMIZER INFO ======")
+        logger.info(f"Method: {args.method.upper()}")
+        logger.info(f"Max Iterations: {args.maxiter}")
+        logger.info(f"Learning rate: {args.alpha}")
+        logger.info(f"Min grad: {args.min_grad}")
+        logger.info("============================")
 
 
     # Call different functions depending on the mode specified via CLI
@@ -289,9 +301,9 @@ def main(args):
         mc_result.print_stats()
         mc_result.save(output_dir = args.output)
 
-        logging.info("==== Acceptance prob =======")
-        logging.info(f"Acceptance probability: {mc_result.get_obs_mean('acceptance_prob')}")
-        logging.info("============================")
+        logger.info("==== Acceptance prob =======")
+        logger.info(f"Acceptance probability: {mc_result.get_obs_mean('acceptance_prob')}")
+        logger.info("============================")
     elif args.mode == "min-mc":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
 
@@ -309,7 +321,7 @@ def main(args):
         start = timer()
         result = minimizer.minimize()
         stop = timer()
-        logging.info(result)
+        logger.info(result)
         minimizer.save(output_dir = args.output)
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
@@ -320,7 +332,7 @@ def main(args):
         stop = timer()
         ex_eval.save(output_dir=args.output)
         for key, val in dest_dict.items():
-            logging.info(f"{key}: {val}")
+            logger.info(f"{key}: {val}")
     elif args.mode == "min-exact":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
 
@@ -338,7 +350,7 @@ def main(args):
         start = timer()
         result = minimizer.minimize()
         stop = timer()
-        logging.info(result)
+        logger.info(result)
         minimizer.save(output_dir = args.output)
     elif args.mode == "minmult-mc":
         # Optimize the parameters with multiple runs (useful if BFGS has problems with the Hessian)
@@ -354,7 +366,7 @@ def main(args):
         resultvec = []
         mc_config.minimizer_mode = True
         for i in range(args.minmult_iter):
-            logging.info(f"Minimization iteration: {i:02d}")
+            logger.info(f"Minimization iteration: {i:02d}")
             mc = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
             minimizer = Minimizer(mc, min_cfg)
 
@@ -369,11 +381,11 @@ def main(args):
         mc_result = mc_mgr.simulate()
         mc_result.save(output_dir = args.output)
     else:
-        logging.error(f"Mode '{args.mode}' unknown.")
+        logger.error(f"Mode '{args.mode}' unknown.")
 
-    logging.info("========== TIME ============")
-    logging.info(f"The simulation took {stop - start}s.")
-    logging.info("============================")
+    logger.info("========== TIME ============")
+    logger.info(f"The simulation took {stop - start}s.")
+    logger.info("============================")
 
 
 

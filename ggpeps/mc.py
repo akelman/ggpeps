@@ -3,13 +3,13 @@ import ray
 import copy
 import gzip
 import pickle
-import logging
 
 import numpy as np
 import pandas as pd
 
 import ggpeps.utils as utils
 import ggpeps.lattice as lattice
+from ggpeps import logger
 from ggpeps.measurement import Measurement
 
 #################### Monte Carlo Estimator Config ###################
@@ -54,7 +54,7 @@ class MonteCarloEstimatorConfig:
 
     @rng_state.setter
     def rng_state(self, state):
-        logging.error("MonteCarloEstimatorConfig: Do not set the state directly. Use a seed instead.")
+        logger.error("MonteCarloEstimatorConfig: Do not set the state directly. Use a seed instead.")
         self.rng_state = None
         self.seed = None
 
@@ -109,7 +109,7 @@ class MonteCarloManager:
         if self.nrunner > 0:
             #system_cfg_id = ray.put(self.system_cfg)
             reduced_meas_steps = self.mc_cfg.meas_steps // self.nrunner
-            logging.info(f"Starting {self.nrunner} runners with {reduced_meas_steps} measurement steps each (total: {self.nrunner * reduced_meas_steps}).")
+            logger.info(f"Starting {self.nrunner} runners with {reduced_meas_steps} measurement steps each (total: {self.nrunner * reduced_meas_steps}).")
             for i in range(self.nrunner):
                 # Make a copy of the MC config, and change the seed for each runner
                 cfg = copy.deepcopy(self.mc_cfg)
@@ -243,7 +243,7 @@ class MonteCarloEstimator:
         """Warm up phase without measurement"""
         while self.step < self.cfg.warmup_steps:
             if self.step % self.cfg.warmup_log_freq == 0:
-                logging.info(f"Warmup: {self.step}")
+                logger.info(f"Warmup: {self.step}")
             self.update()
             self.step += 1
 
@@ -251,7 +251,7 @@ class MonteCarloEstimator:
         """Meaurement phase phase (with measurement)"""
         while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
             if self.step % self.cfg.run_log_freq == 0:
-                logging.info(f"Run: {self.step}")
+                logger.info(f"Run: {self.step}")
             self.update()
             self.measure()
             self.step += 1
@@ -435,7 +435,7 @@ class MonteCarloEstimator:
         for key in self.obsdict.keys():
             val = self.obsdict[key]
             if val is not None and len(val) > 0:
-                logging.info(f"<{key}>: {self.obsdict[key].mean()}")
+                logger.info(f"<{key}>: {self.obsdict[key].mean()}")
 
     def summary(self):
         """Generate a summary of the simulation in the form of a pandas dataframe

@@ -3,7 +3,6 @@ import re
 import sys
 import gzip
 import pickle
-import logging
 import subprocess  # Start process for git hash
 
 import numpy as np
@@ -17,6 +16,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
 import ggpeps.measurement as meas
+from ggpeps import logger
 
 # Global constants
 paulix = np.array([[0, 1], [1, 0]])
@@ -612,7 +612,7 @@ def rebin_array(a, R):
         N,m,n = a.shape
         dest = np.mean(a[:max_fit].reshape(-1, m, n, R), axis=3)
     else:
-        logging.error("rebin_array not implemented for dimensions greater than 3.")
+        logger.error("rebin_array not implemented for dimensions greater than 3.")
         return a
     return dest
 

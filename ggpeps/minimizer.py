@@ -1,9 +1,11 @@
 import os
 import pickle
-import logging
+
 
 import numpy as np
 from scipy.optimize import minimize
+
+from ggpeps import logger
 
 
 class MinimizerResult:
@@ -63,7 +65,7 @@ class Minimizer():
         elif self.cfg.method in self.supported_methods:
             return self.minimize_scipy()
         else:
-            logging.error(f"Unkown minimization method '{self.cfg.method}'. Aborting...")
+            logger.error(f"Unkown minimization method '{self.cfg.method}'. Aborting...")
             return None
 
     def minimize_custom(self):
@@ -91,13 +93,13 @@ class Minimizer():
             # Check if the maximum of the gradient is smaller than min_grad
             if max_grad_paramvec < abs(self.cfg.min_grad):
                 message = f"Reached convergence: max grad paramvec < {self.cfg.min_grad}"
-                logging.info(message)
+                logger.info(message)
                 self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, True, message)
                 return self.min_result
 
             if self.STOP_AFTER_CURRENT_ITERATION:
                 message = f"Recieved interrupt signal from user. Ending minimization."
-                logging.info(message)
+                logger.info(message)
                 self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, True, message)
                 return self.min_result
 
@@ -108,7 +110,7 @@ class Minimizer():
             self.evaluator.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
 
         message = "Reached maximum number of iterations without convergence."
-        logging.warn(message)
+        logger.warn(message)
         self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, False, message)
         return self.min_result
 
@@ -243,17 +245,17 @@ def print_callback(x, minimizer):
 
     if minimizer.cfg.method == 'CUSTOM':
         # We only have access to the iteration number if we are handling the minimization (via the CUSTOM method)
-        logging.info(f"Iter: {x:03d}, Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}, acceptance prob: {acceptance_prob:.5f}")
+        logger.info(f"Iter: {x:03d}, Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}, acceptance prob: {acceptance_prob:.5f}")
     else: 
-        logging.info(f"Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}, acceptance prob: {acceptance_prob:.6f}")
+        logger.info(f"Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}, acceptance prob: {acceptance_prob:.6f}")
 
-    logging.debug(f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}")
-    logging.debug(f"Parametervec: {paramvec}")
+    logger.debug(f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}")
+    logger.debug(f"Parametervec: {paramvec}")
 
     # If we're at the lowest energy seen so far, log the parameters
     #if current_iter == 0 or energy < lowest_energy:
     #    lowest_energy = energy
-    #    #logging.info(f"New best energy. Parametervec: {paramvec}")   
+    #    #logger.info(f"New best energy. Parametervec: {paramvec}")   
 
     # If python recieves a signal to stop computation gracefully, we catch it here.
     # There have been recent developments within scipy's handling of these callbacks.

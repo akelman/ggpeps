@@ -1,9 +1,9 @@
 import sys
-import logging
 from enum import Enum
 
 import numpy as np
 
+from ggpeps import logger
 
 class Direction(Enum):
     """Enum to capture the direction of a link"""
@@ -85,7 +85,7 @@ class Lattice2D:
         elif dir == Direction.Y:
             return (((ind%(self.nx*self.ny)) // self.ny, (ind%(self.nx*self.ny)) % self.ny),dir)
         else:
-            logging.error("ind2coord_dir: There are only X and Y as directions")
+            logger.error("ind2coord_dir: There are only X and Y as directions")
             return None
 
     def coord2ind_dir(self, coord: tuple, dir: Direction) -> int:
@@ -113,7 +113,7 @@ class Lattice2D:
         elif dir == Direction.Y:
             return self.nx*self.ny*dir.value + self.ny * x + y
         else:
-            logging.error(
+            logger.error(
                 "coord2ind_dir: There are only X and Y as directions", file=sys.stderr)
             return None
 
@@ -166,7 +166,7 @@ class Lattice2D:
                 coord_link = ((x, i), dir)
                 dest.append((coord_link, False))
         else:
-            logging.error(
+            logger.error(
                 "generate_polyakov_loop: There are only X and Y as directions")
             return None
         if use_indices:
