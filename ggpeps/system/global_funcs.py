@@ -264,6 +264,7 @@ def compute_el_grad_vec_jax(system):
     system.cfg.enforce_parameter_conditions(dest_grad)
     return dest_grad
 
+@jit
 def deriv_pfarr_jax(covmat_out_virt, d_covmat_out_virt, pfaval, prefactor, ind):
     res = prefactor * derivative_pfaffian_jax(pfaval, covmat_out_virt[jnp.ix_(ind,ind)], d_covmat_out_virt[jnp.ix_(ind,ind)]) 
     return res
