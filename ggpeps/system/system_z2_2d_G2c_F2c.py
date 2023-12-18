@@ -92,7 +92,6 @@ class Z2System2D_G2C_F2C(System2DBase):
         indices_layer_fermionic = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)]]
         idxarr_lay_pg = self.get_pfaffian_arrays(indices_layer_pg, prefactors)
         idxarr_lay_fermionic = self.get_pfaffian_arrays(indices_layer_fermionic, prefactors) 
-        idxarr_lay_pg = idxarr_lay_fermionic # test using unmixed projectors for all layers
         self.idxarr_vec = [idxarr_lay_pg]*self.cfg.num_pg_layer + [idxarr_lay_fermionic]*self.cfg.num_fermionic_layer
         self.el_overall_factors = [-1/16]*self.cfg.nlayer # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
@@ -313,9 +312,8 @@ class Z2System2D_G2C_F2C(System2DBase):
                                                 [ 0.,  0.,  0.,  0.,  0., -0.,  0., -1.],
                                                 [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.],
                                                 [ 0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.]])
-        
+
         return [dest_mixed]*self.cfg.num_pg_layer + [dest_unmixed]*self.cfg.num_fermionic_layer
-        return [dest_unmixed]*self.cfg.nlayer # -- test using unmixed projectors for all layers
 
     #Gauging
 
