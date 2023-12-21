@@ -125,7 +125,7 @@ def compute_el_grad_vec_numpy(system):
                     
                     # Summand with derivative of norms
                     trace_def = system.compute_grad_over_norm(symbol, layerind)
-                    trace_mod = compute_grad_over_norm(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, system.mat_d_mod_inv_vec[layerind])
+                    trace_mod = compute_grad_over_norm_numpy(gamma_in_sys_mod, diff_d_inv_gamma_inv, d_mat_d, system.mat_d_mod_inv_vec[layerind])
                     # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
                     d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
                     # Scale to system size
