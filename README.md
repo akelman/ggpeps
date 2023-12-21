@@ -13,7 +13,7 @@ You can create the environment in a folder of your choice.
 For the rest of the tutorial, we assume it to be in `~/.pyenv/`
 ```
 cd ~/.pyenv
-python -m venv gaussiaenv
+python -m venv gaussianenv
 ```
 Assuming you are using bash or zsh, you can activate the environment with `source ~/.pyenv/gaussianenv/bin/activate`.
 Upon activation, you will notice that your prompt changes.
@@ -31,7 +31,9 @@ Cloning via SSH works only if you have added a (public) SSH key to the repositor
 
 3. Preparation of the environment  
 For the next step, please navigate into the repo that you just downloaded and activate the empty environment that we created in step 1.
-In order to install all required packages for the simulation, execute
+If you intend to be able to use GPUs, see the note below.
+
+To install all required packages for the simulation, execute
 ```
 pip install -r requirements.txt
 ```
@@ -46,10 +48,16 @@ If you want to make the change persistent, i.e. it remains after closing the ter
 
 ### Installation with GPUs
 JAX is the library we use for running on GPUs. JAX must be installed wth jaxlib and connected to the correct versions of CUDA. The versions required will depend on what's available on a given cluster.
-TODO: fill in details
+
+First, purge any loaded modules, with
+`module purge`. Then load the appropriate modules for `python` and `cuda`. To see the available modules, run `module avail`, to load a module run `module load <module>`, and to see a list of loaded modules run `module list`.
+
+Once this is done, create and activate a virtual environment. Before installing the requirements, run `pip install "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html`, which will install JAX and connect it to the appropriate version of CUDA. Then install the remaining requirements.
+
+TODO: check if the JAX/CUDA installation works with requirements.txt.
 
 
-## Structure for the Code
+## Structure of the Code
 
 The repository is split into two main parts: the package `ggpeps` and utility scripts in the main folder.
 
@@ -77,7 +85,7 @@ TODO: Fill
 
 The script `manager.py` is the central point for data generation. It supports different modes: `eval`, and `min` where both can be evaluated with `exact` and `mc`.
 
-All modes are writing log files to disk and to console. 
+All modes write log files to disk and to console. 
 The files are named according to the parameters that were provided via the commandline. 
 In addition to the progress of the computation, they also store a git hash which enables the user to identify which version of the code was used to generate particular data.
 
@@ -130,7 +138,7 @@ python manager.py minexact 2 --method BFGS
 
 For an overview of all command line parameters call `python manager.py --help`.
 
-## Data Analysis/ Data Exploration
+## Data Analysis / Exploration
 
 The data from different modes is stored in the form of pickled pandas dataframes.
 
@@ -177,3 +185,9 @@ python -m unittest tests/test_lattice.py
 - Add system in 3d
 - Add option for DMRG like cylinder compression to obtain transfer matrices
 - Make data file optional?
+
+## Papers
+The following is a list of papers that have used (versions of) this code.
+1. Emonts et al, Finding the ground state of a lattice gauge theory with fermionic tensor networks: A $2+1\mathrm{D}$ ${\mathbb{Z}}_{2}$ demonstration, PRD vol 107 (2023).
+
+There are also some papers that used a previous C++ implementation of this code.
