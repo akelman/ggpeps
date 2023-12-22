@@ -9,7 +9,6 @@ import sympy
 import numpy as np
 from pfapack import pfaffian as pf
 
-import ggpeps
 from ggpeps import logger
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
@@ -368,6 +367,7 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    ## MOVE TO GLOBAL
     def d_gamma_out_symbolvec(self, layer:int) -> np.ndarray:
         """Return a vector containing the derivatives of gamma_out (for the given layer) for each symbol.
 
@@ -796,6 +796,7 @@ class System2DBase(ABC):
             print("gamma_maj_sys_deriv: Invalid variable name", sys.stderr)
         return None
 
+    ## MOVE TO GLOBAL
     def compute_grad_norm_vec(self) -> np.ndarray:
         """Compute the gradient of the norm for all layers with respect to all parameters.
         The parameter order is [[dt1, dy1, dz1...],[dt2,dy2,dz2...]...]
@@ -811,6 +812,7 @@ class System2DBase(ABC):
         self.cfg.enforce_parameter_conditions(dest)
         return dest
 
+    ## MOVE TO GLOBAL
     def compute_grad_norm(self, layerind: int) -> np.ndarray:
         """Compute the gradient of the norm for a given layer wrt to all parameters.
         The parameter order is the same as in the symbolvec
@@ -852,6 +854,7 @@ class System2DBase(ABC):
         """ Setter of the weight """
         self._weight = val
 
+    ## MOVE TO GLOBAL
     def calculate_weight_attempt(self, link_ind: int, theta: float, all_factors=False):
         """Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
@@ -940,6 +943,7 @@ class System2DBase(ABC):
             cumval += 0.5 * detval
         return cumval
 
+    ## MOVE TO GLOBAL
     def compute_grad_over_norm(self, var: sympy.Symbol, layerind: int) -> float:
         """Compute the quotient of derivative of the norm over the norm itself.
         We can avoid a lot of factors by computing the quotient directly.
@@ -1045,6 +1049,7 @@ class System2DBase(ABC):
                                     offset:offset + n_up] 
         return -(update_mat - gamma_in_old)
 
+    ## WILL NEED TO BE ADAPTED FOR JAX
     def invalidate_gauge_update(self):
         """Reset the values of computed quantitities to avoid spillover from previous computations.
         """
@@ -1089,6 +1094,7 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    ## MOVE TO GLOBAL
     def _compute_el_energy_op_vec(self, use_trans_inv:bool=True):
         """Computation of the electric energy.
         Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
@@ -1173,6 +1179,7 @@ class System2DBase(ABC):
         
         return np.asarray(dest)
     
+    ## MOVE TO GLOBAL - DONE
     def _compute_el_grad_vec(self, use_trans_inv:bool=True):
         """Computation of the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
@@ -1427,6 +1434,7 @@ class System2DBase(ABC):
                 theta_sum += self.gaugefieldvec[ind]
         return np.exp(1.j*theta_sum)
 
+    ## MOVE TO GLOBAL
     def compute_ferm_cov(self, layer:int) -> np.ndarray:
         """Compute the covariance matrix of the fermions in the system for the given layer
 
