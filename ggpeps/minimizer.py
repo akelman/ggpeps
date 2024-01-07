@@ -1,11 +1,14 @@
 import os
 import pickle
 
-
 import numpy as np
 from scipy.optimize import minimize
 
 from ggpeps import logger
+
+
+def paramvec2key(paramvec: np.ndarray):
+    return paramvec.data.tobytes()
 
 
 class MinimizerResult:
@@ -58,6 +61,8 @@ class Minimizer():
         self.last_result = None
         self.min_result = None
 
+        # Cache for the energy values and gradients
+        self.cache = {'energy': {}, 'energy_grad': {}}
 
     def minimize(self):
         if self.cfg.method == "CUSTOM":
@@ -119,6 +124,11 @@ class Minimizer():
         
         # Energy wrapper
         def energy_wrapper(paramvec):
+            # Check if value is stored in cache (e.g. from previous minimization)
+            key = paramvec2key(paramvec)
+            if key in self.cache['energy']:
+                return self.cache['energy'][key]
+
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = paramvec
@@ -129,10 +139,19 @@ class Minimizer():
                 energy = self.last_result.obsdict["energy"]
             else:
                 energy = self.last_result.get_obs_mean("energy")
+            
+            if key not in self.cache['energy']:
+                self.cache['energy'][key] = energy
+
             return energy
         
         # Jacobian wrapper
         def gradient_wrapper(paramvec):
+            # Check if value is stored in cache (e.g. from previous minimization)
+            key = paramvec2key(paramvec)
+            if key in self.cache['energy_grad']:
+                return self.cache['energy_grad'][key]
+
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = paramvec
@@ -144,6 +163,10 @@ class Minimizer():
                 parametergrad = self.last_result.obsdict["energy_grad"]
             else:
                 parametergrad = self.energy_gradient_mc(self.last_result)
+            
+            if key not in self.cache['energy']:
+                self.cache['energy_grad'][key] = parametergrad
+
             return parametergrad.reshape((-1))
 
         # Use the random initialization from the system.initialize as first guess.
