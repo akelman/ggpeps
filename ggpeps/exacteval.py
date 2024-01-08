@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 import ggpeps.lattice as lattice
-from ggpeps import logger
+
 
 class ExactEvaluatorManager:
     """Wrapper Class for the ExactEvaluator.
