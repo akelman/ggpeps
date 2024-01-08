@@ -5,7 +5,8 @@ from ggpeps import lattice
 from ggpeps.lattice import Direction
 from ggpeps import system
 from ggpeps import utils
-from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloEstimator, MonteCarloManager
+from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloEstimator
+from ggpeps import evaluator
 from ggpeps.utils import compare_array_elementwise
 
 class TestZ2SystemMethods(unittest.TestCase):
@@ -750,7 +751,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         mc_config.warmup_steps = 10
         mc_config.meas_steps = 10
         mc_config.binsize = 1
-        mc_mgr = MonteCarloManager(mc_config, system.Z2System2D, system_cfg, 0)
+        mc_mgr = evaluator.EvaluatorManager(system.Z2System2D, system_cfg, mc_config, 0)
         mc_result = mc_mgr.simulate()
         el_energy = mc_result.get_obs_mean("el_energy")
         self.assertAlmostEqual(el_energy, 0.0)

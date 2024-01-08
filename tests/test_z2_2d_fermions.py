@@ -8,7 +8,7 @@ from ggpeps import lattice
 from ggpeps import system, exacteval
 
 from ggpeps.lattice import Direction
-from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloEstimator, MonteCarloManager
+from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloEstimator
 from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D_G2C_F2C
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 from ggpeps.utils import compare_array_elementwise

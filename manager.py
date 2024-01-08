@@ -23,10 +23,10 @@ from ggpeps.system import Z2System2D_G2C_F4C_Config, Z2System2D_G2C_F4C
 from ggpeps.system import Z2System2D_8C_Config, Z2System2D_8C
 
 from ggpeps import lattice as lat
-from ggpeps import utils, exacteval
+from ggpeps import utils, exacteval, evaluator
 from ggpeps.measurement import Measurement
 from ggpeps.minimizer import Minimizer, MinimizerConfig
-from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloManager
+from ggpeps.mc import MonteCarloEstimatorConfig
 
 
 # set up to allow execution to end gracefully if process is signalled appropriately
@@ -294,7 +294,7 @@ def main(args):
     if args.mode == "eval-mc":
         # Evaluate observables for a given set of parameters with Monte Carlo
         mc_config.minimizer_mode = args.compute_grads
-        mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
+        mc_mgr = evaluator.EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
         start = timer()
         mc_result = mc_mgr.simulate()
         stop = timer()
@@ -308,7 +308,8 @@ def main(args):
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
 
         mc_config.minimizer_mode = True
-        mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
+        mc_mgr = evaluator.EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+        
         # Set the parameters of the minimizer according to the command line
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
@@ -337,7 +338,7 @@ def main(args):
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
 
         start = timer()
-        ex_mgr = exacteval.ExactEvaluatorManager(system_type, system_cfg)
+        ex_mgr = evaluator.EvaluatorManager(system_type, system_cfg, None, args.nrunner)
 
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
