@@ -7,24 +7,6 @@ import pandas as pd
 import ggpeps.lattice as lattice
 
 
-class ExactEvaluatorManager:
-    """Wrapper Class for the ExactEvaluator.
-    This matches the structure of the MonteCarloManager and makes the two classes freely interchangable.
-    """
-    def __init__(self, system_cls, system_cfg):
-        self.system_cfg = system_cfg
-        self.system_cls = system_cls
-
-    def simulate(self):
-        """Start the simulation of the runners.
-        The implementation currently only supports a single runner."""
-        system = self.system_cls(self.system_cfg)
-        system.initialize()
-        exact_eval = ExactEvaluator(system)
-        exact_eval.evaluate()
-        return exact_eval
-
-
 class ExactEvaluator():
     """An ExactEvaluator exactly evaluates the expectation value of an observable by iterating over all possible states of the gauge field.
     """
