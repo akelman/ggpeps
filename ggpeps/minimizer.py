@@ -87,7 +87,7 @@ class Minimizer():
                 grad_paramvec = result.obsdict["energy_grad"]
             else:
                 energy = result.get_obs_mean("energy")
-                grad_paramvec = self.energy_gradient_mc(result)
+                grad_paramvec = result.get_obs_mean("energy_grad")
             
             max_grad_paramvec = np.max(np.abs(grad_paramvec))
             self.last_result = result
@@ -162,7 +162,7 @@ class Minimizer():
             if self.use_exact:
                 parametergrad = self.last_result.obsdict["energy_grad"]
             else:
-                parametergrad = self.energy_gradient_mc(self.last_result)
+                parametergrad = self.last_result.get_obs_mean("energy_grad")
             
             if key not in self.cache['energy']:
                 self.cache['energy_grad'][key] = parametergrad
@@ -187,44 +187,6 @@ class Minimizer():
         dest = MinimizerResult(paramvec, energygrad, self.cfg.method, energy, converged, message)
         self.min_result = dest
         return dest
-
-    def energy_gradient_mc(self,mc):
-        # Compute the energy gradient from the MC results
-        meas_grad_over_norm = mc.obsdict["grad_norm"]
-
-        # Gradient of the magnetic energy
-        meas_mag_energy_op = mc.obsdict["mag_energy_op"]
-        prod_mag_energy_grad = meas_mag_energy_op * meas_grad_over_norm
-        mag_energy_op_grad = prod_mag_energy_grad.mean() - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
-        # Add the constants back into the expression of the magnetic energy
-        mag_energy_grad = - 2 * mc.system.cfg.g_mag * mag_energy_op_grad
-
-        # Gradient of the electric energy
-        meas_el_energy_op = mc.obsdict["el_energy_op"]
-        meas_el_energy_op_grad = mc.obsdict["el_energy_op_grad"]
-        prod_el_energy_grad = meas_el_energy_op * meas_grad_over_norm
-        el_energy_op_grad = prod_el_energy_grad.mean() - meas_el_energy_op.mean()*meas_grad_over_norm.mean() + meas_el_energy_op_grad.mean()
-        # Add the constants back into the expression of the electric energy
-        el_energy_grad = - 2 * mc.system.cfg.g_el * el_energy_op_grad
-
-        # Gradient of the interaction energy
-        meas_int_energy_op = mc.obsdict["int_energy_op"]
-        meas_int_energy_op_grad = mc.obsdict["int_energy_op_grad"]
-        prod_int_energy_grad = meas_int_energy_op * meas_grad_over_norm
-        int_energy_op_grad = prod_int_energy_grad.mean() - meas_int_energy_op.mean()*meas_grad_over_norm.mean() + meas_int_energy_op_grad.mean()
-        # Add the constants back into the expression of the interaction energy
-        int_energy_grad = mc.system.cfg.g_int * int_energy_op_grad
-
-        # Gradient of the mass energy
-        meas_mass_energy_op = mc.obsdict["mass_energy_op"]
-        meas_mass_energy_op_grad = mc.obsdict["mass_energy_op_grad"]
-        prod_mass_energy_grad = meas_mass_energy_op * meas_grad_over_norm
-        mass_energy_op_grad = prod_mass_energy_grad.mean() - meas_mass_energy_op.mean()*meas_grad_over_norm.mean() + meas_mass_energy_op_grad.mean()
-        # Add the constants back into the expression of the mass energy
-        mass_energy_grad = mc.system.cfg.g_mass * mass_energy_op_grad
-
-        return mag_energy_grad + el_energy_grad + int_energy_grad + mass_energy_grad
-
 
     def save(self, output_dir = "."):
         if self.min_result is not None:
@@ -258,7 +220,7 @@ def print_callback(x, minimizer):
         acceptance_prob = res.get_obs_mean("acceptance_prob")
         energy = res.get_obs_mean("energy")
         number_per_site = res.get_obs_mean("number_per_site")
-        grad_paramvec = minimizer.energy_gradient_mc(res)
+        grad_paramvec = res.get_obs_mean("energy_grad")
 
         mass_energy = res.get_obs_mean("mass_energy")
         int_energy = res.get_obs_mean("int_energy")

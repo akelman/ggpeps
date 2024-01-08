@@ -197,6 +197,7 @@ class MonteCarloEstimator:
             self.obsdict["int_energy_op_grad"] = Measurement("Interaction Energy Operator Gradient", binsize)
             self.obsdict["mass_energy_op_grad"] = Measurement("Mass Energy Operator Gradient", binsize)
             self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm", binsize)
+            self.obsdict["energy_grad"] = Measurement("Gradient of Total Energy", binsize)
         #self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
 
         # Wilson loops (of various sizes)
@@ -226,6 +227,13 @@ class MonteCarloEstimator:
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
         self.obsdict["number_per_site"].append(self.system.number_per_site)
 
+        if self.cfg.minimizer_mode:
+            self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
+            self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
+            self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
+            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
+            self.obsdict["energy_grad"].append(self.energy_gradient_mc())
+        
         # Wilson loops
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
         loops = self.system.cfg.lattice.generate_all_wilson_loops((0,0), sizes)
@@ -233,11 +241,42 @@ class MonteCarloEstimator:
             loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
 
-        if self.cfg.minimizer_mode:
-            self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
-            self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
-            self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
-            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
+    def energy_gradient_mc(self):
+        # Compute the energy gradient from the MC results
+        meas_grad_over_norm = self.obsdict["grad_norm"]
+
+        # Gradient of the magnetic energy
+        meas_mag_energy_op = self.obsdict["mag_energy_op"]
+        prod_mag_energy_grad = meas_mag_energy_op * meas_grad_over_norm
+        mag_energy_op_grad = prod_mag_energy_grad.mean() - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
+        # Add the constants back into the expression of the magnetic energy
+        mag_energy_grad = - 2 * self.system.cfg.g_mag * mag_energy_op_grad
+
+        # Gradient of the electric energy
+        meas_el_energy_op = self.obsdict["el_energy_op"]
+        meas_el_energy_op_grad = self.obsdict["el_energy_op_grad"]
+        prod_el_energy_grad = meas_el_energy_op * meas_grad_over_norm
+        el_energy_op_grad = prod_el_energy_grad.mean() - meas_el_energy_op.mean()*meas_grad_over_norm.mean() + meas_el_energy_op_grad.mean()
+        # Add the constants back into the expression of the electric energy
+        el_energy_grad = - 2 * self.system.cfg.g_el * el_energy_op_grad
+
+        # Gradient of the interaction energy
+        meas_int_energy_op = self.obsdict["int_energy_op"]
+        meas_int_energy_op_grad = self.obsdict["int_energy_op_grad"]
+        prod_int_energy_grad = meas_int_energy_op * meas_grad_over_norm
+        int_energy_op_grad = prod_int_energy_grad.mean() - meas_int_energy_op.mean()*meas_grad_over_norm.mean() + meas_int_energy_op_grad.mean()
+        # Add the constants back into the expression of the interaction energy
+        int_energy_grad = self.system.cfg.g_int * int_energy_op_grad
+
+        # Gradient of the mass energy
+        meas_mass_energy_op = self.obsdict["mass_energy_op"]
+        meas_mass_energy_op_grad = self.obsdict["mass_energy_op_grad"]
+        prod_mass_energy_grad = meas_mass_energy_op * meas_grad_over_norm
+        mass_energy_op_grad = prod_mass_energy_grad.mean() - meas_mass_energy_op.mean()*meas_grad_over_norm.mean() + meas_mass_energy_op_grad.mean()
+        # Add the constants back into the expression of the mass energy
+        mass_energy_grad = self.system.cfg.g_mass * mass_energy_op_grad
+
+        return mag_energy_grad + el_energy_grad + int_energy_grad + mass_energy_grad
 
     def warmup(self):
         """Warm up phase without measurement"""
