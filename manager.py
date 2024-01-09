@@ -354,6 +354,10 @@ def main(args):
         logger.info(result)
         minimizer.save(output_dir = args.output)
     elif args.mode == "minmult-mc":
+        """This mode has not been used in a while and might not work anymore.
+        The port variable is intended for use with ray, but this does not currently work with the EvaluatorManager.
+        It's possible the the port workaround is unneeded with current versions of ray."""
+
         # Optimize the parameters with multiple runs (useful if BFGS has problems with the Hessian)
 
         # Set the parameters of the minimizer according to the command line
@@ -368,7 +372,7 @@ def main(args):
         mc_config.minimizer_mode = True
         for i in range(args.minmult_iter):
             logger.info(f"Minimization iteration: {i:02d}")
-            mc = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
+            mc = evaluator.EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port) 
             minimizer = Minimizer(mc, min_cfg)
 
             resultvec.append(minimizer.minimize())
@@ -378,7 +382,7 @@ def main(args):
         minimizer.save(output_dir = args.output)
         # We run a final iteration of the MC simulation with all observables
         mc_config.minimizer_mode = False
-        mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
+        mc_mgr = evaluator.EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
         mc_result = mc_mgr.simulate()
         mc_result.save(output_dir = args.output)
     else:
