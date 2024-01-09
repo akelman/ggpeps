@@ -82,12 +82,8 @@ class Minimizer():
                 self.last_paramvec = np.copy(paramvec)
                 result = self.evaluator.simulate()
 
-            if self.use_exact:
-                energy = result.obsdict["energy"]
-                grad_paramvec = result.obsdict["energy_grad"]
-            else:
-                energy = result.get_obs_mean("energy")
-                grad_paramvec = result.get_obs_mean("energy_grad")
+            energy = result.get_obs_mean("energy")
+            grad_paramvec = result.get_obs_mean("energy_grad")
             
             max_grad_paramvec = np.max(np.abs(grad_paramvec))
             self.last_result = result
@@ -135,10 +131,7 @@ class Minimizer():
                 self.evaluator.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator.system_cfg._nparams))
                 self.last_result = self.evaluator.simulate()
             
-            if self.use_exact:
-                energy = self.last_result.obsdict["energy"]
-            else:
-                energy = self.last_result.get_obs_mean("energy")
+            energy = self.last_result.get_obs_mean("energy")
             
             if key not in self.cache['energy']:
                 self.cache['energy'][key] = energy
@@ -159,10 +152,7 @@ class Minimizer():
                 self.evaluator.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator.system_cfg._nparams))
                 self.last_result = self.evaluator.simulate()
             
-            if self.use_exact:
-                parametergrad = self.last_result.obsdict["energy_grad"]
-            else:
-                parametergrad = self.last_result.get_obs_mean("energy_grad")
+            parametergrad = self.last_result.get_obs_mean("energy_grad")
             
             if key not in self.cache['energy']:
                 self.cache['energy_grad'][key] = parametergrad
@@ -208,24 +198,17 @@ def print_callback(x, minimizer):
     
     if minimizer.use_exact:
         acceptance_prob = np.nan
-        energy = res.obsdict["energy"]
-        number_per_site = res.obsdict["number_per_site"]
-        grad_paramvec = res.obsdict["energy_grad"]
-
-        mass_energy = res.obsdict["mass_energy"]
-        int_energy = res.obsdict["int_energy"]
-        el_energy = res.obsdict["el_energy"]
-        mag_energy = res.obsdict["mag_energy"]
     else:
         acceptance_prob = res.get_obs_mean("acceptance_prob")
-        energy = res.get_obs_mean("energy")
-        number_per_site = res.get_obs_mean("number_per_site")
-        grad_paramvec = res.get_obs_mean("energy_grad")
+    
+    energy = res.get_obs_mean("energy")
+    number_per_site = res.get_obs_mean("number_per_site")
+    grad_paramvec = res.get_obs_mean("energy_grad")
 
-        mass_energy = res.get_obs_mean("mass_energy")
-        int_energy = res.get_obs_mean("int_energy")
-        el_energy = res.get_obs_mean("el_energy")
-        mag_energy = res.get_obs_mean("mag_energy")
+    mass_energy = res.get_obs_mean("mass_energy")
+    int_energy = res.get_obs_mean("int_energy")
+    el_energy = res.get_obs_mean("el_energy")
+    mag_energy = res.get_obs_mean("mag_energy")
     max_grad_paramvec = np.max(np.abs(grad_paramvec))
 
     if minimizer.cfg.method == 'CUSTOM':

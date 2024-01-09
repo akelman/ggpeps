@@ -14,12 +14,12 @@ class ExactEvaluator():
         self.system = system
         self.obsdict = None
 
-    def compute_expval(self, obs, normvec):
+    def compute_expval(self, obs: np.ndarray, normvec: np.ndarray):
         """Compute the expectation value of an observable.
 
         Args:
-            obs (np.array): Measurement values of an observables for different gauge field configurations
-            normvec (np.array): Values of the norm of <Psi(G)|Psi(G)> for different gauge field configurations
+            obs (np.ndarray): Measurement values of an observables for different gauge field configurations
+            normvec (np.ndarray): Values of the norm of <Psi(G)|Psi(G)> for different gauge field configurations
 
         Returns:
             _type_: _description_
@@ -33,6 +33,10 @@ class ExactEvaluator():
             expval = np.sum(obs*normvec)
         return expval/normalization
 
+    def get_obs_mean(self, obs: str):
+        """Return expectation value of an observable. 
+        Use this function to match the interface of the MonteCarloEvaluator."""
+        return self.obsdict[obs]
 
     def evaluate(self):
         """Main evaluation function of ExactEvaluator.
