@@ -197,7 +197,7 @@ def print_callback(x, minimizer):
     paramvec = minimizer.evaluator.system_cfg.paramvec
     
     if minimizer.use_exact:
-        acceptance_prob = np.nan
+        acceptance_prob = np.nan # acceptance_prob is undefined for exact contraction
     else:
         acceptance_prob = res.get_obs_mean("acceptance_prob")
     
