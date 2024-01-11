@@ -7,9 +7,43 @@ from scipy.optimize import minimize
 from ggpeps import logger
 
 
+####################### Caching #######################
+
 def paramvec2key(paramvec: np.ndarray):
     return paramvec.data.tobytes()
 
+def key2paramvec(key: bytes):
+    return np.frombuffer(key)
+
+def add_to_cache(paramvec: np.ndarray, val: float, cache: dict, obs: str, cache_file: str):
+    key = paramvec2key(paramvec)
+    obs_cache = cache[obs]
+    obs_cache[key] = val
+
+    #logger.debug(f"Added {obs} to cache for paramvec {paramvec}")
+    if len(obs_cache) > 1000: # 1000 is an arbitrary threshold
+        logger.warn(f"Cache for obs {obs} is large.")
+
+    # Save to pickle file
+    with open(cache_file, "wb") as outfile:
+        pickle.dump(cache, outfile)
+
+def load_from_local_cache(paramvec: np.ndarray, cache: dict, obs: str):
+    obs_cache = cache[obs]
+    for key in obs_cache.keys():
+        if np.allclose(key2paramvec(key), paramvec):
+            return obs_cache[key]
+    return None
+
+def load_file_cache(cache_file: str):
+    if os.path.exists(cache_file):
+        with open(cache_file, "rb") as infile:
+            return pickle.load(infile)
+    else:
+        return {'energy': {}, 'energy_grad': {}}
+
+
+####################### Minimizer #######################
 
 class MinimizerResult:
     def __init__(self, paramvec, energygrad, method, value, converged, message):
@@ -62,7 +96,9 @@ class Minimizer():
         self.min_result = None
 
         # Cache for the energy values and gradients
-        self.cache = {'energy': {}, 'energy_grad': {}}
+        self.use_cache = True
+        self.cache_file = r'cache.pkl'
+        self.cache = load_file_cache(self.cache_file)
 
     def minimize(self):
         if self.cfg.method == "CUSTOM":
@@ -121,9 +157,9 @@ class Minimizer():
         # Energy wrapper
         def energy_wrapper(paramvec):
             # Check if value is stored in cache (e.g. from previous minimization)
-            key = paramvec2key(paramvec)
-            if key in self.cache['energy']:
-                return self.cache['energy'][key]
+            energy = load_from_local_cache(paramvec, self.cache, 'energy')
+            if energy is not None:
+                return energy
 
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
@@ -131,19 +167,27 @@ class Minimizer():
                 self.evaluator.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator.system_cfg._nparams))
                 self.last_result = self.evaluator.simulate()
             
-            energy = self.last_result.get_obs_mean("energy")
-            
-            if key not in self.cache['energy']:
-                self.cache['energy'][key] = energy
+            energy = self.last_result.get_obs_mean('energy')
+            add_to_cache(paramvec, energy, self.cache, 'energy', self.cache_file)
 
             return energy
         
         # Jacobian wrapper
         def gradient_wrapper(paramvec):
+            """Wrapper for the gradient of the total energy
+
+            Args:
+                paramvec (np.ndarray): parameters, arranged as a 1D array
+
+            Returns:
+                gradients (np.ndarray): gradients of the total energy, arranged as a 1D array
+            """
+
             # Check if value is stored in cache (e.g. from previous minimization)
-            key = paramvec2key(paramvec)
-            if key in self.cache['energy_grad']:
-                return self.cache['energy_grad'][key]
+            parametergrad = load_from_local_cache(paramvec, self.cache, 'energy_grad')
+            if parametergrad is not None:
+                logger.debug('Found cached value for energy_grad')
+                return parametergrad
 
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
@@ -152,12 +196,11 @@ class Minimizer():
                 self.evaluator.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator.system_cfg._nparams))
                 self.last_result = self.evaluator.simulate()
             
-            parametergrad = self.last_result.get_obs_mean("energy_grad")
-            
-            if key not in self.cache['energy']:
-                self.cache['energy_grad'][key] = parametergrad
+            parametergrad = self.last_result.get_obs_mean('energy_grad')
+            parametergrad = parametergrad.reshape((-1))
+            add_to_cache(paramvec, parametergrad, self.cache, 'energy_grad', self.cache_file)
 
-            return parametergrad.reshape((-1))
+            return parametergrad
 
         # Use the random initialization from the system.initialize as first guess.
         # We might want to change this later.
@@ -195,6 +238,11 @@ def print_callback(x, minimizer):
     
     res = minimizer.last_result
     paramvec = minimizer.evaluator.system_cfg.paramvec
+
+    # If caching is on, the first time we call this function, the last_result will be None
+    if res is None:
+        logger.info("Callback message due to caching. The last_result is None.")
+        return
     
     if minimizer.use_exact:
         acceptance_prob = np.nan # acceptance_prob is undefined for exact contraction
