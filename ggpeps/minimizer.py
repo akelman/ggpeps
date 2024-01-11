@@ -40,7 +40,9 @@ class Cache:
                 return obs_cache[key]
         return None
 
-    def load_file_cache(self, cache_file: str):
+    def load_cache_file(self, cache_file: str):
+        # TODO: once we include other objects in the cache,
+        #       this function should check that cached objects have the same configs
         if os.path.exists(cache_file):
             with open(cache_file, "rb") as infile:
                 self.cache_data = pickle.load(infile)
@@ -101,7 +103,7 @@ class Minimizer():
         # Cache for the energy values and gradients
         self.use_cache: bool = True
         self.cache = Cache()
-        self.cache.load_file_cache(self.cache.cache_file)
+        self.cache.load_cache_file(self.cache.cache_file)
 
     def minimize(self):
         if self.cfg.method == "CUSTOM":
