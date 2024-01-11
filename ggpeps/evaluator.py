@@ -81,13 +81,13 @@ class EvaluatorManager:
         raise ValueError(f"Unknown evaluator type {self.type}")
     
     def collect(self, resultvec):
-        """Unify the results of the different Monte Carlo runners
+        """Unify the results of multiple runners
 
         Args:
-            resultvec (list): List of MonteCarloEstimators from the different runners
+            resultvec (list): List of Estimators from the different runners
 
         Returns:
-            MonteCarloEstimator: Monte Carlo estimator with information from all runners
+            Estimator: estimator with information from all runners
         """
         system = self.system_cls(self.system_cfg)
         dest = MonteCarloEstimator(self.mc_cfg, system)
@@ -98,3 +98,44 @@ class EvaluatorManager:
         else:
             dest = resultvec[0]
         return dest
+
+
+# This is not yet used, but should be the parent class of ExactEvaluator and MonteCarloEstimator
+class Evaluator(ABC):
+    def __init__(self, system, cfg):
+        self.system = system
+        self.obsdict = None
+        self.cfg = cfg
+        self.type = None # exact or mc
+
+    @abstractmethod
+    def simulate(self) -> dict:
+        """Simulate the system and return the results as a dictionary of observables
+
+        Raises:
+            NotImplementedError: _description_
+
+        Returns:
+            dict: Dictionary of observables
+                  Each key-val pair is of the form (obs: List) where List is a list of values for the observable for the simulated gauge configurations
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+    
+    def compute_expval(self, obs: np.ndarray, normvec: np.ndarray):
+        """Compute the expectation value of an observable.
+
+        Args:
+            obs (np.ndarray): Measurement values of an observables for different gauge field configurations
+            normvec (np.ndarray): Values of the norm of <Psi(G)|Psi(G)> for different gauge field configurations
+
+        Returns:
+            _type_: _description_
+        """
+        normalization = np.sum(normvec)
+        if len(obs.shape) > 1:
+            # We have to treat the gradients differently as they are multi-dimensional observables
+            prod = obs * normvec
+            expval = np.transpose(np.sum(prod, axis=2))
+        else:
+            expval = np.sum(obs*normvec)
+        return expval/normalization
