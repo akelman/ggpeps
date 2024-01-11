@@ -4,28 +4,27 @@ from abc import ABC, abstractmethod
 import ray
 import copy
 import numpy as np
-import pandas as pd
 
 from ggpeps import utils
 from ggpeps import logger
 from ggpeps.mc import MonteCarloEstimator, run_mc
 from ggpeps.exacteval import ExactEvaluator
 from ggpeps.mc import MonteCarloEstimatorConfig
-#from ggpeps.system import System2DBase, Config2DBase
+from ggpeps.system import SystemType, SystemConfigType
 
 
 class EvaluatorManager:
     """The EvaluatorManager allows the execution of a simulation with multiple cores.
     The parallelization is performed with ray; currently this is only supported for Monte Carlo (not Exact Contraction).
 
-    If the simulation is distributed across N runners, each runner performs the full warm-up but only 1/N of the total measurement steps.
+    If an MC simulation is distributed across N runners, each runner performs the full warm-up but only 1/N of the total measurement steps.
     
     This is the general interface for simulations that is used in the manager and minimizer.
     """
 
     def __init__(self, 
-                 system_cls, #: System2DBase, 
-                 system_cfg, #: Config2DBase,
+                 system_cls: SystemType,
+                 system_cfg: SystemConfigType,
                  mc_cfg: Union[MonteCarloEstimatorConfig, None],
                  nrunner: int):
         
