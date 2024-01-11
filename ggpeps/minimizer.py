@@ -9,38 +9,42 @@ from ggpeps import logger
 
 ####################### Caching #######################
 
-def paramvec2key(paramvec: np.ndarray):
-    return paramvec.data.tobytes()
+class Cache:
+    def __init__(self, cache_file: str = 'cache.pkl'):
+        self.cache_file: str = cache_file
+        self.cache_data: dict = {'energy': {}, 'energy_grad': {}}
 
-def key2paramvec(key: bytes):
-    return np.frombuffer(key)
+    def paramvec2key(self, paramvec: np.ndarray):
+        return paramvec.data.tobytes()
 
-def add_to_cache(paramvec: np.ndarray, val: float, cache: dict, obs: str, cache_file: str):
-    key = paramvec2key(paramvec)
-    obs_cache = cache[obs]
-    obs_cache[key] = val
+    def key2paramvec(self, key: bytes):
+        return np.frombuffer(key)
 
-    #logger.debug(f"Added {obs} to cache for paramvec {paramvec}")
-    if len(obs_cache) > 1000: # 1000 is an arbitrary threshold
-        logger.warn(f"Cache for obs {obs} is large.")
+    def add_to_cache(self, paramvec: np.ndarray, obs: str, val: float):
+        key = self.paramvec2key(paramvec)
+        obs_cache = self.cache_data[obs]
+        obs_cache[key] = val
 
-    # Save to pickle file
-    with open(cache_file, "wb") as outfile:
-        pickle.dump(cache, outfile)
+        #logger.debug(f"Added {obs} to cache for paramvec {paramvec}")
+        if len(obs_cache) > 1000: # 1000 is an arbitrary threshold
+            logger.warn(f"Cache for obs {obs} is large.")
 
-def load_from_local_cache(paramvec: np.ndarray, cache: dict, obs: str):
-    obs_cache = cache[obs]
-    for key in obs_cache.keys():
-        if np.allclose(key2paramvec(key), paramvec):
-            return obs_cache[key]
-    return None
+        # Save to pickle file
+        with open(self.cache_file, "wb") as outfile:
+            pickle.dump(self.cache_data, outfile)
 
-def load_file_cache(cache_file: str):
-    if os.path.exists(cache_file):
-        with open(cache_file, "rb") as infile:
-            return pickle.load(infile)
-    else:
-        return {'energy': {}, 'energy_grad': {}}
+    def load_from_local_cache(self, paramvec: np.ndarray, obs: str):
+        obs_cache = self.cache_data[obs]
+        for key in obs_cache.keys():
+            if np.allclose(self.key2paramvec(key), paramvec):
+                return obs_cache[key]
+        return None
+
+    def load_file_cache(self, cache_file: str):
+        if os.path.exists(cache_file):
+            with open(cache_file, "rb") as infile:
+                self.cache_data = pickle.load(infile)
+        return self.cache_data
 
 
 ####################### Minimizer #######################
@@ -97,8 +101,8 @@ class Minimizer():
 
         # Cache for the energy values and gradients
         self.use_cache = True
-        self.cache_file = r'cache.pkl'
-        self.cache = load_file_cache(self.cache_file)
+        self.cache = Cache()
+        self.cache.load_file_cache(self.cache.cache_file)
 
     def minimize(self):
         if self.cfg.method == "CUSTOM":
@@ -157,7 +161,7 @@ class Minimizer():
         # Energy wrapper
         def energy_wrapper(paramvec):
             # Check if value is stored in cache (e.g. from previous minimization)
-            energy = load_from_local_cache(paramvec, self.cache, 'energy')
+            energy = self.cache.load_from_local_cache(paramvec, 'energy')
             if energy is not None:
                 return energy
 
@@ -168,7 +172,7 @@ class Minimizer():
                 self.last_result = self.evaluator.simulate()
             
             energy = self.last_result.get_obs_mean('energy')
-            add_to_cache(paramvec, energy, self.cache, 'energy', self.cache_file)
+            self.cache.add_to_cache(paramvec, 'energy', energy)
 
             return energy
         
@@ -184,7 +188,7 @@ class Minimizer():
             """
 
             # Check if value is stored in cache (e.g. from previous minimization)
-            parametergrad = load_from_local_cache(paramvec, self.cache, 'energy_grad')
+            parametergrad = self.cache.load_from_local_cache(paramvec, 'energy_grad')
             if parametergrad is not None:
                 logger.debug('Found cached value for energy_grad')
                 return parametergrad
@@ -198,7 +202,7 @@ class Minimizer():
             
             parametergrad = self.last_result.get_obs_mean('energy_grad')
             parametergrad = parametergrad.reshape((-1))
-            add_to_cache(paramvec, parametergrad, self.cache, 'energy_grad', self.cache_file)
+            self.cache.add_to_cache(paramvec, 'energy_grad', parametergrad)
 
             return parametergrad
 
