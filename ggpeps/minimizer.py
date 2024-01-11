@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 from scipy.optimize import minimize
 
+from ggpeps import utils
 from ggpeps import logger
 
 
@@ -11,8 +12,15 @@ from ggpeps import logger
 
 class Cache:
     def __init__(self, cache_file: str = 'cache.pkl'):
+        self.cache_version = 0.1
         self.cache_file: str = cache_file
-        self.cache_data: dict = {'energy': {}, 'energy_grad': {}}
+        self.cache_data: dict = {'cache_version': self.cache_version,
+                                 'git_hash': utils.get_git_hash(),
+                                 'minimizer': None,
+                                 'evaluator_manager': None,
+                                 'system': None,
+                                 'energy': {}, 
+                                 'energy_grad': {}} 
 
     def paramvec2key(self, paramvec: np.ndarray):
         return paramvec.data.tobytes()
