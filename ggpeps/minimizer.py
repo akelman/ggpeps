@@ -88,19 +88,18 @@ class Minimizer():
     STOP_AFTER_CURRENT_ITERATION = False # this is a flag to catch interrupts to end minimization
     supported_methods = ["CG", "BFGS", "L-BFGS-B", "POWELL", "NELDER-MEAD", "TNC"]
 
-    def __init__(self, cfg, evaluator, use_exact=False):
+    def __init__(self, cfg, evaluator):
         self.cfg = cfg
-        self.use_exact = use_exact
         # We use the polymorphism of python classes.
         # Below, we will have to be careful to only call valid functions
         self.evaluator = evaluator
-        self._method = "CG"
+        self._method: str = "CG"
         self.last_paramvec = None
         self.last_result = None
         self.min_result = None
 
         # Cache for the energy values and gradients
-        self.use_cache = True
+        self.use_cache: bool = True
         self.cache = Cache()
         self.cache.load_file_cache(self.cache.cache_file)
 
@@ -248,7 +247,7 @@ def print_callback(x, minimizer):
         logger.info("Callback message due to caching. The last_result is None.")
         return
     
-    if minimizer.use_exact:
+    if minimizer.evaluator.type == 'exact':
         acceptance_prob = np.nan # acceptance_prob is undefined for exact contraction
     else:
         acceptance_prob = res.get_obs_mean("acceptance_prob")

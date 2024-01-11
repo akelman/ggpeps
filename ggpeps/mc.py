@@ -25,13 +25,13 @@ class MonteCarloEstimatorConfig:
         self._seed = None
         self._rng_state = None
         self.meas_steps = None
-        self.binsize = 1
-        self.minimizer_mode = False
-        self.update_size_per_step = 1 # this can be set anywhere from 1 to nlinks (inclusive)
+        self.binsize: int = 1
+        self.minimizer_mode: bool = False
+        self.update_size_per_step: int = 1 # this can be set anywhere from 1 to nlinks (inclusive)
 
         # Logging frequency
-        self.warmup_log_freq = 5000 # log every X steps
-        self.run_log_freq = 20000
+        self.warmup_log_freq: int = 5000 # log every X steps
+        self.run_log_freq: int = 20000
 
     @property
     def seed(self):
@@ -88,9 +88,9 @@ class MonteCarloEstimator:
     def __init__(self, cfg:MonteCarloEstimatorConfig, system):
         self.cfg = cfg
         self.system = system
-        self.obsdict = {}
+        self.obsdict: dict = {}
         self.init_measurements()
-        self.step = 0
+        self.step: int = 0
 
         # Choose how to update in each MC step
         # (This might change in the future if we implement different updates)

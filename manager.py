@@ -346,7 +346,7 @@ def main(args):
         min_cfg.alpha = args.alpha
         min_cfg.min_grad = args.min_grad
 
-        minimizer = Minimizer(min_cfg, ex_mgr, use_exact=True)
+        minimizer = Minimizer(min_cfg, ex_mgr)
 
         start = timer()
         result = minimizer.minimize()
