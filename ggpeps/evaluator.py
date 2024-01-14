@@ -14,7 +14,8 @@ from ggpeps.system import SystemType, SystemConfigType
 
 
 class EvaluatorManager:
-    """The EvaluatorManager allows the execution of a simulation with multiple cores.
+    """The EvaluatorManager is a wrapper around the different evaluators (ExactEvaluator and MonteCarloEstimator).
+    It allows the execution of a simulation with multiple cores.
     The parallelization is performed with ray; currently this is only supported for Monte Carlo (not Exact Contraction).
 
     If an MC simulation is distributed across N runners, each runner performs the full warm-up but only 1/N of the total measurement steps.
