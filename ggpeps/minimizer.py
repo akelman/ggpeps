@@ -81,13 +81,14 @@ class MinimizerResult:
 class MinimizerConfig():
 
     def __init__(self):
-        self.max_iter = 100
-        self.min_grad = 1e-5
-        self.alpha = 1e-2
-        self._method = "CG"
+        self.max_iter: int = 100
+        self.min_grad: float = 1e-5
+        self.alpha: float = 1e-2
+        self._method: str = "CG"
+        self.use_saved_cache: bool = True
 
     @property
-    def method(self):
+    def method(self) -> str:
         return self._method
 
     @method.setter
@@ -109,9 +110,9 @@ class Minimizer():
         self.min_result = None
 
         # Cache for the energy values and gradients
-        self.use_cache: bool = True
         self.cache = Cache()
-        self.cache.load_cache_file(self.cache.cache_file)
+        if self.cfg.use_saved_cache:
+            self.cache.load_cache_file(self.cache.cache_file)
 
     def minimize(self):
         if self.cfg.method == "CUSTOM":
