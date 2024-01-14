@@ -104,7 +104,6 @@ class Minimizer():
         # We use the polymorphism of python classes.
         # Below, we will have to be careful to only call valid functions
         self.evaluator = evaluator
-        self._method: str = "CG"
         self.last_paramvec = None
         self.last_result = None
         self.min_result = None
