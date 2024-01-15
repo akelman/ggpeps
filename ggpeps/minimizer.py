@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Optional
 
 import os
 import pickle
@@ -9,8 +9,7 @@ from scipy.optimize import minimize
 from ggpeps import utils
 from ggpeps import logger
 from ggpeps.evaluator_manager import EvaluatorManager
-from ggpeps.mc import MonteCarloEvaluator
-from ggpeps.exacteval import ExactEvaluator
+from ggpeps.evaluator import Evaluator
 
 
 ####################### Caching #######################
@@ -133,7 +132,7 @@ class Minimizer():
         # Below, we will have to be careful to only call valid functions
         self.evaluator: EvaluatorManager = evaluator
         self.last_paramvec: np.ndarray | None = None
-        self.last_result: Union[MonteCarloEvaluator, ExactEvaluator, None] = None
+        self.last_result: Optional[Evaluator] = None
         self.min_result: MinimizerResult = None
 
         # Cache for the energy values and gradients
