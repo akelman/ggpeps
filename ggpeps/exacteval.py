@@ -10,7 +10,7 @@ import ggpeps.lattice as lattice
 class ExactEvaluator():
     """An ExactEvaluator exactly evaluates the expectation value of an observable by iterating over all possible states of the gauge field.
     """
-    def __init__(self, system) -> None:
+    def __init__(self, evaluator_cfg, system) -> None:
         self.system = system
         self.obsdict: dict = None
 

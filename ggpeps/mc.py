@@ -14,7 +14,7 @@ from ggpeps.measurement import Measurement
 
 #################### Monte Carlo Estimator Config ###################
 
-class MonteCarloEstimatorConfig:
+class MonteCarloEvaluatorConfig:
     """Monte Carlo Configuration
 
     This class manages the parameters of the MC simulation. 
@@ -75,26 +75,26 @@ def run_mc(runner_id, mc_cfg, system_cls, system_cfg):
     # TODO: get logger working within ray
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
-    mc = MonteCarloEstimator(mc_cfg, system)
+    mc = MonteCarloEvaluator(mc_cfg, system)
     mc.simulate()
     return mc
 
 
 ################################### Monte Carlo runner ###############
 
-class MonteCarloEstimator:
+class MonteCarloEvaluator:
     """Class to take care of the MC simulation on a single runner
     """
-    def __init__(self, cfg:MonteCarloEstimatorConfig, system):
-        self.cfg = cfg
+    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
+        self.cfg = evaluator_cfg
         self.system = system
         self.obsdict: dict = {}
-        self.init_measurements()
         self.step: int = 0
+        self.init_measurements()
 
         # Choose how to update in each MC step
         # (This might change in the future if we implement different updates)
-        if cfg.update_size_per_step == self.system.cfg.lattice.nlinks:
+        if evaluator_cfg.update_size_per_step == self.system.cfg.lattice.nlinks:
             self.update = self.update_all_sites_single_site
         else:
             #self.update = self.update_single_site

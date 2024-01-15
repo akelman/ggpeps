@@ -8,7 +8,7 @@ from ggpeps import lattice
 from ggpeps import system, exacteval
 
 from ggpeps.lattice import Direction
-from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloEstimator
+from ggpeps.mc import MonteCarloEvaluatorConfig, MonteCarloEvaluator
 from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D_G2C_F2C
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 from ggpeps.utils import compare_array_elementwise
@@ -85,7 +85,7 @@ class TestZ2C4System(unittest.TestCase):
         """Ensure mass and interaction energy are zero when t = 0"""
 
         self.system_z2.cfg.make_pure_gauge() # sets t params to zero
-        ex_eval = exacteval.ExactEvaluator(self.system_z2)
+        ex_eval = exacteval.ExactEvaluator(None, self.system_z2)
         dest_dict = ex_eval.evaluate()
         self.assertTrue(np.allclose(0, dest_dict['mass_energy']))
         self.assertTrue(np.allclose(0, dest_dict['int_energy']))
@@ -94,7 +94,7 @@ class TestZ2C4System(unittest.TestCase):
         """Ensure mass and interaction energy are zero when t != 0. 
         This checks for random params, which we assume do not give t = 0"""
         
-        ex_eval = exacteval.ExactEvaluator(self.system_z2)
+        ex_eval = exacteval.ExactEvaluator(None, self.system_z2)
         dest_dict = ex_eval.evaluate()
         self.assertFalse(np.allclose(0, dest_dict['mass_energy']))
         self.assertFalse(np.allclose(0, dest_dict['int_energy']))

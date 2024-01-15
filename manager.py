@@ -26,7 +26,7 @@ from ggpeps import lattice as lat
 from ggpeps import utils, evaluator
 from ggpeps.measurement import Measurement
 from ggpeps.minimizer import Minimizer, MinimizerConfig
-from ggpeps.mc import MonteCarloEstimatorConfig
+from ggpeps.mc import MonteCarloEvaluatorConfig
 
 
 # set up to allow execution to end gracefully if process is signalled appropriately
@@ -165,7 +165,7 @@ def main(args):
         ray.init(num_cpus=args.nrunner)
 
     # Set up the MC Config
-    mc_config = MonteCarloEstimatorConfig()
+    mc_config = MonteCarloEvaluatorConfig()
     mc_config.warmup_steps = args.warmup_steps
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize

@@ -9,7 +9,7 @@ from scipy.optimize import minimize
 from ggpeps import utils
 from ggpeps import logger
 from ggpeps.evaluator import EvaluatorManager
-from ggpeps.mc import MonteCarloEstimator
+from ggpeps.mc import MonteCarloEvaluator
 from ggpeps.exacteval import ExactEvaluator
 
 
@@ -133,7 +133,7 @@ class Minimizer():
         # Below, we will have to be careful to only call valid functions
         self.evaluator: EvaluatorManager = evaluator
         self.last_paramvec: np.ndarray | None = None
-        self.last_result: Union[MonteCarloEstimator, ExactEvaluator, None] = None
+        self.last_result: Union[MonteCarloEvaluator, ExactEvaluator, None] = None
         self.min_result: MinimizerResult = None
 
         # Cache for the energy values and gradients

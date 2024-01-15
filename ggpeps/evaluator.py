@@ -7,9 +7,9 @@ import numpy as np
 
 from ggpeps import utils
 from ggpeps import logger
-from ggpeps.mc import MonteCarloEstimator, run_mc
+from ggpeps.mc import MonteCarloEvaluator, run_mc
 from ggpeps.exacteval import ExactEvaluator
-from ggpeps.mc import MonteCarloEstimatorConfig
+from ggpeps.mc import MonteCarloEvaluatorConfig
 from ggpeps.system import SystemType, SystemConfigType
 
 
@@ -26,7 +26,7 @@ class EvaluatorManager:
     def __init__(self, 
                  system_cls: SystemType,
                  system_cfg: SystemConfigType,
-                 mc_cfg: Union[MonteCarloEstimatorConfig, None],
+                 mc_cfg: Union[MonteCarloEvaluatorConfig, None],
                  nrunner: int):
         
         self.system_cls = system_cls
@@ -44,7 +44,7 @@ class EvaluatorManager:
             # The exacteval implementation currently only supports a single runner
             system = self.system_cls(self.system_cfg)
             system.initialize()
-            exact_eval = ExactEvaluator(system)
+            exact_eval = ExactEvaluator(None, system)
             exact_eval.evaluate()
             return exact_eval
         
@@ -74,7 +74,7 @@ class EvaluatorManager:
             else:
                 system = self.system_cls(self.system_cfg)
                 system.initialize()
-                mc = MonteCarloEstimator(self.mc_cfg, system)
+                mc = MonteCarloEvaluator(self.mc_cfg, system)
                 mc.simulate()
                 return mc
         
@@ -90,7 +90,7 @@ class EvaluatorManager:
             Estimator: estimator with information from all runners
         """
         system = self.system_cls(self.system_cfg)
-        dest = MonteCarloEstimator(self.mc_cfg, system)
+        dest = MonteCarloEvaluator(self.mc_cfg, system)
         if len(resultvec) > 1:
             dest.obsdict = utils.mergeDict(resultvec[0].obsdict, resultvec[1].obsdict)
             for mc_runner in resultvec[2:]:
@@ -102,11 +102,11 @@ class EvaluatorManager:
 
 # This is not yet used, but should be the parent class of ExactEvaluator and MonteCarloEstimator
 class Evaluator(ABC):
-    def __init__(self, system, cfg):
+    def __init__(self, evaluator_cfg, system):
         self.system = system
-        self.obsdict = None
-        self.cfg = cfg
-        self.type = None # exact or mc
+        self.obsdict: dict = None
+        self.cfg = evaluator_cfg
+        self.type: str | None = None # exact or mc
 
     @abstractmethod
     def simulate(self) -> dict:
