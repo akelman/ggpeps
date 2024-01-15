@@ -119,7 +119,7 @@ class MinimizerConfig():
         return self._method
 
     @method.setter
-    def method(self, val):
+    def method(self, val: str):
         self._method = val.upper()
 
 class Minimizer():
