@@ -14,7 +14,7 @@ class TestMinimizerZ2(unittest.TestCase):
 
     def test_derivative_mag_energy_exact_1_layer(self):
         eps = 1e-5
-        paramvec= [[0.0, 0.5, 0.5, 0.0, 0.0, 0.0]]
+        paramvec = [[0.0, 0.5, 0.5, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
         system_cfg.paramvec = paramvec
