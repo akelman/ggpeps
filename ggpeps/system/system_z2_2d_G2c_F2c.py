@@ -11,6 +11,8 @@ from ggpeps.modearray import generate_permutation_matrix
 
 from .system_base import Config2DBase, System2DBase, ElectricEnergyIntermediateVals
 
+from ggpeps.system.global_funcs_numpy import update_gauge_ind_numpy
+
 
 ###################### Z2System2D ##########################
 
@@ -353,62 +355,65 @@ class Z2System2D_G2C_F2C(System2DBase):
         return dest
 
 
+    # def update_gauge_ind(self, link_ind, theta):
+    #     """Update method that is called upon changing a gauge field.
+    #     This method is central to the algorithm since it changes the gauged projectors and updates all incremental trackers of determinants and inverses.
+    #     The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
+    #
+    #     This method overwrites an abstract method in System2DBase.
+    #
+    #     Args:
+    #         link_ind (int): Link index to be updated
+    #         theta (float): New gauge field value
+    #     """
+    #     # Update the gaugefield
+    #     self._gaugefieldvec[link_ind] = theta
+    #     # There are two directions per vertex
+    #     ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
+    #     coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
+    #     rotmat = self.generate_rotmat(theta, coord, dir)
+    #
+    #     update_vec = []
+    #     for layer in range(self.cfg.nlayer):
+    #         gamma_neutral_gauge = self.gamma_gauge_neutral[layer][dir]
+    #         gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
+    #         update_vec.append( self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]) )
+    #
+    #         # Substitute in the array
+    #         self.gamma_in_sys_vec[layer][ind_mat:ind_mat + rotmat.shape[0],
+    #                                      ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
+    #
+    #     # Update the determinant
+    #     mat_inv_vec = [
+    #         wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec
+    #     ]
+    #     detval_vec = [
+    #         incdet.update_index(mat_inv, update, ind_mat, ind_mat)
+    #         for mat_inv, update, incdet in zip(mat_inv_vec, update_vec, self.incdet_vec)
+    #     ]
+    #     # Update the modified determinant
+    #     offset = 2 * self.cfg.nvirtmodes_link
+    #     if ind_mat - offset >= 0:
+    #         for wi, update, incdet in zip(self.wi_gamma_in_mod_vec, update_vec, self.incdet_mod_vec):
+    #             mat_inv = wi.inv()
+    #             incdet.update_index(mat_inv, update, ind_mat-offset, ind_mat-offset)
+    #     # Update the weight
+    #     self.weight = 0.5 * np.sum(detval_vec)
+    #     # Update the matrix inversion
+    #     [ wi_gamma_in.update_index(update, ind_mat, ind_mat) for wi_gamma_in, update in zip(self.wi_gamma_in_vec, update_vec) ]
+    #     [ wi_gamma_out.update_index(update, ind_mat, ind_mat) for wi_gamma_out, update in zip(self.wi_gamma_out_vec, update_vec) ]
+    #
+    #     if ind_mat - offset >= 0:
+    #         # We do not update the matrix if the first link is updated (it is just not there)
+    #         [ wi_gamma_in_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_in_mod, update in zip(self.wi_gamma_in_mod_vec, update_vec) ]
+    #         [ wi_gamma_out_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_out_mod, update in zip(self.wi_gamma_out_mod_vec, update_vec) ]
+    #
+    #     # Invalidate gauge dependent quantities
+    #     self.invalidate_gauge_update()
+
+
     def update_gauge_ind(self, link_ind, theta):
-        """Update method that is called upon changing a gauge field.
-        This method is central to the algorithm since it changes the gauged projectors and updates all incremental trackers of determinants and inverses.
-        The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            link_ind (int): Link index to be updated
-            theta (float): New gauge field value
-        """
-        # Update the gaugefield
-        self._gaugefieldvec[link_ind] = theta
-        # There are two directions per vertex
-        ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
-        coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord, dir)
-
-        update_vec = []
-        for layer in range(self.cfg.nlayer):
-            gamma_neutral_gauge = self.gamma_gauge_neutral[layer][dir]
-            gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
-            update_vec.append( self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]) )
-
-            # Substitute in the array
-            self.gamma_in_sys_vec[layer][ind_mat:ind_mat + rotmat.shape[0],
-                                         ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
-
-        # Update the determinant
-        mat_inv_vec = [
-            wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec
-        ]
-        detval_vec = [
-            incdet.update_index(mat_inv, update, ind_mat, ind_mat)
-            for mat_inv, update, incdet in zip(mat_inv_vec, update_vec, self.incdet_vec)
-        ]
-        # Update the modified determinant
-        offset = 2 * self.cfg.nvirtmodes_link
-        if ind_mat - offset >= 0:
-            for wi, update, incdet in zip(self.wi_gamma_in_mod_vec, update_vec, self.incdet_mod_vec):
-                mat_inv = wi.inv()
-                incdet.update_index(mat_inv, update, ind_mat-offset, ind_mat-offset)
-        # Update the weight
-        self.weight = 0.5 * np.sum(detval_vec)
-        # Update the matrix inversion
-        [ wi_gamma_in.update_index(update, ind_mat, ind_mat) for wi_gamma_in, update in zip(self.wi_gamma_in_vec, update_vec) ]
-        [ wi_gamma_out.update_index(update, ind_mat, ind_mat) for wi_gamma_out, update in zip(self.wi_gamma_out_vec, update_vec) ]
-
-        if ind_mat - offset >= 0:
-            # We do not update the matrix if the first link is updated (it is just not there)
-            [ wi_gamma_in_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_in_mod, update in zip(self.wi_gamma_in_mod_vec, update_vec) ]
-            [ wi_gamma_out_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_out_mod, update in zip(self.wi_gamma_out_mod_vec, update_vec) ]
-        
-        # Invalidate gauge dependent quantities
-        self.invalidate_gauge_update()
-
+        update_gauge_ind_numpy(self, link_ind, theta)
 
     # Observables
     def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv:bool=True):

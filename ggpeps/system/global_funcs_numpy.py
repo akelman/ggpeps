@@ -144,3 +144,51 @@ def compute_el_grad_vec_numpy(system):
         
         system.cfg.enforce_parameter_conditions(dest_grad)
         return dest_grad
+
+
+def update_gauge_ind_numpy(z2_system, link_ind, theta):
+    # Update the gaugefield
+    z2_system._gaugefieldvec[link_ind] = theta
+    # There are two directions per vertex
+    ind_mat = 2 * z2_system.cfg.nvirtmodes_link * link_ind
+    coord, dir = z2_system.cfg.lattice.ind2coord_dir(link_ind)
+    rotmat = z2_system.generate_rotmat(theta, coord, dir)
+    gamma_neutral_gauge = z2_system.gamma_gauge_neutral[0][dir]
+    gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
+    update = z2_system.calculate_update_gamma_in(ind_mat, gamma_in_subst)
+
+    # Update the determinant
+    mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in z2_system.wi_gamma_in_vec]
+    detval_vec = [
+        incdet.update_index(mat_inv, update, ind_mat, ind_mat)
+        for mat_inv, incdet in zip(mat_inv_vec, z2_system.incdet_vec)
+    ]
+
+    # Update the modified determinant
+    offset = 2 * z2_system.cfg.nvirtmodes_link
+    if ind_mat - offset >= 0:
+        for wi, incdet in zip(z2_system.wi_gamma_in_mod_vec, z2_system.incdet_mod_vec):
+            mat_inv = wi.inv()
+            incdet.update_index(mat_inv, update, ind_mat - offset, ind_mat - offset)
+
+    # Update the weight
+    z2_system.weight = 0.5 * np.sum(detval_vec)
+
+    # Update the matrix inversion
+    for wi_gamma_in in z2_system.wi_gamma_in_vec:
+        wi_gamma_in.update_index(update, ind_mat, ind_mat)
+    for wi_gamma_out in z2_system.wi_gamma_out_vec:
+        wi_gamma_out.update_index(update, ind_mat, ind_mat)
+
+    if ind_mat - offset >= 0:
+        for wi_gamma_in_mod in z2_system.wi_gamma_in_mod_vec:
+            wi_gamma_in_mod.update_index(update, ind_mat - offset, ind_mat - offset)
+        for wi_gamma_out_mod in z2_system.wi_gamma_out_mod_vec:
+            wi_gamma_out_mod.update_index(update, ind_mat - offset, ind_mat - offset)
+
+    # Substitute in the array
+    z2_system.gamma_in_sys[ind_mat:ind_mat + rotmat.shape[0], ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
+
+    # Invalidate gauge dependent quantities
+    z2_system.invalidate_gauge_update()
+
