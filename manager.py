@@ -23,7 +23,7 @@ from ggpeps.system import Z2System2D_G2C_F4C_Config, Z2System2D_G2C_F4C
 from ggpeps.system import Z2System2D_8C_Config, Z2System2D_8C
 
 from ggpeps import lattice as lat
-from ggpeps import utils, exacteval, evaluator
+from ggpeps import utils, evaluator
 from ggpeps.measurement import Measurement
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 from ggpeps.mc import MonteCarloEstimatorConfig
@@ -34,8 +34,9 @@ import signal
 def signal_handler(signum, frame):
     Minimizer.STOP_AFTER_CURRENT_ITERATION = True
     logger.info(f"Recieved signal {signum}, stopping at the end of the current iteration.")
+    sys.exit(1)
 signal.signal(signal.SIGUSR1, signal_handler) # register the signal handler
-#signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
+signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
 
 
 def args2logname(args, couplings):
@@ -326,12 +327,12 @@ def main(args):
         minimizer.save(output_dir = args.output)
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
-        system = system_type(system_cfg)
+        ex_eval = evaluator.EvaluatorManager(system_type, system_cfg, None, args.nrunner)
         start = timer()
-        ex_eval = exacteval.ExactEvaluator(system)
-        dest_dict = ex_eval.evaluate()
+        dest = ex_eval.simulate()
         stop = timer()
-        ex_eval.save(output_dir=args.output)
+        dest_dict = dest.obsdict
+        dest.save(output_dir=args.output)
         for key, val in dest_dict.items():
             logger.info(f"{key}: {val}")
     elif args.mode == "min-exact":
