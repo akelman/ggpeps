@@ -5,9 +5,10 @@ import numpy as np
 import pandas as pd
 
 import ggpeps.lattice as lattice
+from ggpeps.evaluator import Evaluator
 
 
-class ExactEvaluator():
+class ExactEvaluator(Evaluator):
     """An ExactEvaluator exactly evaluates the expectation value of an observable by iterating over all possible states of the gauge field.
     """
     def __init__(self, evaluator_cfg, system) -> None:

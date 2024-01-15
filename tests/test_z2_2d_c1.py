@@ -779,6 +779,6 @@ class TestZ2SystemMethods(unittest.TestCase):
         mc_config.meas_steps = 40000
         mc_config.warmup_steps = 10000
         mc = MonteCarloEvaluator(mc_config, sys_mc)
-        mc.simulate()
+        mc.evaluate()
 
         self.assertAlmostEqual(res["wilson_00_11"], mc.get_obs_mean("wilson_00_11"), places=2)

@@ -73,7 +73,7 @@ class EvaluatorManager:
                 system = self.system_cls(self.system_cfg)
                 system.initialize()
                 mc = MonteCarloEvaluator(self.mc_cfg, system)
-                mc.simulate()
+                mc.evaluate()
                 return mc
         
         raise ValueError(f"Unknown evaluator type {self.type}")

@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 
 # This is not yet used, but should be the parent class of ExactEvaluator and MonteCarloEvaluator
 class Evaluator(ABC):
+    """Base class for the different evaluators (ExactEvaluator and MonteCarloEvaluator).
+    """
     def __init__(self, evaluator_cfg, system):
         self.system = system
         self.obsdict: dict = None
@@ -10,7 +12,7 @@ class Evaluator(ABC):
         self.type: str | None = None # exact or mc
 
     @abstractmethod
-    def simulate(self) -> dict:
+    def evaluate(self): # -> dict
         """Simulate the system and return the results as a dictionary of observables
 
         Raises:

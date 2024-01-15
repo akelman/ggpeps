@@ -11,6 +11,8 @@ import ggpeps.utils as utils
 import ggpeps.lattice as lattice
 from ggpeps import logger
 from ggpeps.measurement import Measurement
+from ggpeps.evaluator import Evaluator
+
 
 #################### Monte Carlo Estimator Config ###################
 
@@ -76,13 +78,13 @@ def run_mc(runner_id, mc_cfg, system_cls, system_cfg):
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
     mc = MonteCarloEvaluator(mc_cfg, system)
-    mc.simulate()
+    mc.evaluate()
     return mc
 
 
 ################################### Monte Carlo runner ###############
 
-class MonteCarloEvaluator:
+class MonteCarloEvaluator(Evaluator):
     """Class to take care of the MC simulation on a single runner
     """
     def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
@@ -288,7 +290,7 @@ class MonteCarloEvaluator:
                 # Reject
                 self.obsdict["acceptance_prob"].append(0)
 
-    def simulate(self):
+    def evaluate(self):
         """Main routine to start a Monte Carlo simulation.
         """
         self.warmup()

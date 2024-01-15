@@ -192,8 +192,8 @@ class TestMinimizerZ2(unittest.TestCase):
         mc_right = MonteCarloEvaluator(mc_config, sys_right)
 
         minimizer.last_result = minimizer.evaluator.simulate()
-        mc_left.simulate()
-        mc_right.simulate()
+        mc_left.evaluate()
+        mc_right.evaluate()
 
         #mag_energy_deriv = minimizer.energy_gradient(minimizer.last_result)
         mag_energy_deriv = minimizer.last_result.energy_gradient_mc() #get_obs_mean('energy_grad') 
