@@ -29,8 +29,8 @@ class EvaluatorManager:
                  mc_cfg: Union[MonteCarloEstimatorConfig, None],
                  nrunner: int):
         
-        self.system_cfg = system_cfg
         self.system_cls = system_cls
+        self.system_cfg = system_cfg
         self.mc_cfg = mc_cfg
         self.nrunner = nrunner
 
@@ -121,21 +121,15 @@ class Evaluator(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
     
-    def compute_expval(self, obs: np.ndarray, normvec: np.ndarray):
-        """Compute the expectation value of an observable.
+    @abstractmethod
+    def get_obs_mean(self, obs: str):
+        """Get the mean value of an observable
 
         Args:
-            obs (np.ndarray): Measurement values of an observables for different gauge field configurations
-            normvec (np.ndarray): Values of the norm of <Psi(G)|Psi(G)> for different gauge field configurations
+            obs (str): Name of the observable
 
         Returns:
-            _type_: _description_
+            float: Mean value of the observable
         """
-        normalization = np.sum(normvec)
-        if len(obs.shape) > 1:
-            # We have to treat the gradients differently as they are multi-dimensional observables
-            prod = obs * normvec
-            expval = np.transpose(np.sum(prod, axis=2))
-        else:
-            expval = np.sum(obs*normvec)
-        return expval/normalization
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+    
