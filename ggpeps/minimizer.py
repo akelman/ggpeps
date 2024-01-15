@@ -8,7 +8,7 @@ from scipy.optimize import minimize
 
 from ggpeps import utils
 from ggpeps import logger
-from ggpeps.evaluator import EvaluatorManager
+from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.mc import MonteCarloEvaluator
 from ggpeps.exacteval import ExactEvaluator
 

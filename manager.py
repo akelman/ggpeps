@@ -22,9 +22,10 @@ from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D_G2C_F2C
 from ggpeps.system import Z2System2D_G2C_F4C_Config, Z2System2D_G2C_F4C
 from ggpeps.system import Z2System2D_8C_Config, Z2System2D_8C
 
+from ggpeps import utils
 from ggpeps import lattice as lat
-from ggpeps import utils, evaluator
 from ggpeps.measurement import Measurement
+from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 from ggpeps.mc import MonteCarloEvaluatorConfig
 
@@ -283,7 +284,7 @@ def main(args):
     if args.mode == "eval-mc":
         # Evaluate observables for a given set of parameters with Monte Carlo
         mc_config.minimizer_mode = args.compute_grads
-        mc_mgr = evaluator.EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
         start = timer()
         mc_result = mc_mgr.simulate()
         stop = timer()
@@ -297,7 +298,7 @@ def main(args):
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
 
         mc_config.minimizer_mode = True
-        mc_mgr = evaluator.EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
         
         # Set the parameters of the minimizer according to the command line
         min_cfg = MinimizerConfig()
@@ -315,7 +316,7 @@ def main(args):
         minimizer.save(output_dir = args.output)
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
-        ex_eval = evaluator.EvaluatorManager(system_type, system_cfg, None, args.nrunner)
+        ex_eval = EvaluatorManager(system_type, system_cfg, None, args.nrunner)
         start = timer()
         dest = ex_eval.simulate()
         stop = timer()
@@ -327,7 +328,7 @@ def main(args):
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
 
         start = timer()
-        ex_mgr = evaluator.EvaluatorManager(system_type, system_cfg, None, args.nrunner)
+        ex_mgr = EvaluatorManager(system_type, system_cfg, None, args.nrunner)
 
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
@@ -361,7 +362,7 @@ def main(args):
         mc_config.minimizer_mode = True
         for i in range(args.minmult_iter):
             logger.info(f"Minimization iteration: {i:02d}")
-            mc = evaluator.EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port) 
+            mc = EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port) 
             minimizer = Minimizer(mc, min_cfg)
 
             resultvec.append(minimizer.minimize())
@@ -371,7 +372,7 @@ def main(args):
         minimizer.save(output_dir = args.output)
         # We run a final iteration of the MC simulation with all observables
         mc_config.minimizer_mode = False
-        mc_mgr = evaluator.EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
+        mc_mgr = EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
         mc_result = mc_mgr.simulate()
         mc_result.save(output_dir = args.output)
     else:
