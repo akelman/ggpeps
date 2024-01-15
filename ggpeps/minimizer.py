@@ -1,3 +1,5 @@
+from typing import Union
+
 import os
 import pickle
 
@@ -6,6 +8,9 @@ from scipy.optimize import minimize
 
 from ggpeps import utils
 from ggpeps import logger
+from ggpeps.evaluator import EvaluatorManager
+from ggpeps.mc import MonteCarloEstimator
+from ggpeps.exacteval import ExactEvaluator
 
 
 ####################### Caching #######################
@@ -123,13 +128,13 @@ class Minimizer():
     supported_methods = ["CG", "BFGS", "L-BFGS-B", "POWELL", "NELDER-MEAD", "TNC"]
 
     def __init__(self, cfg, evaluator):
-        self.cfg = cfg
+        self.cfg: MinimizerConfig = cfg
         # We use the polymorphism of python classes.
         # Below, we will have to be careful to only call valid functions
-        self.evaluator = evaluator
-        self.last_paramvec = None
-        self.last_result = None
-        self.min_result = None
+        self.evaluator: EvaluatorManager = evaluator
+        self.last_paramvec: np.ndarray | None = None
+        self.last_result: Union[MonteCarloEstimator, ExactEvaluator, None] = None
+        self.min_result: MinimizerResult = None
 
         # Cache for the energy values and gradients
         self.cache = Cache()
