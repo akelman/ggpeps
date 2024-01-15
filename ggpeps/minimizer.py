@@ -126,14 +126,14 @@ class Minimizer():
     STOP_AFTER_CURRENT_ITERATION = False # this is a flag to catch interrupts to end minimization
     supported_methods = ["CG", "BFGS", "L-BFGS-B", "POWELL", "NELDER-MEAD", "TNC"]
 
-    def __init__(self, cfg, evaluator):
+    def __init__(self, cfg: MinimizerConfig, evaluator_manager: EvaluatorManager):
         self.cfg: MinimizerConfig = cfg
         # We use the polymorphism of python classes.
         # Below, we will have to be careful to only call valid functions
-        self.evaluator: EvaluatorManager = evaluator
-        self.last_paramvec: np.ndarray | None = None
+        self.evaluator_manager: EvaluatorManager = evaluator_manager
+        self.last_paramvec: Optional[np.ndarray] = None
         self.last_result: Optional[Evaluator] = None
-        self.min_result: MinimizerResult = None
+        self.min_result: Optional[MinimizerResult] = None
 
         # Cache for the energy values and gradients
         self.cache = Cache()
@@ -150,13 +150,13 @@ class Minimizer():
             return None
 
     def minimize_custom(self):
-        paramvec = self.evaluator.system_cfg.paramvec
+        paramvec = self.evaluator_manager.system_cfg.paramvec
 
         for ind in range(self.cfg.max_iter):
             if self.last_paramvec is None or not np.allclose(self.last_paramvec,paramvec):
                 # We copy here to get a new set of variables. We will change paramvec below and do not want to change last_paramvec
                 self.last_paramvec = np.copy(paramvec)
-                result = self.evaluator.simulate()
+                result = self.evaluator_manager.simulate()
 
             energy = result.get_obs_mean("energy")
             grad_paramvec = result.get_obs_mean("energy_grad")
@@ -184,7 +184,7 @@ class Minimizer():
             # TODO: Implement stochastic reconfiguration
 
             # We have to use the internal name of the paramvec if we write to it since it is a property and not just an array
-            self.evaluator.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
+            self.evaluator_manager.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
 
         message = "Reached maximum number of iterations without convergence."
         logger.warn(message)
@@ -204,8 +204,8 @@ class Minimizer():
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = paramvec
-                self.evaluator.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator.system_cfg._nparams))
-                self.last_result = self.evaluator.simulate()
+                self.evaluator_manager.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator_manager.system_cfg._nparams))
+                self.last_result = self.evaluator_manager.simulate()
             
             energy = self.last_result.get_obs_mean('energy')
             self.cache.add_obs_to_cache(paramvec, 'energy', energy)
@@ -233,8 +233,8 @@ class Minimizer():
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = paramvec
                 #self.evaluator.mc_cfg.minimizer_mode = True # make sure to calculate derivatives
-                self.evaluator.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator.system_cfg._nparams))
-                self.last_result = self.evaluator.simulate()
+                self.evaluator_manager.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator_manager.system_cfg._nparams))
+                self.last_result = self.evaluator_manager.simulate()
             
             parametergrad = self.last_result.get_obs_mean('energy_grad')
             parametergrad = parametergrad.reshape((-1))
@@ -244,7 +244,7 @@ class Minimizer():
 
         # Use the random initialization from the system.initialize as first guess.
         # We might want to change this later.
-        paramvec = np.reshape(self.evaluator.system_cfg.paramvec, (-1))
+        paramvec = np.reshape(self.evaluator_manager.system_cfg.paramvec, (-1))
         min_result = minimize(energy_wrapper,
                               paramvec,
                               method=self.cfg.method,
@@ -263,7 +263,7 @@ class Minimizer():
 
     def save(self, output_dir = "."):
         if self.min_result is not None:
-            sys_cfg = self.evaluator.system_cfg
+            sys_cfg = self.evaluator_manager.system_cfg
 
             #FIXME: Adapt the filenames here
             fname_mc_summary = f"summary_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_gel_{sys_cfg.g_el:.4f}_gmag_{sys_cfg.g_mag:.4f}_gint_{sys_cfg.g_int:.4f}_gmass_{sys_cfg.g_mass:.4f}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
