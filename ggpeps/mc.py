@@ -41,7 +41,7 @@ class MonteCarloEstimatorConfig:
         return self._seed
 
     @seed.setter
-    def seed(self,seedval):
+    def seed(self, seedval):
         self._seed = seedval
         self._rng_state = np.random.RandomState(seedval)
 
