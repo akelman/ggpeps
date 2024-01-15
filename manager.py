@@ -143,18 +143,6 @@ def main(args):
     logger.addHandler(log_file_handler)
     logger.setLevel(args.level.upper())
     
-    '''
-    logger.basicConfig(
-        level = args.level.upper(),
-        format = "%(asctime)s [%(levelname)s] %(message)s",
-        handlers = [
-            logger.FileHandler(args2logname(args, couplings)),
-            h_stdout,
-            h_stderr
-        ]
-    )
-    '''
-
     # Validate input arguments
     if not validate_inputs(args):
         sys.exit(1)
