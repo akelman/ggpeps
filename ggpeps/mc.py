@@ -92,6 +92,7 @@ class MonteCarloEvaluator(Evaluator):
         self.system = system
         self.obsdict: dict = {}
         self.step: int = 0
+        self.evaluator_type = 'mc'
         self.init_measurements()
 
         # Choose how to update in each MC step

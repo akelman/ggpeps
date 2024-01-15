@@ -9,7 +9,7 @@ class Evaluator(ABC):
         self.system = system
         self.obsdict: dict = None
         self.cfg = evaluator_cfg
-        self.type: str | None = None # exact or mc
+        self.evaluator_type: str | None = None # exact or mc
 
     @abstractmethod
     def evaluate(self): # -> dict

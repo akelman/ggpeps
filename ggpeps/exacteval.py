@@ -14,6 +14,7 @@ class ExactEvaluator(Evaluator):
     def __init__(self, evaluator_cfg, system) -> None:
         self.system = system
         self.obsdict: dict = None
+        self.evaluator_type = 'exact'
 
     def compute_expval(self, obs: np.ndarray, normvec: np.ndarray):
         """Compute the expectation value of an observable.
