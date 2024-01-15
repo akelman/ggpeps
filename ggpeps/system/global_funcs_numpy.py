@@ -147,6 +147,17 @@ def compute_el_grad_vec_numpy(system):
 
 
 def update_gauge_ind_numpy(z2_system, link_ind, theta):
+    """Update method that is called upon changing a gauge field.
+    This method is central to the algorithm since it changes the gauged projectors and updates all incremental trackers
+    of determinants and inverses.
+    The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
+
+    This method overwrites an abstract method in System2DBase.
+
+    Args:
+        link_ind (int): Link index to be updated
+        theta (float): New gauge field value
+    """
     # Update the gaugefield
     z2_system._gaugefieldvec[link_ind] = theta
     # There are two directions per vertex
