@@ -28,20 +28,36 @@ class Cache:
     def key2paramvec(self, key: bytes):
         return np.frombuffer(key)
 
-    def add_to_cache(self, paramvec: np.ndarray, obs: str, val: float):
+    def save_cache_file(self):
+        with open(self.cache_file, "wb") as outfile:
+            pickle.dump(self.cache_data, outfile)
+
+    def add_obj_to_cache(self, obj_name: str, obj_val):
+        if obj_name not in self.cache_data.keys():
+            logger.warn(f"Cache does not support {obj_name}. Not adding to cache.")
+        else:
+            self.cache_data[obj_name] = obj_val
+        return
+
+    def load_obj_from_local_cache(self, obj_name: str):
+        return self.cache_data[obj_name]
+    
+    def add_obs_to_cache(self, paramvec: np.ndarray, obs: str, val: float, save_to_file: bool = True):
         key = self.paramvec2key(paramvec)
         obs_cache = self.cache_data[obs]
         obs_cache[key] = val
 
-        #logger.debug(f"Added {obs} to cache for paramvec {paramvec}")
-        if len(obs_cache) > 1000: # 1000 is an arbitrary threshold
-            logger.warn(f"Cache for obs {obs} is large.")
+        obs_cache_len = len(obs_cache)
+        if obs_cache_len > 1000 and obs_cache_len % 50: # 1000 is an arbitrary threshold
+            logger.warn(f"Cache for obs {obs} is large: {obs_cache_len} items.")
 
         # Save to pickle file
-        with open(self.cache_file, "wb") as outfile:
-            pickle.dump(self.cache_data, outfile)
+        if save_to_file:
+            self.save_cache_file()
 
-    def load_from_local_cache(self, paramvec: np.ndarray, obs: str):
+    def load_obs_from_local_cache(self, paramvec: np.ndarray, obs: str):
+        if obs not in ['energy', 'energy_grad']:
+            raise ValueError(f"Unknown observable {obs} is not in cache.")
         obs_cache = self.cache_data[obs]
         for key in obs_cache.keys():
             if np.allclose(self.key2paramvec(key), paramvec):
@@ -53,7 +69,14 @@ class Cache:
         #       this function should check that cached objects have the same configs
         if os.path.exists(cache_file):
             with open(cache_file, "rb") as infile:
-                self.cache_data = pickle.load(infile)
+                cache_data = pickle.load(infile)
+                if cache_data['cache_version'] == self.cache_version:
+                    self.cache_data = cache_data
+                    logger.info(f"Loaded cache file {cache_file}")
+                else:
+                    logger.warn(f"Cache file {cache_file} has version {cache_data['cache_version']} \
+                                but we are using version {self.cache_version}. Ignoring cached data.")
+                    # TODO: we can probably recover some of the data
         return self.cache_data
 
 
@@ -170,7 +193,7 @@ class Minimizer():
         # Energy wrapper
         def energy_wrapper(paramvec):
             # Check if value is stored in cache (e.g. from previous minimization)
-            energy = self.cache.load_from_local_cache(paramvec, 'energy')
+            energy = self.cache.load_obs_from_local_cache(paramvec, 'energy')
             if energy is not None:
                 return energy
 
@@ -181,7 +204,7 @@ class Minimizer():
                 self.last_result = self.evaluator.simulate()
             
             energy = self.last_result.get_obs_mean('energy')
-            self.cache.add_to_cache(paramvec, 'energy', energy)
+            self.cache.add_obs_to_cache(paramvec, 'energy', energy)
 
             return energy
         
@@ -197,7 +220,7 @@ class Minimizer():
             """
 
             # Check if value is stored in cache (e.g. from previous minimization)
-            parametergrad = self.cache.load_from_local_cache(paramvec, 'energy_grad')
+            parametergrad = self.cache.load_obs_from_local_cache(paramvec, 'energy_grad')
             if parametergrad is not None:
                 logger.debug('Found cached value for energy_grad')
                 return parametergrad
@@ -211,7 +234,7 @@ class Minimizer():
             
             parametergrad = self.last_result.get_obs_mean('energy_grad')
             parametergrad = parametergrad.reshape((-1))
-            self.cache.add_to_cache(paramvec, 'energy_grad', parametergrad)
+            self.cache.add_obs_to_cache(paramvec, 'energy_grad', parametergrad)
 
             return parametergrad
 
