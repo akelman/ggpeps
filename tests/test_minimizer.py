@@ -5,7 +5,7 @@ import numpy as np
 
 from ggpeps import system, lattice
 from ggpeps.minimizer import Minimizer, MinimizerConfig
-from ggpeps.evaluator import EvaluatorManager
+from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.exacteval import ExactEvaluator
 from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig
 
