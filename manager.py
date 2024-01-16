@@ -148,6 +148,9 @@ def main(args):
     if not validate_inputs(args):
         sys.exit(1)
 
+    # Save the command line arguments to ggpeps global variable so that they are available everywhere
+    ggpeps.global_vars["args"] = args
+
     # Set up ray before we actually start with the simulation
     # Ray uses randomness internally and we don't want it to mix up the setting of the seed
     if args.nrunner > 0:
