@@ -6,6 +6,7 @@ import pickle
 import numpy as np
 from scipy.optimize import minimize
 
+import ggpeps
 from ggpeps import logger
 from ggpeps.caching import Cache
 from ggpeps.evaluator_manager import EvaluatorManager
@@ -40,7 +41,6 @@ class MinimizerConfig():
         self.min_grad: float = 1e-5
         self.alpha: float = 1e-2
         self._method: str = "CG"
-        self.use_saved_cache: bool = True
 
     @property
     def method(self) -> str:
@@ -64,9 +64,7 @@ class Minimizer():
         self.min_result: Optional[MinimizerResult] = None
 
         # Cache for the energy values and gradients
-        self.cache = Cache()
-        if self.cfg.use_saved_cache:
-            self.cache.load_cache_file(self.cache.cache_file)
+        self.cache = ggpeps.global_vars["cache"] # Cache()
 
     def minimize(self):
         if self.cfg.method == "CUSTOM":

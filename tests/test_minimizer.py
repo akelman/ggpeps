@@ -184,7 +184,6 @@ class TestMinimizerZ2(unittest.TestCase):
         mc_config.minimizer_mode = True
 
         min_config = MinimizerConfig()
-        min_config.use_saved_cache = False
 
         mc_mgr = EvaluatorManager(system.Z2System2D, system_cfg, mc_config, 0)
         minimizer = Minimizer(min_config, mc_mgr)

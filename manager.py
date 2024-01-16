@@ -16,6 +16,7 @@ np.set_printoptions(linewidth=200)
 
 import ggpeps
 from ggpeps import logger
+from ggpeps.caching import Cache
 from ggpeps.system import Z2System2DConfig, Z2System2D
 from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
 from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D_G2C_F2C
@@ -25,9 +26,9 @@ from ggpeps.system import Z2System2D_8C_Config, Z2System2D_8C
 from ggpeps import utils
 from ggpeps import lattice as lat
 from ggpeps.measurement import Measurement
+from ggpeps.mc import MonteCarloEvaluatorConfig
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.minimizer import Minimizer, MinimizerConfig
-from ggpeps.mc import MonteCarloEvaluatorConfig
 
 
 # set up to allow execution to end gracefully if process is signalled appropriately
@@ -35,6 +36,16 @@ import signal
 def signal_handler(signum, frame):
     Minimizer.STOP_AFTER_CURRENT_ITERATION = True
     logger.info(f"Recieved signal {signum}, stopping at the end of the current iteration.")
+
+    args = ggpeps.global_vars["args"]
+    cache = ggpeps.global_vars["cache"]
+    if "min" in args.mode:
+        minimizer = ggpeps.global_vars["minimizer"]
+        cache.add_obj_to_cache("minimizer", minimizer)
+        cache.save_cache_file()
+        logging.info(f"Saved cache file with minimizer to {cache.cache_file}.")
+
+    logging.info("Recieved signal to exit. Exiting.")
     sys.exit(1)
 signal.signal(signal.SIGUSR1, signal_handler) # register the signal handler
 signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
@@ -148,8 +159,16 @@ def main(args):
     if not validate_inputs(args):
         sys.exit(1)
 
-    # Save the command line arguments to ggpeps global variable so that they are available everywhere
+    # Set up cache
+    # and save the command line arguments to ggpeps global variable so that they are available everywhere
+    cache = Cache()
+    use_saved_cache = True # should be CLI argument
     ggpeps.global_vars["args"] = args
+    ggpeps.global_vars["cache"] = cache
+    if use_saved_cache:
+        cache.load_cache_file(cache.cache_file)
+        if cache.cache_data['minimizer'] is not None:
+            ggpeps.global_vars["minimizer"] = cache.cache_data['minimizer']
 
     # Set up ray before we actually start with the simulation
     # Ray uses randomness internally and we don't want it to mix up the setting of the seed
@@ -310,8 +329,11 @@ def main(args):
         min_cfg.alpha = args.alpha
         min_cfg.min_grad = args.min_grad
 
-        minimizer = Minimizer(min_cfg, mc_mgr)
-        ggpeps.global_vars["minimizer"] = minimizer
+        if "minimizer" in ggpeps.global_vars.keys():
+            minimizer = ggpeps.global_vars["minimizer"]
+        else:
+            minimizer = Minimizer(min_cfg, mc_mgr)
+            ggpeps.global_vars["minimizer"] = minimizer
 
         start = timer()
         result = minimizer.minimize()
