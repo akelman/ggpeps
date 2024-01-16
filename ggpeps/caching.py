@@ -72,6 +72,6 @@ class Cache:
                     logger.info(f"Loaded cache file {cache_file}")
                 else:
                     logger.warn(f"Cache file {cache_file} has version {cache_data['cache_version']} \
-                                but we are using version {self.cache_version}. Ignoring cached data.")
+                                but the current code uses version {self.cache_version}. Ignoring cached data.")
                     # TODO: we can probably recover some of the data
         return self.cache_data
