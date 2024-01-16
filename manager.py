@@ -338,6 +338,7 @@ def main(args):
         min_cfg.min_grad = args.min_grad
 
         minimizer = Minimizer(min_cfg, ex_mgr)
+        ggpeps.global_vars["minimizer"] = minimizer
 
         start = timer()
         result = minimizer.minimize()
