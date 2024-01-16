@@ -31,12 +31,14 @@ class EvaluatorManager:
         self.system_cfg = system_cfg
         self.mc_cfg = mc_cfg
         self.nrunner = nrunner
+        self.evaluator = None
 
         if self.mc_cfg is None:
             self.type = 'exact'
         else:
             self.type = 'mc'
 
+    def reset_evaluator(self):
         system = self.system_cls(self.system_cfg)
         system.initialize()
         if self.type == 'exact':
@@ -71,6 +73,7 @@ class EvaluatorManager:
             resultvec = ray.get(resultvec)
             return self.collect(resultvec)
         else:
+            self.reset_evaluator()
             self.evaluator.evaluate()
             return self.evaluator
     
