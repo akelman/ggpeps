@@ -2,6 +2,9 @@
 import logging
 logger = logging.getLogger('ggpeps')
 
+# Global vars
+global_vars = {}
+
 # GPU or CPU
 import jax
 try:
