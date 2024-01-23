@@ -33,18 +33,23 @@ from ggpeps.minimizer import Minimizer, MinimizerConfig
 
 # set up to allow execution to end gracefully if process is signalled appropriately
 import signal
+def save_state_on_exit():
+    args = ggpeps.global_vars["args"]
+    cache = ggpeps.global_vars["cache"]
+    logging.info("Got to save state on exit.")
+    if "min" in args.mode:
+        minimizer = ggpeps.global_vars["minimizer"]
+        #cache.add_obj_to_cache("minimizer", minimizer)
+        cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
+        cache.save_cache_file()
+        logging.info(f"Saved cache file with minimizer to {cache.cache_file}.")
+    return
+
 def signal_handler(signum, frame):
     Minimizer.STOP_AFTER_CURRENT_ITERATION = True
     logger.info(f"Recieved signal {signum}, stopping at the end of the current iteration.")
 
-    args = ggpeps.global_vars["args"]
-    cache = ggpeps.global_vars["cache"]
-    if "min" in args.mode:
-        minimizer = ggpeps.global_vars["minimizer"]
-        cache.add_obj_to_cache("minimizer", minimizer)
-        cache.save_cache_file()
-        logging.info(f"Saved cache file with minimizer to {cache.cache_file}.")
-
+    save_state_on_exit()
     logging.info("Recieved signal to exit. Exiting.")
     sys.exit(1)
 signal.signal(signal.SIGUSR1, signal_handler) # register the signal handler
@@ -329,7 +334,7 @@ def main(args):
         min_cfg.alpha = args.alpha
         min_cfg.min_grad = args.min_grad
 
-        if "minimizer" in ggpeps.global_vars.keys():
+        if False and "minimizer" in ggpeps.global_vars.keys():
             minimizer = ggpeps.global_vars["minimizer"]
         else:
             minimizer = Minimizer(min_cfg, mc_mgr)

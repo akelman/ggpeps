@@ -31,7 +31,9 @@ class EvaluatorManager:
         self.system_cfg = system_cfg
         self.mc_cfg = mc_cfg
         self.nrunner = nrunner
+
         self.evaluator = None
+        self.reset_evaluator_before_next_eval: bool = True
 
         if self.mc_cfg is None:
             self.type = 'exact'
@@ -74,6 +76,13 @@ class EvaluatorManager:
             return self.collect(resultvec)
         else:
             self.reset_evaluator()
+            self.evaluator.evaluate()
+            return self.evaluator
+    
+    def resume_simulation(self):
+        if self.type == 'mc' and self.nrunner > 0: 
+            raise NotImplementedError("Resuming MC simulation with multiple runners is not yet implemented.")
+        else:
             self.evaluator.evaluate()
             return self.evaluator
     
