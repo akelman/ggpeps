@@ -131,6 +131,7 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
+            "justMyCode": true,
             "args": [
                 "min-mc",
                 "2",
