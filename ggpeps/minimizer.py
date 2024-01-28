@@ -155,19 +155,19 @@ class Minimizer():
             parametergrad = self.cache.load_obs_from_local_cache(flattened_paramvec, 'energy_grad')
             if parametergrad is not None:
                 logger.debug('Found cached value for energy_grad')
+                return parametergrad.reshape((-1))
 
-            elif self.last_paramvec is None or not np.allclose(self.last_paramvec, flattened_paramvec):
+            if self.last_paramvec is None or not np.allclose(self.last_paramvec, flattened_paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = flattened_paramvec
                 #self.evaluator.mc_cfg.minimizer_mode = True # make sure to calculate derivatives
                 self.evaluator_manager.system_cfg.paramvec = np.reshape(flattened_paramvec, (-1, self.evaluator_manager.system_cfg._nparams))
                 self.last_result = self.evaluator_manager.simulate()
             
-                parametergrad = self.last_result.get_obs_mean('energy_grad')
-                self.cache.add_obs_to_cache(flattened_paramvec, 'energy_grad', parametergrad)
-            flattened_parametergrad = parametergrad.reshape((-1))
+            parametergrad = self.last_result.get_obs_mean('energy_grad')
+            self.cache.add_obs_to_cache(flattened_paramvec, 'energy_grad', parametergrad)
 
-            return flattened_parametergrad
+            return parametergrad.reshape((-1))
 
         # Use the random initialization from the system.initialize as first guess.
         # We might want to change this later.
