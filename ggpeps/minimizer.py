@@ -121,27 +121,27 @@ class Minimizer():
     def minimize_scipy(self):
         
         # Energy wrapper
-        def energy_wrapper(paramvec):
+        def energy_wrapper(flattened_paramvec):
             # Check if value is stored in cache (e.g. from previous minimization)
-            energy = self.cache.load_obs_from_local_cache(paramvec, 'energy')
+            energy = self.cache.load_obs_from_local_cache(flattened_paramvec, 'energy')
             if energy is not None:
                 logger.info(f'Found cached value for energy: {energy}')
                 return energy
 
-            if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
+            if self.last_paramvec is None or not np.allclose(self.last_paramvec, flattened_paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
-                self.last_paramvec = paramvec
-                self.evaluator_manager.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator_manager.system_cfg._nparams))
+                self.last_paramvec = flattened_paramvec
+                self.evaluator_manager.system_cfg.paramvec = np.reshape(flattened_paramvec, (-1, self.evaluator_manager.system_cfg._nparams))
                 self.last_result = self.evaluator_manager.simulate()
             
             energy = self.last_result.get_obs_mean('energy')
-            self.cache.add_obs_to_cache(paramvec, 'energy', energy)
+            self.cache.add_obs_to_cache(flattened_paramvec, 'energy', energy)
             logger.info(f'Calculated energy: {energy}')
 
             return energy
         
         # Jacobian wrapper
-        def gradient_wrapper(paramvec):
+        def gradient_wrapper(flattened_paramvec):
             """Wrapper for the gradient of the total energy
 
             Args:
@@ -152,40 +152,39 @@ class Minimizer():
             """
 
             # Check if value is stored in cache (e.g. from previous minimization)
-            parametergrad = self.cache.load_obs_from_local_cache(paramvec, 'energy_grad')
+            parametergrad = self.cache.load_obs_from_local_cache(flattened_paramvec, 'energy_grad')
             if parametergrad is not None:
                 logger.debug('Found cached value for energy_grad')
-                return parametergrad
 
-            if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
+            elif self.last_paramvec is None or not np.allclose(self.last_paramvec, flattened_paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
-                self.last_paramvec = paramvec
+                self.last_paramvec = flattened_paramvec
                 #self.evaluator.mc_cfg.minimizer_mode = True # make sure to calculate derivatives
-                self.evaluator_manager.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator_manager.system_cfg._nparams))
+                self.evaluator_manager.system_cfg.paramvec = np.reshape(flattened_paramvec, (-1, self.evaluator_manager.system_cfg._nparams))
                 self.last_result = self.evaluator_manager.simulate()
             
-            parametergrad = self.last_result.get_obs_mean('energy_grad')
-            parametergrad = parametergrad.reshape((-1))
-            self.cache.add_obs_to_cache(paramvec, 'energy_grad', parametergrad)
+                parametergrad = self.last_result.get_obs_mean('energy_grad')
+                self.cache.add_obs_to_cache(flattened_paramvec, 'energy_grad', parametergrad)
+            flattened_parametergrad = parametergrad.reshape((-1))
 
-            return parametergrad
+            return flattened_parametergrad
 
         # Use the random initialization from the system.initialize as first guess.
         # We might want to change this later.
-        paramvec = np.reshape(self.evaluator_manager.system_cfg.paramvec, (-1))
+        flattened_paramvec = np.reshape(self.evaluator_manager.system_cfg.paramvec, (-1))
         min_result = minimize(energy_wrapper,
-                              paramvec,
+                              flattened_paramvec,
                               method=self.cfg.method,
                               jac=gradient_wrapper,
                               callback=lambda x: print_callback(x, self),
                               options={"maxiter": self.cfg.max_iter})
-        paramvec = min_result.x
-        energygrad = min_result.jac
+        flattened_paramvec = min_result.x
+        flattened_energygrad = min_result.jac
         energy = min_result.fun
         converged = min_result.success
         message = f"message: {min_result.message} Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {min_result.njev}"
 
-        dest = MinimizerResult(paramvec, energygrad, self.cfg.method, energy, converged, message)
+        dest = MinimizerResult(flattened_paramvec, flattened_energygrad, self.cfg.method, energy, converged, message)
         self.min_result = dest
         return dest
 
