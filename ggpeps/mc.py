@@ -60,6 +60,13 @@ class MonteCarloEvaluatorConfig:
         self.rng_state = None
         self.seed = None
 
+    def get_rng_state_internal_repr(self):
+        return self._rng_state.get_state()
+    
+    def set_rng_state_internal_repr(self, state_repr):
+        self._rng_state.set_state(state_repr)
+        return
+
     def __str__(self):
         dest = ""
         dest += f"Seed: {self.seed}\n"

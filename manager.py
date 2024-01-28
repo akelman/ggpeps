@@ -41,6 +41,8 @@ def save_state_on_exit():
         minimizer = ggpeps.global_vars["minimizer"]
         #cache.add_obj_to_cache("minimizer", minimizer)
         cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
+        cache.add_obj_to_cache("rng_state_internal_repr", minimizer.evaluator_manager.mc_cfg.get_rng_state_internal_repr())
+
         cache.save_cache_file()
         logging.info(f"Saved cache file with minimizer to {cache.cache_file}.")
     return
@@ -200,11 +202,6 @@ def main(args):
     else:
         seed = np.random.randint(np.iinfo(np.int32).max)
 
-    # We use a local random number generator instead of the global numpy one to assure
-    # reproducibility across different runs, even when using mulitple processes
-    rngstate = np.random.RandomState(seed)
-    mc_config.seed = seed
-
     # Log basic info
     logger.info(f"Git hash: {utils.get_git_hash()}")
     logger.info(f"Logging level: {args.level}")
@@ -247,9 +244,20 @@ def main(args):
             logger.error("Not Implemented: Only 1, 2, or 4 copies are possible without fermions.")
             sys.exit(1)
 
+    # We use a local random number generator instead of the global numpy one to assure
+    # reproducibility across different runs, even when using mulitple processes
+    rngstate = np.random.RandomState(seed)
+    mc_config.seed = seed
+
     # Translate the command line input to a valid parameter vector
     paramvec = translate_parameters(system_cfg, args.params, rngstate)
     system_cfg.paramvec = paramvec
+
+    # If there is a random state in the cache, reinitialize the RNG with it
+    # (we do this after using the rng state to guess random parameters)
+    if ggpeps.global_vars["cache"].cache_data['rng_state_internal_repr'] is not None:
+        internal_state = ggpeps.global_vars["cache"].cache_data['rng_state_internal_repr']
+        mc_config.set_rng_state_internal_repr(internal_state)
 
     # Ensure pure gauge (setting t parameter(s) to zero) if enabled
     if not args.fermions:
