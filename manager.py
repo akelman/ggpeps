@@ -36,10 +36,11 @@ import signal
 def save_state_on_exit():
     args = ggpeps.global_vars["args"]
     cache = ggpeps.global_vars["cache"]
-    logger.info("Got to save state on exit.")
+    
     if "min" in args.mode:
         minimizer = ggpeps.global_vars["minimizer"]
         cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
+        logger.info(f"Saved evaluator manager to cache.")
 
     cache.save_cache_file()
     logger.info(f"Saved cache file with minimizer to {cache.cache_file}.")
@@ -48,7 +49,7 @@ def save_state_on_exit():
 def signal_handler(signum, frame):
 
     save_state_on_exit()
-    logger.info("Recieved signal to exit. Exiting.")
+    logger.info("Recieved signal {signum}. Exiting.")
     sys.exit(1)
 signal.signal(signal.SIGUSR1, signal_handler) # register the signal handler
 signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
