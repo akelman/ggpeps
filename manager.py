@@ -7,7 +7,6 @@ Further details about the usage of the script can be found in README.md.
 import os
 import sys
 import ray
-import jax
 import logging
 from timeit import default_timer as timer
 
@@ -33,6 +32,7 @@ from ggpeps.minimizer import Minimizer, MinimizerConfig
 
 # set up to allow execution to end gracefully if process is signalled appropriately
 import signal
+
 def save_state_on_exit():
     args = ggpeps.global_vars["args"]
     cache = ggpeps.global_vars["cache"]
@@ -51,7 +51,8 @@ def signal_handler(signum, frame):
     save_state_on_exit()
     logger.info(f"Recieved signal {signum}. Exiting.")
     sys.exit(1)
-signal.signal(signal.SIGUSR1, signal_handler) # register the signal handler
+
+signal.signal(signal.SIGTERM, signal_handler) # register the signal handler
 signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
 
 
