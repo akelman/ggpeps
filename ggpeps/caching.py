@@ -63,8 +63,7 @@ class Cache:
         # update the minimizer to use that eval manager
         if self.cache_data['evaluator_manager'] is not None:
             eval_manager = self.cache_data['evaluator_manager']
-            new_params = np.reshape(np.copy(paramvec), (-1, 20))
-            if np.allclose(eval_manager.system_cfg.paramvec, new_params):
+            if np.allclose(eval_manager.system_cfg.paramvec, np.reshape(paramvec, (-1, 20))  ):
                 ggpeps.global_vars['minimizer'].evaluator_manager = eval_manager
         return None
 
