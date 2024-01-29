@@ -34,7 +34,7 @@ class EvaluatorManager:
         self.nrunner = nrunner
 
         self.evaluator = None
-        self.currently_simulating: bool = False # Flag to indicate whether a simulation should be resumed
+        self.simulation_in_progress: bool = False # Flag to indicate whether a simulation should be resumed
 
         if self.mc_cfg is None:
             self.type = 'exact'
@@ -76,13 +76,13 @@ class EvaluatorManager:
             resultvec = ray.get(resultvec)
             return self.collect(resultvec)
         else:
-            if self.currently_simulating:
+            if self.simulation_in_progress:
                 self.evaluator.system.invalidate_gauge_update()
             else:
                 self.reset_evaluator()
-            self.currently_simulating = True
+            self.simulation_in_progress = True
             self.evaluator.evaluate()
-            self.currently_simulating = False
+            self.simulation_in_progress = False
             return self.evaluator
     
     def collect(self, resultvec):
