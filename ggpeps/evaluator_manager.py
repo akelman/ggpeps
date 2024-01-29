@@ -83,6 +83,9 @@ class EvaluatorManager:
         if self.type == 'mc' and self.nrunner > 0: 
             raise NotImplementedError("Resuming MC simulation with multiple runners is not yet implemented.")
         else:
+            # we may have interrupted while the system is in the middle of a gauge update -
+            # rather than extend the recovery into the system, let's just restart the gauge update
+            self.evaluator.system.invalidate_gauge_update()
             self.evaluator.evaluate()
             return self.evaluator
     
