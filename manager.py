@@ -41,7 +41,7 @@ def save_state_on_exit():
         minimizer = ggpeps.global_vars["minimizer"]
         #cache.add_obj_to_cache("minimizer", minimizer)
         cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
-        cache.add_obj_to_cache("rng_state_internal_repr", minimizer.evaluator_manager.mc_cfg.get_rng_state_internal_repr())
+        #cache.add_obj_to_cache("rng_state_internal_repr", minimizer.evaluator_manager.mc_cfg.get_rng_state_internal_repr())
 
         cache.save_cache_file()
         logging.info(f"Saved cache file with minimizer to {cache.cache_file}.")
@@ -174,8 +174,6 @@ def main(args):
     ggpeps.global_vars["cache"] = cache
     if use_saved_cache:
         cache.load_cache_file(cache.cache_file)
-        if cache.cache_data['minimizer'] is not None:
-            ggpeps.global_vars["minimizer"] = cache.cache_data['minimizer']
 
     # Set up ray before we actually start with the simulation
     # Ray uses randomness internally and we don't want it to mix up the setting of the seed
@@ -255,9 +253,9 @@ def main(args):
 
     # If there is a random state in the cache, reinitialize the RNG with it
     # (we do this after using the rng state to guess random parameters)
-    if ggpeps.global_vars["cache"].cache_data['rng_state_internal_repr'] is not None:
-        internal_state = ggpeps.global_vars["cache"].cache_data['rng_state_internal_repr']
-        mc_config.set_rng_state_internal_repr(internal_state)
+    #if ggpeps.global_vars["cache"].cache_data['rng_state_internal_repr'] is not None:
+    #    internal_state = ggpeps.global_vars["cache"].cache_data['rng_state_internal_repr']
+    #    mc_config.set_rng_state_internal_repr(internal_state)
 
     # Ensure pure gauge (setting t parameter(s) to zero) if enabled
     if not args.fermions:
@@ -342,11 +340,8 @@ def main(args):
         min_cfg.alpha = args.alpha
         min_cfg.min_grad = args.min_grad
 
-        if False and "minimizer" in ggpeps.global_vars.keys():
-            minimizer = ggpeps.global_vars["minimizer"]
-        else:
-            minimizer = Minimizer(min_cfg, mc_mgr)
-            ggpeps.global_vars["minimizer"] = minimizer
+        minimizer = Minimizer(min_cfg, mc_mgr)
+        ggpeps.global_vars["minimizer"] = minimizer # save for global access
 
         start = timer()
         result = minimizer.minimize()

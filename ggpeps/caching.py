@@ -2,6 +2,7 @@ import os
 import pickle
 import numpy as np
 
+import ggpeps
 from ggpeps import utils
 from ggpeps import logger
 
@@ -64,6 +65,8 @@ class Cache:
             eval_manager = self.cache_data['evaluator_manager']
             new_params = np.reshape(np.copy(paramvec), (-1, 20))
             if np.allclose(eval_manager.system_cfg.paramvec, new_params):
+                ggpeps.global_vars['minimizer'].evaluator_manager = eval_manager
+                '''
                 new_params = np.reshape(paramvec, (-1)) 
                 #eval_manager.mc_cfg.set_rng_state_internal_repr(self.cache_data['rng_state_internal_repr'])
                 eval_manager.evaluator.cfg.set_rng_state_internal_repr(self.cache_data['rng_state_internal_repr'])
@@ -75,6 +78,7 @@ class Cache:
                 self.cache_data['rng_state_internal_repr'] = eval_manager.evaluator.cfg.get_rng_state_internal_repr()
                 self.cache_data['evaluator_manager'] = None # reset
                 return evaluator.get_obs_mean(obs)
+                '''
         return None
 
     def load_cache_file(self, cache_file: str):

@@ -5,6 +5,7 @@ import ray
 import copy
 import numpy as np
 
+import ggpeps
 from ggpeps import utils
 from ggpeps import logger
 from ggpeps.exacteval import ExactEvaluator
@@ -33,7 +34,7 @@ class EvaluatorManager:
         self.nrunner = nrunner
 
         self.evaluator = None
-        self.reset_evaluator_before_next_eval: bool = True
+        self.currently_simulating: bool = False # Flag to indicate whether a simulation should be resumed
 
         if self.mc_cfg is None:
             self.type = 'exact'
@@ -75,8 +76,13 @@ class EvaluatorManager:
             resultvec = ray.get(resultvec)
             return self.collect(resultvec)
         else:
-            self.reset_evaluator()
+            if self.currently_simulating:
+                self.evaluator.system.invalidate_gauge_update()
+            else:
+                self.reset_evaluator()
+            self.currently_simulating = True
             self.evaluator.evaluate()
+            self.currently_simulating = False
             return self.evaluator
     
     def resume_simulation(self):
@@ -88,7 +94,7 @@ class EvaluatorManager:
             self.evaluator.system.invalidate_gauge_update()
             # TODO: if we were in the middle of a MC step, that step will be lost by dropping the gauge update
             # so we may need to do step += 1 here
-            
+
             self.evaluator.evaluate()
             return self.evaluator
     

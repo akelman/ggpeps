@@ -126,8 +126,6 @@ class Minimizer():
             energy = self.cache.load_obs_from_local_cache(flattened_paramvec, 'energy')
             if energy is not None:
                 logger.info(f'Found cached value for energy: {energy}')
-                # use the rng state after the last evaluation
-                self.evaluator_manager.evaluator.cfg.set_rng_state_internal_repr(self.cache_data['rng_state_internal_repr'])
                 return energy
 
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, flattened_paramvec):
