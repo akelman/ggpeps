@@ -251,12 +251,6 @@ def main(args):
     paramvec = translate_parameters(system_cfg, args.params, rngstate)
     system_cfg.paramvec = paramvec
 
-    # If there is a random state in the cache, reinitialize the RNG with it
-    # (we do this after using the rng state to guess random parameters)
-    #if ggpeps.global_vars["cache"].cache_data['rng_state_internal_repr'] is not None:
-    #    internal_state = ggpeps.global_vars["cache"].cache_data['rng_state_internal_repr']
-    #    mc_config.set_rng_state_internal_repr(internal_state)
-
     # Ensure pure gauge (setting t parameter(s) to zero) if enabled
     if not args.fermions:
         system_cfg.make_pure_gauge()

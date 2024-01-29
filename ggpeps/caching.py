@@ -61,24 +61,14 @@ class Cache:
         for key in obs_cache.keys():
             if np.allclose(self.key2paramvec(key), paramvec):
                 return obs_cache[key]
+        
+        # if cached value is not found, but an eval manager is present, 
+        # update the minimizer to use that eval manager
         if self.cache_data['evaluator_manager'] is not None:
             eval_manager = self.cache_data['evaluator_manager']
             new_params = np.reshape(np.copy(paramvec), (-1, 20))
             if np.allclose(eval_manager.system_cfg.paramvec, new_params):
                 ggpeps.global_vars['minimizer'].evaluator_manager = eval_manager
-                '''
-                new_params = np.reshape(paramvec, (-1)) 
-                #eval_manager.mc_cfg.set_rng_state_internal_repr(self.cache_data['rng_state_internal_repr'])
-                eval_manager.evaluator.cfg.set_rng_state_internal_repr(self.cache_data['rng_state_internal_repr'])
-                
-                evaluator = self.cache_data['evaluator_manager'].resume_simulation()
-                self.add_obs_to_cache(paramvec, obs, evaluator.get_obs_mean(obs))
-
-                # save the rng state so that it can be used for the next evaluation
-                self.cache_data['rng_state_internal_repr'] = eval_manager.evaluator.cfg.get_rng_state_internal_repr()
-                self.cache_data['evaluator_manager'] = None # reset
-                return evaluator.get_obs_mean(obs)
-                '''
         return None
 
     def load_cache_file(self, cache_file: str):
