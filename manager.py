@@ -39,9 +39,7 @@ def save_state_on_exit():
     logging.info("Got to save state on exit.")
     if "min" in args.mode:
         minimizer = ggpeps.global_vars["minimizer"]
-        #cache.add_obj_to_cache("minimizer", minimizer)
         cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
-        #cache.add_obj_to_cache("rng_state_internal_repr", minimizer.evaluator_manager.mc_cfg.get_rng_state_internal_repr())
 
         cache.save_cache_file()
         logging.info(f"Saved cache file with minimizer to {cache.cache_file}.")
