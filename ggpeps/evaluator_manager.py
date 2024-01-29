@@ -86,6 +86,9 @@ class EvaluatorManager:
             # we may have interrupted while the system is in the middle of a gauge update -
             # rather than extend the recovery into the system, let's just restart the gauge update
             self.evaluator.system.invalidate_gauge_update()
+            # TODO: if we were in the middle of a MC step, that step will be lost by dropping the gauge update
+            # so we may need to do step += 1 here
+            
             self.evaluator.evaluate()
             return self.evaluator
     
