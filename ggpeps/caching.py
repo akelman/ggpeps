@@ -70,6 +70,9 @@ class Cache:
                 
                 evaluator = self.cache_data['evaluator_manager'].resume_simulation()
                 self.add_obs_to_cache(paramvec, obs, evaluator.get_obs_mean(obs))
+
+                # save the rng state so that it can be used for the next evaluation
+                self.cache_data['rng_state_internal_repr'] = eval_manager.evaluator.cfg.get_rng_state_internal_repr()
                 self.cache_data['evaluator_manager'] = None # reset
                 return evaluator.get_obs_mean(obs)
         return None
