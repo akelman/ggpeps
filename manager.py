@@ -49,7 +49,7 @@ def save_state_on_exit():
 def signal_handler(signum, frame):
 
     save_state_on_exit()
-    logger.info("Recieved signal {signum}. Exiting.")
+    logger.info(f"Recieved signal {signum}. Exiting.")
     sys.exit(1)
 signal.signal(signal.SIGUSR1, signal_handler) # register the signal handler
 signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
