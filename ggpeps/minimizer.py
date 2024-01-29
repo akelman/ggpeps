@@ -51,7 +51,6 @@ class MinimizerConfig():
         self._method = val.upper()
 
 class Minimizer():
-    STOP_AFTER_CURRENT_ITERATION = False # this is a flag to catch interrupts to end minimization
     supported_methods = ["CG", "BFGS", "L-BFGS-B", "POWELL", "NELDER-MEAD", "TNC"]
 
     def __init__(self, cfg: MinimizerConfig, evaluator_manager: EvaluatorManager):
@@ -96,12 +95,6 @@ class Minimizer():
             # Check if the maximum of the gradient is smaller than min_grad
             if max_grad_paramvec < abs(self.cfg.min_grad):
                 message = f"Reached convergence: max grad paramvec < {self.cfg.min_grad}"
-                logger.info(message)
-                self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, True, message)
-                return self.min_result
-
-            if self.STOP_AFTER_CURRENT_ITERATION:
-                message = f"Recieved interrupt signal from user. Ending minimization."
                 logger.info(message)
                 self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, True, message)
                 return self.min_result
