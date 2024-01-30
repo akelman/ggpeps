@@ -118,7 +118,7 @@ class Minimizer():
             # Check if value is stored in cache (e.g. from previous minimization)
             energy = self.cache.load_obs_from_local_cache(flattened_paramvec, 'energy')
             if energy is not None:
-                logger.info(f'Found cached value for energy: {energy}')
+                logger.debug(f'Found cached value for energy: {energy}')
                 return energy
 
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, flattened_paramvec):
@@ -129,7 +129,7 @@ class Minimizer():
             
             energy = self.last_result.get_obs_mean('energy')
             self.cache.add_obs_to_cache(flattened_paramvec, 'energy', energy)
-            logger.info(f'Calculated energy: {energy}')
+            logger.debug(f'Calculated energy: {energy}')
 
             return energy
         

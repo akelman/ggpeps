@@ -218,7 +218,7 @@ class MonteCarloEvaluator(Evaluator):
         """Warm up phase without measurement"""
         while self.step < self.cfg.warmup_steps:
             if self.step % self.cfg.warmup_log_freq == 0:
-                logger.info(f"Warmup: {self.step}")
+                logger.debug(f"Warmup: {self.step}")
             self.update()
             self.step += 1
 
@@ -226,7 +226,7 @@ class MonteCarloEvaluator(Evaluator):
         """Meaurement phase phase (with measurement)"""
         while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
             if self.step % self.cfg.run_log_freq == 0:
-                logger.info(f"Run: {self.step}")
+                logger.debug(f"Run: {self.step}")
             self.update()
             self.measure()
             self.step += 1
