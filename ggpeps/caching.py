@@ -78,7 +78,12 @@ class Cache:
                     self.cache_data = cache_data
                     logger.info(f"Loaded cache file {cache_file}")
                 else:
-                    logger.warn(f"Cache file {cache_file} has version {cache_data['cache_version']} \
-                                but the current code uses version {self.cache_version}. Ignoring cached data.")
+                    message = f"Cache version or mode mismatch: " \
+                            + f"file {cache_file} has version {cache_data['cache_version']} " \
+                            + f"but the current code uses version {self.cache_version}; " \
+                            + f"file {cache_file} has mode {cache_data['mode']} " \
+                            + f"but the current run uses mode {ggpeps.global_vars['args'].mode}. " \
+                            + f"Ignoring cached data."
+                    logger.warn(message)
                     # TODO: we can probably recover some of the data
         return self.cache_data
