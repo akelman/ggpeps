@@ -480,8 +480,8 @@ if __name__ == "__main__":
     
     # Output settings
     parser.add_argument("--level", default="info", help="logging level")
-    parser.add_argument("--warmup_log_freq", type=int, default=2000, help="frequency at which to log completed warmup steps")
-    parser.add_argument("--run_log_freq", type=int, default=10000, help="frequency at which to log completed run steps")
+    parser.add_argument("--warmup_log_freq", type=int, default=50000, help="frequency at which to log completed warmup steps")
+    parser.add_argument("--run_log_freq", type=int, default=50000, help="frequency at which to log completed run steps")
     parser.add_argument("--output", type=str, default='.', help="Output Directory")
 
     # Arguments for ray
