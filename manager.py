@@ -40,7 +40,7 @@ def save_state_on_exit():
     if "min" in args.mode:
         minimizer = ggpeps.global_vars["minimizer"]
         cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
-        logger.info(f"Saved evaluator manager to cache.")
+        logger.info(f"Added evaluator manager to cache.")
 
     cache.save_cache_file()
     logger.info(f"Saved cache file with minimizer to {cache.cache_file}.")
