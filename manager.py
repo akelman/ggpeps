@@ -168,15 +168,6 @@ def main(args):
     if not validate_inputs(args):
         sys.exit(1)
 
-    # Set up cache
-    # and save the command line arguments to ggpeps global variable so that they are available everywhere
-    cache = Cache(args.mode)
-    use_saved_cache = True # should be CLI argument
-    ggpeps.global_vars["args"] = args
-    ggpeps.global_vars["cache"] = cache
-    if use_saved_cache:
-        cache.load_cache_file(cache.cache_file)
-
     # Set up ray before we actually start with the simulation
     # Ray uses randomness internally and we don't want it to mix up the setting of the seed
     if args.nrunner > 0:
@@ -308,6 +299,14 @@ def main(args):
         logger.info(f"Min grad: {args.min_grad}")
         logger.info("============================")
 
+    # Set up cache
+    # and save the command line arguments to ggpeps global variable so that they are available everywhere
+    cache = Cache(args.mode)
+    use_saved_cache = True # should be CLI argument
+    ggpeps.global_vars["args"] = args
+    ggpeps.global_vars["cache"] = cache
+    if use_saved_cache:
+        cache.load_cache_file(cache.cache_file)
 
     # Call different functions depending on the mode specified via CLI
     if args.mode == "eval-mc":
