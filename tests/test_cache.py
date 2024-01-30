@@ -11,7 +11,7 @@ from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig
 class TestCache(unittest.TestCase):
 
     def setUp(self):
-        self.cache = Cache()
+        self.cache = Cache('eval-mc')
 
     def test_keygen(self):
         paramvec = np.array([1.2, 2, 3]) # for some reason this does not work if all params are int's
@@ -24,6 +24,7 @@ class TestCache(unittest.TestCase):
         self.assertEqual(self.cache.cache_data['cache_version'], 0.1)
         self.assertTrue('git_hash' in self.cache.cache_data.keys())
 
+        self.assertEqual(self.cache.cache_data['mode'], 'eval-mc')
         self.assertEqual(self.cache.cache_data['evaluator_manager'], None)
         self.assertEqual(self.cache.cache_data['energy'], {})
         self.assertEqual(self.cache.cache_data['energy_grad'], {})

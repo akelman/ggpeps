@@ -76,7 +76,7 @@ class EvaluatorManager:
             resultvec = ray.get(resultvec)
             return self.collect(resultvec)
         else:
-            if self.simulation_in_progress:
+            if self.type == 'mc' and self.simulation_in_progress: # exacteval does not support resuming an evaluation
                 self.evaluator.system.invalidate_gauge_update()
             else:
                 self.reset_evaluator()

@@ -166,7 +166,7 @@ def main(args):
 
     # Set up cache
     # and save the command line arguments to ggpeps global variable so that they are available everywhere
-    cache = Cache()
+    cache = Cache(args.mode)
     use_saved_cache = True # should be CLI argument
     ggpeps.global_vars["args"] = args
     ggpeps.global_vars["cache"] = cache
@@ -308,8 +308,14 @@ def main(args):
     # Call different functions depending on the mode specified via CLI
     if args.mode == "eval-mc":
         # Evaluate observables for a given set of parameters with Monte Carlo
+        
         mc_config.minimizer_mode = args.compute_grads
-        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+        if cache.load_obj_from_local_cache('evaluator_manager') is not None:
+            mc_mgr = cache.load_obj_from_local_cache('evaluator_manager')
+            logger.info(f"Loaded evaluator manager from cache.")
+        else:
+            mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+        
         start = timer()
         mc_result = mc_mgr.simulate()
         stop = timer()
@@ -343,9 +349,11 @@ def main(args):
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
         ex_eval = EvaluatorManager(system_type, system_cfg, None, args.nrunner)
+        
         start = timer()
         dest = ex_eval.simulate()
         stop = timer()
+        
         dest_dict = dest.obsdict
         dest.save(output_dir=args.output)
         for key, val in dest_dict.items():

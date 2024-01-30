@@ -9,11 +9,12 @@ from ggpeps import logger
 ####################### Caching #######################
 
 class Cache:
-    def __init__(self, cache_file: str = 'cache.pkl'):
+    def __init__(self, mode: str, cache_file: str = 'cache.pkl'):
         self.cache_version = 0.1
         self.cache_file: str = cache_file
         self.cache_data: dict = {'cache_version': self.cache_version,
                                  'git_hash': utils.get_git_hash(),
+                                 'mode': mode,
                                  'evaluator_manager': None,
                                  'energy': {}, 
                                  'energy_grad': {}} 
@@ -73,7 +74,7 @@ class Cache:
         if os.path.exists(cache_file):
             with open(cache_file, "rb") as infile:
                 cache_data = pickle.load(infile)
-                if cache_data['cache_version'] == self.cache_version:
+                if cache_data['cache_version'] == self.cache_version and cache_data['mode'] == ggpeps.global_vars['args'].mode:
                     self.cache_data = cache_data
                     logger.info(f"Loaded cache file {cache_file}")
                 else:
