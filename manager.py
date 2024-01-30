@@ -41,6 +41,10 @@ def save_state_on_exit():
         minimizer = ggpeps.global_vars["minimizer"]
         cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
         logger.info(f"Added evaluator manager to cache.")
+    elif "eval" in args.mode:
+        eval_manager = ggpeps.global_vars["eval_manager"]
+        cache.add_obj_to_cache("evaluator_manager", eval_manager)
+        logger.info(f"Added evaluator manager to cache.")
 
     cache.save_cache_file()
     logger.info(f"Saved cache file with minimizer to {cache.cache_file}.")
@@ -315,6 +319,7 @@ def main(args):
             logger.info(f"Loaded evaluator manager from cache.")
         else:
             mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+        ggpeps.global_vars["eval_manager"] = mc_mgr # save for global access
         
         start = timer()
         mc_result = mc_mgr.simulate()
