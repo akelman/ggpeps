@@ -53,7 +53,7 @@ def save_state_on_exit():
 def signal_handler(signum, frame):
 
     save_state_on_exit()
-    logger.info(f"Recieved signal {signum}. Exiting.")
+    logger.info(f"Recieved signal {signum}. Exiting.\n\n")
     sys.exit(10)
 
 signal.signal(signal.SIGTERM, signal_handler) # register the signal handler
