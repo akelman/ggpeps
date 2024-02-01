@@ -47,16 +47,17 @@ def save_state_on_exit():
         logger.info(f"Added evaluator manager to cache.")
 
     cache.save_cache_file()
-    logger.info(f"Saved cache file with minimizer to {cache.cache_file}.")
+    logger.info(f"Saved cache file to {cache.cache_file}.")
     return
 
 def signal_handler(signum, frame):
 
     save_state_on_exit()
     logger.info(f"Recieved signal {signum}. Exiting.")
-    sys.exit(1)
+    sys.exit(10)
 
 signal.signal(signal.SIGTERM, signal_handler) # register the signal handler
+signal.signal(signal.SIGUSR1, signal_handler)
 signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
 
 
@@ -419,7 +420,7 @@ def main(args):
 
     logger.info("========== TIME ============")
     logger.info(f"The simulation took {stop - start}s.")
-    logger.info("============================")
+    logger.info("============================\n\n") # add new lines to separate from next run
 
 
 
