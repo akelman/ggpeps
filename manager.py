@@ -32,6 +32,7 @@ from ggpeps.minimizer import Minimizer, MinimizerConfig
 
 # set up to allow execution to end gracefully if process is signalled appropriately
 import signal
+INTERRUPT_EXIT_CODE = 10
 
 def save_state_on_exit():
     args = ggpeps.global_vars["args"]
@@ -54,7 +55,7 @@ def signal_handler(signum, frame):
 
     save_state_on_exit()
     logger.info(f"Recieved signal {signum}. Exiting.\n\n")
-    sys.exit(10)
+    sys.exit(INTERRUPT_EXIT_CODE)
 
 signal.signal(signal.SIGTERM, signal_handler) # register the signal handler
 signal.signal(signal.SIGUSR1, signal_handler)
