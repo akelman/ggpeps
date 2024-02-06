@@ -216,20 +216,24 @@ class MonteCarloEvaluator(Evaluator):
 
     def warmup(self):
         """Warm up phase without measurement"""
+        logger.debug("Starting MC warmup")
         while self.step < self.cfg.warmup_steps:
             if self.step % self.cfg.warmup_log_freq == 0:
                 logger.debug(f"Warmup: {self.step}")
             self.update()
             self.step += 1
+        logger.debug("Finished MC warmup")
 
     def run(self):
         """Meaurement phase phase (with measurement)"""
+        logger.debug("Starting MC measurement")
         while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
             if self.step % self.cfg.run_log_freq == 0:
                 logger.debug(f"Run: {self.step}")
             self.update()
             self.measure()
             self.step += 1
+        logger.debug("Finished MC measurement")
 
     def update_single_site(self):
         """Update for the MC simulation.
