@@ -225,7 +225,7 @@ class MonteCarloEvaluator(Evaluator):
         logger.debug("Finished MC warmup")
 
     def run(self):
-        """Meaurement phase phase (with measurement)"""
+        """Meaurement phase"""
         logger.debug("Starting MC measurement")
         while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
             if self.step % self.cfg.run_log_freq == 0:
