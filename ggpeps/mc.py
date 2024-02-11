@@ -7,11 +7,13 @@ import pickle
 import numpy as np
 import pandas as pd
 
+import ggpeps
 import ggpeps.utils as utils
 import ggpeps.lattice as lattice
+
 from ggpeps import logger
-from ggpeps.measurement import Measurement
 from ggpeps.evaluator import Evaluator
+from ggpeps.measurement import Measurement
 
 
 #################### Monte Carlo Estimator Config ###################
@@ -78,7 +80,10 @@ class MonteCarloEvaluatorConfig:
 
 ################################### Multiprocessing layer #######################
 
-
+if ggpeps.GPU_AVAILABLE:
+    gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
+else:
+    gpu_frac = 0.0
 @ray.remote(num_gpus=0)
 def run_mc(runner_id, mc_cfg, system_cls, system_cfg):
     # TODO: get logger working within ray
