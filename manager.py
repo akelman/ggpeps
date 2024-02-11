@@ -130,7 +130,7 @@ def main(args):
     # Make sure that the output directory is fine
     if os.path.exists(args.output):
         if not os.path.isdir(args.output):
-            logger.warn(f"Output directory '{args.output}' exists and is not a directory. Aborting.", file=sys.stderr)
+            print(f"Output directory '{args.output}' exists and is not a directory. Aborting.", file=sys.stderr)
             sys.exit(1)
     else:
         os.makedirs(args.output)
