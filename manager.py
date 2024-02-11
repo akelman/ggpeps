@@ -304,10 +304,9 @@ def main(args):
     # Set up cache
     # and save the command line arguments to ggpeps global variable so that they are available everywhere
     cache = Cache(args.mode)
-    use_saved_cache = True # should be CLI argument
     ggpeps.global_vars["args"] = args
     ggpeps.global_vars["cache"] = cache
-    if use_saved_cache:
+    if not args.ignore_cache:
         cache.load_cache_file(cache.cache_file)
 
     # Call different functions depending on the mode specified via CLI
@@ -485,6 +484,9 @@ if __name__ == "__main__":
     parser.add_argument("--warmup_log_freq", type=int, default=50000, help="frequency at which to log completed warmup steps")
     parser.add_argument("--run_log_freq", type=int, default=50000, help="frequency at which to log completed run steps")
     parser.add_argument("--output", type=str, default='.', help="Output Directory")
+
+    # Cache settings
+    parser.add_argument("--ignore_cache", action="store_true", default=False, help="Ignore the cache and start from scratch. A new cache will be saved (and overwrite the old one).") 
 
     # Arguments for ray
     parser.add_argument("--nrunner", type=int, default=0, help="Number of parallel MC runners")
