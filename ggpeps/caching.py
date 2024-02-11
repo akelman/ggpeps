@@ -62,6 +62,7 @@ class Cache:
         
         # if cached value is not found, but an eval manager is present, 
         # update the minimizer to use that eval manager
+        # TODO: this is a hack, we should have a better way to handle this
         if self.cache_data['evaluator_manager'] is not None:
             eval_manager = self.cache_data['evaluator_manager']
             if eval_manager.nrunner == ggpeps.global_vars['minimizer'].evaluator_manager.nrunner:
