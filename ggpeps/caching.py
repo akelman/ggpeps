@@ -64,18 +64,21 @@ class Cache:
         # update the minimizer to use that eval manager
         if self.cache_data['evaluator_manager'] is not None:
             eval_manager = self.cache_data['evaluator_manager']
-            if np.allclose(eval_manager.system_cfg.paramvec, np.reshape(paramvec, (-1, 20))  ):
-                ggpeps.global_vars['minimizer'].evaluator_manager = eval_manager
+            if eval_manager.nrunner == ggpeps.global_vars['minimizer'].evaluator_manager.nrunner:
+                if np.allclose(eval_manager.system_cfg.paramvec, np.reshape(paramvec, (-1, 20)) ):
+                    ggpeps.global_vars['minimizer'].evaluator_manager = eval_manager
         return None
 
-    def load_cache_file(self, cache_file: str):
+    def load_cache_file(self, cache_file: str) -> bool:
         # TODO: once we include other objects in the cache,
         #       this function should check that cached objects have the same configs
+        success = False
         if os.path.exists(cache_file):
             with open(cache_file, "rb") as infile:
                 cache_data = pickle.load(infile)
                 if cache_data['cache_version'] == self.cache_version and cache_data['mode'] == ggpeps.global_vars['args'].mode:
                     self.cache_data = cache_data
+                    success = True
                     logger.info(f"Loaded cache file {cache_file}")
                 else:
                     message = f"Cache version or mode mismatch: " \
@@ -86,4 +89,4 @@ class Cache:
                             + f"Ignoring cached data."
                     logger.warn(message)
                     # TODO: we can probably recover some of the data
-        return self.cache_data
+        return success
