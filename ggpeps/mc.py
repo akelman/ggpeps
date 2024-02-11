@@ -81,7 +81,7 @@ class MonteCarloEvaluatorConfig:
 ################################### Multiprocessing layer #######################
 
 if ggpeps.GPU_AVAILABLE:
-    gpu_frac = 1 / 2 #ggpeps.global_vars["args"].nrunner
+    gpu_frac = 1 / 4 #ggpeps.global_vars["args"].nrunner
 else:
     gpu_frac = 0.0
 @ray.remote(num_gpus=gpu_frac)
