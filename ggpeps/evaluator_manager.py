@@ -59,6 +59,7 @@ class EvaluatorManager:
             #system_cfg_id = ray.put(self.system_cfg)
             reduced_meas_steps = self.mc_cfg.meas_steps // self.nrunner
             logger.info(f"Starting {self.nrunner} runners with {reduced_meas_steps} measurement steps each (total: {self.nrunner * reduced_meas_steps}).")
+            
             for i in range(self.nrunner):
                 # Make a copy of the MC config, and change the seed for each runner
                 cfg = copy.deepcopy(self.mc_cfg)
@@ -72,7 +73,13 @@ class EvaluatorManager:
                 # copy is made inside run_mc()
                 #sys_cfg = copy.deepcopy(self.system_cfg)
                 
-                resultvec.append(run_mc.remote(i, cfg, self.system_cls, self.system_cfg))
+                gpu_frac = 0.0
+                if ggpeps.GPU_AVAILABLE:
+                    gpu_frac = 1 / 4 #ggpeps.global_vars["args"].nrunner
+
+                run_mc_modified = run_mc.options(num_gpus=gpu_frac)
+                resultvec.append(run_mc_modified.remote(i, cfg, self.system_cls, self.system_cfg))
+            
             resultvec = ray.get(resultvec)
             return self.collect(resultvec)
         else:

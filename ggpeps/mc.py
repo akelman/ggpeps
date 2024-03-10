@@ -79,12 +79,8 @@ class MonteCarloEvaluatorConfig:
 
 
 ################################### Multiprocessing layer #######################
-
-if ggpeps.GPU_AVAILABLE:
-    gpu_frac = 1 / 4 #ggpeps.global_vars["args"].nrunner
-else:
-    gpu_frac = 0.0
-@ray.remote(num_gpus=gpu_frac)
+    
+@ray.remote
 def run_mc(runner_id, mc_cfg, system_cls, system_cfg):
     # TODO: get logger working within ray
     system = system_cls(copy.deepcopy(system_cfg))
