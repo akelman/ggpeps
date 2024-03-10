@@ -7,6 +7,7 @@ global_vars = {}
 
 # GPU or CPU
 import jax
+# config.update("jax_enable_x64", True) # TODO: does this need to be here
 try:
     available_gpus = jax.devices('gpu') # Get the list of available GPUs
     PREFERRED_DEVICE = available_gpus[0] # Use the first available GPU as the preferred device
