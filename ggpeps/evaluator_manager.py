@@ -75,7 +75,7 @@ class EvaluatorManager:
                 
                 gpu_frac = 0.0
                 if ggpeps.GPU_AVAILABLE:
-                    gpu_frac = 1 / 4 #ggpeps.global_vars["args"].nrunner
+                    gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
 
                 run_mc_modified = run_mc.options(num_gpus=gpu_frac)
                 resultvec.append(run_mc_modified.remote(i, cfg, self.system_cls, self.system_cfg))
