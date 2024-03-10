@@ -127,8 +127,14 @@ class Minimizer():
                 self.evaluator_manager.system_cfg.paramvec = np.reshape(flattened_paramvec, (-1, self.evaluator_manager.system_cfg._nparams))
                 self.last_result = self.evaluator_manager.simulate()
             
+            # Save to cache -
+            #   it is important to save energy and gradients (even though the last_paramvec stores both)
+            #   so that if the computation is interrupted (which loses the last_paramvec), 
+            #   we can still use the cached values
             energy = self.last_result.get_obs_mean('energy')
             self.cache.add_obs_to_cache(flattened_paramvec, 'energy', energy)
+            parametergrad = self.last_result.get_obs_mean('energy_grad')
+            self.cache.add_obs_to_cache(flattened_paramvec, 'energy_grad', parametergrad)
             logger.debug(f'Calculated energy: {energy}')
 
             return energy
@@ -157,6 +163,9 @@ class Minimizer():
                 self.evaluator_manager.system_cfg.paramvec = np.reshape(flattened_paramvec, (-1, self.evaluator_manager.system_cfg._nparams))
                 self.last_result = self.evaluator_manager.simulate()
             
+            # Save to cache
+            energy = self.last_result.get_obs_mean('energy')
+            self.cache.add_obs_to_cache(flattened_paramvec, 'energy', energy)
             parametergrad = self.last_result.get_obs_mean('energy_grad')
             self.cache.add_obs_to_cache(flattened_paramvec, 'energy_grad', parametergrad)
 
