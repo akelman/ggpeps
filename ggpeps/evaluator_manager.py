@@ -54,7 +54,7 @@ class EvaluatorManager:
     def simulate(self):
         if self.type == 'mc' and self.nrunner > 0: # The exacteval implementation currently only supports a single runner
             """Start the simulation of the runners.
-            Currently only Monte Carlo is supported, and the runners cannot be resumed from where they left off."""
+            Currently only Monte Carlo is supported, and multiple runners cannot be resumed from where they left off."""
             resultvec = []
             #system_cfg_id = ray.put(self.system_cfg)
             reduced_meas_steps = self.mc_cfg.meas_steps // self.nrunner
