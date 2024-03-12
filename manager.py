@@ -6,9 +6,11 @@ Further details about the usage of the script can be found in README.md.
 # Imports 
 import os
 import sys
-import ray
 import logging
 from timeit import default_timer as timer
+
+os.environ["RAY_DEDUP_LOGS"] = "0" # Ensure that logs are not deduplicated, i.e. the same log message can be printed from different workers
+import ray
 
 import numpy as np
 np.set_printoptions(linewidth=200)
