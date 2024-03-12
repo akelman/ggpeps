@@ -138,6 +138,12 @@ python manager.py minexact 2 --method BFGS
 
 For an overview of all command line parameters call `python manager.py --help`.
 
+## High Performance Computing
+
+The repo includes several scripts to help with running many jobs on a computing cluster.
+It can also interpret signals, e.g. as sent by slurm, to automatically cache and end a computation.
+
+
 ## Data Analysis / Exploration
 
 The data from different modes is stored in the form of pickled pandas dataframes.
