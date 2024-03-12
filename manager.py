@@ -172,7 +172,7 @@ def main(args):
 
     # Set up ray before we actually start with the simulation
     # Ray uses randomness internally and we don't want it to mix up the setting of the seed
-    if ggpeps.GPU_AVAILABLE and args.nranner > 0:
+    if ggpeps.GPU_AVAILABLE and args.nrunner > 0:
         ray.init(num_cpus=args.nrunner, num_gpus=1)
     elif args.nrunner > 0:
         ray.init(num_cpus=args.nrunner)
