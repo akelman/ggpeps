@@ -3,6 +3,7 @@ import ray
 import copy
 import gzip
 import pickle
+import logging
 
 import numpy as np
 import pandas as pd
@@ -11,10 +12,10 @@ import ggpeps
 import ggpeps.utils as utils
 import ggpeps.lattice as lattice
 
-from ggpeps import logger
 from ggpeps.evaluator import Evaluator
 from ggpeps.measurement import Measurement
 
+logger = logging.getLogger('ggpeps')
 
 #################### Monte Carlo Estimator Config ###################
 

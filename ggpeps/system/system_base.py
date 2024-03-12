@@ -3,16 +3,18 @@ from typing import Union, List # used in type hints; this approach might be depr
 from dataclasses import dataclass, field
 
 import sys
+import logging
 import itertools as it
 
 import sympy
 import numpy as np
 from pfapack import pfaffian as pf
 
-from ggpeps import logger
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
 from ggpeps.system.global_funcs import compute_grad_over_norm, calculate_lognormvec, compute_el_grad_vec
+
+logger = logging.getLogger('ggpeps')
 
 ################## Utility Functions ######################
 def extract_partial_covmats(mat, corner):

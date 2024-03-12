@@ -1,10 +1,12 @@
 import os
 import pickle
+import logging
 import numpy as np
 
 import ggpeps
 from ggpeps import utils
-from ggpeps import logger
+
+logger = logging.getLogger('ggpeps')
 
 ####################### Caching #######################
 

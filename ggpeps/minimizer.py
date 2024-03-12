@@ -2,16 +2,17 @@ from typing import Optional
 
 import os
 import pickle
+import logging
 
 import numpy as np
 from scipy.optimize import minimize
 
 import ggpeps
-from ggpeps import logger
 from ggpeps.caching import Cache
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.evaluator import Evaluator
 
+logger = logging.getLogger('ggpeps')
 
 ####################### Minimizer #######################
 

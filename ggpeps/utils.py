@@ -3,6 +3,7 @@ import re
 import sys
 import gzip
 import pickle
+import logging
 import subprocess  # Start process for git hash
 
 import numpy as np
@@ -16,7 +17,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
 import ggpeps.measurement as meas
-from ggpeps import logger
+
+logger = logging.getLogger('ggpeps')
 
 # Global constants
 paulix = np.array([[0, 1], [1, 0]])

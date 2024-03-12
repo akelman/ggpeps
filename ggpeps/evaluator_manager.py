@@ -3,14 +3,16 @@ from abc import ABC, abstractmethod
 
 import ray
 import copy
+import logging
 import numpy as np
 
 import ggpeps
 from ggpeps import utils
-from ggpeps import logger
 from ggpeps.exacteval import ExactEvaluator
 from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig, run_mc
 from ggpeps.system import SystemType, SystemConfigType
+
+logger = logging.getLogger('ggpeps')
 
 class EvaluatorManager:
     """The EvaluatorManager is a wrapper around the different evaluators (ExactEvaluator and MonteCarloEvaluator).

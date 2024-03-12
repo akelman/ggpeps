@@ -14,7 +14,6 @@ import numpy as np
 np.set_printoptions(linewidth=200)
 
 import ggpeps
-from ggpeps import logger
 from ggpeps.caching import Cache
 from ggpeps.system import Z2System2DConfig, Z2System2D
 from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
@@ -29,6 +28,7 @@ from ggpeps.mc import MonteCarloEvaluatorConfig
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 
+logger = logging.getLogger('ggpeps')
 
 # set up to allow execution to end gracefully if process is signalled appropriately
 import signal
