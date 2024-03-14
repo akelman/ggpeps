@@ -2,9 +2,8 @@
 global_vars = {}
 
 # Logger setup
-logger_name = 'ggpeps'
+logger_name = 'ggpeps' # this is hard-coded in several places in the code
 logger_file = None
-#logger = logging.getLogger(logger_name)
 
 # GPU or CPU
 import jax
