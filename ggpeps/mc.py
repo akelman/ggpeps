@@ -82,10 +82,12 @@ class MonteCarloEvaluatorConfig:
 ################################### Multiprocessing layer #######################
     
 @ray.remote
-def run_mc(runner_id, mc_cfg, system_cls, system_cfg):
-    # TODO: get logger working within ray - need to get access to the logger name and level
+def run_mc(runner_id, mc_cfg: MonteCarloEvaluatorConfig, system_cls, system_cfg, logger_info:dict):
+    # Setup logger
     logger = logging.getLogger('ggpeps')
-    utils.setup_logger(logger, 'log_file.log', 'DEBUG')
+    logger_file = logger_info['filename']
+    level = logger_info['logger_level']
+    utils.setup_logger(logger, logger_file, level)
     
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
