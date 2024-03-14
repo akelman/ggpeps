@@ -27,12 +27,12 @@ pauliz = np.array([[1, 0], [0, -1]])
 
 # ========== Utility Functions ====================
 
-def setup_logger(logger: logging.Logger, log_file: str, level: str):
+def setup_logger(logger: logging.Logger, log_file: str, level: str, runner_msg: str = ''):
     log_file_handler = logging.FileHandler(log_file)
     h_stdout = logging.StreamHandler(stream=sys.stdout)
     h_stderr = logging.StreamHandler(stream=sys.stderr)
     h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
-    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    formatter = logging.Formatter(f"%(asctime)s [{runner_msg}%(levelname)s] %(message)s")
     h_stdout.setFormatter(formatter)
     log_file_handler.setFormatter(formatter)
     logger.addHandler(h_stdout)

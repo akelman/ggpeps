@@ -87,7 +87,7 @@ def run_mc(runner_id, mc_cfg: MonteCarloEvaluatorConfig, system_cls, system_cfg,
     logger = logging.getLogger('ggpeps')
     logger_file = logger_info['filename']
     level = logger_info['logger_level']
-    utils.setup_logger(logger, logger_file, level)
+    utils.setup_logger(logger, logger_file, level, runner_msg=f"Runner {runner_id}-")
     
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
