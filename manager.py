@@ -64,7 +64,7 @@ signal.signal(signal.SIGUSR1, signal_handler)
 signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
 
 
-def args2logname(args, couplings):
+def args2logname(args, couplings: dict) -> str:
     """Convert arguments to a name for the log file
 
     Args:
@@ -74,13 +74,15 @@ def args2logname(args, couplings):
     Returns:
         str: Filename of the log file
     """
+    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}"
+
     if "exact" in args.mode:
-        fname = f"log_{args.mode}_L_{args.L}x{args.L}_gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}.log"
+        fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}.log"
     else:
-        fname = f"log_{args.mode}_L_{args.L}x{args.L}_gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
+        fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
     return os.path.join(args.output, fname)
 
-def translate_parameters(system_cfg, params, rng_state):
+def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomState):
     """Translate the parameters given on the commandline to a form useful in the code
 
     Args:
@@ -97,7 +99,7 @@ def translate_parameters(system_cfg, params, rng_state):
         # The parameters are stored in a file and we can load them
         dest = np.load(params[0])
         dest = np.reshape(dest,(nlayer,-1))
-    elif params is None or params=="rand" :
+    elif params is None or params == "rand" :
         # No parameters are given and we randomize
         dest = rng_state.rand(nlayer, nparams)
     else:
@@ -123,6 +125,20 @@ def validate_inputs(args) -> bool:
         return False
 
     return True
+
+def setup_logger(logger: logging.Logger, log_file: str, level: str):
+    log_file_handler = logging.FileHandler(log_file)
+    h_stdout = logging.StreamHandler(stream=sys.stdout)
+    h_stderr = logging.StreamHandler(stream=sys.stderr)
+    h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    h_stdout.setFormatter(formatter)
+    log_file_handler.setFormatter(formatter)
+    logger.addHandler(h_stdout)
+    logger.addHandler(h_stderr)
+    logger.addHandler(log_file_handler)
+    logger.setLevel(level.upper())
+    return 
 
 def main(args):
     raw_command = ' '.join(sys.argv)
@@ -156,17 +172,8 @@ def main(args):
     couplings = {"g_el":g_el, "g_mag":g_mag, "g_int":g_int, "g_mass":g_mass}
 
     # Set up the logger
-    log_file_handler = logging.FileHandler(args2logname(args, couplings))
-    h_stdout = logging.StreamHandler(stream=sys.stdout)
-    h_stderr = logging.StreamHandler(stream=sys.stderr)
-    h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
-    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-    h_stdout.setFormatter(formatter)
-    log_file_handler.setFormatter(formatter)
-    logger.addHandler(h_stdout)
-    logger.addHandler(h_stderr)
-    logger.addHandler(log_file_handler)
-    logger.setLevel(args.level.upper())
+    log_filename = args2logname(args, couplings)
+    setup_logger(logger, log_filename, args.level)
     
     # Validate input arguments
     if not validate_inputs(args):
