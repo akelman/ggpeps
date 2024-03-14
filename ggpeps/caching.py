@@ -6,7 +6,7 @@ import numpy as np
 import ggpeps
 from ggpeps import utils
 
-logger = logging.getLogger('ggpeps')
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 ####################### Caching #######################
 

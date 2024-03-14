@@ -12,7 +12,7 @@ from ggpeps.exacteval import ExactEvaluator
 from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig, run_mc
 from ggpeps.system import SystemType, SystemConfigType
 
-logger = logging.getLogger('ggpeps')
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 class EvaluatorManager:
     """The EvaluatorManager is a wrapper around the different evaluators (ExactEvaluator and MonteCarloEvaluator).

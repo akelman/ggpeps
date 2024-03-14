@@ -10,11 +10,12 @@ import sympy
 import numpy as np
 from pfapack import pfaffian as pf
 
+import ggpeps
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
 from ggpeps.system.global_funcs import compute_grad_over_norm, calculate_lognormvec, compute_el_grad_vec
 
-logger = logging.getLogger('ggpeps')
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 ################## Utility Functions ######################
 def extract_partial_covmats(mat, corner):

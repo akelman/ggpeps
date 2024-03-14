@@ -30,7 +30,7 @@ from ggpeps.mc import MonteCarloEvaluatorConfig
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 
-logger = logging.getLogger('ggpeps')
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 # set up to allow execution to end gracefully if process is signalled appropriately
 import signal

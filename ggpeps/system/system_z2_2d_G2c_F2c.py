@@ -3,13 +3,14 @@ import logging
 import numpy as np
 from scipy.linalg import block_diag
 
+import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.modearray import generate_permutation_matrix
 
 from .system_base import Config2DBase, System2DBase, ElectricEnergyIntermediateVals
 
-logger = logging.getLogger('ggpeps')
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 ###################### Z2System2D ##########################
 

@@ -15,7 +15,7 @@ import ggpeps.lattice as lattice
 from ggpeps.evaluator import Evaluator
 from ggpeps.measurement import Measurement
 
-logger = logging.getLogger('ggpeps')
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 #################### Monte Carlo Estimator Config ###################
 
@@ -97,9 +97,9 @@ def run_mc(runner_id: int, mc_cfg: MonteCarloEvaluatorConfig, system_cls, system
     """
 
     # Setup logger
-    logger = logging.getLogger('ggpeps')
     logger_file = logger_info['filename']
     level = logger_info['logger_level']
+    logger = logging.getLogger(ggpeps.LOGGER_NAME)
     utils.setup_logger(logger, logger_file, level, runner_msg=f"Runner {runner_id}-")
     
     system = system_cls(copy.deepcopy(system_cfg))

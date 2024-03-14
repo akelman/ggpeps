@@ -16,9 +16,10 @@ from pfapack import pfaffian as pf
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
+import ggpeps
 import ggpeps.measurement as meas
 
-logger = logging.getLogger('ggpeps')
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 # Global constants
 paulix = np.array([[0, 1], [1, 0]])

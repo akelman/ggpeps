@@ -6,13 +6,14 @@ import numpy as np
 from scipy.linalg import block_diag
 from pfapack import pfaffian as pf
 
+import ggpeps
 import ggpeps.lattice as lat
 from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
 from .system_base import Config2DBase, System2DBase, calculate_lognorm, calculate_lognormvec_inc, extract_partial_covmats, calculate_lognorm_inc
 
-logger = logging.getLogger('ggpeps')
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 ################### U1MultilayerSystem2D ###################
 

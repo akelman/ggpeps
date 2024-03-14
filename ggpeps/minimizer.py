@@ -12,7 +12,7 @@ from ggpeps.caching import Cache
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.evaluator import Evaluator
 
-logger = logging.getLogger('ggpeps')
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 ####################### Minimizer #######################
 

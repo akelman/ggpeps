@@ -2,7 +2,7 @@
 global_vars = {}
 
 # Logger setup
-logger_name = 'ggpeps' # this is hard-coded in several places in the code
+LOGGER_NAME = 'ggpeps'
 logger_file = None
 
 # GPU or CPU
