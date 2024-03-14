@@ -27,6 +27,20 @@ pauliz = np.array([[1, 0], [0, -1]])
 
 # ========== Utility Functions ====================
 
+def setup_logger(logger: logging.Logger, log_file: str, level: str):
+    log_file_handler = logging.FileHandler(log_file)
+    h_stdout = logging.StreamHandler(stream=sys.stdout)
+    h_stderr = logging.StreamHandler(stream=sys.stderr)
+    h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    h_stdout.setFormatter(formatter)
+    log_file_handler.setFormatter(formatter)
+    logger.addHandler(h_stdout)
+    logger.addHandler(h_stderr)
+    logger.addHandler(log_file_handler)
+    logger.setLevel(level.upper())
+    return 
+
 def fname2nlayer(fname):
     """Extract the number of layers from a filename"""
     pattern = r"(?<=nlayer_)[\d]*"

@@ -126,19 +126,6 @@ def validate_inputs(args) -> bool:
 
     return True
 
-def setup_logger(logger: logging.Logger, log_file: str, level: str):
-    log_file_handler = logging.FileHandler(log_file)
-    h_stdout = logging.StreamHandler(stream=sys.stdout)
-    h_stderr = logging.StreamHandler(stream=sys.stderr)
-    h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
-    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-    h_stdout.setFormatter(formatter)
-    log_file_handler.setFormatter(formatter)
-    logger.addHandler(h_stdout)
-    logger.addHandler(h_stderr)
-    logger.addHandler(log_file_handler)
-    logger.setLevel(level.upper())
-    return 
 
 def main(args):
     raw_command = ' '.join(sys.argv)
@@ -173,7 +160,8 @@ def main(args):
 
     # Set up the logger
     log_filename = args2logname(args, couplings)
-    setup_logger(logger, log_filename, args.level)
+    ggpeps.logger_file = log_filename
+    utils.setup_logger(logger, log_filename, args.level)
     
     # Validate input arguments
     if not validate_inputs(args):

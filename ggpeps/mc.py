@@ -83,19 +83,9 @@ class MonteCarloEvaluatorConfig:
     
 @ray.remote
 def run_mc(runner_id, mc_cfg, system_cls, system_cfg):
-    # TODO: get logger working within ray
-    import sys
+    # TODO: get logger working within ray - need to get access to the logger name and level
     logger = logging.getLogger('ggpeps')
-
-    h_stdout = logging.StreamHandler(stream=sys.stdout)
-    h_stderr = logging.StreamHandler(stream=sys.stderr)
-    h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
-    formatter = logging.Formatter(f"%(asctime)s - RayRunner {runner_id} - [%(levelname)s] %(message)s")
-    h_stdout.setFormatter(formatter)
-    logger.addHandler(h_stdout)
-    logger.addHandler(h_stderr)
-    logger.setLevel("DEBUG")
-    logger.info("Test message from ray worker")
+    utils.setup_logger(logger, 'log_file.log', 'DEBUG')
     
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
