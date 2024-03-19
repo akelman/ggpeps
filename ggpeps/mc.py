@@ -97,6 +97,7 @@ def run_mc(runner_id: int, mc_cfg: MonteCarloEvaluatorConfig, system_cls, system
     """
 
     # Setup logger
+    # TODO: this is probably not the best way to get the required logger configuration
     logger_file = logger_info['filename']
     level = logger_info['logger_level']
     logger = logging.getLogger(ggpeps.LOGGER_NAME)
