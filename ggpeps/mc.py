@@ -454,10 +454,10 @@ class MonteCarloEvaluator(Evaluator):
             "g_mag": [],
             "g_int": [],
             "g_mass": [],
+            "mean": [],
             "warmup_steps": [],
             "meas_steps": [],
             "seed": [],
-            "mean": [],
             "err": []
         }
         for key in self.obsdict.keys():
