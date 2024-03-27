@@ -262,6 +262,8 @@ def main(args):
     logger.info("========= GPU INFO =========")
     if ggpeps.GPU_AVAILABLE:
         logger.info(f"Found GPU, using {ggpeps.PREFERRED_DEVICE}.")
+        # TODO: add basic GPU info
+        # logger.info(f"GPU info: {ggpeps.PREFERRED_DEVICE.device_kind}"
     else:
         logger.info("No GPUs found, falling back to CPU.")
     logger.info("============================")
