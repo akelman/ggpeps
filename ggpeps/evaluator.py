@@ -36,3 +36,12 @@ class Evaluator(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
     
+    def save_summary(self, fname_summary: str):
+        """Save the summary of the computation to a given filename
+
+        Args:
+            fname_summary (str): Output filename for the summary
+        """
+        df_summary = self.summary()
+        df_summary.to_pickle(fname_summary)
+    

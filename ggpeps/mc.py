@@ -391,15 +391,6 @@ class MonteCarloEvaluator(Evaluator):
                 return meas.var()
         return None
 
-    def save_summary(self, fname_summary: str):
-        """Save the summary to disk
-
-        Args:
-            fname_summary (str): Filename of the summary
-        """
-        df_summary = self.summary()
-        df_summary.to_pickle(fname_summary)
-
     def save_full(self, fname_full: str):
         """Save the full MonteCarloEstimator
 

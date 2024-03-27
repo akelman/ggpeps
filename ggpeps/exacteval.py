@@ -214,12 +214,3 @@ class ExactEvaluator(Evaluator):
 
         fname_summary = f"summary_exact_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_t_{tstr}_y_{ystr}_z_{zstr}.pkl"
         self.save_summary(os.path.join(output_dir,fname_summary))
-
-    def save_summary(self, fname_summary: str):
-        """Save the summary of the computation to a given filename
-
-        Args:
-            fname_summary (str): Output filename for the summary
-        """
-        df_summary = self.summary()
-        df_summary.to_pickle(fname_summary)
