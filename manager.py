@@ -419,6 +419,10 @@ def main(args):
     else:
         logger.error(f"Mode '{args.mode}' unknown.")
 
+    # Save cache with all final computation results
+    save_state_on_exit()
+
+    # Log the time taken for the simulation
     logger.info("========== TIME ============")
     logger.info(f"The simulation took {stop - start}s.")
     logger.info("============================\n\n") # add new lines to separate from next run
