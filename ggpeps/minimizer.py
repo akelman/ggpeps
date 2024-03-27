@@ -64,7 +64,7 @@ class Minimizer():
         self.min_result: Optional[MinimizerResult] = None
 
         # Cache for the energy values and gradients
-        self.cache = ggpeps.global_vars["cache"] # Cache()
+        self.cache: Cache = ggpeps.global_vars["cache"] 
 
     def minimize(self):
         if self.cfg.method == "CUSTOM":
