@@ -53,9 +53,8 @@ All scripts in the main folder call parts of the package and provide the infrast
 
 The package `ggpeps` is divided into several parts:
 
-- `plot`: Helper scripts for plots
-- `system`: Module containing all system implementations. Currently, two-dimensional systems for $Z_2$ with one and two copies of virtual fermions on the links are implemented for the pure gauge case, and 2D systems with 2,4,8 copies of virtual fermions on the links for the fermionic case.
-The implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
+- `plot/`: Helper scripts for plots
+- `system/`: Module containing all system implementations. Currently, two-dimensional systems for $Z_2$ with one and two copies of virtual fermions on the links are implemented for the pure gauge case, and 2D systems with 2,4,8 copies of virtual fermions on the links for the fermionic case.
 - `exacteval.py`: For small systems and finite gauge groups, the expectation values of the states can be evaluated exactly by contracting the full PEPS.
 - `gauge.py`: Implementation of the gauge groups
 - `lattice.py`: Implementation of two- and three-dimensional lattices
@@ -63,6 +62,15 @@ The implementation of $U(1)$ is transferred from a C++ implementation and is not
 - `measurement.py`: Measurement class to manage the timeseries data of the MC simulation
 - `minimizer.py`: Minimizer class with a custom minimizer and a wrapper of the `scipy.optimize.minimize` function.
 - `utils.py`: Utility functions
+
+Each implemented ansatz has it's own system class, each a subclass of System2DBase (found in `system_base.py`). Currently, these are the implemented ansatz's (each located in a file of the same name):
+- `system_u1_2d`: Not working - the implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
+- `system_z2_2d`: $Z_2$, 1 copy of virtual modes per layer, pure gauge.
+- `system_z2_2d_2c`: $Z_2$, 2 copies of virtual modes per layer, pure gauge.
+- `system_z2_2d_8c`: $Z_2$, 8 copies of virtual modes per layer, pure gauge. This is extremely impractical to run, even for 2x2 systems, due to the large number of virtual modes; it was built for testing purposes. Because there are so many parameters, this ansatz is more systematic in handling them.
+- `system_z2_2d_G2c_F2c`: $Z_2$, 2 copies of virtual modes per layer (PG and matter layers), includes matter.
+- `system_z2_2d_G2c_F4c`: *this may be misnamed, and include 4 copies per layer for both layers*. #TODO: check
+The pure gauge ansatz's all techincally contain a parameter for coupling to matter, but (a) it is manually set to zero, (b) other parts of the ansatz (e.g. the Gamma_in) do not obey the symmetries required for including matter.
 
 ## Physical System
 
