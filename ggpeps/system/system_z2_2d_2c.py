@@ -24,9 +24,10 @@ class Z2System2D2CConfig(Config2DBase):
     nvirtmodes_vertex = 8 # We have two virtual modes per direction (4 directions x 2 modes)
     nvirtmodes_link = 4 #Number of virtual modes per link (2 copies and l/r or u/d)
 
-    def __init__(self, lattice, g_el, g_mag, g_int, g_mass, nlayer=1):
+    def __init__(self, lattice, g_el, g_mag, g_int, g_mass, num_pg_layer=1, num_fermionic_layer=0):
         #The parameters have the following order: [[t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i...],[..next layer..],....]
-        super().__init__(lattice, g_el,  g_mag, g_int, g_mass, nlayer)
+        assert num_fermionic_layer == 0 # This ansatz does not support fermionic layers
+        super().__init__(lattice, g_el, g_mag, g_int, g_mass, num_pg_layer, 0)
 
     def make_pure_gauge(self):
         """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t. 

@@ -19,9 +19,9 @@ class U1System2DConfig(Config2DBase):
     nvirtmodes_link = 8
     nvirtmodes_link = 4
 
-    def __init__(self, lattice, g_el, g_mag, g_int, nlayer=1):
+    def __init__(self, lattice, g_el, g_mag, g_int, num_pg_layer=1, num_fermionic_layer=0):
         #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
-        super().__init__(lattice, g_el, g_mag, g_int, nlayer)
+        super().__init__(lattice, g_el, g_mag, g_int, num_pg_layer, num_fermionic_layer)
 
     def make_pure_gauge(self):
         #The order of the parameters is [t,y,z]

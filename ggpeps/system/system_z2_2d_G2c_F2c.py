@@ -25,10 +25,8 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
     nvirtmodes_vertex = 8
     nvirtmodes_link = 4
 
-    def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, nlayer=2):
-        super().__init__(lattice, g_el, g_mag, g_int, g_mass, nlayer)
-        self.num_pg_layer = self.nlayer - 1 # for now, we'll allow only one fermionic layer; it may be possible to allow more if we want more fermions per site
-        self.num_fermionic_layer = 1
+    def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, num_pg_layer=1, num_fermionic_layer=1):
+        super().__init__(lattice, g_el, g_mag, g_int, g_mass, num_pg_layer, num_fermionic_layer)
 
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.

@@ -34,7 +34,7 @@ class Config2DBase(ABC):
     # This will be overwritten by the specifications
     _nparams = 1
 
-    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g_el:float, g_mag:float, g_int:float,  g_mass:float, nlayer:int=1):
+    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g_el:float, g_mag:float, g_int:float,  g_mass:float, num_pg_layer:int=1, num_fermionic_layer:int=0):
         """Constructor.
 
         Args:
@@ -43,11 +43,15 @@ class Config2DBase(ABC):
             g_mag (float): prefactor for magnetic energy
             g_int (float): prefactor for gauge-matter coupling
             g_mass (float): mass of physical fermions (i.e. prefactor on the mass term).
-            nlayer (int, optional): number of layers. Defaults to 1.
+            num_pg_layer (int, optional): number of pure gauge layers. Defaults to 1.
+            num_fermionic_layer (int, optional): number of fermionic layers. Defaults to 0.
         """
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
-        self.nlayer = nlayer
+        
         self.lattice = lattice
+        self.num_pg_layer = num_pg_layer
+        self.num_fermionic_layer = num_fermionic_layer
+        self.nlayer = self.num_pg_layer + self.num_fermionic_layer
 
         self._paramvec = None
         self.zeroed_params = [] # will store a list of the parameters forced to be zero by the ansatz

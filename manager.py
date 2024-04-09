@@ -192,14 +192,14 @@ def main(args):
         if args.ncopy == 2:
             # Z2 system with 4 copies of virtual fermions on the links (2 for the pure gauge case, 2 for interacting with physical fermions)
             system_type = Z2System2D_G2C_F2C
-            system_cfg = Z2System2D_G2C_F2C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
+            system_cfg = Z2System2D_G2C_F2C_Config(lattice, g_el, g_mag, g_int, g_mass, num_pg_layer=1, num_fermionic_layer=args.nlayer-1)
         elif args.ncopy == 4:
             # Z2 system with 6 copies of virtual fermions on the links (2 for the pure gauge case, 4 for interacting with physical fermions)
             system_type = Z2System2D_G2C_F4C
-            system_cfg = Z2System2D_G2C_F4C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
+            system_cfg = Z2System2D_G2C_F4C_Config(lattice, g_el, g_mag, g_int, g_mass, num_pg_layer=1, num_fermionic_layer=args.nlayer-1)
         elif args.ncopy == 8:
             system_type = Z2System2D_8C
-            system_cfg = Z2System2D_8C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
+            system_cfg = Z2System2D_8C_Config(lattice, g_el, g_mag, g_int, g_mass, num_pg_layer=1, num_fermionic_layer=args.nlayer-1)
         else:
             logging.error("Not Implemented: Only 2, 4, or 8 copies are possible with fermions.")
             sys.exit(1)
@@ -207,11 +207,11 @@ def main(args):
         if args.ncopy == 1:
             # Z2 system with one copy of virtual fermions on the links
             system_type = Z2System2D
-            system_cfg = Z2System2DConfig(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
+            system_cfg = Z2System2DConfig(lattice, g_el, g_mag, g_int, g_mass, num_pg_layer=args.nlayer, num_fermionic_layer=0)
         elif args.ncopy == 2:
             # Z2 system with two copies of virtual fermions on the links
             system_type = Z2System2D2C
-            system_cfg = Z2System2D2CConfig(lattice, g_el, g_mag, g_int,  g_mass, nlayer=args.nlayer)
+            system_cfg = Z2System2D2CConfig(lattice, g_el, g_mag, g_int,  g_mass, num_pg_layer=args.nlayer, num_fermionic_layer=0)
         else:
             logging.error("Not Implemented: Only 1, 2, or 4 copies are possible without fermions.")
             sys.exit(1)
