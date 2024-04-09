@@ -1341,7 +1341,7 @@ class System2DBase(ABC):
                 self._energy += self.mass_energy
             if not utils.isclose(self.cfg.g_int, 0):
                 self._energy += self.int_energy
-            if not np.allclose(self.cfg.g_chem, 0):
+            if False and not np.allclose(self.cfg.g_chem, 0):
                 self._energy += self.chem_energy
         return self._energy
 
@@ -1443,7 +1443,7 @@ class System2DBase(ABC):
         """
         if self._mass_energy_op is None:
             nsites = self.cfg.lattice.size
-            self._mass_energy_op = np.prod(self.mass_energy_op_vec) # don't multiply by the number of sites; for the mass term this is assumed to happen lower down in the stack.
+            self._mass_energy_op = np.sum(self.mass_energy_op_vec) # don't multiply by the number of sites; for the mass term this is assumed to happen lower down in the stack.
         return self._mass_energy_op
 
     @property
@@ -1456,7 +1456,7 @@ class System2DBase(ABC):
         """
         if self._int_energy_op is None:
             nsites = self.cfg.lattice.size
-            self._int_energy_op = np.prod(self.int_energy_op_vec)
+            self._int_energy_op = np.sum(self.int_energy_op_vec)
         return self._int_energy_op
     
     # Functions that return the layer-resolved energies of each energy operator

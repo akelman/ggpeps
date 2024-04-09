@@ -421,7 +421,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
 
-        mass_energy_op = [1]*self.cfg.num_pg_layer # the mass energy for the pg layers is zero, but later we take the product of all layers, so we put a 1 here
+        mass_energy_op = [0]*self.cfg.num_pg_layer # the mass energy for the pg layers is zero, but later we take the product of all layers, so we put a 1 here
         gradients = [[0]*len(self.symbolvec)]*self.cfg.num_pg_layer
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
@@ -495,7 +495,7 @@ class Z2System2D_G2C_F2C(System2DBase):
             tuple: Tuple of (interaction energy for a single link, gradients)
         """
 
-        int_energy_op = [1]*self.cfg.num_pg_layer # the interaction energy for the pg layers is zero, but later we take the product of all layers, so we put a 1 here
+        int_energy_op = [0]*self.cfg.num_pg_layer # the interaction energy for the pg layers is zero, but later we take the product of all layers, so we put a 1 here
         gradients = [[0]*len(self.symbolvec)]*self.cfg.num_pg_layer
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
