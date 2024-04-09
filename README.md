@@ -67,7 +67,7 @@ Each implemented ansatz has it's own system class, each a subclass of System2DBa
 - `system_u1_2d`: Not working - the implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
 - `system_z2_2d`: $Z_2$, 1 copy of virtual modes per layer, pure gauge.
 - `system_z2_2d_2c`: $Z_2$, 2 copies of virtual modes per layer, pure gauge.
-- `system_z2_2d_8c`: $Z_2$, 8 copies of virtual modes per layer, pure gauge. This is extremely impractical to run, even for 2x2 systems, due to the large number of virtual modes; it was built for testing purposes. Because there are so many parameters, this ansatz is more systematic in handling them.
+- `system_z2_2d_8c`: $Z_2$, 8 copies of virtual modes per layer. This is extremely impractical to run, even for 2x2 systems, due to the large number of virtual modes; it was built for testing purposes. Because there are so many parameters, this ansatz is more systematic in handling them.
 - `system_z2_2d_G2c_F2c`: $Z_2$, 2 copies of virtual modes per layer (PG and matter layers), includes matter.
 - `system_z2_2d_G2c_F4c`: *this may be misnamed, and include 4 copies per layer for both layers*. #TODO: check
 The pure gauge ansatz's all techincally contain a parameter for coupling to matter, but (a) it is manually set to zero, (b) other parts of the ansatz (e.g. the Gamma_in) do not obey the symmetries required for including matter.
