@@ -551,3 +551,11 @@ class Z2System2D_G2C_F2C(System2DBase):
 
         return int_energy_op, gradients
 
+    def _compute_chem_energy_op_vec_and_grad(self):
+        """Calculate the chemical potential energy operator and its gradient.
+        """
+
+        chem_energy_op = [0]*self.nlayer #self.cfg.num_pg_layer 
+        gradients = [[0]*len(self.symbolvec)]*self.nlayer #self.cfg.num_pg_layer
+
+        return chem_energy_op, gradients

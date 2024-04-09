@@ -652,4 +652,10 @@ class Z2System2D_8C(System2DBase):
 
         return int_energy_op, gradients
 
-
+    def _compute_chem_energy_op_vec_and_grad(self):
+        # This function is not implemented yet! 
+        # (and it can't be, because the ansatz doesn't have the required parameterization).
+        # We return zeros just to not break the interface.
+        energies = [0]*self.cfg.nlayer
+        gradients = [ [0]*self.cfg.nparams_per_layer for k in range(self.cfg.nlayer) ]
+        return np.array(energies), np.array(gradients)

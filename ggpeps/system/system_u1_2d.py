@@ -435,4 +435,8 @@ class U1System2D(System2DBase):
     def _compute_int_energy_op_vec_and_grad(self):
         # This function is not implemented yet!
         raise NotImplementedError("The interaction energy is not implemented yet for U(1).")
-        return 0
+    
+    def _compute_chem_energy_op_vec_and_grad(self):
+        """Calculate the chemical potential energy operator and its gradient.
+        """
+        raise NotImplementedError("The chemical potential energy is not implemented yet for U(1).")

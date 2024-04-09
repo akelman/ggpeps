@@ -353,3 +353,10 @@ class Z2System2D(System2DBase):
         # We return zeros just to not break the interface.
         raise NotImplementedError("The interaction energy is not implemented yet for the 2 copy case.")
         
+    def _compute_chem_energy_op_vec_and_grad(self):
+        # This function is not implemented yet! 
+        # (and it can't be, because the ansatz doesn't have the required parameterization).
+        # We return zeros just to not break the interface.
+        energies = [0]*self.cfg.nlayer
+        gradients = [ [0]*self.cfg.nparams_per_layer for k in range(self.cfg.nlayer) ]
+        return np.array(energies), np.array(gradients)
