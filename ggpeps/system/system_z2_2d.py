@@ -24,7 +24,9 @@ class Z2System2DConfig(Config2DBase):
 
     def __init__(self, lattice, g_el, g_mag, g_int, g_mass, num_pg_layer=1, num_fermionic_layer=0):
         #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
-        assert num_fermionic_layer == 0 # This ansatz does not support fermionic layers
+        if num_fermionic_layer != 0: 
+            # This ansatz does not support fermionic layers
+            raise ValueError("The Z2System2D ansatz does not support fermionic layers.")
         super().__init__(lattice, g_el, g_mag, g_int, g_mass, num_pg_layer, 0)
 
     def make_pure_gauge(self):
