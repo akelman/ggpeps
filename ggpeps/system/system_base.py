@@ -274,6 +274,7 @@ class System2DBase(ABC):
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad_vec = None
         self._int_energy_op_grad_vec = None
+        self._chem_energy_op_grad_vec = None
         self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # gradients of gamma_out for all symbols
         self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
 
@@ -286,6 +287,7 @@ class System2DBase(ABC):
         self._mass_energy_op_vec = None
         self._int_energy_op = None
         self._int_energy_op_vec = None
+        self._chem_energy_op_vec = None
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in_vec = None  # Tracks (D^-1 - gammain)^-1
@@ -1120,10 +1122,12 @@ class System2DBase(ABC):
         self._mass_energy_op_vec = None
         self._int_energy_op = None
         self._int_energy_op_vec = None
+        self._chem_energy_op_vec = None
         
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad_vec = None
         self._int_energy_op_grad_vec = None
+        self._chem_energy_op_grad_vec = None
         self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec, range(self.cfg.nlayer))}
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
         return
@@ -1341,7 +1345,7 @@ class System2DBase(ABC):
                 self._energy += self.mass_energy
             if not utils.isclose(self.cfg.g_int, 0):
                 self._energy += self.int_energy
-            if False and not np.allclose(self.cfg.g_chem, 0):
+            if not np.allclose(self.cfg.g_chem, 0):
                 self._energy += self.chem_energy
         return self._energy
 
@@ -1401,7 +1405,7 @@ class System2DBase(ABC):
             float: chemical potential energy
         """
         chem_energy = 0.0
-        for layer in self.nlayer:
+        for layer in self.cfg.nlayer:
             chem_energy += self.cfg.g_chem[layer] * self.chem_energy_op_vec[layer]
         return chem_energy
 
@@ -1548,6 +1552,18 @@ class System2DBase(ABC):
             self._int_energy_op_vec, self._int_energy_op_grad_vec = self._compute_int_energy_op_vec_and_grad()
             # Do for whole system...
         return self._int_energy_op_grad_vec
+
+    @property
+    def chem_energy_op_grad_vec(self):
+        """Compute the gradient of the chemical potential energy operator for the whole system without shift.
+        This is a get function.
+
+        Returns:
+            float: Gradient of the chemical potential energy operator (w/o shift) for the whole system
+        """
+        if self._chem_energy_op_vec is None:
+            self._chem_energy_op_vec, self._chem_energy_op_grad_vec = self._compute_chem_energy_op_vec_and_grad()
+        return self._chem_energy_op_grad_vec
 
 
 
