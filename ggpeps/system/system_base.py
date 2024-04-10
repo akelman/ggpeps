@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union, List # used in type hints; this approach might be deprecated in later python versions
+from typing import Union, Optional, List # used in type hints; this approach might be deprecated in later python versions
 from dataclasses import dataclass, field
 
 import sys
@@ -34,7 +34,7 @@ class Config2DBase(ABC):
     # This will be overwritten by the specifications
     _nparams = 1
 
-    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g_el:float, g_mag:float, g_int:float,  g_mass:float, num_pg_layer:int=1, num_fermionic_layer:int=0):
+    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g_el:float, g_mag:float, g_int:float,  g_mass:float, g_chem:Optional[np.array], num_pg_layer:int=1, num_fermionic_layer:int=0):
         """Constructor.
 
         Args:
@@ -63,7 +63,11 @@ class Config2DBase(ABC):
         self.g_mag = g_mag
         self.g_int = g_int
         self.g_mass = g_mass
-        self.g_chem = [0]*self.nlayer #TODO: get chemical potentials from command line
+        self.g_chem = g_chem
+        if self.g_chem is None:
+            self.g_chem = np.zeros(self.nlayer)
+        elif len(self.g_chem) != self.nlayer:
+            raise ValueError("The number of chemical potentials must match the number of layers.")
     
     def __str__(self):
         # define a string method that can be used, e.g., in filenaming

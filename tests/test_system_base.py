@@ -9,12 +9,12 @@ class TestSystemBase(unittest.TestCase):
         lat = lattice.Lattice2D(2,3)
 
         paramvec = [[0.3, 0.5, 0.8,0.2,0.3,0.9]]
-        cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0)
+        cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
         cfg.paramvec = paramvec
         self.system_z2_1c = system.Z2System2D(cfg)
 
         paramvec2C = np.random.rand(1,20)
-        cfg2C = system.Z2System2D2CConfig(lat, 0, 0, 0, 0)
+        cfg2C = system.Z2System2D2CConfig(lat, 0, 0, 0, 0, None)
         cfg2C.paramvec = paramvec2C
         self.system_z2_2c = system.Z2System2D(cfg2C)
     

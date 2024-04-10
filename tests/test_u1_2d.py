@@ -13,7 +13,7 @@ class TestU1SystemMethods(unittest.TestCase):
     def setUp(self):
         lat = lattice.Lattice2D(2, 2)
         paramvec = [[0.1, 0.3, 0.4]]
-        cfg = system.U1System2DConfig(lat, 1.0, 1.0, 0.0)
+        cfg = system.U1System2DConfig(lat, 1.0, 1.0, 0.0, 0.0, None)
         cfg.paramvec = paramvec
         self.system_u1_2_2 = system.U1System2D(cfg)
 
@@ -90,7 +90,7 @@ class TestU1SystemMethods(unittest.TestCase):
     def test_compare_gauge_gamma_dirac(self):
         lat = lattice.Lattice2D(2, 2)
         paramvec = [[0.1, 0.4, 0.2]]
-        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
+        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0, 0.0, None)
         cfg.paramvec = paramvec
         system_u1_2_2 = system.U1System2D(cfg)
         gamma_dirac = system_u1_2_2.gamma_dirac_vec[0]
@@ -101,18 +101,18 @@ class TestU1SystemMethods(unittest.TestCase):
     def test_compare_cpp_gamma_maj(self):
         lat = lattice.Lattice2D(2, 2)
         paramvec = [[0.1, 0.4, 0.2]]
-        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
+        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0, 0.0, None)
         cfg.paramvec = paramvec
         system_u1_2_2 = system.U1System2D(cfg)
         gamma_maj = system_u1_2_2.gamma_maj_vec[0]
-        gamma_maj_cpp = utils.load_matrix_dat_fmt("misc/gamma_maj_cpp_t_0.1_y_0.4_z_0.2.dat",is_complex=False)
+        gamma_maj_cpp = utils.load_matrix_dat_fmt("misc/gamma_maj_cpp_t_0.1_y_0.4_z_0.2.dat", is_complex=False)
         self.assertTrue(np.allclose(gamma_maj,gamma_maj_cpp))
 
 
     def test_compare_cpp_pure_gauge_gamma_dirac(self):
         lat = lattice.Lattice2D(2, 2)
         paramvec = [[0.0, 0.4, 0.2]]
-        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
+        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0, 0.0, None)
         cfg.paramvec = paramvec
         system_u1_2_2 = system.U1System2D(cfg)
         gamma_dirac = system_u1_2_2.gamma_dirac_vec[0]
@@ -123,11 +123,11 @@ class TestU1SystemMethods(unittest.TestCase):
     def test_compare_cpp_pure_gauge_gamma_maj(self):
         lat = lattice.Lattice2D(2, 2)
         paramvec = [[0.0, 0.4, 0.2]]
-        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0)
+        cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0, 0.0, None)
         cfg.paramvec = paramvec
         system_u1_2_2 = system.U1System2D(cfg)
         gamma_maj = system_u1_2_2.gamma_maj_vec[0]
-        gamma_maj_cpp = utils.load_matrix_dat_fmt("misc/gamma_maj_cpp_t_0.0_y_0.4_z_0.2.dat",is_complex=False)
+        gamma_maj_cpp = utils.load_matrix_dat_fmt("misc/gamma_maj_cpp_t_0.0_y_0.4_z_0.2.dat", is_complex=False)
         self.assertTrue(np.allclose(gamma_maj,gamma_maj_cpp))
 
     @skip("This method cannot work correctly since the electric energy is not computed correctly. The pre-factor is different for the U1 case in contrast to the Z2 case.")
@@ -135,7 +135,7 @@ class TestU1SystemMethods(unittest.TestCase):
         # Calculate the electric energy of an empty system.
         paramvec = np.zeros((1,3))
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.U1System2DConfig(lat_2x2, 1.0, None, None)
+        system_cfg = system.U1System2DConfig(lat_2x2, 1.0, None, None, 0.0, None)
         system_cfg.paramvec = paramvec
         system_u1_2_2_pf = system.U1System2D(system_cfg)
         system_u1_2_2_pf.use_pfaffian = True
@@ -150,7 +150,7 @@ class TestU1SystemMethods(unittest.TestCase):
     def test_electric_energy_L_4_empty(self):
         paramvec = np.zeros((1,3))
         lat_4x4 = lattice.Lattice2D(4, 4)
-        system_cfg = system.U1System2DConfig(lat_4x4, 1.0, None, None)
+        system_cfg = system.U1System2DConfig(lat_4x4, 1.0, None, None, 0.0, None)
         system_cfg.paramvec = paramvec
         system_u1_pf = system.U1System2D(system_cfg)
         system_u1_pf.use_pfaffian = True
@@ -164,7 +164,7 @@ class TestU1SystemMethods(unittest.TestCase):
     def test_electric_energy_L_2_ring_even_pfaffian(self):
         paramvec = np.zeros((1,3))
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.U1System2DConfig(lat_2x2, 1.0, None, None)
+        system_cfg = system.U1System2DConfig(lat_2x2, 1.0, None, None, 0.0, None)
         system_cfg.paramvec = paramvec
         system_u1 = system.U1System2D(system_cfg)
         system_u1.use_pfaffian = True
@@ -197,7 +197,7 @@ class TestU1SystemMethods(unittest.TestCase):
     def test_electric_energy_L_2_ring_odd(self):
         paramvec = np.zeros((1,3))
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.U1System2DConfig(lat_2x2, 1.0, None, None)
+        system_cfg = system.U1System2DConfig(lat_2x2, 1.0, None, None, 0.0, None)
         system_cfg.paramvec = paramvec
         system_u1 = system.U1System2D(system_cfg)
         system_u1.use_pfaffian = True

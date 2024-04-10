@@ -91,7 +91,7 @@ class TestBGBTransform(unittest.TestCase):
 
     def test_cmp_dirac_pure_gauge(self):
         lat = lattice.Lattice2D(2,2)
-        system_u1_cfg = system.U1System2DConfig(lat, 1, 0, 0)
+        system_u1_cfg = system.U1System2DConfig(lat, 1, 0, 0, 0.0, None)
         system_u1_cfg.paramvec = np.asarray([[0., 1., 2.]])
         system_u1 = system.U1System2D(system_u1_cfg)
         tmat_double = system_u1.tmat_vec[0]

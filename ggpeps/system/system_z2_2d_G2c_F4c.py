@@ -25,8 +25,8 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
     nvirtmodes_vertex = 16
     nvirtmodes_link = 8
 
-    def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, num_pg_layer=1, num_fermionic_layer=1):
-        super().__init__(lattice, g_el, g_mag, g_int, g_mass, num_pg_layer, num_fermionic_layer)
+    def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, g_chem, num_pg_layer=1, num_fermionic_layer=1):
+        super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, num_fermionic_layer)
 
     def make_pure_gauge(self):
         raise NotImplementedError("Haven't implemented parameter conditions for pure gauge for this ansatz.")
