@@ -555,7 +555,40 @@ class Z2System2D_G2C_F2C(System2DBase):
         """Calculate the chemical potential energy operator and its gradient.
         """
 
-        chem_energy_op = [0]*self.nlayer #self.cfg.num_pg_layer 
-        gradients = [[0]*len(self.symbolvec)]*self.nlayer #self.cfg.num_pg_layer
+        chem_energy_op = [0] * self.cfg.num_pg_layer 
+        gradients = [[0]*len(self.symbolvec)] * self.cfg.num_pg_layer
+
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            # only the fermionic layers directly contribute to the chemical potential 
+            
+            # Calculation prelimaries
+            covmat = self.compute_ferm_cov(layer_ind)
+            layer_chem_energy = 0.0
+            layer_grads = [0]*len(self.symbolvec)
+            
+            # Calculate mass term
+            # Since the system is translationally invariant, we could just calculate it for one site and multiply by nsites instead
+            for site_ind in range(0, 2*self.cfg.lattice.size, 2):
+                site_factor = (-1)**(site_ind) # even or odd sublattice
+                layer_chem_energy += 0.5 * site_factor * (1 + covmat[site_ind+1, site_ind] )
+
+                for symbol_ind, symbol in enumerate(self.symbolvec):
+                    if (layer_ind, symbol_ind) not in self.cfg.zeroed_params:
+                        # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
+                        # we can skip it for parameters that are forced by the ansatz to be zero
+
+                        d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
+                        layer_grads[symbol_ind] += 0.5 * site_factor * d_gamma_out[site_ind+1, site_ind] 
+
+                    # further terms of the derivative are included higher up in the computation stack 
+                    # because computing them requires knowing various expectation values, which are not available here
+
+            chem_energy_op.append(np.asarray(layer_chem_energy))
+            gradients.append(np.asarray(layer_grads))
+
+        chem_energy_op = np.asarray(chem_energy_op)
+        gradients = np.asarray(gradients)
+
+        self.cfg.enforce_parameter_conditions(gradients)
 
         return chem_energy_op, gradients
