@@ -68,6 +68,10 @@ class ExactEvaluator():
             wilson_loop = self.system.cfg.lattice.generate_wilson_loop((0, 0),
                                                                     (1, 1))
 
+            # Wilson loops
+            sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
+            loops = self.system.cfg.lattice.generate_all_wilson_loops((0,0), sizes)
+
             data = {
                 "energy": [],
                 "norm": [],
@@ -87,6 +91,11 @@ class ExactEvaluator():
                 "polyakov_00_x": [],
                 "number_per_site": []
             }
+            # Wilson loops
+            for k in range(len(sizes)):
+                loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
+                data[loop_name] = []
+
             for config in configvec:
                 self.system.update_gauge_full_system(config)
                 #logging.debug(f"Configuration: {config}")
@@ -112,6 +121,11 @@ class ExactEvaluator():
 
                 data["number_per_site"].append(np.real(self.system.number_per_site))
 
+                # Wilson loops
+                for k in range(len(sizes)):
+                    loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
+                    data[loop_name].append(np.real(self.system.compute_path(loops[k])))
+
             # Expectation values
             dest = {}
             # Convert all lists to arrays
@@ -132,6 +146,11 @@ class ExactEvaluator():
             dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
             dest["number_per_site"] = self.compute_expval(data["number_per_site"], normvec)
             dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)
+
+            # Wilson loops
+            for k in range(len(sizes)):
+                loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
+                dest[loop_name] = self.compute_expval(data[loop_name], normvec)
 
             #The norm that we turn in the end is the actual norm, not the lognorm!
             dest["norm"] = np.sum(normvec)
