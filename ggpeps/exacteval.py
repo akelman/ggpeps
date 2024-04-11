@@ -87,7 +87,6 @@ class ExactEvaluator():
                 "mass_energy_op_grad": [],
                 "int_energy_op_grad": [],
                 "grad_norm": [],
-                "wilson_00_11": [],
                 "polyakov_00_x": [],
                 "number_per_site": []
             }
@@ -116,7 +115,6 @@ class ExactEvaluator():
                 
                 data["norm"].append(self.system.calculate_lognorm(all_factors=True))
                 data["grad_norm"].append(self.system.compute_grad_norm_vec())
-                data["wilson_00_11"].append(np.real(self.system.compute_path(wilson_loop)))
                 data["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
 
                 data["number_per_site"].append(np.real(self.system.number_per_site))
@@ -142,7 +140,6 @@ class ExactEvaluator():
             dest["el_energy"] = self.compute_expval(data["el_energy"], normvec)
             dest["mass_energy"] = self.compute_expval(data["mass_energy"], normvec)
             dest["int_energy"] = self.compute_expval(data["int_energy"], normvec)
-            dest["wilson_00_11"] = self.compute_expval(data["wilson_00_11"], normvec)
             dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
             dest["number_per_site"] = self.compute_expval(data["number_per_site"], normvec)
             dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)
