@@ -1552,7 +1552,7 @@ class System2DBase(ABC):
         Returns:
             float: Gradient of the interaction energy operator (w/o shift) for the whole system
         """
-        if self._int_energy_op_vec is None:
+        if self._int_energy_op_grad_vec is None:
             self._int_energy_op_vec, self._int_energy_op_grad_vec = self._compute_int_energy_op_vec_and_grad()
             # Do for whole system...
         return self._int_energy_op_grad_vec
@@ -1565,7 +1565,7 @@ class System2DBase(ABC):
         Returns:
             float: Gradient of the chemical potential energy operator (w/o shift) for the whole system
         """
-        if self._chem_energy_op_vec is None:
+        if self._chem_energy_op_grad_vec is None:
             self._chem_energy_op_vec, self._chem_energy_op_grad_vec = self._compute_chem_energy_op_vec_and_grad()
         return self._chem_energy_op_grad_vec
 
