@@ -79,6 +79,7 @@ class ExactEvaluator():
                 "el_energy": [],
                 "mass_energy": [],
                 "int_energy": [],
+                "chem_energy": [],
                 "mag_energy_op": [],
                 "el_energy_op": [],
                 "mass_energy_op": [],
@@ -86,6 +87,7 @@ class ExactEvaluator():
                 "el_energy_op_grad": [],
                 "mass_energy_op_grad": [],
                 "int_energy_op_grad": [],
+                "chem_energy_op_grad": [],
                 "grad_norm": [],
                 "polyakov_00_x": [],
                 "number_per_site": []
@@ -104,6 +106,7 @@ class ExactEvaluator():
                 data["el_energy"].append(self.system.el_energy)
                 data["mass_energy"].append(self.system.mass_energy) 
                 data["int_energy"].append(self.system.int_energy) 
+                data["chem_energy"].append(self.system.chem_energy) 
                 data["mag_energy_op"].append(self.system.mag_energy_op)
                 data["el_energy_op"].append(self.system.el_energy_op)
                 data["mass_energy_op"].append(self.system.mass_energy_op) 
@@ -112,6 +115,7 @@ class ExactEvaluator():
                 data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
                 data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec) 
                 data["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec) 
+                data["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec) 
                 
                 data["norm"].append(self.system.calculate_lognorm(all_factors=True))
                 data["grad_norm"].append(self.system.compute_grad_norm_vec())
@@ -186,8 +190,15 @@ class ExactEvaluator():
             int_energy_grad *= self.system.cfg.g_int
             dest["int_energy_grad"] = int_energy_grad
 
+            # Chemical potential gradient
+            prod_chem_op_norm = data["chem_energy"] * grad_norm_transposed
+            expval_prod_chem = self.compute_expval(prod_chem_op_norm, normvec)
+            prod_expval_chem = self.compute_expval(data["chem_energy"], normvec) * dest["grad_norm"]
+            chem_energy_grad = expval_prod_chem - prod_expval_chem + self.compute_expval(np.transpose(data["chem_energy_op_grad"], [2,1,0]), normvec)
+            dest["chem_energy_grad"] = chem_energy_grad
+
             # Add for the full gradient, subject to conditions on parameterization
-            total_grad = mag_energy_grad + el_energy_grad + mass_energy_grad + int_energy_grad
+            total_grad = mag_energy_grad + el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
             self.system.cfg.enforce_parameter_conditions(total_grad)
             dest["energy_grad"] = total_grad
             self.obsdict = dest
