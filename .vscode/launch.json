@@ -110,14 +110,19 @@
             "args": [
                 "min-exact",
                 "2",
-                "--g",
-                "2.0",
+                "--fermions",
+                "--g_el",
+                "1.0",
+                "--g_mag",
+                "0.0",
+                "--g_mass",
+                "0.0",
+                "--g_int",
+                "1.0",
                 "--method",
                 "BFGS",
-                "--ncopy",
-                "2",
-                "--nlayer",
-                "2"
+                "--ncopy", "2",
+                "--nlayer", "3"
             ],
             "console": "integratedTerminal"
         },
@@ -131,7 +136,7 @@
                 "2",
                 "--fermions",
                 "--g_el",
-                "1.0",
+                "0.0",
                 "--g_mag",
                 "0.0",
                 "--g_mass",
@@ -143,7 +148,7 @@
                 "--ncopy",
                 "2",
                 "--nlayer",
-                "2",
+                "3",
                 "--seed",
                 "1438378742"
             ],
