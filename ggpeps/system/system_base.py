@@ -1409,7 +1409,7 @@ class System2DBase(ABC):
             float: chemical potential energy
         """
         chem_energy = 0.0
-        for layer in self.cfg.nlayer:
+        for layer in range(self.cfg.nlayer):
             chem_energy += self.cfg.g_chem[layer] * self.chem_energy_op_vec[layer]
         return chem_energy
 
