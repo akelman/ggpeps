@@ -7,10 +7,9 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 from jax import jit, device_put
-# The following 2 lines ensure that JAX is configured to 64-bit precision.
-# Without these 2 lines, some of the precision tests do not pass.
-from jax.config import config
-config.update("jax_enable_x64", True)
+# The following line ensures that JAX is configured to 64-bit precision.
+# Without this line, some of the precision tests do not pass.
+jax.config.update("jax_enable_x64", True)
 
 import ggpeps
 
