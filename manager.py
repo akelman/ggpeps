@@ -188,7 +188,7 @@ def main(args):
 
     # TODO: get from command line
     nlayer = args.num_pg_layer + args.num_fermionic_layer
-    g_chem = np.array([0]*nlayer)
+    g_chem = np.array([0,0,0])
 
     # Depending on the parameters, we instantiate different systems
     # Since they all share the same interface, we do not care much about the details of the system after this point
@@ -249,6 +249,7 @@ def main(args):
     logging.info(f"g_mag: {g_mag}")
     logging.info(f"g_int: {g_int}")
     logging.info(f"g_mass: {g_mass}")
+    logging.info(f"g_chem: {g_chem}")
     logging.info(f"Rebinning EOM: {Measurement.use_rebinning}")
     logging.info(f"Starting parameters: {paramvec}")
     logging.info("============================")
