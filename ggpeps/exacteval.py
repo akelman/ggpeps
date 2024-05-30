@@ -144,6 +144,7 @@ class ExactEvaluator():
             dest["el_energy"] = self.compute_expval(data["el_energy"], normvec)
             dest["mass_energy"] = self.compute_expval(data["mass_energy"], normvec)
             dest["int_energy"] = self.compute_expval(data["int_energy"], normvec)
+            dest["chem_energy"] = self.compute_expval(data["chem_energy"], normvec)
             dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
             dest["number_per_site"] = self.compute_expval(data["number_per_site"], normvec)
             dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)
