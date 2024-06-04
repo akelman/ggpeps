@@ -235,7 +235,7 @@ class TestZ2C4System(unittest.TestCase):
         # This is comparison of the analytic derivative against the numeric derivative
         # for the 2 copy fermionic ansatz with 2 physical flavors
         eps = 1e-5
-        paramvec = np.random.rand(2,20)
+        paramvec = np.random.rand(3,20)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 0.0, 1.0, None, num_pg_layer=1, num_fermionic_layer=2)
         system_cfg.paramvec = paramvec
@@ -255,8 +255,8 @@ class TestZ2C4System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
-                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
+                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None, num_pg_layer=1, num_fermionic_layer=2)
+                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None, num_pg_layer=1, num_fermionic_layer=2)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
