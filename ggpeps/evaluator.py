@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
 
-# This is not yet used, but should be the parent class of ExactEvaluator and MonteCarloEvaluator
 class Evaluator(ABC):
     """Base class for the different evaluators (ExactEvaluator and MonteCarloEvaluator).
     """
