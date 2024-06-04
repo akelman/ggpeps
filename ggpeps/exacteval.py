@@ -195,7 +195,10 @@ class ExactEvaluator():
             prod_chem_op_norm = data["chem_energy"] * grad_norm_transposed
             expval_prod_chem = self.compute_expval(prod_chem_op_norm, normvec)
             prod_expval_chem = self.compute_expval(data["chem_energy"], normvec) * dest["grad_norm"]
-            chem_energy_grad = expval_prod_chem - prod_expval_chem + self.compute_expval(np.transpose(data["chem_energy_op_grad"], [2,1,0]), normvec)
+            scaled_chem_grad = np.transpose(data["chem_energy_op_grad"], [2,1,0])
+            for lay in range(self.system.cfg.nlayer): # TODO: do this in a cleaner way
+                scaled_chem_grad[:,lay,:] *= self.system.cfg.g_chem[lay] 
+            chem_energy_grad = expval_prod_chem - prod_expval_chem + self.compute_expval(scaled_chem_grad, normvec)
             dest["chem_energy_grad"] = chem_energy_grad
 
             # Add for the full gradient, subject to conditions on parameterization
