@@ -1,4 +1,13 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+
+@dataclass
+class EvaluatorResult:
+    obsdict: dict = {}
+    params = None
+    #TODO: what else needs to be here? system info?
+    
 
 
 class Evaluator(ABC):
