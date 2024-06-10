@@ -7,7 +7,12 @@ logger_file = None
 
 # GPU or CPU
 import jax
-# config.update("jax_enable_x64", True) # TODO: does this need to be here
+
+# TODO: does this need to be here?
+# The following line ensures that JAX is configured to 64-bit precision.
+# Without this line, some of the precision tests do not pass.
+jax.config.update("jax_enable_x64", True)
+
 try:
     available_gpus = jax.devices('gpu') # Get the list of available GPUs
     PREFERRED_DEVICE = available_gpus[0] # Use the first available GPU as the preferred device
