@@ -6,39 +6,65 @@ Further details about the usage of the script can be found in README.md.
 # Imports 
 import os
 import sys
-import ray
-import jax
 import logging
 from timeit import default_timer as timer
+
+os.environ["RAY_DEDUP_LOGS"] = "0" # Ensure that logs are not deduplicated, i.e. the same log message can be printed from different workers
+import ray
 
 import numpy as np
 np.set_printoptions(linewidth=200)
 
 import ggpeps
-from ggpeps import logger
+from ggpeps.caching import Cache
 from ggpeps.system import Z2System2DConfig, Z2System2D
 from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
 from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D_G2C_F2C
 from ggpeps.system import Z2System2D_G2C_F4C_Config, Z2System2D_G2C_F4C
 from ggpeps.system import Z2System2D_8C_Config, Z2System2D_8C
 
+from ggpeps import utils
 from ggpeps import lattice as lat
-from ggpeps import utils, exacteval
 from ggpeps.measurement import Measurement
+from ggpeps.mc import MonteCarloEvaluatorConfig
+from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.minimizer import Minimizer, MinimizerConfig
-from ggpeps.mc import MonteCarloEstimatorConfig, MonteCarloManager
 
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 # set up to allow execution to end gracefully if process is signalled appropriately
 import signal
+INTERRUPT_EXIT_CODE = 10
+
+def save_state_on_exit():
+    args = ggpeps.global_vars["args"]
+    cache = ggpeps.global_vars["cache"]
+    
+    if "min" in args.mode:
+        minimizer = ggpeps.global_vars["minimizer"]
+        cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
+        logger.info(f"Added evaluator manager to cache.")
+    elif "eval" in args.mode:
+        eval_manager = ggpeps.global_vars["eval_manager"]
+        cache.add_obj_to_cache("evaluator_manager", eval_manager)
+        logger.info(f"Added evaluator manager to cache.")
+
+    cache.save_cache_file()
+    logger.info(f"Saved cache file to {cache.cache_file}.")
+    return
+
 def signal_handler(signum, frame):
-    Minimizer.STOP_AFTER_CURRENT_ITERATION = True
-    logger.info(f"Recieved signal {signum}, stopping at the end of the current iteration.")
-signal.signal(signal.SIGUSR1, signal_handler) # register the signal handler
-#signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
+
+    save_state_on_exit()
+    logger.info(f"Received signal {signum}. Exiting.\n\n")
+    sys.exit(INTERRUPT_EXIT_CODE)
+
+signal.signal(signal.SIGTERM, signal_handler) # register the signal handler
+signal.signal(signal.SIGUSR1, signal_handler)
+signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
 
 
-def args2logname(args, couplings):
+def args2logname(args, couplings: dict) -> str:
     """Convert arguments to a name for the log file
 
     Args:
@@ -48,13 +74,15 @@ def args2logname(args, couplings):
     Returns:
         str: Filename of the log file
     """
+    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}"
+
     if "exact" in args.mode:
-        fname = f"log_{args.mode}_L_{args.L}x{args.L}_gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}.log"
+        fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}.log"
     else:
-        fname = f"log_{args.mode}_L_{args.L}x{args.L}_gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
+        fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
     return os.path.join(args.output, fname)
 
-def translate_parameters(system_cfg, params, rng_state):
+def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomState):
     """Translate the parameters given on the commandline to a form useful in the code
 
     Args:
@@ -71,7 +99,7 @@ def translate_parameters(system_cfg, params, rng_state):
         # The parameters are stored in a file and we can load them
         dest = np.load(params[0])
         dest = np.reshape(dest,(nlayer,-1))
-    elif params is None or params=="rand" :
+    elif params is None or params == "rand" :
         # No parameters are given and we randomize
         dest = rng_state.rand(nlayer, nparams)
     else:
@@ -97,6 +125,7 @@ def validate_inputs(args) -> bool:
         return False
 
     return True
+
 
 def main(args):
     raw_command = ' '.join(sys.argv)
@@ -130,41 +159,23 @@ def main(args):
     couplings = {"g_el":g_el, "g_mag":g_mag, "g_int":g_int, "g_mass":g_mass}
 
     # Set up the logger
-    log_file_handler = logging.FileHandler(args2logname(args, couplings))
-    h_stdout = logging.StreamHandler(stream=sys.stdout)
-    h_stderr = logging.StreamHandler(stream=sys.stderr)
-    h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
-    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-    h_stdout.setFormatter(formatter)
-    log_file_handler.setFormatter(formatter)
-    logger.addHandler(h_stdout)
-    logger.addHandler(h_stderr)
-    logger.addHandler(log_file_handler)
-    logger.setLevel(args.level.upper())
+    log_filename = args2logname(args, couplings)
+    ggpeps.logger_file = log_filename
+    utils.setup_logger(logger, log_filename, args.level)
     
-    '''
-    logger.basicConfig(
-        level = args.level.upper(),
-        format = "%(asctime)s [%(levelname)s] %(message)s",
-        handlers = [
-            logger.FileHandler(args2logname(args, couplings)),
-            h_stdout,
-            h_stderr
-        ]
-    )
-    '''
-
     # Validate input arguments
     if not validate_inputs(args):
         sys.exit(1)
 
     # Set up ray before we actually start with the simulation
     # Ray uses randomness internally and we don't want it to mix up the setting of the seed
-    if args.nrunner > 0:
+    if ggpeps.GPU_AVAILABLE and args.nrunner > 0:
+        ray.init(num_cpus=args.nrunner, num_gpus=1)
+    elif args.nrunner > 0:
         ray.init(num_cpus=args.nrunner)
 
     # Set up the MC Config
-    mc_config = MonteCarloEstimatorConfig()
+    mc_config = MonteCarloEvaluatorConfig()
     mc_config.warmup_steps = args.warmup_steps
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize
@@ -182,11 +193,6 @@ def main(args):
         seed = args.seed
     else:
         seed = np.random.randint(np.iinfo(np.int32).max)
-
-    # We use a local random number generator instead of the global numpy one to assure
-    # reproducibility across different runs, even when using mulitple processes
-    rngstate = np.random.RandomState(seed)
-    mc_config.seed = seed
 
     # Log basic info
     logger.info(f"Git hash: {utils.get_git_hash()}")
@@ -230,6 +236,11 @@ def main(args):
             logger.error("Not Implemented: Only 1, 2, or 4 copies are possible without fermions.")
             sys.exit(1)
 
+    # We use a local random number generator instead of the global numpy one to assure
+    # reproducibility across different runs, even when using mulitple processes
+    rngstate = np.random.RandomState(seed)
+    mc_config.seed = seed
+
     # Translate the command line input to a valid parameter vector
     paramvec = translate_parameters(system_cfg, args.params, rngstate)
     system_cfg.paramvec = paramvec
@@ -251,6 +262,8 @@ def main(args):
     logger.info("========= GPU INFO =========")
     if ggpeps.GPU_AVAILABLE:
         logger.info(f"Found GPU, using {ggpeps.PREFERRED_DEVICE}.")
+        # TODO: add basic GPU info
+        # logger.info(f"GPU info: {ggpeps.PREFERRED_DEVICE.device_kind}"
     else:
         logger.info("No GPUs found, falling back to CPU.")
     logger.info("============================")
@@ -289,12 +302,26 @@ def main(args):
         logger.info(f"Min grad: {args.min_grad}")
         logger.info("============================")
 
+    # Set up cache
+    # and save the command line arguments to ggpeps global variable so that they are available everywhere
+    cache = Cache(args.mode)
+    ggpeps.global_vars["args"] = args
+    ggpeps.global_vars["cache"] = cache
+    if not args.ignore_cache:
+        cache.load_cache_file(cache.cache_file)
 
     # Call different functions depending on the mode specified via CLI
     if args.mode == "eval-mc":
         # Evaluate observables for a given set of parameters with Monte Carlo
+        
         mc_config.minimizer_mode = args.compute_grads
-        mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
+        if cache.load_obj_from_local_cache('evaluator_manager') is not None:
+            mc_mgr = cache.load_obj_from_local_cache('evaluator_manager')
+            logger.info(f"Loaded evaluator manager from cache.")
+        else:
+            mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+        ggpeps.global_vars["eval_manager"] = mc_mgr # save for global access
+        
         start = timer()
         mc_result = mc_mgr.simulate()
         stop = timer()
@@ -308,7 +335,8 @@ def main(args):
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
 
         mc_config.minimizer_mode = True
-        mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner)
+        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+        
         # Set the parameters of the minimizer according to the command line
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
@@ -317,6 +345,7 @@ def main(args):
         min_cfg.min_grad = args.min_grad
 
         minimizer = Minimizer(min_cfg, mc_mgr)
+        ggpeps.global_vars["minimizer"] = minimizer # save for global access
 
         start = timer()
         result = minimizer.minimize()
@@ -325,19 +354,21 @@ def main(args):
         minimizer.save(output_dir = args.output)
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
-        system = system_type(system_cfg)
+        ex_eval = EvaluatorManager(system_type, system_cfg, None, args.nrunner)
+        
         start = timer()
-        ex_eval = exacteval.ExactEvaluator(system)
-        dest_dict = ex_eval.evaluate()
+        dest = ex_eval.simulate()
         stop = timer()
-        ex_eval.save(output_dir=args.output)
+        
+        dest_dict = dest.obsdict
+        dest.save(output_dir=args.output)
         for key, val in dest_dict.items():
             logger.info(f"{key}: {val}")
     elif args.mode == "min-exact":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
 
         start = timer()
-        ex_mgr = exacteval.ExactEvaluatorManager(system_type, system_cfg)
+        ex_mgr = EvaluatorManager(system_type, system_cfg, None, args.nrunner)
 
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
@@ -345,7 +376,8 @@ def main(args):
         min_cfg.alpha = args.alpha
         min_cfg.min_grad = args.min_grad
 
-        minimizer = Minimizer(min_cfg, ex_mgr, use_exact=True)
+        minimizer = Minimizer(min_cfg, ex_mgr)
+        ggpeps.global_vars["minimizer"] = minimizer
 
         start = timer()
         result = minimizer.minimize()
@@ -353,6 +385,10 @@ def main(args):
         logger.info(result)
         minimizer.save(output_dir = args.output)
     elif args.mode == "minmult-mc":
+        """This mode has not been used in a while and might not work anymore.
+        The port variable is intended for use with ray, but this does not currently work with the EvaluatorManager.
+        It's possible the the port workaround is unneeded with current versions of ray."""
+
         # Optimize the parameters with multiple runs (useful if BFGS has problems with the Hessian)
 
         # Set the parameters of the minimizer according to the command line
@@ -367,7 +403,7 @@ def main(args):
         mc_config.minimizer_mode = True
         for i in range(args.minmult_iter):
             logger.info(f"Minimization iteration: {i:02d}")
-            mc = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
+            mc = EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port) 
             minimizer = Minimizer(mc, min_cfg)
 
             resultvec.append(minimizer.minimize())
@@ -377,15 +413,19 @@ def main(args):
         minimizer.save(output_dir = args.output)
         # We run a final iteration of the MC simulation with all observables
         mc_config.minimizer_mode = False
-        mc_mgr = MonteCarloManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
+        mc_mgr = EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
         mc_result = mc_mgr.simulate()
         mc_result.save(output_dir = args.output)
     else:
         logger.error(f"Mode '{args.mode}' unknown.")
 
+    # Save cache with all final computation results
+    save_state_on_exit()
+
+    # Log the time taken for the simulation
     logger.info("========== TIME ============")
     logger.info(f"The simulation took {stop - start}s.")
-    logger.info("============================")
+    logger.info("============================\n\n") # add new lines to separate from next run
 
 
 
@@ -446,9 +486,12 @@ if __name__ == "__main__":
     
     # Output settings
     parser.add_argument("--level", default="info", help="logging level")
-    parser.add_argument("--warmup_log_freq", type=int, default=2000, help="frequency at which to log completed warmup steps")
-    parser.add_argument("--run_log_freq", type=int, default=10000, help="frequency at which to log completed run steps")
+    parser.add_argument("--warmup_log_freq", type=int, default=50000, help="frequency at which to log completed warmup steps")
+    parser.add_argument("--run_log_freq", type=int, default=50000, help="frequency at which to log completed run steps")
     parser.add_argument("--output", type=str, default='.', help="Output Directory")
+
+    # Cache settings
+    parser.add_argument("--ignore_cache", action="store_true", default=False, help="Ignore the cache and start from scratch. A new cache will be saved (and overwrite the old one).") 
 
     # Arguments for ray
     parser.add_argument("--nrunner", type=int, default=0, help="Number of parallel MC runners")

@@ -130,13 +130,19 @@ python manager.py min 2 --method BFGS
 
 `min-exact`:
 For small systems, we can substitute the Monte Carlo evaluation part in the minimization (just as we did in `eval` mode) with an exact contraction.
-Exact contraction are only available for systems of size 2x2.
+Exact contraction is only available for systems of size 2x2.
 
 ```
 python manager.py minexact 2 --method BFGS
 ```
 
 For an overview of all command line parameters call `python manager.py --help`.
+
+## High Performance Computing
+
+The repo includes several scripts to help with running many jobs on a computing cluster.
+It can also interpret signals, e.g. as sent by slurm, to automatically cache and end a computation.
+
 
 ## Data Analysis / Exploration
 

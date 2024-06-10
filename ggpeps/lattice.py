@@ -1,9 +1,12 @@
 import sys
 from enum import Enum
 
+import logging
 import numpy as np
 
-from ggpeps import logger
+import ggpeps
+
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 class Direction(Enum):
     """Enum to capture the direction of a link"""

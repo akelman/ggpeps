@@ -10,6 +10,9 @@
 *.npz
 __cache__
 __pycache__
+#Ignore python environment
+.pyenv
+.venv
 #Ignore all latex files
 *.aux
 *.bcf
@@ -23,7 +26,6 @@ __pycache__
 paramvec*
 #Ignore the vscode files
 .vscode
-#
 #We do not commit performance data
 perf.data
 *.scorep_init.*

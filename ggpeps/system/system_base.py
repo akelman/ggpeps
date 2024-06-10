@@ -3,16 +3,19 @@ from typing import Union, List # used in type hints; this approach might be depr
 from dataclasses import dataclass, field
 
 import sys
+import logging
 import itertools as it
 
 import sympy
 import numpy as np
 from pfapack import pfaffian as pf
 
-from ggpeps import logger
+import ggpeps
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
 from ggpeps.system.global_funcs import compute_grad_over_norm, calculate_lognormvec, compute_el_grad_vec
+
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 ################## Utility Functions ######################
 def extract_partial_covmats(mat, corner):
@@ -30,12 +33,12 @@ def extract_partial_covmats(mat, corner):
     mat_d = mat[corner:, corner:]
     return mat_a, mat_b, mat_d
 
-def calculate_lognorm(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: List[np.ndarray], all_factors=False) -> float:
+def calculate_lognorm(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: List[np.ndarray], all_factors:bool=False) -> float:
     # This is still the plain formula, without any update mechanism
     normvec = calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
     return np.sum(normvec)
 
-def calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=False):
+def calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors:bool=False):
     dest = []
     for ind in range(len(incdet_vec)):
         detval = incdet_vec[ind].det()
@@ -48,7 +51,7 @@ def calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=False):
     return dest
 
 
-def calculate_lognorm_inc(incdet_vec, det_mat_d_vec, n, all_factors=False):
+def calculate_lognorm_inc(incdet_vec, det_mat_d_vec, n, all_factors:bool=False):
     lognormvec = calculate_lognormvec_inc(incdet_vec,
                                           det_mat_d_vec,
                                           n,

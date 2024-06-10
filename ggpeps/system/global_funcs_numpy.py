@@ -6,7 +6,7 @@ import numpy as np
 import ggpeps
 
 
-def calculate_lognormvec_numpy(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: List[np.ndarray], all_factors=False) -> float:
+def calculate_lognormvec_numpy(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: List[np.ndarray], all_factors:bool=False) -> float:
     # This is still the plain formula, without any update mechanism
     nlayer = len(mat_d_vec)
     dest = np.zeros(nlayer)

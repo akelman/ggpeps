@@ -5,39 +5,23 @@ import numpy as np
 import pandas as pd
 
 import ggpeps.lattice as lattice
-from ggpeps import logger
-
-class ExactEvaluatorManager:
-    """Wrapper Class for the ExactEvaluator.
-    This matches the structure of the MonteCarloManager and makes the two classes freely interchangable.
-    """
-    def __init__(self, system_cls, system_cfg):
-        self.system_cfg = system_cfg
-        self.system_cls = system_cls
-
-    def simulate(self):
-        """Start the simulation of the runners.
-        The implementation currently only supports a single runner."""
-        system = self.system_cls(self.system_cfg)
-        system.initialize()
-        exact_eval = ExactEvaluator(system)
-        exact_eval.evaluate()
-        return exact_eval
+from ggpeps.evaluator import Evaluator
 
 
-class ExactEvaluator():
+class ExactEvaluator(Evaluator):
     """An ExactEvaluator exactly evaluates the expectation value of an observable by iterating over all possible states of the gauge field.
     """
-    def __init__(self, system) -> None:
+    def __init__(self, evaluator_cfg, system) -> None:
         self.system = system
-        self.obsdict = None
+        self.obsdict: dict = None
+        self.evaluator_type = 'exact'
 
-    def compute_expval(self, obs, normvec):
+    def compute_expval(self, obs: np.ndarray, normvec: np.ndarray):
         """Compute the expectation value of an observable.
 
         Args:
-            obs (np.array): Measurement values of an observables for different gauge field configurations
-            normvec (np.array): Values of the norm of <Psi(G)|Psi(G)> for different gauge field configurations
+            obs (np.ndarray): Measurement values of an observables for different gauge field configurations
+            normvec (np.ndarray): Values of the norm of <Psi(G)|Psi(G)> for different gauge field configurations
 
         Returns:
             _type_: _description_
@@ -51,6 +35,10 @@ class ExactEvaluator():
             expval = np.sum(obs*normvec)
         return expval/normalization
 
+    def get_obs_mean(self, obs: str):
+        """Return expectation value of an observable. 
+        Use this function to match the interface of the MonteCarloEvaluator."""
+        return self.obsdict[obs]
 
     def evaluate(self):
         """Main evaluation function of ExactEvaluator.
@@ -226,12 +214,3 @@ class ExactEvaluator():
 
         fname_summary = f"summary_exact_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_t_{tstr}_y_{ystr}_z_{zstr}.pkl"
         self.save_summary(os.path.join(output_dir,fname_summary))
-
-    def save_summary(self, fname_summary: str):
-        """Save the summary of the computation to a given filename
-
-        Args:
-            fname_summary (str): Output filename for the summary
-        """
-        df_summary = self.summary()
-        df_summary.to_pickle(fname_summary)

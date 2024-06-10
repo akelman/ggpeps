@@ -3,6 +3,7 @@ import re
 import sys
 import gzip
 import pickle
+import logging
 import subprocess  # Start process for git hash
 
 import numpy as np
@@ -15,8 +16,10 @@ from pfapack import pfaffian as pf
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
+import ggpeps
 import ggpeps.measurement as meas
-from ggpeps import logger
+
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 # Global constants
 paulix = np.array([[0, 1], [1, 0]])
@@ -24,6 +27,20 @@ pauliy = np.array([[0, -1.j], [1.j, 0]])
 pauliz = np.array([[1, 0], [0, -1]])
 
 # ========== Utility Functions ====================
+
+def setup_logger(logger: logging.Logger, log_file: str, level: str, runner_msg: str = ''):
+    log_file_handler = logging.FileHandler(log_file)
+    h_stdout = logging.StreamHandler(stream=sys.stdout)
+    h_stderr = logging.StreamHandler(stream=sys.stderr)
+    h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
+    formatter = logging.Formatter(f"%(asctime)s [{runner_msg}%(levelname)s] %(message)s")
+    h_stdout.setFormatter(formatter)
+    log_file_handler.setFormatter(formatter)
+    logger.addHandler(h_stdout)
+    logger.addHandler(h_stderr)
+    logger.addHandler(log_file_handler)
+    logger.setLevel(level.upper())
+    return 
 
 def fname2nlayer(fname):
     """Extract the number of layers from a filename"""

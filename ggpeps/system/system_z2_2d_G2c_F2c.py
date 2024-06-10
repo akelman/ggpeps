@@ -1,11 +1,10 @@
-import logging
-
 import sympy
+import logging
 import numpy as np
 from scipy.linalg import block_diag
 
+import ggpeps
 from ggpeps import utils
-from ggpeps import logger
 from ggpeps.lattice import Direction
 from ggpeps.modearray import generate_permutation_matrix
 
@@ -13,6 +12,7 @@ from .system_base import Config2DBase, System2DBase, ElectricEnergyIntermediateV
 
 from ggpeps.system.global_funcs_numpy import update_gauge_ind_numpy
 
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 ###################### Z2System2D ##########################
 

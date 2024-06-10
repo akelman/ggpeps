@@ -5,17 +5,18 @@ from scipy.linalg import block_diag
 from pfapack import pfaffian as pf
 from warnings import warn # Used for deprecation warnings
 
-from ggpeps import lattice as lat
+import ggpeps
 from ggpeps import utils
-from ggpeps import logger
+from ggpeps import lattice as lat
 from ggpeps.lattice import Direction
 from ggpeps.modearray import generate_permutation_matrix
 from .system_base import Config2DBase, System2DBase
 from .system_base import calculate_lognorm, calculate_lognormvec, extract_partial_covmats, calculate_lognorm_inc
 
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
+
 
 ###################### Z2System2D ##########################
-
 
 class Z2System2DConfig(Config2DBase):
     _nparams = 6

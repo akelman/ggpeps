@@ -3,18 +3,23 @@ import ray
 import copy
 import gzip
 import pickle
+import logging
 
 import numpy as np
 import pandas as pd
 
+import ggpeps
 import ggpeps.utils as utils
 import ggpeps.lattice as lattice
-from ggpeps import logger
+
+from ggpeps.evaluator import Evaluator
 from ggpeps.measurement import Measurement
+
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 #################### Monte Carlo Estimator Config ###################
 
-class MonteCarloEstimatorConfig:
+class MonteCarloEvaluatorConfig:
     """Monte Carlo Configuration
 
     This class manages the parameters of the MC simulation. 
@@ -25,13 +30,13 @@ class MonteCarloEstimatorConfig:
         self._seed = None
         self._rng_state = None
         self.meas_steps = None
-        self.binsize = 1
-        self.minimizer_mode = False
-        self.update_size_per_step = 1 # this can be set anywhere from 1 to nlinks (inclusive)
+        self.binsize: int = 1
+        self.minimizer_mode: bool = False
+        self.update_size_per_step: int = 1 # this can be set anywhere from 1 to nlinks (inclusive)
 
         # Logging frequency
-        self.warmup_log_freq = 5000 # log every X steps
-        self.run_log_freq = 20000
+        self.warmup_log_freq: int = 5000 # log every X steps
+        self.run_log_freq: int = 20000
 
     @property
     def seed(self):
@@ -41,7 +46,7 @@ class MonteCarloEstimatorConfig:
         return self._seed
 
     @seed.setter
-    def seed(self,seedval):
+    def seed(self, seedval):
         self._seed = seedval
         self._rng_state = np.random.RandomState(seedval)
 
@@ -58,6 +63,13 @@ class MonteCarloEstimatorConfig:
         self.rng_state = None
         self.seed = None
 
+    def get_rng_state_internal_repr(self):
+        return self._rng_state.get_state()
+    
+    def set_rng_state_internal_repr(self, state_repr):
+        self._rng_state.set_state(state_repr)
+        return
+
     def __str__(self):
         dest = ""
         dest += f"Seed: {self.seed}\n"
@@ -68,107 +80,52 @@ class MonteCarloEstimatorConfig:
 
 
 ################################### Multiprocessing layer #######################
-
-
+    
 @ray.remote
-def run_mc(runner_id, mc_cfg, system_cls, system_cfg):
-    # TODO: get logger working within ray
+def run_mc(runner_id: int, mc_cfg: MonteCarloEvaluatorConfig, system_cls, system_cfg, logger_info:dict):
+    """Worker for running part of a MC simulation.
+
+    Args:
+        runner_id (int): Runner ID
+        mc_cfg (MonteCarloEvaluatorConfig): 
+        system_cls (): 
+        system_cfg (): 
+        logger_info (dict): configs for the logger (logger needs to be set up in each worker)
+
+    Returns:
+        MonteCarloEvaluator
+    """
+
+    # Setup logger
+    # TODO: this is probably not the best way to get the required logger configuration
+    logger_file = logger_info['filename']
+    level = logger_info['logger_level']
+    logger = logging.getLogger(ggpeps.LOGGER_NAME)
+    utils.setup_logger(logger, logger_file, level, runner_msg=f"Runner {runner_id}-")
+    
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
-    mc = MonteCarloEstimator(mc_cfg, system)
-    mc.simulate()
+    mc = MonteCarloEvaluator(mc_cfg, system)
+    mc.evaluate()
     return mc
-
-
-class MonteCarloManager:
-    """The MonteCarloManager allows the execution of a Monte Carlo simulation with multiple cores.
-    The parallelization is performed with ray.
-
-    If the simulation is distributed across N runners, each runner performs the full warm-up but only 1/N of the total measurement steps.
-    
-    This is the general interface for MC simulations that is used in the manager.
-    """
-    def __init__(self, mc_cfg: MonteCarloEstimatorConfig, system_cls,
-                 system_cfg, nrunner: int):
-        """Constructor of MonteCarloManager
-
-        Args:
-            mc_cfg (MonteCarloEstimatorConfig): Configuration to be used in the runners
-            system_cls (SystemClass): Class of the system. This determines the type of the system.
-            system_cfg (SystemConfig): Configuration of the system. This determines the parameters of the system.
-            nrunner (int): Number of runners. 0 is an execution without ray. 1-N uses 1-N ray cores.
-        """
-        self.nrunner = nrunner
-        self.mc_cfg = mc_cfg
-        self.system_cfg = system_cfg
-        self.system_cls = system_cls
-
-    def simulate(self):
-        """Start the simulation of the runners"""
-        resultvec = []
-        if self.nrunner > 0:
-            #system_cfg_id = ray.put(self.system_cfg)
-            reduced_meas_steps = self.mc_cfg.meas_steps // self.nrunner
-            logger.info(f"Starting {self.nrunner} runners with {reduced_meas_steps} measurement steps each (total: {self.nrunner * reduced_meas_steps}).")
-            for i in range(self.nrunner):
-                # Make a copy of the MC config, and change the seed for each runner
-                cfg = copy.deepcopy(self.mc_cfg)
-                cfg.seed = self.mc_cfg.seed + i
-                cfg.meas_steps = reduced_meas_steps
-
-                # Make a copy of the system config 
-                # This is necessary, because otherwise an error is raised when we try to modify the params
-                # in enforce_parameter_conditions()
-                # For some unclear reason, making a deep copy here does not prevent this, so instead a deep 
-                # copy is made inside run_mc()
-                #sys_cfg = copy.deepcopy(self.system_cfg)
-                
-                resultvec.append(run_mc.remote(i, cfg, self.system_cls, self.system_cfg))
-            resultvec = ray.get(resultvec)
-            return self.collect(resultvec)
-        else:
-            system = self.system_cls(self.system_cfg)
-            system.initialize()
-            mc = MonteCarloEstimator(self.mc_cfg, system)
-            mc.simulate()
-            return mc
-
-    def collect(self, resultvec):
-        """Unify the results of the different Monte Carlo runners
-
-        Args:
-            resultvec (list): List of MonteCarloEstimators from the different runners
-
-        Returns:
-            MonteCarloEstimator: Monte Carlo estimator with information from all runners
-        """
-        system = self.system_cls(self.system_cfg)
-        dest = MonteCarloEstimator(self.mc_cfg, system)
-        if len(resultvec) > 1:
-            dest.obsdict = utils.mergeDict(resultvec[0].obsdict, resultvec[1].obsdict)
-            for mc_runner in resultvec[2:]:
-                dest.obsdict = utils.mergeDict(dest.obsdict, mc_runner.obsdict)
-        else:
-            dest = resultvec[0]
-        return dest
 
 
 ################################### Monte Carlo runner ###############
 
-
-class MonteCarloEstimator:
+class MonteCarloEvaluator(Evaluator):
     """Class to take care of the MC simulation on a single runner
     """
-    def __init__(self, cfg:MonteCarloEstimatorConfig, system):
-        self.cfg = cfg
+    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
+        self.cfg = evaluator_cfg
         self.system = system
-        self.obsdict = {}
+        self.obsdict: dict = {}
+        self.step: int = 0
+        self.evaluator_type = 'mc'
         self.init_measurements()
-        self.step = 0
 
         # Choose how to update in each MC step
         # (This might change in the future if we implement different updates)
-        if cfg.update_size_per_step == self.system.cfg.lattice.nlinks:
+        if evaluator_cfg.update_size_per_step == self.system.cfg.lattice.nlinks:
             self.update = self.update_all_sites_single_site
         else:
             #self.update = self.update_single_site
@@ -197,6 +154,7 @@ class MonteCarloEstimator:
             self.obsdict["int_energy_op_grad"] = Measurement("Interaction Energy Operator Gradient", binsize)
             self.obsdict["mass_energy_op_grad"] = Measurement("Mass Energy Operator Gradient", binsize)
             self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm", binsize)
+            self.obsdict["energy_grad"] = Measurement("Gradient of Total Energy", binsize)
         #self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
 
         # Wilson loops (of various sizes)
@@ -226,6 +184,13 @@ class MonteCarloEstimator:
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
         self.obsdict["number_per_site"].append(self.system.number_per_site)
 
+        if self.cfg.minimizer_mode:
+            self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
+            self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
+            self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
+            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
+            self.obsdict["energy_grad"].append(self.energy_gradient_mc())
+        
         # Wilson loops
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
         loops = self.system.cfg.lattice.generate_all_wilson_loops((0,0), sizes)
@@ -233,28 +198,63 @@ class MonteCarloEstimator:
             loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
 
-        if self.cfg.minimizer_mode:
-            self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
-            self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
-            self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
-            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
+    def energy_gradient_mc(self):
+        # Compute the energy gradient from the MC results
+        meas_grad_over_norm = self.obsdict["grad_norm"]
+
+        # Gradient of the magnetic energy
+        meas_mag_energy_op = self.obsdict["mag_energy_op"]
+        prod_mag_energy_grad = meas_mag_energy_op * meas_grad_over_norm
+        mag_energy_op_grad = prod_mag_energy_grad.mean() - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
+        # Add the constants back into the expression of the magnetic energy
+        mag_energy_grad = - 2 * self.system.cfg.g_mag * mag_energy_op_grad
+
+        # Gradient of the electric energy
+        meas_el_energy_op = self.obsdict["el_energy_op"]
+        meas_el_energy_op_grad = self.obsdict["el_energy_op_grad"]
+        prod_el_energy_grad = meas_el_energy_op * meas_grad_over_norm
+        el_energy_op_grad = prod_el_energy_grad.mean() - meas_el_energy_op.mean()*meas_grad_over_norm.mean() + meas_el_energy_op_grad.mean()
+        # Add the constants back into the expression of the electric energy
+        el_energy_grad = - 2 * self.system.cfg.g_el * el_energy_op_grad
+
+        # Gradient of the interaction energy
+        meas_int_energy_op = self.obsdict["int_energy_op"]
+        meas_int_energy_op_grad = self.obsdict["int_energy_op_grad"]
+        prod_int_energy_grad = meas_int_energy_op * meas_grad_over_norm
+        int_energy_op_grad = prod_int_energy_grad.mean() - meas_int_energy_op.mean()*meas_grad_over_norm.mean() + meas_int_energy_op_grad.mean()
+        # Add the constants back into the expression of the interaction energy
+        int_energy_grad = self.system.cfg.g_int * int_energy_op_grad
+
+        # Gradient of the mass energy
+        meas_mass_energy_op = self.obsdict["mass_energy_op"]
+        meas_mass_energy_op_grad = self.obsdict["mass_energy_op_grad"]
+        prod_mass_energy_grad = meas_mass_energy_op * meas_grad_over_norm
+        mass_energy_op_grad = prod_mass_energy_grad.mean() - meas_mass_energy_op.mean()*meas_grad_over_norm.mean() + meas_mass_energy_op_grad.mean()
+        # Add the constants back into the expression of the mass energy
+        mass_energy_grad = self.system.cfg.g_mass * mass_energy_op_grad
+
+        return mag_energy_grad + el_energy_grad + int_energy_grad + mass_energy_grad
 
     def warmup(self):
         """Warm up phase without measurement"""
+        logger.debug("Starting MC warmup")
         while self.step < self.cfg.warmup_steps:
             if self.step % self.cfg.warmup_log_freq == 0:
-                logger.info(f"Warmup: {self.step}")
+                logger.debug(f"Warmup: {self.step}")
             self.update()
             self.step += 1
+        logger.debug("Finished MC warmup")
 
     def run(self):
-        """Meaurement phase phase (with measurement)"""
+        """Meaurement phase"""
+        logger.debug("Starting MC measurement")
         while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
             if self.step % self.cfg.run_log_freq == 0:
-                logger.info(f"Run: {self.step}")
+                logger.debug(f"Run: {self.step}")
             self.update()
             self.measure()
             self.step += 1
+        logger.debug("Finished MC measurement")
 
     def update_single_site(self):
         """Update for the MC simulation.
@@ -323,7 +323,7 @@ class MonteCarloEstimator:
                 # Reject
                 self.obsdict["acceptance_prob"].append(0)
 
-    def simulate(self):
+    def evaluate(self):
         """Main routine to start a Monte Carlo simulation.
         """
         self.warmup()
@@ -391,15 +391,6 @@ class MonteCarloEstimator:
                 return meas.var()
         return None
 
-    def save_summary(self, fname_summary: str):
-        """Save the summary to disk
-
-        Args:
-            fname_summary (str): Filename of the summary
-        """
-        df_summary = self.summary()
-        df_summary.to_pickle(fname_summary)
-
     def save_full(self, fname_full: str):
         """Save the full MonteCarloEstimator
 
@@ -454,10 +445,10 @@ class MonteCarloEstimator:
             "g_mag": [],
             "g_int": [],
             "g_mass": [],
+            "mean": [],
             "warmup_steps": [],
             "meas_steps": [],
             "seed": [],
-            "mean": [],
             "err": []
         }
         for key in self.obsdict.keys():

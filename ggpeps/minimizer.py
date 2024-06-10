@@ -1,12 +1,20 @@
+from typing import Optional
+
 import os
 import pickle
-
+import logging
 
 import numpy as np
 from scipy.optimize import minimize
 
-from ggpeps import logger
+import ggpeps
+from ggpeps.caching import Cache
+from ggpeps.evaluator_manager import EvaluatorManager
+from ggpeps.evaluator import Evaluator
 
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
+
+####################### Minimizer #######################
 
 class MinimizerResult:
     def __init__(self, paramvec, energygrad, method, value, converged, message):
@@ -30,34 +38,33 @@ class MinimizerResult:
 class MinimizerConfig():
 
     def __init__(self):
-        self.max_iter = 100
-        self.min_grad = 1e-5
-        self.alpha = 1e-2
-        self._method = "CG"
+        self.max_iter: int = 100
+        self.min_grad: float = 1e-5
+        self.alpha: float = 1e-2
+        self._method: str = "CG"
 
     @property
-    def method(self):
+    def method(self) -> str:
         return self._method
 
     @method.setter
-    def method(self, val):
+    def method(self, val: str):
         self._method = val.upper()
 
 class Minimizer():
-    STOP_AFTER_CURRENT_ITERATION = False # this is a flag to catch interrupts to end minimization
     supported_methods = ["CG", "BFGS", "L-BFGS-B", "POWELL", "NELDER-MEAD", "TNC"]
 
-    def __init__(self, cfg, evaluator, use_exact=False):
-        self.cfg = cfg
-        self.use_exact = use_exact
+    def __init__(self, cfg: MinimizerConfig, evaluator_manager: EvaluatorManager):
+        self.cfg: MinimizerConfig = cfg
         # We use the polymorphism of python classes.
         # Below, we will have to be careful to only call valid functions
-        self.evaluator = evaluator
-        self._method = "CG"
-        self.last_paramvec = None
-        self.last_result = None
-        self.min_result = None
+        self.evaluator_manager: EvaluatorManager = evaluator_manager
+        self.last_paramvec: Optional[np.ndarray] = None
+        self.last_result: Optional[Evaluator] = None
+        self.min_result: Optional[MinimizerResult] = None
 
+        # Cache for the energy values and gradients
+        self.cache: Cache = ggpeps.global_vars["cache"] 
 
     def minimize(self):
         if self.cfg.method == "CUSTOM":
@@ -69,20 +76,16 @@ class Minimizer():
             return None
 
     def minimize_custom(self):
-        paramvec = self.evaluator.system_cfg.paramvec
+        paramvec = self.evaluator_manager.system_cfg.paramvec
 
         for ind in range(self.cfg.max_iter):
             if self.last_paramvec is None or not np.allclose(self.last_paramvec,paramvec):
                 # We copy here to get a new set of variables. We will change paramvec below and do not want to change last_paramvec
                 self.last_paramvec = np.copy(paramvec)
-                result = self.evaluator.simulate()
+                result = self.evaluator_manager.simulate()
 
-            if self.use_exact:
-                energy = result.obsdict["energy"]
-                grad_paramvec = result.obsdict["energy_grad"]
-            else:
-                energy = result.get_obs_mean("energy")
-                grad_paramvec = self.energy_gradient_mc(result)
+            energy = result.get_obs_mean("energy")
+            grad_paramvec = result.get_obs_mean("energy_grad")
             
             max_grad_paramvec = np.max(np.abs(grad_paramvec))
             self.last_result = result
@@ -97,17 +100,11 @@ class Minimizer():
                 self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, True, message)
                 return self.min_result
 
-            if self.STOP_AFTER_CURRENT_ITERATION:
-                message = f"Recieved interrupt signal from user. Ending minimization."
-                logger.info(message)
-                self.min_result = MinimizerResult(paramvec, self.cfg.method, energy, grad_paramvec, True, message)
-                return self.min_result
-
             #Adapt the parametervec according to the gradient
             # TODO: Implement stochastic reconfiguration
 
             # We have to use the internal name of the paramvec if we write to it since it is a property and not just an array
-            self.evaluator.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
+            self.evaluator_manager.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
 
         message = "Reached maximum number of iterations without convergence."
         logger.warn(message)
@@ -118,94 +115,85 @@ class Minimizer():
     def minimize_scipy(self):
         
         # Energy wrapper
-        def energy_wrapper(paramvec):
-            if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
+        def energy_wrapper(flattened_paramvec):
+            # Check if value is stored in cache (e.g. from previous minimization)
+            energy = self.cache.load_obs_from_local_cache(flattened_paramvec, 'energy')
+            if energy is not None:
+                #logger.debug(f'Found cached value for energy: {energy}')
+                return energy
+
+            if self.last_paramvec is None or not np.allclose(self.last_paramvec, flattened_paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
-                self.last_paramvec = paramvec
-                self.evaluator.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator.system_cfg._nparams))
-                self.last_result = self.evaluator.simulate()
+                self.last_paramvec = flattened_paramvec
+                self.evaluator_manager.system_cfg.paramvec = np.reshape(flattened_paramvec, (-1, self.evaluator_manager.system_cfg._nparams))
+                self.last_result = self.evaluator_manager.simulate()
             
-            if self.use_exact:
-                energy = self.last_result.obsdict["energy"]
-            else:
-                energy = self.last_result.get_obs_mean("energy")
+            # Save to cache -
+            #   it is important to save energy and gradients (even though the last_paramvec stores both)
+            #   so that if the computation is interrupted (which loses the last_paramvec), 
+            #   we can still use the cached values
+            energy = self.last_result.get_obs_mean('energy')
+            self.cache.add_obs_to_cache(flattened_paramvec, 'energy', energy)
+            parametergrad = self.last_result.get_obs_mean('energy_grad')
+            self.cache.add_obs_to_cache(flattened_paramvec, 'energy_grad', parametergrad)
+            #logger.debug(f'Calculated energy: {energy}')
+
             return energy
         
         # Jacobian wrapper
-        def gradient_wrapper(paramvec):
-            if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
+        def gradient_wrapper(flattened_paramvec):
+            """Wrapper for the gradient of the total energy
+
+            Args:
+                paramvec (np.ndarray): parameters, arranged as a 1D array
+
+            Returns:
+                gradients (np.ndarray): gradients of the total energy, arranged as a 1D array
+            """
+
+            # Check if value is stored in cache (e.g. from previous minimization)
+            parametergrad = self.cache.load_obs_from_local_cache(flattened_paramvec, 'energy_grad')
+            if parametergrad is not None:
+                #logger.debug('Found cached value for energy_grad')
+                return parametergrad.reshape((-1))
+
+            if self.last_paramvec is None or not np.allclose(self.last_paramvec, flattened_paramvec):
                 # We only set the parametervec and start the simulation if the parametervec is new
-                self.last_paramvec = paramvec
+                self.last_paramvec = flattened_paramvec
                 #self.evaluator.mc_cfg.minimizer_mode = True # make sure to calculate derivatives
-                self.evaluator.system_cfg.paramvec = np.reshape(paramvec,(-1, self.evaluator.system_cfg._nparams))
-                self.last_result = self.evaluator.simulate()
+                self.evaluator_manager.system_cfg.paramvec = np.reshape(flattened_paramvec, (-1, self.evaluator_manager.system_cfg._nparams))
+                self.last_result = self.evaluator_manager.simulate()
             
-            if self.use_exact:
-                parametergrad = self.last_result.obsdict["energy_grad"]
-            else:
-                parametergrad = self.energy_gradient_mc(self.last_result)
+            # Save to cache
+            energy = self.last_result.get_obs_mean('energy')
+            self.cache.add_obs_to_cache(flattened_paramvec, 'energy', energy)
+            parametergrad = self.last_result.get_obs_mean('energy_grad')
+            self.cache.add_obs_to_cache(flattened_paramvec, 'energy_grad', parametergrad)
+
             return parametergrad.reshape((-1))
 
         # Use the random initialization from the system.initialize as first guess.
         # We might want to change this later.
-        paramvec = np.reshape(self.evaluator.system_cfg.paramvec, (-1))
+        flattened_paramvec = np.reshape(self.evaluator_manager.system_cfg.paramvec, (-1))
         min_result = minimize(energy_wrapper,
-                              paramvec,
+                              flattened_paramvec,
                               method=self.cfg.method,
                               jac=gradient_wrapper,
                               callback=lambda x: print_callback(x, self),
                               options={"maxiter": self.cfg.max_iter})
-        paramvec = min_result.x
-        energygrad = min_result.jac
+        flattened_paramvec = min_result.x
+        flattened_energygrad = min_result.jac
         energy = min_result.fun
         converged = min_result.success
         message = f"message: {min_result.message} Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {min_result.njev}"
 
-        dest = MinimizerResult(paramvec, energygrad, self.cfg.method, energy, converged, message)
+        dest = MinimizerResult(flattened_paramvec, flattened_energygrad, self.cfg.method, energy, converged, message)
         self.min_result = dest
         return dest
 
-    def energy_gradient_mc(self,mc):
-        # Compute the energy gradient from the MC results
-        meas_grad_over_norm = mc.obsdict["grad_norm"]
-
-        # Gradient of the magnetic energy
-        meas_mag_energy_op = mc.obsdict["mag_energy_op"]
-        prod_mag_energy_grad = meas_mag_energy_op * meas_grad_over_norm
-        mag_energy_op_grad = prod_mag_energy_grad.mean() - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
-        # Add the constants back into the expression of the magnetic energy
-        mag_energy_grad = - 2 * mc.system.cfg.g_mag * mag_energy_op_grad
-
-        # Gradient of the electric energy
-        meas_el_energy_op = mc.obsdict["el_energy_op"]
-        meas_el_energy_op_grad = mc.obsdict["el_energy_op_grad"]
-        prod_el_energy_grad = meas_el_energy_op * meas_grad_over_norm
-        el_energy_op_grad = prod_el_energy_grad.mean() - meas_el_energy_op.mean()*meas_grad_over_norm.mean() + meas_el_energy_op_grad.mean()
-        # Add the constants back into the expression of the electric energy
-        el_energy_grad = - 2 * mc.system.cfg.g_el * el_energy_op_grad
-
-        # Gradient of the interaction energy
-        meas_int_energy_op = mc.obsdict["int_energy_op"]
-        meas_int_energy_op_grad = mc.obsdict["int_energy_op_grad"]
-        prod_int_energy_grad = meas_int_energy_op * meas_grad_over_norm
-        int_energy_op_grad = prod_int_energy_grad.mean() - meas_int_energy_op.mean()*meas_grad_over_norm.mean() + meas_int_energy_op_grad.mean()
-        # Add the constants back into the expression of the interaction energy
-        int_energy_grad = mc.system.cfg.g_int * int_energy_op_grad
-
-        # Gradient of the mass energy
-        meas_mass_energy_op = mc.obsdict["mass_energy_op"]
-        meas_mass_energy_op_grad = mc.obsdict["mass_energy_op_grad"]
-        prod_mass_energy_grad = meas_mass_energy_op * meas_grad_over_norm
-        mass_energy_op_grad = prod_mass_energy_grad.mean() - meas_mass_energy_op.mean()*meas_grad_over_norm.mean() + meas_mass_energy_op_grad.mean()
-        # Add the constants back into the expression of the mass energy
-        mass_energy_grad = mc.system.cfg.g_mass * mass_energy_op_grad
-
-        return mag_energy_grad + el_energy_grad + int_energy_grad + mass_energy_grad
-
-
     def save(self, output_dir = "."):
         if self.min_result is not None:
-            sys_cfg = self.evaluator.system_cfg
+            sys_cfg = self.evaluator_manager.system_cfg
 
             #FIXME: Adapt the filenames here
             fname_mc_summary = f"summary_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_gel_{sys_cfg.g_el:.4f}_gmag_{sys_cfg.g_mag:.4f}_gint_{sys_cfg.g_int:.4f}_gmass_{sys_cfg.g_mass:.4f}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
@@ -219,28 +207,26 @@ class Minimizer():
 def print_callback(x, minimizer):
     
     res = minimizer.last_result
-    paramvec = minimizer.evaluator.system_cfg.paramvec
-    
-    if minimizer.use_exact:
-        acceptance_prob = np.nan
-        energy = res.obsdict["energy"]
-        number_per_site = res.obsdict["number_per_site"]
-        grad_paramvec = res.obsdict["energy_grad"]
+    paramvec = minimizer.evaluator_manager.system_cfg.paramvec
 
-        mass_energy = res.obsdict["mass_energy"]
-        int_energy = res.obsdict["int_energy"]
-        el_energy = res.obsdict["el_energy"]
-        mag_energy = res.obsdict["mag_energy"]
+    # If caching is on, the first time we call this function, the last_result will be None
+    if res is None:
+        logger.info("Callback message due to caching. The last_result is None.")
+        return
+    
+    if minimizer.evaluator_manager.type == 'exact':
+        acceptance_prob = np.nan # acceptance_prob is undefined for exact contraction
     else:
         acceptance_prob = res.get_obs_mean("acceptance_prob")
-        energy = res.get_obs_mean("energy")
-        number_per_site = res.get_obs_mean("number_per_site")
-        grad_paramvec = minimizer.energy_gradient_mc(res)
+    
+    energy = res.get_obs_mean("energy")
+    number_per_site = res.get_obs_mean("number_per_site")
+    grad_paramvec = res.get_obs_mean("energy_grad")
 
-        mass_energy = res.get_obs_mean("mass_energy")
-        int_energy = res.get_obs_mean("int_energy")
-        el_energy = res.get_obs_mean("el_energy")
-        mag_energy = res.get_obs_mean("mag_energy")
+    mass_energy = res.get_obs_mean("mass_energy")
+    int_energy = res.get_obs_mean("int_energy")
+    el_energy = res.get_obs_mean("el_energy")
+    mag_energy = res.get_obs_mean("mag_energy")
     max_grad_paramvec = np.max(np.abs(grad_paramvec))
 
     if minimizer.cfg.method == 'CUSTOM':
