@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 
+# Currently not used
 @dataclass
 class EvaluatorResult:
     obsdict: dict = {}
