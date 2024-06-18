@@ -191,7 +191,7 @@ class System2DBase(ABC):
         self._mat_d_inv_vec = None
 
         # Full covariance matrix (gamma_out) of the fermions
-        self._ferm_covmat = [None]*self.cfg.nlayer
+        self._ferm_covmat_vec = [None]*self.cfg.nlayer
 
         # Parameter dependent quantities for the electric energy
         self._mat_a_mod_vec = None
@@ -1056,7 +1056,7 @@ class System2DBase(ABC):
     def invalidate_gauge_update(self):
         """Reset the values of computed quantitities to avoid spillover from previous computations.
         """
-        self._ferm_covmat = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
+        self._ferm_covmat_vec = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
         self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
         
         self._energy = None
@@ -1444,9 +1444,9 @@ class System2DBase(ABC):
         Args:
             layer (int): the layer for which the covmat should be calculated
         """
-        if self._ferm_covmat[layer] is None:
-            self._ferm_covmat[layer] = self.mat_a_vec[layer] + (self.mat_b_vec[layer] @ self.wi_gamma_out_vec[layer].inv() @ np.transpose(self.mat_b_vec[layer]))
-        return self._ferm_covmat[layer]
+        if self._ferm_covmat_vec[layer] is None:
+            self._ferm_covmat_vec[layer] = self.mat_a_vec[layer] + (self.mat_b_vec[layer] @ self.wi_gamma_out_vec[layer].inv() @ np.transpose(self.mat_b_vec[layer]))
+        return self._ferm_covmat_vec[layer]
 
 
 
