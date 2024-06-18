@@ -76,9 +76,10 @@ class Config2DBase(ABC):
     This class cannot be instantiated directly.
     """
 
-    # Number of parameters of the parameters
-    # This will be overwritten by the specifications
-    _nparams = 1
+    # Number of parameters 
+    # This will be overwritten by the specifications of each ansatz
+    _nparams: int = 1
+    ncopy: int = None
 
     def __init__(self, lattice:Union[Lattice2D, Lattice3D], g_el:float, g_mag:float, g_int:float,  g_mass:float, nlayer:int=1):
         """Constructor.
@@ -217,7 +218,7 @@ class System2DBase(ABC):
         self._el_energy_op_grad_vec: np.ndarray = None # first index is layer, second index is symbol
         self._mass_energy_op_grad_vec: np.ndarray = None
         self._int_energy_op_grad_vec: np.ndarray = None
-        self._d_gamma_out_symbolvec: list[list[sympy.Symbol]] = [None]*self.cfg.nlayer # gradients of gamma_out for all symbols: first index is layer, second index is symbol
+        self._d_gamma_out_symbolvec: list[list[np.ndarray]] = [None]*self.cfg.nlayer # gradients of gamma_out for all symbols: first index is layer, second index is symbol
         self._grad_over_norm_dict: dict[tuple[sympy.Symbol, int], float] = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
 
         # Observables
@@ -373,7 +374,7 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     ## MOVE TO GLOBAL
-    def d_gamma_out_symbolvec(self, layer:int) -> np.ndarray:
+    def d_gamma_out_symbolvec(self, layer:int) -> list[np.ndarray]:
         """Return a vector containing the derivatives of gamma_out (for the given layer) for each symbol.
 
         Returns:
