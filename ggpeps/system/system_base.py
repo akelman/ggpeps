@@ -167,17 +167,18 @@ class Config2DBase(ABC):
 ################## System2DBase ######################
 
 class System2DBase(ABC):
-    """ Base class for two dimensional systems
+    """ Base class for two dimensional systems.
 
-    This class inherits from the abstract base class to enable abstract methods that has to be overwritten in a child class.
+    This class inherits from the abstract base class to enable abstract methods that must be overwritten in a child class.
     This class cannot be instantiated directly.
     """
 
     def __init__(self, cfg: Config2DBase):
         self.cfg: Config2DBase = cfg
 
+        # TODO: add "optional" type hint tags to indicate that None is an allowed value
+
         # Parameter based matrices
-        # TODO: add optional type hint tags
         self._symbolvec: list[sympy.Symbol] = None # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
         self._tmat_vec: list[np.ndarray] = None
         self._gamma_dirac_vec: list[np.ndarray] = None
@@ -202,9 +203,9 @@ class System2DBase(ABC):
         self._mat_d_mod_inv_vec: list[np.ndarray] = None
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
 
-        # Management of the gaugefields
-        self._gamma_gauge_neutral_vec_dict = None # vec for layers (choices of projectors may be different for each layer), dict for directions
-        self._gamma_in_sys_vec = None # in cases when different layers use the same projectors, all elements will point to the same gamma_in_sys
+        # Management of the gauge fields
+        self._gamma_gauge_neutral_vec_dict: list[np.ndarray] = None # vec for layers (choices of projectors may be different for each layer), dict for directions
+        self._gamma_in_sys_vec: list[np.ndarray] = None # in cases when different layers use the same projectors, all elements will point to the same gamma_in_sys
         self._gaugefieldvec = np.zeros(self.cfg.lattice.nlinks)
         self.gaugemgr = gauge.ZNGauge(2) # needs to be changed for cases other than Z2
 
@@ -212,31 +213,31 @@ class System2DBase(ABC):
         self._weight: float = None
 
         # Gradients
-        self._gamma_maj_sys_deriv_dict = None
-        self._el_energy_op_grad_vec = None
-        self._mass_energy_op_grad_vec = None
-        self._int_energy_op_grad_vec = None
-        self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # gradients of gamma_out for all symbols
-        self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
+        self._gamma_maj_sys_deriv_dict: dict[sympy.Symbol, list[np.ndarray]] = None # the list is for layers
+        self._el_energy_op_grad_vec: np.ndarray = None # first index is layer, second index is symbol
+        self._mass_energy_op_grad_vec: np.ndarray = None
+        self._int_energy_op_grad_vec: np.ndarray = None
+        self._d_gamma_out_symbolvec: list[list[sympy.Symbol]] = [None]*self.cfg.nlayer # gradients of gamma_out for all symbols: first index is layer, second index is symbol
+        self._grad_over_norm_dict: dict[tuple[sympy.Symbol, int], float] = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
 
         # Observables
-        self._energy = None
-        self._el_energy_op = None
-        self._el_energy_op_vec = None
-        self._mag_energy_op = None
-        self._mass_energy_op = None
-        self._mass_energy_op_vec = None
-        self._int_energy_op = None
-        self._int_energy_op_vec = None
+        self._energy: float = None
+        self._el_energy_op: float = None
+        self._el_energy_op_vec: list[float] = None
+        self._mag_energy_op: float = None
+        self._mass_energy_op: float = None
+        self._mass_energy_op_vec: list[float] = None
+        self._int_energy_op: float = None
+        self._int_energy_op_vec: list[float] = None
 
         # Woodbury Update and Matrix Inversion
-        self._wi_gamma_in_vec = None  # Tracks (D^-1 - gammain)^-1
-        self._wi_gamma_out_vec = None  # Tracks (D - gammain)^-1
-        self._incdet_vec = None  # Tracks det(D^-1 - gammain)
+        self._wi_gamma_in_vec: list[utils.WoodburyInverter] = None  # Tracks (D^-1 - gammain)^-1
+        self._wi_gamma_out_vec: list[utils.WoodburyInverter] = None  # Tracks (D - gammain)^-1
+        self._incdet_vec: list[utils.IncLogAbsDeterminant] = None  # Tracks det(D^-1 - gammain)
 
-        self._wi_gamma_in_mod_vec = None  # Tracks (Dmod^-1 - gammain)^-1
-        self._wi_gamma_out_mod_vec = None  # Tracks (Dmod - gammain)^-1
-        self._incdet_mod_vec = None  # Tracks det(Dmod^-1 - gammain)
+        self._wi_gamma_in_mod_vec: list[utils.WoodburyInverter] = None  # Tracks (Dmod^-1 - gammain)^-1
+        self._wi_gamma_out_mod_vec: list[utils.WoodburyInverter] = None  # Tracks (Dmod - gammain)^-1
+        self._incdet_mod_vec: list[utils.IncLogAbsDeterminant] = None  # Tracks det(Dmod^-1 - gammain)
 
     def initialize(self):
         """Initialization function. 
@@ -244,7 +245,7 @@ class System2DBase(ABC):
         """
         return None
 
-    def _exract_partial_covmatvec(self, offset):
+    def _exract_partial_covmatvec(self, offset: int):
         # We are assuming one physical mode per site
         mat_a_vec = []
         mat_b_vec = []
@@ -266,7 +267,7 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @property
-    def symbolvec(self):
+    def symbolvec(self) -> list[sympy.Symbol]:
         """Return the symbolvec.
         This is a get function. It computes the symbolvec only if it does not exist yet.
         If it exists, then it will be returned directly. If not, it will be created and then stored in _symbolvec.
@@ -286,7 +287,7 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
-    def compute_tmat_deriv(self, symb):
+    def compute_tmat_deriv(self, symb: sympy.Symbol):
         """Return the derivative of the T matrix with respect to the symbol
 
         Args:
@@ -344,13 +345,13 @@ class System2DBase(ABC):
     def gamma_maj_vec(self):
         """Return the covariance matrix in Majorana modes.
         The definition of Majorana modes used is
-            \\gamma_1=c+c^\\dagger
-            \\gamma_2=i(c-c^\\dagger)
+            \gamma_1 = c + c^\dagger
+            \gamma_2 = i(c - c^\dagger)
 
         This is a get function.
 
         Returns:
-            np.ndarray: Covariance matrix in Majorana modes
+            [np.ndarray]: list of covariance matrices in Majorana modes for all layers
         """
         if self._gamma_maj_vec is None:
             # We know that the gamma dirac matrices have all the same shape
@@ -1209,7 +1210,7 @@ class System2DBase(ABC):
 
     ################## Energy Calculations ######################
     @property
-    def energy(self):
+    def energy(self) -> float:
         """Compute the total energy by adding all terms in the Hamiltonian
         This is a get function.
 
@@ -1230,7 +1231,7 @@ class System2DBase(ABC):
 
     # Functions that return a term of the energy in the Hamiltonian, including all prefactors and energy from the entire lattice.
     @property
-    def el_energy(self):
+    def el_energy(self) -> float:
         """Compute electric energy with shift for the whole system
         This is a get function.
 
@@ -1242,7 +1243,7 @@ class System2DBase(ABC):
         return el_energy
     
     @property
-    def mag_energy(self):
+    def mag_energy(self) -> float:
         """Compute magnetic energy with shift for the whole system
         This is a get function.
 
@@ -1254,7 +1255,7 @@ class System2DBase(ABC):
         return mag_energy
 
     @property
-    def mass_energy(self):
+    def mass_energy(self) -> float:
         """Compute mass energy for the whole system
         This is a get function.
 
@@ -1265,7 +1266,7 @@ class System2DBase(ABC):
         return mass_energy
 
     @property
-    def int_energy(self):
+    def int_energy(self) -> float:
         """Compute interaction (of matter and gauge fields) energy for the whole system
         This is a get function.
 
@@ -1277,7 +1278,7 @@ class System2DBase(ABC):
 
     # Functions that return the energy for the operator part of a term in the Hamiltonian, including the energy for the entire lattice, but not any shifts or prefactors.
     @property
-    def el_energy_op(self):
+    def el_energy_op(self) -> float:
         """Compute electric energy (w/o shift) for the whole system.
         This is a get function.
 
@@ -1291,7 +1292,7 @@ class System2DBase(ABC):
         return self._el_energy_op
     
     @property
-    def mag_energy_op(self):
+    def mag_energy_op(self) -> float:
         """Compute the magnetic energy operator for the whole system without shift.
         This is a get function.
 
@@ -1304,7 +1305,7 @@ class System2DBase(ABC):
         return self._mag_energy_op
 
     @property
-    def mass_energy_op(self):
+    def mass_energy_op(self) -> float:
         """Compute the mass energy operator for the whole system without shift.
         This is a get function.
 
@@ -1317,7 +1318,7 @@ class System2DBase(ABC):
         return self._mass_energy_op
 
     @property
-    def int_energy_op(self):
+    def int_energy_op(self) -> float:
         """Compute the interaction energy operator for the whole system without shift.
         This is a get function.
 
