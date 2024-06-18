@@ -177,68 +177,66 @@ class System2DBase(ABC):
     def __init__(self, cfg: Config2DBase):
         self.cfg: Config2DBase = cfg
 
-        # TODO: add "optional" type hint tags to indicate that None is an allowed value
-
         # Parameter based matrices
-        self._symbolvec: list[sympy.Symbol] = None # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
-        self._tmat_vec: list[np.ndarray] = None
-        self._gamma_dirac_vec: list[np.ndarray] = None
-        self._gamma_maj_vec: list[np.ndarray] = None
-        self._gamma_maj_sys_vec: list[np.ndarray] = None
+        self._symbolvec: Optional[list[sympy.Symbol]] = None # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
+        self._tmat_vec: Optional[list[np.ndarray]] = None
+        self._gamma_dirac_vec: Optional[list[np.ndarray]] = None
+        self._gamma_maj_vec: Optional[list[np.ndarray]] = None
+        self._gamma_maj_sys_vec: Optional[list[np.ndarray]] = None
 
         # Partial covariance matrices
-        self._mat_a_vec: list[np.ndarray] = None
-        self._mat_b_vec: list[np.ndarray] = None
-        self._mat_d_vec: list[np.ndarray] = None
-        self._det_mat_d_vec: list[float] = None
-        self._mat_d_inv_vec: list[np.ndarray] = None
+        self._mat_a_vec: Optional[list[np.ndarray]] = None
+        self._mat_b_vec: Optional[list[np.ndarray]] = None
+        self._mat_d_vec: Optional[list[np.ndarray]] = None
+        self._det_mat_d_vec: Optional[list[float]] = None
+        self._mat_d_inv_vec: Optional[list[np.ndarray]] = None
 
         # Full covariance matrix (gamma_out) of the fermions
-        self._ferm_covmat_vec: list[np.ndarray] = [None]*self.cfg.nlayer
+        self._ferm_covmat_vec: Optional[list[np.ndarray]] = [None]*self.cfg.nlayer
 
         # Parameter dependent quantities for the electric energy
-        self._mat_a_mod_vec: list[np.ndarray] = None
-        self._mat_b_mod_vec: list[np.ndarray] = None
-        self._mat_d_mod_vec: list[np.ndarray] = None
-        self._det_mat_d_mod_vec: list[float] = None
-        self._mat_d_mod_inv_vec: list[np.ndarray] = None
+        self._mat_a_mod_vec: Optional[list[np.ndarray]] = None
+        self._mat_b_mod_vec: Optional[list[np.ndarray]] = None
+        self._mat_d_mod_vec: Optional[list[np.ndarray]] = None
+        self._det_mat_d_mod_vec: Optional[list[float]] = None
+        self._mat_d_mod_inv_vec: Optional[list[np.ndarray]] = None
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
 
         # Management of the gauge fields
-        self._gamma_gauge_neutral_vec_dict: list[np.ndarray] = None # vec for layers (choices of projectors may be different for each layer), dict for directions
-        self._gamma_in_sys_vec: list[np.ndarray] = None # in cases when different layers use the same projectors, all elements will point to the same gamma_in_sys
-        self._gaugefieldvec = np.zeros(self.cfg.lattice.nlinks)
-        self.gaugemgr = gauge.ZNGauge(2) # needs to be changed for cases other than Z2
+        self._gamma_gauge_neutral_vec_dict: Optional[list[np.ndarray]] = None # vec for layers (choices of projectors may be different for each layer), dict for directions
+        self._gamma_in_sys_vec: Optional[list[np.ndarray]] = None # in cases when different layers use the same projectors, all elements will point to the same gamma_in_sys
+        self._gaugefieldvec: np.ndarray = np.zeros(self.cfg.lattice.nlinks)
+        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2) # needs to be changed for cases other than Z2
 
         # Weight
-        self._weight: float = None
+        self._weight: Optional[float] = None
 
         # Gradients
-        self._gamma_maj_sys_deriv_dict: dict[sympy.Symbol, list[np.ndarray]] = None # the list is for layers
-        self._el_energy_op_grad_vec: np.ndarray = None # first index is layer, second index is symbol
-        self._mass_energy_op_grad_vec: np.ndarray = None
-        self._int_energy_op_grad_vec: np.ndarray = None
-        self._d_gamma_out_symbolvec: list[list[np.ndarray]] = [None]*self.cfg.nlayer # gradients of gamma_out for all symbols: first index is layer, second index is symbol
-        self._grad_over_norm_dict: dict[tuple[sympy.Symbol, int], float] = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
+        self._gamma_maj_sys_deriv_dict: Optional[dict[sympy.Symbol, list[np.ndarray]]] = None # the list is for layers
+        self._el_energy_op_grad_vec: Optional[np.ndarray] = None # first index is layer, second index is symbol
+        self._mass_energy_op_grad_vec: Optional[np.ndarray] = None
+        self._int_energy_op_grad_vec: Optional[np.ndarray] = None
+        self._d_gamma_out_symbolvec: Optional[list[list[np.ndarray]]] = [None]*self.cfg.nlayer # gradients of gamma_out for all symbols: first index is layer, second index is symbol
+        self._grad_over_norm_dict: Optional[dict[tuple[sympy.Symbol, int], float]] = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
 
         # Observables
-        self._energy: float = None
-        self._el_energy_op: float = None
-        self._el_energy_op_vec: list[float] = None
-        self._mag_energy_op: float = None
-        self._mass_energy_op: float = None
-        self._mass_energy_op_vec: list[float] = None
-        self._int_energy_op: float = None
-        self._int_energy_op_vec: list[float] = None
+        self._energy: Optional[float] = None
+        self._el_energy_op: Optional[float] = None
+        self._el_energy_op_vec: Optional[list[float]] = None
+        self._mag_energy_op: Optional[float] = None
+        self._mass_energy_op: Optional[float] = None
+        self._mass_energy_op_vec: Optional[list[float]] = None
+        self._int_energy_op: Optional[float] = None
+        self._int_energy_op_vec: Optional[list[float]] = None
 
         # Woodbury Update and Matrix Inversion
-        self._wi_gamma_in_vec: list[utils.WoodburyInverter] = None  # Tracks (D^-1 - gammain)^-1
-        self._wi_gamma_out_vec: list[utils.WoodburyInverter] = None  # Tracks (D - gammain)^-1
-        self._incdet_vec: list[utils.IncLogAbsDeterminant] = None  # Tracks det(D^-1 - gammain)
+        self._wi_gamma_in_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (D^-1 - gammain)^-1
+        self._wi_gamma_out_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (D - gammain)^-1
+        self._incdet_vec: Optional[list[utils.IncLogAbsDeterminant]] = None  # Tracks det(D^-1 - gammain)
 
-        self._wi_gamma_in_mod_vec: list[utils.WoodburyInverter] = None  # Tracks (Dmod^-1 - gammain)^-1
-        self._wi_gamma_out_mod_vec: list[utils.WoodburyInverter] = None  # Tracks (Dmod - gammain)^-1
-        self._incdet_mod_vec: list[utils.IncLogAbsDeterminant] = None  # Tracks det(Dmod^-1 - gammain)
+        self._wi_gamma_in_mod_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (Dmod^-1 - gammain)^-1
+        self._wi_gamma_out_mod_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (Dmod - gammain)^-1
+        self._incdet_mod_vec: Optional[list[utils.IncLogAbsDeterminant]] = None  # Tracks det(Dmod^-1 - gammain)
 
     def initialize(self):
         """Initialization function. 
