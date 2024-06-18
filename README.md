@@ -4,7 +4,8 @@ This repository contains the code for simulations with Gaussian Fermionic Projec
 The aim is to simulate $Z_N$ lattice gauge theories.
 
 ## Installation
-The code is written for Python 3 and tested to work with Python 3.8.
+The code is written for Python 3 and tested to work with Python 3.9.
+Earlier and later versions should work as well (though there may be issues relating to type hint in python < 3.9).
 
 To make sure that all requirements of the package are fulfilled, the easiest way to use the code is to create a virtual environment and install the necessary packages independent of the python packages of the operating system
 
