@@ -113,24 +113,27 @@ class U1System2D(System2DBase):
         return self._gamma_dirac_vec
 
 
-    def _expand_gamma_maj_to_system(self,covmat):
-        permbuilder = lat.PermutationBuilderGMS2DU1(self.cfg.lattice,
-                                                    nmodes_per_link=2)
-        mat_perm = permbuilder.perm()
-        nsites = self.cfg.lattice.size
-        id = np.eye(nsites)
-        # Extract the parts of the covariance matrix
-        # The 2 is the number of physical fermionic Majorana modes
-        amat, bmat, dmat = extract_partial_covmats(covmat, 2)
-        #Expand them
-        amat_sys = np.kron(id, amat)
-        bmat_sys = np.kron(id, bmat)
-        dmat_sys = np.kron(id, dmat)
-        #Reassemble them in the correct order
-        mat_sys_unordered= np.block(
-            [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
-        dest = mat_perm @ mat_sys_unordered @ np.transpose(mat_perm) # Note that this uses a different permutation matrix convention than in Z2 case.
-        return dest
+    def _expand_gamma_maj_to_system(self, covmats):
+        vec = []
+        for covmat in covmats:
+            permbuilder = lat.PermutationBuilderGMS2DU1(self.cfg.lattice,
+                                                        nmodes_per_link=2)
+            mat_perm = permbuilder.perm()
+            nsites = self.cfg.lattice.size
+            id = np.eye(nsites)
+            # Extract the parts of the covariance matrix
+            # The 2 is the number of physical fermionic Majorana modes
+            amat, bmat, dmat = extract_partial_covmats(covmat, 2)
+            #Expand them
+            amat_sys = np.kron(id, amat)
+            bmat_sys = np.kron(id, bmat)
+            dmat_sys = np.kron(id, dmat)
+            #Reassemble them in the correct order
+            mat_sys_unordered= np.block(
+                [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
+            dest = mat_perm @ mat_sys_unordered @ np.transpose(mat_perm) # Note that this uses a different permutation matrix convention than in Z2 case.
+            vec.append(dest)        
+        return vec
 
 
     def initialize_gamma_in_sys(self):
