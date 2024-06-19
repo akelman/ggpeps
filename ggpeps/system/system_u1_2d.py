@@ -107,9 +107,9 @@ class U1System2D(System2DBase):
         """
         if self._gamma_dirac_vec is None:
             perm = self.permutation_dirac()
-            self._gamma_dirac_vec = [
+            self._gamma_dirac_vec = np.asarray([
                 perm @ utils.tmat_to_covariance_matrix(tmat) @ np.transpose(perm) for tmat in self.tmat_vec
-            ]
+            ])
         return self._gamma_dirac_vec
 
 

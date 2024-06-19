@@ -180,8 +180,8 @@ class System2DBase(ABC):
         # Parameter based matrices
         self._symbolvec: Optional[list[sympy.Symbol]] = None # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
         self._tmat_vec: Optional[list[np.ndarray]] = None
-        self._gamma_dirac_vec: Optional[list[np.ndarray]] = None
-        self._gamma_maj_vec: Optional[list[np.ndarray]] = None
+        self._gamma_dirac_vec: Optional[np.ndarray] = None
+        self._gamma_maj_vec: Optional[np.ndarray] = None
         self._gamma_maj_sys_vec: Optional[list[np.ndarray]] = None
 
         # Partial covariance matrices
@@ -335,9 +335,9 @@ class System2DBase(ABC):
             np.ndarray: Vector of covariance matrices in Dirac modes
         """
         if self._gamma_dirac_vec is None:
-            self._gamma_dirac_vec = [
+            self._gamma_dirac_vec = np.array([
                 utils.tmat_to_covariance_matrix(tmat) for tmat in self.tmat_vec
-            ]
+            ])
         return self._gamma_dirac_vec
 
     @property
@@ -356,10 +356,7 @@ class System2DBase(ABC):
             # We know that the gamma dirac matrices have all the same shape
             m, _ = self.gamma_dirac_vec[-1].shape
             smat = utils.generate_smat(m)
-            self._gamma_maj_vec = [
-                np.real(smat @ gamma_dirac @ np.transpose(smat))
-                for gamma_dirac in self.gamma_dirac_vec
-            ]
+            self._gamma_maj_vec = np.real(smat @ self.gamma_dirac_vec @ np.transpose(smat))
         return self._gamma_maj_vec
 
     @abstractmethod
