@@ -110,47 +110,6 @@ class Z2System2D(System2DBase):
         return tmat_symb
 
 
-    def _expand_gamma_maj_to_system(self,covmat):
-        """Expand the covariance matrix in Majorana modes to the full system.
-        In order to obtain a structure that is convenient for further computations,
-            (A    B)
-            (-B^T D)
-        we have to reorder the modes of the single-vertex matrix with respect to the full matrix.
-        The biggest part of the permutation-matrix generation is done in PermutationBuilderGMS2D.
-        The GMS stands for Gamma Majorana System, 2D is 2 dimensions.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            covmat (np.ndarray): 2D covariance matrix of a single site
-
-        Returns:
-            np.ndarray: 2D covariance matrix of the full system
-        """
-
-        # Build permutation matrix to convert modes from site order to link order
-        modes_link_order = self.get_link_based_mode_order()
-        modes_site_order = self.get_site_based_mode_order()
-        mat_perm_links = generate_permutation_matrix( modes_site_order, modes_link_order ) # be careful with the convention of the permutation matrix vs its transpose; this way works with the code below.
-        sites_perm = np.eye( 2 * self.cfg.lattice.nx * self.cfg.lattice.ny ) # total number of physical fermionic modes on all the sites together
-        mat_perm = block_diag(sites_perm, mat_perm_links)
-
-        nsites = self.cfg.lattice.size
-        id = np.eye(nsites)
-        # Extract the parts of the covariance matrix
-        # The 2 is the number of physical fermionic Majorana modes
-        amat, bmat, dmat = extract_partial_covmats(covmat, 2)
-        #Expand them
-        amat_sys = np.kron(id, amat)
-        bmat_sys = np.kron(id, bmat)
-        dmat_sys = np.kron(id, dmat)
-        #Reassemble them in the correct order
-        mat_sys_unordered= np.block(
-            [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
-        dest = np.transpose(mat_perm) @ mat_sys_unordered @ mat_perm
-        return dest
-
-
     def initialize_gamma_in_sys(self):
         """ 
         The mode-order in gamma_in_sys is dictated by the numbering of the links on the lattice.
