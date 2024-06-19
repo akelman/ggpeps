@@ -361,7 +361,7 @@ class System2DBase(ABC):
             self._gamma_maj_vec = np.real(smat @ self.gamma_dirac_vec @ np.transpose(smat))
         return self._gamma_maj_vec
 
-    def _expand_gamma_maj_to_system(self, covmat):
+    def _expand_gamma_maj_to_system(self, covmats):
         """Expand the covariance matrix in Majorana modes to the full system.
         In order to obtain a structure that is convenient for further computations,
             (A    B)
@@ -376,28 +376,32 @@ class System2DBase(ABC):
         Returns:
             np.ndarray: 2D covariance matrix of the full system
         """
-        # Build permutation matrix to convert modes from site order to link order
-        modes_link_order = self.get_link_based_mode_order()
-        modes_site_order = self.get_site_based_mode_order()
-        mat_perm_links = generate_permutation_matrix( modes_site_order, modes_link_order) # be careful with the convention of the permutation matrix vs its transpose; this way works with the code below.
-        sites_perm = np.eye( 2 * self.cfg.lattice.nx * self.cfg.lattice.ny ) # total number of physical fermionic majorana modes on all the sites together
-        mat_perm = block_diag(sites_perm, mat_perm_links)
 
-        nsites = self.cfg.lattice.size
-        id = np.eye(nsites)
-        # Extract the parts of the covariance matrix
-        amat = covmat[:2, :2] # assumes 1 fermion per site (two majorana modes)
-        bmat = covmat[:2, 2:]
-        dmat = covmat[2:, 2:]
-        #Expand them
-        amat_sys = np.kron(id, amat)
-        bmat_sys = np.kron(id, bmat)
-        dmat_sys = np.kron(id, dmat)
-        #Reassemble them in the correct order
-        mat_sys_unordered = np.block(
-            [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
-        dest = np.transpose(mat_perm) @ mat_sys_unordered @ mat_perm
-        return dest
+        gamma_maj_sys_vec = []
+        for covmat in covmats:
+            # Build permutation matrix to convert modes from site order to link order
+            modes_link_order = self.get_link_based_mode_order()
+            modes_site_order = self.get_site_based_mode_order()
+            mat_perm_links = generate_permutation_matrix( modes_site_order, modes_link_order) # be careful with the convention of the permutation matrix vs its transpose; this way works with the code below.
+            sites_perm = np.eye( 2 * self.cfg.lattice.nx * self.cfg.lattice.ny ) # total number of physical fermionic majorana modes on all the sites together
+            mat_perm = block_diag(sites_perm, mat_perm_links)
+
+            nsites = self.cfg.lattice.size
+            id = np.eye(nsites)
+            # Extract the parts of the covariance matrix
+            amat = covmat[:2, :2] # assumes 1 fermion per site (two majorana modes)
+            bmat = covmat[:2, 2:]
+            dmat = covmat[2:, 2:]
+            # Expand them
+            amat_sys = np.kron(id, amat)
+            bmat_sys = np.kron(id, bmat)
+            dmat_sys = np.kron(id, dmat)
+            # Reassemble them in the correct order
+            mat_sys_unordered = np.block(
+                [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
+            dest = np.transpose(mat_perm) @ mat_sys_unordered @ mat_perm
+            gamma_maj_sys_vec.append(dest)
+        return gamma_maj_sys_vec
 
     ## MOVE TO GLOBAL
     def d_gamma_out_symbolvec(self, layer:int) -> list[np.ndarray]:
@@ -435,10 +439,7 @@ class System2DBase(ABC):
             [np.ndarray]: Covariance matrix of the full system
         """
         if self._gamma_maj_sys_vec is None:
-            self._gamma_maj_sys_vec = [
-                self._expand_gamma_maj_to_system(gamma_maj)
-                for gamma_maj in self.gamma_maj_vec
-            ]
+            self._gamma_maj_sys_vec = self._expand_gamma_maj_to_system(self.gamma_maj_vec)
         return self._gamma_maj_sys_vec
 
     @property
@@ -806,8 +807,9 @@ class System2DBase(ABC):
         """
         dest = {}
         for symb in self.symbolvec:
-            dest[symb] = [self._expand_gamma_maj_to_system(
-                self.compute_gamma_maj_deriv(symb, i)) for i in range(self.cfg.nlayer)]
+            dest[symb] = self._expand_gamma_maj_to_system([
+                self.compute_gamma_maj_deriv(symb, i) for i in range(self.cfg.nlayer)
+                ])
         return dest
 
     def gamma_maj_sys_deriv_vec(self, symb: sympy.Symbol) -> np.ndarray:
