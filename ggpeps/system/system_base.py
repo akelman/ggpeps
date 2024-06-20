@@ -179,6 +179,8 @@ class System2DBase(ABC):
     def __init__(self, cfg: Config2DBase):
         self.cfg: Config2DBase = cfg
 
+        # All variables that end in _vec are arrays of length nlayer in the first dimension.
+
         # Parameter based matrices
         self._symbolvec: Optional[list[sympy.Symbol]] = None # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
         self._tmat_vec: Optional[list[np.ndarray]] = None
