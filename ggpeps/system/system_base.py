@@ -220,7 +220,7 @@ class System2DBase(ABC):
         self._el_energy_op_grad_vec: Optional[np.ndarray] = None # first index is layer, second index is symbol
         self._mass_energy_op_grad_vec: Optional[np.ndarray] = None
         self._int_energy_op_grad_vec: Optional[np.ndarray] = None
-        self._d_gamma_out_symbolvec: Optional[list[list[np.ndarray]]] = [None]*self.cfg.nlayer # gradients of gamma_out for all symbols: first index is layer, second index is symbol
+        self._d_gamma_out_symbolvec: Optional[list[list[np.ndarray]]] = None # gradients of gamma_out for all symbols: first index is layer, second index is symbol
         self._grad_over_norm_dict: Optional[dict[tuple[sympy.Symbol, int], float]] = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
 
         # Observables
@@ -253,7 +253,7 @@ class System2DBase(ABC):
         """Reset the values of computed quantitities to avoid spillover from previous computations.
         """
         self._ferm_covmat_vec = None # maybe it's possible to update this locally?
-        self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
+        self._d_gamma_out_symbolvec = None # maybe it's possible to update this locally?
         
         self._energy = None
         self._el_energy_op = None
@@ -438,6 +438,8 @@ class System2DBase(ABC):
         Returns:
             [List]: List of np.ndarrays, with length equal to the number of symbols.
         """
+        if self._d_gamma_out_symbolvec is None:
+            self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer
         if self._d_gamma_out_symbolvec[layer] is None:
             self._d_gamma_out_symbolvec[layer] = []
             offset = 2 * self.cfg.lattice.size
