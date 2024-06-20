@@ -189,9 +189,9 @@ class System2DBase(ABC):
         self._gamma_maj_sys_vec: Optional[np.ndarray] = None
 
         # Partial covariance matrices
-        self._mat_a_vec: Optional[list[np.ndarray]] = None
-        self._mat_b_vec: Optional[list[np.ndarray]] = None
-        self._mat_d_vec: Optional[list[np.ndarray]] = None
+        self._mat_a_vec: Optional[np.ndarray] = None
+        self._mat_b_vec: Optional[np.ndarray] = None
+        self._mat_d_vec: Optional[np.ndarray] = None
         self._det_mat_d_vec: Optional[list[float]] = None
         self._mat_d_inv_vec: Optional[list[np.ndarray]] = None
 
@@ -273,14 +273,10 @@ class System2DBase(ABC):
 
     def _exract_partial_covmatvec(self, offset: int):
         # We are assuming one physical mode per site
-        mat_a_vec = []
-        mat_b_vec = []
-        mat_d_vec = []
-        for ind in range(self.cfg.nlayer):
-            mat_a, mat_b, mat_d = extract_partial_covmats(self.gamma_maj_sys_vec[ind], offset)
-            mat_a_vec.append(mat_a)
-            mat_b_vec.append(mat_b)
-            mat_d_vec.append(mat_d)
+
+        mat_a_vec = self.gamma_maj_sys_vec[:, :offset, :offset]
+        mat_b_vec = self.gamma_maj_sys_vec[:, :offset, offset:]
+        mat_d_vec = self.gamma_maj_sys_vec[:, offset:, offset:]
         return mat_a_vec, mat_b_vec, mat_d_vec
 
     @abstractmethod
@@ -526,12 +522,10 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list: List of log-determinants
+            np.ndarray: List of log-determinants
         """
         if self._det_mat_d_vec is None:
-            self._det_mat_d_vec = [
-                np.linalg.slogdet(mat_d)[1] for mat_d in self.mat_d_vec
-            ]
+            _, self._det_mat_d_vec = np.linalg.slogdet(self.mat_d_vec)
         return self._det_mat_d_vec
 
     @property
@@ -545,9 +539,10 @@ class System2DBase(ABC):
             list: List of matrix inverses of the D matrix
         """
         if self._mat_d_inv_vec is None:
-            self._mat_d_inv_vec = [
-                np.linalg.inv(mat_d) for mat_d in self.mat_d_vec
-            ]
+            self._mat_d_inv_vec = np.linalg.inv(self.mat_d_vec)
+            #[
+            #    np.linalg.inv(mat_d) for mat_d in self.mat_d_vec
+            #]
         return self._mat_d_inv_vec
 
     @property

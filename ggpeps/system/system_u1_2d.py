@@ -133,7 +133,7 @@ class U1System2D(System2DBase):
                 [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
             dest = mat_perm @ mat_sys_unordered @ np.transpose(mat_perm) # Note that this uses a different permutation matrix convention than in Z2 case.
             vec.append(dest)        
-        return vec
+        return np.array(vec)
 
 
     def initialize_gamma_in_sys(self):
