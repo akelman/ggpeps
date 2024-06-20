@@ -245,6 +245,29 @@ class System2DBase(ABC):
         This is a good spot to copy essential data from the configuration.
         """
         return None
+    
+    ## WILL NEED TO BE ADAPTED FOR JAX
+    def invalidate_gauge_update(self):
+        """Reset the values of computed quantitities to avoid spillover from previous computations.
+        """
+        self._ferm_covmat_vec = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
+        self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
+        
+        self._energy = None
+        self._el_energy_op = None
+        self._el_energy_op_vec = None
+        self._mag_energy_op = None
+        self._mass_energy_op = None
+        self._mass_energy_op_vec = None
+        self._int_energy_op = None
+        self._int_energy_op_vec = None
+        
+        self._el_energy_op_grad_vec = None
+        self._mass_energy_op_grad_vec = None
+        self._int_energy_op_grad_vec = None
+        self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec, range(self.cfg.nlayer))}
+        self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
+        return
 
     def _exract_partial_covmatvec(self, offset: int):
         # We are assuming one physical mode per site
@@ -1088,28 +1111,6 @@ class System2DBase(ABC):
                                     offset:offset + n_up] 
         return -(update_mat - gamma_in_old)
 
-    ## WILL NEED TO BE ADAPTED FOR JAX
-    def invalidate_gauge_update(self):
-        """Reset the values of computed quantitities to avoid spillover from previous computations.
-        """
-        self._ferm_covmat_vec = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
-        self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
-        
-        self._energy = None
-        self._el_energy_op = None
-        self._el_energy_op_vec = None
-        self._mag_energy_op = None
-        self._mass_energy_op = None
-        self._mass_energy_op_vec = None
-        self._int_energy_op = None
-        self._int_energy_op_vec = None
-        
-        self._el_energy_op_grad_vec = None
-        self._mass_energy_op_grad_vec = None
-        self._int_energy_op_grad_vec = None
-        self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec, range(self.cfg.nlayer))}
-        self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
-        return
 
     ################## Observables ######################
     @abstractmethod
