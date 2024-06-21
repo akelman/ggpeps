@@ -210,6 +210,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         size = self.cfg.lattice.size # number of sites
         id = np.eye(size) 
 
+        # TODO: vectorize!
         for layer in range(self.cfg.nlayer):
             neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral[layer][Direction.X] )
             neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral[layer][Direction.Y] )

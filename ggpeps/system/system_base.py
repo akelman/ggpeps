@@ -64,6 +64,7 @@ def calculate_lognorm_inc(incdet_vec, det_mat_d_vec, n, all_factors:bool=False):
 class ElectricEnergyIntermediateVals:
     """Class for keeping track of intermediate calculations of the electric energy, 
     for re-use with the gradient calculation"""
+    # TODO: make into numpy/jax arrays
     covmat_out_virt_vec: list[int] = field(default_factory=list) # this is the pythonic way to use lists in dataclasses
     norm_mod_vec: list[float] = field(default_factory=list)
     lognorm_default_vec: list[float] = field(default_factory=list)
@@ -179,7 +180,7 @@ class System2DBase(ABC):
     def __init__(self, cfg: Config2DBase):
         self.cfg: Config2DBase = cfg
 
-        # All variables that end in _vec are arrays of length nlayer in the first dimension.
+        # All variables that contain _vec are arrays of length nlayer in the first dimension.
 
         # Parameter based matrices
         self._symbolvec: Optional[list[sympy.Symbol]] = None # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
@@ -192,18 +193,18 @@ class System2DBase(ABC):
         self._mat_a_vec: Optional[np.ndarray] = None
         self._mat_b_vec: Optional[np.ndarray] = None
         self._mat_d_vec: Optional[np.ndarray] = None
-        self._det_mat_d_vec: Optional[list[float]] = None
-        self._mat_d_inv_vec: Optional[list[np.ndarray]] = None
+        self._det_mat_d_vec: Optional[np.ndarray] = None
+        self._mat_d_inv_vec: Optional[np.ndarray] = None
 
         # Full covariance matrix (gamma_out) of the fermions
-        self._ferm_covmat_vec: Optional[list[Optional[np.ndarray]]] = None
+        self._ferm_covmat_vec: Optional[np.ndarray] = None
 
         # Parameter dependent quantities for the electric energy
-        self._mat_a_mod_vec: Optional[list[np.ndarray]] = None
-        self._mat_b_mod_vec: Optional[list[np.ndarray]] = None
-        self._mat_d_mod_vec: Optional[list[np.ndarray]] = None
-        self._det_mat_d_mod_vec: Optional[list[float]] = None
-        self._mat_d_mod_inv_vec: Optional[list[np.ndarray]] = None
+        self._mat_a_mod_vec: Optional[np.ndarray] = None
+        self._mat_b_mod_vec: Optional[np.ndarray] = None
+        self._mat_d_mod_vec: Optional[np.ndarray] = None
+        self._det_mat_d_mod_vec: Optional[np.ndarray] = None
+        self._mat_d_mod_inv_vec: Optional[np.ndarray] = None
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
 
         # Management of the gauge fields
@@ -536,13 +537,10 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list: List of matrix inverses of the D matrix
+            np.ndarray: List of matrix inverses of the D matrix
         """
         if self._mat_d_inv_vec is None:
             self._mat_d_inv_vec = np.linalg.inv(self.mat_d_vec)
-            #[
-            #    np.linalg.inv(mat_d) for mat_d in self.mat_d_vec
-            #]
         return self._mat_d_inv_vec
 
     @property
@@ -607,9 +605,7 @@ class System2DBase(ABC):
             list: list of log-determinants
         """
         if self._det_mat_d_mod_vec is None:
-            self._det_mat_d_mod_vec = [
-                np.linalg.slogdet(mat_d)[1] for mat_d in self.mat_d_mod_vec
-            ]
+            _, self._det_mat_d_mod_vec = np.linalg.slogdet(self.mat_d_mod_vec)
         return self._det_mat_d_mod_vec
 
     @property
@@ -622,9 +618,7 @@ class System2DBase(ABC):
             np.ndarray: List of inverses of modified D matrices
         """
         if self._mat_d_mod_inv_vec is None:
-            self._mat_d_mod_inv_vec = [
-                np.linalg.inv(mat_d) for mat_d in self.mat_d_mod_vec
-            ]
+            self._mat_d_mod_inv_vec = np.linalg.inv(self.mat_d_mod_vec)
         return self._mat_d_mod_inv_vec
 
     @abstractmethod
@@ -1482,7 +1476,7 @@ class System2DBase(ABC):
             layer (int): the layer for which the covmat should be calculated
         """
         if self._ferm_covmat_vec is None:
-            self._ferm_covmat_vec = [None]*self.cfg.nlayer
+            self._ferm_covmat_vec = np.array([None]*self.cfg.nlayer)
         if self._ferm_covmat_vec[layer] is None:
             self._ferm_covmat_vec[layer] = self.mat_a_vec[layer] + (self.mat_b_vec[layer] @ self.wi_gamma_out_vec[layer].inv() @ np.transpose(self.mat_b_vec[layer]))
         return self._ferm_covmat_vec[layer]
