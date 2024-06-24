@@ -200,7 +200,7 @@ def select_except(arr, ind: int):
         arr = np.asarray(arr)
     mask = np.ones(len(arr), dtype=bool)
     mask[ind] = False
-    return arr[mask]
+    return arr[mask] # TODO: fix for JAX
 
 
 def multiply_except(arr, ind: int):
@@ -489,7 +489,7 @@ def update_index(self, ainv, m, indi, indj, store=True):
         idmat = np.eye(m_m, n_m)
         u = np.zeros(m_a, m_m)
         v = np.zeros(n_m, n_a)
-        u[indi:indi+m_m, 0:n_m] = idmat
+        u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX
         v[0:m_m, indj:indj+n_m] = idmat
         return self.update(ainv, u, m, v, store)
     else:
@@ -534,7 +534,7 @@ class IncLogAbsDeterminant:
             idmat = np.eye(m_m, n_m)
             u = np.zeros((m_a, m_m))
             v = np.zeros((n_m, n_a))
-            u[indi:indi+m_m, 0:n_m] = idmat
+            u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX
             v[0:m_m, indj:indj+n_m] = idmat
             return self.update(ainv, u, m, v, store)
         else:

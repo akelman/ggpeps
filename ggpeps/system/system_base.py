@@ -249,12 +249,11 @@ class System2DBase(ABC):
         """
         return None
     
-    ## WILL NEED TO BE ADAPTED FOR JAX
     def invalidate_gauge_update(self):
         """Reset the values of computed quantitities to avoid spillover from previous computations.
         """
-        self._ferm_covmat_vec = None # maybe it's possible to update this locally?
-        self._d_gamma_out_symbolvec = None # maybe it's possible to update this locally?
+        self._ferm_covmat_vec = None
+        self._d_gamma_out_symbolvec = None
         
         self._energy = None
         self._el_energy_op = None
@@ -352,7 +351,7 @@ class System2DBase(ABC):
         return self._tmat_vec
 
     @property
-    def gamma_dirac_vec(self) -> list[np.ndarray]:
+    def gamma_dirac_vec(self) -> np.ndarray: 
         """Return the vector of covariance matrices in dirac modes.
 
         Returns:
@@ -380,7 +379,7 @@ class System2DBase(ABC):
             # We know that the gamma dirac matrices have all the same shape
             m, _ = self.gamma_dirac_vec[-1].shape
             smat = utils.generate_smat(m)
-            self._gamma_maj_vec = np.real(smat @ self.gamma_dirac_vec @ np.transpose(smat))
+            self._gamma_maj_vec = np.real(smat @ self.gamma_dirac_vec @ np.transpose(smat)) # vectorized operation over all layers
         return self._gamma_maj_vec
 
     def _expand_gamma_maj_to_system(self, covmats):
@@ -429,7 +428,7 @@ class System2DBase(ABC):
         return np.array(gamma_maj_sys_vec)
 
     ## MOVE TO GLOBAL
-    def d_gamma_out_symbolvec(self, layer:int) -> list[np.ndarray]:
+    def d_gamma_out_symbolvec(self, layer:int):
         """Return a vector containing the derivatives of gamma_out (for the given layer) for each symbol.
 
         Returns:
@@ -497,8 +496,7 @@ class System2DBase(ABC):
         """
         if self._mat_b_vec is None:
             offset = 2 * self.cfg.lattice.size
-            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = self._exract_partial_covmatvec(
-                offset)
+            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = self._exract_partial_covmatvec(offset)
         return self._mat_b_vec
 
     @property
@@ -512,8 +510,7 @@ class System2DBase(ABC):
         """
         if self._mat_d_vec is None:
             offset = 2 * self.cfg.lattice.size
-            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = self._exract_partial_covmatvec(
-                offset)
+            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = self._exract_partial_covmatvec(offset)
         return self._mat_d_vec
 
     @property
@@ -558,8 +555,7 @@ class System2DBase(ABC):
         """
         if self._mat_a_mod_vec is None:
             offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
-            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._exract_partial_covmatvec(
-                offset)
+            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._exract_partial_covmatvec(offset)
         return self._mat_a_mod_vec
 
     @property
@@ -574,8 +570,7 @@ class System2DBase(ABC):
         """
         if self._mat_b_mod_vec is None:
             offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
-            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._exract_partial_covmatvec(
-                offset)
+            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._exract_partial_covmatvec(offset)
         return self._mat_b_mod_vec
 
     @property
@@ -590,8 +585,7 @@ class System2DBase(ABC):
         """
         if self._mat_d_mod_vec is None:
             offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
-            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._exract_partial_covmatvec(
-                offset)
+            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._exract_partial_covmatvec(offset)
         return self._mat_d_mod_vec
 
     @property
@@ -714,7 +708,7 @@ class System2DBase(ABC):
             np.ndarray: Gauged, modified covariance matrix of the system
         """
         single_link_offset = 2 * self.cfg.nvirtmodes_link
-        return self.gamma_in_sys[single_link_offset:, single_link_offset:]
+        return self.gamma_in_sys[single_link_offset:, single_link_offset:] # TODO: fix for JAX
 
     @property
     def gamma_in_sys_mod_vec(self):
@@ -882,7 +876,7 @@ class System2DBase(ABC):
         dest = np.zeros(len(self.symbolvec))
         for symbol_ind, symbol in enumerate(self.symbolvec):
             if (layerind, symbol_ind) not in self.cfg.zeroed_params:
-                # the derivative calculation is compuationally expensive
+                # the derivative calculation is computationally expensive
                 # we can skip it for parameters that are forced by the ansatz to be zero
                 dest[symbol_ind] = self.compute_grad_over_norm(symbol, layerind)
         return dest
@@ -1015,7 +1009,7 @@ class System2DBase(ABC):
             # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
             offset = 2 * self.cfg.lattice.size
             # Extract only the part of the virtual-virtual correlations
-            deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:]
+            deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:] # TODO: fix for JAX
             mat_d_inv = self.mat_d_inv_vec[layerind]
 
             # TODO: We might save one matrix-matrix multiplication here
@@ -1101,7 +1095,7 @@ class System2DBase(ABC):
             gamma_in_sys = self.gamma_in_sys # take the first element, which is shared between all the layers
         m_up, n_up = update_mat.shape
         gamma_in_old = gamma_in_sys[offset:offset + m_up,
-                                    offset:offset + n_up] 
+                                    offset:offset + n_up] # TODO: fix for JAX
         return -(update_mat - gamma_in_old)
 
 
@@ -1160,6 +1154,7 @@ class System2DBase(ABC):
         overall_factors = self.el_overall_factors
         idxarrs = self.idxarr_vec
 
+        # TODO: vectorize!
         for layerind in range(self.cfg.nlayer):
 
             # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
@@ -1176,7 +1171,7 @@ class System2DBase(ABC):
             covmat_out = mat_a + \
                 mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
             covmat_out_virt = covmat_out[-single_link_offset:, -
-                                        single_link_offset:]
+                                        single_link_offset:] # TODO: fix for JAX
 
             # The library pfapack is rather picky about the anti-symmetrization (to 1e-14)
             covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
@@ -1186,7 +1181,7 @@ class System2DBase(ABC):
                 [self.det_mat_d_mod_vec[layerind]],
                 gamma_in_sys_mod.shape[0],
                 all_factors=True)
-            norm_mod += np.sum(utils.select_except(lognormvec_default,layerind))
+            norm_mod += np.sum(utils.select_except(lognormvec_default, layerind))
             # The matrix elements yield only the real part of <P>
             # If we use the log formulation, we can calculate the log of single terms.
 
@@ -1195,7 +1190,7 @@ class System2DBase(ABC):
             pfarr = []
             pfvals = [] # without the prefactor
             for prefactor,ind in idxarr:
-                pfaval = pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)])
+                pfaval = pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)]) # TODO: fix for JAX
                 pfarr.append(prefactor * pfaval)
                 pfvals.append(pfaval)
             el_energy_full = overall_factor * np.sum(pfarr)
