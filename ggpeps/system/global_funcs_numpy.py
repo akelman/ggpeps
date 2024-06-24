@@ -203,3 +203,17 @@ def update_gauge_ind_numpy(z2_system, link_ind, theta):
     # Invalidate gauge dependent quantities
     z2_system.invalidate_gauge_update()
 
+def extract_partial_covmats_numpy(mat, corner):
+    """Extract the partial covariance matrices from a gaussian mapping
+
+    Args:
+        mat (np.ndarray): Full covariance matrix
+        corner (int): Index of the top left element of the bottom right matrix
+
+    Returns:
+        tuple: Matrices (A,B,D)
+    """
+    mat_a = mat[:corner, :corner]
+    mat_b = mat[:corner, corner:]
+    mat_d = mat[corner:, corner:]
+    return mat_a, mat_b, mat_d

@@ -14,26 +14,12 @@ from scipy.linalg import block_diag
 import ggpeps
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
-from ggpeps.system.global_funcs import compute_grad_over_norm, calculate_lognormvec, compute_el_grad_vec
+from ggpeps.system.global_funcs import *
 from ggpeps.modearray import generate_permutation_matrix
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 ################## Utility Functions ######################
-def extract_partial_covmats(mat, corner):
-    """Extract the partial covariance matrices from a gaussian mapping
-
-    Args:
-        mat (np.ndarray): Full covariance matrix
-        corner (int): Index of the top left element of the bottom right matrix
-
-    Returns:
-        tuple: Matrices (A,B,D)
-    """
-    mat_a = mat[:corner, :corner]
-    mat_b = mat[:corner, corner:]
-    mat_d = mat[corner:, corner:]
-    return mat_a, mat_b, mat_d
 
 def calculate_lognorm(gamma_in_sys_vec: list[np.ndarray], mat_d_vec: list[np.ndarray], all_factors:bool=False) -> float:
     # This is still the plain formula, without any update mechanism

@@ -15,3 +15,4 @@ else:
 
 # TODO: create JAX versions of the following functions
 update_gauge_ind = update_gauge_ind_numpy
+extract_partial_covmats = extract_partial_covmats_numpy
