@@ -1603,7 +1603,7 @@ class System2DBase(ABC):
         submatrices = [k for k in it.product(*modes)]
         indices = [sum(sub, ()) for sub in submatrices]
 
-        factors = [k for k in it.product(*coefficients)]
+        factors = [np.asarray(k) for k in it.product(*coefficients)]
         prefactors = [np.prod(k) for k in factors]
         idxarr = [(p, i) for p, i in zip(prefactors, indices)]
         
