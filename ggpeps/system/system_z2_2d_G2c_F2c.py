@@ -10,7 +10,7 @@ from ggpeps.modearray import generate_permutation_matrix
 
 from .system_base import Config2DBase, System2DBase, ElectricEnergyIntermediateVals
 
-from ggpeps.system.global_funcs_numpy import update_gauge_ind
+from ggpeps.system.global_funcs import update_gauge_ind
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
