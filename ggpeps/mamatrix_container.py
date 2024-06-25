@@ -1,4 +1,5 @@
-import numpy as np
+#import numpy as np
+from ggpeps import xnp as np
 import numpy.lib.mixins
 from numbers import Number
 

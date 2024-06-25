@@ -2,7 +2,8 @@
 
 from typing import List
 
-import numpy as np
+#import numpy as np
+from ggpeps import xnp as np
 
 import jax
 import jax.numpy as jnp

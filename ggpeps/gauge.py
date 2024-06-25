@@ -1,5 +1,5 @@
-import numpy as np
-
+#import numpy as np
+from ggpeps import xnp as np
 
 class ZNGauge:
     """Implements a Z_N gauge group, under a convenient representation in which values are chosen on the unit circle

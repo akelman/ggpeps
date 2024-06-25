@@ -5,8 +5,9 @@ import gzip
 import pickle
 import logging
 
-import numpy as np
 import pandas as pd
+#import numpy as np
+from ggpeps import xnp as np
 
 import ggpeps
 import ggpeps.utils as utils

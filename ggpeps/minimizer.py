@@ -4,7 +4,8 @@ import os
 import pickle
 import logging
 
-import numpy as np
+#import numpy as np
+from ggpeps import xnp as np
 from scipy.optimize import minimize
 
 import ggpeps

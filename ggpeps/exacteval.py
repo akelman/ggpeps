@@ -1,7 +1,8 @@
 import os
 import itertools as it
 
-import numpy as np
+#import numpy as np
+from ggpeps import xnp as np
 import pandas as pd
 
 import ggpeps.lattice as lattice

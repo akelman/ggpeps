@@ -7,9 +7,11 @@ import logging
 import itertools as it
 
 import sympy
-import numpy as np
 from pfapack import pfaffian as pf
 from scipy.linalg import block_diag
+
+#import numpy as np
+from ggpeps import xnp as np
 
 import ggpeps
 from ggpeps import gauge, utils

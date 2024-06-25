@@ -6,10 +6,12 @@ import pickle
 import logging
 import subprocess  # Start process for git hash
 
-import numpy as np
 import numba as nb
 from scipy.sparse import issparse
 from scipy.linalg import svd, block_diag
+
+#import numpy as np
+from ggpeps import xnp as np
 
 from pfapack import pfaffian as pf
 

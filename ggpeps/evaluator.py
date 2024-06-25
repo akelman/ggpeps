@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-import numpy as np
+#import numpy as np
+from ggpeps import xnp as np
 
 
 # Currently not used

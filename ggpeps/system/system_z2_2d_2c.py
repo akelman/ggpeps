@@ -1,6 +1,7 @@
 import sympy
 import logging
-import numpy as np
+#import numpy as np
+from ggpeps import xnp as np
 from scipy.linalg import block_diag
 from pfapack import pfaffian as pf
 

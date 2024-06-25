@@ -4,7 +4,8 @@ from abc import ABC, abstractmethod
 import ray
 import copy
 import logging
-import numpy as np
+#import numpy as np
+from ggpeps import xnp as np
 
 import ggpeps
 from ggpeps import utils
