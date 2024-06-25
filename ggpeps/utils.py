@@ -456,7 +456,7 @@ class WoodburyInverter:
             idmat = np.eye(m_m, n_m)
             u = np.zeros((m_a, m_m))
             v = np.zeros((n_m, n_a))
-            u[indi:indi+m_m, 0:n_m] = idmat
+            u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX
             v[0:m_m, indj:indj+n_m] = idmat
             return self.update(u, m, v)
         else:
@@ -543,6 +543,7 @@ class IncLogAbsDeterminant:
             return self.det()
 
 
+# Not used (though still appears in tests)
 class BgbTransform():
     def __init__(self, mat_in, pure_gauge=True):
         self.mat_in = mat_in
