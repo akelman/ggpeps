@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-#import numpy as np
-from ggpeps import xnp as np
+import numpy as np
 
 
 # Currently not used
@@ -11,7 +10,6 @@ class EvaluatorResult:
     obsdict: dict #= {}
     params: np.ndarray #= None
     #TODO: what else needs to be here? system info?
-
 
 
 class Evaluator(ABC):

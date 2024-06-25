@@ -1,5 +1,4 @@
-#import numpy as np
-from ggpeps import xnp as np
+import numpy as np
 from numbers import Number
 
 # There are multiple ways to extend numpy arrays to contain an additional list of mode arrays

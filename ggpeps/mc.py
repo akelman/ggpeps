@@ -6,8 +6,7 @@ import pickle
 import logging
 
 import pandas as pd
-#import numpy as np
-from ggpeps import xnp as np
+import numpy as np
 
 import ggpeps
 import ggpeps.utils as utils
