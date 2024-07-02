@@ -4,7 +4,7 @@ from .global_funcs_numpy import *
 from .global_funcs_jax import *
 
 ############## SELECT APPROPRIATE VERSION ##############
-if ggpeps.GPU_AVAILABLE:
+if ggpeps.PREFERRED_BACKEND == 'jax':
     calculate_lognormvec = calculate_lognormvec_jax
     compute_grad_over_norm = compute_grad_over_norm_jax
     compute_el_grad_vec = compute_el_grad_vec_jax

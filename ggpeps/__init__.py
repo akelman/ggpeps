@@ -14,13 +14,23 @@ import jax
 jax.config.update("jax_enable_x64", True)
 
 # GPU or CPU
-try:
-    available_gpus = jax.devices('gpu') # Get the list of available GPUs
-    PREFERRED_DEVICE = available_gpus[0] # Use the first available GPU as the preferred device
+available_gpus = jax.devices('gpu')
+if len(available_gpus) > 0:
+    PREFERRED_DEVICE = available_gpus[0] # we only use one GPU
     GPU_AVAILABLE = True
-    import jax.numpy as xnp
-except RuntimeError:
-    # If GPUs are not available, fall back to the CPU.
+else: # If GPUs are not available, fall back to the CPU.
     PREFERRED_DEVICE = jax.devices('cpu')[0]
     GPU_AVAILABLE = False
+
+# Set numerical backend
+AVAILABLE_NUMERICAL_BACKENDS = ['numpy', 'jax']
+PREFERRED_BACKEND = 'numpy'
+if GPU_AVAILABLE:
+    PREFERRED_BACKEND = 'jax'
+
+if PREFERRED_BACKEND == 'numpy':
     import numpy as xnp
+elif PREFERRED_BACKEND == 'jax':
+    import jax.numpy as xnp
+else:
+    raise ValueError(f"Unknown backend: {PREFERRED_BACKEND}")
