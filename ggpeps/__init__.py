@@ -14,12 +14,11 @@ import jax
 jax.config.update("jax_enable_x64", True)
 
 # GPU or CPU
-available_gpus = jax.devices('gpu')
-if len(available_gpus) > 0:
-    PREFERRED_DEVICE = available_gpus[0] # we only use one GPU
+available_devices = jax.devices() # available_gpus = jax.devices('gpu')
+PREFERRED_DEVICE = available_devices[0] # eventually should not be used in our code
+if 'gpu' in available_devices[0].device_kind:
     GPU_AVAILABLE = True
-else: # If GPUs are not available, fall back to the CPU.
-    PREFERRED_DEVICE = jax.devices('cpu')[0]
+else: 
     GPU_AVAILABLE = False
 
 # Set numerical backend
