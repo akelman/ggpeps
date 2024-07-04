@@ -1,5 +1,4 @@
-#import numpy as np
-from ggpeps import xnp as np
+import numpy as np
 import matplotlib.pyplot as plt
 
 def calculate_gradient_2d(x,y,data):
