@@ -696,7 +696,8 @@ class System2DBase(ABC):
             np.ndarray: Gauged, modified covariance matrix of the system
         """
         single_link_offset = 2 * self.cfg.nvirtmodes_link
-        return self.gamma_in_sys[single_link_offset:, single_link_offset:] # TODO: fix for JAX
+        #return self.gamma_in_sys[single_link_offset:, single_link_offset:] # TODO: fix for JAX
+        return gamma_in_sys_mod(self.gamma_in_sys, single_link_offset)
 
     @property
     def gamma_in_sys_mod_vec(self):

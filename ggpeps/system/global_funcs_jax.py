@@ -130,6 +130,16 @@ def deriv_pfarr_jax(covmat_out_virt, d_covmat_out_virt, pfaval, prefactor, ind):
 in_axes_pfarr = (None, None, 0, 0, 0)
 batch_pfarr = jax.vmap(deriv_pfarr_jax, in_axes=in_axes_pfarr)
 
+def gamma_in_sys_mod_jax(gamma_in_sys, single_link_offset):
+    """Get function to return the gauged gamma_in_sys with a single link modification (to compute the electric energy), 
+    the covariance matrix of the links for the whole system.
+
+    Returns:
+        np.ndarray: Gauged, modified covariance matrix of the system
+    """
+    N = gamma_in_sys.shape[0]
+    return jax.lax.slice(gamma_in_sys, (single_link_offset, single_link_offset), (N, N)) # TODO: should this be dynamic_slice?
+
 def extract_partial_covmats_jax(mat, corner):
     """Extract the partial covariance matrices from a gaussian mapping
 
