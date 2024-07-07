@@ -65,6 +65,7 @@ class Cache:
         
         # if cached value is not found, but an eval manager is present, 
         # update the minimizer to use that eval manager
+        # ISSUE: note that this overwrites the current eval manager, including when the config (e.g. meas_steps) has changed
         # TODO: this is a hack, we should have a better way to handle this
         if self.cache_data['evaluator_manager'] is not None:
             eval_manager = self.cache_data['evaluator_manager']
@@ -76,6 +77,7 @@ class Cache:
     def load_cache_file(self, cache_file: str) -> bool:
         # TODO: once we include other objects in the cache,
         #       this function should check that cached objects have the same configs
+        #       (unless a change is deliberate...)
         success = False
         if os.path.exists(cache_file):
             with open(cache_file, "rb") as infile:
