@@ -2,8 +2,7 @@ import sys
 from enum import Enum
 
 import logging
-#import numpy as np
-from ggpeps import xnp as np
+import numpy as np
 
 import ggpeps
 
