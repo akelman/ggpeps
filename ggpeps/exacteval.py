@@ -40,7 +40,7 @@ class ExactEvaluator(Evaluator):
         Use this function to match the interface of the MonteCarloEvaluator."""
         return self.obsdict[obs]
 
-    def evaluate(self):
+    def evaluate(self, gauge_fixing: bool=False):
         """Main evaluation function of ExactEvaluator.
         This function computes the exact expectation values <Psi|O|Psi>/<Psi|Psi> for a range of observables defined in the function.
 
@@ -50,7 +50,10 @@ class ExactEvaluator(Evaluator):
         if self.obsdict is None:
             poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
             nlinks = self.system.cfg.lattice.nlinks
-            configvec = it.product(poss_gauges, repeat=nlinks) # an iterable object with all possible field configurations for the entire lattice
+            if gauge_fixing:
+                configvec = it.product(poss_gauges, repeat=nlinks) # an iterable object with all possible field configurations for the entire lattice. TODO: think if I should add a nomralization constant
+            else:
+                pass #TODO
 
             polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
                 (0, 0), lattice.Direction.X)
@@ -94,7 +97,7 @@ class ExactEvaluator(Evaluator):
                 data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec) 
                 data["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec) 
                 
-                data["norm"].append(self.system.calculate_lognorm(all_factors=True))
+                data["norm"].append(self.system.calculate_lognorm(all_factors=True)) 
                 data["grad_norm"].append(self.system.compute_grad_norm_vec())
                 data["wilson_00_11"].append(np.real(self.system.compute_path(wilson_loop)))
                 data["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))

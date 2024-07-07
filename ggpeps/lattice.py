@@ -262,6 +262,14 @@ class Lattice2D:
             loops.append(loop)
 
         return loops
+    def generate_maximal_tree(self):
+        """Generate a maximal tree whose gauge's value will be fixed to the identity in the integration. 
+        Returns a list of the indices of links in the tree. This method is built fo periodic boundary conditions. 
+        the maximal trre includes all the horizontal links but the last one on each row, and all the vertical links but the last one on the first column.
+        """
+        tree = [self.coord2ind_dir((x,y),Direction(0)) for y in range(self.ny) for x in range(self.nx - 1)]
+        tree += [self.coord2ind_dir((0,y),Direction(1)) for y in range(self.ny - 1)]
+        return tree
 
 
 class Lattice3D:
@@ -393,7 +401,11 @@ class PermutationBuilderGMS2DU1:
 
 if __name__ == "__main__":
     print("Lattice 2d, 3x2")
-    lat_3x2 = Lattice2D(3, 2)
+    lat_3x2 = Lattice2D(4, 5)
     print(lat_3x2)
     wilson_loop = lat_3x2.generate_wilson_loop((0,0), (1,1))
     print(wilson_loop)
+    lst = lat_3x2.generate_maximal_tree()
+    print(lst)
+    print([lat_3x2.ind2coord_dir(ind) for ind in lst])
+    print(lat_3x2.ind2coord_dir(3))
