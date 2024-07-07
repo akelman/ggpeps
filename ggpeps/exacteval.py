@@ -50,10 +50,11 @@ class ExactEvaluator(Evaluator):
         if self.obsdict is None:
             poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
             nlinks = self.system.cfg.lattice.nlinks
+
             if gauge_fixing:
                 configvec = it.product(poss_gauges, repeat=nlinks) # an iterable object with all possible field configurations for the entire lattice. TODO: think if I should add a nomralization constant
             else:
-                pass #TODO
+              configvec = self.generate_config_vec(poss_gauges,nlinks)
 
             polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
                 (0, 0), lattice.Direction.X)
@@ -169,6 +170,19 @@ class ExactEvaluator(Evaluator):
             self.obsdict = dest
 
         return self.obsdict
+        
+    def generate_config_vec(self, poss_gauges, nlinks):
+        """Generates a vector of gauge field configurations for all links, for the gauge fixed case."""
+        tree = self.system.cfg.lattice.generate_maximal_tree()
+        fixed_links_ind = [i for i in range(nlinks) if i not in tree] # Generate all possible indices for the non-fixed positions
+        num_combinations = len(poss_gauges) ** len(fixed_links_ind)
+        configvec = np.full((num_combinations, nlinks),0) #TODO: change the zero here to the identity
+        combinations = np.array(list(it.product(poss_gauges, repeat=len(fixed_links_ind)))) # Generate all possible gauge field combinations
+        for i, pos in enumerate(fixed_links_ind):
+            configvec[:, pos] = combinations[:, i]
+            
+        return configvec.tolist() 
+
 
     def summary(self):
         """Summarize the results of the exact contraction in a dataframe.

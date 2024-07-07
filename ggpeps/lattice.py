@@ -35,6 +35,7 @@ class Lattice2D:
         self.nlinks = 2*nx*ny
         self.nplaquettes = nx*ny
         self.size = nx*ny # number of sites
+        self.ntreelinks = nx*ny - 1
 
     def __str__(self):
         """Generate a string representation of the lattice.
@@ -408,4 +409,4 @@ if __name__ == "__main__":
     lst = lat_3x2.generate_maximal_tree()
     print(lst)
     print([lat_3x2.ind2coord_dir(ind) for ind in lst])
-    print(lat_3x2.ind2coord_dir(3))
+    print(len(lst))
