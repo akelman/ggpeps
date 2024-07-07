@@ -82,7 +82,7 @@ class Cache:
         if os.path.exists(cache_file):
             with open(cache_file, "rb") as infile:
                 cache_data = pickle.load(infile)
-                if cache_data['cache_version'] == self.cache_version and cache_data['mode'] == ggpeps.global_vars['args'].mode:
+                if cache_data['cache_version'] == self.cache_version:
                     self.cache_data = cache_data
                     success = True
                     logger.info(f"Loaded cache file {cache_file}")
@@ -96,3 +96,30 @@ class Cache:
                     logger.warn(message)
                     # TODO: we can probably recover some of the data
         return success
+
+def remove_eval_manager_from_cache(cache_file: str):
+    """Remove the evaluator_manager from the cache file.
+
+    Args:
+        cache_file (str): path to cache file
+    """
+    if os.path.exists(cache_file):
+        cache = Cache('', cache_file)
+        cache.cache_data['evaluator_manager'] = None
+        cache.save_cache_file()
+    return
+
+def main(args):
+    remove_eval_manager_from_cache(args.file)
+    return
+
+
+if __name__ == '__main__':
+
+    import argparse
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--file", help="path to cache file")
+    args = parser.parse_args()
+
+    main(args)
