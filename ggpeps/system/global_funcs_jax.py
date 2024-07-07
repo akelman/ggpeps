@@ -141,7 +141,7 @@ def extract_partial_covmats_jax(mat, corner):
         tuple: Matrices (A,B,D)
     """
     N = mat.shape[0]
-    mat_a = jax.lax.slice(mat, (0,0), (corner, corner))
+    mat_a = jax.lax.slice(mat, (0,0), (corner, corner)) # TODO: should this be dynamic_slice?
     mat_b = jax.lax.slice(mat, (0,corner), (corner, N))
     mat_d = jax.lax.slice(mat, (corner,corner), (N, N))
     return mat_a, mat_b, mat_d
