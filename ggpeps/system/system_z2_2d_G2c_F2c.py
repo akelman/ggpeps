@@ -404,7 +404,7 @@ class Z2System2D_G2C_F2C(System2DBase):
             # Calculate mass term
             # Since the system is translationally invariant, we could just calculate it for one site and multiply by nsites instead
             for site_ind in range(0, 2*self.cfg.lattice.size, 2):
-                layer_mass_energy += 0.5 * (1 + covmat[site_ind+1, site_ind] ) # TODO: fix for JAX
+                layer_mass_energy += 0.5 * (1 + covmat[site_ind+1, site_ind] ) # TODO: fix for JAX - NOT NEEDED
 
                 for symbol_ind, symbol in enumerate(self.symbolvec):
                     if (layer_ind, symbol_ind) not in self.cfg.zeroed_params:
@@ -482,7 +482,7 @@ class Z2System2D_G2C_F2C(System2DBase):
                 neighborX_ind = 2 * self.cfg.lattice.coord2ind(neighborX_coord) # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
                 gaugefield_hor = self.gaugefieldvec[ind_field_hor]
                 cos_factor_hor = np.cos(gaugefield_hor) # simple way to get U from gauge value
-                hor_link_energy = 0.5 * (covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov+1, neighborX_ind+1]) # TODO: fix for JAX
+                hor_link_energy = 0.5 * (covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov+1, neighborX_ind+1]) # TODO: fix for JAX - NOT NEEDED
                 layer_int_energy += hor_link_energy * cos_factor_hor
 
                 # Vertical link
