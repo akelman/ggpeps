@@ -255,8 +255,13 @@ class Z2System2D_G2C_F2C(System2DBase):
         dest_unmixed = {} # does not mix copies 
         
         # We want to give the projectors for the pure gauge part, which mix copies
-        dest_mixed[Direction.X] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
-        dest_mixed[Direction.Y] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
+        # TODO - handle real condition better for JAX
+        if ggpeps.PREFERRED_BACKEND == 'jax':
+            dest_mixed[Direction.X] = np.real(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
+            dest_mixed[Direction.Y] = np.real(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
+        else:
+            dest_mixed[Direction.X] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
+            dest_mixed[Direction.Y] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
 
         # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
         dest_unmixed[Direction.X] = np.array([  [ 0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.],
@@ -329,7 +334,10 @@ class Z2System2D_G2C_F2C(System2DBase):
             theta (float): New gauge field value
         """
         # Update the gaugefield
-        self._gaugefieldvec[link_ind] = theta
+        if ggpeps.PREFERRED_BACKEND == 'jax':
+            self._gaugefieldvec = self._gaugefieldvec.at[link_ind].set(theta)
+        else:
+            self._gaugefieldvec[link_ind] = theta
         # There are two directions per vertex
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)

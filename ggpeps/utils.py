@@ -456,8 +456,12 @@ class WoodburyInverter:
             idmat = np.eye(m_m, n_m)
             u = np.zeros((m_a, m_m))
             v = np.zeros((n_m, n_a))
-            u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX
-            v[0:m_m, indj:indj+n_m] = idmat
+            if ggpeps.PREFERRED_BACKEND == 'jax':
+                u = u.at[indi:indi+m_m, 0:n_m].set(idmat)
+                v = v.at[0:m_m, indj:indj+n_m].set(idmat)
+            else:
+                u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX
+                v[0:m_m, indj:indj+n_m] = idmat
             return self.update(u, m, v)
         else:
             return self.inv()
@@ -491,8 +495,12 @@ def update_index(self, ainv, m, indi, indj, store=True):
         idmat = np.eye(m_m, n_m)
         u = np.zeros(m_a, m_m)
         v = np.zeros(n_m, n_a)
-        u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX
-        v[0:m_m, indj:indj+n_m] = idmat
+        if ggpeps.PREFERRED_BACKEND == 'jax':  
+            u = u.at[indi:indi+m_m, 0:n_m].set(idmat)
+            v = v.at[0:m_m, indj:indj+n_m].set(idmat)
+        else:
+            u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX
+            v[0:m_m, indj:indj+n_m] = idmat
         return self.update(ainv, u, m, v, store)
     else:
         return self.detval
@@ -536,8 +544,12 @@ class IncLogAbsDeterminant:
             idmat = np.eye(m_m, n_m)
             u = np.zeros((m_a, m_m))
             v = np.zeros((n_m, n_a))
-            u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX
-            v[0:m_m, indj:indj+n_m] = idmat
+            if ggpeps.PREFERRED_BACKEND == 'jax':
+                u = u.at[indi:indi+m_m, 0:n_m].set(idmat)
+                v = v.at[0:m_m, indj:indj+n_m].set(idmat)
+            else:
+                u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX
+                v[0:m_m, indj:indj+n_m] = idmat
             return self.update(ainv, u, m, v, store)
         else:
             return self.det()
