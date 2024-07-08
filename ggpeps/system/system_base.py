@@ -696,7 +696,7 @@ class System2DBase(ABC):
             np.ndarray: Gauged, modified covariance matrix of the system
         """
         single_link_offset = 2 * self.cfg.nvirtmodes_link
-        #return self.gamma_in_sys[single_link_offset:, single_link_offset:] # TODO: fix for JAX
+        #return self.gamma_in_sys[single_link_offset:, single_link_offset:] # TODO: fix for JAX - DONE
         return gamma_in_sys_mod(self.gamma_in_sys, single_link_offset)
 
     @property
@@ -998,7 +998,8 @@ class System2DBase(ABC):
             # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
             offset = 2 * self.cfg.lattice.size
             # Extract only the part of the virtual-virtual correlations
-            deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:] # TODO: fix for JAX
+            #deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:] # TODO: fix for JAX - DONE
+            _, _, deriv_d = extract_partial_covmats(self.gamma_maj_sys_deriv_vec(var)[layerind], offset)
             mat_d_inv = self.mat_d_inv_vec[layerind]
 
             # TODO: We might save one matrix-matrix multiplication here
@@ -1083,8 +1084,8 @@ class System2DBase(ABC):
         if gamma_in_sys is None:
             gamma_in_sys = self.gamma_in_sys # take the first element, which is shared between all the layers
         m_up, n_up = update_mat.shape
-        gamma_in_old = gamma_in_sys[offset:offset + m_up,
-                                    offset:offset + n_up] # TODO: fix for JAX
+        gamma_in_old = slice_matrix(gamma_in_sys, offset, offset + m_up, offset, offset + n_up)
+                        #gamma_in_sys[offset:offset + m_up, offset:offset + n_up] # TODO: fix for JAX - DONE
         return -(update_mat - gamma_in_old)
 
 
@@ -1159,8 +1160,9 @@ class System2DBase(ABC):
             ###################### Calculation of <P> ########################
             covmat_out = mat_a + \
                 mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
-            covmat_out_virt = covmat_out[-single_link_offset:, -
-                                        single_link_offset:] # TODO: fix for JAX
+            size = covmat_out.shape[1]
+            covmat_out_virt = slice_matrix(covmat_out, size - single_link_offset, size, size - single_link_offset, size)
+                                # covmat_out[-single_link_offset:, -single_link_offset:] # TODO: fix for JAX - DONE
 
             # The library pfapack is rather picky about the anti-symmetrization (to 1e-14)
             covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
@@ -1179,7 +1181,7 @@ class System2DBase(ABC):
             pfarr = []
             pfvals = [] # without the prefactor
             for prefactor,ind in idxarr:
-                pfaval = pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)]) # TODO: fix for JAX
+                pfaval = pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)]) # TODO: fix for JAX - NOT NEEDED, jnp.ix_ should work
                 pfarr.append(prefactor * pfaval)
                 pfvals.append(pfaval)
             el_energy_full = overall_factor * np.sum(pfarr)

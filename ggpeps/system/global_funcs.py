@@ -11,6 +11,7 @@ if ggpeps.PREFERRED_BACKEND == 'jax':
     
     extract_partial_covmats = extract_partial_covmats_jax
     gamma_in_sys_mod = gamma_in_sys_mod_jax
+    slice_matrix = slice_matrix_jax
 else:
     calculate_lognormvec = calculate_lognormvec_numpy
     compute_grad_over_norm = compute_grad_over_norm_numpy
@@ -18,6 +19,7 @@ else:
 
     extract_partial_covmats = extract_partial_covmats_numpy
     gamma_in_sys_mod = gamma_in_sys_mod_numpy
+    slice_matrix = slice_matrix_numpy
 
 # TODO: create JAX versions of the following functions
 #update_gauge_ind = update_gauge_ind_numpy

@@ -156,6 +156,9 @@ def extract_partial_covmats_jax(mat, corner):
     mat_d = jax.lax.slice(mat, (corner,corner), (N, N))
     return mat_a, mat_b, mat_d
 
+def slice_matrix_jax(mat, a, b, c, d):
+    return jax.lax.slice(mat, (a,c), (b,d))
+
 def compute_el_grad_onelayer_onesymbol(
         el_energy,
         mat_b,

@@ -218,6 +218,9 @@ def extract_partial_covmats_numpy(mat, corner):
     mat_d = mat[corner:, corner:]
     return mat_a, mat_b, mat_d
 
+def slice_matrix_numpy(mat, a, b, c, d):
+    return mat[a:b, c:d]
+
 def gamma_in_sys_mod_numpy(gamma_in_sys, single_link_offset):
     """Get function to return the gauged gamma_in_sys with a single link modification (to compute the electric energy), 
     the covariance matrix of the links for the whole system.
