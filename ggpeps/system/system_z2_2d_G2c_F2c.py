@@ -316,7 +316,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         dest = block_diag(rot_left, rot_right, rot_left, rot_right)
         return dest
 
-    # TODO: fix for JAX
+    # TODO: fix for JAX - DONE, expect for stuff in utils
     def update_gauge_ind(self, link_ind, theta):
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors and updates all incremental trackers of determinants and inverses.
@@ -342,7 +342,11 @@ class Z2System2D_G2C_F2C(System2DBase):
             update_vec.append( self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]) )
     
             # Substitute in the array
-            self.gamma_in_sys_vec[layer][ind_mat:ind_mat + rotmat.shape[0],
+            if ggpeps.PREFERRED_BACKEND == 'jax':
+                self.gamma_in_sys_vec[layer] = self.gamma_in_sys_vec[layer].at[ind_mat:ind_mat + rotmat.shape[0],
+                                                                               ind_mat:ind_mat + rotmat.shape[1]].set(gamma_in_subst)
+            else:
+                self.gamma_in_sys_vec[layer][ind_mat:ind_mat + rotmat.shape[0],
                                          ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
     
         # Update the determinant
