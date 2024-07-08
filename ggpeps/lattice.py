@@ -263,6 +263,7 @@ class Lattice2D:
             loops.append(loop)
 
         return loops
+    
     def generate_maximal_tree(self):
         """Generate a maximal tree whose gauge's value will be fixed to the identity in the integration. 
         Returns a list of the indices of links in the tree. This method is built fo periodic boundary conditions. 
@@ -271,7 +272,13 @@ class Lattice2D:
         tree = [self.coord2ind_dir((x,y),Direction(0)) for y in range(self.ny) for x in range(self.nx - 1)]
         tree += [self.coord2ind_dir((0,y),Direction(1)) for y in range(self.ny - 1)]
         return tree
-
+    
+    def generate_complementary_to_tree(self):
+        """Returns all indices of links which are not in the gauge fixed maximal tree 
+        This method is built fo periodic boundary conditions."""
+        tree = self.generate_maximal_tree()
+        fixed_links_ind = [i for i in range(self.nlinks) if i not in tree] # Generate all possible indices for the non-fixed positions 
+        return fixed_links_ind
 
 class Lattice3D:
     """

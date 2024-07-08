@@ -60,8 +60,8 @@ def signal_handler(signum, frame):
     sys.exit(INTERRUPT_EXIT_CODE)
 
 signal.signal(signal.SIGTERM, signal_handler) # register the signal handler
-signal.signal(signal.SIGUSR1, signal_handler)
-signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
+#signal.signal(signal.SIGUSR1, signal_handler) #TODO: fix for windows
+signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C 
 
 
 def args2logname(args, couplings: dict) -> str:
