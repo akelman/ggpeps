@@ -15,41 +15,68 @@ from ggpeps.utils import compare_array_elementwise
 
 # ======================= Z2 fermionic system (4 copies) =========================================
 
-class TestZ2C4System(unittest.TestCase):
+class Testgaugefixing(unittest.TestCase):
     def setUp(self):
-        lat = lattice.Lattice2D(2,2)
+        self.lat2 = lattice.Lattice2D(2,2)
+        self.lat4 = lattice.Lattice2D(4,4)
+        self.tree2 = self.lat2.generate_maximal_tree()
+        self.tree4 = self.lat4.generate_maximal_tree()
+        self.comp_tree2 = self.lat2.generate_complementary_to_tree()
+        self.comp_tree4 = self.lat4.generate_complementary_to_tree()
         paramvec = np.random.rand(2, 20)
-        cfg = system.Z2System2D_G2C_F2C_Config(lat, 1,1,1,1)
-        cfg.paramvec = paramvec
-        self.system_z2 = system.Z2System2D_G2C_F2C(cfg) 
-        self.system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
-    
+        
+        cfg2 = system.Z2System2D_G2C_F2C_Config(self.lat2, 1,1,1,1)
+        cfg2.paramvec = paramvec
+        self.system_z2_2 = system.Z2System2D_G2C_F2C(cfg2) 
+        self.system_z2_2.cfg.enforce_parameter_conditions(self.system_z2_2.cfg.paramvec)
+        eval_cfg = None
+        evaluator2 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_2)
+        self.configvec2 = evaluator2.generate_config_vec()
+        self.netural_gauge2 = self.system_z2_2.gaugemgr.get_neutral_gauge_value()        
+
+        cfg4 = system.Z2System2D_G2C_F2C_Config(self.lat4, 1,1,1,1)
+        self.system_z2_4 = system.Z2System2D_G2C_F2C(cfg4) 
+        # self.system_z2_4.cfg.enforce_parameter_conditions(self.system_z2_4.cfg.paramvec)
+        evaluator4 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_4)
+        self.configvec4 = evaluator4.generate_config_vec()
+        self.netural_gauge4 = self.system_z2_4.gaugemgr.get_neutral_gauge_value()        
+
+
     def test_maximal_tree_generation(self):
-        pass #TODO
+        """Ensure that maximal trees are generated correctly"""
+        tree2_expected = {0,2,4}
+        tree4_expected = {0,1,2,4,5,6,8,9,10,12,13,14,16,17,18}
+        self.assertEqual(tree2_expected,set(self.tree2))
+        self.assertEqual(tree4_expected,set(self.tree4))
 
     def test_complementary_maximal_tree_generation(self):
-        pass #TODO
+        """Ensure that complementary to maximal trees (all the links which are not in the tree) are generated correctly."""
+        comp_tree2_expected = {1,3,5,6,7}
+        comp_tree4_expected = {3,7,11,15,19,20,21,22,23,24,25,26,27,28,29,30,31}
+        self.assertEqual(comp_tree2_expected,set(self.comp_tree2))
+        self.assertEqual(comp_tree4_expected,set(self.comp_tree4))
 
     def test_configvec(self):
-        pass #TODO
+        """Ensure that the configvec for gauge fixing is generated correctly. Ensure that the links in the tree are set to the unity in all configurations 
+        and that all configurations are unique."""
+        self.assertEqual(len(self.configvec4),2**self.lat4.ncomptreelinks) 
+        tuple_configvec2 = [] # converting each configuration in configvec to a tuple - because it's hashable
+        for config in self.configvec2: #2x2 lattice
+            tuple_configvec2.append(tuple(config)) 
+            for link in self.tree2:
+                self.assertEqual(config[link],self.netural_gauge2)
 
-    
-
-
-    def test_required_params_are_zero(self):
-        """Ensure that the parameters that must vanish to guarantee ansatz symmetries do indeed vanish.
-        """
-        mat = self.system_z2.cfg.paramvec
-        t_indices = [0,3,10,13] # index of t1r, t2r, t1i, t2i in symbolvec
-        for layer_ind in range(self.system_z2.cfg.num_pg_layer):
-            for t_ind in t_indices:
-                with self.subTest(tind=t_ind, layerind=layer_ind):
-                    coord = (layer_ind, t_ind)
-                    self.assertAlmostEqual(mat[coord], 0)
+        unique_configvec2 = set(tuple_configvec2) # configvec with unique combinations only
+        self.assertEqual(len(tuple_configvec2),len(unique_configvec2))
         
-        zero_for_fermionic_layer = [3,13,1,2,4,5,11,12,14,15] # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
-        for layer_ind in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
-            for ind in zero_for_fermionic_layer:
-                with self.subTest(ind=ind, layerind=layer_ind):
-                    coord = (layer_ind, ind)
-                    self.assertAlmostEqual(mat[coord], 0)
+        # now for 4x4 lattice
+        tuple_configvec4 = [] 
+        for config in self.configvec4: #4x4 lattice
+            tuple_configvec4.append(tuple(config))
+            for link in self.tree4:
+                self.assertEqual(config[link],self.netural_gauge4)
+        unique_configvec4 = set(tuple_configvec4) # configvec with unique combinations only
+        self.assertEqual(len(tuple_configvec4),len(unique_configvec4))
+
+if __name__ == '__main__':
+    unittest.main()

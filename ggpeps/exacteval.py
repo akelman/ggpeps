@@ -48,12 +48,11 @@ class ExactEvaluator(Evaluator):
             dict: Dictionary of the results
         """
         if self.obsdict is None:
-            poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
-            nlinks = self.system.cfg.lattice.nlinks
-
             if gauge_fixing:
-                configvec = self.generate_config_vec(poss_gauges,nlinks)
+                configvec = self.generate_config_vec()
             else:
+                poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
+                nlinks = self.system.cfg.lattice.nlinks
                 configvec = it.product(poss_gauges, repeat=nlinks) # an iterable object with all possible field configurations for the entire lattice. TODO: think if I should add a nomralization constant
 
 
@@ -172,8 +171,10 @@ class ExactEvaluator(Evaluator):
 
         return self.obsdict
         
-    def generate_config_vec(self, poss_gauges, nlinks):
+    def generate_config_vec(self):
         """Generates a vector of gauge field configurations for all links, for the gauge fixed case."""
+        poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
+        nlinks = self.system.cfg.lattice.nlinks
         fixed_links_ind = self.system.cfg.lattice.generate_complementary_to_tree() # Generate all possible indices for the non-fixed positions
         num_combinations = len(poss_gauges) ** len(fixed_links_ind)
         neutral_gauge = self.system.gaugemgr.get_neutral_gauge_value()
@@ -181,9 +182,7 @@ class ExactEvaluator(Evaluator):
         combinations = np.array(list(it.product(poss_gauges, repeat=len(fixed_links_ind)))) # Generate all possible gauge field combinations
         for i, pos in enumerate(fixed_links_ind):
             configvec[:, pos] = combinations[:, i]
-            
         return configvec.tolist()
-
 
     def summary(self):
         """Summarize the results of the exact contraction in a dataframe.

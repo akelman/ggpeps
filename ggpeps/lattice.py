@@ -36,6 +36,7 @@ class Lattice2D:
         self.nplaquettes = nx*ny
         self.size = nx*ny # number of sites
         self.ntreelinks = nx*ny - 1
+        self.ncomptreelinks = nx*ny + 1 #number of links not in the tree - complementary tree links
 
     def __str__(self):
         """Generate a string representation of the lattice.
