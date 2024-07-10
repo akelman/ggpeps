@@ -2,8 +2,8 @@ import sympy
 import logging
 from scipy.linalg import block_diag
 
-#import numpy as np
-from ggpeps import xnp as np
+import numpy as np
+from ggpeps import xnp as xnp
 
 import ggpeps
 from ggpeps import utils
@@ -56,14 +56,20 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         for layer_ind in range(self.num_pg_layer):
             for t_ind in t_indices:
                 coord = (layer_ind, t_ind)
-                mat[coord] = 0
+                if isinstance(mat, np.ndarray): # TODO: handle jax better
+                    mat[coord] = 0
+                else:
+                    mat.at[coord].set(0)
                 zeroed_params.append(coord)
         
         zero_for_fermionic_layer = [3,13,1,2,4,5,11,12,14,15] # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
         for layer_ind in range(self.num_pg_layer, self.nlayer):
             for ind in zero_for_fermionic_layer:
                 coord = (layer_ind, ind)
-                mat[coord] = 0
+                if isinstance(mat, np.ndarray):
+                    mat[coord] = 0
+                else:
+                    mat.at[coord].set(0)
                 zeroed_params.append(coord)
         
         # save zeroed params
@@ -210,14 +216,14 @@ class Z2System2D_G2C_F2C(System2DBase):
 
         # Initialize gamma_in_sys for the full system (and trackers)
         size = self.cfg.lattice.size # number of sites
-        id = np.eye(size) 
+        id = xnp.eye(size) 
 
         # TODO: vectorize!
         for layer in range(self.cfg.nlayer):
             neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral[layer][Direction.X] )
             neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral[layer][Direction.Y] )
-            gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y)
-            gamma_in_sys_vec.append(gamma_in_sys)
+            gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y) # TODO: use the jax.scipy version of block_diag
+            gamma_in_sys_vec.append(xnp.array(gamma_in_sys))
 
             wi_gamma_in_vec.append( utils.WoodburyInverter(self.mat_d_inv_vec[layer] - gamma_in_sys) )
             wi_gamma_out_vec.append( utils.WoodburyInverter(self.mat_d_vec[layer] - gamma_in_sys) )
@@ -248,7 +254,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         This method overwrites an abstract method in System2DBase.
 
         Returns:
-            List[np.ndarray]: Covariance matrices of the ungauged projector on a single link
+            List[xnp.ndarray]: Covariance matrices of the ungauged projector on a single link
         """
         
         dest_mixed = {} # mixes copies
@@ -257,14 +263,14 @@ class Z2System2D_G2C_F2C(System2DBase):
         # We want to give the projectors for the pure gauge part, which mix copies
         # TODO - handle real condition better for JAX
         if ggpeps.PREFERRED_BACKEND == 'jax':
-            dest_mixed[Direction.X] = np.real(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
-            dest_mixed[Direction.Y] = np.real(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
+            dest_mixed[Direction.X] = xnp.real(1.j*xnp.kron(utils.paulix,xnp.kron(utils.pauliy, utils.paulix)))
+            dest_mixed[Direction.Y] = xnp.real(1.j*xnp.kron(utils.paulix,xnp.kron(utils.pauliy, utils.pauliz)))
         else:
             dest_mixed[Direction.X] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
             dest_mixed[Direction.Y] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
 
         # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
-        dest_unmixed[Direction.X] = np.array([  [ 0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.],
+        dest_unmixed[Direction.X] = xnp.array([  [ 0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.],
                                                 [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
                                                 [ 0., -1.,  0.,  0.,  0.,  0.,  0.,  0.],
                                                 [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
@@ -273,7 +279,7 @@ class Z2System2D_G2C_F2C(System2DBase):
                                                 [ 0.,  0.,  0.,  0.,  0., -1.,  0.,  0.],
                                                 [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.]])
 
-        dest_unmixed[Direction.Y] = np.array([  [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
+        dest_unmixed[Direction.Y] = xnp.array([  [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
                                                 [ 0.,  0.,  0., -1.,  0., -0.,  0.,  0.],
                                                 [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
                                                 [ 0.,  1.,  0.,  0.,  0.,  0.,  0.,  0.],
@@ -303,19 +309,19 @@ class Z2System2D_G2C_F2C(System2DBase):
             dir (lattice.Direction): direction of the link
 
         Returns:
-            np.ndarray: Rotation matrix for gamma_in_neutral
+            xnp.ndarray: Rotation matrix for gamma_in_neutral
         """
         # Gauging might be different depending on sublattice or link direction, but for this system it is the same
         if dir == Direction.X and (-1)**(coord[0] + coord[1]) == -1:
-            #theta += np.pi 
+            #theta += xnp.pi 
             pass
 
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
-        rot_right = np.array([[np.cos(theta), np.sin(theta)],
-                              [-np.sin(theta), np.cos(theta)]])
+        rot_right = xnp.array([[xnp.cos(theta), xnp.sin(theta)],
+                              [-xnp.sin(theta), xnp.cos(theta)]])
         # We have only one left mode => 2 Majorana modes
-        rot_left = np.eye(2)
+        rot_left = xnp.eye(2)
         # The mode order is lr (horizontally) or du (vertically).
         # We rotate the different copies in the SAME way.
         dest = block_diag(rot_left, rot_right, rot_left, rot_right)
@@ -346,7 +352,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         update_vec = []
         for layer in range(self.cfg.nlayer):
             gamma_neutral_gauge = self.gamma_gauge_neutral[layer][dir]
-            gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
+            gamma_in_subst = rotmat @ gamma_neutral_gauge @ xnp.transpose(rotmat)
             update_vec.append( self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]) )
     
             # Substitute in the array
@@ -361,10 +367,10 @@ class Z2System2D_G2C_F2C(System2DBase):
         mat_inv_vec = [
             wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec
         ]
-        detval_vec = [
+        detval_vec = np.array([
             incdet.update_index(mat_inv, update, ind_mat, ind_mat)
             for mat_inv, update, incdet in zip(mat_inv_vec, update_vec, self.incdet_vec)
-        ]
+        ])
         # Update the modified determinant
         offset = 2 * self.cfg.nvirtmodes_link
         if ind_mat - offset >= 0:
@@ -429,10 +435,10 @@ class Z2System2D_G2C_F2C(System2DBase):
                     # further terms of the derivative are included higher up in the computation stack 
                     # because computing them requires knowing various expectation values, which are not available here
 
-            mass_energy_op.append(np.asarray(layer_mass_energy))
-            gradients.append(np.asarray(layer_grads))
+            mass_energy_op.append(xnp.asarray(layer_mass_energy))
+            gradients.append(xnp.asarray(layer_grads))
 
-        mass_energy_op = np.asarray(mass_energy_op)
+        mass_energy_op = xnp.asarray(mass_energy_op)
         gradients = np.asarray(gradients)
 
         self.cfg.enforce_parameter_conditions(gradients)
@@ -442,7 +448,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         # However, here, because the mass term only acts on the fermionic layers, we simply multiply the mass_energy and grads by the norm of the first layer 
         # (this is handled higher up in the computation stack).
 
-        return mass_energy_op, gradients
+        return mass_energy_op, xnp.array(gradients)
 
 
     def _compute_mag_energy_op(self, use_trans_inv:bool=True):
@@ -460,7 +466,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         if use_trans_inv:
             # Evaluate one plaquette and multiply by number of plaquettes
             wilson_plaquette = self.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
-            mag_energy_bare = np.real(self.compute_path(wilson_plaquette))
+            mag_energy_bare = xnp.real(self.compute_path(wilson_plaquette))
         else:
             # Evaluate every plaquette of the system
             logger.error("compute_mag_energy: non-translational invariant case not implemented yet")
@@ -493,7 +499,7 @@ class Z2System2D_G2C_F2C(System2DBase):
                 neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X) # coordinates of neighboring site
                 neighborX_ind = 2 * self.cfg.lattice.coord2ind(neighborX_coord) # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
                 gaugefield_hor = self.gaugefieldvec[ind_field_hor]
-                cos_factor_hor = np.cos(gaugefield_hor) # simple way to get U from gauge value
+                cos_factor_hor = xnp.cos(gaugefield_hor) # simple way to get U from gauge value
                 hor_link_energy = 0.5 * (covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov+1, neighborX_ind+1]) # TODO: fix for JAX - NOT NEEDED
                 layer_int_energy += hor_link_energy * cos_factor_hor
 
@@ -502,7 +508,7 @@ class Z2System2D_G2C_F2C(System2DBase):
                 neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
                 neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
                 gaugefield_vert = self.gaugefieldvec[ind_field_vert]
-                cos_factor_vert = np.cos(gaugefield_vert)
+                cos_factor_vert = xnp.cos(gaugefield_vert)
                 vert_link_energy = 0.5 * (covmat[site_ind_cov, neighborY_ind+1] + covmat[site_ind_cov+1, neighborY_ind])
                 layer_int_energy -= vert_link_energy * cos_factor_vert
 
@@ -520,7 +526,7 @@ class Z2System2D_G2C_F2C(System2DBase):
             int_energy_op.append(layer_int_energy)
             gradients.append(layer_gradients)
         
-        int_energy_op = np.asarray(int_energy_op)
+        int_energy_op = xnp.asarray(int_energy_op)
         gradients = np.asarray(gradients) 
 
         self.cfg.enforce_parameter_conditions(gradients)
@@ -530,5 +536,5 @@ class Z2System2D_G2C_F2C(System2DBase):
         # However, here (just as in the mass case), because the interaction term only acts on the fermionic layers, we simply multiply the int_energy and grads by the norm of the first layer 
         # (this is handled higher up in the computation stack).
 
-        return int_energy_op, gradients
+        return int_energy_op, xnp.array(gradients)
 
