@@ -15,6 +15,7 @@ class ExactEvaluator(Evaluator):
         self.system = system
         self.obsdict: dict = None
         self.evaluator_type = 'exact'
+        self.gauge_fixing = True #TODO: improve default gauge_fixing implementation
 
     def compute_expval(self, obs: np.ndarray, normvec: np.ndarray):
         """Compute the expectation value of an observable.
@@ -40,7 +41,7 @@ class ExactEvaluator(Evaluator):
         Use this function to match the interface of the MonteCarloEvaluator."""
         return self.obsdict[obs]
 
-    def evaluate(self, gauge_fixing: bool=True):
+    def evaluate(self):
         """Main evaluation function of ExactEvaluator.
         This function computes the exact expectation values <Psi|O|Psi>/<Psi|Psi> for a range of observables defined in the function.
 
@@ -48,7 +49,7 @@ class ExactEvaluator(Evaluator):
             dict: Dictionary of the results
         """
         if self.obsdict is None:
-            if gauge_fixing:
+            if self.gauge_fixing:
                 configvec = self.generate_config_vec()
             else:
                 poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
@@ -175,12 +176,12 @@ class ExactEvaluator(Evaluator):
         """Generates a vector of gauge field configurations for all links, for the gauge fixed case."""
         poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
         nlinks = self.system.cfg.lattice.nlinks
-        fixed_links_ind = self.system.cfg.lattice.generate_complementary_to_tree() # Generate all possible indices for the non-fixed positions
-        num_combinations = len(poss_gauges) ** len(fixed_links_ind)
+        non_fixed_links_ind = self.system.cfg.lattice.comp_tree # All possible indices for the non-fixed positions
+        num_combinations = len(poss_gauges) ** len(non_fixed_links_ind)
         neutral_gauge = self.system.gaugemgr.get_neutral_gauge_value()
         configvec = np.full((num_combinations, nlinks),neutral_gauge,dtype=np.float64)
-        combinations = np.array(list(it.product(poss_gauges, repeat=len(fixed_links_ind)))) # Generate all possible gauge field combinations
-        for i, pos in enumerate(fixed_links_ind):
+        combinations = np.array(list(it.product(poss_gauges, repeat=len(non_fixed_links_ind)))) # Generate all possible gauge field combinations
+        for i, pos in enumerate(non_fixed_links_ind):
             configvec[:, pos] = combinations[:, i]
         return configvec.tolist()
 
