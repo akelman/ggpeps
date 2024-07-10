@@ -266,6 +266,7 @@ def main(args):
         # logger.info(f"GPU info: {ggpeps.PREFERRED_DEVICE.device_kind}"
     else:
         logger.info("No GPUs found, falling back to CPU.")
+    logger.info(f"Numerical backend: {ggpeps.PREFERRED_BACKEND}")
     logger.info("============================")
 
     # Update Log
