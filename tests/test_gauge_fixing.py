@@ -1,5 +1,7 @@
 import unittest 
 from unittest import skip
+import time
+
 
 import numpy as np
 
@@ -23,6 +25,7 @@ class Testgaugefixing(unittest.TestCase):
         self.tree4 = self.lat4.generate_maximal_tree()
         self.comp_tree2 = self.lat2.generate_complementary_to_tree()
         self.comp_tree4 = self.lat4.generate_complementary_to_tree()
+        
         paramvec = np.random.rand(2, 20)
         
         cfg2 = system.Z2System2D_G2C_F2C_Config(self.lat2, 1,1,1,1)
@@ -30,16 +33,25 @@ class Testgaugefixing(unittest.TestCase):
         self.system_z2_2 = system.Z2System2D_G2C_F2C(cfg2) 
         self.system_z2_2.cfg.enforce_parameter_conditions(self.system_z2_2.cfg.paramvec)
         eval_cfg = None
-        evaluator2 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_2)
-        self.configvec2 = evaluator2.generate_config_vec()
+        self.evaluator2 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_2)
+        self.configvec2 = self.evaluator2.generate_config_vec()
         self.netural_gauge2 = self.system_z2_2.gaugemgr.get_neutral_gauge_value()        
 
         cfg4 = system.Z2System2D_G2C_F2C_Config(self.lat4, 1,1,1,1)
         self.system_z2_4 = system.Z2System2D_G2C_F2C(cfg4) 
-        # self.system_z2_4.cfg.enforce_parameter_conditions(self.system_z2_4.cfg.paramvec)
-        evaluator4 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_4)
-        self.configvec4 = evaluator4.generate_config_vec()
-        self.netural_gauge4 = self.system_z2_4.gaugemgr.get_neutral_gauge_value()        
+        cfg4.paramvec = paramvec
+        self.system_z2_4.cfg.enforce_parameter_conditions(self.system_z2_4.cfg.paramvec)
+        self.evaluator4 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_4)
+        self.configvec4 = self.evaluator4.generate_config_vec()
+        self.netural_gauge4 = self.system_z2_4.gaugemgr.get_neutral_gauge_value() 
+
+        mc_config = MonteCarloEvaluatorConfig()
+        mc_config.warmup_steps = 500
+        mc_config.meas_steps = 500
+        mc_config.binsize = 1
+        mc_config.update_size_per_step = 2
+
+        self.mc_evaluator = MonteCarloEvaluator(mc_config, self.system_z2_2)
 
 
     def test_maximal_tree_generation(self):
@@ -67,7 +79,7 @@ class Testgaugefixing(unittest.TestCase):
                 self.assertEqual(config[link],self.netural_gauge2)
 
         unique_configvec2 = set(tuple_configvec2) # configvec with unique combinations only
-        self.assertEqual(len(tuple_configvec2),len(unique_configvec2))
+        self.assertEqual(len(tuple_configvec2),len(unique_configvec2)) # assert that there are no repeated configurations
         
         # now for 4x4 lattice
         tuple_configvec4 = [] 
@@ -77,6 +89,47 @@ class Testgaugefixing(unittest.TestCase):
                 self.assertEqual(config[link],self.netural_gauge4)
         unique_configvec4 = set(tuple_configvec4) # configvec with unique combinations only
         self.assertEqual(len(tuple_configvec4),len(unique_configvec4))
+    
+    def test_exacteval(self):
+        """Ensure that exact evaluation gives the same results with and without gauge fixing"""
+        self.evaluator2.gauge_fixing = False
+        start_time = time.time()
+        no_gauge_fixing_eval = self.evaluator2.evaluate()
+        end_time = time.time()
+        print("no gauge_fixing",end_time-start_time)
 
-if __name__ == '__main__':
-    unittest.main()
+        self.evaluator2.obsdict = None
+        self.evaluator2.gauge_fixing = True
+        start_time = time.time()
+        gauge_fixing_eval = self.evaluator2.evaluate()
+        end_time = time.time()
+        print("gauge_fixing",end_time-start_time)
+        for k,val in no_gauge_fixing_eval.items():
+            self.assertTrue(np.allclose(val, gauge_fixing_eval[k]))
+    
+    def test_exacteval4(self):
+        self.evaluator4.gauge_fixing = True
+        start_time = time.time()
+        no_gauge_fixing_eval = self.evaluator4.evaluate()
+        end_time = time.time()
+        print("no gauge_fixing",end_time-start_time)
+
+        self.evaluator4.obsdict = None
+        self.evaluator4.gauge_fixing = False
+        start_time = time.time()
+        gauge_fixing_eval = self.evaluator4.evaluate()
+        end_time = time.time()
+        print("gauge_fixing",end_time-start_time)
+        for k,val in no_gauge_fixing_eval.items():
+            self.assertTrue(np.allclose(val, gauge_fixing_eval[k]))
+
+    def test_mceval(self):
+        self.mc_evaluator.gauge_fixing = False
+        no_gauge_fixing_eval = self.mc_evaluator.evaluate()
+        
+        self.mc_evaluator.obsdict = None
+        self.mc_evaluator.gauge_fixing = True
+        gauge_fixing_eval = self.mc_evaluator.evaluate()
+
+        for k,val in no_gauge_fixing_eval.items():
+            self.assertTrue(np.allclose(val, gauge_fixing_eval[k]))
