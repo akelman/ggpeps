@@ -13,7 +13,7 @@ jax.config.update("jax_enable_x64", True)
 
 import ggpeps
 
-
+@jit
 def calculate_lognormvec_jit(gamma_in_sys: jnp.ndarray, mat_d: jnp.ndarray) -> float:
     # This is still the plain formula, without any update mechanism    
     # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
@@ -41,6 +41,7 @@ def compute_grad_over_norm_jit(gamma_in_sys, diff, deriv_d, mat_d_inv):
     dest = -0.5 * jnp.trace(jnp.matmul(jnp.matmul(gamma_in_sys, deriv_d), jnp.matmul(mat_d_inv, diff)))
     return dest
 
+@jit
 def compute_grad_over_norm_jax(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv_d: np.ndarray, mat_d_inv: np.ndarray):
 
     '''
@@ -71,7 +72,7 @@ def compute_grad_over_norm_jax(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv
     '''
     return result
 
-
+@jit
 def derivative_pfaffian_jax(pfaval, mat, d_mat):
     """Compute the derivative of a Pfaffian of a matrix A.
     The numpy version of this function is in ggpeps.utils.
