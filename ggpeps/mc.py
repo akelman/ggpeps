@@ -33,6 +33,7 @@ class MonteCarloEvaluatorConfig:
         self.binsize: int = 1
         self.minimizer_mode: bool = False
         self.update_size_per_step: int = 1 # this can be set anywhere from 1 to nlinks (inclusive)
+        self.gauge_fixing = False
 
         # Logging frequency
         self.warmup_log_freq: int = 5000 # log every X steps
@@ -308,7 +309,11 @@ class MonteCarloEvaluator(Evaluator):
         The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
         """
         nlinks = self.system.cfg.lattice.nlinks
-        links_inds = self.cfg.rng_state.choice([k for k in range(nlinks)], self.cfg.update_size_per_step, replace=False)
+        if self.gauge_fixing:
+            links_inds = self.cfg.rng_state.choice(self.system.cfg.lattice.comp_tree, self.cfg.update_size_per_step, replace=False)
+
+        else:
+            links_inds = self.cfg.rng_state.choice([k for k in range(nlinks)], self.cfg.update_size_per_step, replace=False)
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
             theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
