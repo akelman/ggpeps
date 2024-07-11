@@ -123,7 +123,7 @@ def compute_el_grad_vec_jax(system):
     if system.cfg.nlayer > 1:
         for i in range(system.cfg.nlayer):
             prod_other_layers = ggpeps.utils.multiply_except(el_energy_vec, i)
-            dest_grad.at[i].set(prod_other_layers * dest_grad[i])
+            dest_grad = dest_grad.at[i].multiply(prod_other_layers)
     
     system.cfg.enforce_parameter_conditions(dest_grad)
     return dest_grad
