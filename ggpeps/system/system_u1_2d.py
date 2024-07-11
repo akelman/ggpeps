@@ -164,8 +164,8 @@ class U1System2D(System2DBase):
         # In the U1 parametrization, the direction of the link does not matter for the projector.
         # We just keep the same structure as in the Z2 parametrization for consistency
         id = np.eye(size) 
-        neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral[0][Direction.X] ) # just use the first gamma_gauge_neutral, since they're shared by all layers
-        neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral[0][Direction.Y] )
+        neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral_vec[0][Direction.X] ) # just use the first gamma_gauge_neutral, since they're shared by all layers
+        neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral_vec[0][Direction.Y] )
         gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y) # for the 3D case, simply add in the Z covariance matrix as well
 
         diffvec = [
@@ -232,7 +232,7 @@ class U1System2D(System2DBase):
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord, dir)
-        gamma_in_subst = rotmat @ self.gamma_gauge_neutral[0][dir] @ np.transpose(rotmat) # just use the first gamma_gauge_neutral, since they're shared by all layers
+        gamma_in_subst = rotmat @ self.gamma_gauge_neutral_vec[0][dir] @ np.transpose(rotmat) # just use the first gamma_gauge_neutral, since they're shared by all layers
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
         # Update the determinant
         mat_inv_vec = [

@@ -196,7 +196,7 @@ class System2DBase(ABC):
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
 
         # Management of the gauge fields
-        self._gamma_gauge_neutral_vec_dict: Optional[xnp.ndarray] = None # vec for layers (choices of projectors may be different for each layer), dict for directions
+        self._gamma_gauge_neutral_vec_dirs: Optional[xnp.ndarray] = None # vec for layers (choices of projectors may be different for each layer), dirs for directions
         self._gamma_in_sys_vec: Optional[xnp.ndarray] = None # in cases when different layers use the same projectors, all elements will point to the same gamma_in_sys
         self._gaugefieldvec: xnp.ndarray = xnp.zeros(self.cfg.lattice.nlinks) # TODO: should this be np or xnp?
         self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2) # needs to be changed for cases other than Z2
@@ -913,7 +913,7 @@ class System2DBase(ABC):
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord, dir)
-        gamma_neutral_gauge_vec = self.gamma_gauge_neutral
+        gamma_neutral_gauge_vec = self.gamma_gauge_neutral_vec
         gamma_in_subst_layers = [rotmat @ gamma_neutral_gauge[dir] @ xnp.transpose(rotmat) for gamma_neutral_gauge in gamma_neutral_gauge_vec]
         updates = [self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys) for gamma_in_subst, gamma_in_sys in zip(gamma_in_subst_layers, self.gamma_in_sys_vec) ] 
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
@@ -1029,10 +1029,10 @@ class System2DBase(ABC):
         # TODO: log error
 
     @property
-    def gamma_gauge_neutral(self):
-        if self._gamma_gauge_neutral_vec_dict is None:
-            self._gamma_gauge_neutral_vec_dict = self._generate_gamma_gauge_neutral_dict()
-        return self._gamma_gauge_neutral_vec_dict
+    def gamma_gauge_neutral_vec(self):
+        if self._gamma_gauge_neutral_vec_dirs is None:
+            self._gamma_gauge_neutral_vec_dirs = self._generate_gamma_gauge_neutral_dict()
+        return self._gamma_gauge_neutral_vec_dirs
 
     @abstractmethod
     def _generate_gamma_gauge_neutral_dict(self):

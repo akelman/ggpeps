@@ -177,8 +177,8 @@ class Z2System2D2C(System2DBase):
         # Initialize gamma_in_sys for the full system (and trackers)
         size = self.cfg.lattice.size # number of sites
         id = np.eye(size) 
-        neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral[0][Direction.X] ) # just use the first gamma_gauge_neutral, since they're shared by all layers
-        neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral[0][Direction.Y] )
+        neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral_vec[0][Direction.X] ) # just use the first gamma_gauge_neutral, since they're shared by all layers
+        neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral_vec[0][Direction.Y] )
         gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y)
 
         diffvec = [
@@ -279,7 +279,7 @@ class Z2System2D2C(System2DBase):
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord, dir)
-        gamma_neutral_gauge = self.gamma_gauge_neutral[0][dir] # just use the first gamma_gauge_neutral, since they're shared by all layers
+        gamma_neutral_gauge = self.gamma_gauge_neutral_vec[0][dir] # just use the first gamma_gauge_neutral, since they're shared by all layers
         gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
         # Update the determinant

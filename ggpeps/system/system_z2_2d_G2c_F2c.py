@@ -220,8 +220,8 @@ class Z2System2D_G2C_F2C(System2DBase):
 
         # TODO: vectorize!
         for layer in range(self.cfg.nlayer):
-            neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral[layer][Direction.X] )
-            neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral[layer][Direction.Y] )
+            neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral_vec[layer][Direction.X] )
+            neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral_vec[layer][Direction.Y] )
             gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y) # TODO: use the jax.scipy version of block_diag
             gamma_in_sys_vec.append(xnp.array(gamma_in_sys))
 
@@ -353,7 +353,7 @@ class Z2System2D_G2C_F2C(System2DBase):
     
         update_vec = []
         for layer in range(self.cfg.nlayer):
-            gamma_neutral_gauge = self.gamma_gauge_neutral[layer][dir]
+            gamma_neutral_gauge = self.gamma_gauge_neutral_vec[layer][dir]
             gamma_in_subst = rotmat @ gamma_neutral_gauge @ xnp.transpose(rotmat)
             update_vec.append( self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]) )
     
