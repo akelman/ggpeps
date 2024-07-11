@@ -3,7 +3,9 @@ import itertools as it
 
 import numpy as np
 import pandas as pd
+import jax.numpy as jnp
 
+import ggpeps
 import ggpeps.lattice as lattice
 from ggpeps.evaluator import Evaluator
 
@@ -100,6 +102,11 @@ class ExactEvaluator(Evaluator):
                 data["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
 
                 data["number_per_site"].append(np.real(self.system.number_per_site))
+
+            # TODO: handle this better - boundary should not be here!
+            if ggpeps.PREFERRED_BACKEND == 'jax':
+                for key, val in data.items():
+                    data[key] = np.asarray(val)
 
             # Expectation values
             dest = {}
