@@ -196,7 +196,7 @@ class System2DBase(ABC):
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
 
         # Management of the gauge fields
-        self._gamma_gauge_neutral_vec_dict: Optional[list[xnp.ndarray]] = None # vec for layers (choices of projectors may be different for each layer), dict for directions
+        self._gamma_gauge_neutral_vec_dict: Optional[xnp.ndarray] = None # vec for layers (choices of projectors may be different for each layer), dict for directions
         self._gamma_in_sys_vec: Optional[xnp.ndarray] = None # in cases when different layers use the same projectors, all elements will point to the same gamma_in_sys
         self._gaugefieldvec: xnp.ndarray = xnp.zeros(self.cfg.lattice.nlinks) # TODO: should this be np or xnp?
         self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2) # needs to be changed for cases other than Z2
@@ -1030,7 +1030,7 @@ class System2DBase(ABC):
 
     @property
     def gamma_gauge_neutral(self):
-        if not self._gamma_gauge_neutral_vec_dict:
+        if self._gamma_gauge_neutral_vec_dict is None:
             self._gamma_gauge_neutral_vec_dict = self._generate_gamma_gauge_neutral_dict()
         return self._gamma_gauge_neutral_vec_dict
 

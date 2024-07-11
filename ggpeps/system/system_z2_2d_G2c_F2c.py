@@ -257,8 +257,9 @@ class Z2System2D_G2C_F2C(System2DBase):
             List[xnp.ndarray]: Covariance matrices of the ungauged projector on a single link
         """
         
-        dest_mixed = {} # mixes copies
-        dest_unmixed = {} # does not mix copies 
+        # 2 if for 2D lattice
+        dest_mixed = [0]*2 # mixes copies
+        dest_unmixed = [0]*2 # does not mix copies 
         
         # We want to give the projectors for the pure gauge part, which mix copies
         # TODO - handle real condition better for JAX
@@ -288,7 +289,8 @@ class Z2System2D_G2C_F2C(System2DBase):
                                                 [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.],
                                                 [ 0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.]])
 
-        return [dest_mixed]*self.cfg.num_pg_layer + [dest_unmixed]*self.cfg.num_fermionic_layer
+        # TODO: there's probably a better way to construct this array
+        return xnp.array([dest_mixed]*self.cfg.num_pg_layer + [dest_unmixed]*self.cfg.num_fermionic_layer)
 
     #Gauging
 
