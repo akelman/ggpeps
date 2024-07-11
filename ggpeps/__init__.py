@@ -23,7 +23,7 @@ else:
 
 # Set numerical backend
 AVAILABLE_NUMERICAL_BACKENDS = ['numpy', 'jax']
-PREFERRED_BACKEND = 'numpy'
+PREFERRED_BACKEND = 'jax'
 if GPU_AVAILABLE:
     PREFERRED_BACKEND = 'jax'
 
