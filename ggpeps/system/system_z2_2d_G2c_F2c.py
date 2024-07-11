@@ -236,7 +236,7 @@ class Z2System2D_G2C_F2C(System2DBase):
             wi_gamma_out_mod_vec.append( utils.WoodburyInverter(self.mat_d_mod_vec[layer] - gamma_in_sys_mod) )
             incdet_mod_vec.append( utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod) )
 
-        return gamma_in_sys_vec, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
+        return xnp.array(gamma_in_sys_vec), (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
     def _generate_gamma_gauge_neutral_dict(self):
         """Generate the covariance matrix of the ungauged projectors.
@@ -357,8 +357,9 @@ class Z2System2D_G2C_F2C(System2DBase):
     
             # Substitute in the array
             if ggpeps.PREFERRED_BACKEND == 'jax':
-                self.gamma_in_sys_vec[layer] = self.gamma_in_sys_vec[layer].at[ind_mat:ind_mat + rotmat.shape[0],
-                                                                               ind_mat:ind_mat + rotmat.shape[1]].set(gamma_in_subst)
+                # TODO: should not modify "private" variable - make a setter?
+                self._gamma_in_sys_vec = self.gamma_in_sys_vec.at[layer, ind_mat:ind_mat + rotmat.shape[0],
+                                                ind_mat:ind_mat + rotmat.shape[1]].set(gamma_in_subst)
             else:
                 self.gamma_in_sys_vec[layer][ind_mat:ind_mat + rotmat.shape[0],
                                          ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
