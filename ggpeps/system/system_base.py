@@ -259,7 +259,7 @@ class System2DBase(ABC):
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
         return
 
-    def _exract_partial_covmatvec(self, offset: int):
+    def _exract_partial_covmatvec(self, offset: int): # TODO: fix spelling mistake in name
         # We are assuming one physical mode per site
 
         mat_a_vec = self.gamma_maj_sys_vec[:, :offset, :offset]
@@ -1423,7 +1423,7 @@ class System2DBase(ABC):
         Returns:
             float: Gradient of the interaction energy operator (w/o shift) for the whole system
         """
-        if self._int_energy_op_vec is None:
+        if self._int_energy_op_grad_vec is None:
             self._int_energy_op_vec, self._int_energy_op_grad_vec = self._compute_int_energy_op_vec_and_grad()
             # Do for whole system...
         return self._int_energy_op_grad_vec
