@@ -35,8 +35,6 @@ elif GPU_AVAILABLE:
 else:
     PREFERRED_BACKEND = 'numpy'
 
-PREFERRED_BACKEND = 'jax' # TODO: remove this override once JAX is fully implemented
-
 if PREFERRED_BACKEND == 'numpy':
     import numpy as xnp
 elif PREFERRED_BACKEND == 'jax':
