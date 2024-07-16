@@ -10,14 +10,20 @@ import jax.numpy as jnp
 from ggpeps import utils
 from ggpeps import lattice
 from ggpeps import system, exacteval
-
 from ggpeps.system.global_funcs import *
+
+from tests import TEST_BACKEND
 
 # ======================= Z2 fermionic system (4 copies) =========================================
 
 class TestBackends(unittest.TestCase):
     def setUp(self):
         pass
+
+    def tearDown(self):
+        # Reload ggpeps to ensure that the backend is set correctly for the rest of the tests
+        os.environ["GGPEPS_BACKEND"] = TEST_BACKEND
+        importlib.reload(ggpeps)
     
     def test_reloading_backend(self):
         os.environ["GGPEPS_BACKEND"] = "numpy"
