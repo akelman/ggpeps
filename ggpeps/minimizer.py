@@ -136,7 +136,7 @@ class Minimizer():
             self.cache.add_obs_to_cache(flattened_paramvec, 'energy', energy)
             parametergrad = self.last_result.get_obs_mean('energy_grad')
             self.cache.add_obs_to_cache(flattened_paramvec, 'energy_grad', parametergrad)
-            #logger.debug(f'Calculated energy: {energy}')
+            logger.debug(f'Calculated energy: {energy}')
 
             return energy
         
