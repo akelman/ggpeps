@@ -394,8 +394,8 @@ def generate_smat(n: int):
         np.array: n x n matrix
     """
     pattern = [[1], [1.j]]
-    halfmat = np.kron(np.eye(n//2), pattern)
-    return np.block([halfmat, np.conjugate(halfmat)])
+    halfmat = xnp.kron(np.eye(n//2), pattern)
+    return xnp.block([halfmat, xnp.conjugate(halfmat)])
 
 # =========================== Cache Server =================================
 
