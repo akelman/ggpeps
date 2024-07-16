@@ -326,7 +326,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         rot_left = xnp.eye(2)
         # The mode order is lr (horizontally) or du (vertically).
         # We rotate the different copies in the SAME way.
-        dest = block_diag(rot_left, rot_right, rot_left, rot_right)
+        dest = block_diag(rot_left, rot_right, rot_left, rot_right) # TODO: use the jax.scipy version of block_diag
         return dest
 
     # TODO: fix for JAX - DONE, expect for stuff in utils
