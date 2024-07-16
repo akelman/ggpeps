@@ -1,3 +1,6 @@
+import os
+import importlib
+
 import unittest 
 from unittest import skip
 
@@ -16,6 +19,15 @@ class TestBackends(unittest.TestCase):
     def setUp(self):
         pass
     
+    def test_reloading_backend(self):
+        os.environ["GGPEPS_BACKEND"] = "numpy"
+        importlib.reload(ggpeps)
+        self.assertTrue(ggpeps.PREFERRED_BACKEND == "numpy")
+
+        os.environ["GGPEPS_BACKEND"] = "jax"
+        importlib.reload(ggpeps)
+        self.assertTrue(ggpeps.PREFERRED_BACKEND == "jax")
+
     def test_slicing(self):
         """Ensure that numpy and jax slice arrays in the same way.
         """

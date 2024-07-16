@@ -1,3 +1,5 @@
+import os
+
 # Global vars
 global_vars = {}
 
@@ -23,9 +25,17 @@ else:
 
 # Set numerical backend
 AVAILABLE_NUMERICAL_BACKENDS = ['numpy', 'jax']
-PREFERRED_BACKEND = 'jax'
-if GPU_AVAILABLE:
+if "GGPEPS_BACKEND" in os.environ:
+    if os.environ["GGPEPS_BACKEND"] in AVAILABLE_NUMERICAL_BACKENDS:
+        PREFERRED_BACKEND = os.environ["GGPEPS_BACKEND"]
+    else:
+        raise ValueError(f"Unknown backend: {os.environ['GGPEPS_BACKEND']}")
+elif GPU_AVAILABLE:
     PREFERRED_BACKEND = 'jax'
+else:
+    PREFERRED_BACKEND = 'numpy'
+
+PREFERRED_BACKEND = 'jax' # TODO: remove this override once JAX is fully implemented
 
 if PREFERRED_BACKEND == 'numpy':
     import numpy as xnp
