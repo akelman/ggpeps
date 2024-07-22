@@ -181,7 +181,8 @@ def get_git_hash():
     """
     # This assumes that .git is in the parent folder of util.py 
     packagedir = os.path.dirname(os.path.realpath(__file__))
-    rootdir = os.path.join(packagedir,os.path.pardir)
+    srcdir = os.path.join(packagedir, os.path.pardir)
+    rootdir = os.path.join(srcdir,os.path.pardir)
     gitdir = os.path.join(rootdir, ".git")
     githash = subprocess.check_output(['git', f'--git-dir={gitdir}', 'rev-parse', 'HEAD'])
     return githash.decode("utf-8").strip()
