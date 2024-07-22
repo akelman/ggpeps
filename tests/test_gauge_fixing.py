@@ -18,6 +18,7 @@ from ggpeps.utils import compare_array_elementwise
 # ======================= Z2 fermionic system (4 copies) =========================================
 
 class Testgaugefixing(unittest.TestCase):
+
     def setUp(self):
         self.lat2 = lattice.Lattice2D(2,2)
         self.lat4 = lattice.Lattice2D(4,4)
@@ -31,7 +32,7 @@ class Testgaugefixing(unittest.TestCase):
         self.system_z2_2 = system.Z2System2D_G2C_F2C(cfg2) 
         self.system_z2_2.cfg.enforce_parameter_conditions(self.system_z2_2.cfg.paramvec)
         eval_cfg = None
-        self.evaluator2 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_2)
+        self.evaluator2 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_2, False)
         self.configvec2 = self.evaluator2.generate_config_vec()
         self.netural_gauge2 = self.system_z2_2.gaugemgr.get_neutral_gauge_value()        
 
@@ -39,7 +40,7 @@ class Testgaugefixing(unittest.TestCase):
         self.system_z2_4 = system.Z2System2D_G2C_F2C(cfg4) 
         cfg4.paramvec = paramvec
         self.system_z2_4.cfg.enforce_parameter_conditions(self.system_z2_4.cfg.paramvec)
-        self.evaluator4 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_4)
+        self.evaluator4 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_4, False)
         self.configvec4 = self.evaluator4.generate_config_vec()
         self.netural_gauge4 = self.system_z2_4.gaugemgr.get_neutral_gauge_value() 
 
@@ -54,7 +55,7 @@ class Testgaugefixing(unittest.TestCase):
         mc_config.meas_steps = meas_steps
         mc_config.binsize = binsize
         mc_config.update_size_per_step = update_size_per_step
-        self.mc_evaluator = MonteCarloEvaluator(mc_config, self.system_z2_2)
+        self.mc_evaluator = MonteCarloEvaluator(mc_config, self.system_z2_2, False)
         self.mc_evaluator.gauge_fixing = False
 
         #define MC evaluator without gauge fixing
@@ -63,7 +64,7 @@ class Testgaugefixing(unittest.TestCase):
         mc_config_gf.meas_steps = meas_steps
         mc_config_gf.binsize = binsize
         mc_config_gf.update_size_per_step = update_size_per_step
-        self.mc_evaluator_gf = MonteCarloEvaluator(mc_config_gf, self.system_z2_2)
+        self.mc_evaluator_gf = MonteCarloEvaluator(mc_config_gf, self.system_z2_2, False)
         self.mc_evaluator_gf.gauge_fixing = True
 
 
@@ -71,12 +72,12 @@ class Testgaugefixing(unittest.TestCase):
     def test_configvec(self):
         """Ensure that the configvec for gauge fixing is generated correctly. Ensure that the links in the tree are set to the unity in all configurations 
         and that all configurations are unique."""
-        self.assertEqual(len(self.configvec4),2**self.lat4.ncomptreelinks) 
+        self.assertEqual(len(self.configvec4), 2**self.lat4.ncomptreelinks) 
         tuple_configvec2 = [] # converting each configuration in configvec to a tuple - because it's hashable
         for config in self.configvec2: #2x2 lattice
             tuple_configvec2.append(tuple(config)) 
             for link in self.tree2:
-                self.assertEqual(config[link],self.netural_gauge2)
+                self.assertEqual(config[link], self.netural_gauge2)
 
         unique_configvec2 = set(tuple_configvec2) # configvec with unique combinations only
         self.assertEqual(len(tuple_configvec2),len(unique_configvec2)) # assert that there are no repeated configurations

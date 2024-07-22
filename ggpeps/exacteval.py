@@ -11,11 +11,11 @@ from ggpeps.evaluator import Evaluator
 class ExactEvaluator(Evaluator):
     """An ExactEvaluator exactly evaluates the expectation value of an observable by iterating over all possible states of the gauge field.
     """
-    def __init__(self, evaluator_cfg, system) -> None:
+    def __init__(self, evaluator_cfg, system, gauge_fixing) -> None:
         self.system = system
         self.obsdict: dict = None
         self.evaluator_type = 'exact'
-        self.gauge_fixing = True #TODO: improve default gauge_fixing implementation
+        self.gauge_fixing: bool = gauge_fixing
 
     def compute_expval(self, obs: np.ndarray, normvec: np.ndarray):
         """Compute the expectation value of an observable.
@@ -179,7 +179,7 @@ class ExactEvaluator(Evaluator):
         non_fixed_links_ind = self.system.cfg.lattice.comp_tree # All possible indices for the non-fixed positions
         num_combinations = len(poss_gauges) ** len(non_fixed_links_ind)
         neutral_gauge = self.system.gaugemgr.get_neutral_gauge_value()
-        configvec = np.full((num_combinations, nlinks),neutral_gauge,dtype=np.float64)
+        configvec = np.full((num_combinations, nlinks), neutral_gauge, dtype=np.float64)
         combinations = np.array(list(it.product(poss_gauges, repeat=len(non_fixed_links_ind)))) # Generate all possible gauge field combinations
         for i, pos in enumerate(non_fixed_links_ind):
             configvec[:, pos] = combinations[:, i]

@@ -106,7 +106,7 @@ def run_mc(runner_id: int, mc_cfg: MonteCarloEvaluatorConfig, system_cls, system
     
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
-    mc = MonteCarloEvaluator(mc_cfg, system)
+    mc = MonteCarloEvaluator(mc_cfg, system, False) # TODO: set gauge fixing properly
     mc.evaluate()
     return mc
 
@@ -116,12 +116,14 @@ def run_mc(runner_id: int, mc_cfg: MonteCarloEvaluatorConfig, system_cls, system
 class MonteCarloEvaluator(Evaluator):
     """Class to take care of the MC simulation on a single runner
     """
-    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
+    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system, gauge_fixing):
         self.cfg = evaluator_cfg
         self.system = system
-        self.obsdict: dict = {}
-        self.step: int = 0
         self.evaluator_type = 'mc'
+        self.obsdict: dict = {}
+        self.gauge_fixing = gauge_fixing
+        
+        self.step: int = 0
         self.init_measurements()
 
         # Choose how to update in each MC step
