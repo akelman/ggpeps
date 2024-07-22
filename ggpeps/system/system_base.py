@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union, Optional # used in type hints
+from typing import Union, Optional, List # used in type hints
 from dataclasses import dataclass, field
 
 import sys
@@ -23,7 +23,7 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 ################## Utility Functions ######################
 
-def calculate_lognorm(gamma_in_sys_vec: list[xnp.ndarray], mat_d_vec: list[xnp.ndarray], all_factors:bool=False) -> float:
+def calculate_lognorm(gamma_in_sys_vec: List[xnp.ndarray], mat_d_vec: List[xnp.ndarray], all_factors:bool=False) -> float:
     # This is still the plain formula, without any update mechanism
     normvec = calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
     return xnp.sum(normvec)
@@ -53,10 +53,10 @@ class ElectricEnergyIntermediateVals:
     """Class for keeping track of intermediate calculations of the electric energy, 
     for re-use with the gradient calculation"""
     # TODO: make into numpy/jax arrays
-    covmat_out_virt_vec: list[int] = field(default_factory=list) # this is the pythonic way to use lists in dataclasses
-    norm_mod_vec: list[float] = field(default_factory=list)
-    lognorm_default_vec: list[float] = field(default_factory=list)
-    pfaffian_vec: list[float] = field(default_factory=list)
+    covmat_out_virt_vec: List[int] = field(default_factory=list) # this is the pythonic way to use lists in dataclasses
+    norm_mod_vec: List[float] = field(default_factory=list)
+    lognorm_default_vec: List[float] = field(default_factory=list)
+    pfaffian_vec: List[float] = field(default_factory=list)
 
 
 ################## Config2DBase ######################
@@ -88,7 +88,7 @@ class Config2DBase(ABC):
         self.lattice: Union[Lattice2D, Lattice3D] = lattice
 
         self._paramvec: Optional[np.ndarray] = None
-        self.zeroed_params: list[int] = [] # will store a list of the parameters forced to be zero by the ansatz
+        self.zeroed_params: List[int] = [] # will store a list of the parameters forced to be zero by the ansatz
                                 # currently this is set in self.enforce_parameter_conditions
                                 # (this only happens for the fermionic ansatz's)
 
@@ -171,8 +171,8 @@ class System2DBase(ABC):
         # All variables that contain _vec are arrays of length nlayer in the first dimension.
 
         # Parameter based matrices
-        self._symbolvec: Optional[list[sympy.Symbol]] = None # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
-        self._tmat_vec: Optional[list[xnp.ndarray]] = None
+        self._symbolvec: Optional[List[sympy.Symbol]] = None # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
+        self._tmat_vec: Optional[List[xnp.ndarray]] = None
         self._gamma_dirac_vec: Optional[xnp.ndarray] = None
         self._gamma_maj_vec: Optional[xnp.ndarray] = None
         self._gamma_maj_sys_vec: Optional[xnp.ndarray] = None
@@ -185,7 +185,7 @@ class System2DBase(ABC):
         self._mat_d_inv_vec: Optional[xnp.ndarray] = None
 
         # Full covariance matrix (gamma_out) of the fermions
-        self._ferm_covmat_vec: Optional[list[xnp.ndarray]] = None
+        self._ferm_covmat_vec: Optional[List[xnp.ndarray]] = None
 
         # Parameter dependent quantities for the electric energy
         self._mat_a_mod_vec: Optional[xnp.ndarray] = None
@@ -205,31 +205,31 @@ class System2DBase(ABC):
         self._weight: Optional[float] = None
 
         # Gradients
-        self._gamma_maj_sys_deriv_dict: Optional[dict[sympy.Symbol, list[xnp.ndarray]]] = None # the list is for layers
+        self._gamma_maj_sys_deriv_dict: Optional[dict[sympy.Symbol, List[xnp.ndarray]]] = None # the list is for layers
         self._el_energy_op_grad_vec: Optional[xnp.ndarray] = None # first index is layer, second index is symbol
         self._mass_energy_op_grad_vec: Optional[xnp.ndarray] = None
         self._int_energy_op_grad_vec: Optional[xnp.ndarray] = None
-        self._d_gamma_out_symbolvec: Optional[list[list[xnp.ndarray]]] = None # gradients of gamma_out for all symbols: first index is layer, second index is symbol
+        self._d_gamma_out_symbolvec: Optional[List[List[xnp.ndarray]]] = None # gradients of gamma_out for all symbols: first index is layer, second index is symbol
         self._grad_over_norm_dict: Optional[dict[tuple[sympy.Symbol, int], float]] = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
 
         # Observables
         self._energy: Optional[float] = None
         self._el_energy_op: Optional[float] = None
-        self._el_energy_op_vec: Optional[list[float]] = None
+        self._el_energy_op_vec: Optional[List[float]] = None
         self._mag_energy_op: Optional[float] = None
         self._mass_energy_op: Optional[float] = None
-        self._mass_energy_op_vec: Optional[list[float]] = None
+        self._mass_energy_op_vec: Optional[List[float]] = None
         self._int_energy_op: Optional[float] = None
-        self._int_energy_op_vec: Optional[list[float]] = None
+        self._int_energy_op_vec: Optional[List[float]] = None
 
         # Woodbury Update and Matrix Inversion
-        self._wi_gamma_in_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (D^-1 - gammain)^-1
-        self._wi_gamma_out_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (D - gammain)^-1
-        self._incdet_vec: Optional[list[utils.IncLogAbsDeterminant]] = None  # Tracks det(D^-1 - gammain)
+        self._wi_gamma_in_vec: Optional[List[utils.WoodburyInverter]] = None  # Tracks (D^-1 - gammain)^-1
+        self._wi_gamma_out_vec: Optional[List[utils.WoodburyInverter]] = None  # Tracks (D - gammain)^-1
+        self._incdet_vec: Optional[List[utils.IncLogAbsDeterminant]] = None  # Tracks det(D^-1 - gammain)
 
-        self._wi_gamma_in_mod_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (Dmod^-1 - gammain)^-1
-        self._wi_gamma_out_mod_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (Dmod - gammain)^-1
-        self._incdet_mod_vec: Optional[list[utils.IncLogAbsDeterminant]] = None  # Tracks det(Dmod^-1 - gammain)
+        self._wi_gamma_in_mod_vec: Optional[List[utils.WoodburyInverter]] = None  # Tracks (Dmod^-1 - gammain)^-1
+        self._wi_gamma_out_mod_vec: Optional[List[utils.WoodburyInverter]] = None  # Tracks (Dmod - gammain)^-1
+        self._incdet_mod_vec: Optional[List[utils.IncLogAbsDeterminant]] = None  # Tracks det(Dmod^-1 - gammain)
 
     def initialize(self):
         """Initialization function. 
@@ -268,7 +268,7 @@ class System2DBase(ABC):
         return mat_a_vec, mat_b_vec, mat_d_vec
 
     @abstractmethod
-    def _create_symbolvec(self) -> list[sympy.Symbol]:
+    def _create_symbolvec(self) -> List[sympy.Symbol]:
         """
         Function to define the list of parameters as sympy variables.
         We need these symbols to analytically derive T automatically.
@@ -277,7 +277,7 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @property
-    def symbolvec(self) -> list[sympy.Symbol]:
+    def symbolvec(self) -> List[sympy.Symbol]:
         """Return the symbolvec.
         This is a get function. It computes the symbolvec only if it does not exist yet.
         If it exists, then it will be returned directly. If not, it will be created and then stored in _symbolvec.
@@ -322,7 +322,7 @@ class System2DBase(ABC):
         return xnp.asarray(np.asarray(tmat_eval).astype(complex)) # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
 
     @property
-    def tmat_vec(self) -> list[xnp.ndarray]:
+    def tmat_vec(self) -> List[xnp.ndarray]:
         """
         Generate the T-matrix vector (single virtual fermion on the link).
         Analytically, this mode order is not advantageous, 

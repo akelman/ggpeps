@@ -1,6 +1,7 @@
 import sympy
 import logging
 from scipy.linalg import block_diag
+from typing import List
 
 import numpy as np
 from ggpeps import xnp as xnp
@@ -106,7 +107,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         self.el_overall_factors = [-1/16]*self.cfg.nlayer # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
 
-    def _create_symbolvec(self) -> list[sympy.Symbol]:
+    def _create_symbolvec(self) -> List[sympy.Symbol]:
         """Define all symbols of the T matrix as symbols.
         We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
 
