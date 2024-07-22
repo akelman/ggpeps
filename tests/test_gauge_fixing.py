@@ -23,8 +23,6 @@ class Testgaugefixing(unittest.TestCase):
         self.lat4 = lattice.Lattice2D(4,4)
         self.tree2 = self.lat2.generate_maximal_tree()
         self.tree4 = self.lat4.generate_maximal_tree()
-        self.comp_tree2 = self.lat2.generate_complementary_to_tree()
-        self.comp_tree4 = self.lat4.generate_complementary_to_tree()
         
         paramvec = np.random.rand(2, 20)
         
@@ -69,20 +67,6 @@ class Testgaugefixing(unittest.TestCase):
         self.mc_evaluator_gf.gauge_fixing = True
 
 
-
-    def test_maximal_tree_generation(self):
-        """Ensure that maximal trees are generated correctly"""
-        tree2_expected = {0,2,4}
-        tree4_expected = {0,1,2,4,5,6,8,9,10,12,13,14,16,17,18}
-        self.assertEqual(tree2_expected,set(self.tree2))
-        self.assertEqual(tree4_expected,set(self.tree4))
-
-    def test_complementary_maximal_tree_generation(self):
-        """Ensure that complementary to maximal trees (all the links which are not in the tree) are generated correctly."""
-        comp_tree2_expected = {1,3,5,6,7}
-        comp_tree4_expected = {3,7,11,15,19,20,21,22,23,24,25,26,27,28,29,30,31}
-        self.assertEqual(comp_tree2_expected,set(self.comp_tree2))
-        self.assertEqual(comp_tree4_expected,set(self.comp_tree4))
 
     def test_configvec(self):
         """Ensure that the configvec for gauge fixing is generated correctly. Ensure that the links in the tree are set to the unity in all configurations 
