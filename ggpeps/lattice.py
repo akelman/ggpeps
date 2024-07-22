@@ -37,7 +37,10 @@ class Lattice2D:
         self.size = nx*ny # number of sites
         self.ntreelinks = nx*ny - 1
         self.ncomptreelinks = nx*ny + 1 #number of links not in the tree - complementary tree links
-        self.comp_tree = self.generate_complementary_to_tree()
+        
+        # We trust the user not to modify these
+        self.maximal_tree = self.generate_maximal_tree()
+        self.comp_tree = self.generate_tree_complement()
 
     def __str__(self):
         """Generate a string representation of the lattice.
@@ -267,19 +270,29 @@ class Lattice2D:
         return loops
     
     def generate_maximal_tree(self):
-        """Generate a maximal tree whose gauge's value will be fixed to the identity in the integration. 
-        Returns a list of the indices of links in the tree. This method is built fo periodic boundary conditions. 
-        the maximal trre includes all the horizontal links but the last one on each row, and all the vertical links but the last one on the first column.
+        """Generate a maximal tree on the lattice.
+        This allows all values on the tree to be fixed to the identity when gauge_fixing 
+        (no integration is needed over links on the tree). 
+        This method is built for a lattice with periodic boundary conditions. 
+
+        The particular maximal tree returned by this function includes all the horizontal links but the last one on each row, 
+        and all the vertical links but the last one on the first column.
+
+        Returns:
+            list: List of link-indices in the tree
         """
         tree = [self.coord2ind_dir((x,y),Direction(0)) for y in range(self.ny) for x in range(self.nx - 1)]
         tree += [self.coord2ind_dir((0,y),Direction(1)) for y in range(self.ny - 1)]
         return tree
     
-    def generate_complementary_to_tree(self):
-        """Returns all indices of links which are not in the gauge fixed maximal tree 
-        This method is built fo periodic boundary conditions."""
-        tree = self.generate_maximal_tree()
-        fixed_links_ind = [i for i in range(self.nlinks) if i not in tree] # Generate all possible indices for the non-fixed positions 
+    def generate_tree_complement(self):
+        """Generate the list of links complementary to a maximal tree.
+        This method is built for a lattice with periodic boundary conditions.
+        
+        Returns:
+            list: List of links which are not in the maximal tree
+        """
+        fixed_links_ind = [i for i in range(self.nlinks) if i not in self.maximal_tree]
         return fixed_links_ind
 
 class Lattice3D:
