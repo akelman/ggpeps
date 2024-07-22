@@ -40,3 +40,5 @@ inputfile_*
 .ipynb_checkpoints
 
 run
+build
+src/*.egg-info
