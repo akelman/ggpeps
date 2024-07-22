@@ -329,9 +329,9 @@ class MonteCarloEvaluator(Evaluator):
         nlinks = self.system.cfg.lattice.nlinks
         if self.gauge_fixing:
             links_inds = self.cfg.rng_state.choice(self.system.cfg.lattice.comp_tree, self.cfg.update_size_per_step, replace=False)
-
         else:
             links_inds = self.cfg.rng_state.choice([k for k in range(nlinks)], self.cfg.update_size_per_step, replace=False)
+        
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
             theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
