@@ -212,4 +212,8 @@ class TestLattice(unittest.TestCase):
         comp_tree4_expected = {3,7,11,15,19,20,21,22,23,24,25,26,27,28,29,30,31}
         self.assertEqual(comp_tree2_expected, set(lat_2x2.comp_tree))
         self.assertEqual(comp_tree4_expected, set(lat_4x4.comp_tree))
+
+    def test_tree_againt_complement(self):
+        """Check that the maximal tree and its complement are disjoint"""
+        self.assertTrue(set(self.lat2d.maximal_tree).isdisjoint(set(self.lat2d.comp_tree)))
     
