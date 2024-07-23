@@ -356,6 +356,7 @@ def main(args):
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
         ex_eval = EvaluatorManager(system_type, system_cfg, None, args.nrunner)
+        ggpeps.global_vars["eval_manager"] = ex_eval
         
         start = timer()
         dest = ex_eval.simulate()
