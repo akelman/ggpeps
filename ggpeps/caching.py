@@ -97,20 +97,21 @@ class Cache:
                     # TODO: we can probably recover some of the data
         return success
 
-def remove_eval_manager_from_cache(cache_file: str):
+def remove_eval_manager_from_cache(cache_files):
     """Remove the evaluator_manager from the cache file.
 
     Args:
         cache_file (str): path to cache file
     """
-    if os.path.exists(cache_file):
-        cache = Cache('', cache_file)
-        cache.cache_data['evaluator_manager'] = None
-        cache.save_cache_file()
+    for cache_file in cache_files:
+        if os.path.exists(cache_file):
+            cache = Cache('', cache_file)
+            cache.cache_data['evaluator_manager'] = None
+            cache.save_cache_file()
     return
 
 def main(args):
-    remove_eval_manager_from_cache(args.file)
+    remove_eval_manager_from_cache(args.files)
     return
 
 
@@ -119,7 +120,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--file", help="path to cache file")
+    parser.add_argument("--files", nargs="+", help="path to cache files")
     args = parser.parse_args()
 
     main(args)
