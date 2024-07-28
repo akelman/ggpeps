@@ -98,14 +98,15 @@ class Cache:
         return success
 
 def remove_eval_manager_from_cache(cache_files):
-    """Remove the evaluator_manager from the cache file.
+    """Remove the evaluator_manager from the cache files.
 
     Args:
-        cache_file (str): path to cache file
+        cache_files (list): paths to cache files
     """
     for cache_file in cache_files:
         if os.path.exists(cache_file):
             cache = Cache('', cache_file)
+            cache.load_cache_file(cache_file)
             cache.cache_data['evaluator_manager'] = None
             cache.save_cache_file()
     return
