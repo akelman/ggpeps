@@ -42,3 +42,5 @@ inputfile_*
 run
 build
 src/*.egg-info
+# Ignore coverage files
+.coverage
