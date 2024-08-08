@@ -69,38 +69,6 @@ class Z2System2D_8C_Config(Config2DBase):
         self.zeroed_params = zeroed_params
         return
 
-
-class Z2System2D_8C(System2DBase):
-    """ 2 copy version of the Z2 system GGPEPS ansatz with multiple type of virtual fermions
-
-    Some general notes about conventions:
-
-    Order of the paramvec: see the functions that create the symbolvec.
-    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3... and so on}.
-    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3... and so on}.
-    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... and so on}.
-    """
-
-    def __init__(self, cfg: Z2System2D_8C_Config):
-        """Constructor of a Z2System2D_8C system.
-
-        Args:
-            cfg (Z2System2D_8C_Config): Configuration containing all system-related parameters
-        """
-        super().__init__(cfg)
-
-        # constants used in the calculation of the electric energy
-        prefactors = [[1, -1, 1.j, 1.j]]*8
-        indices_layer1 = [  [(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)], [(10,12), (11,13), (12,13), (10,11)], [(14,8), (15,9), (8,9), (14,15)], 
-                            [(18, 20), (19, 21), (20, 21), (18, 19)], [(22, 16), (23, 17), (16, 17), (22, 23)], [(26, 28), (27, 29), (28, 29), (26, 27)], [(30, 24), (31, 25), (24, 25), (30, 31)]]
-        indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)], [(10,8), (11,9), (8,9), (10,11)], [(14,12), (15,13), (12,13), (14,15)],
-                          [(18, 16), (19, 17), (16, 17), (18, 19)], [(22, 20), (23, 21), (20, 21), (22, 23)], [(26, 24), (27, 25), (24, 25), (26, 27)], [(30, 28), (31, 29), (28, 29), (30, 31)]]
-        idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors) # pure gauge layers
-        idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors) # fermionic layers
-        self.idxarr_vec = [idxarr_lay1]*(self.cfg.num_pg_layer) + [idxarr_lay2]
-        self.el_overall_factors = [1/256**2]*(self.cfg.nlayer) # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-
-
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
         We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
@@ -136,7 +104,6 @@ class Z2System2D_8C(System2DBase):
 
         all_symbols = phy_virt_symbols + on_diag_symbols + off_diag_symbols
         return all_symbols
-
 
     @property
     def tmat_symb(self):
@@ -268,6 +235,37 @@ class Z2System2D_8C(System2DBase):
         tmat_symb = sympy.Matrix( sympy.BlockMatrix([[M00, M01, M02, M03, M04], [M10, M11, M12, M13, M14], [M20, M21, M22, M23, M24], [M30, M31, M32, M33, M34], [M40, M41, M42, M43, M44]]) )
 
         return tmat_symb
+
+
+class Z2System2D_8C(System2DBase):
+    """ 2 copy version of the Z2 system GGPEPS ansatz with multiple type of virtual fermions
+
+    Some general notes about conventions:
+
+    Order of the paramvec: see the functions that create the symbolvec.
+    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3... and so on}.
+    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3... and so on}.
+    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... and so on}.
+    """
+
+    def __init__(self, cfg: Z2System2D_8C_Config):
+        """Constructor of a Z2System2D_8C system.
+
+        Args:
+            cfg (Z2System2D_8C_Config): Configuration containing all system-related parameters
+        """
+        super().__init__(cfg)
+
+        # constants used in the calculation of the electric energy
+        prefactors = [[1, -1, 1.j, 1.j]]*8
+        indices_layer1 = [  [(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)], [(10,12), (11,13), (12,13), (10,11)], [(14,8), (15,9), (8,9), (14,15)], 
+                            [(18, 20), (19, 21), (20, 21), (18, 19)], [(22, 16), (23, 17), (16, 17), (22, 23)], [(26, 28), (27, 29), (28, 29), (26, 27)], [(30, 24), (31, 25), (24, 25), (30, 31)]]
+        indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)], [(10,8), (11,9), (8,9), (10,11)], [(14,12), (15,13), (12,13), (14,15)],
+                          [(18, 16), (19, 17), (16, 17), (18, 19)], [(22, 20), (23, 21), (20, 21), (22, 23)], [(26, 24), (27, 25), (24, 25), (26, 27)], [(30, 28), (31, 29), (28, 29), (30, 31)]]
+        idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors) # pure gauge layers
+        idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors) # fermionic layers
+        self.idxarr_vec = [idxarr_lay1]*(self.cfg.num_pg_layer) + [idxarr_lay2]
+        self.el_overall_factors = [1/256**2]*(self.cfg.nlayer) # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
 
     def initialize_gamma_in_sys(self):

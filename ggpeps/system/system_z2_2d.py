@@ -36,31 +36,7 @@ class Z2System2DConfig(Config2DBase):
             self.paramvec[ind, 0] = 0
             # t imag
             self.paramvec[ind, 3] = 0
-
-
-class Z2System2D(System2DBase):
-    """ Single copy (referring to the number of virtual modes on the links) of the Z2 GGPEPS ansatz
-
-        Some general notes about conventions:
-
-        Order of the paramvec: [tr,yr,zr,ti,yi,zi]   # We split the real and the imaginary part of the parameters into independent variables
-        Mode order of T: {p,l,r,d,u}
-        Mode Order of gamma_dirac:  {p,l,r,d,u,p_dag,l_dag,r_dag,d_dag,u_dag}.
-        Mode Order of gamma_maj: {p_1,p_2,l_1,l_2,r_1,r_2,d_1,d_2,u_1,u_2}.
-        The subscript indices are Majorana mode indices here.
-    Args:
-        System2DBase ([type]): [description]
-    """
-    def __init__(self, cfg: Z2System2DConfig):
-        super().__init__(cfg)
-
-        # constants used in the calculation of the electric energy
-        prefactors = [[1, -1, 1.j, 1.j]]
-        indices = [[(2,0), (3,1), (0,1), (2,3)]]
-        idxarr = self.get_pfaffian_arrays(indices, prefactors)
-        self.idxarr_vec = [idxarr]*self.cfg.nlayer
-        self.el_overall_factors = [-1j/4]*self.cfg.nlayer # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-
+    
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
         We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
@@ -77,7 +53,6 @@ class Z2System2D(System2DBase):
         yi = sympy.Symbol("yi", real=True)
         zi = sympy.Symbol("zi", real=True)
         return [tr,yr,zr, ti, yi, zi]
-
 
     @property
     def tmat_symb(self):
@@ -109,6 +84,30 @@ class Z2System2D(System2DBase):
                             [-t, -z, 1.j * z, 0, -y], 
                             [t, -1.j * z, z, y, 0]])
         return tmat_symb
+
+
+class Z2System2D(System2DBase):
+    """ Single copy (referring to the number of virtual modes on the links) of the Z2 GGPEPS ansatz
+
+        Some general notes about conventions:
+
+        Order of the paramvec: [tr,yr,zr,ti,yi,zi]   # We split the real and the imaginary part of the parameters into independent variables
+        Mode order of T: {p,l,r,d,u}
+        Mode Order of gamma_dirac:  {p,l,r,d,u,p_dag,l_dag,r_dag,d_dag,u_dag}.
+        Mode Order of gamma_maj: {p_1,p_2,l_1,l_2,r_1,r_2,d_1,d_2,u_1,u_2}.
+        The subscript indices are Majorana mode indices here.
+    Args:
+        System2DBase ([type]): [description]
+    """
+    def __init__(self, cfg: Z2System2DConfig):
+        super().__init__(cfg)
+
+        # constants used in the calculation of the electric energy
+        prefactors = [[1, -1, 1.j, 1.j]]
+        indices = [[(2,0), (3,1), (0,1), (2,3)]]
+        idxarr = self.get_pfaffian_arrays(indices, prefactors)
+        self.idxarr_vec = [idxarr]*self.cfg.nlayer
+        self.el_overall_factors = [-1j/4]*self.cfg.nlayer # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
 
     def initialize_gamma_in_sys(self):

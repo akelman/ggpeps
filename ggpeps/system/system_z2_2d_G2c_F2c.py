@@ -76,36 +76,6 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         self.zeroed_params = zeroed_params
         return
 
-
-class Z2System2D_G2C_F2C(System2DBase):
-    """ 2 copy version of the Z2 system GGPEPS ansatz with physical fermions.
-
-    Some general notes about conventions:
-
-    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di].
-    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
-    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
-    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
-    """
-
-    def __init__(self, cfg: Z2System2D_G2C_F2C_Config):
-        """Constructor of a Z2System2D2C system, with two virtual fermions per site per link for the gauge fields, and another two for the fermions.
-
-        Args:
-            cfg (Z2System2D_G2C_F2C_Config): Configuration containing all system-related parameters
-        """
-        super().__init__(cfg)
-
-        # constants used in the calculation of the electric energy
-        prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
-        indices_layer_pg = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)]]
-        indices_layer_fermionic = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)]]
-        idxarr_lay_pg = self.get_pfaffian_arrays(indices_layer_pg, prefactors)
-        idxarr_lay_fermionic = self.get_pfaffian_arrays(indices_layer_fermionic, prefactors) 
-        self.idxarr_vec = [idxarr_lay_pg]*self.cfg.num_pg_layer + [idxarr_lay_fermionic]*self.cfg.num_fermionic_layer
-        self.el_overall_factors = [-1/16]*self.cfg.nlayer # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-
-
     def _create_symbolvec(self) -> list[sympy.Symbol]:
         """Define all symbols of the T matrix as symbols.
         We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
@@ -135,7 +105,6 @@ class Z2System2D_G2C_F2C(System2DBase):
         ci  = sympy.Symbol("ci", real=True)
         di  = sympy.Symbol("di", real=True)
         return [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i, z1i, t2i, y2i, z2i, ai, bi, ci, di]
-
 
     @property
     def tmat_symb(self):
@@ -179,6 +148,35 @@ class Z2System2D_G2C_F2C(System2DBase):
             [t2, 1.j*d, -1.j*b, -c, a, -1.j*z2, z2, y2, 0]
             ])
         return tmat_symb
+
+
+class Z2System2D_G2C_F2C(System2DBase):
+    """ 2 copy version of the Z2 system GGPEPS ansatz with physical fermions.
+
+    Some general notes about conventions:
+
+    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di].
+    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
+    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
+    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
+    """
+
+    def __init__(self, cfg: Z2System2D_G2C_F2C_Config):
+        """Constructor of a Z2System2D2C system, with two virtual fermions per site per link for the gauge fields, and another two for the fermions.
+
+        Args:
+            cfg (Z2System2D_G2C_F2C_Config): Configuration containing all system-related parameters
+        """
+        super().__init__(cfg)
+
+        # constants used in the calculation of the electric energy
+        prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
+        indices_layer_pg = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)]]
+        indices_layer_fermionic = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)]]
+        idxarr_lay_pg = self.get_pfaffian_arrays(indices_layer_pg, prefactors)
+        idxarr_lay_fermionic = self.get_pfaffian_arrays(indices_layer_fermionic, prefactors) 
+        self.idxarr_vec = [idxarr_lay_pg]*self.cfg.num_pg_layer + [idxarr_lay_fermionic]*self.cfg.num_fermionic_layer
+        self.el_overall_factors = [-1/16]*self.cfg.nlayer # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
 
     def initialize_gamma_in_sys(self):

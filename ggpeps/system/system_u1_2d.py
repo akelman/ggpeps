@@ -32,6 +32,31 @@ class U1System2DConfig(Config2DBase):
         #The order of the parameters is [t,y,z]
         for ind in range(self.nlayer):
             self.paramvec[ind, 0] = 0
+    
+    def _create_symbolvec(self):
+        t = sympy.Symbol("t", real=True)
+        y = sympy.Symbol("y", real=True)
+        z = sympy.Symbol("z", real=True)
+        return [t,y,z]
+
+    def compute_tmat_symb_single(self):
+        [t, y, z] = self.symbolvec
+        etap = sympy.exp(1.j * sympy.pi / 4.)
+        zsqrt = z/sympy.sqrt(2)
+        tmat_symb_single = sympy.Matrix([[t,  etap**2 *t,      etap*t, etap**3 *t],
+                                         [0,           y,       zsqrt,      zsqrt],
+                                         [-y,          0,      -zsqrt,      zsqrt],
+                                         [-zsqrt,  zsqrt,           0,          y],
+                                         [-zsqrt,  -zsqrt,          -y,         0]])
+        return tmat_symb_single
+    
+    @property
+    def tmat_symb(self):
+        tmat_symb = sympy.zeros(9,9)
+        tmat_symb_single = self.compute_tmat_symb_single()
+        tmat_symb[0:5,5:] = tmat_symb_single
+        tmat_symb[5:,0:5] = -tmat_symb_single.T
+        return tmat_symb
 
 
 class U1System2D(System2DBase):
@@ -53,34 +78,9 @@ class U1System2D(System2DBase):
         self.use_pfaffian = False
 
 
-    def _create_symbolvec(self):
-        t = sympy.Symbol("t", real=True)
-        y = sympy.Symbol("y", real=True)
-        z = sympy.Symbol("z", real=True)
-        return [t,y,z]
-
-    def _compute_tmat_symb_single(self):
-        [t, y, z] = self.symbolvec
-        etap = sympy.exp(1.j * sympy.pi / 4.)
-        zsqrt = z/sympy.sqrt(2)
-        tmat_symb_single = sympy.Matrix([[t,  etap**2 *t,      etap*t, etap**3 *t],
-                                         [0,           y,       zsqrt,      zsqrt],
-                                         [-y,          0,      -zsqrt,      zsqrt],
-                                         [-zsqrt,  zsqrt,           0,          y],
-                                         [-zsqrt,  -zsqrt,          -y,         0]])
-        return tmat_symb_single
-
-    def _eval_tmat_symb_single(self,paramvec):
-        tmat_eval = self._compute_tmat_symb_single().evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
+    def eval_tmat_symb_single(self,paramvec):
+        tmat_eval = self.cfg.compute_tmat_symb_single().evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
         return np.asarray(tmat_eval).astype(complex)
-
-    @property
-    def tmat_symb(self):
-        tmat_symb = sympy.zeros(9,9)
-        tmat_symb_single = self._compute_tmat_symb_single()
-        tmat_symb[0:5,5:]=tmat_symb_single
-        tmat_symb[5:,0:5]=-tmat_symb_single.T
-        return tmat_symb
 
 
     def permutation_dirac(self):

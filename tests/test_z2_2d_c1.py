@@ -58,7 +58,6 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
         symbvec = system_z2_2_2.symbolvec
-        tmat_symb = system_z2_2_2.tmat_symb
         #Derivative wrt y
         deriv_ana = system_z2_2_2.compute_tmat_deriv(symbvec[1])
         tmat_left = system_z2_2_2_left.tmat_vec[0]

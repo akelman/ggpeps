@@ -92,6 +92,9 @@ class Config2DBase(ABC):
                                 # currently this is set in self.enforce_parameter_conditions
                                 # (this only happens for the fermionic ansatz's)
 
+        # Symbolvec
+        self._symbolvec: Optional[list[sympy.Symbol]] = None # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
+
         # Parameters of the Hamiltonian
         self.g_el: float = g_el
         self.g_mag: float = g_mag
@@ -154,6 +157,37 @@ class Config2DBase(ABC):
     def enforce_parameter_conditions(self, mat):
         """In some cases, there are extra conditions we wish to impose on the parameters."""
         return
+    
+    @abstractmethod
+    def _create_symbolvec(self) -> list[sympy.Symbol]:
+        """
+        Function to define the list of parameters as sympy variables.
+        We need these symbols to analytically derive T automatically.
+        This function has to be overwritten in the child-class.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @property
+    def symbolvec(self) -> list[sympy.Symbol]:
+        """Return the symbolvec.
+        This is a get function. It computes the symbolvec only if it does not exist yet.
+        If it exists, then it will be returned directly. If not, it will be created and then stored in _symbolvec.
+
+        Returns:
+            list: Vector of analytic symbols
+        """
+        if self._symbolvec is None:
+            self._symbolvec = self._create_symbolvec()
+        return self._create_symbolvec()
+    
+    @property
+    @abstractmethod
+    def tmat_symb(self):
+        """ Create the symbolic version of the T matrix.
+            This is an abstract function that has to be overwritten by the child class.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
 
 
 ################## System2DBase ######################
@@ -171,7 +205,6 @@ class System2DBase(ABC):
         # All variables that contain _vec are arrays of length nlayer in the first dimension.
 
         # Parameter based matrices
-        self._symbolvec: Optional[list[sympy.Symbol]] = None # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
         self._tmat_vec: Optional[list[xnp.ndarray]] = None
         self._gamma_dirac_vec: Optional[xnp.ndarray] = None
         self._gamma_maj_vec: Optional[xnp.ndarray] = None
@@ -267,35 +300,22 @@ class System2DBase(ABC):
         mat_d_vec = self.gamma_maj_sys_vec[:, offset:, offset:]
         return mat_a_vec, mat_b_vec, mat_d_vec
 
-    @abstractmethod
-    def _create_symbolvec(self) -> list[sympy.Symbol]:
-        """
-        Function to define the list of parameters as sympy variables.
-        We need these symbols to analytically derive T automatically.
-        This function has to be overwritten in the child-class.
-        """
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
-
     @property
     def symbolvec(self) -> list[sympy.Symbol]:
         """Return the symbolvec.
-        This is a get function. It computes the symbolvec only if it does not exist yet.
-        If it exists, then it will be returned directly. If not, it will be created and then stored in _symbolvec.
 
         Returns:
             list: Vector of analytic symbols
         """
-        if self._symbolvec is None:
-            self._symbolvec = self._create_symbolvec()
-        return self._symbolvec
+        return self.cfg.symbolvec
 
     @property
-    @abstractmethod
     def tmat_symb(self):
-        """Create the symbolic version of the T matrix.
-        This is an abstract function that has to be overwritten by the child class.
+        """Return the symbolic version of the T matrix.
+        This is stored in the config for each ansatz, because it is part of the definition of the ansatz,
+        and is not specific to a particular state (i.e. particular parameters).
         """
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+        return self.cfg.tmat_symb
 
     def compute_tmat_deriv(self, symb: sympy.Symbol):
         """Return the derivative of the T matrix with respect to the symbol
@@ -306,7 +326,7 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Array of symbols
         """
-        tmat_symb = self.tmat_symb
+        tmat_symb = self.cfg.tmat_symb
         return xnp.asarray(np.asarray(sympy.diff(tmat_symb, symb)).astype(complex)) # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
 
     def _eval_tmat_symb(self, paramvec):
@@ -318,7 +338,7 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: T matrix with numerical values
         """
-        tmat_eval = self.tmat_symb.evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
+        tmat_eval = self.cfg.tmat_symb.evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
         return xnp.asarray(np.asarray(tmat_eval).astype(complex)) # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
 
     @property

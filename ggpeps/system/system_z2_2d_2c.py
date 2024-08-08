@@ -40,36 +40,7 @@ class Z2System2D2CConfig(Config2DBase):
             self.paramvec[ind, 10] = 0 # Set t1i to 0
             self.paramvec[ind, 3] = 0 # Set t2r to 0
             self.paramvec[ind, 13] = 0 # Set t2i to 0
-
-
-class Z2System2D2C(System2DBase):
-    """ 2 copy version of the Z2 system GGPEPS ansatz
-
-    Some general notes about conventions:
-
-    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
-    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
-    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
-    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
-    """
-
-    def __init__(self, cfg: Z2System2D2CConfig):
-        """Constructor of a Z2System2D2C system.
-        We call only the constructor of the super class, since we do not have any class-specific setup.
-
-        Args:
-            cfg (Z2System2D2CConfig): Configuration containing all system-related parameters
-        """
-        super().__init__(cfg)
-
-        # constants used in the calculation of the electric energy
-        prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
-        indices_layer_pg = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)]]
-        idxarr_lay_pg = self.get_pfaffian_arrays(indices_layer_pg, prefactors)
-        self.idxarr_vec = [idxarr_lay_pg]*self.cfg.nlayer
-        self.el_overall_factors = [-1/16]*self.cfg.nlayer # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-
-
+    
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
         We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
@@ -99,7 +70,6 @@ class Z2System2D2C(System2DBase):
         ci  = sympy.Symbol("ci", real=True)
         di  = sympy.Symbol("di", real=True)
         return [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i, z1i, t2i, y2i, z2i, ai, bi, ci, di]
-
 
     @property
     def tmat_symb(self):
@@ -143,6 +113,34 @@ class Z2System2D2C(System2DBase):
             [t2, 1.j*d, -1.j*b, -c, a, -1.j*z2, z2, y2, 0]
             ])
         return tmat_symb
+
+
+class Z2System2D2C(System2DBase):
+    """ 2 copy version of the Z2 system GGPEPS ansatz
+
+    Some general notes about conventions:
+
+    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
+    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
+    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
+    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
+    """
+
+    def __init__(self, cfg: Z2System2D2CConfig):
+        """Constructor of a Z2System2D2C system.
+        We call only the constructor of the super class, since we do not have any class-specific setup.
+
+        Args:
+            cfg (Z2System2D2CConfig): Configuration containing all system-related parameters
+        """
+        super().__init__(cfg)
+
+        # constants used in the calculation of the electric energy
+        prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
+        indices_layer_pg = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)]]
+        idxarr_lay_pg = self.get_pfaffian_arrays(indices_layer_pg, prefactors)
+        self.idxarr_vec = [idxarr_lay_pg]*self.cfg.nlayer
+        self.el_overall_factors = [-1/16]*self.cfg.nlayer # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
 
     def initialize_gamma_in_sys(self):
