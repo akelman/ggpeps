@@ -1,13 +1,11 @@
-import numpy as np
 import unittest 
 from unittest import skip
+
+import numpy as np
 
 from ggpeps import utils
 from ggpeps import system
 from ggpeps import lattice
-from ggpeps.lattice import Direction
-from ggpeps.mc import MonteCarloEvaluatorConfig, MonteCarloEvaluator
-from ggpeps.utils import compare_array_elementwise
 
 # ======================= Z2 fermionic system (2 copies) =========================================
 

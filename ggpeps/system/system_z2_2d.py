@@ -1,18 +1,16 @@
 import logging
+
 import sympy
 #import numpy as np
 from ggpeps import xnp as np
 from scipy.linalg import block_diag
-from pfapack import pfaffian as pf
-from warnings import warn # Used for deprecation warnings
 
 import ggpeps
 from ggpeps import utils
-from ggpeps import lattice as lat
 from ggpeps.lattice import Direction
-from ggpeps.modearray import generate_permutation_matrix
+
 from .system_base import Config2DBase, System2DBase
-from .system_base import calculate_lognorm, calculate_lognormvec, extract_partial_covmats, calculate_lognorm_inc, get_pfaffian_arrays
+from .system_base import get_pfaffian_arrays
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 

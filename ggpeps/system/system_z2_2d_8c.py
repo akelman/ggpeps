@@ -3,7 +3,6 @@ import logging
 import sympy
 #import numpy as np
 from ggpeps import xnp as np
-from pfapack import pfaffian as pf
 from scipy.linalg import block_diag
 
 from ggpeps import utils

@@ -8,9 +8,8 @@ from ggpeps import xnp as xnp
 import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
-from ggpeps.modearray import generate_permutation_matrix
 
-from .system_base import Config2DBase, System2DBase, ElectricEnergyIntermediateVals
+from .system_base import Config2DBase, System2DBase
 from .system_base import get_pfaffian_arrays
 
 #from ggpeps.system.global_funcs import update_gauge_ind
