@@ -173,17 +173,21 @@ class ExactEvaluator(Evaluator):
         return self.obsdict
         
     def generate_config_vec(self):
-        """Generates a vector of gauge field configurations for all links, for the gauge fixed case."""
+        """Generates gauge field configurations for all links, for the gauge fixed case."""
         poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
         nlinks = self.system.cfg.lattice.nlinks
-        non_fixed_links_ind = self.system.cfg.lattice.comp_tree # All possible indices for the non-fixed positions
-        num_combinations = len(poss_gauges) ** len(non_fixed_links_ind)
+        non_fixed_links_ind = self.system.cfg.lattice.comp_tree  # All possible indices for the non-fixed positions
         neutral_gauge = self.system.gaugemgr.get_neutral_gauge_value()
-        configvec = np.full((num_combinations, nlinks), neutral_gauge, dtype=np.float64)
-        combinations = np.array(list(it.product(poss_gauges, repeat=len(non_fixed_links_ind)))) # Generate all possible gauge field combinations
-        for i, pos in enumerate(non_fixed_links_ind):
-            configvec[:, pos] = combinations[:, i]
-        return configvec.tolist()
+        
+        # Generate all possible gauge field combinations
+        combinations = it.product(poss_gauges, repeat=len(non_fixed_links_ind))
+
+        for combo in combinations:
+            # Initialize configvec as a list filled with neutral_gauge
+            configvec = [neutral_gauge] * nlinks
+            for i, pos in enumerate(non_fixed_links_ind):
+                configvec[pos] = combo[i]
+            yield configvec
 
     def summary(self):
         """Summarize the results of the exact contraction in a dataframe.
