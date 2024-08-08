@@ -10,6 +10,7 @@ from ggpeps.lattice import Direction
 from ggpeps.modearray import generate_permutation_matrix
 
 from .system_base import Config2DBase, System2DBase
+from .system_base import get_pfaffian_arrays
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -30,6 +31,15 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
         super().__init__(lattice, g_el, g_mag, g_int, g_mass, nlayer)
         self.num_pg_layer = self.nlayer - 1
         self.num_fermionic_layer = 1
+
+        # Constants used in the calculation of the electric energy
+        prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
+        indices_layer1 = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)], [(10,12), (11,13), (12,13), (10,11)], [(14,8), (15,9), (8,9), (14,15)]]
+        indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)], [(10,8), (11,9), (8,9), (10,11)], [(14,12), (15,13), (12,13), (14,15)]]
+        idxarr_lay1 = get_pfaffian_arrays(indices_layer1, prefactors) # pure gauge layers
+        idxarr_lay2 = get_pfaffian_arrays(indices_layer2, prefactors) # fermionic layers
+        self.idxarr_vec = [idxarr_lay1]*(self.num_pg_layer) + [idxarr_lay2]
+        self.el_overall_factors = [1/256]*(self.nlayer) # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
         raise NotImplementedError("Haven't implemented parameter conditions for pure gauge for this ansatz.")
@@ -248,15 +258,6 @@ class Z2System2D_G2C_F4C(System2DBase):
             cfg (Z2System2D_G2C_F4C_Config): Configuration containing all system-related parameters
         """
         super().__init__(cfg)
-
-        # constants used in the calculation of the electric energy
-        prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
-        indices_layer1 = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)], [(10,12), (11,13), (12,13), (10,11)], [(14,8), (15,9), (8,9), (14,15)]]
-        indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)], [(10,8), (11,9), (8,9), (10,11)], [(14,12), (15,13), (12,13), (14,15)]]
-        idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors) # pure gauge layers
-        idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors) # fermionic layers
-        self.idxarr_vec = [idxarr_lay1]*(self.cfg.num_pg_layer) + [idxarr_lay2]
-        self.el_overall_factors = [1/256]*(self.cfg.nlayer) # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def initialize_gamma_in_sys(self):
         """ 

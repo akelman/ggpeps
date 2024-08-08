@@ -12,7 +12,7 @@ from ggpeps import lattice as lat
 from ggpeps.lattice import Direction
 from ggpeps.modearray import generate_permutation_matrix
 from .system_base import Config2DBase, System2DBase
-from .system_base import calculate_lognorm, calculate_lognormvec, extract_partial_covmats, calculate_lognorm_inc
+from .system_base import calculate_lognorm, calculate_lognormvec, extract_partial_covmats, calculate_lognorm_inc, get_pfaffian_arrays
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -26,11 +26,18 @@ class Z2System2DConfig(Config2DBase):
     nvirtmodes_link = 2 # We have two virtual modes per link (l/r or u/d)
 
     def __init__(self, lattice, g_el, g_mag, g_int, g_mass, nlayer=1):
-        #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
+        # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         super().__init__(lattice, g_el, g_mag, g_int, g_mass, nlayer)
 
+        # Constants used in the calculation of the electric energy
+        prefactors = [[1, -1, 1.j, 1.j]]
+        indices = [[(2,0), (3,1), (0,1), (2,3)]]
+        idxarr = get_pfaffian_arrays(indices, prefactors)
+        self.idxarr_vec = [idxarr]*self.nlayer
+        self.el_overall_factors = [-1j/4]*self.nlayer # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+
     def make_pure_gauge(self):
-        #The order of the parameters is [tr,yr,zr,ti,yi,zi] ({r,i} referring to the real/imaginary components)
+        # The order of the parameters is [tr,yr,zr,ti,yi,zi] ({r,i} referring to the real/imaginary components)
         for ind in range(self.nlayer):
             # t real
             self.paramvec[ind, 0] = 0
@@ -101,14 +108,6 @@ class Z2System2D(System2DBase):
     """
     def __init__(self, cfg: Z2System2DConfig):
         super().__init__(cfg)
-
-        # constants used in the calculation of the electric energy
-        prefactors = [[1, -1, 1.j, 1.j]]
-        indices = [[(2,0), (3,1), (0,1), (2,3)]]
-        idxarr = self.get_pfaffian_arrays(indices, prefactors)
-        self.idxarr_vec = [idxarr]*self.cfg.nlayer
-        self.el_overall_factors = [-1j/4]*self.cfg.nlayer # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-
 
     def initialize_gamma_in_sys(self):
         """ 

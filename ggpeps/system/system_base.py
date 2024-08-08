@@ -1166,8 +1166,8 @@ class System2DBase(ABC):
         dest = []
 
         # Indices and prefactors for building the required Pfaffians
-        overall_factors = self.el_overall_factors
-        idxarrs = self.idxarr_vec
+        overall_factors = self.cfg.el_overall_factors
+        idxarrs = self.cfg.idxarr_vec
 
         # TODO: vectorize!
         for layerind in range(self.cfg.nlayer):
@@ -1610,30 +1610,30 @@ class System2DBase(ABC):
 
         return mode_order_str
     
-    def get_pfaffian_arrays(self, modes, coefficients):
-        """Generate the arrays used for list comprehension to extract the required pfaffians, with the correct
-        prefactors, used in the calculation of the electric energy and electric gradients.
+def get_pfaffian_arrays(modes, coefficients):
+    """Generate the arrays used for list comprehension to extract the required pfaffians, with the correct
+    prefactors, used in the calculation of the electric energy and electric gradients.
 
-        Each element in the returned list is of the form
-            (k, (a_1 ... a_2p))
-        where k in a prefactor, and (a_1 ... a_2p) is a tuple containing the indices to extract from the full 
-        covariance matrix to build a submatrix and compute the pfaffian.
-        The electric energy will then be sum of these pfaffians (weighted by the prefactors), with some further 
-        normalization.
+    Each element in the returned list is of the form
+        (k, (a_1 ... a_2p))
+    where k in a prefactor, and (a_1 ... a_2p) is a tuple containing the indices to extract from the full 
+    covariance matrix to build a submatrix and compute the pfaffian.
+    The electric energy will then be sum of these pfaffians (weighted by the prefactors), with some further 
+    normalization.
 
-        Args:
-            modes (List of lists of tuples of ints): _description_
-            coefficients (List of lists of complex floats): _description_
-            neg (float): _description_
+    Args:
+        modes (List of lists of tuples of ints): _description_
+        coefficients (List of lists of complex floats): _description_
+        neg (float): _description_
 
-        Returns:
-            List: index array in the format required for the calculation of the electric energy (and electric gradients).
-        """
-        submatrices = [k for k in it.product(*modes)]
-        indices = [sum(sub, ()) for sub in submatrices]
+    Returns:
+        List: index array in the format required for the calculation of the electric energy (and electric gradients).
+    """
+    submatrices = [k for k in it.product(*modes)]
+    indices = [sum(sub, ()) for sub in submatrices]
 
-        factors = [xnp.asarray(k) for k in it.product(*coefficients)]
-        prefactors = [xnp.prod(k) for k in factors]
-        idxarr = [(p, i) for p, i in zip(prefactors, indices)]
-        
-        return idxarr
+    factors = [xnp.asarray(k) for k in it.product(*coefficients)]
+    prefactors = [xnp.prod(k) for k in factors]
+    idxarr = [(p, i) for p, i in zip(prefactors, indices)]
+    
+    return idxarr
