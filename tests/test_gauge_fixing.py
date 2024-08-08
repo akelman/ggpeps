@@ -26,7 +26,7 @@ class Testgaugefixing(unittest.TestCase):
         self.system_z2_2 = system.Z2System2D_G2C_F2C(cfg2) 
         self.system_z2_2.cfg.enforce_parameter_conditions(self.system_z2_2.cfg.paramvec)
         self.evaluator2 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_2, False)
-        self.configvec2 = self.evaluator2.generate_config_vec()
+        self.configvec2 = [config for config in self.evaluator2.generate_config_vec()]
         self.neutral_gauge2 = self.system_z2_2.gaugemgr.get_neutral_gauge_value()        
 
         # Build 4x4 system and evaluator
@@ -35,7 +35,7 @@ class Testgaugefixing(unittest.TestCase):
         cfg4.paramvec = paramvec
         self.system_z2_4.cfg.enforce_parameter_conditions(self.system_z2_4.cfg.paramvec)
         self.evaluator4 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_4, False)
-        self.configvec4 = self.evaluator4.generate_config_vec()
+        self.configvec4 = [config for config in self.evaluator4.generate_config_vec()]
         self.netural_gauge4 = self.system_z2_4.gaugemgr.get_neutral_gauge_value() 
 
     def test_configvec_2x2(self):
@@ -84,7 +84,7 @@ class Testgaugefixing(unittest.TestCase):
 
     # @skip("Too long")
     def test_mceval(self):
-
+        """Ensure that MC evaluation gives the same results with and without gauge fixing"""
         # MC config
         mc_config = MonteCarloEvaluatorConfig()
         mc_config.warmup_steps = 20000 #20000
