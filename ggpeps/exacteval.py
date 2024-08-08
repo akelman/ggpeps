@@ -13,10 +13,11 @@ from ggpeps.evaluator import Evaluator
 class ExactEvaluator(Evaluator):
     """An ExactEvaluator exactly evaluates the expectation value of an observable by iterating over all possible states of the gauge field.
     """
-    def __init__(self, evaluator_cfg, system) -> None:
+    def __init__(self, evaluator_cfg, system, gauge_fixing) -> None:
         self.system = system
         self.obsdict: dict = None
         self.evaluator_type = 'exact'
+        self.gauge_fixing: bool = gauge_fixing
 
     def compute_expval(self, obs: np.ndarray, normvec: np.ndarray):
         """Compute the expectation value of an observable.
@@ -50,9 +51,13 @@ class ExactEvaluator(Evaluator):
             dict: Dictionary of the results
         """
         if self.obsdict is None:
-            poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
-            nlinks = self.system.cfg.lattice.nlinks
-            configvec = it.product(poss_gauges, repeat=nlinks) # an iterable object with all possible field configurations for the entire lattice
+            if self.gauge_fixing:
+                configvec = self.generate_config_vec()
+            else:
+                poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
+                nlinks = self.system.cfg.lattice.nlinks
+                configvec = it.product(poss_gauges, repeat=nlinks) # an iterable object with all possible field configurations for the entire lattice. TODO: think if I should add a nomralization constant
+
 
             polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
                 (0, 0), lattice.Direction.X)
@@ -96,7 +101,7 @@ class ExactEvaluator(Evaluator):
                 data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec) 
                 data["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec) 
                 
-                data["norm"].append(self.system.calculate_lognorm(all_factors=True))
+                data["norm"].append(self.system.calculate_lognorm(all_factors=True)) 
                 data["grad_norm"].append(self.system.compute_grad_norm_vec())
                 data["wilson_00_11"].append(np.real(self.system.compute_path(wilson_loop)))
                 data["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
@@ -173,6 +178,23 @@ class ExactEvaluator(Evaluator):
             self.obsdict = dest
 
         return self.obsdict
+        
+    def generate_config_vec(self):
+        """Generates gauge field configurations for all links, for the gauge fixed case."""
+        poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
+        nlinks = self.system.cfg.lattice.nlinks
+        non_fixed_links_ind = self.system.cfg.lattice.comp_tree  # All possible indices for the non-fixed positions
+        neutral_gauge = self.system.gaugemgr.get_neutral_gauge_value()
+        
+        # Generate all possible gauge field combinations
+        combinations = it.product(poss_gauges, repeat=len(non_fixed_links_ind))
+
+        for combo in combinations:
+            # Initialize configvec as a list filled with neutral_gauge
+            configvec = [neutral_gauge] * nlinks
+            for i, pos in enumerate(non_fixed_links_ind):
+                configvec[pos] = combo[i]
+            yield configvec
 
     def summary(self):
         """Summarize the results of the exact contraction in a dataframe.

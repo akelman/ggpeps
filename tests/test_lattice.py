@@ -194,4 +194,26 @@ class TestLattice(unittest.TestCase):
             coord,dir=self.lat3d.ind2coord_dir(ind)
             self.assertEqual(coord_ref,coord)
             self.assertEqual(dir_ref,dir)
+
+    def test_maximal_tree_generation(self):
+        """Ensure that maximal trees are generated correctly"""
+        lat_2x2 = lattice.Lattice2D(2,2)
+        lat_4x4 = lattice.Lattice2D(4,4)
+        tree2_expected = {0,2,4}
+        tree4_expected = {0,1,2,4,5,6,8,9,10,12,13,14,16,17,18}
+        self.assertEqual(tree2_expected, set(lat_2x2.maximal_tree))
+        self.assertEqual(tree4_expected, set(lat_4x4.maximal_tree))
+
+    def test_complementary_maximal_tree_generation(self):
+        """Ensure that complement of the maximal tree (all the links which are not in the tree) is generated correctly."""
+        lat_2x2 = lattice.Lattice2D(2,2)
+        lat_4x4 = lattice.Lattice2D(4,4)
+        comp_tree2_expected = {1,3,5,6,7}
+        comp_tree4_expected = {3,7,11,15,19,20,21,22,23,24,25,26,27,28,29,30,31}
+        self.assertEqual(comp_tree2_expected, set(lat_2x2.comp_tree))
+        self.assertEqual(comp_tree4_expected, set(lat_4x4.comp_tree))
+
+    def test_tree_againt_complement(self):
+        """Check that the maximal tree and its complement are disjoint"""
+        self.assertTrue(set(self.lat2d.maximal_tree).isdisjoint(set(self.lat2d.comp_tree)))
     

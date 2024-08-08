@@ -56,7 +56,13 @@
             "program": "${workspaceFolder}/manager.py",
             "args": [
                 "eval-exact",
-                "2"
+                "2",
+                "--ncopy", "2",
+                "--nlayer", "2", 
+                "--g_el", "0",
+                "--g_mag", "0", 
+                "--g_int", "1",
+                "--g_mass", "0"
             ],
             "console": "integratedTerminal"
         },

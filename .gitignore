@@ -38,5 +38,7 @@ inputfile_*
 *.prof
 # We do not store checkpoints of jupyter notebooks
 .ipynb_checkpoints
+# Pycharm folder
+.idea
 
 run

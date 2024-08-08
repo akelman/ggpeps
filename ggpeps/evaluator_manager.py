@@ -28,12 +28,14 @@ class EvaluatorManager:
                  system_cls: SystemType,
                  system_cfg: SystemConfigType,
                  mc_cfg: Union[MonteCarloEvaluatorConfig, None],
-                 nrunner: int):
+                 nrunner: int,
+                 gauge_fixing: bool):
         
         self.system_cls = system_cls
         self.system_cfg = system_cfg
         self.mc_cfg = mc_cfg
         self.nrunner = nrunner
+        self.gauge_fixing = gauge_fixing
 
         self.evaluator = None
         self.simulation_in_progress: bool = False # Flag to indicate whether a simulation should be resumed
@@ -47,9 +49,9 @@ class EvaluatorManager:
         system = self.system_cls(self.system_cfg)
         system.initialize()
         if self.type == 'exact':
-            self.evaluator = ExactEvaluator(None, system)
+            self.evaluator = ExactEvaluator(None, system, self.gauge_fixing)
         elif self.type == 'mc':
-            self.evaluator = MonteCarloEvaluator(self.mc_cfg, system)
+            self.evaluator = MonteCarloEvaluator(self.mc_cfg, system, self.gauge_fixing)
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
 
@@ -107,7 +109,7 @@ class EvaluatorManager:
             Estimator: estimator with information from all runners
         """
         system = self.system_cls(self.system_cfg)
-        dest = MonteCarloEvaluator(self.mc_cfg, system)
+        dest = MonteCarloEvaluator(self.mc_cfg, system, self.gauge_fixing)
         if len(resultvec) > 1:
             dest.obsdict = utils.mergeDict(resultvec[0].obsdict, resultvec[1].obsdict)
             for mc_runner in resultvec[2:]:

@@ -60,8 +60,8 @@ def signal_handler(signum, frame):
     sys.exit(INTERRUPT_EXIT_CODE)
 
 signal.signal(signal.SIGTERM, signal_handler) # register the signal handler
-signal.signal(signal.SIGUSR1, signal_handler)
-signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
+#signal.signal(signal.SIGUSR1, signal_handler) #TODO: fix for windows
+signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C 
 
 
 def args2logname(args, couplings: dict) -> str:
@@ -275,6 +275,7 @@ def main(args):
     logger.info(f"# of layers: {system_cfg.nlayer}")
     logger.info(f"# of copies: {args.ncopy}")
     logger.info(f"fermions: {args.fermions}")
+    logger.info(f"Gauge fixing: {args.gauge_fixing}")
     logger.info(f"g (lambda): {g}")
     logger.info(f"g_el: {g_el}")
     logger.info(f"g_mag: {g_mag}")
@@ -320,7 +321,7 @@ def main(args):
             mc_mgr = cache.load_obj_from_local_cache('evaluator_manager')
             logger.info(f"Loaded evaluator manager from cache.")
         else:
-            mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+            mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner, args.gauge_fixing)
         ggpeps.global_vars["eval_manager"] = mc_mgr # save for global access
         
         start = timer()
@@ -336,7 +337,7 @@ def main(args):
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
 
         mc_config.minimizer_mode = True
-        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner, args.gauge_fixing)
         
         # Set the parameters of the minimizer according to the command line
         min_cfg = MinimizerConfig()
@@ -355,7 +356,7 @@ def main(args):
         minimizer.save(output_dir = args.output)
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
-        ex_eval = EvaluatorManager(system_type, system_cfg, None, args.nrunner)
+        ex_eval = EvaluatorManager(system_type, system_cfg, None, args.nrunner, args.gauge_fixing)
         ggpeps.global_vars["eval_manager"] = ex_eval
         
         start = timer()
@@ -370,7 +371,7 @@ def main(args):
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
 
         start = timer()
-        ex_mgr = EvaluatorManager(system_type, system_cfg, None, args.nrunner)
+        ex_mgr = EvaluatorManager(system_type, system_cfg, None, args.nrunner, args.gauge_fixing)
 
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
@@ -405,7 +406,7 @@ def main(args):
         mc_config.minimizer_mode = True
         for i in range(args.minmult_iter):
             logger.info(f"Minimization iteration: {i:02d}")
-            mc = EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port) 
+            mc = EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, args.gauge_fixing, port=args.port) # TODO: port is not defined!!
             minimizer = Minimizer(mc, min_cfg)
 
             resultvec.append(minimizer.minimize())
@@ -415,7 +416,7 @@ def main(args):
         minimizer.save(output_dir = args.output)
         # We run a final iteration of the MC simulation with all observables
         mc_config.minimizer_mode = False
-        mc_mgr = EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
+        mc_mgr = EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, args.gauge_fixing, port=args.port)
         mc_result = mc_mgr.simulate()
         mc_result.save(output_dir = args.output)
     else:
@@ -465,6 +466,9 @@ if __name__ == "__main__":
                         help="Parameters passed as a starting configuration (Order for one copy: [t1r, t2r,..., y1r, y2r,..., z1r, z2r..., t1i, t2i, ..., y1i, ... z1i])")
     parser.add_argument("--fermions", action="store_true", default=False, 
                         help="Use an ansatz that allows for the inclusion of fermions") # TODO: improve handling of pure-gauge and fermions arguments
+
+    # Evaluator settings
+    parser.add_argument("--gauge_fixing", action="store_true", default=False)
 
     # Monte Carlo settings
     parser.add_argument("--seed", type=int, help="Seed for the MC simulation and parameter initialization")

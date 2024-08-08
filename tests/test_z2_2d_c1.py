@@ -754,7 +754,8 @@ class TestZ2SystemMethods(unittest.TestCase):
         mc_config.warmup_steps = 10
         mc_config.meas_steps = 10
         mc_config.binsize = 1
-        mc_mgr = EvaluatorManager(system.Z2System2D, system_cfg, mc_config, 0)
+        gauge_fixing = False
+        mc_mgr = EvaluatorManager(system.Z2System2D, system_cfg, mc_config, 0, gauge_fixing)
         mc_result = mc_mgr.simulate()
         el_energy = mc_result.get_obs_mean("el_energy")
         self.assertAlmostEqual(el_energy, 0.0)
@@ -778,7 +779,8 @@ class TestZ2SystemMethods(unittest.TestCase):
         mc_config.binsize = 1
         mc_config.meas_steps = 40000
         mc_config.warmup_steps = 10000
-        mc = MonteCarloEvaluator(mc_config, sys_mc)
+        gauge_fixing = False
+        mc = MonteCarloEvaluator(mc_config, sys_mc, gauge_fixing)
         mc.evaluate()
 
         self.assertAlmostEqual(res["wilson_00_11"], mc.get_obs_mean("wilson_00_11"), places=2)

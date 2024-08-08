@@ -84,8 +84,9 @@ class TestZ2C4System(unittest.TestCase):
     def test_t_zero(self):
         """Ensure mass and interaction energy are zero when t = 0"""
 
+        gauge_fixing = False
         self.system_z2.cfg.make_pure_gauge() # sets t params to zero
-        ex_eval = exacteval.ExactEvaluator(None, self.system_z2)
+        ex_eval = exacteval.ExactEvaluator(None, self.system_z2, gauge_fixing)
         dest_dict = ex_eval.evaluate()
         self.assertTrue(np.allclose(0, dest_dict['mass_energy']))
         self.assertTrue(np.allclose(0, dest_dict['int_energy']))
@@ -94,7 +95,8 @@ class TestZ2C4System(unittest.TestCase):
         """Ensure mass and interaction energy are zero when t != 0. 
         This checks for random params, which we assume do not give t = 0"""
         
-        ex_eval = exacteval.ExactEvaluator(None, self.system_z2)
+        gauge_fixing = False
+        ex_eval = exacteval.ExactEvaluator(None, self.system_z2, gauge_fixing)
         dest_dict = ex_eval.evaluate()
         self.assertFalse(np.allclose(0, dest_dict['mass_energy']))
         self.assertFalse(np.allclose(0, dest_dict['int_energy']))
@@ -104,7 +106,7 @@ class TestZ2C4System(unittest.TestCase):
         """Ensure gs energy for free fermion case matches the analytic result"""
         pass
 
-    # TESTS TO ADD
+    # TODO: TESTS TO ADD
     # get the correct gamma_in_sys for all layers
     # when interaction is off, ground state is: no fermions, pure-gauge ground state
 
