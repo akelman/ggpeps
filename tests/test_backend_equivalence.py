@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import ggpeps
 from ggpeps import lattice
 #rom ggpeps import xnp
-#from ggpeps.system.global_funcs import *
+from ggpeps.system.global_funcs import *
 
 from tests import TEST_BACKEND
 
