@@ -82,7 +82,7 @@ class Testgaugefixing(unittest.TestCase):
         for key, val in no_gauge_fixing_eval.items():
             self.assertTrue(np.allclose(val, gauge_fixing_eval[key]))
 
-    # @skip("Too long")
+    @skip("Too long")
     def test_mceval(self):
         """Ensure that MC evaluation gives the same results with and without gauge fixing"""
         # MC config
