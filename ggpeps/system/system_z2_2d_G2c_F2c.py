@@ -182,16 +182,11 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         dest_unmixed = [0]*2 # does not mix copies 
         
         # We want to give the projectors for the pure gauge part, which mix copies
-        # TODO - handle real condition better for JAX
-        if ggpeps.PREFERRED_BACKEND == 'jax':
-            dest_mixed[Direction.X] = xnp.real(1.j*xnp.kron(utils.paulix,xnp.kron(utils.pauliy, utils.paulix)))
-            dest_mixed[Direction.Y] = xnp.real(1.j*xnp.kron(utils.paulix,xnp.kron(utils.pauliy, utils.pauliz)))
-        else:
-            dest_mixed[Direction.X] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
-            dest_mixed[Direction.Y] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
+        dest_mixed[Direction.X] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
+        dest_mixed[Direction.Y] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
 
         # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
-        dest_unmixed[Direction.X] = xnp.array([ [ 0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.],
+        dest_unmixed[Direction.X] = np.array([ [ 0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.],
                                                 [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
                                                 [ 0., -1.,  0.,  0.,  0.,  0.,  0.,  0.],
                                                 [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
@@ -200,7 +195,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
                                                 [ 0.,  0.,  0.,  0.,  0., -1.,  0.,  0.],
                                                 [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.]])
 
-        dest_unmixed[Direction.Y] = xnp.array([ [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
+        dest_unmixed[Direction.Y] = np.array([ [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
                                                 [ 0.,  0.,  0., -1.,  0., -0.,  0.,  0.],
                                                 [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
                                                 [ 0.,  1.,  0.,  0.,  0.,  0.,  0.,  0.],
@@ -209,8 +204,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
                                                 [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.],
                                                 [ 0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.]])
 
-        # TODO: there's probably a better way to construct this array
-        return xnp.array([dest_mixed]*self.num_pg_layer + [dest_unmixed]*self.num_fermionic_layer)
+        return np.array([dest_mixed]*self.num_pg_layer + [dest_unmixed]*self.num_fermionic_layer)
 
 
 class Z2System2D_G2C_F2C(System2DBase):
