@@ -57,6 +57,15 @@ class U1System2DConfig(Config2DBase):
         tmat_symb[0:5,5:] = tmat_symb_single
         tmat_symb[5:,0:5] = -tmat_symb_single.T
         return tmat_symb
+    
+    def generate_gamma_gauge_neutral_dict(self):
+        # Note: unlike in the Z2 case, here we can ignore the direction of the link
+        dest = [0]*2
+        dest[Direction.X] = np.real(
+            1.j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
+        dest[Direction.Y] = np.real(
+            1.j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
+        return [dest]*self.nlayer
 
 
 class U1System2D(System2DBase):
@@ -200,15 +209,6 @@ class U1System2D(System2DBase):
 
 
     ################## Local Gauge ######################
-
-    def _generate_gamma_gauge_neutral_dict(self):
-        # Note: unlike in the Z2 case, here we can ignore the direction of the link
-        dest = {}
-        dest[Direction.X] = np.real(
-            1.j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
-        dest[Direction.Y] = np.real(
-            1.j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
-        return [dest]*self.cfg.nlayer
 
     def _generate_rotmat_half(self,theta):
         rot_right = np.array([[np.cos(theta), np.sin(theta)],

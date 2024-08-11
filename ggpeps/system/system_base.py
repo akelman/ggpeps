@@ -187,6 +187,15 @@ class Config2DBase(ABC):
             This is an abstract function that has to be overwritten by the child class.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
+    
+    @abstractmethod
+    def generate_gamma_gauge_neutral_dict(self):
+        """Abstract method to define the ungauged covariance matrix of a single link.
+        The substitution method must ensure a consistent order of the modes.
+        The direction parameter controls which covariance matrix is retrieved, since these can differ between directions.
+        This method must be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
 
 
@@ -1054,14 +1063,13 @@ class System2DBase(ABC):
             self._gamma_gauge_neutral_vec_dirs = self._generate_gamma_gauge_neutral_dict()
         return self._gamma_gauge_neutral_vec_dirs
 
-    @abstractmethod
     def _generate_gamma_gauge_neutral_dict(self):
-        """Abstract method to define the ungauged covariance matrix of a single link.
+        """Define the ungauged covariance matrix of a single link.
         The substitution method must ensure a consistent order of the modes.
         The direction parameter controls which covariance matrix is retrieved, since these can differ between directions.
-        This method must be overwritten in a subclass.
         """
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+        gamma_gauge_neutral_vec_dirs = self.cfg.generate_gamma_gauge_neutral_dict()
+        return xnp.array(gamma_gauge_neutral_vec_dirs)
 
     @abstractmethod
     def generate_rotmat(self, theta, coord, dir):

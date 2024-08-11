@@ -119,6 +119,25 @@ class Z2System2D2CConfig(Config2DBase):
             [t2, 1.j*d, -1.j*b, -c, a, -1.j*z2, z2, y2, 0]
             ])
         return tmat_symb
+    
+    def generate_gamma_gauge_neutral_dict(self):
+        """Generate the the covariance matrix of the ungauged projectors.
+        The morde order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}.
+        The naming convention here is <mode letter><number of copy>_<majorana mode>.
+        We order first by link and then by copy. 
+        Modes of copy one are coupled to modes of copy 2. The projectors mix copies.
+        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The same is true for the for the up and down modes.
+
+        This method overwrites an abstract method in System2DBase.
+
+        Returns:
+            List[np.ndarray]: Covariance matrix of the ungauged projector on a single link
+        """
+        dest = [0]*2
+        dest[Direction.X] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
+        dest[Direction.Y] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
+        return [dest]*self.nlayer
 
 
 class Z2System2D2C(System2DBase):
@@ -207,24 +226,6 @@ class Z2System2D2C(System2DBase):
 
         return gamma_in_sys_vec, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
-    def _generate_gamma_gauge_neutral_dict(self):
-        """Generate the the covariance matrix of the ungauged projectors.
-        The morde order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}.
-        The naming convention here is <mode letter><number of copy>_<majorana mode>.
-        We order first by link and then by copy. 
-        Modes of copy one are coupled to modes of copy 2. The projectors mix copies.
-        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
-        The same is true for the for the up and down modes.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Returns:
-            List[np.ndarray]: Covariance matrix of the ungauged projector on a single link
-        """
-        dest = {}
-        dest[Direction.X] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
-        dest[Direction.Y] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
-        return [dest]*self.cfg.nlayer
 
     #Gauging
 

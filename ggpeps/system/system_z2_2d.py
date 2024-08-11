@@ -89,6 +89,22 @@ class Z2System2DConfig(Config2DBase):
                             [-t, -z, 1.j * z, 0, -y], 
                             [t, -1.j * z, z, y, 0]])
         return tmat_symb
+    
+    def generate_gamma_gauge_neutral_dict(self):
+        """This matrix is the covariance matrix of the ungauged projectors.
+        The mode order is {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2}, where the underscore notation explicitly denotes Majorana modes and not sites.
+        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The same is true for the for the up and down modes.
+
+        This method overwrites an abstract method in System2DBase.
+
+        Returns:
+            np.ndarray: Covariance matrix of the ungauged projector on a single link
+        """
+        dest = [0]*2
+        dest[Direction.X] = np.real_if_close(1.j*np.kron(utils.pauliy, utils.paulix)) # this just happens to be a convenient way to generate the covariance matrix that was calculated by hand
+        dest[Direction.Y] = np.real_if_close(np.kron(1.j*utils.pauliy, utils.pauliz))
+        return [dest]*self.nlayer
 
 
 class Z2System2D(System2DBase):
@@ -167,22 +183,6 @@ class Z2System2D(System2DBase):
 
         return gamma_in_sys_vec, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
-
-    def _generate_gamma_gauge_neutral_dict(self):
-        """This matrix is the covariance matrix of the ungauged projectors.
-        The mode order is {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2}, where the underscore notation explicitly denotes Majorana modes and not sites.
-        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
-        The same is true for the for the up and down modes.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Returns:
-            np.ndarray: Covariance matrix of the ungauged projector on a single link
-        """
-        dest={}
-        dest[Direction.X] = np.real_if_close(1.j*np.kron(utils.pauliy, utils.paulix)) # this just happens to be a convenient way to generate the covariance matrix that was calculated by hand
-        dest[Direction.Y] = np.real_if_close(np.kron(1.j*utils.pauliy, utils.pauliz))
-        return [dest]*self.cfg.nlayer
 
     #Gauging
 

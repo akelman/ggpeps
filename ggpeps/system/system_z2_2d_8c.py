@@ -246,6 +246,59 @@ class Z2System2D_8C_Config(Config2DBase):
         tmat_symb = sympy.Matrix( sympy.BlockMatrix([[M00, M01, M02, M03, M04], [M10, M11, M12, M13, M14], [M20, M21, M22, M23, M24], [M30, M31, M32, M33, M34], [M40, M41, M42, M43, M44]]) )
 
         return tmat_symb
+    
+    def generate_gamma_gauge_neutral_dict(self):
+        """Generate the covariance matrix of the ungauged projectors.
+        The mode order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2, l3_1...}/{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2, d3_1...}.
+        The naming convention here is <mode letter><number of copy>_<majorana mode>.
+        We order first by link and then by copy. 
+        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The same is true for the for the up and down modes.
+
+        This function returns two different covariance matrices for ungauged projectors:
+        In the first, modes of copy 1 are coupled to modes of copy 2. 
+        In the second, the projectors don't mix copies.
+        The first option is used for the pure-gauge layer, the second for the fermionic layer.
+
+        This method overwrites an abstract method in System2DBase.
+
+        Returns:
+            List[np.ndarray]: Covariance matrices of the ungauged projector on a single link
+        """
+        
+        dest_mixed = [0]*2 # mixes copies
+        dest_unmixed = [0]*2 # does not mix copies 
+        
+        # We want to give the projectors for the pure gauge part, which mix copies
+        mixed_X = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
+        mixed_Y = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
+
+        dest_mixed[Direction.X] = np.kron(np.eye(4), mixed_X)
+        dest_mixed[Direction.Y] = np.kron(np.eye(4), mixed_Y)
+
+        # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
+        unmixed_X = np.array([  [ 0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.],
+                                [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
+                                [ 0., -1.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  1.],
+                                [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
+                                [ 0.,  0.,  0.,  0.,  0., -1.,  0.,  0.],
+                                [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.]])
+
+        unmixed_Y = np.array([  [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
+                                [ 0.,  0.,  0., -1.,  0., -0.,  0.,  0.],
+                                [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                [ 0.,  1.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
+                                [ 0.,  0.,  0.,  0.,  0., -0.,  0., -1.],
+                                [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.],
+                                [ 0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.]])
+        
+        dest_unmixed[Direction.X] = np.kron(np.eye(4), unmixed_X)
+        dest_unmixed[Direction.Y] = np.kron(np.eye(4), unmixed_Y)
+        
+        return [dest_mixed]*self.num_pg_layer + [dest_unmixed]*self.num_fermionic_layer
 
 
 class Z2System2D_8C(System2DBase):
@@ -323,58 +376,6 @@ class Z2System2D_8C(System2DBase):
 
         return gamma_in_sys_vec, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
-    def _generate_gamma_gauge_neutral_dict(self):
-        """Generate the covariance matrix of the ungauged projectors.
-        The mode order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2, l3_1...}/{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2, d3_1...}.
-        The naming convention here is <mode letter><number of copy>_<majorana mode>.
-        We order first by link and then by copy. 
-        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
-        The same is true for the for the up and down modes.
-
-        This function returns two different covariance matrices for ungauged projectors:
-        In the first, modes of copy 1 are coupled to modes of copy 2. 
-        In the second, the projectors don't mix copies.
-        The first option is used for the pure-gauge layer, the second for the fermionic layer.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Returns:
-            List[np.ndarray]: Covariance matrices of the ungauged projector on a single link
-        """
-        
-        dest_mixed = {} # mixes copies
-        dest_unmixed = {} # does not mix copies 
-        
-        # We want to give the projectors for the pure gauge part, which mix copies
-        mixed_X = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
-        mixed_Y = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
-
-        dest_mixed[Direction.X] = np.kron(np.eye(4), mixed_X)
-        dest_mixed[Direction.Y] = np.kron(np.eye(4), mixed_Y)
-
-        # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
-        unmixed_X = np.array([  [ 0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.],
-                                [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
-                                [ 0., -1.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  1.],
-                                [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
-                                [ 0.,  0.,  0.,  0.,  0., -1.,  0.,  0.],
-                                [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.]])
-
-        unmixed_Y = np.array([  [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
-                                [ 0.,  0.,  0., -1.,  0., -0.,  0.,  0.],
-                                [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                [ 0.,  1.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
-                                [ 0.,  0.,  0.,  0.,  0., -0.,  0., -1.],
-                                [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.],
-                                [ 0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.]])
-        
-        dest_unmixed[Direction.X] = np.kron(np.eye(4), unmixed_X)
-        dest_unmixed[Direction.Y] = np.kron(np.eye(4), unmixed_Y)
-        
-        return [dest_mixed]*self.cfg.num_pg_layer + [dest_unmixed]*self.cfg.num_fermionic_layer
 
     #Gauging
 
