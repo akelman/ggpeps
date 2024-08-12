@@ -22,6 +22,13 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
     """Configuration of the Z2 system in 2D with 2 copies of virtual fermions on the links per layer.
     Each layer can either be pure-gauge (in which case the t-params are zeroed out), 
     or fermionic (in which case the y,z-params are zeroed out).
+
+    Some general notes about conventions:
+    
+    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di].
+    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
+    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
+    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
     """
 
     _nparams = 20
@@ -209,17 +216,10 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
 class Z2System2D_G2C_F2C(System2DBase):
     """ 2 copy version of the Z2 system GGPEPS ansatz with physical fermions.
-
-    Some general notes about conventions:
-
-    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di].
-    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
-    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
-    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
     """
 
     def __init__(self, cfg: Z2System2D_G2C_F2C_Config):
-        """Constructor of a Z2System2D2C system, with two virtual fermions per site per link for the gauge fields, and another two for the fermions.
+        """Constructor of a Z2System2D_G2C_F2C system, with two virtual fermions per site per link for the gauge fields, and another two for the fermions.
 
         Args:
             cfg (Z2System2D_G2C_F2C_Config): Configuration containing all system-related parameters
@@ -242,7 +242,7 @@ class Z2System2D_G2C_F2C(System2DBase):
 
         The vertex indices are written as <number>, the link indices are written as "<number>". 
 
-        For a 2x2 system, gamma_in has the order 
+        For a 2x2 system with two virtual fermions per site per link, gamma_in has the order 
         { l1_1, r2_0, l1_1, r2_0, l1_0, r2_1, l1_0, r2_1,  
           l1_3, r2_2, l1_3, r2_2, l1_2, r2_3, l1_2, r2_3,  
           d1_2, u2_0, d1_2, u2_0, d1_0, u2_2, d1_0, u2_2,  
