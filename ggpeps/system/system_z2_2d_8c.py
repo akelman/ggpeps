@@ -411,9 +411,8 @@ class Z2System2D_8C(System2DBase):
         rot_left = np.eye(2)
         # The mode order is lr (horizontally) or du (vertically).
         # We rotate the different copies in the SAME way.
-        dest = block_diag(rot_left, rot_right, rot_left, rot_right)
-
-        rotmat = np.kron( np.eye(4), dest)
+        dest = block_diag(rot_left, rot_right)
+        rotmat = np.kron( np.eye(self.cfg.ncopy), dest)
         return rotmat
 
 

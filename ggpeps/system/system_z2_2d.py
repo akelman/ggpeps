@@ -208,7 +208,8 @@ class Z2System2D(System2DBase):
         rot_left = np.eye(2)
         # The mode order is lr (horizontally) or du (vertically).
         dest = block_diag(rot_left, rot_right)
-        return dest
+        rotmat = np.kron( np.eye(self.cfg.ncopy), dest)
+        return rotmat
 
 
     def update_gauge_ind(self, link_ind: int, theta: float):
