@@ -313,13 +313,13 @@ class Z2System2D_G2C_F2C(System2DBase):
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
         rot_right = xnp.array([[xnp.cos(theta), xnp.sin(theta)],
-                              [-xnp.sin(theta), xnp.cos(theta)]])
+                               [-xnp.sin(theta), xnp.cos(theta)]])
         # We have only one left mode => 2 Majorana modes
         rot_left = xnp.eye(2)
         # The mode order is lr (horizontally) or du (vertically).
         # We rotate the different copies in the SAME way.
-        dest = block_diag(rot_left, rot_right) # TODO: use the jax.scipy version of block_diag
-        rotmat = np.kron( np.eye(self.cfg.ncopy), dest)
+        dest = xnp.array(block_diag(rot_left, rot_right)) # TODO: use the jax.scipy version of block_diag
+        rotmat = xnp.kron( xnp.eye(self.cfg.ncopy), dest)
         return rotmat
 
     # TODO: fix for JAX - DONE, expect for stuff in utils
