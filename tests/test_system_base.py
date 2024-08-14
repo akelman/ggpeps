@@ -12,12 +12,12 @@ class TestSystemBase(unittest.TestCase):
         paramvec = [[0.3, 0.5, 0.8,0.2,0.3,0.9]]
         cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0)
         cfg.paramvec = paramvec
-        self.system_z2_1c = system.Z2System2D_1c(cfg)
+        self.system_z2_1c = system.Z2System2D_G2C_F2C(cfg)
 
         paramvec2C = np.random.rand(1,20)
         cfg2C = system.Z2System2D2CConfig(lat, 0, 0, 0, 0)
         cfg2C.paramvec = paramvec2C
-        self.system_z2_2c = system.Z2System2D_1c(cfg2C)
+        self.system_z2_2c = system.Z2System2D_G2C_F2C(cfg2C)
     
     def test_link_based_mode_order_1copy(self):
 

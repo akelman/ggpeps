@@ -211,14 +211,11 @@ def main(args):
     if args.fermions:
         if args.ncopy == 2:
             # Z2 system with 4 copies of virtual fermions on the links (2 for the pure gauge case, 2 for interacting with physical fermions)
-            system_type = Z2System2D_G2C_F2C
             system_cfg = Z2System2D_G2C_F2C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
         elif args.ncopy == 4:
             # Z2 system with 6 copies of virtual fermions on the links (2 for the pure gauge case, 4 for interacting with physical fermions)
-            system_type = Z2System2D_G2C_F4C
             system_cfg = Z2System2D_G2C_F4C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
         elif args.ncopy == 8:
-            system_type = Z2System2D_8C
             system_cfg = Z2System2D_8C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
         else:
             logger.error("Not Implemented: Only 2, 4, or 8 copies are possible with fermions.")
@@ -226,15 +223,14 @@ def main(args):
     else:
         if args.ncopy == 1:
             # Z2 system with one copy of virtual fermions on the links
-            system_type = Z2System2D_1c
             system_cfg = Z2System2DConfig(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
         elif args.ncopy == 2:
             # Z2 system with two copies of virtual fermions on the links
-            system_type = Z2System2D2C
             system_cfg = Z2System2D2CConfig(lattice, g_el, g_mag, g_int,  g_mass, nlayer=args.nlayer)
         else:
             logger.error("Not Implemented: Only 1, 2, or 4 copies are possible without fermions.")
             sys.exit(1)
+    system_type = Z2System2D_G2C_F2C
 
     # We use a local random number generator instead of the global numpy one to assure
     # reproducibility across different runs, even when using mulitple processes
