@@ -107,7 +107,7 @@ class Z2System2DConfig(Config2DBase):
         return [dest]*self.nlayer
 
 
-class Z2System2D(System2DBase):
+class Z2System2D_1c(System2DBase):
     """ Single copy (referring to the number of virtual modes on the links) of the Z2 GGPEPS ansatz
 
         Some general notes about conventions:

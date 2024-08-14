@@ -17,7 +17,7 @@ np.set_printoptions(linewidth=200)
 
 import ggpeps
 from ggpeps.caching import Cache
-from ggpeps.system import Z2System2DConfig, Z2System2D
+from ggpeps.system import Z2System2DConfig, Z2System2D_1c
 from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
 from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D_G2C_F2C
 from ggpeps.system import Z2System2D_G2C_F4C_Config, Z2System2D_G2C_F4C
@@ -226,7 +226,7 @@ def main(args):
     else:
         if args.ncopy == 1:
             # Z2 system with one copy of virtual fermions on the links
-            system_type = Z2System2D
+            system_type = Z2System2D_1c
             system_cfg = Z2System2DConfig(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
         elif args.ncopy == 2:
             # Z2 system with two copies of virtual fermions on the links
