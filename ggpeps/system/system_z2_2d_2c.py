@@ -29,6 +29,10 @@ class Z2System2D2CConfig(Config2DBase):
     def __init__(self, lattice, g_el, g_mag, g_int, g_mass, nlayer=1):
         #The parameters have the following order: [[t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i...],[..next layer..],....]
         super().__init__(lattice, g_el,  g_mag, g_int, g_mass, nlayer)
+        
+        # This is for pure-gauge only atm
+        self.num_pg_layer = self.nlayer 
+        self.num_fermionic_layer = 0
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
