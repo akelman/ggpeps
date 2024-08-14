@@ -159,6 +159,7 @@ class Z2System2D2C(System2DBase):
             cfg (Z2System2D2CConfig): Configuration containing all system-related parameters
         """
         super().__init__(cfg)
+        raise DeprecationWarning("This class is to be replaced by a generic 2D Z2 class.")
 
 
     def initialize_gamma_in_sys(self):

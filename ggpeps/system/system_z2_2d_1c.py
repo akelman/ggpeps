@@ -122,6 +122,7 @@ class Z2System2D_1c(System2DBase):
     """
     def __init__(self, cfg: Z2System2DConfig):
         super().__init__(cfg)
+        raise DeprecationWarning("This class is to be replaced by a generic 2D Z2 class.")
 
     def initialize_gamma_in_sys(self):
         """ 
