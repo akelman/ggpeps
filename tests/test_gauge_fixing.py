@@ -23,7 +23,7 @@ class Testgaugefixing(unittest.TestCase):
         # Build 2x2 system and evaluator
         cfg2 = system.Z2System2D_G2C_F2C_Config(self.lat2, 1,1,1,1)
         cfg2.paramvec = paramvec
-        self.system_z2_2 = system.Z2System2D_G2C_F2C(cfg2) 
+        self.system_z2_2 = system.Z2System2D(cfg2) 
         self.system_z2_2.cfg.enforce_parameter_conditions(self.system_z2_2.cfg.paramvec)
         self.evaluator2 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_2, False)
         self.configvec2 = [config for config in self.evaluator2.generate_config_vec()]
@@ -31,7 +31,7 @@ class Testgaugefixing(unittest.TestCase):
 
         # Build 4x4 system and evaluator
         cfg4 = system.Z2System2D_G2C_F2C_Config(self.lat4, 1,1,1,1)
-        self.system_z2_4 = system.Z2System2D_G2C_F2C(cfg4) 
+        self.system_z2_4 = system.Z2System2D(cfg4) 
         cfg4.paramvec = paramvec
         self.system_z2_4.cfg.enforce_parameter_conditions(self.system_z2_4.cfg.paramvec)
         self.evaluator4 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_4, False)
@@ -95,8 +95,8 @@ class Testgaugefixing(unittest.TestCase):
         # MC evaluators - with and without gauge fixing
         cfg = system.Z2System2D_G2C_F2C_Config(self.lat2, 1,1,1,1)
         cfg.paramvec = np.random.rand(2, 20)
-        system_z2_2_A = system.Z2System2D_G2C_F2C(cfg) 
-        system_z2_2_B = system.Z2System2D_G2C_F2C(cfg) 
+        system_z2_2_A = system.Z2System2D(cfg) 
+        system_z2_2_B = system.Z2System2D(cfg) 
 
         mc_evaluator_no_gf = MonteCarloEvaluator(mc_config, system_z2_2_A, gauge_fixing=False)
         mc_evaluator_gf = MonteCarloEvaluator(mc_config, system_z2_2_B, gauge_fixing=True)

@@ -19,7 +19,7 @@ import ggpeps
 from ggpeps.caching import Cache
 from ggpeps.system import Z2System2DConfig, Z2System2D_1c
 from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
-from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D_G2C_F2C
+from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D
 from ggpeps.system import Z2System2D_G2C_F4C_Config, Z2System2D_G2C_F4C
 from ggpeps.system import Z2System2D_8C_Config, Z2System2D_8C
 
@@ -230,7 +230,7 @@ def main(args):
         else:
             logger.error("Not Implemented: Only 1, 2, or 4 copies are possible without fermions.")
             sys.exit(1)
-    system_type = Z2System2D_G2C_F2C
+    system_type = Z2System2D
 
     # We use a local random number generator instead of the global numpy one to assure
     # reproducibility across different runs, even when using mulitple processes

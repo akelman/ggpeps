@@ -217,12 +217,13 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         return np.array([dest_mixed]*self.num_pg_layer + [dest_unmixed]*self.num_fermionic_layer)
 
 
-class Z2System2D_G2C_F2C(System2DBase):
+class Z2System2D(System2DBase):
     """ 2 copy version of the Z2 system GGPEPS ansatz with physical fermions.
     """
 
     def __init__(self, cfg: Z2System2D_G2C_F2C_Config):
-        """Constructor of a Z2System2D_G2C_F2C system, with two virtual fermions per site per link for the gauge fields, and another two for the fermions.
+        """Constructor of a Z2System2D system, with any number of virtual fermions per site per link 
+        (provided a valid config is given).
 
         Args:
             cfg (Z2System2D_G2C_F2C_Config): Configuration containing all system-related parameters
