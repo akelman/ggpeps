@@ -96,7 +96,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         self.zeroed_params = zeroed_params
         return
 
-    def _create_symbolvec(self) -> list[sympy.Symbol]:
+    def _create_symbolvec(self) -> List[sympy.Symbol]:
         """Define all symbols of the T matrix as symbols.
         We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
 
