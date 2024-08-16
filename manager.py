@@ -40,14 +40,15 @@ def save_state_on_exit():
     args = ggpeps.global_vars["args"]
     cache = ggpeps.global_vars["cache"]
     
-    if "min" in args.mode:
-        minimizer = ggpeps.global_vars["minimizer"]
-        cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
-        logger.info(f"Added evaluator manager to cache.")
-    elif "eval" in args.mode:
-        eval_manager = ggpeps.global_vars["eval_manager"]
-        cache.add_obj_to_cache("evaluator_manager", eval_manager)
-        logger.info(f"Added evaluator manager to cache.")
+    if not args.ignore_cache_eval:
+        if "min" in args.mode:
+            minimizer = ggpeps.global_vars["minimizer"]
+            cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
+            logger.info(f"Added evaluator manager to cache.")
+        elif "eval" in args.mode:
+            eval_manager = ggpeps.global_vars["eval_manager"]
+            cache.add_obj_to_cache("evaluator_manager", eval_manager)
+            logger.info(f"Added evaluator manager to cache.")
 
     cache.save_cache_file()
     logger.info(f"Saved cache file to {cache.cache_file}.")
@@ -311,6 +312,8 @@ def main(args):
     ggpeps.global_vars["cache"] = cache
     if not args.ignore_cache:
         cache.load_cache_file(cache.cache_file)
+        if args.ignore_cache_eval:
+            cache.add_obj_to_cache("evaluator_manager", None)
 
     # Call different functions depending on the mode specified via CLI
     if args.mode == "eval-mc":
@@ -498,6 +501,7 @@ if __name__ == "__main__":
 
     # Cache settings
     parser.add_argument("--ignore_cache", action="store_true", default=False, help="Ignore the cache and start from scratch. A new cache will be saved (and overwrite the old one).") 
+    parser.add_argument("--ignore_cache_eval", action="store_true", default=False, help="Ignore the cache eval manager.") 
 
     # Arguments for ray
     parser.add_argument("--nrunner", type=int, default=0, help="Number of parallel MC runners")
