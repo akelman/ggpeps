@@ -1,5 +1,6 @@
 import sympy
 import logging
+from pfapack import pfaffian as pf
 from scipy.linalg import block_diag
 
 import numpy as np
@@ -8,9 +9,11 @@ from ggpeps import xnp as xnp
 import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
+from ggpeps.system.global_funcs import *
 
 from .system_base import Config2DBase, System2DBase
 from .system_base import get_pfaffian_arrays
+from .system_base import calculate_lognorm_inc
 
 #from ggpeps.system.global_funcs import update_gauge_ind
 
@@ -322,7 +325,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         rotmat = xnp.kron( xnp.eye(self.cfg.ncopy), dest)
         return rotmat
 
-    # TODO: fix for JAX - DONE, expect for stuff in utils
+    # TODO: fix for JAX - DONE, except for stuff in utils
     def update_gauge_ind(self, link_ind, theta):
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors and updates all incremental trackers of determinants and inverses.
@@ -446,6 +449,114 @@ class Z2System2D_G2C_F2C(System2DBase):
 
         return mass_energy_op, xnp.array(gradients)
 
+    def _compute_el_energy_op_vec(self, use_trans_inv:bool=True):
+        """Computation of the electric energy.
+        Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
+        These are saved at the end of the function.
+
+        This method overwrites an abstract method in System2DBase.
+
+        Args:
+            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
+
+        Returns:
+            list: list of electric energies for a single link
+        """
+        if not use_trans_inv:
+            # Evaluate every link of the system
+            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
+            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
+
+        lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
+        # This is the usual norm without any modifications
+        lognorm_default = xnp.sum(lognormvec_default)
+        # Number of fermions = # of sites
+        # Since we have 2 copies, we get 8 virtual fermions per site
+        single_link_offset = 2 * self.cfg.nvirtmodes_link
+        # We have to cut one link from gamma_in_sys as well
+        gamma_in_sys_mod_vec = self.gamma_in_sys_mod_vec
+        dest = []
+
+        # Indices and prefactors for building the required Pfaffians
+        overall_factors = self.cfg.el_overall_factors
+        idxarrs = self.cfg.idxarr_vec
+
+        # TODO: vectorize!
+        for layerind in range(self.cfg.nlayer):
+
+            # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
+            mat_a = self.mat_a_mod_vec[layerind] # dim: 2*nsites (for majorana) + 8 (= 4 virtual modes per link x2 for majorana)
+            mat_b = self.mat_b_mod_vec[layerind]
+            diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
+
+            gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
+
+            idxarr = idxarrs[layerind]
+            overall_factor = overall_factors[layerind]
+
+            ###################### Calculation of <P> ########################
+            covmat_out = mat_a + \
+                mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+            size = covmat_out.shape[1]
+            covmat_out_virt = slice_matrix(covmat_out, size - single_link_offset, size, size - single_link_offset, size)
+                                # covmat_out[-single_link_offset:, -single_link_offset:] # TODO: fix for JAX - DONE
+
+            # The library pfapack is rather picky about the anti-symmetrization (to 1e-14)
+            covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
+            # For the modified norm, we still have to take into account the other contributions from the unmodified parts
+            norm_mod = calculate_lognorm_inc(
+                [self.incdet_mod_vec[layerind]],
+                [self.det_mat_d_mod_vec[layerind]],
+                gamma_in_sys_mod.shape[0],
+                all_factors=True)
+            norm_mod += xnp.sum(utils.select_except(lognormvec_default, layerind))
+            # The matrix elements yield only the real part of <P>
+            # If we use the log formulation, we can calculate the log of single terms.
+
+            # Instead of writing down all the terms explicitly, we build tuples of the prefactors and the indices of the covariance matrix.
+            # Then, we compute all terms in a list comprehension.
+            pfarr = []
+            pfvals = [] # without the prefactor
+            for prefactor,ind in idxarr:
+                ind = xnp.asarray(ind)
+                pfaval = pf.pfaffian(covmat_out_virt[xnp.ix_(ind,ind)]) # TODO: fix for JAX - NOT NEEDED, jxnp.ix_ should work
+                pfarr.append(prefactor * pfaval)
+                pfvals.append(pfaval)
+            el_energy_full = overall_factor * xnp.sum(xnp.array(pfarr))
+            
+            el_energy_layer = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
+            dest.append(el_energy_layer)
+            
+            # Save intermediate calculations for use in gradient calculation
+            intermediate = self._electric_energy_intermediate_vals 
+            intermediate.covmat_out_virt_vec.append(covmat_out_virt)
+            intermediate.norm_mod_vec.append(norm_mod)
+            intermediate.lognorm_default_vec.append(lognorm_default)
+            intermediate.pfaffian_vec.append(pfvals)
+        
+        return xnp.asarray(dest)
+    
+    def _compute_el_grad_vec(self, use_trans_inv:bool=True):
+        """Computation of the electric energy gradients.
+        We start by calculating the electric energies, since these are needed for evaluating the gradients.
+        Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
+
+        This method overwrites an abstract method in System2DBase.
+
+        Args:
+            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
+
+        Returns:
+            list: list of gradients for the full system
+        """
+
+        if not use_trans_inv:
+            # Evaluate every link of the system
+            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
+            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
+        
+        res = compute_el_grad_vec(self)
+        return res
 
     def _compute_mag_energy_op(self, use_trans_inv:bool=True):
         """Computation of the magnetic energy operator (w/o shift).
