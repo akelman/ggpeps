@@ -20,7 +20,7 @@ mpmath==1.2.1
 msgpack==1.0.4
 numba>=0.56.4
 numexpr>=2.8.3
-numpy>=1.23.2
+numpy>=1.23.2,<2.0.0
 packaging==21.3
 pandas>=1.4.3
 pfapack==0.3.1

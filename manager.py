@@ -17,9 +17,9 @@ np.set_printoptions(linewidth=200)
 
 import ggpeps
 from ggpeps.caching import Cache
-from ggpeps.system import Z2System2DConfig, Z2System2D
+from ggpeps.system import Z2System2DConfig, Z2System2D_1c
 from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
-from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D_G2C_F2C
+from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D
 from ggpeps.system import Z2System2D_G2C_F4C_Config, Z2System2D_G2C_F4C
 from ggpeps.system import Z2System2D_8C_Config, Z2System2D_8C
 
@@ -40,14 +40,15 @@ def save_state_on_exit():
     args = ggpeps.global_vars["args"]
     cache = ggpeps.global_vars["cache"]
     
-    if "min" in args.mode:
-        minimizer = ggpeps.global_vars["minimizer"]
-        cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
-        logger.info(f"Added evaluator manager to cache.")
-    elif "eval" in args.mode:
-        eval_manager = ggpeps.global_vars["eval_manager"]
-        cache.add_obj_to_cache("evaluator_manager", eval_manager)
-        logger.info(f"Added evaluator manager to cache.")
+    if not args.ignore_cache_eval:
+        if "min" in args.mode:
+            minimizer = ggpeps.global_vars["minimizer"]
+            cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
+            logger.info(f"Added evaluator manager to cache.")
+        elif "eval" in args.mode:
+            eval_manager = ggpeps.global_vars["eval_manager"]
+            cache.add_obj_to_cache("evaluator_manager", eval_manager)
+            logger.info(f"Added evaluator manager to cache.")
 
     cache.save_cache_file()
     logger.info(f"Saved cache file to {cache.cache_file}.")
@@ -60,8 +61,8 @@ def signal_handler(signum, frame):
     sys.exit(INTERRUPT_EXIT_CODE)
 
 signal.signal(signal.SIGTERM, signal_handler) # register the signal handler
-signal.signal(signal.SIGUSR1, signal_handler)
-signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C
+signal.signal(signal.SIGUSR1, signal_handler) #TODO: fix for windows
+signal.signal(signal.SIGINT, signal_handler) # responds to CTRL-C 
 
 
 def args2logname(args, couplings: dict) -> str:
@@ -211,14 +212,11 @@ def main(args):
     if args.fermions:
         if args.ncopy == 2:
             # Z2 system with 4 copies of virtual fermions on the links (2 for the pure gauge case, 2 for interacting with physical fermions)
-            system_type = Z2System2D_G2C_F2C
             system_cfg = Z2System2D_G2C_F2C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
         elif args.ncopy == 4:
             # Z2 system with 6 copies of virtual fermions on the links (2 for the pure gauge case, 4 for interacting with physical fermions)
-            system_type = Z2System2D_G2C_F4C
             system_cfg = Z2System2D_G2C_F4C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
         elif args.ncopy == 8:
-            system_type = Z2System2D_8C
             system_cfg = Z2System2D_8C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
         else:
             logger.error("Not Implemented: Only 2, 4, or 8 copies are possible with fermions.")
@@ -226,15 +224,14 @@ def main(args):
     else:
         if args.ncopy == 1:
             # Z2 system with one copy of virtual fermions on the links
-            system_type = Z2System2D
             system_cfg = Z2System2DConfig(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
         elif args.ncopy == 2:
             # Z2 system with two copies of virtual fermions on the links
-            system_type = Z2System2D2C
             system_cfg = Z2System2D2CConfig(lattice, g_el, g_mag, g_int,  g_mass, nlayer=args.nlayer)
         else:
             logger.error("Not Implemented: Only 1, 2, or 4 copies are possible without fermions.")
             sys.exit(1)
+    system_type = Z2System2D
 
     # We use a local random number generator instead of the global numpy one to assure
     # reproducibility across different runs, even when using mulitple processes
@@ -275,6 +272,7 @@ def main(args):
     logger.info(f"# of layers: {system_cfg.nlayer}")
     logger.info(f"# of copies: {args.ncopy}")
     logger.info(f"fermions: {args.fermions}")
+    logger.info(f"Gauge fixing: {args.gauge_fixing}")
     logger.info(f"g (lambda): {g}")
     logger.info(f"g_el: {g_el}")
     logger.info(f"g_mag: {g_mag}")
@@ -310,6 +308,8 @@ def main(args):
     ggpeps.global_vars["cache"] = cache
     if not args.ignore_cache:
         cache.load_cache_file(cache.cache_file)
+        if args.ignore_cache_eval:
+            cache.add_obj_to_cache("evaluator_manager", None)
 
     # Call different functions depending on the mode specified via CLI
     if args.mode == "eval-mc":
@@ -320,7 +320,7 @@ def main(args):
             mc_mgr = cache.load_obj_from_local_cache('evaluator_manager')
             logger.info(f"Loaded evaluator manager from cache.")
         else:
-            mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+            mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner, args.gauge_fixing)
         ggpeps.global_vars["eval_manager"] = mc_mgr # save for global access
         
         start = timer()
@@ -336,7 +336,7 @@ def main(args):
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
 
         mc_config.minimizer_mode = True
-        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner, args.gauge_fixing)
         
         # Set the parameters of the minimizer according to the command line
         min_cfg = MinimizerConfig()
@@ -355,7 +355,8 @@ def main(args):
         minimizer.save(output_dir = args.output)
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
-        ex_eval = EvaluatorManager(system_type, system_cfg, None, args.nrunner)
+        ex_eval = EvaluatorManager(system_type, system_cfg, None, args.nrunner, args.gauge_fixing)
+        ggpeps.global_vars["eval_manager"] = ex_eval
         
         start = timer()
         dest = ex_eval.simulate()
@@ -369,7 +370,7 @@ def main(args):
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
 
         start = timer()
-        ex_mgr = EvaluatorManager(system_type, system_cfg, None, args.nrunner)
+        ex_mgr = EvaluatorManager(system_type, system_cfg, None, args.nrunner, args.gauge_fixing)
 
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
@@ -404,7 +405,7 @@ def main(args):
         mc_config.minimizer_mode = True
         for i in range(args.minmult_iter):
             logger.info(f"Minimization iteration: {i:02d}")
-            mc = EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port) 
+            mc = EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, args.gauge_fixing, port=args.port) # TODO: port is not defined!!
             minimizer = Minimizer(mc, min_cfg)
 
             resultvec.append(minimizer.minimize())
@@ -414,7 +415,7 @@ def main(args):
         minimizer.save(output_dir = args.output)
         # We run a final iteration of the MC simulation with all observables
         mc_config.minimizer_mode = False
-        mc_mgr = EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, port=args.port)
+        mc_mgr = EvaluatorManager(mc_config, system_type, system_cfg, args.nrunner, args.gauge_fixing, port=args.port)
         mc_result = mc_mgr.simulate()
         mc_result.save(output_dir = args.output)
     else:
@@ -465,6 +466,9 @@ if __name__ == "__main__":
     parser.add_argument("--fermions", action="store_true", default=False, 
                         help="Use an ansatz that allows for the inclusion of fermions") # TODO: improve handling of pure-gauge and fermions arguments
 
+    # Evaluator settings
+    parser.add_argument("--gauge_fixing", action="store_true", default=False)
+
     # Monte Carlo settings
     parser.add_argument("--seed", type=int, help="Seed for the MC simulation and parameter initialization")
     parser.add_argument("--warmup_steps", type=int, default=int(1e5), help="Number of warmup steps")
@@ -493,6 +497,7 @@ if __name__ == "__main__":
 
     # Cache settings
     parser.add_argument("--ignore_cache", action="store_true", default=False, help="Ignore the cache and start from scratch. A new cache will be saved (and overwrite the old one).") 
+    parser.add_argument("--ignore_cache_eval", action="store_true", default=False, help="Ignore the cache eval manager.") 
 
     # Arguments for ray
     parser.add_argument("--nrunner", type=int, default=0, help="Number of parallel MC runners")

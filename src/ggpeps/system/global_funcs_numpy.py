@@ -79,8 +79,8 @@ def compute_el_grad_vec_numpy(system):
         """
 
         dest_grad = []
-        overall_factors = system.el_overall_factors
-        idxarrs = system.idxarr_vec
+        overall_factors = system.cfg.el_overall_factors
+        idxarrs = system.cfg.idxarr_vec
         el_energy_vec = system.el_energy_op_vec #this gets the electric energy, and ensures that the intermediate steps are calculated
 
         for layerind in range(system.cfg.nlayer):

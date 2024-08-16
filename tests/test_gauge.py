@@ -1,6 +1,8 @@
 import unittest
 import numpy as np
-from ggpeps import utils, system, lattice, gauge
+
+from ggpeps import gauge
+
 class TestGauge(unittest.TestCase):
 
     def setUp(self):
