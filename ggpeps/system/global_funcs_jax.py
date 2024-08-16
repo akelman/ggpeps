@@ -96,9 +96,9 @@ def compute_el_grad_vec_jax(system):
     diff_d_gamma_inv_vec = device_put(jnp.asarray([system.wi_gamma_out_mod_vec[layerind].inv() for layerind in layers]), device=ggpeps.PREFERRED_DEVICE) # this does not actually do a computation, just a retrieval
     single_link_offset = 2 * system.cfg.nvirtmodes_link
     offset = 2 * system.cfg.lattice.size + single_link_offset
-    overall_factors = jnp.asarray(system.el_overall_factors) # device_put(jnp.asarray(system.el_overall_factors), device=ggpeps.PREFERRED_DEVICE)
-    idxarrs_prefactors = jnp.asarray([[t[0] for t in system.idxarr_vec[layerind]] for layerind in layers]) # device_put(jnp.asarray([[t[0] for t in system.idxarr_vec[layerind]] for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
-    idxarrs_indices = jnp.asarray([[t[1] for t in system.idxarr_vec[layerind]] for layerind in layers]) # device_put(jnp.asarray([[t[1] for t in system.idxarr_vec[layerind]] for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
+    overall_factors = jnp.asarray(system.cfg.el_overall_factors) # device_put(jnp.asarray(system.cfg.el_overall_factors), device=ggpeps.PREFERRED_DEVICE)
+    idxarrs_prefactors = jnp.asarray([[t[0] for t in system.cfg.idxarr_vec[layerind]] for layerind in layers]) # device_put(jnp.asarray([[t[0] for t in system.cfg.idxarr_vec[layerind]] for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
+    idxarrs_indices = jnp.asarray([[t[1] for t in system.cfg.idxarr_vec[layerind]] for layerind in layers]) # device_put(jnp.asarray([[t[1] for t in system.cfg.idxarr_vec[layerind]] for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
     nlinks = system.cfg.lattice.nlinks
     gamma_in_sys_mod_vec = jnp.asarray(system.gamma_in_sys_mod_vec) # device_put(jnp.asarray(system.gamma_in_sys_mod_vec), device=ggpeps.PREFERRED_DEVICE)
     diff_d_inv_gamma_inv_vec = jnp.asarray([system.wi_gamma_in_mod_vec[layerind].inv() for layerind in layers]) # device_put(jnp.asarray([system.wi_gamma_in_mod_vec[layerind].inv() for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)

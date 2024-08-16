@@ -58,7 +58,6 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
         symbvec = system_z2_2_2.symbolvec
-        tmat_symb = system_z2_2_2.tmat_symb
         #Derivative wrt y
         deriv_ana = system_z2_2_2.compute_tmat_deriv(symbvec[1])
         tmat_left = system_z2_2_2_left.tmat_vec[0]
@@ -672,24 +671,26 @@ class TestZ2SystemMethods(unittest.TestCase):
 
     def test_grad_el_energy_2_layer(self):
         #This is comparison of the analytic derivative against the numeric derivative
-        eps=1e-5
+        eps = 1e-5
+        nlayer = 2
         paramvec = np.asarray(
             [[0.17, 0.35, 0.56, 0.39, 0.42, 0.12], [0.3, 0.2, 0.8, 0.68, 0.32, 0.19]])
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, None, None, None)
+        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, None, None, None, nlayer)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
         symbolvec = self.system_z2_2_2_real.symbolvec
-        for layerind in range(paramvec.shape[0]):
+
+        for layerind in range(nlayer):
             for ind in range(len(symbolvec)):
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
-                    paramvec_left=np.copy(paramvec)
-                    paramvec_right=np.copy(paramvec)
+                    paramvec_left = np.copy(paramvec)
+                    paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, None, None, 0)
-                    system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, None, None, 0)
+                    system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, None, None, 0, nlayer)
+                    system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, None, None, 0, nlayer)
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
 
@@ -703,24 +704,26 @@ class TestZ2SystemMethods(unittest.TestCase):
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
 
     def test_grad_el_energy_3_layer(self):
-        #This is comparison of the analytic derivative against the numeric derivative
-        eps=1e-5
+        # This is a comparison of the analytic derivative against the numeric derivative
+        eps = 1e-5
+        nlayer = 3
         paramvec = np.random.rand(3,6)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, None, None, 0)
+        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, None, None, 0, nlayer)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
         symbolvec = self.system_z2_2_2_real.symbolvec
-        for layerind in range(paramvec.shape[0]):
+
+        for layerind in range(nlayer):
             for ind in range(len(symbolvec)):
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
-                    paramvec_left=np.copy(paramvec)
-                    paramvec_right=np.copy(paramvec)
+                    paramvec_left = np.copy(paramvec)
+                    paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, None, None, 0)
-                    system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, None, None, 0)
+                    system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, None, None, 0, nlayer)
+                    system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, None, None, 0, nlayer)
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
 

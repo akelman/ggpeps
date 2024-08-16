@@ -3,14 +3,13 @@ import logging
 #import numpy as np
 from ggpeps import xnp as np
 from scipy.linalg import block_diag
-from pfapack import pfaffian as pf
 
 import ggpeps
 from ggpeps import utils
-from ggpeps import lattice as lat
 from ggpeps.lattice import Direction
-from ggpeps.modearray import generate_permutation_matrix
+
 from .system_base import Config2DBase, System2DBase
+from .system_base import get_pfaffian_arrays
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -25,11 +24,22 @@ class Z2System2D2CConfig(Config2DBase):
     _nparams = 20
     ncopy = 2
     nvirtmodes_vertex = 8 # We have two virtual modes per direction (4 directions x 2 modes)
-    nvirtmodes_link = 4 #Number of virtual modes per link (2 copies and l/r or u/d)
+    nvirtmodes_link = 4 # Number of virtual modes per link (2 copies and l/r or u/d)
 
     def __init__(self, lattice, g_el, g_mag, g_int, g_mass, nlayer=1):
         #The parameters have the following order: [[t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i...],[..next layer..],....]
         super().__init__(lattice, g_el,  g_mag, g_int, g_mass, nlayer)
+        
+        # This is for pure-gauge only atm
+        self.num_pg_layer = self.nlayer 
+        self.num_fermionic_layer = 0
+
+        # Constants used in the calculation of the electric energy
+        prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
+        indices_layer_pg = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)]]
+        idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
+        self.idxarr_vec = [idxarr_lay_pg]*self.nlayer
+        self.el_overall_factors = [-1/16]*self.nlayer # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
         """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t. 
@@ -40,36 +50,7 @@ class Z2System2D2CConfig(Config2DBase):
             self.paramvec[ind, 10] = 0 # Set t1i to 0
             self.paramvec[ind, 3] = 0 # Set t2r to 0
             self.paramvec[ind, 13] = 0 # Set t2i to 0
-
-
-class Z2System2D2C(System2DBase):
-    """ 2 copy version of the Z2 system GGPEPS ansatz
-
-    Some general notes about conventions:
-
-    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
-    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
-    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
-    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
-    """
-
-    def __init__(self, cfg: Z2System2D2CConfig):
-        """Constructor of a Z2System2D2C system.
-        We call only the constructor of the super class, since we do not have any class-specific setup.
-
-        Args:
-            cfg (Z2System2D2CConfig): Configuration containing all system-related parameters
-        """
-        super().__init__(cfg)
-
-        # constants used in the calculation of the electric energy
-        prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
-        indices_layer_pg = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)]]
-        idxarr_lay_pg = self.get_pfaffian_arrays(indices_layer_pg, prefactors)
-        self.idxarr_vec = [idxarr_lay_pg]*self.cfg.nlayer
-        self.el_overall_factors = [-1/16]*self.cfg.nlayer # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-
-
+    
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
         We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
@@ -99,7 +80,6 @@ class Z2System2D2C(System2DBase):
         ci  = sympy.Symbol("ci", real=True)
         di  = sympy.Symbol("di", real=True)
         return [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i, z1i, t2i, y2i, z2i, ai, bi, ci, di]
-
 
     @property
     def tmat_symb(self):
@@ -143,6 +123,47 @@ class Z2System2D2C(System2DBase):
             [t2, 1.j*d, -1.j*b, -c, a, -1.j*z2, z2, y2, 0]
             ])
         return tmat_symb
+    
+    def generate_gamma_gauge_neutral_dict(self):
+        """Generate the the covariance matrix of the ungauged projectors.
+        The morde order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}.
+        The naming convention here is <mode letter><number of copy>_<majorana mode>.
+        We order first by link and then by copy. 
+        Modes of copy one are coupled to modes of copy 2. The projectors mix copies.
+        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The same is true for the for the up and down modes.
+
+        This method overwrites an abstract method in System2DBase.
+
+        Returns:
+            List[np.ndarray]: Covariance matrix of the ungauged projector on a single link
+        """
+        dest = [0]*2
+        dest[Direction.X] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
+        dest[Direction.Y] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
+        return [dest]*self.nlayer
+
+
+class Z2System2D2C(System2DBase):
+    """ 2 copy version of the Z2 system GGPEPS ansatz
+
+    Some general notes about conventions:
+
+    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
+    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
+    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
+    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
+    """
+
+    def __init__(self, cfg: Z2System2D2CConfig):
+        """Constructor of a Z2System2D2C system.
+        We call only the constructor of the super class, since we do not have any class-specific setup.
+
+        Args:
+            cfg (Z2System2D2CConfig): Configuration containing all system-related parameters
+        """
+        super().__init__(cfg)
+        raise DeprecationWarning("This class is to be replaced by a generic 2D Z2 class.")
 
 
     def initialize_gamma_in_sys(self):
@@ -210,24 +231,6 @@ class Z2System2D2C(System2DBase):
 
         return gamma_in_sys_vec, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
-    def _generate_gamma_gauge_neutral_dict(self):
-        """Generate the the covariance matrix of the ungauged projectors.
-        The morde order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}.
-        The naming convention here is <mode letter><number of copy>_<majorana mode>.
-        We order first by link and then by copy. 
-        Modes of copy one are coupled to modes of copy 2. The projectors mix copies.
-        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
-        The same is true for the for the up and down modes.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Returns:
-            List[np.ndarray]: Covariance matrix of the ungauged projector on a single link
-        """
-        dest = {}
-        dest[Direction.X] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
-        dest[Direction.Y] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
-        return [dest]*self.cfg.nlayer
 
     #Gauging
 
@@ -258,8 +261,9 @@ class Z2System2D2C(System2DBase):
         rot_left = np.eye(2)
         # The mode order is lr (horizontally) or du (vertically).
         # We rotate the different copies in the SAME way.
-        dest = block_diag(rot_left, rot_right, rot_left, rot_right)
-        return dest
+        dest = block_diag(rot_left, rot_right)
+        rotmat = np.kron( np.eye(self.cfg.ncopy), dest)
+        return rotmat
 
 
     def update_gauge_ind(self, link_ind, theta):

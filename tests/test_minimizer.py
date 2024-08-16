@@ -51,16 +51,17 @@ class TestMinimizerZ2(unittest.TestCase):
 
     def test_derivative_mag_energy_exact_2_layer(self):
         eps = 1e-5
+        nlayer = 2
         paramvec = [[0.0, 0.5, 0.5, 0.0, 0.0, 0.0], [0.0, 0.3, 0.8, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
+        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, nlayer)
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
         gauge_fixing = False
         exact_ev = ExactEvaluator(None, sys, gauge_fixing)
         res = exact_ev.evaluate()
 
-        for layer in range(2):
+        for layer in range(nlayer):
             for ind in range(3):
                 with self.subTest(ind=ind, layer=layer):
                     paramvec = system_cfg.paramvec
@@ -68,11 +69,11 @@ class TestMinimizerZ2(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layer, ind] -= eps
                     paramvec_right[layer, ind] += eps
-                    system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
-                    system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
+                    system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, nlayer)
+                    system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, nlayer)
 
-                    system_cfg_left.paramvec=paramvec_left
-                    system_cfg_right.paramvec=paramvec_right
+                    system_cfg_left.paramvec = paramvec_left
+                    system_cfg_right.paramvec = paramvec_right
 
                     sys_left = system.Z2System2D(system_cfg_left)
                     sys_right = system.Z2System2D(system_cfg_right)
@@ -127,24 +128,25 @@ class TestMinimizerZ2(unittest.TestCase):
 
     def test_derivative_el_energy_exact_2_layer(self):
         eps = 1e-5
+        nlayer = 2
         paramvec = [[0.2, 0.5, 0.5, 0.0, 0.0, 0.0], [0.1, 0.4, 0.2, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
+        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, nlayer)
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
         gauge_fixing = False
         exact_ev = ExactEvaluator(None, sys, gauge_fixing)
         res = exact_ev.evaluate()
 
-        for layerind in range(2):
+        for layerind in range(nlayer):
             for ind in range(3):
                 with self.subTest(ind=ind, layerind=layerind):
                     paramvec_left = np.copy(paramvec)
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
-                    system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
+                    system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, nlayer)
+                    system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, nlayer)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right

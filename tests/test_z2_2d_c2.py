@@ -1,13 +1,11 @@
-import numpy as np
 import unittest 
 from unittest import skip
+
+import numpy as np
 
 from ggpeps import utils
 from ggpeps import system
 from ggpeps import lattice
-from ggpeps.lattice import Direction
-from ggpeps.mc import MonteCarloEvaluatorConfig, MonteCarloEvaluator
-from ggpeps.utils import compare_array_elementwise
 
 # ======================= Z2 fermionic system (2 copies) =========================================
 
@@ -20,13 +18,13 @@ class TestZ2C2SystemMethods(unittest.TestCase):
             [paramvec_real, np.zeros((1, 10))], axis=1)
         cfg = system.Z2System2D2CConfig(lat, 0, 0, 0, 0)
         cfg.paramvec = paramvec_real
-        self.system_z2_2_2_real = system.Z2System2D2C(cfg)
+        self.system_z2_2_2_real = system.Z2System2D(cfg)
 
         lat = lattice.Lattice2D(2,2)
         paramvec = np.random.rand(1, 20)
         cfg = system.Z2System2D2CConfig(lat, 0, 0, 0, 0)
         cfg.paramvec = paramvec
-        self.system_z2_2_2 = system.Z2System2D2C(cfg)
+        self.system_z2_2_2 = system.Z2System2D(cfg)
 
 
     def test_tmat_deriv_symb(self):
@@ -45,9 +43,9 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         cfg_right = system.Z2System2D2CConfig(lat, 0, 0, 0, 0)
         cfg_right.paramvec = paramvec_right
 
-        system_z2_2_2 = system.Z2System2D2C(cfg)
-        system_z2_2_2_left = system.Z2System2D2C(cfg_left)
-        system_z2_2_2_right = system.Z2System2D2C(cfg_right)
+        system_z2_2_2 = system.Z2System2D(cfg)
+        system_z2_2_2_left = system.Z2System2D(cfg_left)
+        system_z2_2_2_right = system.Z2System2D(cfg_right)
 
         symbvec = system_z2_2_2.symbolvec
         #Derivative wrt yr
@@ -142,7 +140,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None)
         system_cfg.paramvec = paramvec
-        system_z2_2_2 = system.Z2System2D2C(system_cfg)
+        system_z2_2_2 = system.Z2System2D(system_cfg)
         symbolvec = self.system_z2_2_2_real.symbolvec
         for ind in range(len(symbolvec)):
             with self.subTest(symbol=symbolvec[ind]):
@@ -156,8 +154,8 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
 
-                system_z2_2_2_left = system.Z2System2D2C(system_cfg_left)
-                system_z2_2_2_right = system.Z2System2D2C(system_cfg_right)
+                system_z2_2_2_left = system.Z2System2D(system_cfg_left)
+                system_z2_2_2_right = system.Z2System2D(system_cfg_right)
 
                 deriv_maj_sys = system_z2_2_2.gamma_maj_sys_deriv_vec(symbolvec[ind])[0]
                 deriv_maj_sys_left = system_z2_2_2_left.gamma_maj_sys_vec[0]
@@ -207,7 +205,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None)
         system_cfg.paramvec = paramvec
-        system_z2_2_2 = system.Z2System2D2C(system_cfg)
+        system_z2_2_2 = system.Z2System2D(system_cfg)
         symbolvec = system_z2_2_2.symbolvec
         for ind in range(len(symbolvec)):
             with self.subTest(symbol=symbolvec[ind]):
@@ -220,8 +218,8 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
 
-                system_z2_2_2_left = system.Z2System2D2C(system_cfg_left)
-                system_z2_2_2_right = system.Z2System2D2C(system_cfg_right)
+                system_z2_2_2_left = system.Z2System2D(system_cfg_left)
+                system_z2_2_2_right = system.Z2System2D(system_cfg_right)
 
                 #This is a single layer construction, we always use layer 0 to test.
                 deriv_ana = system_z2_2_2.compute_grad_over_norm(symbolvec[ind],0)
@@ -239,7 +237,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None)
         system_cfg.paramvec = paramvec
-        system_z2_2_2 = system.Z2System2D2C(system_cfg)
+        system_z2_2_2 = system.Z2System2D(system_cfg)
         symbolvec = system_z2_2_2.symbolvec
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
         for ind in range(len(symbolvec)):
@@ -254,8 +252,8 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
 
-                system_z2_2_2_left = system.Z2System2D2C(system_cfg_left)
-                system_z2_2_2_right = system.Z2System2D2C(system_cfg_right)
+                system_z2_2_2_left = system.Z2System2D(system_cfg_left)
+                system_z2_2_2_right = system.Z2System2D(system_cfg_right)
 
                 val_left = system_z2_2_2_left.el_energy_op
                 val_right = system_z2_2_2_right.el_energy_op
@@ -265,29 +263,31 @@ class TestZ2C2SystemMethods(unittest.TestCase):
 
     def test_grad_el_energy_2_layer(self):
         #This is comparison of the analytic derivative against the numeric derivative
-        eps=1e-5
+        eps = 1e-5
+        nlayer = 2
         paramvec = np.random.rand(2,20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None)
+        system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, nlayer)
         system_cfg.paramvec = paramvec
-        system_z2_2_2 = system.Z2System2D2C(system_cfg)
+        system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
-        for layerind in range(2):
+
+        for layerind in range(nlayer):
             for ind in range(len(symbolvec)):
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None)
-                    system_cfg_right = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None)
+                    system_cfg_left = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, nlayer)
+                    system_cfg_right = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, nlayer)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
 
-                    system_z2_2_2_left = system.Z2System2D2C(system_cfg_left)
-                    system_z2_2_2_right = system.Z2System2D2C(system_cfg_right)
+                    system_z2_2_2_left = system.Z2System2D(system_cfg_left)
+                    system_z2_2_2_right = system.Z2System2D(system_cfg_right)
 
                     val_left = system_z2_2_2_left.el_energy_op
                     val_right = system_z2_2_2_right.el_energy_op
@@ -302,6 +302,6 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None)
         system_cfg.paramvec = paramvec
-        system_z2_2_2 = system.Z2System2D2C(system_cfg)
+        system_z2_2_2 = system.Z2System2D(system_cfg)
         el_energy = system_z2_2_2.el_energy
         self.assertAlmostEqual(el_energy, 0.0)

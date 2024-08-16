@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+
 from ggpeps import utils
 from ggpeps.modearray import ModeArray
 

@@ -1,7 +1,9 @@
 import unittest
+
+import numpy as np
+
 from ggpeps import lattice
 from ggpeps.lattice import Direction
-import numpy as np
 
 
 class TestLattice(unittest.TestCase):
