@@ -219,15 +219,23 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
 
 class Z2System2D(System2DBase):
-    """ 2 copy version of the Z2 system GGPEPS ansatz with physical fermions.
+    """ 2D Z2 system GGPEPS ansatz with physical fermions.
+
+    Some general notes about conventions:
+
+    Order of the paramvec: see the functions that create the symbolvec in the configs.
+        We split the real and the imaginary part of the parameters into independent variables.
+    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3... and so on}.
+    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3... and so on}.
+    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... and so on}.
     """
 
-    def __init__(self, cfg: Z2System2D_G2C_F2C_Config):
+    def __init__(self, cfg):
         """Constructor of a Z2System2D system, with any number of virtual fermions per site per link 
         (provided a valid config is given).
 
         Args:
-            cfg (Z2System2D_G2C_F2C_Config): Configuration containing all system-related parameters
+            cfg (Config2DBase): Configuration containing all system-related parameters
         """
         super().__init__(cfg)
 
@@ -247,14 +255,18 @@ class Z2System2D(System2DBase):
 
         The vertex indices are written as <number>, the link indices are written as "<number>". 
 
-        For a 2x2 system with two virtual fermions per site per link, gamma_in has the order 
+        For a 2x2 system with 1 copy (one virtual fermions per site per link), gamma_in has the order 
+        {l_1, r_0, l_0, r_1, l_3, r_2, l_2, r_3, d_2, u_0, d_0, u_2, d_3, u_1, d_1, d_3}.
+
+        For a 2x2 system with 2 copies (two virtual fermions per site per link), gamma_in has the order 
         { l1_1, r2_0, l1_1, r2_0, l1_0, r2_1, l1_0, r2_1,  
           l1_3, r2_2, l1_3, r2_2, l1_2, r2_3, l1_2, r2_3,  
           d1_2, u2_0, d1_2, u2_0, d1_0, u2_2, d1_0, u2_2,  
           d1_3, u2_1, d1_3, u2_1, d1_1, d2_3, d1_1, d2_3 }.
 
         The naming convention here is <mode letter><number of copy>_<vertex index>.
-        Each constituent in the list above refers to two Majorana modes.
+        (<number of copy> is ommitted for the 1 copy case).
+        Each constituent in the lists above refers to two Majorana modes.
 
         This method overwrites an abstract method in System2DBase.
         """
@@ -293,10 +305,17 @@ class Z2System2D(System2DBase):
 
     def generate_rotmat(self, theta: float, coord: tuple, dir: Direction):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
-        The mode order is (as for gamma_in_neutral) {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}, depending on whether the link is vertical or horizontal.
+
+        The mode order is (as for gamma_in_neutral):
+            1 copy: {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2},
+            2 copies: {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}, 
+        depending on whether the link is vertical or horizontal.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
         We order first by link and then by copy. 
-        Modes of copy one are coupled to modes of copy 2. The projectors mix copies.
+
+        For pure gauge layers, modes of copy one are coupled to modes of copy 2. The projectors mix copies.
+        For fermionic layers, the projectors don't mix copies to ensure the U(1) symmetry is obeyed.
+
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
@@ -330,7 +349,8 @@ class Z2System2D(System2DBase):
     # TODO: fix for JAX - DONE, except for stuff in utils
     def update_gauge_ind(self, link_ind, theta):
         """Update method that is called upon changing a gauge field.
-        This method is central to the algorithm since it changes the gauged projectors and updates all incremental trackers of determinants and inverses.
+        This method is central to the algorithm since it changes the gauged projectors 
+        and updates all incremental trackers of determinants and inverses.
         The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
     
         This method overwrites an abstract method in System2DBase.
