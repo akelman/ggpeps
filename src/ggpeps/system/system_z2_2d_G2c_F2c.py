@@ -1,11 +1,11 @@
 import sympy
 import logging
 from pfapack import pfaffian as pf
-from scipy.linalg import block_diag
 from typing import List
 
 import numpy as np
 from ggpeps import xnp as xnp
+from ggpeps import xscipy as xscipy
 
 import ggpeps
 from ggpeps import utils
@@ -270,10 +270,10 @@ class Z2System2D(System2DBase):
 
         # TODO: vectorize!
         for layer in range(self.cfg.nlayer):
-            neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral_vec[layer][Direction.X] )
-            neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral_vec[layer][Direction.Y] )
-            gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y) # TODO: use the jax.scipy version of block_diag
-            gamma_in_sys_vec.append(xnp.array(gamma_in_sys))
+            neutral_gauge_X = xnp.kron( id, self.gamma_gauge_neutral_vec[layer][Direction.X] )
+            neutral_gauge_Y = xnp.kron( id, self.gamma_gauge_neutral_vec[layer][Direction.Y] )
+            gamma_in_sys = xscipy.linalg.block_diag(neutral_gauge_X, neutral_gauge_Y)
+            gamma_in_sys_vec.append(gamma_in_sys)
 
             wi_gamma_in_vec.append( utils.WoodburyInverter(self.mat_d_inv_vec[layer] - gamma_in_sys) )
             wi_gamma_out_vec.append( utils.WoodburyInverter(self.mat_d_vec[layer] - gamma_in_sys) )
@@ -323,7 +323,7 @@ class Z2System2D(System2DBase):
         rot_left = xnp.eye(2)
         # The mode order is lr (horizontally) or du (vertically).
         # We rotate the different copies in the SAME way.
-        dest = xnp.array(block_diag(rot_left, rot_right)) # TODO: use the jax.scipy version of block_diag
+        dest = xscipy.linalg.block_diag(rot_left, rot_right)
         rotmat = xnp.kron( xnp.eye(self.cfg.ncopy), dest)
         return rotmat
 

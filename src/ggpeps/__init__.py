@@ -39,8 +39,10 @@ del os_
 
 if PREFERRED_BACKEND == 'numpy':
     import numpy as xnp
+    import scipy as xscipy
 elif PREFERRED_BACKEND == 'jax':
     import jax.numpy as xnp
+    import jax.scipy as xscipy
 else:
     raise ValueError(f"Unknown backend: {PREFERRED_BACKEND}")
 
