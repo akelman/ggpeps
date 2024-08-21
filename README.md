@@ -1,7 +1,7 @@
 # Gaussian PEPS simulation
 
 This repository contains the code for simulations with Gaussian Fermionic Projected Entangled Pair States (GGPEPS).
-The aim is to simulate $Z_N$ lattice gauge theories.
+The aim is to simulate lattice gauge theories. Currently only $Z_N$ theories are operational.
 
 ## Installation
 The code is written for Python 3 and tested to work with Python 3.9.
@@ -12,40 +12,38 @@ To make sure that all requirements of the package are fulfilled, the easiest way
 1. Creation of a virtual environment  
 You can create the environment in a folder of your choice. 
 For the rest of the tutorial, we assume it to be in `~/.pyenv/`
-```
-cd ~/.pyenv
-python -m venv gaussianenv
-```
-Assuming you are using bash or zsh, you can activate the environment with `source ~/.pyenv/gaussianenv/bin/activate`.
-Upon activation, you will notice that your prompt changes.
-As long as it is prefixed with `(gaussianenv)` the virtual environment is active.
-The virtual environment can be deactivated with `deactivate`.
-
+    ```
+    cd ~/.pyenv
+    python -m venv gaussianenv
+    ```
+    Assuming you are using bash or zsh, you can activate the environment with `source ~/.pyenv/gaussianenv/bin/activate`.
+    Upon activation, you will notice that your prompt changes.
+    As long as it is prefixed with `(gaussianenv)` the virtual environment is active.
+    The virtual environment can be deactivated with `deactivate`.
+<br/>
 2. Cloning the code  
 You can obtain the code by cloning the repo with
-```
-git clone git@gitlab.mpcdf.mpg.de:pemonts/gaussian-peps.git
-```
-
-Note that you have to be a member of the project to clone it.
-Cloning via SSH works only if you have added a (public) SSH key to the repository.
-
+    ```
+    git clone git@gitlab.mpcdf.mpg.de:pemonts/gaussian-peps.git
+    ```
+    Note that you have to be a member of the project to clone it.
+    Cloning via SSH works only if you have added a (public) SSH key to the repository.
+<br/>
 3. Preparation of the environment  
 For the next step, please navigate into the repo that you just downloaded and activate the empty environment that we created in step 1.
 If you intend to be able to use GPUs, see the note below.
-
-To install all required packages for the simulation, execute
-```
-pip install -r requirements.txt
-```
+    
+    <br/> To install all required packages for the simulation, execute
+    ```
+    pip install -r requirements.txt
+    ```
 
 4. Modification of the PYTHONPATH  
 Since we are working with a package (`ggpeps`), we have to add it to the PYTHONPATH in order to make Python aware of its existence.
 We add the repository to the PYTHONPATH with the following command
 ```export PYTHONPATH=$PYTHONPATH:<path_to_repo>```
 where `<path_to_repo>` is the location of the repository on your computer.
-
-If you want to make the change persistent, i.e. it remains after closing the terminal, you can consider adding it to your `~/.bashrc` (for bash) or `~/.zshrc` (for zsh).
+<br/> If you want to make the change persistent, i.e. it remains after closing the terminal, you can consider adding it to your `~/.bashrc` (for bash) or `~/.zshrc` (for zsh).
 
 ### Installation with GPUs
 JAX is the library we use for running on GPUs. JAX must be installed wth jaxlib and connected to the correct versions of CUDA. The versions required will depend on what's available on a given cluster.
@@ -69,6 +67,7 @@ The package `ggpeps` is divided into several parts:
 
 - `plot`: Helper scripts for plots
 - `system`: Module containing all system implementations. Currently, two-dimensional systems for $Z_2$ with one and two copies of virtual fermions on the links are implemented for the pure gauge case, and 2D systems with 2,4,8 copies of virtual fermions on the links for the fermionic case.
+The system configs contain all information defining an ansatz (the $T$ matrix, $\Gamma_\text{in}$, etc.), while the system classes define observables, intermediate calculations, etc.
 The implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
 - `exacteval.py`: For small systems and finite gauge groups, the expectation values of the states can be evaluated exactly by contracting the full PEPS.
 - `gauge.py`: Implementation of the gauge groups
@@ -194,7 +193,7 @@ python -m unittest tests/test_lattice.py
 - Make data file optional?
 
 ## Papers
-The following is a list of papers that have used (versions of) this code.
+The following is a list of papers that have used (versions of) this code:
 1. Emonts et al, Finding the ground state of a lattice gauge theory with fermionic tensor networks: A $2+1\mathrm{D}$ ${\mathbb{Z}}_{2}$ demonstration, PRD vol 107 (2023).
 
 There are also some papers that used a previous C++ implementation of this code.
