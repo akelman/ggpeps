@@ -27,10 +27,8 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
     nvirtmodes_vertex = 8
     nvirtmodes_link = 4
 
-    def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, nlayer=2):
-        super().__init__(lattice, g_el, g_mag, g_int, g_mass, nlayer)
-        self.num_pg_layer = self.nlayer - 1 # for now, we'll allow only one fermionic layer; it may be possible to allow more if we want more fermions per site
-        self.num_fermionic_layer = 1
+    def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, g_chem, num_pg_layer=1, num_fermionic_layer=1):
+        super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, num_fermionic_layer)
 
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.
@@ -428,7 +426,7 @@ class Z2System2D_G2C_F2C(System2DBase):
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
 
-        mass_energy_op = [1]*self.cfg.num_pg_layer # the mass energy for the pg layers is zero, but later we take the product of all layers, so we put a 1 here
+        mass_energy_op = [0]*self.cfg.num_pg_layer 
         gradients = [[0]*len(self.symbolvec)]*self.cfg.num_pg_layer
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
@@ -502,7 +500,7 @@ class Z2System2D_G2C_F2C(System2DBase):
             tuple: Tuple of (interaction energy for a single link, gradients)
         """
 
-        int_energy_op = [1]*self.cfg.num_pg_layer # the interaction energy for the pg layers is zero, but later we take the product of all layers, so we put a 1 here
+        int_energy_op = [0]*self.cfg.num_pg_layer 
         gradients = [[0]*len(self.symbolvec)]*self.cfg.num_pg_layer
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
@@ -558,3 +556,44 @@ class Z2System2D_G2C_F2C(System2DBase):
 
         return int_energy_op, gradients
 
+    def _compute_chem_energy_op_vec_and_grad(self):
+        """Calculate the chemical potential energy operator and its gradient.
+        """
+
+        chem_energy_op = [0] * self.cfg.num_pg_layer 
+        gradients = [[0]*len(self.symbolvec)] * self.cfg.num_pg_layer
+
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            # only the fermionic layers directly contribute to the chemical potential 
+            
+            # Calculation prelimaries
+            covmat = self.compute_ferm_cov(layer_ind)
+            layer_chem_energy = 0.0
+            layer_grads = [0]*len(self.symbolvec)
+            
+            # Calculate mass term
+            # Since the system is translationally invariant, we could just calculate it for one site and multiply by nsites instead
+            for site_ind in range(0, 2*self.cfg.lattice.size, 2):
+                site_factor = (-1)**(site_ind) # even or odd sublattice
+                layer_chem_energy += 0.5 * site_factor * (1 + covmat[site_ind+1, site_ind] )
+
+                for symbol_ind, symbol in enumerate(self.symbolvec):
+                    if (layer_ind, symbol_ind) not in self.cfg.zeroed_params:
+                        # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
+                        # we can skip it for parameters that are forced by the ansatz to be zero
+
+                        d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
+                        layer_grads[symbol_ind] += 0.5 * site_factor * d_gamma_out[site_ind+1, site_ind] 
+
+                    # further terms of the derivative are included higher up in the computation stack 
+                    # because computing them requires knowing various expectation values, which are not available here
+
+            chem_energy_op.append(np.asarray(layer_chem_energy))
+            gradients.append(np.asarray(layer_grads))
+
+        chem_energy_op = np.asarray(chem_energy_op)
+        gradients = np.asarray(gradients)
+
+        self.cfg.enforce_parameter_conditions(gradients)
+
+        return chem_energy_op, gradients

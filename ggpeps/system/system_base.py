@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union, List # used in type hints; this approach might be deprecated in later python versions
+from typing import Union, Optional, List # used in type hints; this approach might be deprecated in later python versions
 from dataclasses import dataclass, field
 
 import sys
@@ -80,7 +80,7 @@ class Config2DBase(ABC):
     # This will be overwritten by the specifications
     _nparams = 1
 
-    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g_el:float, g_mag:float, g_int:float,  g_mass:float, nlayer:int=1):
+    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g_el:float, g_mag:float, g_int:float,  g_mass:float, g_chem:Optional[np.array], num_pg_layer:int=1, num_fermionic_layer:int=0):
         """Constructor.
 
         Args:
@@ -89,11 +89,15 @@ class Config2DBase(ABC):
             g_mag (float): prefactor for magnetic energy
             g_int (float): prefactor for gauge-matter coupling
             g_mass (float): mass of physical fermions (i.e. prefactor on the mass term).
-            nlayer (int, optional): number of layers. Defaults to 1.
+            num_pg_layer (int, optional): number of pure gauge layers. Defaults to 1.
+            num_fermionic_layer (int, optional): number of fermionic layers. Defaults to 0.
         """
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
-        self.nlayer = nlayer
+        
         self.lattice = lattice
+        self.num_pg_layer = num_pg_layer
+        self.num_fermionic_layer = num_fermionic_layer
+        self.nlayer = self.num_pg_layer + self.num_fermionic_layer
 
         self._paramvec = None
         self.zeroed_params = [] # will store a list of the parameters forced to be zero by the ansatz
@@ -105,7 +109,12 @@ class Config2DBase(ABC):
         self.g_mag = g_mag
         self.g_int = g_int
         self.g_mass = g_mass
-
+        self.g_chem = g_chem
+        if self.g_chem is None:
+            self.g_chem = np.zeros(self.nlayer)
+        elif len(self.g_chem) != self.nlayer:
+            raise ValueError("The number of chemical potentials must match the number of layers.")
+    
     def __str__(self):
         # define a string method that can be used, e.g., in filenaming
         # note that this string doesn't include the number of copies
@@ -215,6 +224,7 @@ class System2DBase(ABC):
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad_vec = None
         self._int_energy_op_grad_vec = None
+        self._chem_energy_op_grad_vec = None
         self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # gradients of gamma_out for all symbols
         self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
 
@@ -227,6 +237,7 @@ class System2DBase(ABC):
         self._mass_energy_op_vec = None
         self._int_energy_op = None
         self._int_energy_op_vec = None
+        self._chem_energy_op_vec = None
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in_vec = None  # Tracks (D^-1 - gammain)^-1
@@ -1067,10 +1078,12 @@ class System2DBase(ABC):
         self._mass_energy_op_vec = None
         self._int_energy_op = None
         self._int_energy_op_vec = None
+        self._chem_energy_op_vec = None
         
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad_vec = None
         self._int_energy_op_grad_vec = None
+        self._chem_energy_op_grad_vec = None
         self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec, range(self.cfg.nlayer))}
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
         return
@@ -1085,7 +1098,7 @@ class System2DBase(ABC):
     
     @abstractmethod
     def _compute_mass_energy_op_vec_and_grad(self):
-        """Compute the mass energy and the gradient (for a single layer).
+        """Compute the mass energy and the gradient (per layer).
         This is an abstract method and has to be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
@@ -1097,7 +1110,14 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
-    ## MOVE TO GLOBAL
+    @abstractmethod
+    def _compute_chem_energy_op_vec_and_grad(self):
+        """Compute the chemical potential energy and the gradient (per layer).
+        This is an abstract method and has to be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+
     def _compute_el_energy_op_vec(self, use_trans_inv:bool=True):
         """Computation of the electric energy.
         Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
@@ -1225,6 +1245,8 @@ class System2DBase(ABC):
                 self._energy += self.mass_energy
             if not utils.isclose(self.cfg.g_int, 0):
                 self._energy += self.int_energy
+            if not np.allclose(self.cfg.g_chem, 0):
+                self._energy += self.chem_energy
         return self._energy
 
     # Functions that return a term of the energy in the Hamiltonian, including all prefactors and energy from the entire lattice.
@@ -1274,6 +1296,19 @@ class System2DBase(ABC):
         int_energy = self.cfg.g_int * self.int_energy_op
         return int_energy
 
+    @property
+    def chem_energy(self):
+        """Compute chemical potential energy for the whole system
+        This is a get function.
+
+        Returns:
+            float: chemical potential energy
+        """
+        chem_energy = 0.0
+        for layer in range(self.cfg.nlayer):
+            chem_energy += self.cfg.g_chem[layer] * self.chem_energy_op_vec[layer]
+        return chem_energy
+
     # Functions that return the energy for the operator part of a term in the Hamiltonian, including the energy for the entire lattice, but not any shifts or prefactors.
     @property
     def el_energy_op(self):
@@ -1312,7 +1347,7 @@ class System2DBase(ABC):
         """
         if self._mass_energy_op is None:
             nsites = self.cfg.lattice.size
-            self._mass_energy_op = np.prod(self.mass_energy_op_vec) # don't multiply by the number of sites; for the mass term this is assumed to happen lower down in the stack.
+            self._mass_energy_op = np.sum(self.mass_energy_op_vec) # don't multiply by the number of sites; for the mass term this is assumed to happen lower down in the stack.
         return self._mass_energy_op
 
     @property
@@ -1325,7 +1360,7 @@ class System2DBase(ABC):
         """
         if self._int_energy_op is None:
             nsites = self.cfg.lattice.size
-            self._int_energy_op = np.prod(self.int_energy_op_vec)
+            self._int_energy_op = np.sum(self.int_energy_op_vec)
         return self._int_energy_op
     
     # Functions that return the layer-resolved energies of each energy operator
@@ -1364,9 +1399,21 @@ class System2DBase(ABC):
             list: Layer-resolved interaction energy w/o shift
         """
         if self._int_energy_op_vec is None:
-            # This vector is the electric energy on a single site.
+            # This vector is the interaction energy on a single site.
             self._int_energy_op_vec, self._int_energy_op_grad_vec = self._compute_int_energy_op_vec_and_grad()
         return self._int_energy_op_vec
+
+    @property
+    def chem_energy_op_vec(self):
+        """Compute chemical potential energy operator w/o shift for all layers for the whole system.
+        This is a get function.
+
+        Returns:
+            list: Layer-resolved interaction energy w/o shift
+        """
+        if self._chem_energy_op_vec is None:
+            self._chem_energy_op_vec, self._chem_energy_op_grad_vec = self._compute_chem_energy_op_vec_and_grad()
+        return self._chem_energy_op_vec
 
     # Functions that return the layer-resolved gradients of each energy operator
     @property
@@ -1401,10 +1448,22 @@ class System2DBase(ABC):
         Returns:
             float: Gradient of the interaction energy operator (w/o shift) for the whole system
         """
-        if self._int_energy_op_vec is None:
+        if self._int_energy_op_grad_vec is None:
             self._int_energy_op_vec, self._int_energy_op_grad_vec = self._compute_int_energy_op_vec_and_grad()
             # Do for whole system...
         return self._int_energy_op_grad_vec
+
+    @property
+    def chem_energy_op_grad_vec(self):
+        """Compute the gradient of the chemical potential energy operator for the whole system without shift.
+        This is a get function.
+
+        Returns:
+            float: Gradient of the chemical potential energy operator (w/o shift) for the whole system
+        """
+        if self._chem_energy_op_grad_vec is None:
+            self._chem_energy_op_vec, self._chem_energy_op_grad_vec = self._compute_chem_energy_op_vec_and_grad()
+        return self._chem_energy_op_grad_vec
 
 
 

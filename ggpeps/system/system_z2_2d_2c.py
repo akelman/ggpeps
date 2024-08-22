@@ -26,9 +26,12 @@ class Z2System2D2CConfig(Config2DBase):
     nvirtmodes_vertex = 8 # We have two virtual modes per direction (4 directions x 2 modes)
     nvirtmodes_link = 4 #Number of virtual modes per link (2 copies and l/r or u/d)
 
-    def __init__(self, lattice, g_el, g_mag, g_int, g_mass, nlayer=1):
+    def __init__(self, lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer=1, num_fermionic_layer=0):
         #The parameters have the following order: [[t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i...],[..next layer..],....]
-        super().__init__(lattice, g_el,  g_mag, g_int, g_mass, nlayer)
+        if num_fermionic_layer != 0: 
+            # This ansatz does not support fermionic layers
+            raise ValueError("The Z2System2D2C ansatz does not support fermionic layers.")
+        super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0)
 
     def make_pure_gauge(self):
         """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t. 
@@ -394,3 +397,11 @@ class Z2System2D2C(System2DBase):
         # (and it can't be, because the ansatz doesn't have the required parameterization).
         # We return zeros just to not break the interface.
         raise NotImplementedError("The interaction energy is not implemented yet for the selected ansatz.")
+    
+    def _compute_chem_energy_op_vec_and_grad(self):
+        # This function is not implemented yet! 
+        # (and it can't be, because the ansatz doesn't have the required parameterization).
+        # We return zeros just to not break the interface.
+        energies = [0]*self.cfg.nlayer
+        gradients = [ [0]*self.cfg.nparams_per_layer for k in range(self.cfg.nlayer) ]
+        return np.array(energies), np.array(gradients)

@@ -79,7 +79,7 @@ def args2logname(args, couplings: dict) -> str:
     if "exact" in args.mode:
         fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}.log"
     else:
-        fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}_nlayer_{args.nlayer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
+        fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}_num_pg_layer_{args.num_pg_layer}_num_fermionic_layer_{args.num_fermionic_layer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
     return os.path.join(args.output, fname)
 
 def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomState):
@@ -206,20 +206,24 @@ def main(args):
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 
+    # TODO: get from command line
+    nlayer = args.num_pg_layer + args.num_fermionic_layer
+    g_chem = np.array([0,0,0])
+
     # Depending on the parameters, we instantiate different systems
     # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.fermions:
         if args.ncopy == 2:
             # Z2 system with 4 copies of virtual fermions on the links (2 for the pure gauge case, 2 for interacting with physical fermions)
             system_type = Z2System2D_G2C_F2C
-            system_cfg = Z2System2D_G2C_F2C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
+            system_cfg = Z2System2D_G2C_F2C_Config(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer=args.num_pg_layer, num_fermionic_layer=args.num_fermionic_layer)
         elif args.ncopy == 4:
             # Z2 system with 6 copies of virtual fermions on the links (2 for the pure gauge case, 4 for interacting with physical fermions)
             system_type = Z2System2D_G2C_F4C
-            system_cfg = Z2System2D_G2C_F4C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
+            system_cfg = Z2System2D_G2C_F4C_Config(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer=args.num_pg_layer, num_fermionic_layer=args.num_fermionic_layer)
         elif args.ncopy == 8:
             system_type = Z2System2D_8C
-            system_cfg = Z2System2D_8C_Config(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
+            system_cfg = Z2System2D_8C_Config(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer=args.num_pg_layer, num_fermionic_layer=args.num_fermionic_layer)
         else:
             logger.error("Not Implemented: Only 2, 4, or 8 copies are possible with fermions.")
             sys.exit(1)
@@ -227,11 +231,11 @@ def main(args):
         if args.ncopy == 1:
             # Z2 system with one copy of virtual fermions on the links
             system_type = Z2System2D
-            system_cfg = Z2System2DConfig(lattice, g_el, g_mag, g_int, g_mass, nlayer=args.nlayer)
+            system_cfg = Z2System2DConfig(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer=args.num_pg_layer, num_fermionic_layer=0)
         elif args.ncopy == 2:
             # Z2 system with two copies of virtual fermions on the links
             system_type = Z2System2D2C
-            system_cfg = Z2System2D2CConfig(lattice, g_el, g_mag, g_int,  g_mass, nlayer=args.nlayer)
+            system_cfg = Z2System2D2CConfig(lattice, g_el, g_mag, g_int,  g_mass, g_chem, num_pg_layer=args.num_pg_layer, num_fermionic_layer=0)
         else:
             logger.error("Not Implemented: Only 1, 2, or 4 copies are possible without fermions.")
             sys.exit(1)
@@ -271,7 +275,8 @@ def main(args):
     # Update Log
     logger.info("======= SYSTEM INFO ========")
     logger.info(f"L: {L}")
-    logger.info(f"# of layers: {system_cfg.nlayer}")
+    logger.info(f"# of PG layers: {system_cfg.num_pg_layer}")
+    logger.info(f"# of matter layers: {system_cfg.num_fermionic_layer}")
     logger.info(f"# of copies: {args.ncopy}")
     logger.info(f"fermions: {args.fermions}")
     logger.info(f"g (lambda): {g}")
@@ -279,6 +284,7 @@ def main(args):
     logger.info(f"g_mag: {g_mag}")
     logger.info(f"g_int: {g_int}")
     logger.info(f"g_mass: {g_mass}")
+    logger.info(f"g_chem: {g_chem}")
     logger.info(f"Rebinning EOM: {Measurement.use_rebinning}")
     logger.info(f"Starting parameters: {paramvec}")
     logger.info("============================")
@@ -453,8 +459,10 @@ if __name__ == "__main__":
     parser.add_argument("--g_mass", "--mass", "--m", type=float, default=0.0, help="matter constant")
 
     # Ansatz parameters
-    parser.add_argument("--nlayer", default=1, type=int,
-                        help="Number of PEPS layers for the variational state")
+    parser.add_argument("--num_pg_layer", default=1, type=int,
+                        help="Number of pure gauge PEPS layers for the variational state")
+    parser.add_argument("--num_fermionic_layer", default=1, type=int,
+                        help="Number of matter PEPS layers for the variational state")
     parser.add_argument("--ncopy", default=1, type=int,
                         help="Number of virtual fermions on the links per layer")
 

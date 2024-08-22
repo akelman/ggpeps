@@ -24,10 +24,8 @@ class Z2System2D_8C_Config(Config2DBase):
     nvirtmodes_vertex = 32
     nvirtmodes_link = 16
 
-    def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, nlayer=2):
-        super().__init__(lattice, g_el, g_mag, g_int, g_mass, nlayer)
-        self.num_pg_layer = self.nlayer - 1
-        self.num_fermionic_layer = 1
+    def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, g_chem, num_pg_layer=1, num_fermionic_layer=1):
+        super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, num_fermionic_layer)
 
     def make_pure_gauge(self):
         raise NotImplementedError("Haven't implemented parameter conditions for pure gauge for this ansatz.")
@@ -653,4 +651,10 @@ class Z2System2D_8C(System2DBase):
 
         return int_energy_op, gradients
 
-
+    def _compute_chem_energy_op_vec_and_grad(self):
+        # This function is not implemented yet! 
+        # (and it can't be, because the ansatz doesn't have the required parameterization).
+        # We return zeros just to not break the interface.
+        energies = [0]*self.cfg.nlayer
+        gradients = [ [0]*self.cfg.nparams_per_layer for k in range(self.cfg.nlayer) ]
+        return np.array(energies), np.array(gradients)
