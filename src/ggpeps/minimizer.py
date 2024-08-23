@@ -214,11 +214,6 @@ def print_callback(x, minimizer):
         logger.info("Callback message due to caching. The last_result is None.")
         return
     
-    if minimizer.evaluator_manager.type == 'exact':
-        acceptance_prob = np.nan # acceptance_prob is undefined for exact contraction
-    else:
-        acceptance_prob = res.get_obs_mean("acceptance_prob")
-    
     energy = res.get_obs_mean("energy")
     number_per_site = res.get_obs_mean("number_per_site")
     grad_paramvec = res.get_obs_mean("energy_grad")
@@ -238,6 +233,7 @@ def print_callback(x, minimizer):
         message = f"Iter: {x:03d}, {message}"
     if 'mc' in minimizer.evaluator_manager.type:
         # Acceptance probability is only defined for MC
+        acceptance_prob = res.get_obs_mean("acceptance_prob")
         message += f", acceptance prob: {acceptance_prob:.6f}"
     logger.info(message)
 
