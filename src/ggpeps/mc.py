@@ -5,8 +5,8 @@ import gzip
 import pickle
 import logging
 
-import numpy as np
 import pandas as pd
+import numpy as np
 
 import ggpeps
 import ggpeps.utils as utils
@@ -33,6 +33,7 @@ class MonteCarloEvaluatorConfig:
         self.binsize: int = 1
         self.minimizer_mode: bool = False
         self.update_size_per_step: int = 1 # this can be set anywhere from 1 to nlinks (inclusive)
+        self.gauge_fixing = False
 
         # Logging frequency
         self.warmup_log_freq: int = 5000 # log every X steps
@@ -105,7 +106,7 @@ def run_mc(runner_id: int, mc_cfg: MonteCarloEvaluatorConfig, system_cls, system
     
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
-    mc = MonteCarloEvaluator(mc_cfg, system)
+    mc = MonteCarloEvaluator(mc_cfg, system, False) # TODO: set gauge fixing properly
     mc.evaluate()
     return mc
 
@@ -115,12 +116,14 @@ def run_mc(runner_id: int, mc_cfg: MonteCarloEvaluatorConfig, system_cls, system
 class MonteCarloEvaluator(Evaluator):
     """Class to take care of the MC simulation on a single runner
     """
-    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
+    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system, gauge_fixing):
         self.cfg = evaluator_cfg
         self.system = system
-        self.obsdict: dict = {}
-        self.step: int = 0
         self.evaluator_type = 'mc'
+        self.obsdict: dict = {}
+        self.gauge_fixing = gauge_fixing
+        
+        self.step: int = 0
         self.init_measurements()
 
         # Choose how to update in each MC step
@@ -286,20 +289,36 @@ class MonteCarloEvaluator(Evaluator):
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
+        comp_tree = lattice.comp_tree #non gauge fixed links
         nlinks = lattice.nlinks
-        for i in range(nlinks):
-            # Uniformly pick a gauge to replace
-            theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
-            # Store the old values
-            weight_old = self.system.weight
-            weight_new = self.system.calculate_weight_attempt(i, theta)
-            if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
-                # Accept
-                self.obsdict["acceptance_prob"].append(1)
-                self.system.update_gauge_ind(i, theta)
-            else:
-                # Reject
-                self.obsdict["acceptance_prob"].append(0)
+        if self.gauge_fixing:
+            for i in comp_tree:
+                # Uniformly pick a gauge to replace
+                theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+                # Store the old values
+                weight_old = self.system.weight
+                weight_new = self.system.calculate_weight_attempt(i, theta)
+                if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
+                    # Accept
+                    self.obsdict["acceptance_prob"].append(1)
+                    self.system.update_gauge_ind(i, theta)
+                else:
+                    # Reject
+                    self.obsdict["acceptance_prob"].append(0)
+        else:
+            for i in range(nlinks):
+                # Uniformly pick a gauge to replace
+                theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+                # Store the old values
+                weight_old = self.system.weight
+                weight_new = self.system.calculate_weight_attempt(i, theta)
+                if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
+                    # Accept
+                    self.obsdict["acceptance_prob"].append(1)
+                    self.system.update_gauge_ind(i, theta)
+                else:
+                    # Reject
+                    self.obsdict["acceptance_prob"].append(0)
         
     def update_N_sites(self):
         """Update for the MC simulation.
@@ -308,7 +327,11 @@ class MonteCarloEvaluator(Evaluator):
         The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
         """
         nlinks = self.system.cfg.lattice.nlinks
-        links_inds = self.cfg.rng_state.choice([k for k in range(nlinks)], self.cfg.update_size_per_step, replace=False)
+        if self.gauge_fixing:
+            links_inds = self.cfg.rng_state.choice(self.system.cfg.lattice.comp_tree, self.cfg.update_size_per_step, replace=False)
+        else:
+            links_inds = self.cfg.rng_state.choice([k for k in range(nlinks)], self.cfg.update_size_per_step, replace=False)
+        
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
             theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)

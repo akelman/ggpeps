@@ -4,16 +4,16 @@
 *.a
 # We never commit pdfs
 *.pdf
-#Do not add Python helper files
+# Do not add Python helper files
 *.pyc
 *.npy
 *.npz
 __cache__
 __pycache__
-#Ignore python environment
+# Ignore python environment
 .pyenv
 .venv
-#Ignore all latex files
+# Ignore all latex files
 *.aux
 *.bcf
 *.log
@@ -22,21 +22,27 @@ __pycache__
 *.out
 *.snm
 *.toc
-#No need to include parameter files
+# No need to include parameter files
 paramvec*
-#Ignore the vscode files
+# Ignore the vscode files
 .vscode
-#We do not commit performance data
+# We do not commit performance data
 perf.data
 *.scorep_init.*
-#Ignore the data that we stored
+# Ignore the data that we stored
 cache
 inputfile_*
 *.pkl
 *.pkl.gz
-#ignore profiling data
+# Ignore profiling data
 *.prof
 # We do not store checkpoints of jupyter notebooks
 .ipynb_checkpoints
+# Pycharm folder
+.idea
 
 run
+build
+src/*.egg-info
+# Ignore coverage files
+.coverage

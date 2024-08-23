@@ -102,7 +102,7 @@ class TestBGBTransform(unittest.TestCase):
         gamma_dirac = np.delete(gamma_dirac,[0],axis=1)
         gamma_dirac = np.delete(gamma_dirac,[0],axis=0)
 
-        tmat_single = system_u1._eval_tmat_symb_single(system_u1.cfg.paramvec[0])
+        tmat_single = system_u1.eval_tmat_symb_single(system_u1.cfg.paramvec[0])
         #Cut the physical mode
         tmat_single = tmat_single[1:,:]
         bgb_trafo = utils.BgbTransform(tmat_single, pure_gauge=True)
@@ -123,7 +123,7 @@ class TestBGBTransform(unittest.TestCase):
         gamma_dirac = utils.tmat_to_covariance_matrix(tmat_double)
         #gamma_dirac = system_u1.gamma_dirac_vec[0]
 
-        tmat_single = system_u1._eval_tmat_symb_single(system_u1.cfg.paramvec[0])
+        tmat_single = system_u1.eval_tmat_symb_single(system_u1.cfg.paramvec[0])
         bgb_trafo = utils.BgbTransform(tmat_single, pure_gauge=False)
         gamma_dirac_svd = bgb_trafo.mat_out
 

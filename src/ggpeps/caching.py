@@ -1,6 +1,7 @@
 import os
 import pickle
 import logging
+
 import numpy as np
 
 import ggpeps
@@ -64,6 +65,7 @@ class Cache:
         
         # if cached value is not found, but an eval manager is present, 
         # update the minimizer to use that eval manager
+        # ISSUE: note that this overwrites the current eval manager, including when the config (e.g. meas_steps) has changed
         # TODO: this is a hack, we should have a better way to handle this
         if self.cache_data['evaluator_manager'] is not None:
             eval_manager = self.cache_data['evaluator_manager']
@@ -75,11 +77,12 @@ class Cache:
     def load_cache_file(self, cache_file: str) -> bool:
         # TODO: once we include other objects in the cache,
         #       this function should check that cached objects have the same configs
+        #       (unless a change is deliberate...)
         success = False
         if os.path.exists(cache_file):
             with open(cache_file, "rb") as infile:
                 cache_data = pickle.load(infile)
-                if cache_data['cache_version'] == self.cache_version and cache_data['mode'] == ggpeps.global_vars['args'].mode:
+                if cache_data['cache_version'] == self.cache_version:
                     self.cache_data = cache_data
                     success = True
                     logger.info(f"Loaded cache file {cache_file}")
@@ -93,3 +96,32 @@ class Cache:
                     logger.warn(message)
                     # TODO: we can probably recover some of the data
         return success
+
+def remove_eval_manager_from_cache(cache_files):
+    """Remove the evaluator_manager from the cache files.
+
+    Args:
+        cache_files (list): paths to cache files
+    """
+    for cache_file in cache_files:
+        if os.path.exists(cache_file):
+            cache = Cache('', cache_file)
+            cache.load_cache_file(cache_file)
+            cache.cache_data['evaluator_manager'] = None
+            cache.save_cache_file()
+    return
+
+def main(args):
+    remove_eval_manager_from_cache(args.files)
+    return
+
+
+if __name__ == '__main__':
+
+    import argparse
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--files", nargs="+", help="path to cache files")
+    args = parser.parse_args()
+
+    main(args)

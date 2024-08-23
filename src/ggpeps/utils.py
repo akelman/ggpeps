@@ -6,10 +6,12 @@ import pickle
 import logging
 import subprocess  # Start process for git hash
 
-import numpy as np
 import numba as nb
 from scipy.sparse import issparse
 from scipy.linalg import svd, block_diag
+
+import numpy as np
+from ggpeps import xnp as xnp
 
 from pfapack import pfaffian as pf
 
@@ -179,7 +181,8 @@ def get_git_hash():
     """
     # This assumes that .git is in the parent folder of util.py 
     packagedir = os.path.dirname(os.path.realpath(__file__))
-    rootdir = os.path.join(packagedir,os.path.pardir)
+    srcdir = os.path.join(packagedir, os.path.pardir)
+    rootdir = os.path.join(srcdir,os.path.pardir)
     gitdir = os.path.join(rootdir, ".git")
     githash = subprocess.check_output(['git', f'--git-dir={gitdir}', 'rev-parse', 'HEAD'])
     return githash.decode("utf-8").strip()
@@ -197,10 +200,13 @@ def select_except(arr, ind: int):
     """
     # This function works only on the outer-most layer
     if isinstance(arr, list):
-        arr = np.asarray(arr)
-    mask = np.ones(len(arr), dtype=bool)
-    mask[ind] = False
-    return arr[mask]
+        arr = xnp.asarray(arr)
+    mask = xnp.ones(len(arr), dtype=bool)
+    if ggpeps.PREFERRED_BACKEND == 'jax': # TODO: handle based on type checking instead
+        mask = mask.at[ind].set(False)
+    else:
+        mask[ind] = False
+    return arr[mask] # TODO: fix for JAX
 
 
 def multiply_except(arr, ind: int):
@@ -215,7 +221,7 @@ def multiply_except(arr, ind: int):
     """
     if len(arr)>1:
         others = select_except(arr, ind)
-        return np.prod(others)
+        return xnp.prod(others)
     else:
         # It does not make sense to execute this function with only one element
         return arr[0]
@@ -234,8 +240,8 @@ def derivative_pfaffian_covariance_mat(pfarr,matvec,d_matvec):
     dest = 0.0
     for pfaval,mat,d_mat in zip(pfarr,matvec,d_matvec):
         if not isclose(pfaval,0):
-            mat_inv = np.linalg.inv(mat)
-            dest += 0.5 * pfaval * np.trace(mat_inv @ d_mat)
+            mat_inv = xnp.linalg.inv(mat)
+            dest += 0.5 * pfaval * xnp.trace(mat_inv @ d_mat)
     return dest
 
 def derivative_pfaffian(mat, d_mat, pfaval=None):
@@ -255,7 +261,7 @@ def derivative_pfaffian(mat, d_mat, pfaval=None):
         pfaval = pf.pfaffian(mat)
     
     if not isclose(pfaval, 0):
-        return 0.5 * pfaval * np.trace(np.linalg.inv(mat) @ d_mat)
+        return 0.5 * pfaval * xnp.trace(xnp.linalg.inv(mat) @ d_mat)
     else:
         return 0.0
 
@@ -264,25 +270,25 @@ def derivative_pfaffian(mat, d_mat, pfaval=None):
 def is_hermitian(mat):
     """Returns true if the matrix is hermitian."""
     if issparse(mat):
-        return np.allclose(mat.todense(), mat.H.todense())
+        return xnp.allclose(mat.todense(), mat.H.todense())
     else:
-        return np.allclose(np.conjugate(np.transpose(mat)), mat)
+        return xnp.allclose(xnp.conjugate(xnp.transpose(mat)), mat)
 
 
 def is_diagonal(mat):
     """Returns true if the matrix is diagonal."""
     if issparse(mat):
-        return np.allclose((mat-mat.diagonal()).todense(), np.zeros(mat.shape))
+        return xnp.allclose((mat-mat.diagonal()).todense(), xnp.zeros(mat.shape))
     else:
-        return np.allclose(mat-np.diag(np.diag(mat)), np.zeros_like(mat))
+        return xnp.allclose(mat-xnp.diag(xnp.diag(mat)), xnp.zeros_like(mat))
 
 
 def is_symmetric(mat):
     """Returns true if the matrix is symmetric. """
     if issparse(mat):
-        return np.allclose(mat.todense(), mat.T.todense())
+        return xnp.allclose(mat.todense(), mat.T.todense())
     else:
-        return np.allclose(np.transpose(mat), mat)
+        return xnp.allclose(xnp.transpose(mat), mat)
 
 def is_permutation(mat):
     """Returns true if the matrix is a permutation matrix. """
@@ -291,23 +297,23 @@ def is_permutation(mat):
         raise NotImplementedError("Checking for sparse permutation matrices is not implemented.")
     else:
         square = n == m
-        id = np.allclose(np.eye(n), mat@np.transpose(mat))
-        sum_rows = np.all(np.sum(mat, axis=0) == 1)
-        sum_cols = np.all(np.sum(mat, axis=1) == 1)
+        id = xnp.allclose(xnp.eye(n), mat @ xnp.transpose(mat))
+        sum_rows = xnp.all(xnp.sum(mat, axis=0) == 1)
+        sum_cols = xnp.all(xnp.sum(mat, axis=1) == 1)
         return square and id and sum_rows and sum_cols
 
 
 def is_antisymmetric(mat):
     """Returns true if the matrix is symmetric. """
     if issparse(mat):
-        return np.allclose(mat.todense(), -mat.T.todense())
+        return xnp.allclose(mat.todense(), -mat.T.todense())
     else:
-        return np.allclose(-np.transpose(mat), mat)
+        return xnp.allclose(- xnp.transpose(mat), mat)
 
 def is_covmat(mat:np.ndarray) -> bool:
     """Returns true if the given matrix satisfies all the conditions to be a covariance matrix."""
     m, n = mat.shape
-    if m == n and is_antisymmetric(mat) and np.allclose(mat@mat, -np.eye(m)) and np.allclose(mat @ np.transpose(mat), np.eye(m)):
+    if m == n and is_antisymmetric(mat) and xnp.allclose(mat@mat, -xnp.eye(m)) and xnp.allclose(mat @ xnp.transpose(mat), xnp.eye(m)):
         # note that the last check should be mat @ mat^dagger = 1, but transpose gets the same information for a matrix with real elements
         return True
     return False
@@ -317,17 +323,17 @@ def anti_symmetrize(mat):
     if issparse(mat):
         return 0.5*(mat - mat.T)
     else:
-        return 0.5*(mat - np.transpose(mat))
+        return 0.5*(mat - xnp.transpose(mat))
 
 
 def get_nonzero_fraction(mat):
     """Returns fraction of non-zero elements."""
-    return np.count_nonzero(mat)/np.prod(mat.shape)
+    return xnp.count_nonzero(mat)/xnp.prod(mat.shape)
 
 
 def herm_conj(mat):
     """Returns the hermitian conjugate of a matrix."""
-    return np.conjugate(np.transpose(mat))
+    return xnp.conjugate(xnp.transpose(mat))
 
 
 def commutator(mat1, mat2):
@@ -358,7 +364,7 @@ def anticommutator(mat1, mat2):
 
 # =========== Covariance Utility Funcitons ===========
 
-def tmat_to_covariance_matrix(tmat):
+def tmat_to_covariance_matrix(tmat: np.ndarray) -> np.ndarray:
     """Transforms a T matrix into the corresponding covariance matrix in terms of Dirac modes.
     This function assumes that the fiducial operator has a certain form: A=exp(T_{ij}a_i^\dagger a_j^\dagger)
 
@@ -369,13 +375,13 @@ def tmat_to_covariance_matrix(tmat):
         np.array: Covariance matrix in terms of Dirac modes
     """
     m, n = tmat.shape
-    id = np.eye(m)
-    idinv = np.linalg.inv(id - tmat @ np.conjugate(tmat))
+    id = xnp.eye(m)
+    idinv = xnp.linalg.inv(id - tmat @ xnp.conjugate(tmat))
     lt = -idinv @ tmat
-    rt = 0.5 * idinv @ (id + tmat @ np.conjugate(tmat))
-    lb = - np.conjugate(rt)
-    rb = - np.conjugate(lt)
-    return 1.j*np.block([[lt, rt], [lb, rb]])
+    rt = 0.5 * idinv @ (id + tmat @ xnp.conjugate(tmat))
+    lb = - xnp.conjugate(rt)
+    rb = - xnp.conjugate(lt)
+    return 1.j*xnp.block([[lt, rt], [lb, rb]])
 
 
 def generate_smat(n: int):
@@ -388,9 +394,9 @@ def generate_smat(n: int):
     Returns:
         np.array: n x n matrix
     """
-    pattern = [[1], [1.j]]
-    halfmat = np.kron(np.eye(n//2), pattern)
-    return np.block([halfmat, np.conjugate(halfmat)])
+    pattern = xnp.array([[1], [1.j]])
+    halfmat = xnp.kron(np.eye(n//2), pattern)
+    return xnp.block([halfmat, xnp.conjugate(halfmat)])
 
 # =========================== Cache Server =================================
 
@@ -432,30 +438,34 @@ class CacheServer:
 
 class WoodburyInverter:
     def __init__(self, mat):
-        self.ainv = np.linalg.inv(mat)
+        self.ainv = xnp.linalg.inv(mat)
 
     def inv(self):
         return self.ainv
 
     def update(self, u, c, v):
         # We ware updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
-        if not np.allclose(c, 0):
+        if not xnp.allclose(c, 0):
             # We cannot update with C being zero since this matrix has no inverse
-            cinv = np.linalg.inv(c)
-            self.ainv -= ((self.ainv @ u) @ np.linalg.inv(cinv + v @ self.ainv @ u)) @ (v @ self.ainv)
+            cinv = xnp.linalg.inv(c)
+            self.ainv -= ((self.ainv @ u) @ xnp.linalg.inv(cinv + v @ self.ainv @ u)) @ (v @ self.ainv)
         return self.ainv
 
     def update_index(self, m, indi, indj):
         # Construct two matrices to shift M to the correct position in A
-        if not np.allclose(m, 0):
+        if not xnp.allclose(m, 0):
             # We cannot update with C being zero since this matrix has no inverse
             m_m, n_m = m.shape
             m_a, n_a = self.ainv.shape
-            idmat = np.eye(m_m, n_m)
-            u = np.zeros((m_a, m_m))
-            v = np.zeros((n_m, n_a))
-            u[indi:indi+m_m, 0:n_m] = idmat
-            v[0:m_m, indj:indj+n_m] = idmat
+            idmat = xnp.eye(m_m, n_m)
+            u = xnp.zeros((m_a, m_m))
+            v = xnp.zeros((n_m, n_a))
+            if ggpeps.PREFERRED_BACKEND == 'jax': # TODO: handle based on type checking instead
+                u = u.at[indi:indi+m_m, 0:n_m].set(idmat)
+                v = v.at[0:m_m, indj:indj+n_m].set(idmat)
+            else:
+                u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX - DONE
+                v[0:m_m, indj:indj+n_m] = idmat
             return self.update(u, m, v)
         else:
             return self.inv()
@@ -464,15 +474,15 @@ class WoodburyInverter:
 # =========================== IncDeterminant ===============================
 class IncDeterminant:
     def __init__(self, a):
-        self.detval = np.linalg.det(a)
+        self.detval = xnp.linalg.det(a)
 
     def update(self, ainv, u, c, v, store=True):
         # We ware updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
         dest = self.detval
-        if not np.allclose(c, 0):
-            cinv = np.linalg.inv(c)
+        if not xnp.allclose(c, 0):
+            cinv = xnp.linalg.inv(c)
             dest = self.detval * \
-                np.linalg.det(cinv + v @ ainv @ u) * np.linalg.det(c)
+                xnp.linalg.det(cinv + v @ ainv @ u) * xnp.linalg.det(c)
             if store:
                 self.detval = dest
         return dest
@@ -483,14 +493,18 @@ class IncDeterminant:
 
 def update_index(self, ainv, m, indi, indj, store=True):
     # Construct two matrices to shift M to the correct position in A
-    if not np.allclose(m, 0):
+    if not xnp.allclose(m, 0):
         m_m, n_m = m.shape
         m_a, n_a = ainv.shape
-        idmat = np.eye(m_m, n_m)
-        u = np.zeros(m_a, m_m)
-        v = np.zeros(n_m, n_a)
-        u[indi:indi+m_m, 0:n_m] = idmat
-        v[0:m_m, indj:indj+n_m] = idmat
+        idmat = xnp.eye(m_m, n_m)
+        u = xnp.zeros(m_a, m_m)
+        v = xnp.zeros(n_m, n_a)
+        if ggpeps.PREFERRED_BACKEND == 'jax': # TODO: handle based on type checking instead
+            u = u.at[indi:indi+m_m, 0:n_m].set(idmat)
+            v = v.at[0:m_m, indj:indj+n_m].set(idmat)
+        else:
+            u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX - DONE
+            v[0:m_m, indj:indj+n_m] = idmat
         return self.update(ainv, u, m, v, store)
     else:
         return self.detval
@@ -502,7 +516,7 @@ class IncLogAbsDeterminant:
     def __init__(self, a):
         # We are not using the sign right now.
         # We know that the sign has to be positive
-        self.sign, self.detval = np.linalg.slogdet(a)
+        self.sign, self.detval = xnp.linalg.slogdet(a)
 
     def det(self):
         return self.detval
@@ -511,13 +525,13 @@ class IncLogAbsDeterminant:
         # We are updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
         dest = self.detval
         converged = True
-        if not np.allclose(c, 0):
+        if not xnp.allclose(c, 0):
             # We cannot update if c is zero because we cannot invert it
             # There might also be problems if c is singular !
-            sign, cdetval = np.linalg.slogdet(c)
-            sign, combined_detval = np.linalg.slogdet(
-                np.linalg.inv(c) + v @ ainv @ u)
-            if np.isnan(combined_detval) or np.isnan(cdetval):
+            sign, cdetval = xnp.linalg.slogdet(c)
+            sign, combined_detval = xnp.linalg.slogdet(
+                xnp.linalg.inv(c) + v @ ainv @ u)
+            if xnp.isnan(combined_detval) or xnp.isnan(cdetval):
                 converged = False
             if converged:
                 dest = self.detval + cdetval + combined_detval
@@ -527,20 +541,25 @@ class IncLogAbsDeterminant:
 
     def update_index(self, ainv, m, indi, indj, store=True):
         # Construct two matrices to shift M to the correct position in A
-        if not np.allclose(m, 0):
+        if not xnp.allclose(m, 0):
             # We cannot update if m is zero because we cannot invert it
             m_m, n_m = m.shape
             m_a, n_a = ainv.shape
-            idmat = np.eye(m_m, n_m)
-            u = np.zeros((m_a, m_m))
-            v = np.zeros((n_m, n_a))
-            u[indi:indi+m_m, 0:n_m] = idmat
-            v[0:m_m, indj:indj+n_m] = idmat
+            idmat = xnp.eye(m_m, n_m)
+            u = xnp.zeros((m_a, m_m))
+            v = xnp.zeros((n_m, n_a))
+            if ggpeps.PREFERRED_BACKEND == 'jax': # TODO: handle based on type checking instead
+                u = u.at[indi:indi+m_m, 0:n_m].set(idmat)
+                v = v.at[0:m_m, indj:indj+n_m].set(idmat)
+            else:
+                u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX - DONE
+                v[0:m_m, indj:indj+n_m] = idmat
             return self.update(ainv, u, m, v, store)
         else:
             return self.det()
 
 
+# Not used (though still appears in tests)
 class BgbTransform():
     def __init__(self, mat_in, pure_gauge=True):
         self.mat_in = mat_in

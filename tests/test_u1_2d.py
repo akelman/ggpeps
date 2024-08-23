@@ -1,12 +1,11 @@
 import unittest 
 from unittest import skip
+
 import numpy as np
+
 from ggpeps import lattice
-from ggpeps.lattice import Direction
 from ggpeps import system
 from ggpeps import utils
-from ggpeps.mc import MonteCarloEvaluatorConfig, MonteCarloEvaluator
-from ggpeps.utils import compare_array_elementwise
 
 class TestU1SystemMethods(unittest.TestCase):
 

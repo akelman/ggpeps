@@ -7,48 +7,37 @@ import logging
 import itertools as it
 
 import sympy
+from scipy.linalg import block_diag
+
 import numpy as np
-from pfapack import pfaffian as pf
+from ggpeps import xnp as xnp
 
 import ggpeps
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
-from ggpeps.system.global_funcs import compute_grad_over_norm, calculate_lognormvec, compute_el_grad_vec
+from ggpeps.system.global_funcs import *
+from ggpeps.modearray import generate_permutation_matrix
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 ################## Utility Functions ######################
-def extract_partial_covmats(mat, corner):
-    """Extract the partial covariance matrices from a gaussian mapping
 
-    Args:
-        mat (np.ndarray): Full covariance matrix
-        corner (int): Index of the top left element of the bottom right matrix
-
-    Returns:
-        tuple: Matrices (A,B,D)
-    """
-    mat_a = mat[:corner, :corner]
-    mat_b = mat[:corner, corner:]
-    mat_d = mat[corner:, corner:]
-    return mat_a, mat_b, mat_d
-
-def calculate_lognorm(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: List[np.ndarray], all_factors:bool=False) -> float:
+def calculate_lognorm(gamma_in_sys_vec: List[xnp.ndarray], mat_d_vec: List[xnp.ndarray], all_factors:bool=False) -> float:
     # This is still the plain formula, without any update mechanism
     normvec = calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
-    return np.sum(normvec)
+    return xnp.sum(normvec)
 
 def calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors:bool=False):
     dest = []
     for ind in range(len(incdet_vec)):
         detval = incdet_vec[ind].det()
         if all_factors:
-            detval -= n * np.log(2)
+            detval -= n * xnp.log(2)
             detval += det_mat_d_vec[ind]
         # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
         # The addition of the cumval is the multiplication of the indpendent PEPS
         dest.append(0.5 * detval)
-    return dest
+    return xnp.array(dest)
 
 
 def calculate_lognorm_inc(incdet_vec, det_mat_d_vec, n, all_factors:bool=False):
@@ -56,12 +45,13 @@ def calculate_lognorm_inc(incdet_vec, det_mat_d_vec, n, all_factors:bool=False):
                                           det_mat_d_vec,
                                           n,
                                           all_factors=all_factors)
-    return np.sum(lognormvec)
+    return xnp.sum(lognormvec)
 
 @dataclass # if we upgrade to python 3.10 or higher, add in 'slots=True'
 class ElectricEnergyIntermediateVals:
     """Class for keeping track of intermediate calculations of the electric energy, 
     for re-use with the gradient calculation"""
+    # TODO: make into numpy/jax arrays
     covmat_out_virt_vec: List[int] = field(default_factory=list) # this is the pythonic way to use lists in dataclasses
     norm_mod_vec: List[float] = field(default_factory=list)
     lognorm_default_vec: List[float] = field(default_factory=list)
@@ -76,9 +66,10 @@ class Config2DBase(ABC):
     This class cannot be instantiated directly.
     """
 
-    # Number of parameters of the parameters
-    # This will be overwritten by the specifications
-    _nparams = 1
+    # Number of parameters 
+    # This will be overwritten by the specifications of each ansatz
+    _nparams: int = 1
+    ncopy: int = None
 
     def __init__(self, lattice:Union[Lattice2D, Lattice3D], g_el:float, g_mag:float, g_int:float,  g_mass:float, g_chem:Optional[np.array], num_pg_layer:int=1, num_fermionic_layer:int=0):
         """Constructor.
@@ -99,10 +90,13 @@ class Config2DBase(ABC):
         self.num_fermionic_layer = num_fermionic_layer
         self.nlayer = self.num_pg_layer + self.num_fermionic_layer
 
-        self._paramvec = None
-        self.zeroed_params = [] # will store a list of the parameters forced to be zero by the ansatz
+        self._paramvec: Optional[np.ndarray] = None
+        self.zeroed_params: List[int] = [] # will store a list of the parameters forced to be zero by the ansatz
                                 # currently this is set in self.enforce_parameter_conditions
                                 # (this only happens for the fermionic ansatz's)
+
+        # Symbolvec
+        self._symbolvec: Optional[List[sympy.Symbol]] = None # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
 
         # Parameters of the Hamiltonian
         self.g_el = g_el
@@ -121,7 +115,7 @@ class Config2DBase(ABC):
         return f"L_{self.lattice.nx:02d}x{self.lattice.ny:02d}_gel_{self.g_el}_gmag_{self.g_mag}_gint_{self.g_int}_gmass_{self.g_mass}_nlayer_{self.nlayer}"
 
     @property
-    def paramvec(self):
+    def paramvec(self) -> np.ndarray:
         return self._paramvec
 
     @paramvec.setter
@@ -133,7 +127,7 @@ class Config2DBase(ABC):
             logger.error("The set of parameters is not consistent.")
             sys.exit(1)
 
-    def check_params(self, params):
+    def check_params(self, params: np.ndarray) -> bool:
         """Check the consistency of the input parameters.
         All arrays must have the same length.
 
@@ -171,103 +165,9 @@ class Config2DBase(ABC):
     def enforce_parameter_conditions(self, mat):
         """In some cases, there are extra conditions we wish to impose on the parameters."""
         return
-
-
-################## System2DBase ######################
-
-class System2DBase(ABC):
-    """ Base class for two dimensional systems
-
-    This class inherits from the abstract base class to enable abstract methods that has to be overwritten in a child class.
-    This class cannot be instantiated directly.
-    """
-
-    def __init__(self, cfg: Config2DBase):
-        self.cfg = cfg
-
-        # Parameter based matrices
-        self._symbolvec = None
-        self._tmat_vec = None
-        self._gamma_dirac_vec = None
-        self._gamma_maj_vec = None
-        self._gamma_maj_sys_vec = None
-
-        # Partial covariance matrices
-        self._mat_a_vec = None
-        self._mat_b_vec = None
-        self._mat_d_vec = None
-        self._det_mat_d_vec = None
-        self._mat_d_inv_vec = None
-
-        # Full covariance matrix (gamma_out) of the fermions
-        self._ferm_covmat = [None]*self.cfg.nlayer
-
-        # Parameter dependent quantities for the electric energy
-        self._mat_a_mod_vec = None
-        self._mat_b_mod_vec = None
-        self._mat_d_mod_vec = None
-        self._det_mat_d_mod_vec = None
-        self._mat_d_mod_inv_vec = None
-        self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
-
-        # Management of the gaugefields
-        self._gamma_gauge_neutral_vec_dict = None # vec for layers (choices of projectors may be different for each layer), dict for directions
-        self._gamma_in_sys_vec = None # in cases when different layers use the same projectors, all elements will point to the same gamma_in_sys
-        self._gaugefieldvec = np.zeros(self.cfg.lattice.nlinks)
-        self.gaugemgr = gauge.ZNGauge(2) # needs to be changed for cases other than Z2
-
-        # Weight
-        self._weight = None
-
-        # Gradients
-        self._gamma_maj_sys_deriv_dict = None
-        self._el_energy_op_grad_vec = None
-        self._mass_energy_op_grad_vec = None
-        self._int_energy_op_grad_vec = None
-        self._chem_energy_op_grad_vec = None
-        self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # gradients of gamma_out for all symbols
-        self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
-
-        # Observables
-        self._energy = None
-        self._el_energy_op = None
-        self._el_energy_op_vec = None
-        self._mag_energy_op = None
-        self._mass_energy_op = None
-        self._mass_energy_op_vec = None
-        self._int_energy_op = None
-        self._int_energy_op_vec = None
-        self._chem_energy_op_vec = None
-
-        # Woodbury Update and Matrix Inversion
-        self._wi_gamma_in_vec = None  # Tracks (D^-1 - gammain)^-1
-        self._wi_gamma_out_vec = None  # Tracks (D - gammain)^-1
-        self._incdet_vec = None  # Tracks det(D^-1 - gammain)
-
-        self._wi_gamma_in_mod_vec = None  # Tracks (Dmod^-1 - gammain)^-1
-        self._wi_gamma_out_mod_vec = None  # Tracks (Dmod - gammain)^-1
-        self._incdet_mod_vec = None  # Tracks det(Dmod^-1 - gammain)
-
-    def initialize(self):
-        """Initialization function. 
-        This is a good spot to copy essential data from the configuration.
-        """
-        return None
-
-    def _exract_partial_covmatvec(self, offset):
-        # We are assuming one physical mode per site
-        mat_a_vec = []
-        mat_b_vec = []
-        mat_d_vec = []
-        for ind in range(self.cfg.nlayer):
-            mat_a, mat_b, mat_d = extract_partial_covmats(self.gamma_maj_sys_vec[ind], offset)
-            mat_a_vec.append(mat_a)
-            mat_b_vec.append(mat_b)
-            mat_d_vec.append(mat_d)
-        return mat_a_vec, mat_b_vec, mat_d_vec
-
+    
     @abstractmethod
-    def _create_symbolvec(self):
+    def _create_symbolvec(self) -> List[sympy.Symbol]:
         """
         Function to define the list of parameters as sympy variables.
         We need these symbols to analytically derive T automatically.
@@ -276,7 +176,7 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @property
-    def symbolvec(self):
+    def symbolvec(self) -> List[sympy.Symbol]:
         """Return the symbolvec.
         This is a get function. It computes the symbolvec only if it does not exist yet.
         If it exists, then it will be returned directly. If not, it will be created and then stored in _symbolvec.
@@ -286,27 +186,169 @@ class System2DBase(ABC):
         """
         if self._symbolvec is None:
             self._symbolvec = self._create_symbolvec()
-        return self._symbolvec
-
+        return self._create_symbolvec()
+    
     @property
     @abstractmethod
     def tmat_symb(self):
-        """Create the symbolic version of the T matrix.
-        This is an abstract function that has to be overwritten by the child class.
+        """ Create the symbolic version of the T matrix.
+            This is an abstract function that has to be overwritten by the child class.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+    
+    @abstractmethod
+    def generate_gamma_gauge_neutral_dict(self):
+        """Abstract method to define the ungauged covariance matrix of a single link.
+        The substitution method must ensure a consistent order of the modes.
+        The direction parameter controls which covariance matrix is retrieved, since these can differ between directions.
+        This method must be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
-    def compute_tmat_deriv(self, symb):
+
+
+################## System2DBase ######################
+
+class System2DBase(ABC):
+    """ Base class for two dimensional systems.
+
+    This class inherits from the abstract base class to enable abstract methods that must be overwritten in a child class.
+    This class cannot be instantiated directly.
+    """
+
+    def __init__(self, cfg: Config2DBase):
+        self.cfg: Config2DBase = cfg
+
+        # All variables that contain _vec are arrays of length nlayer in the first dimension.
+
+        # Parameter based matrices
+        self._tmat_vec: Optional[List[xnp.ndarray]] = None
+        self._gamma_dirac_vec: Optional[xnp.ndarray] = None
+        self._gamma_maj_vec: Optional[xnp.ndarray] = None
+        self._gamma_maj_sys_vec: Optional[xnp.ndarray] = None
+
+        # Partial covariance matrices
+        self._mat_a_vec: Optional[xnp.ndarray] = None
+        self._mat_b_vec: Optional[xnp.ndarray] = None
+        self._mat_d_vec: Optional[xnp.ndarray] = None
+        self._det_mat_d_vec: Optional[xnp.ndarray] = None
+        self._mat_d_inv_vec: Optional[xnp.ndarray] = None
+
+        # Full covariance matrix (gamma_out) of the fermions
+        self._ferm_covmat_vec: Optional[List[xnp.ndarray]] = None
+
+        # Parameter dependent quantities for the electric energy
+        self._mat_a_mod_vec: Optional[xnp.ndarray] = None
+        self._mat_b_mod_vec: Optional[xnp.ndarray] = None
+        self._mat_d_mod_vec: Optional[xnp.ndarray] = None
+        self._det_mat_d_mod_vec: Optional[xnp.ndarray] = None
+        self._mat_d_mod_inv_vec: Optional[xnp.ndarray] = None
+        self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
+
+        # Management of the gauge fields
+        self._gamma_gauge_neutral_vec_dirs: Optional[xnp.ndarray] = None # vec for layers (choices of projectors may be different for each layer), dirs for directions
+        self._gamma_in_sys_vec: Optional[xnp.ndarray] = None # in cases when different layers use the same projectors, all elements will point to the same gamma_in_sys
+        self._gaugefieldvec: xnp.ndarray = xnp.zeros(self.cfg.lattice.nlinks) # TODO: should this be np or xnp?
+        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2) # needs to be changed for cases other than Z2
+
+        # Weight
+        self._weight: Optional[float] = None
+
+        # Gradients
+        self._gamma_maj_sys_deriv_dict: Optional[dict[sympy.Symbol, List[xnp.ndarray]]] = None # the list is for layers
+        self._el_energy_op_grad_vec: Optional[xnp.ndarray] = None # first index is layer, second index is symbol
+        self._mass_energy_op_grad_vec: Optional[xnp.ndarray] = None
+        self._int_energy_op_grad_vec: Optional[xnp.ndarray] = None
+        self._chem_energy_op_grad_vec = None
+        self._d_gamma_out_symbolvec: Optional[List[List[xnp.ndarray]]] = None # gradients of gamma_out for all symbols: first index is layer, second index is symbol
+        self._grad_over_norm_dict: Optional[dict[tuple[sympy.Symbol, int], float]] = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
+
+        # Observables
+        self._energy: Optional[float] = None
+        self._el_energy_op: Optional[float] = None
+        self._el_energy_op_vec: Optional[List[float]] = None
+        self._mag_energy_op: Optional[float] = None
+        self._mass_energy_op: Optional[float] = None
+        self._mass_energy_op_vec: Optional[List[float]] = None
+        self._int_energy_op: Optional[float] = None
+        self._int_energy_op_vec: Optional[List[float]] = None
+        self._chem_energy_op_vec = None
+
+        # Woodbury Update and Matrix Inversion
+        self._wi_gamma_in_vec: Optional[List[utils.WoodburyInverter]] = None  # Tracks (D^-1 - gammain)^-1
+        self._wi_gamma_out_vec: Optional[List[utils.WoodburyInverter]] = None  # Tracks (D - gammain)^-1
+        self._incdet_vec: Optional[List[utils.IncLogAbsDeterminant]] = None  # Tracks det(D^-1 - gammain)
+
+        self._wi_gamma_in_mod_vec: Optional[List[utils.WoodburyInverter]] = None  # Tracks (Dmod^-1 - gammain)^-1
+        self._wi_gamma_out_mod_vec: Optional[List[utils.WoodburyInverter]] = None  # Tracks (Dmod - gammain)^-1
+        self._incdet_mod_vec: Optional[List[utils.IncLogAbsDeterminant]] = None  # Tracks det(Dmod^-1 - gammain)
+
+    def initialize(self):
+        """Initialization function. 
+        This is a good spot to copy essential data from the configuration.
+        """
+        return None
+    
+    def invalidate_gauge_update(self):
+        """Reset the values of computed quantitities to avoid spillover from previous computations.
+        """
+        self._ferm_covmat_vec = None
+        self._d_gamma_out_symbolvec = None
+        
+        self._energy = None
+        self._el_energy_op = None
+        self._el_energy_op_vec = None
+        self._mag_energy_op = None
+        self._mass_energy_op = None
+        self._mass_energy_op_vec = None
+        self._int_energy_op = None
+        self._int_energy_op_vec = None
+        self._chem_energy_op_vec = None
+        
+        self._el_energy_op_grad_vec = None
+        self._mass_energy_op_grad_vec = None
+        self._int_energy_op_grad_vec = None
+        self._chem_energy_op_grad_vec = None
+        self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec, range(self.cfg.nlayer))}
+        self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
+        return
+
+    def _exract_partial_covmatvec(self, offset: int): # TODO: fix spelling mistake in name
+        # We are assuming one physical mode per site
+
+        mat_a_vec = self.gamma_maj_sys_vec[:, :offset, :offset]
+        mat_b_vec = self.gamma_maj_sys_vec[:, :offset, offset:]
+        mat_d_vec = self.gamma_maj_sys_vec[:, offset:, offset:]
+        return mat_a_vec, mat_b_vec, mat_d_vec
+
+    @property
+    def symbolvec(self) -> List[sympy.Symbol]:
+        """Return the symbolvec.
+
+        Returns:
+            list: Vector of analytic symbols
+        """
+        return self.cfg.symbolvec
+
+    @property
+    def tmat_symb(self):
+        """Return the symbolic version of the T matrix.
+        This is stored in the config for each ansatz, because it is part of the definition of the ansatz,
+        and is not specific to a particular state (i.e. particular parameters).
+        """
+        return self.cfg.tmat_symb
+
+    def compute_tmat_deriv(self, symb: sympy.Symbol):
         """Return the derivative of the T matrix with respect to the symbol
 
         Args:
             symb (sympy.Symbol): Symbol to be derived with respect to
 
         Returns:
-            np.array: Array of symbols
+            xnp.ndarray: Array of symbols
         """
-        tmat_symb = self.tmat_symb
-        return np.asarray(sympy.diff(tmat_symb, symb)).astype(complex)
+        tmat_symb = self.cfg.tmat_symb
+        return xnp.asarray(np.asarray(sympy.diff(tmat_symb, symb)).astype(complex)) # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
 
     def _eval_tmat_symb(self, paramvec):
         """Compute the numerical representation of the T matrix
@@ -315,79 +357,115 @@ class System2DBase(ABC):
             paramvec (list): List of parameter values (numerical)
 
         Returns:
-            np.array: T matrix with numerical values
+            xnp.ndarray: T matrix with numerical values
         """
-        tmat_eval = self.tmat_symb.evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
-        return np.asarray(tmat_eval).astype(complex)
+        tmat_eval = self.cfg.tmat_symb.evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
+        return xnp.asarray(np.asarray(tmat_eval).astype(complex)) # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
 
     @property
-    def tmat_vec(self):
+    def tmat_vec(self) -> List[xnp.ndarray]:
         """
         Generate the T-matrix vector (single virtual fermion on the link).
         Analytically, this mode order is not advantageous, 
-        but is makes the reshuffling of the modes easier for gamma_in and M_D in the covariance matrix.
+        but it makes the reshuffling of the modes easier for gamma_in and M_D in the covariance matrix.
 
         Returns:
-            np.array: parameter matrix T
+            xnp.ndarray: parameter matrix T
         """
         if self._tmat_vec is None:
             self.cfg.enforce_parameter_conditions(self.cfg.paramvec)
             self._tmat_vec = [
                 self._eval_tmat_symb(params) for params in self.cfg.paramvec
             ]
+            # self._tmat_vec = xnp.array(self._tmat_vec)
         return self._tmat_vec
 
     @property
-    def gamma_dirac_vec(self):
+    def gamma_dirac_vec(self) -> xnp.ndarray: 
         """Return the vector of covariance matrices in dirac modes.
 
         Returns:
-            np.array: Vector of covariance matrices in Dirac modes
+            xnp.ndarray: Vector of covariance matrices in Dirac modes
         """
         if self._gamma_dirac_vec is None:
-            self._gamma_dirac_vec = [
+            self._gamma_dirac_vec = xnp.array([
                 utils.tmat_to_covariance_matrix(tmat) for tmat in self.tmat_vec
-            ]
+            ])
         return self._gamma_dirac_vec
 
     @property
     def gamma_maj_vec(self):
         """Return the covariance matrix in Majorana modes.
         The definition of Majorana modes used is
-            \\gamma_1=c+c^\\dagger
-            \\gamma_2=i(c-c^\\dagger)
+            \gamma_1 = c + c^\dagger
+            \gamma_2 = i(c - c^\dagger)
 
         This is a get function.
 
         Returns:
-            np.array: Covariance matrix in Majorana modes
+            xnp.ndarray: list of covariance matrices in Majorana modes for all layers
         """
         if self._gamma_maj_vec is None:
             # We know that the gamma dirac matrices have all the same shape
             m, _ = self.gamma_dirac_vec[-1].shape
             smat = utils.generate_smat(m)
-            self._gamma_maj_vec = [
-                np.real(smat @ gamma_dirac @ np.transpose(smat))
-                for gamma_dirac in self.gamma_dirac_vec
-            ]
+            self._gamma_maj_vec = xnp.real(smat @ self.gamma_dirac_vec @ xnp.transpose(smat)) # vectorized operation over all layers
         return self._gamma_maj_vec
 
-    @abstractmethod
-    def _expand_gamma_maj_to_system(self, covmat):
-        """Expand the covariance matrix of a single site to the full system
+    def _expand_gamma_maj_to_system(self, covmats):
+        """Expand the covariance matrix in Majorana modes to the full system.
+        In order to obtain a structure that is convenient for further computations,
+            (A    B)
+            (-B^T D)
+        we have to reorder the modes of the single-vertex matrix with respect to the full matrix.
+
+        This method is overwritten for the U1 system.
 
         Args:
-            covmat (np.array): Covariance matrix for the single site
+            covmat (xnp.ndarray): 2D covariance matrix of a single site
+
+        Returns:
+            xnp.ndarray: 2D covariance matrix of the full system
         """
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+        # Preliminaries
+        nsites = self.cfg.lattice.size
+        id = xnp.eye(nsites)
+
+        # Build permutation matrix to convert modes from site order to link order
+        modes_link_order = self.get_link_based_mode_order()
+        modes_site_order = self.get_site_based_mode_order()
+        mat_perm_links = generate_permutation_matrix( modes_site_order, modes_link_order) # be careful with the convention of the permutation matrix vs its transpose; this way works with the code below.
+        sites_perm = xnp.eye( 2 * self.cfg.lattice.nx * self.cfg.lattice.ny ) # total number of physical fermionic majorana modes on all the sites together
+        mat_perm = block_diag(sites_perm, mat_perm_links)
+
+        # TODO: properly vectorize!
+        gamma_maj_sys_vec = []
+        for covmat in covmats:
+
+            # Extract the parts of the covariance matrix
+            amat = covmat[:2, :2] # assumes 1 fermion per site (two majorana modes)
+            bmat = covmat[:2, 2:]
+            dmat = covmat[2:, 2:]
+            # Expand them
+            amat_sys = xnp.kron(id, amat)
+            bmat_sys = xnp.kron(id, bmat)
+            dmat_sys = xnp.kron(id, dmat)
+            # Reassemble them in the correct order
+            mat_sys_unordered = xnp.block(
+                [[amat_sys, bmat_sys], [-xnp.transpose(bmat_sys), dmat_sys]])
+            dest = xnp.transpose(mat_perm) @ mat_sys_unordered @ mat_perm
+            gamma_maj_sys_vec.append(dest)
+        return xnp.array(gamma_maj_sys_vec)
 
     ## MOVE TO GLOBAL
-    def d_gamma_out_symbolvec(self, layer:int) -> np.ndarray:
+    def d_gamma_out_symbolvec(self, layer:int):
         """Return a vector containing the derivatives of gamma_out (for the given layer) for each symbol.
 
         Returns:
-            [List]: List of np.arrays, with length equal to the number of symbols.
+            [List]: List of xnp.ndarrays, with length equal to the number of symbols.
         """
+        if self._d_gamma_out_symbolvec is None:
+            self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer
         if self._d_gamma_out_symbolvec[layer] is None:
             self._d_gamma_out_symbolvec[layer] = []
             offset = 2 * self.cfg.lattice.size
@@ -398,9 +476,9 @@ class System2DBase(ABC):
                 d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
                 diff_d_gamma_inv = self.wi_gamma_out_vec[layer].inv()
                 d_gamma_out = d_mat_a \
-                        + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b) \
-                        + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b) \
-                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+                        + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b) \
+                        + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b) \
+                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ xnp.transpose(mat_b)
                 self._d_gamma_out_symbolvec[layer].append(d_gamma_out)
         
         return self._d_gamma_out_symbolvec[layer]
@@ -414,13 +492,10 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            [np.array]: Covariance matrix of the full system
+            [xnp.ndarray]: Covariance matrix of the full system
         """
         if self._gamma_maj_sys_vec is None:
-            self._gamma_maj_sys_vec = [
-                self._expand_gamma_maj_to_system(gamma_maj)
-                for gamma_maj in self.gamma_maj_vec
-            ]
+            self._gamma_maj_sys_vec = self._expand_gamma_maj_to_system(self.gamma_maj_vec)
         return self._gamma_maj_sys_vec
 
     @property
@@ -433,7 +508,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            [np.array]: Correlations of the physcial modes for the full system.
+            [xnp.ndarray]: Correlations of the physcial modes for the full system.
         """
         if self._mat_a_vec is None:
             offset = 2 * self.cfg.lattice.size
@@ -447,12 +522,11 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            [np.array]: Correlations of the physcial modes with the virtual modes for the full system.
+            [xnp.ndarray]: Correlations of the physcial modes with the virtual modes for the full system.
         """
         if self._mat_b_vec is None:
             offset = 2 * self.cfg.lattice.size
-            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = self._exract_partial_covmatvec(
-                offset)
+            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = self._exract_partial_covmatvec(offset)
         return self._mat_b_vec
 
     @property
@@ -462,12 +536,11 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            [np.array]: Correlations of the virtual modes for the full system.
+            [xnp.ndarray]: Correlations of the virtual modes for the full system.
         """
         if self._mat_d_vec is None:
             offset = 2 * self.cfg.lattice.size
-            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = self._exract_partial_covmatvec(
-                offset)
+            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = self._exract_partial_covmatvec(offset)
         return self._mat_d_vec
 
     @property
@@ -477,28 +550,24 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list: List of log-determinants
+            xnp.ndarray: List of log-determinants
         """
         if self._det_mat_d_vec is None:
-            self._det_mat_d_vec = [
-                np.linalg.slogdet(mat_d)[1] for mat_d in self.mat_d_vec
-            ]
+            _, self._det_mat_d_vec = xnp.linalg.slogdet(self.mat_d_vec)
         return self._det_mat_d_vec
 
     @property
     def mat_d_inv_vec(self):
         """Compute the vector of the inverses of the D matrix.
         The D matrix is the correlation matrix of virtual-virtual correlations.
-        There is a vector of D matrices if multiple layers are used; len(vec)==# of copies
+        There is a vector of D matrices if multiple layers are used; len(vec) = # of layers
         This is a get function.
 
         Returns:
-            list: List of inverses of matrix invserses of D
+            xnp.ndarray: List of matrix inverses of the D matrix
         """
         if self._mat_d_inv_vec is None:
-            self._mat_d_inv_vec = [
-                np.linalg.inv(mat_d) for mat_d in self.mat_d_vec
-            ]
+            self._mat_d_inv_vec = xnp.linalg.inv(self.mat_d_vec)
         return self._mat_d_inv_vec
 
     @property
@@ -512,12 +581,11 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            [np.array]: Correlations of the physcial modes for the full system.
+            [xnp.ndarray]: Correlations of the physcial modes for the full system.
         """
         if self._mat_a_mod_vec is None:
             offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
-            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._exract_partial_covmatvec(
-                offset)
+            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._exract_partial_covmatvec(offset)
         return self._mat_a_mod_vec
 
     @property
@@ -528,12 +596,11 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            [np.array]: Correlations of the physcial modes with the virtual modes for the full system.
+            [xnp.ndarray]: Correlations of the physcial modes with the virtual modes for the full system.
         """
         if self._mat_b_mod_vec is None:
             offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
-            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._exract_partial_covmatvec(
-                offset)
+            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._exract_partial_covmatvec(offset)
         return self._mat_b_mod_vec
 
     @property
@@ -544,12 +611,11 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            [np.array]: Correlations of the virtual modes for the full system.
+            [xnp.ndarray]: Correlations of the virtual modes for the full system.
         """
         if self._mat_d_mod_vec is None:
             offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
-            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._exract_partial_covmatvec(
-                offset)
+            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._exract_partial_covmatvec(offset)
         return self._mat_d_mod_vec
 
     @property
@@ -563,9 +629,7 @@ class System2DBase(ABC):
             list: list of log-determinants
         """
         if self._det_mat_d_mod_vec is None:
-            self._det_mat_d_mod_vec = [
-                np.linalg.slogdet(mat_d)[1] for mat_d in self.mat_d_mod_vec
-            ]
+            _, self._det_mat_d_mod_vec = xnp.linalg.slogdet(self.mat_d_mod_vec)
         return self._det_mat_d_mod_vec
 
     @property
@@ -575,12 +639,10 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            np.array: List of inverses of modified D matrices
+            xnp.ndarray: List of inverses of modified D matrices
         """
         if self._mat_d_mod_inv_vec is None:
-            self._mat_d_mod_inv_vec = [
-                np.linalg.inv(mat_d) for mat_d in self.mat_d_mod_vec
-            ]
+            self._mat_d_mod_inv_vec = xnp.linalg.inv(self.mat_d_mod_vec)
         return self._mat_d_mod_inv_vec
 
     @abstractmethod
@@ -600,7 +662,7 @@ class System2DBase(ABC):
         Possibly the code should be modified to use gamma_in_sys_vec everywhere; this can be done without significant memory cost.
 
         Returns:
-            np.array: Gauged covariance matrix of the system
+            xnp.ndarray: Gauged covariance matrix of the system
         """
         if self._gamma_in_sys_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
@@ -614,7 +676,7 @@ class System2DBase(ABC):
         This function is required to allow for gamma_in to vary between layers.
 
         Returns:
-            np.array: vector of gauged covariance matrices of the system
+            xnp.ndarray: vector of gauged covariance matrices of the system
         """
         if self._gamma_in_sys_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_sys()
@@ -673,10 +735,11 @@ class System2DBase(ABC):
         the covariance matrix of the links for the whole system.
 
         Returns:
-            np.array: Gauged, modified covariance matrix of the system
+            xnp.ndarray: Gauged, modified covariance matrix of the system
         """
         single_link_offset = 2 * self.cfg.nvirtmodes_link
-        return self.gamma_in_sys[single_link_offset:, single_link_offset:]
+        #return self.gamma_in_sys[single_link_offset:, single_link_offset:] # TODO: fix for JAX - DONE
+        return gamma_in_sys_mod(self.gamma_in_sys, single_link_offset)
 
     @property
     def gamma_in_sys_mod_vec(self):
@@ -684,7 +747,7 @@ class System2DBase(ABC):
         the covariance matrix of the links for the whole system.
 
         Returns:
-            np.array: Gauged, modified covariance matrices of the system for each layer
+            xnp.ndarray: Gauged, modified covariance matrices of the system for each layer
         """
         gamma_in_sys_mod_vec = []
         single_link_offset = 2 * self.cfg.nvirtmodes_link # we can use the same offset for all layers, since all dimensions, mode ordering, etc. are the same
@@ -747,21 +810,21 @@ class System2DBase(ABC):
             layerind (int): index of the layer
 
         Returns:
-            np.array: Derivative of gamma_dirac wrt to symb
+            xnp.ndarray: Derivative of gamma_dirac wrt to symb
         """
         deriv_t = self.compute_tmat_deriv(symb)
         tmat = self.tmat_vec[layerind]
-        tmatc = np.conjugate(tmat)
-        idttinv_minus = np.linalg.inv(np.eye(deriv_t.shape[0]) - tmat @ tmatc)
-        idtt_plus = np.eye(deriv_t.shape[0]) + tmat @ tmatc
-        d_idtt_minus = -(deriv_t @ tmatc + tmat @ np.conjugate(deriv_t))
+        tmatc = xnp.conjugate(tmat)
+        idttinv_minus = xnp.linalg.inv(xnp.eye(deriv_t.shape[0]) - tmat @ tmatc)
+        idtt_plus = xnp.eye(deriv_t.shape[0]) + tmat @ tmatc
+        d_idtt_minus = -(deriv_t @ tmatc + tmat @ xnp.conjugate(deriv_t))
         d_idtt_plus = -d_idtt_minus
         d_lt = idttinv_minus @ d_idtt_minus @ idttinv_minus @ tmat - idttinv_minus @ deriv_t
         d_rt = 0.5 * idttinv_minus @ d_idtt_plus @ idttinv_minus @ idtt_plus + \
             0.5 * idttinv_minus @ d_idtt_plus
-        d_lb = -np.conjugate(d_rt)
-        d_rb = -np.conjugate(d_lt)
-        return 1.j*np.block([[d_lt, d_rt], [d_lb, d_rb]])
+        d_lb = -xnp.conjugate(d_rt)
+        d_rb = -xnp.conjugate(d_lt)
+        return 1.j*xnp.block([[d_lt, d_rt], [d_lb, d_rb]])
 
     def compute_gamma_maj_deriv(self, symb: sympy.Symbol, layerind: int):
         """Return the numerical derivative of the gamma_maj, the Majorana covariance matrix of one fiducial state.
@@ -771,12 +834,12 @@ class System2DBase(ABC):
             layerind (int): index of the layer
 
         Returns:
-            np.array: Derivative of gamma_maj wrt to symb
+            xnp.ndarray: Derivative of gamma_maj wrt to symb
         """
         gamma_dirac_deriv = self.compute_gamma_dirac_deriv(symb, layerind)
         m, _ = gamma_dirac_deriv.shape
         smat = utils.generate_smat(m)
-        return np.real(smat @ gamma_dirac_deriv @ np.transpose(smat))
+        return xnp.real(smat @ gamma_dirac_deriv @ xnp.transpose(smat))
 
     def _generate_gamma_maj_sys_deriv_dict(self):
         """Internal function to generate a dictionary of all possible derivatives of gamma_maj_sys, the system-wide covariance matrix of the fiducial state.
@@ -788,11 +851,14 @@ class System2DBase(ABC):
         """
         dest = {}
         for symb in self.symbolvec:
-            dest[symb] = [self._expand_gamma_maj_to_system(
-                self.compute_gamma_maj_deriv(symb, i)) for i in range(self.cfg.nlayer)]
+            # TODO: once self.compute_gamma_maj_deriv handles all layers and returns a numpy array,
+            #       clean this - _expand...() should just take the output of compute_gamma_maj_deriv()
+            dest[symb] = self._expand_gamma_maj_to_system(xnp.array([
+                self.compute_gamma_maj_deriv(symb, i) for i in range(self.cfg.nlayer)
+                ]))
         return dest
 
-    def gamma_maj_sys_deriv_vec(self, symb: sympy.Symbol) -> np.ndarray:
+    def gamma_maj_sys_deriv_vec(self, symb: sympy.Symbol) -> xnp.ndarray:
         """Return a list of derivatives of all layers of gamma_maj_sys with respect to a given symbol.
         This is a get function.
 
@@ -800,7 +866,7 @@ class System2DBase(ABC):
             symb (sympy.Symbol): Symbol with repsect to which we derive
 
         Returns:
-            np.ndarray: List of derived gamma_maj_sys
+            xnp.ndarray: List of derived gamma_maj_sys
         """
         if symb in self.symbolvec:
             if self._gamma_maj_sys_deriv_dict is None:
@@ -811,23 +877,23 @@ class System2DBase(ABC):
         return None
 
     ## MOVE TO GLOBAL
-    def compute_grad_norm_vec(self) -> np.ndarray:
+    def compute_grad_norm_vec(self) -> xnp.ndarray:
         """Compute the gradient of the norm for all layers with respect to all parameters.
         The parameter order is [[dt1, dy1, dz1...],[dt2,dy2,dz2...]...]
 
         Returns:
-            np.ndarray: Vector of gradients of the norm with respect to all parameters
+            xnp.ndarray: Vector of gradients of the norm with respect to all parameters
         """
         dest = []
         for layerind in range(self.cfg.nlayer):
             dest.append(self.compute_grad_norm(layerind))
-        dest = np.asarray(dest)
+        dest = xnp.asarray(dest)
         # Enforce ansatz conditions on the parameters
         self.cfg.enforce_parameter_conditions(dest)
         return dest
 
     ## MOVE TO GLOBAL
-    def compute_grad_norm(self, layerind: int) -> np.ndarray:
+    def compute_grad_norm(self, layerind: int) -> xnp.ndarray:
         """Compute the gradient of the norm for a given layer wrt to all parameters.
         The parameter order is the same as in the symbolvec
 
@@ -835,15 +901,18 @@ class System2DBase(ABC):
             layerind (int): layer index
 
         Returns:
-            np.ndarray: Vector of gradients for the norm
+            xnp.ndarray: Vector of gradients for the norm
         """
 
-        dest = np.zeros(len(self.symbolvec))
+        dest = xnp.zeros(len(self.symbolvec))
         for symbol_ind, symbol in enumerate(self.symbolvec):
             if (layerind, symbol_ind) not in self.cfg.zeroed_params:
-                # the derivative calculation is compuationally expensive
+                # the derivative calculation is computationally expensive
                 # we can skip it for parameters that are forced by the ansatz to be zero
-                dest[symbol_ind] = self.compute_grad_over_norm(symbol, layerind)
+                if ggpeps.PREFERRED_BACKEND == 'jax':
+                    dest.at[symbol_ind].set(self.compute_grad_over_norm(symbol, layerind))
+                else:
+                    dest[symbol_ind] = self.compute_grad_over_norm(symbol, layerind)
         return dest
 
     ################## Weight management ######################
@@ -885,8 +954,8 @@ class System2DBase(ABC):
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord, dir)
-        gamma_neutral_gauge_vec = self.gamma_gauge_neutral
-        gamma_in_subst_layers = [rotmat @ gamma_neutral_gauge[dir] @ np.transpose(rotmat) for gamma_neutral_gauge in gamma_neutral_gauge_vec]
+        gamma_neutral_gauge_vec = self.gamma_gauge_neutral_vec
+        gamma_in_subst_layers = [rotmat @ gamma_neutral_gauge[dir] @ xnp.transpose(rotmat) for gamma_neutral_gauge in gamma_neutral_gauge_vec]
         updates = [self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys) for gamma_in_subst, gamma_in_sys in zip(gamma_in_subst_layers, self.gamma_in_sys_vec) ] 
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
 
@@ -933,14 +1002,14 @@ class System2DBase(ABC):
             float: Logarithm of the norm (computed from IncDet and Woodbury)
         """
         normvec = self.calculate_lognormvec_inc(all_factors=all_factors)
-        return np.sum(normvec)
+        return xnp.sum(normvec)
 
     def update_lognorm_inc(self, offset, updates, all_factors=False):
         """Updat the logarithm of the norm incrementally with the given update.
 
         Args:
             offset (int): Offset into the matrix.
-            update (np.array): Update matrix to replace the current sub-matrix
+            update (xnp.ndarray): Update matrix to replace the current sub-matrix
             all_factors (bool, optional): Include all constant pre-factors. Defaults to False.
 
         Returns:
@@ -950,8 +1019,8 @@ class System2DBase(ABC):
         for ind in range(self.cfg.nlayer):
             detval = self.incdet_vec[ind].update_index(self.wi_gamma_in_vec[ind].inv(), updates[ind], offset, offset, store=False)
             if all_factors:
-                detval -= self.gamma_in_sys.shape[0]*np.log(2)
-                detval += np.linalg.slogdet(self.mat_d_vec[ind])[1]
+                detval -= self.gamma_in_sys.shape[0]*xnp.log(2)
+                detval += xnp.linalg.slogdet(self.mat_d_vec[ind])[1]
             # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
             # The addition of the cumval is the multiplication of the indpendent PEPS
             cumval += 0.5 * detval
@@ -974,7 +1043,8 @@ class System2DBase(ABC):
             # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
             offset = 2 * self.cfg.lattice.size
             # Extract only the part of the virtual-virtual correlations
-            deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:]
+            #deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:] # TODO: fix for JAX - DONE
+            _, _, deriv_d = extract_partial_covmats(self.gamma_maj_sys_deriv_vec(var)[layerind], offset)
             mat_d_inv = self.mat_d_inv_vec[layerind]
 
             # TODO: We might save one matrix-matrix multiplication here
@@ -989,7 +1059,7 @@ class System2DBase(ABC):
         """Return the vector of gauge fields.
 
         Returns:
-            np.ndarray: Gauge fields of the simulation
+            xnp.ndarray: Gauge fields of the simulation
         """
         return self._gaugefieldvec
 
@@ -997,21 +1067,21 @@ class System2DBase(ABC):
     def gaugefieldvec(self, val):
         print(
             "Do not set the gaugefieldvec explicitly. Use 'update_gauge_ind'.", file=sys.stderr)
+        # TODO: log error
 
     @property
-    def gamma_gauge_neutral(self):
-        if not self._gamma_gauge_neutral_vec_dict:
-            self._gamma_gauge_neutral_vec_dict = self._generate_gamma_gauge_neutral_dict()
-        return self._gamma_gauge_neutral_vec_dict
+    def gamma_gauge_neutral_vec(self):
+        if self._gamma_gauge_neutral_vec_dirs is None:
+            self._gamma_gauge_neutral_vec_dirs = self._generate_gamma_gauge_neutral_dict()
+        return self._gamma_gauge_neutral_vec_dirs
 
-    @abstractmethod
     def _generate_gamma_gauge_neutral_dict(self):
-        """Abstract method to define the ungauged covariance matrix of a single link.
+        """Define the ungauged covariance matrix of a single link.
         The substitution method must ensure a consistent order of the modes.
         The direction parameter controls which covariance matrix is retrieved, since these can differ between directions.
-        This method must be overwritten in a subclass.
         """
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+        gamma_gauge_neutral_vec_dirs = self.cfg.generate_gamma_gauge_neutral_dict()
+        return xnp.array(gamma_gauge_neutral_vec_dirs)
 
     @abstractmethod
     def generate_rotmat(self, theta, coord, dir):
@@ -1029,7 +1099,7 @@ class System2DBase(ABC):
         """Replace all gauge fields on the links by the values given in gaugeconfig.
 
         Args:
-            gaugeconfig (np.array): Array of new values for the gauge field
+            gaugeconfig (xnp.ndarray): Array of new values for the gauge field
         """
         for ind, gauge in enumerate(gaugeconfig):
             self.update_gauge_ind(ind, gauge)
@@ -1050,43 +1120,19 @@ class System2DBase(ABC):
 
         Args:
             offset (int): Offset in the matrix
-            update_mat (np.array): Array to replace the current content of gamma_in at offset
-            gamma_in_sys (np.array): gamma_in_sys. This is given as an argument so that different gamma_in_sys can be passed in when gamma_in_sys differs between layers.
+            update_mat (xnp.ndarray): Array to replace the current content of gamma_in at offset
+            gamma_in_sys (xnp.ndarray): gamma_in_sys. This is given as an argument so that different gamma_in_sys can be passed in when gamma_in_sys differs between layers.
 
         Returns:
-            np.array: Additional update to reach update_mat at gamma_in[offset:,offset:]
+            xnp.ndarray: Additional update to reach update_mat at gamma_in[offset:,offset:]
         """
         if gamma_in_sys is None:
             gamma_in_sys = self.gamma_in_sys # take the first element, which is shared between all the layers
         m_up, n_up = update_mat.shape
-        gamma_in_old = gamma_in_sys[offset:offset + m_up,
-                                    offset:offset + n_up] 
+        gamma_in_old = slice_matrix(gamma_in_sys, offset, offset + m_up, offset, offset + n_up)
+                        #gamma_in_sys[offset:offset + m_up, offset:offset + n_up] # TODO: fix for JAX - DONE
         return -(update_mat - gamma_in_old)
 
-    ## WILL NEED TO BE ADAPTED FOR JAX
-    def invalidate_gauge_update(self):
-        """Reset the values of computed quantitities to avoid spillover from previous computations.
-        """
-        self._ferm_covmat = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
-        self._d_gamma_out_symbolvec = [None]*self.cfg.nlayer # maybe it's possible to update this locally?
-        
-        self._energy = None
-        self._el_energy_op = None
-        self._el_energy_op_vec = None
-        self._mag_energy_op = None
-        self._mass_energy_op = None
-        self._mass_energy_op_vec = None
-        self._int_energy_op = None
-        self._int_energy_op_vec = None
-        self._chem_energy_op_vec = None
-        
-        self._el_energy_op_grad_vec = None
-        self._mass_energy_op_grad_vec = None
-        self._int_energy_op_grad_vec = None
-        self._chem_energy_op_grad_vec = None
-        self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec, range(self.cfg.nlayer))}
-        self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
-        return
 
     ################## Observables ######################
     @abstractmethod
@@ -1119,116 +1165,21 @@ class System2DBase(ABC):
 
 
     def _compute_el_energy_op_vec(self, use_trans_inv:bool=True):
-        """Computation of the electric energy.
-        Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
-        These are saved at the end of the function.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
-
-        Returns:
-            list: list of electric energies for a single link
+        """Compute the electric energy.
+        This is an abstract method and has to be overwritten in a subclass.
         """
-        if not use_trans_inv:
-            # Evaluate every link of the system
-            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
-            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
-
-        lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
-        # This is the usual norm without any modifications
-        lognorm_default = np.sum(lognormvec_default)
-        # Number of fermions = # of sites
-        # Since we have 2 copies, we get 8 virtual fermions per site
-        single_link_offset = 2 * self.cfg.nvirtmodes_link
-        # We have to cut one link from gamma_in_sys as well
-        gamma_in_sys_mod_vec = self.gamma_in_sys_mod_vec
-        dest = []
-
-        # Indices and prefactors for building the required Pfaffians
-        overall_factors = self.el_overall_factors
-        idxarrs = self.idxarr_vec
-
-        for layerind in range(self.cfg.nlayer):
-
-            # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
-            mat_a = self.mat_a_mod_vec[layerind] # dim: 2*nsites (for majorana) + 8 (= 4 virtual modes per link x2 for majorana)
-            mat_b = self.mat_b_mod_vec[layerind]
-            diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
-
-            gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
-
-            idxarr = idxarrs[layerind]
-            overall_factor = overall_factors[layerind]
-
-            ###################### Calculation of <P> ########################
-            covmat_out = mat_a + \
-                mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
-            covmat_out_virt = covmat_out[-single_link_offset:, -
-                                        single_link_offset:]
-
-            # The library pfapack is rather picky about the anti-symmetrization (to 1e-14)
-            covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
-            # For the modified norm, we still have to take into account the other contributions from the unmodified parts
-            norm_mod = calculate_lognorm_inc(
-                [self.incdet_mod_vec[layerind]],
-                [self.det_mat_d_mod_vec[layerind]],
-                gamma_in_sys_mod.shape[0],
-                all_factors=True)
-            norm_mod += np.sum(utils.select_except(lognormvec_default,layerind))
-            # The matrix elements yield only the real part of <P>
-            # If we use the log formulation, we can calculate the log of single terms.
-
-            # Instead of writing down all the terms explicitly, we build tuples of the prefactors and the indices of the covariance matrix.
-            # Then, we compute all terms in a list comprehension.
-            pfarr = []
-            pfvals = [] # without the prefactor
-            for prefactor,ind in idxarr:
-                pfaval = pf.pfaffian(covmat_out_virt[np.ix_(ind,ind)])
-                pfarr.append(prefactor * pfaval)
-                pfvals.append(pfaval)
-            el_energy_full = overall_factor * np.sum(pfarr)
-            
-            el_energy_layer = np.real(el_energy_full) * np.exp(norm_mod - lognorm_default)
-            dest.append(el_energy_layer)
-            
-            # Save intermediate calculations for use in gradient calculation
-            intermediate = self._electric_energy_intermediate_vals 
-            intermediate.covmat_out_virt_vec.append(covmat_out_virt)
-            intermediate.norm_mod_vec.append(norm_mod)
-            intermediate.lognorm_default_vec.append(lognorm_default)
-            intermediate.pfaffian_vec.append(pfvals)
-        
-        return np.asarray(dest)
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
     
-    ## MOVE TO GLOBAL - DONE
     def _compute_el_grad_vec(self, use_trans_inv:bool=True):
-        """Computation of the electric energy gradients.
-        We start by calculating the electric energies, since these are needed for evaluating the gradients.
-        Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
-
-        Returns:
-            list: list of gradients for the full system
+        """Compute the electric energy gradients.
+        This is an abstract method and has to be overwritten in a subclass.
         """
-
-        if not use_trans_inv:
-            # Evaluate every link of the system
-            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
-            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
-        
-        res = compute_el_grad_vec(self)
-        return res
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
 
     ################## Energy Calculations ######################
     @property
-    def energy(self):
+    def energy(self) -> float:
         """Compute the total energy by adding all terms in the Hamiltonian
         This is a get function.
 
@@ -1251,7 +1202,7 @@ class System2DBase(ABC):
 
     # Functions that return a term of the energy in the Hamiltonian, including all prefactors and energy from the entire lattice.
     @property
-    def el_energy(self):
+    def el_energy(self) -> float:
         """Compute electric energy with shift for the whole system
         This is a get function.
 
@@ -1263,7 +1214,7 @@ class System2DBase(ABC):
         return el_energy
     
     @property
-    def mag_energy(self):
+    def mag_energy(self) -> float:
         """Compute magnetic energy with shift for the whole system
         This is a get function.
 
@@ -1275,7 +1226,7 @@ class System2DBase(ABC):
         return mag_energy
 
     @property
-    def mass_energy(self):
+    def mass_energy(self) -> float:
         """Compute mass energy for the whole system
         This is a get function.
 
@@ -1286,7 +1237,7 @@ class System2DBase(ABC):
         return mass_energy
 
     @property
-    def int_energy(self):
+    def int_energy(self) -> float:
         """Compute interaction (of matter and gauge fields) energy for the whole system
         This is a get function.
 
@@ -1311,7 +1262,7 @@ class System2DBase(ABC):
 
     # Functions that return the energy for the operator part of a term in the Hamiltonian, including the energy for the entire lattice, but not any shifts or prefactors.
     @property
-    def el_energy_op(self):
+    def el_energy_op(self) -> float:
         """Compute electric energy (w/o shift) for the whole system.
         This is a get function.
 
@@ -1321,11 +1272,11 @@ class System2DBase(ABC):
         if self._el_energy_op is None:
             # The different layers can be separated into separate PEPS and then multiplied together.
             nlinks = self.cfg.lattice.nlinks
-            self._el_energy_op = nlinks * np.prod(self.el_energy_op_vec)
+            self._el_energy_op = nlinks * xnp.prod(self.el_energy_op_vec)
         return self._el_energy_op
     
     @property
-    def mag_energy_op(self):
+    def mag_energy_op(self) -> float:
         """Compute the magnetic energy operator for the whole system without shift.
         This is a get function.
 
@@ -1338,7 +1289,7 @@ class System2DBase(ABC):
         return self._mag_energy_op
 
     @property
-    def mass_energy_op(self):
+    def mass_energy_op(self) -> float:
         """Compute the mass energy operator for the whole system without shift.
         This is a get function.
 
@@ -1347,11 +1298,11 @@ class System2DBase(ABC):
         """
         if self._mass_energy_op is None:
             nsites = self.cfg.lattice.size
-            self._mass_energy_op = np.sum(self.mass_energy_op_vec) # don't multiply by the number of sites; for the mass term this is assumed to happen lower down in the stack.
+            self._mass_energy_op = xnp.sum(self.mass_energy_op_vec) # don't multiply by the number of sites; for the mass term this is assumed to happen lower down in the stack.
         return self._mass_energy_op
 
     @property
-    def int_energy_op(self):
+    def int_energy_op(self) -> float:
         """Compute the interaction energy operator for the whole system without shift.
         This is a get function.
 
@@ -1360,7 +1311,7 @@ class System2DBase(ABC):
         """
         if self._int_energy_op is None:
             nsites = self.cfg.lattice.size
-            self._int_energy_op = np.sum(self.int_energy_op_vec)
+            self._int_energy_op = xnp.sum(self.int_energy_op_vec)
         return self._int_energy_op
     
     # Functions that return the layer-resolved energies of each energy operator
@@ -1494,18 +1445,21 @@ class System2DBase(ABC):
                 theta_sum -= self.gaugefieldvec[ind]
             else:
                 theta_sum += self.gaugefieldvec[ind]
-        return np.exp(1.j*theta_sum)
+        return xnp.exp(1.j*theta_sum)
 
     ## MOVE TO GLOBAL
-    def compute_ferm_cov(self, layer:int) -> np.ndarray:
-        """Compute the covariance matrix of the fermions in the system for the given layer
+    def compute_ferm_cov(self, layer:int) -> xnp.ndarray:
+        """Compute the covariance matrix of the fermions in the system for the given layer.
+        We do not calculate it for all layers automatically, since it is not needed for pure-gauge layers.
 
         Args:
             layer (int): the layer for which the covmat should be calculated
         """
-        if self._ferm_covmat[layer] is None:
-            self._ferm_covmat[layer] = self.mat_a_vec[layer] + (self.mat_b_vec[layer] @ self.wi_gamma_out_vec[layer].inv() @ np.transpose(self.mat_b_vec[layer]))
-        return self._ferm_covmat[layer]
+        if self._ferm_covmat_vec is None:
+            self._ferm_covmat_vec = [None]*self.cfg.nlayer
+        if self._ferm_covmat_vec[layer] is None:
+            self._ferm_covmat_vec[layer] = self.mat_a_vec[layer] + (self.mat_b_vec[layer] @ self.wi_gamma_out_vec[layer].inv() @ xnp.transpose(self.mat_b_vec[layer]))
+        return self._ferm_covmat_vec[layer]
 
 
 
@@ -1624,30 +1578,30 @@ class System2DBase(ABC):
 
         return mode_order_str
     
-    def get_pfaffian_arrays(self, modes, coefficients):
-        """Generate the arrays used for list comprehension to extract the required pfaffians, with the correct
-        prefactors, used in the calculation of the electric energy and electric gradients.
+def get_pfaffian_arrays(modes, coefficients):
+    """Generate the arrays used for list comprehension to extract the required pfaffians, with the correct
+    prefactors, used in the calculation of the electric energy and electric gradients.
 
-        Each element in the returned list is of the form
-            (k, (a_1 ... a_2p))
-        where k in a prefactor, and (a_1 ... a_2p) is a tuple containing the indices to extract from the full 
-        covariance matrix to build a submatrix and compute the pfaffian.
-        The electric energy will then be sum of these pfaffians (weighted by the prefactors), with some further 
-        normalization.
+    Each element in the returned list is of the form
+        (k, (a_1 ... a_2p))
+    where k in a prefactor, and (a_1 ... a_2p) is a tuple containing the indices to extract from the full 
+    covariance matrix to build a submatrix and compute the pfaffian.
+    The electric energy will then be sum of these pfaffians (weighted by the prefactors), with some further 
+    normalization.
 
-        Args:
-            modes (List of lists of tuples of ints): _description_
-            coefficients (List of lists of complex floats): _description_
-            neg (float): _description_
+    Args:
+        modes (List of lists of tuples of ints): _description_
+        coefficients (List of lists of complex floats): _description_
+        neg (float): _description_
 
-        Returns:
-            List: index array in the format required for the calculation of the electric energy (and electric gradients).
-        """
-        submatrices = [k for k in it.product(*modes)]
-        indices = [sum(sub, ()) for sub in submatrices]
+    Returns:
+        List: index array in the format required for the calculation of the electric energy (and electric gradients).
+    """
+    submatrices = [k for k in it.product(*modes)]
+    indices = [sum(sub, ()) for sub in submatrices]
 
-        factors = [k for k in it.product(*coefficients)]
-        prefactors = [np.product(k) for k in factors]
-        idxarr = [(p, i) for p, i in zip(prefactors, indices)]
-        
-        return idxarr
+    factors = [xnp.asarray(k) for k in it.product(*coefficients)]
+    prefactors = [xnp.prod(k) for k in factors]
+    idxarr = [(p, i) for p, i in zip(prefactors, indices)]
+    
+    return idxarr

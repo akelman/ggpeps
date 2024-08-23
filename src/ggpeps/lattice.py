@@ -1,5 +1,5 @@
 import sys
-from enum import Enum
+from enum import IntEnum
 
 import logging
 import numpy as np
@@ -8,7 +8,7 @@ import ggpeps
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
-class Direction(Enum):
+class Direction(IntEnum):
     """Enum to capture the direction of a link"""
     X = 0
     Y = 1
@@ -34,6 +34,12 @@ class Lattice2D:
         self.nlinks = 2*nx*ny
         self.nplaquettes = nx*ny
         self.size = nx*ny # number of sites
+        self.ntreelinks = nx*ny - 1
+        self.ncomptreelinks = nx*ny + 1 #number of links not in the tree - complementary tree links
+        
+        # We trust the user not to modify these
+        self.maximal_tree = self.generate_maximal_tree()
+        self.comp_tree = self.generate_tree_complement()
 
     def __str__(self):
         """Generate a string representation of the lattice.
@@ -261,7 +267,32 @@ class Lattice2D:
             loops.append(loop)
 
         return loops
+    
+    def generate_maximal_tree(self):
+        """Generate a maximal tree on the lattice.
+        This allows all values on the tree to be fixed to the identity when gauge_fixing 
+        (no integration is needed over links on the tree). 
+        This method is built for a lattice with periodic boundary conditions. 
 
+        The particular maximal tree returned by this function includes all the horizontal links but the last one on each row, 
+        and all the vertical links but the last one on the first column.
+
+        Returns:
+            list: List of link-indices in the tree
+        """
+        tree = [self.coord2ind_dir((x,y),Direction(0)) for y in range(self.ny) for x in range(self.nx - 1)]
+        tree += [self.coord2ind_dir((0,y),Direction(1)) for y in range(self.ny - 1)]
+        return tree
+    
+    def generate_tree_complement(self):
+        """Generate the list of links complementary to a maximal tree.
+        This method is built for a lattice with periodic boundary conditions.
+        
+        Returns:
+            list: List of links which are not in the maximal tree
+        """
+        fixed_links_ind = [i for i in range(self.nlinks) if i not in self.maximal_tree]
+        return fixed_links_ind
 
 class Lattice3D:
     """
@@ -392,7 +423,11 @@ class PermutationBuilderGMS2DU1:
 
 if __name__ == "__main__":
     print("Lattice 2d, 3x2")
-    lat_3x2 = Lattice2D(3, 2)
+    lat_3x2 = Lattice2D(4, 5)
     print(lat_3x2)
     wilson_loop = lat_3x2.generate_wilson_loop((0,0), (1,1))
     print(wilson_loop)
+    lst = lat_3x2.generate_maximal_tree()
+    print(lst)
+    print([lat_3x2.ind2coord_dir(ind) for ind in lst])
+    print(len(lst))

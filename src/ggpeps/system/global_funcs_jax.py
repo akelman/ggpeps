@@ -13,7 +13,7 @@ jax.config.update("jax_enable_x64", True)
 
 import ggpeps
 
-
+@jit
 def calculate_lognormvec_jit(gamma_in_sys: jnp.ndarray, mat_d: jnp.ndarray) -> float:
     # This is still the plain formula, without any update mechanism    
     # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
@@ -25,10 +25,10 @@ batch_calculate_lognormvec = jax.vmap(calculate_lognormvec_jit)
 
 def calculate_lognormvec_jax(gamma_in_sys_vec: List[np.ndarray], mat_d_vec: List[np.ndarray], all_factors=False) -> float:
     
-    gamma_in_sys_vec_jax = device_put(jnp.array(gamma_in_sys_vec), device=ggpeps.PREFERRED_DEVICE)
-    mat_d_vec_jax = device_put(jnp.array(mat_d_vec), device=ggpeps.PREFERRED_DEVICE)
-    dest_jax = batch_calculate_lognormvec(gamma_in_sys_vec_jax, mat_d_vec_jax)
-    dest = jax.device_get(dest_jax)
+    #gamma_in_sys_vec_jax = device_put(jnp.array(gamma_in_sys_vec), device=ggpeps.PREFERRED_DEVICE)
+    #mat_d_vec_jax = device_put(jnp.array(mat_d_vec), device=ggpeps.PREFERRED_DEVICE)
+    dest = batch_calculate_lognormvec(jnp.array(gamma_in_sys_vec), mat_d_vec)
+    #dest = jax.device_get(dest_jax)
     
     if all_factors:
         dest = dest - mat_d_vec[0].shape[0] * np.log(2) # add back in global factor of 2**(-n)
@@ -41,20 +41,24 @@ def compute_grad_over_norm_jit(gamma_in_sys, diff, deriv_d, mat_d_inv):
     dest = -0.5 * jnp.trace(jnp.matmul(jnp.matmul(gamma_in_sys, deriv_d), jnp.matmul(mat_d_inv, diff)))
     return dest
 
+@jit
 def compute_grad_over_norm_jax(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv_d: np.ndarray, mat_d_inv: np.ndarray):
 
+    '''
     # Converts the input NumPy arrays into JAX arrays and moves them to the selected device (GPU or CPU).
     # This step ensures that the computation utilizes the appropriate hardware (GPU acceleration if possible).
     gamma_in_sys_jax = device_put(jnp.array(gamma_in_sys), device=ggpeps.PREFERRED_DEVICE)
     diff_jax = device_put(jnp.array(diff), device=ggpeps.PREFERRED_DEVICE)
     deriv_d_jax = device_put(jnp.array(deriv_d), device=ggpeps.PREFERRED_DEVICE)
     mat_d_inv_jax = device_put(jnp.array(mat_d_inv), device=ggpeps.PREFERRED_DEVICE)
+    '''
 
     # Calls the JIT-compiled function to perform the computation. The JIT (Just-In-Time) compilation
     # is used to optimize the function for faster execution on the selected device.
     # This step performs the actual gradient-over-norm computation.
-    result = compute_grad_over_norm_jit(gamma_in_sys_jax, diff_jax, deriv_d_jax, mat_d_inv_jax)
+    result = compute_grad_over_norm_jit(gamma_in_sys, diff, deriv_d, mat_d_inv)
 
+    '''
     # Transfers the result back to the CPU. This is necessary because the JIT-compiled function
     # may return a result on the GPU, and further CPU-based processing or analysis might be required.
     result_cpu = jax.device_get(result)
@@ -65,8 +69,10 @@ def compute_grad_over_norm_jax(gamma_in_sys: np.ndarray, diff: np.ndarray, deriv
     scalar_result_cpu = result_cpu.item()
 
     return scalar_result_cpu
+    '''
+    return result
 
-
+@jit
 def derivative_pfaffian_jax(pfaval, mat, d_mat):
     """Compute the derivative of a Pfaffian of a matrix A.
     The numpy version of this function is in ggpeps.utils.
@@ -85,39 +91,39 @@ def compute_el_grad_vec_jax(system):
 
     layers = [k for k in range(system.cfg.nlayer)]
 
-    mat_b_vec = device_put(jnp.asarray(system.mat_b_mod_vec), device=ggpeps.PREFERRED_DEVICE)
+    # TODO: cleanup comments
+    mat_b_vec = system.mat_b_mod_vec # device_put(jnp.asarray(system.mat_b_mod_vec), device=ggpeps.PREFERRED_DEVICE)
     diff_d_gamma_inv_vec = device_put(jnp.asarray([system.wi_gamma_out_mod_vec[layerind].inv() for layerind in layers]), device=ggpeps.PREFERRED_DEVICE) # this does not actually do a computation, just a retrieval
     single_link_offset = 2 * system.cfg.nvirtmodes_link
     offset = 2 * system.cfg.lattice.size + single_link_offset
-    overall_factors = device_put(jnp.asarray(system.el_overall_factors), device=ggpeps.PREFERRED_DEVICE)
-    idxarrs_prefactors = device_put(jnp.asarray([[t[0] for t in system.idxarr_vec[layerind]] for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
-    idxarrs_indices = device_put(jnp.asarray([[t[1] for t in system.idxarr_vec[layerind]] for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
+    overall_factors = jnp.asarray(system.cfg.el_overall_factors) # device_put(jnp.asarray(system.cfg.el_overall_factors), device=ggpeps.PREFERRED_DEVICE)
+    idxarrs_prefactors = jnp.asarray([[t[0] for t in system.cfg.idxarr_vec[layerind]] for layerind in layers]) # device_put(jnp.asarray([[t[0] for t in system.cfg.idxarr_vec[layerind]] for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
+    idxarrs_indices = jnp.asarray([[t[1] for t in system.cfg.idxarr_vec[layerind]] for layerind in layers]) # device_put(jnp.asarray([[t[1] for t in system.cfg.idxarr_vec[layerind]] for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
     nlinks = system.cfg.lattice.nlinks
-    gamma_in_sys_mod_vec = device_put(jnp.asarray(system.gamma_in_sys_mod_vec), device=ggpeps.PREFERRED_DEVICE)
-    diff_d_inv_gamma_inv_vec = device_put(jnp.asarray([system.wi_gamma_in_mod_vec[layerind].inv() for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
-    mat_d_mod_inv_vec = device_put(jnp.asarray(system.mat_d_mod_inv_vec), device=ggpeps.PREFERRED_DEVICE)
+    gamma_in_sys_mod_vec = jnp.asarray(system.gamma_in_sys_mod_vec) # device_put(jnp.asarray(system.gamma_in_sys_mod_vec), device=ggpeps.PREFERRED_DEVICE)
+    diff_d_inv_gamma_inv_vec = jnp.asarray([system.wi_gamma_in_mod_vec[layerind].inv() for layerind in layers]) # device_put(jnp.asarray([system.wi_gamma_in_mod_vec[layerind].inv() for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
+    mat_d_mod_inv_vec = jnp.asarray(system.mat_d_mod_inv_vec) # device_put(jnp.asarray(system.mat_d_mod_inv_vec), device=ggpeps.PREFERRED_DEVICE)
 
     # get saved intermediate results from electric energy calculation
     intermediate = system._electric_energy_intermediate_vals 
-    covmat_out_virt_vec = device_put(jnp.asarray(intermediate.covmat_out_virt_vec), device=ggpeps.PREFERRED_DEVICE)
-    norm_mod_vec = device_put(jnp.asarray(intermediate.norm_mod_vec), device=ggpeps.PREFERRED_DEVICE)
-    lognorm_default_vec = device_put(jnp.asarray(intermediate.lognorm_default_vec), device=ggpeps.PREFERRED_DEVICE)
-    pfaffian_vec = device_put(jnp.asarray(intermediate.pfaffian_vec), device=ggpeps.PREFERRED_DEVICE)
+    covmat_out_virt_vec = jnp.asarray(intermediate.covmat_out_virt_vec) # device_put(jnp.asarray(intermediate.covmat_out_virt_vec), device=ggpeps.PREFERRED_DEVICE)
+    norm_mod_vec = jnp.asarray(intermediate.norm_mod_vec) # device_put(jnp.asarray(intermediate.norm_mod_vec), device=ggpeps.PREFERRED_DEVICE)
+    lognorm_default_vec = jnp.asarray(intermediate.lognorm_default_vec) # device_put(jnp.asarray(intermediate.lognorm_default_vec), device=ggpeps.PREFERRED_DEVICE)
+    pfaffian_vec = jnp.asarray(intermediate.pfaffian_vec) # device_put(jnp.asarray(intermediate.pfaffian_vec), device=ggpeps.PREFERRED_DEVICE)
 
     # these depend on the symbol
-    deriv_gamma_maj_sys_vec = device_put(jnp.asarray([[system.gamma_maj_sys_deriv_vec(symbol)[layerind] for symbol in system.symbolvec] for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
-    trace_def_vec = device_put(jnp.asarray([[system.compute_grad_over_norm(symbol, layerind) for symbol in system.symbolvec] for layerind in layers]), device=ggpeps.PREFERRED_DEVICE)
+    deriv_gamma_maj_sys_vec = jnp.asarray([[system.gamma_maj_sys_deriv_vec(symbol)[layerind] for symbol in system.symbolvec] for layerind in layers]) # device_put(, device=ggpeps.PREFERRED_DEVICE)
+    trace_def_vec = jnp.asarray([[system.compute_grad_over_norm(symbol, layerind) for symbol in system.symbolvec] for layerind in layers]) # device_put(, device=ggpeps.PREFERRED_DEVICE)
 
     dest_jax = batch_calculate_el_grads_all_layers(el_energy_vec, mat_b_vec, diff_d_gamma_inv_vec, single_link_offset, offset, pfaffian_vec, idxarrs_prefactors, idxarrs_indices, overall_factors, nlinks, gamma_in_sys_mod_vec, diff_d_inv_gamma_inv_vec, covmat_out_virt_vec, norm_mod_vec, lognorm_default_vec, deriv_gamma_maj_sys_vec, mat_d_mod_inv_vec, trace_def_vec)
-    #dest_grad = jax.device_get(dest_jax)
-    dest_grad = np.asarray(dest_jax).copy()
+    dest_grad = dest_jax # np.asarray(dest_jax).copy()
 
     # We have to weigh the different layers with the electric energy operator expectation of the other layers.
     # They act as a prefactor in the derivative
     if system.cfg.nlayer > 1:
         for i in range(system.cfg.nlayer):
             prod_other_layers = ggpeps.utils.multiply_except(el_energy_vec, i)
-            dest_grad[i] *= prod_other_layers
+            dest_grad = dest_grad.at[i].multiply(prod_other_layers)
     
     system.cfg.enforce_parameter_conditions(dest_grad)
     return dest_grad
@@ -128,6 +134,16 @@ def deriv_pfarr_jax(covmat_out_virt, d_covmat_out_virt, pfaval, prefactor, ind):
     return res
 in_axes_pfarr = (None, None, 0, 0, 0)
 batch_pfarr = jax.vmap(deriv_pfarr_jax, in_axes=in_axes_pfarr)
+
+def gamma_in_sys_mod_jax(gamma_in_sys, single_link_offset):
+    """Get function to return the gauged gamma_in_sys with a single link modification (to compute the electric energy), 
+    the covariance matrix of the links for the whole system.
+
+    Returns:
+        np.ndarray: Gauged, modified covariance matrix of the system
+    """
+    N = gamma_in_sys.shape[0]
+    return jax.lax.slice(gamma_in_sys, (single_link_offset, single_link_offset), (N, N)) # TODO: should this be dynamic_slice?
 
 def extract_partial_covmats_jax(mat, corner):
     """Extract the partial covariance matrices from a gaussian mapping
@@ -140,13 +156,13 @@ def extract_partial_covmats_jax(mat, corner):
         tuple: Matrices (A,B,D)
     """
     N = mat.shape[0]
-    mat_a = jax.lax.slice(mat, (0,0), (corner, corner))
+    mat_a = jax.lax.slice(mat, (0,0), (corner, corner)) # TODO: should this be dynamic_slice?
     mat_b = jax.lax.slice(mat, (0,corner), (corner, N))
     mat_d = jax.lax.slice(mat, (corner,corner), (N, N))
-    #mat_a = mat[:corner, :corner]
-    #mat_b = mat[:corner, corner:]
-    #mat_d = mat[corner:, corner:]
     return mat_a, mat_b, mat_d
+
+def slice_matrix_jax(mat, a, b, c, d):
+    return jax.lax.slice(mat, (a,c), (b,d))
 
 def compute_el_grad_onelayer_onesymbol(
         el_energy,

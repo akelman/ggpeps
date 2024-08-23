@@ -6,33 +6,24 @@
     "configurations": [
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal"
         },
         {
             "name": "Tests",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/test.py",
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Test grad_el_energy",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/test.py",
-            "args": [
-                "TestZ2SystemMethods.test_grad_el_energy_2_layer"
-            ],
             "console": "integratedTerminal"
         },
         {
             "name": "Eval MC L=2",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
             "args": [
                 "eval-mc",
                 "2",
@@ -45,102 +36,34 @@
                 "--g_el", "0",
                 "--g_mag", "0", 
                 "--g_int", "1",
-                "--g_mass", "0"
-            ],
-            "console": "integratedTerminal"
+                "--g_mass", "0",
+                "--ignore_cache"
+            ]
         },
         {
-            "name": "Exact L=2",
-            "type": "python",
+            "name": "Eval Exact L=2",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
             "args": [
                 "eval-exact",
-                "2"
-            ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Minexact L=2, cp=1, nl=1",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/manager.py",
-            "args": [
-                "min-exact",
                 "2",
-                "--g", "2.0",
-                "--method", "BFGS",
-                "--ncopy", "1",
-                "--pure-gauge"
-            ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Minexact L=2, cp=2, nl=1",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/manager.py",
-            "args": [
-                "min-exact",
-                "2",
-                "--g", "2.0",
-                "--g_mass", "1.0",
-                "--method", "BFGS",
-                "--ncopy", "2"
-            ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Minexact L=2, cp=2, nl=2",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/manager.py",
-            "args": [
-                "min-exact",
-                "2",
-                "--fermions",
-                "--g_el",
-                "1.0",
-                "--g_mag",
-                "0.0",
-                "--g_mass",
-                "0.0",
-                "--g_int",
-                "1.0",
-                "--method",
-                "BFGS",
                 "--ncopy", "2",
-                "--nlayer", "3"
-            ],
-            "console": "integratedTerminal"
+                "--nlayer", "2", 
+                "--g_el", "0",
+                "--g_mag", "0", 
+                "--g_int", "1",
+                "--g_mass", "0",
+                "--ignore_cache"
+            ]
         },
         {
-            "name": "Minexact L=2, cp=2, nl=2 Fermions",
-            "type": "python",
+            "name": "Min MC L=2, cp=2, nl=2",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
-            "args": [
-                "min-exact",
-                "2",
-                "--fermions",
-                "--g_el", "0.0",
-                "--g_mag", "0.0",
-                "--g_mass", "0.0",
-                "--g_int", "1.0",
-                "--method",
-                "BFGS",
-                "--ncopy", "2",
-                "--num_pg_layer", "1", 
-                "--num_fermionic_layer", "2",
-                "--seed", "1438378742"
-            ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Minimize (MC) L=2, cp=2, nl=2",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
                 "min-mc",
@@ -156,9 +79,81 @@
                 "--warmup_steps", "5",
                 "--meas_steps", "5",
                 "--maxiter", "5",
-                "--seed", "2"
+                "--seed", "2",
+                "--ignore_cache"
+            ]
+        },
+        {
+            "name": "Minexact L=2, PG, cp=2, nl=2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
+            "args": [
+                "min-exact",
+                "2",
+                "--fermions",
+                "--g_el",
+                "1.0",
+                "--g_mag",
+                "0.0",
+                "--g_mass",
+                "0.0",
+                "--g_int",
+                "1.0",
+                "--method",
+                "BFGS",
+                "--ncopy", "2",
+                "--nlayer", "2",
+                "--ignore_cache"
+            ]
+        },
+        {
+            "name": "Minexact L=2, Fermions, cp=2, nl=2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
+            "args": [
+                "min-exact",
+                "2",
+                "--fermions",
+                "--g_el", "0.0",
+                "--g_mag", "0.0",
+                "--g_mass", "0.0",
+                "--g_int", "1.0",
+                "--method",
+                "BFGS",
+                "--ncopy", "2",
+                "--num_pg_layer", "1", 
+                "--num_fermionic_layer", "2",
+                "--seed", "1438378742",
+                "--ignore_cache"
             ],
-            "console": "integratedTerminal"
+        },
+        {
+            "name": "Minimize (MC) L=2, cp=2, nl=2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
+            "args": [
+                "min-mc",
+                "2",
+                "--fermions",
+                "--g_el", "0.5",
+                "--g_mag", "0.5",
+                "--g_int", "1.0",
+                "--g_mass", "0.5",
+                "--method", "BFGS",
+                "--ncopy", "2",
+                "--nlayer", "2",
+                "--warmup_steps", "5",
+                "--meas_steps", "5",
+                "--maxiter", "5",
+                "--seed", "2",
+                "--ignore_cache"
+            ],
         },
     ]
 }

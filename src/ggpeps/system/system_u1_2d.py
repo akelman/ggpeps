@@ -1,7 +1,8 @@
 import sys
 import sympy
 import logging
-import numpy as np
+#import numpy as np
+from ggpeps import xnp as np
 
 from scipy.linalg import block_diag
 from pfapack import pfaffian as pf
@@ -31,6 +32,40 @@ class U1System2DConfig(Config2DBase):
         #The order of the parameters is [t,y,z]
         for ind in range(self.nlayer):
             self.paramvec[ind, 0] = 0
+    
+    def _create_symbolvec(self):
+        t = sympy.Symbol("t", real=True)
+        y = sympy.Symbol("y", real=True)
+        z = sympy.Symbol("z", real=True)
+        return [t,y,z]
+
+    def compute_tmat_symb_single(self):
+        [t, y, z] = self.symbolvec
+        etap = sympy.exp(1.j * sympy.pi / 4.)
+        zsqrt = z/sympy.sqrt(2)
+        tmat_symb_single = sympy.Matrix([[t,  etap**2 *t,      etap*t, etap**3 *t],
+                                         [0,           y,       zsqrt,      zsqrt],
+                                         [-y,          0,      -zsqrt,      zsqrt],
+                                         [-zsqrt,  zsqrt,           0,          y],
+                                         [-zsqrt,  -zsqrt,          -y,         0]])
+        return tmat_symb_single
+    
+    @property
+    def tmat_symb(self):
+        tmat_symb = sympy.zeros(9,9)
+        tmat_symb_single = self.compute_tmat_symb_single()
+        tmat_symb[0:5,5:] = tmat_symb_single
+        tmat_symb[5:,0:5] = -tmat_symb_single.T
+        return tmat_symb
+    
+    def generate_gamma_gauge_neutral_dict(self):
+        # Note: unlike in the Z2 case, here we can ignore the direction of the link
+        dest = [0]*2
+        dest[Direction.X] = np.real(
+            1.j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
+        dest[Direction.Y] = np.real(
+            1.j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
+        return [dest]*self.nlayer
 
 
 class U1System2D(System2DBase):
@@ -52,34 +87,9 @@ class U1System2D(System2DBase):
         self.use_pfaffian = False
 
 
-    def _create_symbolvec(self):
-        t = sympy.Symbol("t", real=True)
-        y = sympy.Symbol("y", real=True)
-        z = sympy.Symbol("z", real=True)
-        return [t,y,z]
-
-    def _compute_tmat_symb_single(self):
-        [t, y, z] = self.symbolvec
-        etap = sympy.exp(1.j * sympy.pi / 4.)
-        zsqrt = z/sympy.sqrt(2)
-        tmat_symb_single = sympy.Matrix([[t,  etap**2 *t,      etap*t, etap**3 *t],
-                                         [0,           y,       zsqrt,      zsqrt],
-                                         [-y,          0,      -zsqrt,      zsqrt],
-                                         [-zsqrt,  zsqrt,           0,          y],
-                                         [-zsqrt,  -zsqrt,          -y,         0]])
-        return tmat_symb_single
-
-    def _eval_tmat_symb_single(self,paramvec):
-        tmat_eval = self._compute_tmat_symb_single().evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
+    def eval_tmat_symb_single(self,paramvec):
+        tmat_eval = self.cfg.compute_tmat_symb_single().evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
         return np.asarray(tmat_eval).astype(complex)
-
-    @property
-    def tmat_symb(self):
-        tmat_symb = sympy.zeros(9,9)
-        tmat_symb_single = self._compute_tmat_symb_single()
-        tmat_symb[0:5,5:]=tmat_symb_single
-        tmat_symb[5:,0:5]=-tmat_symb_single.T
-        return tmat_symb
 
 
     def permutation_dirac(self):
@@ -107,30 +117,33 @@ class U1System2D(System2DBase):
         """
         if self._gamma_dirac_vec is None:
             perm = self.permutation_dirac()
-            self._gamma_dirac_vec = [
+            self._gamma_dirac_vec = np.asarray([
                 perm @ utils.tmat_to_covariance_matrix(tmat) @ np.transpose(perm) for tmat in self.tmat_vec
-            ]
+            ])
         return self._gamma_dirac_vec
 
 
-    def _expand_gamma_maj_to_system(self,covmat):
-        permbuilder = lat.PermutationBuilderGMS2DU1(self.cfg.lattice,
-                                                    nmodes_per_link=2)
-        mat_perm = permbuilder.perm()
-        nsites = self.cfg.lattice.size
-        id = np.eye(nsites)
-        # Extract the parts of the covariance matrix
-        # The 2 is the number of physical fermionic Majorana modes
-        amat, bmat, dmat = extract_partial_covmats(covmat, 2)
-        #Expand them
-        amat_sys = np.kron(id, amat)
-        bmat_sys = np.kron(id, bmat)
-        dmat_sys = np.kron(id, dmat)
-        #Reassemble them in the correct order
-        mat_sys_unordered= np.block(
-            [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
-        dest = mat_perm @ mat_sys_unordered @ np.transpose(mat_perm) # Note that this uses a different permutation matrix convention than in Z2 case.
-        return dest
+    def _expand_gamma_maj_to_system(self, covmats):
+        vec = []
+        for covmat in covmats:
+            permbuilder = lat.PermutationBuilderGMS2DU1(self.cfg.lattice,
+                                                        nmodes_per_link=2)
+            mat_perm = permbuilder.perm()
+            nsites = self.cfg.lattice.size
+            id = np.eye(nsites)
+            # Extract the parts of the covariance matrix
+            # The 2 is the number of physical fermionic Majorana modes
+            amat, bmat, dmat = extract_partial_covmats(covmat, 2)
+            #Expand them
+            amat_sys = np.kron(id, amat)
+            bmat_sys = np.kron(id, bmat)
+            dmat_sys = np.kron(id, dmat)
+            #Reassemble them in the correct order
+            mat_sys_unordered= np.block(
+                [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
+            dest = mat_perm @ mat_sys_unordered @ np.transpose(mat_perm) # Note that this uses a different permutation matrix convention than in Z2 case.
+            vec.append(dest)        
+        return np.array(vec)
 
 
     def initialize_gamma_in_sys(self):
@@ -160,8 +173,8 @@ class U1System2D(System2DBase):
         # In the U1 parametrization, the direction of the link does not matter for the projector.
         # We just keep the same structure as in the Z2 parametrization for consistency
         id = np.eye(size) 
-        neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral[0][Direction.X] ) # just use the first gamma_gauge_neutral, since they're shared by all layers
-        neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral[0][Direction.Y] )
+        neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral_vec[0][Direction.X] ) # just use the first gamma_gauge_neutral, since they're shared by all layers
+        neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral_vec[0][Direction.Y] )
         gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y) # for the 3D case, simply add in the Z covariance matrix as well
 
         diffvec = [
@@ -197,15 +210,6 @@ class U1System2D(System2DBase):
 
     ################## Local Gauge ######################
 
-    def _generate_gamma_gauge_neutral_dict(self):
-        # Note: unlike in the Z2 case, here we can ignore the direction of the link
-        dest = {}
-        dest[Direction.X] = np.real(
-            1.j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
-        dest[Direction.Y] = np.real(
-            1.j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
-        return [dest]*self.cfg.nlayer
-
     def _generate_rotmat_half(self,theta):
         rot_right = np.array([[np.cos(theta), np.sin(theta)],
                               [-np.sin(theta), np.cos(theta)]])
@@ -228,7 +232,7 @@ class U1System2D(System2DBase):
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord, dir)
-        gamma_in_subst = rotmat @ self.gamma_gauge_neutral[0][dir] @ np.transpose(rotmat) # just use the first gamma_gauge_neutral, since they're shared by all layers
+        gamma_in_subst = rotmat @ self.gamma_gauge_neutral_vec[0][dir] @ np.transpose(rotmat) # just use the first gamma_gauge_neutral, since they're shared by all layers
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
         # Update the determinant
         mat_inv_vec = [

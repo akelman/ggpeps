@@ -79,8 +79,8 @@ def compute_el_grad_vec_numpy(system):
         """
 
         dest_grad = []
-        overall_factors = system.el_overall_factors
-        idxarrs = system.idxarr_vec
+        overall_factors = system.cfg.el_overall_factors
+        idxarrs = system.cfg.idxarr_vec
         el_energy_vec = system.el_energy_op_vec #this gets the electric energy, and ensures that the intermediate steps are calculated
 
         for layerind in range(system.cfg.nlayer):
@@ -146,60 +146,86 @@ def compute_el_grad_vec_numpy(system):
         return dest_grad
 
 
-def update_gauge_ind_numpy(z2_system, link_ind, theta):
-    """Update method that is called upon changing a gauge field.
-    This method is central to the algorithm since it changes the gauged projectors and updates all incremental trackers
-    of determinants and inverses.
-    The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
+# def update_gauge_ind_numpy(z2_system, link_ind, theta):
+#     """Update method that is called upon changing a gauge field.
+#     This method is central to the algorithm since it changes the gauged projectors and updates all incremental trackers
+#     of determinants and inverses.
+#     The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
 
-    This method overwrites an abstract method in System2DBase.
+#     This method overwrites an abstract method in System2DBase.
+
+#     Args:
+#         link_ind (int): Link index to be updated
+#         theta (float): New gauge field value
+#     """
+#     # Update the gaugefield
+#     z2_system._gaugefieldvec[link_ind] = theta
+#     # There are two directions per vertex
+#     ind_mat = 2 * z2_system.cfg.nvirtmodes_link * link_ind
+#     coord, dir = z2_system.cfg.lattice.ind2coord_dir(link_ind)
+#     rotmat = z2_system.generate_rotmat(theta, coord, dir)
+#     gamma_neutral_gauge = z2_system.gamma_gauge_neutral[0][dir]
+#     gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
+#     update = z2_system.calculate_update_gamma_in(ind_mat, gamma_in_subst)
+
+#     # Update the determinant
+#     mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in z2_system.wi_gamma_in_vec]
+#     detval_vec = [
+#         incdet.update_index(mat_inv, update, ind_mat, ind_mat)
+#         for mat_inv, incdet in zip(mat_inv_vec, z2_system.incdet_vec)
+#     ]
+
+#     # Update the modified determinant
+#     offset = 2 * z2_system.cfg.nvirtmodes_link
+#     if ind_mat - offset >= 0:
+#         for wi, incdet in zip(z2_system.wi_gamma_in_mod_vec, z2_system.incdet_mod_vec):
+#             mat_inv = wi.inv()
+#             incdet.update_index(mat_inv, update, ind_mat - offset, ind_mat - offset)
+
+#     # Update the weight
+#     z2_system.weight = 0.5 * np.sum(detval_vec)
+
+#     # Update the matrix inversion
+#     for wi_gamma_in in z2_system.wi_gamma_in_vec:
+#         wi_gamma_in.update_index(update, ind_mat, ind_mat)
+#     for wi_gamma_out in z2_system.wi_gamma_out_vec:
+#         wi_gamma_out.update_index(update, ind_mat, ind_mat)
+
+#     if ind_mat - offset >= 0:
+#         for wi_gamma_in_mod in z2_system.wi_gamma_in_mod_vec:
+#             wi_gamma_in_mod.update_index(update, ind_mat - offset, ind_mat - offset)
+#         for wi_gamma_out_mod in z2_system.wi_gamma_out_mod_vec:
+#             wi_gamma_out_mod.update_index(update, ind_mat - offset, ind_mat - offset)
+
+#     # Substitute in the array
+#     z2_system.gamma_in_sys[ind_mat:ind_mat + rotmat.shape[0], ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
+
+#     # Invalidate gauge dependent quantities
+#     z2_system.invalidate_gauge_update()
+
+def extract_partial_covmats_numpy(mat, corner):
+    """Extract the partial covariance matrices from a gaussian mapping
 
     Args:
-        link_ind (int): Link index to be updated
-        theta (float): New gauge field value
+        mat (np.ndarray): Full covariance matrix
+        corner (int): Index of the top left element of the bottom right matrix
+
+    Returns:
+        tuple: Matrices (A,B,D)
     """
-    # Update the gaugefield
-    z2_system._gaugefieldvec[link_ind] = theta
-    # There are two directions per vertex
-    ind_mat = 2 * z2_system.cfg.nvirtmodes_link * link_ind
-    coord, dir = z2_system.cfg.lattice.ind2coord_dir(link_ind)
-    rotmat = z2_system.generate_rotmat(theta, coord, dir)
-    gamma_neutral_gauge = z2_system.gamma_gauge_neutral[0][dir]
-    gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
-    update = z2_system.calculate_update_gamma_in(ind_mat, gamma_in_subst)
+    mat_a = mat[:corner, :corner]
+    mat_b = mat[:corner, corner:]
+    mat_d = mat[corner:, corner:]
+    return mat_a, mat_b, mat_d
 
-    # Update the determinant
-    mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in z2_system.wi_gamma_in_vec]
-    detval_vec = [
-        incdet.update_index(mat_inv, update, ind_mat, ind_mat)
-        for mat_inv, incdet in zip(mat_inv_vec, z2_system.incdet_vec)
-    ]
+def slice_matrix_numpy(mat, a, b, c, d):
+    return mat[a:b, c:d]
 
-    # Update the modified determinant
-    offset = 2 * z2_system.cfg.nvirtmodes_link
-    if ind_mat - offset >= 0:
-        for wi, incdet in zip(z2_system.wi_gamma_in_mod_vec, z2_system.incdet_mod_vec):
-            mat_inv = wi.inv()
-            incdet.update_index(mat_inv, update, ind_mat - offset, ind_mat - offset)
+def gamma_in_sys_mod_numpy(gamma_in_sys, single_link_offset):
+    """Get function to return the gauged gamma_in_sys with a single link modification (to compute the electric energy), 
+    the covariance matrix of the links for the whole system.
 
-    # Update the weight
-    z2_system.weight = 0.5 * np.sum(detval_vec)
-
-    # Update the matrix inversion
-    for wi_gamma_in in z2_system.wi_gamma_in_vec:
-        wi_gamma_in.update_index(update, ind_mat, ind_mat)
-    for wi_gamma_out in z2_system.wi_gamma_out_vec:
-        wi_gamma_out.update_index(update, ind_mat, ind_mat)
-
-    if ind_mat - offset >= 0:
-        for wi_gamma_in_mod in z2_system.wi_gamma_in_mod_vec:
-            wi_gamma_in_mod.update_index(update, ind_mat - offset, ind_mat - offset)
-        for wi_gamma_out_mod in z2_system.wi_gamma_out_mod_vec:
-            wi_gamma_out_mod.update_index(update, ind_mat - offset, ind_mat - offset)
-
-    # Substitute in the array
-    z2_system.gamma_in_sys[ind_mat:ind_mat + rotmat.shape[0], ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
-
-    # Invalidate gauge dependent quantities
-    z2_system.invalidate_gauge_update()
-
+    Returns:
+        np.ndarray: Gauged, modified covariance matrix of the system
+    """
+    return gamma_in_sys[single_link_offset:, single_link_offset:] 

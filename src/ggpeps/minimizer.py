@@ -119,7 +119,7 @@ class Minimizer():
             # Check if value is stored in cache (e.g. from previous minimization)
             energy = self.cache.load_obs_from_local_cache(flattened_paramvec, 'energy')
             if energy is not None:
-                #logger.debug(f'Found cached value for energy: {energy}')
+                logger.debug(f'Found cached value for energy: {energy}')
                 return energy
 
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, flattened_paramvec):
@@ -136,7 +136,7 @@ class Minimizer():
             self.cache.add_obs_to_cache(flattened_paramvec, 'energy', energy)
             parametergrad = self.last_result.get_obs_mean('energy_grad')
             self.cache.add_obs_to_cache(flattened_paramvec, 'energy_grad', parametergrad)
-            #logger.debug(f'Calculated energy: {energy}')
+            logger.debug(f'Calculated energy: {energy}')
 
             return energy
         
@@ -241,7 +241,7 @@ def print_callback(x, minimizer):
         message += f", acceptance prob: {acceptance_prob:.6f}"
     logger.info(message)
 
-    logger.debug(f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}")
+    logger.debug(f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}, chem: {chem_energy:.6f}")
     logger.debug(f"Parametervec: {paramvec}")
 
     # If we're at the lowest energy seen so far, log the parameters
