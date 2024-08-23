@@ -21,7 +21,7 @@ class Testgaugefixing(unittest.TestCase):
         paramvec = np.random.rand(2, 20)
         
         # Build 2x2 system and evaluator
-        cfg2 = system.Z2System2D_G2C_F2C_Config(self.lat2, 1,1,1,1)
+        cfg2 = system.Z2System2D_G2C_F2C_Config(self.lat2, 1,1,1,1,[0,0])
         cfg2.paramvec = paramvec
         self.system_z2_2 = system.Z2System2D(cfg2) 
         self.system_z2_2.cfg.enforce_parameter_conditions(self.system_z2_2.cfg.paramvec)
@@ -30,7 +30,7 @@ class Testgaugefixing(unittest.TestCase):
         self.neutral_gauge2 = self.system_z2_2.gaugemgr.get_neutral_gauge_value()        
 
         # Build 4x4 system and evaluator
-        cfg4 = system.Z2System2D_G2C_F2C_Config(self.lat4, 1,1,1,1)
+        cfg4 = system.Z2System2D_G2C_F2C_Config(self.lat4, 1,1,1,1,[0,0])
         self.system_z2_4 = system.Z2System2D(cfg4) 
         cfg4.paramvec = paramvec
         self.system_z2_4.cfg.enforce_parameter_conditions(self.system_z2_4.cfg.paramvec)

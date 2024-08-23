@@ -203,7 +203,8 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         eps=1e-5
         paramvec = np.random.rand(1,20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None)
+        system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None, 
+                                               num_pg_layer=2, num_fermionic_layer=0)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         symbolvec = system_z2_2_2.symbolvec
@@ -213,8 +214,10 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                 paramvec_right = np.copy(paramvec)
                 paramvec_left[0,ind] -= eps
                 paramvec_right[0,ind] += eps
-                system_cfg_left = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None)
-                system_cfg_right = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None)
+                system_cfg_left = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None,
+                                                            num_pg_layer=2, num_fermionic_layer=0)
+                system_cfg_right = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None,
+                                                            num_pg_layer=2, num_fermionic_layer=0)
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
 
@@ -246,8 +249,10 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                 paramvec_right = np.copy(paramvec)
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
-                system_cfg_left = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None)
-                system_cfg_right = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None)
+                system_cfg_left = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None,
+                                                            num_pg_layer=1, num_fermionic_layer=0)
+                system_cfg_right = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None, 
+                                                             num_pg_layer=1, num_fermionic_layer=0)
 
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
@@ -267,7 +272,8 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         nlayer = 2
         paramvec = np.random.rand(2,20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None, num_pg_layer=1, num_fermionic_layer=0)
+        system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None, 
+                                               num_pg_layer=2, num_fermionic_layer=0)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
@@ -280,8 +286,10 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None, num_pg_layer=1, num_fermionic_layer=0)
-                    system_cfg_right = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None, num_pg_layer=1, num_fermionic_layer=0)
+                    system_cfg_left = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None, 
+                                                                num_pg_layer=2, num_fermionic_layer=0)
+                    system_cfg_right = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None, 
+                                                                 num_pg_layer=2, num_fermionic_layer=0)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -300,7 +308,8 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         # Calculate the electric energy of an empty system.
         paramvec = np.zeros((1,20))
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None)
+        system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None, 
+                                               num_pg_layer=1, num_fermionic_layer=0)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         el_energy = system_z2_2_2.el_energy

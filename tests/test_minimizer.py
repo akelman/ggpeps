@@ -16,7 +16,8 @@ class TestMinimizerZ2(unittest.TestCase):
         eps = 1e-5
         paramvec = [[0.0, 0.5, 0.5, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
+        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0], 
+                                             num_pg_layer=1, num_fermionic_layer=0)
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
         gauge_fixing = False
@@ -30,8 +31,10 @@ class TestMinimizerZ2(unittest.TestCase):
                 paramvec_right = np.copy(paramvec)
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
-                system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
-                system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
+                system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0], 
+                                                          num_pg_layer=1, num_fermionic_layer=0)
+                system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0], 
+                                                           num_pg_layer=1, num_fermionic_layer=0)
 
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
@@ -54,7 +57,8 @@ class TestMinimizerZ2(unittest.TestCase):
         nlayer = 2
         paramvec = [[0.0, 0.5, 0.5, 0.0, 0.0, 0.0], [0.0, 0.3, 0.8, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, nlayer)
+        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0, 0], 
+                                             num_pg_layer=2, num_fermionic_layer=0)
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
         gauge_fixing = False
@@ -69,8 +73,10 @@ class TestMinimizerZ2(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layer, ind] -= eps
                     paramvec_right[layer, ind] += eps
-                    system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, nlayer)
-                    system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, nlayer)
+                    system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0, 0], 
+                                                              num_pg_layer=2, num_fermionic_layer=0)
+                    system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0, 0], 
+                                                               num_pg_layer=2, num_fermionic_layer=0)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -93,7 +99,7 @@ class TestMinimizerZ2(unittest.TestCase):
         eps = 1e-5
         paramvec = [[0.2, 0.5, 0.5, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
+        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0])
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
         gauge_fixing = False
@@ -106,8 +112,8 @@ class TestMinimizerZ2(unittest.TestCase):
                 paramvec_right = np.copy(paramvec)
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
-                system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
-                system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
+                system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0])
+                system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0])
 
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
@@ -131,7 +137,8 @@ class TestMinimizerZ2(unittest.TestCase):
         nlayer = 2
         paramvec = [[0.2, 0.5, 0.5, 0.0, 0.0, 0.0], [0.1, 0.4, 0.2, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, nlayer)
+        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0,0], 
+                                             num_pg_layer=2, num_fermionic_layer=0)
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
         gauge_fixing = False
@@ -145,8 +152,10 @@ class TestMinimizerZ2(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, nlayer)
-                    system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, nlayer)
+                    system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0,0], 
+                                                              num_pg_layer=2, num_fermionic_layer=0)
+                    system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0,0], 
+                                                               num_pg_layer=2, num_fermionic_layer=0)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right

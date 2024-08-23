@@ -209,7 +209,7 @@ def main(args):
 
     # TODO: get from command line
     nlayer = args.num_pg_layer + args.num_fermionic_layer
-    g_chem = np.array([0,0,0])
+    g_chem = np.array([0]*nlayer)
 
     # Depending on the parameters, we instantiate different systems
     # Since they all share the same interface, we do not care much about the details of the system after this point
