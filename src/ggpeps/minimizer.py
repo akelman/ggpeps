@@ -227,21 +227,21 @@ def print_callback(x, minimizer):
     int_energy = res.get_obs_mean("int_energy")
     el_energy = res.get_obs_mean("el_energy")
     mag_energy = res.get_obs_mean("mag_energy")
-    chem_energy = res.get_obs_mean("chem_energy")
+    # chem_energy = res.get_obs_mean("chem_energy") # TODO: not yet added to MC
 
-    plaquette = res.get_obs_mean["wilson_loop_0-0_1x1"]
+    plaquette = res.get_obs_mean("wilson_loop_0-0_1x1")
     max_grad_paramvec = np.max(np.abs(grad_paramvec))
 
     message = f"Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
     if minimizer.cfg.method == 'CUSTOM':
         # We only have access to the iteration number if we are handling the minimization (via the CUSTOM method)
         message = f"Iter: {x:03d}, {message}"
-    if not minimizer.use_exact:
+    if 'mc' in minimizer.evaluator_manager.type:
         # Acceptance probability is only defined for MC
         message += f", acceptance prob: {acceptance_prob:.6f}"
     logger.info(message)
 
-    logger.debug(f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}, chem: {chem_energy:.6f}")
+    logger.debug(f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}")
     logger.debug(f"Parametervec: {paramvec}")
 
     # If we're at the lowest energy seen so far, log the parameters
