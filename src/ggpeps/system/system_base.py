@@ -52,7 +52,7 @@ class ElectricEnergyIntermediateVals:
     """Class for keeping track of intermediate calculations of the electric energy, 
     for re-use with the gradient calculation"""
     # TODO: make into numpy/jax arrays
-    covmat_out_virt_vec: List[int] = field(default_factory=list) # this is the pythonic way to use lists in dataclasses
+    covmat_out_virt_vec: List[xnp.array] = field(default_factory=list) # this is the pythonic way to use lists in dataclasses
     norm_mod_vec: List[float] = field(default_factory=list)
     lognorm_default_vec: List[float] = field(default_factory=list)
     pfaffian_vec: List[float] = field(default_factory=list)
