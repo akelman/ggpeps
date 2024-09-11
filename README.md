@@ -50,10 +50,13 @@ If you want to make the change persistent, i.e. it remains after closing the ter
 ### Installation with GPUs
 JAX is the library we use for running on GPUs. JAX must be installed wth jaxlib and connected to the correct versions of CUDA. The versions required will depend on what's available on a given cluster.
 
-First, purge any loaded modules, with
-`module purge`. Then load the appropriate modules for `python` and `cuda`. To see the available modules, run `module avail`, to load a module run `module load <module>`, and to see a list of loaded modules run `module list`.
+First, purge any loaded modules, with `module purge`.
+Then load the appropriate modules for `python` and `cuda`.
+To see the available modules, run `module avail`, to load a module run `module load <module>`, and to see a list of loaded modules run `module list`.
 
-Once this is done, create and activate a virtual environment. Before installing the requirements, run `pip install "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html`, which will install JAX and connect it to the appropriate version of CUDA. Then install the remaining requirements.
+Once this is done, create and activate a virtual environment.
+Before installing the requirements, run `pip install "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html`, which will install JAX and connect it to the appropriate version of CUDA.
+Then install the remaining requirements.
 
 TODO: check if the JAX/CUDA installation works with requirements.txt.
 
