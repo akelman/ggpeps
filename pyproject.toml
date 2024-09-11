@@ -1,14 +1,11 @@
 [build-system]
-# A list of packages that are needed to build your package:
-requires = ["setuptools"]  # REQUIRED if [build-system] table is used
-# The name of the Python object that frontends will use to perform the build:
-build-backend = "setuptools.build_meta"  # If not defined, then legacy behavior can happen.
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
 
 
 [project]
+dynamic = ["version"]
 name = "ggpeps"  
-
-version = "0.0.1"  
 description = "A Python package to work with Gauged Gaussian Projected Entangled Pair States (GGPEPS)"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -74,6 +71,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["check-manifest"]
 test = ["coverage"]
+
+[tool.setuptools_scm]
+version_file = "src/ggpeps/_version.py"
 
 #[project.urls]
 #"Homepage" = ""

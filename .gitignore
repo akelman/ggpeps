@@ -42,5 +42,7 @@ inputfile_*
 run
 build
 src/*.egg-info
+src/ggpeps/_version.py
 # Ignore coverage files
 .coverage
+
