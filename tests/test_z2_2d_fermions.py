@@ -146,8 +146,8 @@ class TestZ2C4System(unittest.TestCase):
                     val_right = system_z2_2_2_right.el_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    print(f"left: {val_left}, right: {val_right}")
-                    print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
+                    # print(f"left: {val_left}, right: {val_right}")
+                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
 
     @skip("This gradient tests with the 4 copy ansatz take to long")
@@ -224,8 +224,8 @@ class TestZ2C4System(unittest.TestCase):
                     val_right = system_z2_2_2_right.mass_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    print(f"left: {val_left}, right: {val_right}")
-                    print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
+                    # print(f"left: {val_left}, right: {val_right}")
+                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
 
     def test_grad_mass_energy_2flavor(self):
@@ -313,8 +313,8 @@ class TestZ2C4System(unittest.TestCase):
                     val_right = system_z2_2_2_right.mass_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    print(f"left: {val_left}, right: {val_right}")
-                    print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
+                    # print(f"left: {val_left}, right: {val_right}")
+                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
     
 
@@ -362,8 +362,8 @@ class TestZ2C4System(unittest.TestCase):
                     val_right = system_z2_2_2_right.int_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    print(f"left: {val_left}, right: {val_right}")
-                    print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
+                    # print(f"left: {val_left}, right: {val_right}")
+                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)
     
     @skip("This gradient tests with the 4 copy ansatz take to long")
@@ -411,6 +411,6 @@ class TestZ2C4System(unittest.TestCase):
                     val_right = system_z2_2_2_right.int_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    print(f"left: {val_left}, right: {val_right}")
-                    print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
+                    # print(f"left: {val_left}, right: {val_right}")
+                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(deriv_ana[layerind,ind], deriv_num, places=5)

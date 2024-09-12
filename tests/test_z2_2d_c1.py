@@ -404,7 +404,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         gamma_right = system_z2_2_2_right.gamma_maj_vec[0]
         deriv_num = (gamma_right-gamma_left)/(2*eps)
 
-        compare_array_elementwise(self,deriv_num,deriv_ana,print_vals=True)
+        compare_array_elementwise(self,deriv_num,deriv_ana,print_vals=False)
 
 
     def test_derivative_y_numeric_pure_gauge_real(self):
@@ -458,7 +458,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         gamma_right = system_z2_2_2_right.gamma_maj_vec[0]
         deriv_num = (gamma_right-gamma_left)/(2*eps)
 
-        compare_array_elementwise(self,deriv_num,deriv_ana,print_vals=True)
+        compare_array_elementwise(self,deriv_num,deriv_ana,print_vals=False)
 
     def test_derivative_y_sys_real(self):
         lat = lattice.Lattice2D(2, 2)
