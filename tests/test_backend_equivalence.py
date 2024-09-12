@@ -8,9 +8,10 @@ import numpy as np
 import jax.numpy as jnp
 
 import ggpeps
+from ggpeps import system
 from ggpeps import lattice
 #rom ggpeps import xnp
-#from ggpeps.system.global_funcs import *
+from ggpeps.system.global_funcs import *
 
 from tests import TEST_BACKEND
 
@@ -57,9 +58,9 @@ class TestBackends(unittest.TestCase):
         os.environ["GGPEPS_BACKEND"] = "numpy"
         importlib.reload(ggpeps)
 
-        cfg = ggpeps.system.Z2System2D_G2C_F2C_Config(lat, 1,1,1,1)
+        cfg = ggpeps.system.Z2System2D_G2C_F2C_Config(lat, 1,1,1,1,[0, 0], num_pg_layer=2, num_fermionic_layer=0)
         cfg.paramvec = paramvec
-        system_z2 = ggpeps.system.Z2System2D_G2C_F2C(cfg) 
+        system_z2 = system.Z2System2D(cfg) 
         system_z2.cfg.enforce_parameter_conditions(system_z2.cfg.paramvec)
         tmat_vec_np = system_z2.tmat_vec
 
@@ -67,9 +68,9 @@ class TestBackends(unittest.TestCase):
         os.environ["GGPEPS_BACKEND"] = "jax"
         importlib.reload(ggpeps)
 
-        cfg = ggpeps.system.Z2System2D_G2C_F2C_Config(lat, 1,1,1,1)
+        cfg = ggpeps.system.Z2System2D_G2C_F2C_Config(lat, 1,1,1,1,[0, 0], num_pg_layer=2, num_fermionic_layer=0)
         cfg.paramvec = paramvec
-        system_z2 = ggpeps.system.Z2System2D_G2C_F2C(cfg) 
+        system_z2 = system.Z2System2D(cfg) 
         system_z2.cfg.enforce_parameter_conditions(system_z2.cfg.paramvec)
         tmat_vec_jax = system_z2.tmat_vec
 
@@ -87,9 +88,9 @@ class TestBackends(unittest.TestCase):
         #importlib.invalidate_caches()
         importlib.reload(ggpeps)
 
-        cfg = ggpeps.system.Z2System2D_G2C_F2C_Config(lat, 1,1,1,1)
+        cfg = ggpeps.system.Z2System2D_G2C_F2C_Config(lat, 1,1,1,1,[0, 0], num_pg_layer=2, num_fermionic_layer=0)
         cfg.paramvec = paramvec
-        system_z2 = ggpeps.system.Z2System2D_G2C_F2C(cfg) 
+        system_z2 = system.Z2System2D(cfg) 
         system_z2.cfg.enforce_parameter_conditions(system_z2.cfg.paramvec)
         gamma_dirac_vec_jax = system_z2.gamma_dirac_vec
             #return gamma_dirac_vec_jax
@@ -98,9 +99,9 @@ class TestBackends(unittest.TestCase):
         os.environ["GGPEPS_BACKEND"] = "numpy"
         importlib.reload(ggpeps)
 
-        cfg = ggpeps.system.Z2System2D_G2C_F2C_Config(lat, 1,1,1,1)
+        cfg = ggpeps.system.Z2System2D_G2C_F2C_Config(lat, 1,1,1,1,[0, 0], num_pg_layer=2, num_fermionic_layer=0)
         cfg.paramvec = paramvec
-        system_z2 = ggpeps.system.Z2System2D_G2C_F2C(cfg) 
+        system_z2 = system.Z2System2D(cfg) 
         system_z2.cfg.enforce_parameter_conditions(system_z2.cfg.paramvec)
         gamma_dirac_vec_np = system_z2.gamma_dirac_vec
         print(type(gamma_dirac_vec_jax))

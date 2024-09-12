@@ -1,7 +1,7 @@
 # Gaussian PEPS simulation
 
 This repository contains the code for simulations with Gaussian Fermionic Projected Entangled Pair States (GGPEPS).
-The aim is to simulate $Z_N$ lattice gauge theories.
+The aim is to simulate lattice gauge theories. Currently only $Z_N$ theories are operational.
 
 ## Installation
 The code is written for Python 3 and tested to work with Python 3.9.
@@ -12,17 +12,18 @@ To make sure that all requirements of the package are fulfilled, the easiest way
 1. Creation of a virtual environment  
 You can create the environment in a folder of your choice. 
 For the rest of the tutorial, we assume it to be in `~/.pyenv/`
-```
-cd ~/.pyenv
-python -m venv gaussianenv
-```
-Assuming you are using bash or zsh, you can activate the environment with `source ~/.pyenv/gaussianenv/bin/activate`.
-Upon activation, you will notice that your prompt changes.
-As long as it is prefixed with `(gaussianenv)` the virtual environment is active.
-The virtual environment can be deactivated with `deactivate`.
-
+    ```
+    cd ~/.pyenv
+    python -m venv gaussianenv
+    ```
+    Assuming you are using bash or zsh, you can activate the environment with `source ~/.pyenv/gaussianenv/bin/activate`.
+    Upon activation, you will notice that your prompt changes.
+    As long as it is prefixed with `(gaussianenv)` the virtual environment is active.
+    The virtual environment can be deactivated with `deactivate`.
+<br/>
 2. Cloning the code  
 You can obtain the code by cloning the repo with
+<<<<<<< HEAD
 ```
 git clone git@gitlab.mpcdf.mpg.de:pemonts/gaussian-peps.git
 ```
@@ -53,7 +54,6 @@ ggpeps.__version__
 ```
 The result should be a version string like `0.1+g38ac83d20240911`.
 
-
 ### Installation with GPUs
 JAX is the library we use for running on GPUs. JAX must be installed wth jaxlib and connected to the correct versions of CUDA. The versions required will depend on what's available on a given cluster.
 
@@ -77,8 +77,9 @@ All scripts in the main folder call parts of the package and provide the infrast
 
 The package `ggpeps` is divided into several parts:
 
-- `plot`: Helper scripts for plots
-- `system`: Module containing all system implementations. Currently, two-dimensional systems for $Z_2$ with one and two copies of virtual fermions on the links are implemented for the pure gauge case, and 2D systems with 2,4,8 copies of virtual fermions on the links for the fermionic case.
+- `plot/`: Helper scripts for plots
+- `system/`: Module containing all system implementations. Currently, two-dimensional systems for $Z_2$ with one and two copies of virtual fermions on the links are implemented for the pure gauge case, and 2D systems with 2,4,8 copies of virtual fermions on the links for the fermionic case.
+The system configs contain all information defining an ansatz (the $T$ matrix, $\Gamma_\text{in}$, etc.), while the system classes define observables, intermediate calculations, etc.
 The implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
 - `exacteval.py`: For small systems and finite gauge groups, the expectation values of the states can be evaluated exactly by contracting the full PEPS.
 - `gauge.py`: Implementation of the gauge groups
@@ -87,6 +88,16 @@ The implementation of $U(1)$ is transferred from a C++ implementation and is not
 - `measurement.py`: Measurement class to manage the timeseries data of the MC simulation
 - `minimizer.py`: Minimizer class with a custom minimizer and a wrapper of the `scipy.optimize.minimize` function.
 - `utils.py`: Utility functions
+
+Each implemented ansatz has it's own config class, each a subclass of Config2DBase (found in `system_base.py`). Currently, these are the implemented ansatz's (each located in a file of the same name):
+- `system_u1_2d`: Not working - the implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
+- `system_z2_2d`: $Z_2$, 1 copy of virtual modes per layer, pure gauge.
+- `system_z2_2d_2c`: $Z_2$, 2 copies of virtual modes per layer, pure gauge.
+- `system_z2_2d_8c`: $Z_2$, 8 copies of virtual modes per layer. This is extremely impractical to run, even for 2x2 systems, due to the large number of virtual modes; it was built for testing purposes. Because there are so many parameters, this ansatz is more systematic in handling them.
+- `system_z2_2d_G2c_F2c`: $Z_2$, 2 copies of virtual modes per layer (PG and matter layers), includes matter.
+- `system_z2_2d_G2c_F4c`: *this is be misnamed, and includes 4 copies per layer for both layers*. However the extra copies in the PG layer are set to zero, which makes it effectively 2 copies (though with matrix sizes, and computational cost, of 4 copies).
+
+The pure gauge ansatz's all techincally contain a parameter for coupling to matter, but (a) it is manually set to zero, (b) other parts of the ansatz (e.g. the Gamma_in) do not obey the symmetries required for including matter.
 
 ## Physical System
 
@@ -217,7 +228,7 @@ Individual sessions can be executed with `nox -s <name of session>`.
 - Make data file optional?
 
 ## Papers
-The following is a list of papers that have used (versions of) this code.
+The following is a list of papers that have used (versions of) this code:
 1. Emonts et al, Finding the ground state of a lattice gauge theory with fermionic tensor networks: A $2+1\mathrm{D}$ ${\mathbb{Z}}_{2}$ demonstration, PRD vol 107 (2023).
 
 There are also some papers that used a previous C++ implementation of this code.

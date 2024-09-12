@@ -1,15 +1,14 @@
 import sympy
 import logging
 import numpy as np
-from pfapack import pfaffian as pf
 from scipy.linalg import block_diag
 
 import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
-from ggpeps.modearray import generate_permutation_matrix
 
 from .system_base import Config2DBase, System2DBase
+from .system_base import get_pfaffian_arrays
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -19,6 +18,13 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 class Z2System2D_G2C_F4C_Config(Config2DBase):
     """Configuration of the Z2 system in 2D with 4 copies of virtual fermions on the links.
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
+
+    Some general notes about conventions:
+
+    Order of the paramvec: see the functions that create the symbolvec.
+    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3,d3,u3,l4,r4,d4,u4}.
+    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3... and so on}.
+    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... and so on}.
     """
 
     _nparams = 52 #36
@@ -26,10 +32,17 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
     nvirtmodes_vertex = 16
     nvirtmodes_link = 8
 
-    def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, nlayer=2):
-        super().__init__(lattice, g_el, g_mag, g_int, g_mass, nlayer)
-        self.num_pg_layer = self.nlayer - 1
-        self.num_fermionic_layer = 1
+    def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, g_chem, num_pg_layer=1, num_fermionic_layer=1):
+        super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, num_fermionic_layer)
+
+        # Constants used in the calculation of the electric energy
+        prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
+        indices_layer1 = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)], [(10,12), (11,13), (12,13), (10,11)], [(14,8), (15,9), (8,9), (14,15)]]
+        indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)], [(10,8), (11,9), (8,9), (10,11)], [(14,12), (15,13), (12,13), (14,15)]]
+        idxarr_lay1 = get_pfaffian_arrays(indices_layer1, prefactors) # pure gauge layers
+        idxarr_lay2 = get_pfaffian_arrays(indices_layer2, prefactors) # fermionic layers
+        self.idxarr_vec = [idxarr_lay1]*(self.num_pg_layer) + [idxarr_lay2]
+        self.el_overall_factors = [1/256]*(self.nlayer) # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
         raise NotImplementedError("Haven't implemented parameter conditions for pure gauge for this ansatz.")
@@ -66,37 +79,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
         # save zeroed params
         self.zeroed_params = zeroed_params
         return
-
-
-class Z2System2D_G2C_F4C(System2DBase):
-    """ 2 copy version of the Z2 system GGPEPS ansatz with multiple type of virtual fermions
-
-    Some general notes about conventions:
-
-    Order of the paramvec: see the functions that create the symbolvec.
-    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3,d3,u3,l4,r4,d4,u4}.
-    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3... and so on}.
-    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... and so on}.
-    """
-
-    def __init__(self, cfg: Z2System2D_G2C_F4C_Config):
-        """Constructor of a Z2System2D_G2C_F4C system.
-
-        Args:
-            cfg (Z2System2D_G2C_F4C_Config): Configuration containing all system-related parameters
-        """
-        super().__init__(cfg)
-
-        # constants used in the calculation of the electric energy
-        prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
-        indices_layer1 = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)], [(10,12), (11,13), (12,13), (10,11)], [(14,8), (15,9), (8,9), (14,15)]]
-        indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)], [(10,8), (11,9), (8,9), (10,11)], [(14,12), (15,13), (12,13), (14,15)]]
-        idxarr_lay1 = self.get_pfaffian_arrays(indices_layer1, prefactors) # pure gauge layers
-        idxarr_lay2 = self.get_pfaffian_arrays(indices_layer2, prefactors) # fermionic layers
-        self.idxarr_vec = [idxarr_lay1]*(self.cfg.num_pg_layer) + [idxarr_lay2]
-        self.el_overall_factors = [1/256]*(self.cfg.nlayer) # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-
-
+    
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
         We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
@@ -168,7 +151,6 @@ class Z2System2D_G2C_F4C(System2DBase):
             z3i, z4i, y3i, y4i, a2i, b2i, c2i, d2i,
             p14r, q14r, r14r, s14r, p14i, q14i, r14i, s14i,
             p23r, q23r, r23r, s23r, p23i, q23i, r23i, s23i]
-
 
     @property
     def tmat_symb(self):
@@ -259,7 +241,75 @@ class Z2System2D_G2C_F4C(System2DBase):
         tmat_symb = sympy.Matrix( sympy.BlockMatrix([ [sympy.zeros(1), -Block_1.T, -Block_1.subs(t1, t2).T], [Block_1, Block_2, Block_2C], [Block_1.subs(t1, t2), -Block_2C.T, Block_2B]]) )
 
         return tmat_symb
+    
+    def generate_gamma_gauge_neutral_dict(self):
+        """Generate the covariance matrix of the ungauged projectors.
+        The mode order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2, l3_1...}/{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2, d3_1...}.
+        The naming convention here is <mode letter><number of copy>_<majorana mode>.
+        We order first by link and then by copy. 
+        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The same is true for the for the up and down modes.
 
+        This function returns two different covariance matrices for ungauged projectors:
+        In the first, modes of copy 1 are coupled to modes of copy 2. 
+        In the second, the projectors don't mix copies.
+        The first option is used for the pure-gauge layer, the second for the fermionic layer.
+
+        This method overwrites an abstract method in System2DBase.
+
+        Returns:
+            List[np.ndarray]: Covariance matrices of the ungauged projector on a single link
+        """
+        
+        dest_mixed = [0]*2 # mixes copies
+        dest_unmixed = [0]*2 # does not mix copies 
+
+        zeros_8 = np.zeros((8,8))
+        
+        # We want to give the projectors for the pure gauge part, which mix copies
+        mixed_X = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
+        mixed_Y = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
+
+        dest_mixed[Direction.X] = np.block([ [mixed_X, zeros_8], [zeros_8, mixed_X] ])
+        dest_mixed[Direction.Y] = np.block([ [mixed_Y, zeros_8], [zeros_8, mixed_Y] ])
+
+        # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
+        unmixed_X = np.array([  [ 0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.],
+                                                [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
+                                                [ 0., -1.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                                [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                                [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  1.],
+                                                [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
+                                                [ 0.,  0.,  0.,  0.,  0., -1.,  0.,  0.],
+                                                [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.]])
+
+        unmixed_Y = np.array([  [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
+                                                [ 0.,  0.,  0., -1.,  0., -0.,  0.,  0.],
+                                                [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                                [ 0.,  1.,  0.,  0.,  0.,  0.,  0.,  0.],
+                                                [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
+                                                [ 0.,  0.,  0.,  0.,  0., -0.,  0., -1.],
+                                                [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.],
+                                                [ 0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.]])
+        
+        dest_unmixed[Direction.X] = np.block([ [unmixed_X, zeros_8], [zeros_8, unmixed_X] ])
+        dest_unmixed[Direction.Y] = np.block([ [unmixed_Y, zeros_8], [zeros_8, unmixed_Y] ])
+        
+        return [dest_mixed]*self.num_pg_layer + [dest_unmixed]*self.num_fermionic_layer
+
+
+class Z2System2D_G2C_F4C(System2DBase):
+    """ 4 copy version of the Z2 system GGPEPS ansatz with physical fermions.
+    """
+
+    def __init__(self, cfg: Z2System2D_G2C_F4C_Config):
+        """Constructor of a Z2System2D_G2C_F4C system.
+
+        Args:
+            cfg (Z2System2D_G2C_F4C_Config): Configuration containing all system-related parameters
+        """
+        super().__init__(cfg)
+        raise DeprecationWarning("This class is to be replaced by a generic 2D Z2 class.")
 
     def initialize_gamma_in_sys(self):
         """ 
@@ -317,60 +367,6 @@ class Z2System2D_G2C_F4C(System2DBase):
 
         return gamma_in_sys_vec, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
 
-    def _generate_gamma_gauge_neutral_dict(self):
-        """Generate the covariance matrix of the ungauged projectors.
-        The mode order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2, l3_1...}/{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2, d3_1...}.
-        The naming convention here is <mode letter><number of copy>_<majorana mode>.
-        We order first by link and then by copy. 
-        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
-        The same is true for the for the up and down modes.
-
-        This function returns two different covariance matrices for ungauged projectors:
-        In the first, modes of copy 1 are coupled to modes of copy 2. 
-        In the second, the projectors don't mix copies.
-        The first option is used for the pure-gauge layer, the second for the fermionic layer.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Returns:
-            List[np.ndarray]: Covariance matrices of the ungauged projector on a single link
-        """
-        
-        dest_mixed = {} # mixes copies
-        dest_unmixed = {} # does not mix copies 
-
-        zeros_8 = np.zeros((8,8))
-        
-        # We want to give the projectors for the pure gauge part, which mix copies
-        mixed_X = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
-        mixed_Y = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
-
-        dest_mixed[Direction.X] = np.block([ [mixed_X, zeros_8], [zeros_8, mixed_X] ])
-        dest_mixed[Direction.Y] = np.block([ [mixed_Y, zeros_8], [zeros_8, mixed_Y] ])
-
-        # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
-        unmixed_X = np.array([  [ 0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.],
-                                                [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
-                                                [ 0., -1.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                                [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                                [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  1.],
-                                                [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
-                                                [ 0.,  0.,  0.,  0.,  0., -1.,  0.,  0.],
-                                                [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.]])
-
-        unmixed_Y = np.array([  [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
-                                                [ 0.,  0.,  0., -1.,  0., -0.,  0.,  0.],
-                                                [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                                [ 0.,  1.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                                [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
-                                                [ 0.,  0.,  0.,  0.,  0., -0.,  0., -1.],
-                                                [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.],
-                                                [ 0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.]])
-        
-        dest_unmixed[Direction.X] = np.block([ [unmixed_X, zeros_8], [zeros_8, unmixed_X] ])
-        dest_unmixed[Direction.Y] = np.block([ [unmixed_Y, zeros_8], [zeros_8, unmixed_Y] ])
-        
-        return [dest_mixed]*self.cfg.num_pg_layer + [dest_unmixed]*self.cfg.num_fermionic_layer
 
     #Gauging
 
@@ -406,10 +402,8 @@ class Z2System2D_G2C_F4C(System2DBase):
         rot_left = np.eye(2)
         # The mode order is lr (horizontally) or du (vertically).
         # We rotate the different copies in the SAME way.
-        dest = block_diag(rot_left, rot_right, rot_left, rot_right)
-
-        zeros_8 = np.zeros((8,8))
-        rotmat = np.block( [[dest, zeros_8], [zeros_8, dest]])
+        dest = block_diag(rot_left, rot_right)
+        rotmat = np.kron( np.eye(self.cfg.ncopy), dest)
         return rotmat
 
 
@@ -606,4 +600,10 @@ class Z2System2D_G2C_F4C(System2DBase):
 
         return int_energy_op, gradients
 
-
+    def _compute_chem_energy_op_vec_and_grad(self):
+        # This function is not implemented yet! 
+        # (and it can't be, because the ansatz doesn't have the required parameterization).
+        # We return zeros just to not break the interface.
+        energies = [0]*self.cfg.nlayer
+        gradients = [ [0]*self.cfg.nparams_per_layer for k in range(self.cfg.nlayer) ]
+        return np.array(energies), np.array(gradients)

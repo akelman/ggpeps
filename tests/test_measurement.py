@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from ggpeps import utils
+
 from ggpeps.measurement import Measurement
 
 class TestMeasurements(unittest.TestCase):

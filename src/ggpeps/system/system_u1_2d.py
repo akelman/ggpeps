@@ -24,14 +24,48 @@ class U1System2DConfig(Config2DBase):
     nvirtmodes_link = 8
     nvirtmodes_link = 4
 
-    def __init__(self, lattice, g_el, g_mag, g_int, nlayer=1):
+    def __init__(self, lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer=1, num_fermionic_layer=0):
         #The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
-        super().__init__(lattice, g_el, g_mag, g_int, nlayer)
+        super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, num_fermionic_layer)
 
     def make_pure_gauge(self):
         #The order of the parameters is [t,y,z]
         for ind in range(self.nlayer):
             self.paramvec[ind, 0] = 0
+    
+    def _create_symbolvec(self):
+        t = sympy.Symbol("t", real=True)
+        y = sympy.Symbol("y", real=True)
+        z = sympy.Symbol("z", real=True)
+        return [t,y,z]
+
+    def compute_tmat_symb_single(self):
+        [t, y, z] = self.symbolvec
+        etap = sympy.exp(1.j * sympy.pi / 4.)
+        zsqrt = z/sympy.sqrt(2)
+        tmat_symb_single = sympy.Matrix([[t,  etap**2 *t,      etap*t, etap**3 *t],
+                                         [0,           y,       zsqrt,      zsqrt],
+                                         [-y,          0,      -zsqrt,      zsqrt],
+                                         [-zsqrt,  zsqrt,           0,          y],
+                                         [-zsqrt,  -zsqrt,          -y,         0]])
+        return tmat_symb_single
+    
+    @property
+    def tmat_symb(self):
+        tmat_symb = sympy.zeros(9,9)
+        tmat_symb_single = self.compute_tmat_symb_single()
+        tmat_symb[0:5,5:] = tmat_symb_single
+        tmat_symb[5:,0:5] = -tmat_symb_single.T
+        return tmat_symb
+    
+    def generate_gamma_gauge_neutral_dict(self):
+        # Note: unlike in the Z2 case, here we can ignore the direction of the link
+        dest = [0]*2
+        dest[Direction.X] = np.real(
+            1.j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
+        dest[Direction.Y] = np.real(
+            1.j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
+        return [dest]*self.nlayer
 
 
 class U1System2D(System2DBase):
@@ -53,34 +87,9 @@ class U1System2D(System2DBase):
         self.use_pfaffian = False
 
 
-    def _create_symbolvec(self):
-        t = sympy.Symbol("t", real=True)
-        y = sympy.Symbol("y", real=True)
-        z = sympy.Symbol("z", real=True)
-        return [t,y,z]
-
-    def _compute_tmat_symb_single(self):
-        [t, y, z] = self.symbolvec
-        etap = sympy.exp(1.j * sympy.pi / 4.)
-        zsqrt = z/sympy.sqrt(2)
-        tmat_symb_single = sympy.Matrix([[t,  etap**2 *t,      etap*t, etap**3 *t],
-                                         [0,           y,       zsqrt,      zsqrt],
-                                         [-y,          0,      -zsqrt,      zsqrt],
-                                         [-zsqrt,  zsqrt,           0,          y],
-                                         [-zsqrt,  -zsqrt,          -y,         0]])
-        return tmat_symb_single
-
-    def _eval_tmat_symb_single(self,paramvec):
-        tmat_eval = self._compute_tmat_symb_single().evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
+    def eval_tmat_symb_single(self,paramvec):
+        tmat_eval = self.cfg.compute_tmat_symb_single().evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
         return np.asarray(tmat_eval).astype(complex)
-
-    @property
-    def tmat_symb(self):
-        tmat_symb = sympy.zeros(9,9)
-        tmat_symb_single = self._compute_tmat_symb_single()
-        tmat_symb[0:5,5:]=tmat_symb_single
-        tmat_symb[5:,0:5]=-tmat_symb_single.T
-        return tmat_symb
 
 
     def permutation_dirac(self):
@@ -200,15 +209,6 @@ class U1System2D(System2DBase):
 
 
     ################## Local Gauge ######################
-
-    def _generate_gamma_gauge_neutral_dict(self):
-        # Note: unlike in the Z2 case, here we can ignore the direction of the link
-        dest = {}
-        dest[Direction.X] = np.real(
-            1.j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
-        dest[Direction.Y] = np.real(
-            1.j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
-        return [dest]*self.cfg.nlayer
 
     def _generate_rotmat_half(self,theta):
         rot_right = np.array([[np.cos(theta), np.sin(theta)],
@@ -443,4 +443,8 @@ class U1System2D(System2DBase):
     def _compute_int_energy_op_vec_and_grad(self):
         # This function is not implemented yet!
         raise NotImplementedError("The interaction energy is not implemented yet for U(1).")
-        return 0
+    
+    def _compute_chem_energy_op_vec_and_grad(self):
+        """Calculate the chemical potential energy operator and its gradient.
+        """
+        raise NotImplementedError("The chemical potential energy is not implemented yet for U(1).")

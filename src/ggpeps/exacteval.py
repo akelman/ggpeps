@@ -13,10 +13,11 @@ from ggpeps.evaluator import Evaluator
 class ExactEvaluator(Evaluator):
     """An ExactEvaluator exactly evaluates the expectation value of an observable by iterating over all possible states of the gauge field.
     """
-    def __init__(self, evaluator_cfg, system) -> None:
+    def __init__(self, evaluator_cfg, system, gauge_fixing) -> None:
         self.system = system
         self.obsdict: dict = None
         self.evaluator_type = 'exact'
+        self.gauge_fixing: bool = gauge_fixing
 
     def compute_expval(self, obs: np.ndarray, normvec: np.ndarray):
         """Compute the expectation value of an observable.
@@ -50,14 +51,22 @@ class ExactEvaluator(Evaluator):
             dict: Dictionary of the results
         """
         if self.obsdict is None:
-            poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
-            nlinks = self.system.cfg.lattice.nlinks
-            configvec = it.product(poss_gauges, repeat=nlinks) # an iterable object with all possible field configurations for the entire lattice
+            if self.gauge_fixing:
+                configvec = self.generate_config_vec()
+            else:
+                poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
+                nlinks = self.system.cfg.lattice.nlinks
+                configvec = it.product(poss_gauges, repeat=nlinks) # an iterable object with all possible field configurations for the entire lattice. TODO: think if I should add a nomralization constant
+
 
             polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
                 (0, 0), lattice.Direction.X)
             wilson_loop = self.system.cfg.lattice.generate_wilson_loop((0, 0),
                                                                     (1, 1))
+
+            # Wilson loops
+            sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
+            loops = self.system.cfg.lattice.generate_all_wilson_loops((0,0), sizes)
 
             data = {
                 "energy": [],
@@ -66,6 +75,7 @@ class ExactEvaluator(Evaluator):
                 "el_energy": [],
                 "mass_energy": [],
                 "int_energy": [],
+                "chem_energy": [],
                 "mag_energy_op": [],
                 "el_energy_op": [],
                 "mass_energy_op": [],
@@ -73,11 +83,16 @@ class ExactEvaluator(Evaluator):
                 "el_energy_op_grad": [],
                 "mass_energy_op_grad": [],
                 "int_energy_op_grad": [],
+                "chem_energy_op_grad": [],
                 "grad_norm": [],
-                "wilson_00_11": [],
                 "polyakov_00_x": [],
                 "number_per_site": []
             }
+            # Wilson loops
+            for k in range(len(sizes)):
+                loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
+                data[loop_name] = []
+
             for config in configvec:
                 self.system.update_gauge_full_system(config)
                 #logger.debug(f"Configuration: {config}")
@@ -87,6 +102,7 @@ class ExactEvaluator(Evaluator):
                 data["el_energy"].append(self.system.el_energy)
                 data["mass_energy"].append(self.system.mass_energy) 
                 data["int_energy"].append(self.system.int_energy) 
+                data["chem_energy"].append(self.system.chem_energy) 
                 data["mag_energy_op"].append(self.system.mag_energy_op)
                 data["el_energy_op"].append(self.system.el_energy_op)
                 data["mass_energy_op"].append(self.system.mass_energy_op) 
@@ -95,14 +111,19 @@ class ExactEvaluator(Evaluator):
                 data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
                 data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec) 
                 data["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec) 
+                data["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec) 
                 
-                data["norm"].append(self.system.calculate_lognorm(all_factors=True))
+                data["norm"].append(self.system.calculate_lognorm(all_factors=True)) 
                 data["grad_norm"].append(self.system.compute_grad_norm_vec())
-                data["wilson_00_11"].append(np.real(self.system.compute_path(wilson_loop)))
                 data["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
 
                 data["number_per_site"].append(np.real(self.system.number_per_site))
 
+                # Wilson loops
+                for k in range(len(sizes)):
+                    loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
+                    data[loop_name].append(np.real(self.system.compute_path(loops[k])))
+            
             # TODO: handle this better - boundary should not be here!
             if ggpeps.PREFERRED_BACKEND == 'jax':
                 for key, val in data.items():
@@ -124,10 +145,15 @@ class ExactEvaluator(Evaluator):
             dest["el_energy"] = self.compute_expval(data["el_energy"], normvec)
             dest["mass_energy"] = self.compute_expval(data["mass_energy"], normvec)
             dest["int_energy"] = self.compute_expval(data["int_energy"], normvec)
-            dest["wilson_00_11"] = self.compute_expval(data["wilson_00_11"], normvec)
+            dest["chem_energy"] = self.compute_expval(data["chem_energy"], normvec)
             dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
             dest["number_per_site"] = self.compute_expval(data["number_per_site"], normvec)
             dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)
+
+            # Wilson loops
+            for k in range(len(sizes)):
+                loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
+                dest[loop_name] = self.compute_expval(data[loop_name], normvec)
 
             #The norm that we turn in the end is the actual norm, not the lognorm!
             dest["norm"] = np.sum(normvec)
@@ -166,13 +192,40 @@ class ExactEvaluator(Evaluator):
             int_energy_grad *= self.system.cfg.g_int
             dest["int_energy_grad"] = int_energy_grad
 
+            # Chemical potential gradient
+            prod_chem_op_norm = data["chem_energy"] * grad_norm_transposed
+            expval_prod_chem = self.compute_expval(prod_chem_op_norm, normvec)
+            prod_expval_chem = self.compute_expval(data["chem_energy"], normvec) * dest["grad_norm"]
+            scaled_chem_grad = np.transpose(data["chem_energy_op_grad"], [2,1,0])
+            for lay in range(self.system.cfg.nlayer): # TODO: do this in a cleaner way
+                scaled_chem_grad[:,lay,:] *= self.system.cfg.g_chem[lay] 
+            chem_energy_grad = expval_prod_chem - prod_expval_chem + self.compute_expval(scaled_chem_grad, normvec)
+            dest["chem_energy_grad"] = chem_energy_grad
+
             # Add for the full gradient, subject to conditions on parameterization
-            total_grad = mag_energy_grad + el_energy_grad + mass_energy_grad + int_energy_grad
+            total_grad = mag_energy_grad + el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
             self.system.cfg.enforce_parameter_conditions(total_grad)
             dest["energy_grad"] = total_grad
             self.obsdict = dest
 
         return self.obsdict
+        
+    def generate_config_vec(self):
+        """Generates gauge field configurations for all links, for the gauge fixed case."""
+        poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
+        nlinks = self.system.cfg.lattice.nlinks
+        non_fixed_links_ind = self.system.cfg.lattice.comp_tree  # All possible indices for the non-fixed positions
+        neutral_gauge = self.system.gaugemgr.get_neutral_gauge_value()
+        
+        # Generate all possible gauge field combinations
+        combinations = it.product(poss_gauges, repeat=len(non_fixed_links_ind))
+
+        for combo in combinations:
+            # Initialize configvec as a list filled with neutral_gauge
+            configvec = [neutral_gauge] * nlinks
+            for i, pos in enumerate(non_fixed_links_ind):
+                configvec[pos] = combo[i]
+            yield configvec
 
     def summary(self):
         """Summarize the results of the exact contraction in a dataframe.

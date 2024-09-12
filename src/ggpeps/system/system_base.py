@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union, Optional, List # used in type hints
+from typing import Union, Optional, List # used in type hints; this approach might be deprecated in later python versions
 from dataclasses import dataclass, field
 
 import sys
@@ -7,7 +7,6 @@ import logging
 import itertools as it
 
 import sympy
-from pfapack import pfaffian as pf
 from scipy.linalg import block_diag
 
 import numpy as np
@@ -72,7 +71,7 @@ class Config2DBase(ABC):
     _nparams: int = 1
     ncopy: int = None
 
-    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g_el:float, g_mag:float, g_int:float,  g_mass:float, nlayer:int=1):
+    def __init__(self, lattice:Union[Lattice2D, Lattice3D], g_el:float, g_mag:float, g_int:float,  g_mass:float, g_chem:Optional[np.array], num_pg_layer:int=1, num_fermionic_layer:int=0):
         """Constructor.
 
         Args:
@@ -81,23 +80,35 @@ class Config2DBase(ABC):
             g_mag (float): prefactor for magnetic energy
             g_int (float): prefactor for gauge-matter coupling
             g_mass (float): mass of physical fermions (i.e. prefactor on the mass term).
-            nlayer (int, optional): number of layers. Defaults to 1.
+            num_pg_layer (int, optional): number of pure gauge layers. Defaults to 1.
+            num_fermionic_layer (int, optional): number of fermionic layers. Defaults to 0.
         """
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
-        self.nlayer: int = nlayer
-        self.lattice: Union[Lattice2D, Lattice3D] = lattice
+        
+        self.lattice = lattice
+        self.num_pg_layer = num_pg_layer
+        self.num_fermionic_layer = num_fermionic_layer
+        self.nlayer = self.num_pg_layer + self.num_fermionic_layer
 
         self._paramvec: Optional[np.ndarray] = None
         self.zeroed_params: List[int] = [] # will store a list of the parameters forced to be zero by the ansatz
                                 # currently this is set in self.enforce_parameter_conditions
                                 # (this only happens for the fermionic ansatz's)
 
-        # Parameters of the Hamiltonian
-        self.g_el: float = g_el
-        self.g_mag: float = g_mag
-        self.g_int: float = g_int
-        self.g_mass: float = g_mass
+        # Symbolvec
+        self._symbolvec: Optional[List[sympy.Symbol]] = None # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
 
+        # Parameters of the Hamiltonian
+        self.g_el = g_el
+        self.g_mag = g_mag
+        self.g_int = g_int
+        self.g_mass = g_mass
+        self.g_chem = g_chem
+        if self.g_chem is None:
+            self.g_chem = np.zeros(self.nlayer)
+        elif len(self.g_chem) != self.nlayer:
+            raise ValueError("The number of chemical potentials must match the number of layers.")
+    
     def __str__(self):
         # define a string method that can be used, e.g., in filenaming
         # note that this string doesn't include the number of copies
@@ -154,6 +165,46 @@ class Config2DBase(ABC):
     def enforce_parameter_conditions(self, mat):
         """In some cases, there are extra conditions we wish to impose on the parameters."""
         return
+    
+    @abstractmethod
+    def _create_symbolvec(self) -> List[sympy.Symbol]:
+        """
+        Function to define the list of parameters as sympy variables.
+        We need these symbols to analytically derive T automatically.
+        This function has to be overwritten in the child-class.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @property
+    def symbolvec(self) -> List[sympy.Symbol]:
+        """Return the symbolvec.
+        This is a get function. It computes the symbolvec only if it does not exist yet.
+        If it exists, then it will be returned directly. If not, it will be created and then stored in _symbolvec.
+
+        Returns:
+            list: Vector of analytic symbols
+        """
+        if self._symbolvec is None:
+            self._symbolvec = self._create_symbolvec()
+        return self._create_symbolvec()
+    
+    @property
+    @abstractmethod
+    def tmat_symb(self):
+        """ Create the symbolic version of the T matrix.
+            This is an abstract function that has to be overwritten by the child class.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+    
+    @abstractmethod
+    def generate_gamma_gauge_neutral_dict(self):
+        """Abstract method to define the ungauged covariance matrix of a single link.
+        The substitution method must ensure a consistent order of the modes.
+        The direction parameter controls which covariance matrix is retrieved, since these can differ between directions.
+        This method must be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
 
 
 ################## System2DBase ######################
@@ -171,7 +222,6 @@ class System2DBase(ABC):
         # All variables that contain _vec are arrays of length nlayer in the first dimension.
 
         # Parameter based matrices
-        self._symbolvec: Optional[List[sympy.Symbol]] = None # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
         self._tmat_vec: Optional[List[xnp.ndarray]] = None
         self._gamma_dirac_vec: Optional[xnp.ndarray] = None
         self._gamma_maj_vec: Optional[xnp.ndarray] = None
@@ -209,6 +259,7 @@ class System2DBase(ABC):
         self._el_energy_op_grad_vec: Optional[xnp.ndarray] = None # first index is layer, second index is symbol
         self._mass_energy_op_grad_vec: Optional[xnp.ndarray] = None
         self._int_energy_op_grad_vec: Optional[xnp.ndarray] = None
+        self._chem_energy_op_grad_vec = None
         self._d_gamma_out_symbolvec: Optional[List[List[xnp.ndarray]]] = None # gradients of gamma_out for all symbols: first index is layer, second index is symbol
         self._grad_over_norm_dict: Optional[dict[tuple[sympy.Symbol, int], float]] = {(var,ind):None for var,ind in it.product(self.symbolvec,range(self.cfg.nlayer))}
 
@@ -221,6 +272,7 @@ class System2DBase(ABC):
         self._mass_energy_op_vec: Optional[List[float]] = None
         self._int_energy_op: Optional[float] = None
         self._int_energy_op_vec: Optional[List[float]] = None
+        self._chem_energy_op_vec = None
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in_vec: Optional[List[utils.WoodburyInverter]] = None  # Tracks (D^-1 - gammain)^-1
@@ -251,10 +303,12 @@ class System2DBase(ABC):
         self._mass_energy_op_vec = None
         self._int_energy_op = None
         self._int_energy_op_vec = None
+        self._chem_energy_op_vec = None
         
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad_vec = None
         self._int_energy_op_grad_vec = None
+        self._chem_energy_op_grad_vec = None
         self._grad_over_norm_dict = {(var,ind):None for var,ind in it.product(self.symbolvec, range(self.cfg.nlayer))}
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
         return
@@ -267,35 +321,22 @@ class System2DBase(ABC):
         mat_d_vec = self.gamma_maj_sys_vec[:, offset:, offset:]
         return mat_a_vec, mat_b_vec, mat_d_vec
 
-    @abstractmethod
-    def _create_symbolvec(self) -> List[sympy.Symbol]:
-        """
-        Function to define the list of parameters as sympy variables.
-        We need these symbols to analytically derive T automatically.
-        This function has to be overwritten in the child-class.
-        """
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
-
     @property
     def symbolvec(self) -> List[sympy.Symbol]:
         """Return the symbolvec.
-        This is a get function. It computes the symbolvec only if it does not exist yet.
-        If it exists, then it will be returned directly. If not, it will be created and then stored in _symbolvec.
 
         Returns:
             list: Vector of analytic symbols
         """
-        if self._symbolvec is None:
-            self._symbolvec = self._create_symbolvec()
-        return self._symbolvec
+        return self.cfg.symbolvec
 
     @property
-    @abstractmethod
     def tmat_symb(self):
-        """Create the symbolic version of the T matrix.
-        This is an abstract function that has to be overwritten by the child class.
+        """Return the symbolic version of the T matrix.
+        This is stored in the config for each ansatz, because it is part of the definition of the ansatz,
+        and is not specific to a particular state (i.e. particular parameters).
         """
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+        return self.cfg.tmat_symb
 
     def compute_tmat_deriv(self, symb: sympy.Symbol):
         """Return the derivative of the T matrix with respect to the symbol
@@ -306,7 +347,7 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Array of symbols
         """
-        tmat_symb = self.tmat_symb
+        tmat_symb = self.cfg.tmat_symb
         return xnp.asarray(np.asarray(sympy.diff(tmat_symb, symb)).astype(complex)) # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
 
     def _eval_tmat_symb(self, paramvec):
@@ -318,7 +359,7 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: T matrix with numerical values
         """
-        tmat_eval = self.tmat_symb.evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
+        tmat_eval = self.cfg.tmat_symb.evalf(subs={self.symbolvec[i]:paramvec[i] for i in range(len(paramvec))})
         return xnp.asarray(np.asarray(tmat_eval).astype(complex)) # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
 
     @property
@@ -1034,14 +1075,13 @@ class System2DBase(ABC):
             self._gamma_gauge_neutral_vec_dirs = self._generate_gamma_gauge_neutral_dict()
         return self._gamma_gauge_neutral_vec_dirs
 
-    @abstractmethod
     def _generate_gamma_gauge_neutral_dict(self):
-        """Abstract method to define the ungauged covariance matrix of a single link.
+        """Define the ungauged covariance matrix of a single link.
         The substitution method must ensure a consistent order of the modes.
         The direction parameter controls which covariance matrix is retrieved, since these can differ between directions.
-        This method must be overwritten in a subclass.
         """
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+        gamma_gauge_neutral_vec_dirs = self.cfg.generate_gamma_gauge_neutral_dict()
+        return xnp.array(gamma_gauge_neutral_vec_dirs)
 
     @abstractmethod
     def generate_rotmat(self, theta, coord, dir):
@@ -1104,7 +1144,7 @@ class System2DBase(ABC):
     
     @abstractmethod
     def _compute_mass_energy_op_vec_and_grad(self):
-        """Compute the mass energy and the gradient (for a single layer).
+        """Compute the mass energy and the gradient (per layer).
         This is an abstract method and has to be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
@@ -1116,116 +1156,25 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
-    ## MOVE TO GLOBAL
+    @abstractmethod
+    def _compute_chem_energy_op_vec_and_grad(self):
+        """Compute the chemical potential energy and the gradient (per layer).
+        This is an abstract method and has to be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+
     def _compute_el_energy_op_vec(self, use_trans_inv:bool=True):
-        """Computation of the electric energy.
-        Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
-        These are saved at the end of the function.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
-
-        Returns:
-            list: list of electric energies for a single link
+        """Compute the electric energy.
+        This is an abstract method and has to be overwritten in a subclass.
         """
-        if not use_trans_inv:
-            # Evaluate every link of the system
-            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
-            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
-
-        lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
-        # This is the usual norm without any modifications
-        lognorm_default = xnp.sum(lognormvec_default)
-        # Number of fermions = # of sites
-        # Since we have 2 copies, we get 8 virtual fermions per site
-        single_link_offset = 2 * self.cfg.nvirtmodes_link
-        # We have to cut one link from gamma_in_sys as well
-        gamma_in_sys_mod_vec = self.gamma_in_sys_mod_vec
-        dest = []
-
-        # Indices and prefactors for building the required Pfaffians
-        overall_factors = self.el_overall_factors
-        idxarrs = self.idxarr_vec
-
-        # TODO: vectorize!
-        for layerind in range(self.cfg.nlayer):
-
-            # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
-            mat_a = self.mat_a_mod_vec[layerind] # dim: 2*nsites (for majorana) + 8 (= 4 virtual modes per link x2 for majorana)
-            mat_b = self.mat_b_mod_vec[layerind]
-            diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
-
-            gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
-
-            idxarr = idxarrs[layerind]
-            overall_factor = overall_factors[layerind]
-
-            ###################### Calculation of <P> ########################
-            covmat_out = mat_a + \
-                mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
-            size = covmat_out.shape[1]
-            covmat_out_virt = slice_matrix(covmat_out, size - single_link_offset, size, size - single_link_offset, size)
-                                # covmat_out[-single_link_offset:, -single_link_offset:] # TODO: fix for JAX - DONE
-
-            # The library pfapack is rather picky about the anti-symmetrization (to 1e-14)
-            covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
-            # For the modified norm, we still have to take into account the other contributions from the unmodified parts
-            norm_mod = calculate_lognorm_inc(
-                [self.incdet_mod_vec[layerind]],
-                [self.det_mat_d_mod_vec[layerind]],
-                gamma_in_sys_mod.shape[0],
-                all_factors=True)
-            norm_mod += xnp.sum(utils.select_except(lognormvec_default, layerind))
-            # The matrix elements yield only the real part of <P>
-            # If we use the log formulation, we can calculate the log of single terms.
-
-            # Instead of writing down all the terms explicitly, we build tuples of the prefactors and the indices of the covariance matrix.
-            # Then, we compute all terms in a list comprehension.
-            pfarr = []
-            pfvals = [] # without the prefactor
-            for prefactor,ind in idxarr:
-                ind = xnp.asarray(ind)
-                pfaval = pf.pfaffian(covmat_out_virt[xnp.ix_(ind,ind)]) # TODO: fix for JAX - NOT NEEDED, jxnp.ix_ should work
-                pfarr.append(prefactor * pfaval)
-                pfvals.append(pfaval)
-            el_energy_full = overall_factor * xnp.sum(xnp.array(pfarr))
-            
-            el_energy_layer = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
-            dest.append(el_energy_layer)
-            
-            # Save intermediate calculations for use in gradient calculation
-            intermediate = self._electric_energy_intermediate_vals 
-            intermediate.covmat_out_virt_vec.append(covmat_out_virt)
-            intermediate.norm_mod_vec.append(norm_mod)
-            intermediate.lognorm_default_vec.append(lognorm_default)
-            intermediate.pfaffian_vec.append(pfvals)
-        
-        return xnp.asarray(dest)
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
     
-    ## MOVE TO GLOBAL - DONE
     def _compute_el_grad_vec(self, use_trans_inv:bool=True):
-        """Computation of the electric energy gradients.
-        We start by calculating the electric energies, since these are needed for evaluating the gradients.
-        Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
-
-        Returns:
-            list: list of gradients for the full system
+        """Compute the electric energy gradients.
+        This is an abstract method and has to be overwritten in a subclass.
         """
-
-        if not use_trans_inv:
-            # Evaluate every link of the system
-            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
-            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
-        
-        res = compute_el_grad_vec(self)
-        return res
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
 
     ################## Energy Calculations ######################
@@ -1247,6 +1196,8 @@ class System2DBase(ABC):
                 self._energy += self.mass_energy
             if not utils.isclose(self.cfg.g_int, 0):
                 self._energy += self.int_energy
+            if not np.allclose(self.cfg.g_chem, 0):
+                self._energy += self.chem_energy
         return self._energy
 
     # Functions that return a term of the energy in the Hamiltonian, including all prefactors and energy from the entire lattice.
@@ -1296,6 +1247,19 @@ class System2DBase(ABC):
         int_energy = self.cfg.g_int * self.int_energy_op
         return int_energy
 
+    @property
+    def chem_energy(self):
+        """Compute chemical potential energy for the whole system
+        This is a get function.
+
+        Returns:
+            float: chemical potential energy
+        """
+        chem_energy = 0.0
+        for layer in range(self.cfg.nlayer):
+            chem_energy += self.cfg.g_chem[layer] * self.chem_energy_op_vec[layer]
+        return chem_energy
+
     # Functions that return the energy for the operator part of a term in the Hamiltonian, including the energy for the entire lattice, but not any shifts or prefactors.
     @property
     def el_energy_op(self) -> float:
@@ -1334,7 +1298,7 @@ class System2DBase(ABC):
         """
         if self._mass_energy_op is None:
             nsites = self.cfg.lattice.size
-            self._mass_energy_op = xnp.prod(self.mass_energy_op_vec) # don't multiply by the number of sites; for the mass term this is assumed to happen lower down in the stack.
+            self._mass_energy_op = xnp.sum(self.mass_energy_op_vec) # don't multiply by the number of sites; for the mass term this is assumed to happen lower down in the stack.
         return self._mass_energy_op
 
     @property
@@ -1347,7 +1311,7 @@ class System2DBase(ABC):
         """
         if self._int_energy_op is None:
             nsites = self.cfg.lattice.size
-            self._int_energy_op = xnp.prod(self.int_energy_op_vec)
+            self._int_energy_op = xnp.sum(self.int_energy_op_vec)
         return self._int_energy_op
     
     # Functions that return the layer-resolved energies of each energy operator
@@ -1386,9 +1350,21 @@ class System2DBase(ABC):
             list: Layer-resolved interaction energy w/o shift
         """
         if self._int_energy_op_vec is None:
-            # This vector is the electric energy on a single site.
+            # This vector is the interaction energy on a single site.
             self._int_energy_op_vec, self._int_energy_op_grad_vec = self._compute_int_energy_op_vec_and_grad()
         return self._int_energy_op_vec
+
+    @property
+    def chem_energy_op_vec(self):
+        """Compute chemical potential energy operator w/o shift for all layers for the whole system.
+        This is a get function.
+
+        Returns:
+            list: Layer-resolved interaction energy w/o shift
+        """
+        if self._chem_energy_op_vec is None:
+            self._chem_energy_op_vec, self._chem_energy_op_grad_vec = self._compute_chem_energy_op_vec_and_grad()
+        return self._chem_energy_op_vec
 
     # Functions that return the layer-resolved gradients of each energy operator
     @property
@@ -1427,6 +1403,18 @@ class System2DBase(ABC):
             self._int_energy_op_vec, self._int_energy_op_grad_vec = self._compute_int_energy_op_vec_and_grad()
             # Do for whole system...
         return self._int_energy_op_grad_vec
+
+    @property
+    def chem_energy_op_grad_vec(self):
+        """Compute the gradient of the chemical potential energy operator for the whole system without shift.
+        This is a get function.
+
+        Returns:
+            float: Gradient of the chemical potential energy operator (w/o shift) for the whole system
+        """
+        if self._chem_energy_op_grad_vec is None:
+            self._chem_energy_op_vec, self._chem_energy_op_grad_vec = self._compute_chem_energy_op_vec_and_grad()
+        return self._chem_energy_op_grad_vec
 
 
 
@@ -1590,30 +1578,30 @@ class System2DBase(ABC):
 
         return mode_order_str
     
-    def get_pfaffian_arrays(self, modes, coefficients):
-        """Generate the arrays used for list comprehension to extract the required pfaffians, with the correct
-        prefactors, used in the calculation of the electric energy and electric gradients.
+def get_pfaffian_arrays(modes, coefficients):
+    """Generate the arrays used for list comprehension to extract the required pfaffians, with the correct
+    prefactors, used in the calculation of the electric energy and electric gradients.
 
-        Each element in the returned list is of the form
-            (k, (a_1 ... a_2p))
-        where k in a prefactor, and (a_1 ... a_2p) is a tuple containing the indices to extract from the full 
-        covariance matrix to build a submatrix and compute the pfaffian.
-        The electric energy will then be sum of these pfaffians (weighted by the prefactors), with some further 
-        normalization.
+    Each element in the returned list is of the form
+        (k, (a_1 ... a_2p))
+    where k in a prefactor, and (a_1 ... a_2p) is a tuple containing the indices to extract from the full 
+    covariance matrix to build a submatrix and compute the pfaffian.
+    The electric energy will then be sum of these pfaffians (weighted by the prefactors), with some further 
+    normalization.
 
-        Args:
-            modes (List of lists of tuples of ints): _description_
-            coefficients (List of lists of complex floats): _description_
-            neg (float): _description_
+    Args:
+        modes (List of lists of tuples of ints): _description_
+        coefficients (List of lists of complex floats): _description_
+        neg (float): _description_
 
-        Returns:
-            List: index array in the format required for the calculation of the electric energy (and electric gradients).
-        """
-        submatrices = [k for k in it.product(*modes)]
-        indices = [sum(sub, ()) for sub in submatrices]
+    Returns:
+        List: index array in the format required for the calculation of the electric energy (and electric gradients).
+    """
+    submatrices = [k for k in it.product(*modes)]
+    indices = [sum(sub, ()) for sub in submatrices]
 
-        factors = [xnp.asarray(k) for k in it.product(*coefficients)]
-        prefactors = [xnp.prod(k) for k in factors]
-        idxarr = [(p, i) for p, i in zip(prefactors, indices)]
-        
-        return idxarr
+    factors = [xnp.asarray(k) for k in it.product(*coefficients)]
+    prefactors = [xnp.prod(k) for k in factors]
+    idxarr = [(p, i) for p, i in zip(prefactors, indices)]
+    
+    return idxarr
