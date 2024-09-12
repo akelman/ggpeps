@@ -30,22 +30,29 @@ git clone git@gitlab.mpcdf.mpg.de:pemonts/gaussian-peps.git
 Note that you have to be a member of the project to clone it.
 Cloning via SSH works only if you have added a (public) SSH key to the repository.
 
-3. Preparation of the environment  
+3. Installation of the pacakge
 For the next step, please navigate into the repo that you just downloaded and activate the empty environment that we created in step 1.
 If you intend to be able to use GPUs, see the note below.
 
 To install all required packages for the simulation, execute
 ```
-pip install -r requirements.txt
+pip install -e .
+```
+This command installs the package as an editable package, i.e. all changes in the source code will be directly reflected in the installed package.
+
+If you do not intend to develop the code, you can install with
+```
+pip install .
 ```
 
-4. Modification of the PYTHONPATH  
-Since we are working with a package (`ggpeps`), we have to add it to the PYTHONPATH in order to make Python aware of its existence.
-We add the repository to the PYTHONPATH with the following command
-```export PYTHONPATH=$PYTHONPATH:<path_to_repo>```
-where `<path_to_repo>` is the location of the repository on your computer.
+Both commands will install the package `ggpeps` into your environment (and the necessary dependencies).
+You can test your installation with opening a python console (just type `python`) and execute
+```python
+import ggpeps
+ggpeps.__version__
+```
+The result should be a version string like `0.1+g38ac83d20240911`.
 
-If you want to make the change persistent, i.e. it remains after closing the terminal, you can consider adding it to your `~/.bashrc` (for bash) or `~/.zshrc` (for zsh).
 
 ### Installation with GPUs
 JAX is the library we use for running on GPUs. JAX must be installed wth jaxlib and connected to the correct versions of CUDA. The versions required will depend on what's available on a given cluster.
@@ -183,6 +190,19 @@ If you want to execute a more specialized test, you can execute the files separa
 ```
 python -m unittest tests/test_lattice.py
 ```
+
+### Testing across multiple architectures
+The package supports CPU and GPU operation.
+To test both these modes independently, the tests are run with `nox` to run in different environments.
+Additionally, it enables testing of the environment, coverage testing and lint testing.
+
+The full `nox` test suite can be executed with
+```
+nox
+```
+It will run all so-called sessions. For an overview of available sessions, execute `nox --list`.
+Individual sessions can be executed with `nox -s <name of session>`.
+
 
 ## Known Issues
 
