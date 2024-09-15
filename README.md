@@ -7,11 +7,11 @@ The aim is to simulate lattice gauge theories. Currently only $Z_N$ theories are
 The code is written for Python 3 and tested to work with Python 3.9.
 Earlier and later versions should work as well (though there may be issues relating to type hint in python < 3.9).
 
-To make sure that all requirements of the package are fulfilled, the easiest way to use the code is to create a virtual environment and install the necessary packages independent of the python packages of the operating system
+To make sure that all requirements of the package are fulfilled, the easiest way to use the code is to create a virtual environment and install the necessary packages independent of the python packages of the operating system.
 
-1. Creation of a virtual environment  
+1. **Create a virtual environment**
 You can create the environment in a folder of your choice. 
-For the rest of the tutorial, we assume it to be in `~/.pyenv/`
+For the rest of the tutorial, we assume it to be in `~/.pyenv/`.
     ```
     cd ~/.pyenv
     python -m venv gaussianenv
@@ -21,38 +21,37 @@ For the rest of the tutorial, we assume it to be in `~/.pyenv/`
     As long as it is prefixed with `(gaussianenv)` the virtual environment is active.
     The virtual environment can be deactivated with `deactivate`.
 <br/>
-2. Cloning the code  
-You can obtain the code by cloning the repo with
-<<<<<<< HEAD
-```
-git clone git@gitlab.mpcdf.mpg.de:pemonts/gaussian-peps.git
-```
-
-Note that you have to be a member of the project to clone it.
-Cloning via SSH works only if you have added a (public) SSH key to the repository.
-
-3. Installation of the pacakge
+2. **Clone the code**
+You can obtain the code by cloning the repo with:
+    ```
+    git clone git@gitlab.mpcdf.mpg.de:pemonts/gaussian-peps.git
+    ```
+    Note that you have to be a member of the project to clone it.
+    Cloning via SSH works only if you have added a (public) SSH key to the repository.
+<br/>
+3. **Install the pacakge**
 For the next step, please navigate into the repo that you just downloaded and activate the empty environment that we created in step 1.
-If you intend to be able to use GPUs, see the note below.
+(If you intend to be able to use GPUs, see the note below.)
 
-To install all required packages for the simulation, execute
-```
-pip install -e .
-```
-This command installs the package as an editable package, i.e. all changes in the source code will be directly reflected in the installed package.
+    To install all required packages for the simulation, execute
+    ```
+    pip install -e .
+    ```
+    This command installs the package as an editable package, i.e. all changes in the source code will be directly reflected in the installed package.
 
-If you do not intend to develop the code, you can install with
-```
-pip install .
-```
+    If you do not intend to develop the code, you can install with
+    ```
+    pip install .
+    ```
 
-Both commands will install the package `ggpeps` into your environment (and the necessary dependencies).
-You can test your installation with opening a python console (just type `python`) and execute
+    Both commands will install the package `ggpeps` into your environment (and the necessary dependencies).
+
+You can test your installation with opening a python console (just type `python`) and executing
 ```python
 import ggpeps
 ggpeps.__version__
 ```
-The result should be a version string like `0.1+g38ac83d20240911`.
+The result should be a version string, e.g. `0.1+g38ac83d20240911`.
 
 ### Installation with GPUs
 JAX is the library we use for running on GPUs. JAX must be installed wth jaxlib and connected to the correct versions of CUDA. The versions required will depend on what's available on a given cluster.
@@ -61,12 +60,13 @@ First, purge any loaded modules, with `module purge`.
 Then load the appropriate modules for `python` and `cuda`.
 To see the available modules, run `module avail`, to load a module run `module load <module>`, and to see a list of loaded modules run `module list`.
 
-Once this is done, create and activate a virtual environment.
+Once this is done, create and activate a virtual environment (as above).
 Before installing the requirements, run `pip install "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html`, which will install JAX and connect it to the appropriate version of CUDA.
 Then install the remaining requirements.
 
-TODO: check if the JAX/CUDA installation works with requirements.txt.
+TODO: Add a build to `pyproject.toml` which works for JAX on systems with a GPU and CUDA.
 
+# Development 
 
 ## Structure of the Code
 
@@ -77,7 +77,7 @@ All scripts in the main folder call parts of the package and provide the infrast
 
 The package `ggpeps` is divided into several parts:
 
-- `plot/`: Helper scripts for plots
+- `plot/`: Helper scripts for plots.
 - `system/`: Module containing all system implementations. Currently, two-dimensional systems for $Z_2$ with one and two copies of virtual fermions on the links are implemented for the pure gauge case, and 2D systems with 2,4,8 copies of virtual fermions on the links for the fermionic case.
 The system configs contain all information defining an ansatz (the $T$ matrix, $\Gamma_\text{in}$, etc.), while the system classes define observables, intermediate calculations, etc.
 The implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
@@ -95,13 +95,18 @@ Each implemented ansatz has it's own config class, each a subclass of Config2DBa
 - `system_z2_2d_2c`: $Z_2$, 2 copies of virtual modes per layer, pure gauge.
 - `system_z2_2d_8c`: $Z_2$, 8 copies of virtual modes per layer. This is extremely impractical to run, even for 2x2 systems, due to the large number of virtual modes; it was built for testing purposes. Because there are so many parameters, this ansatz is more systematic in handling them.
 - `system_z2_2d_G2c_F2c`: $Z_2$, 2 copies of virtual modes per layer (PG and matter layers), includes matter.
-- `system_z2_2d_G2c_F4c`: *this is be misnamed, and includes 4 copies per layer for both layers*. However the extra copies in the PG layer are set to zero, which makes it effectively 2 copies (though with matrix sizes, and computational cost, of 4 copies).
+- `system_z2_2d_G2c_F4c`: *this is misnamed, and includes 4 copies per layer for both layers*. However the extra copies in the PG layer are set to zero, which makes it effectively 2 copies (though with matrix sizes, and computational cost, of 4 copies).
 
 The pure gauge ansatz's all techincally contain a parameter for coupling to matter, but (a) it is manually set to zero, (b) other parts of the ansatz (e.g. the Gamma_in) do not obey the symmetries required for including matter.
 
-## Physical System
-
-TODO: Fill
+## Code Formatting
+Code is formatted using `black` with the default configuration.
+To format your code, run 
+```python
+black .
+```
+from the main repository directory. 
+To set up your editor to automatically format your code (e.g. on save), see [Black Editor Integrations](https://black.readthedocs.io/en/stable/integrations/editors.html).
 
 ## Data Generation
 
@@ -218,7 +223,7 @@ Individual sessions can be executed with `nox -s <name of session>`.
 ## Known Issues
 
 - Current implementation of U1 is not working properly
-- Bogoliubov transform yields wrong results if used with fermions
+- Bogoliubov transform yields wrong results if used with fermions (this is not used in any case)
 
 ## Ideas
 
@@ -227,7 +232,7 @@ Individual sessions can be executed with `nox -s <name of session>`.
 - Add option for DMRG like cylinder compression to obtain transfer matrices
 - Make data file optional?
 
-## Papers
+# Papers
 The following is a list of papers that have used (versions of) this code:
 1. Emonts et al, Finding the ground state of a lattice gauge theory with fermionic tensor networks: A $2+1\mathrm{D}$ ${\mathbb{Z}}_{2}$ demonstration, PRD vol 107 (2023).
 
