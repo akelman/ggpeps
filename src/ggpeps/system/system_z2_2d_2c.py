@@ -1,6 +1,7 @@
 import sympy
 import logging
-#import numpy as np
+
+# import numpy as np
 from ggpeps import xnp as np
 from scipy.linalg import block_diag
 
@@ -16,6 +17,7 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 ###################### Z2System2D ##########################
 
+
 class Z2System2D2CConfig(Config2DBase):
     """Configuration of the Z2 system in 2D with 2 copies of virtual fermions on the links.
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
@@ -23,37 +25,55 @@ class Z2System2D2CConfig(Config2DBase):
 
     _nparams = 20
     ncopy = 2
-    nvirtmodes_vertex = 8 # We have two virtual modes per direction (4 directions x 2 modes)
-    nvirtmodes_link = 4 # Number of virtual modes per link (2 copies and l/r or u/d)
+    nvirtmodes_vertex = (
+        8  # We have two virtual modes per direction (4 directions x 2 modes)
+    )
+    nvirtmodes_link = 4  # Number of virtual modes per link (2 copies and l/r or u/d)
 
-    def __init__(self, lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer=1, num_fermionic_layer=0):
-        #The parameters have the following order: [[t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i...],[..next layer..],....]
-        if num_fermionic_layer != 0: 
+    def __init__(
+        self,
+        lattice,
+        g_el,
+        g_mag,
+        g_int,
+        g_mass,
+        g_chem,
+        num_pg_layer=1,
+        num_fermionic_layer=0,
+    ):
+        # The parameters have the following order: [[t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i...],[..next layer..],....]
+        if num_fermionic_layer != 0:
             # This ansatz does not support fermionic layers
-            raise ValueError("The Z2System2D2C ansatz does not support fermionic layers.")
+            raise ValueError(
+                "The Z2System2D2C ansatz does not support fermionic layers."
+            )
         super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0)
-        
+
         # This is for pure-gauge only atm
-        self.num_pg_layer = self.nlayer 
+        self.num_pg_layer = self.nlayer
         self.num_fermionic_layer = 0
 
         # Constants used in the calculation of the electric energy
-        prefactors = [[1, -1, 1.j, 1.j], [1, -1, 1.j, 1.j]]
-        indices_layer_pg = [[(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)]]
+        prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
+        indices_layer_pg = [
+            [(2, 4), (3, 5), (4, 5), (2, 3)],
+            [(6, 0), (7, 1), (0, 1), (6, 7)],
+        ]
         idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
-        self.idxarr_vec = [idxarr_lay_pg]*self.nlayer
-        self.el_overall_factors = [-1/16]*self.nlayer # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        self.idxarr_vec = [idxarr_lay_pg] * self.nlayer
+        self.el_overall_factors = [
+            -1 / 16
+        ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
-        """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t. 
-        """
-        #The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
+        """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t."""
+        # The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
         for ind in range(self.nlayer):
-            self.paramvec[ind, 0] = 0 # Set t1r to 0
-            self.paramvec[ind, 10] = 0 # Set t1i to 0
-            self.paramvec[ind, 3] = 0 # Set t2r to 0
-            self.paramvec[ind, 13] = 0 # Set t2i to 0
-    
+            self.paramvec[ind, 0] = 0  # Set t1r to 0
+            self.paramvec[ind, 10] = 0  # Set t1i to 0
+            self.paramvec[ind, 3] = 0  # Set t2r to 0
+            self.paramvec[ind, 13] = 0  # Set t2i to 0
+
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
         We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
@@ -67,10 +87,10 @@ class Z2System2D2CConfig(Config2DBase):
         t2r = sympy.Symbol("t2r", real=True)
         y2r = sympy.Symbol("y2r", real=True)
         z2r = sympy.Symbol("z2r", real=True)
-        ar  = sympy.Symbol("ar", real=True)
-        br  = sympy.Symbol("br", real=True)
-        cr  = sympy.Symbol("cr", real=True)
-        dr  = sympy.Symbol("dr", real=True)
+        ar = sympy.Symbol("ar", real=True)
+        br = sympy.Symbol("br", real=True)
+        cr = sympy.Symbol("cr", real=True)
+        dr = sympy.Symbol("dr", real=True)
 
         t1i = sympy.Symbol("t1i", real=True)
         y1i = sympy.Symbol("y1i", real=True)
@@ -78,11 +98,32 @@ class Z2System2D2CConfig(Config2DBase):
         t2i = sympy.Symbol("t2i", real=True)
         y2i = sympy.Symbol("y2i", real=True)
         z2i = sympy.Symbol("z2i", real=True)
-        ai  = sympy.Symbol("ai", real=True)
-        bi  = sympy.Symbol("bi", real=True)
-        ci  = sympy.Symbol("ci", real=True)
-        di  = sympy.Symbol("di", real=True)
-        return [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i, z1i, t2i, y2i, z2i, ai, bi, ci, di]
+        ai = sympy.Symbol("ai", real=True)
+        bi = sympy.Symbol("bi", real=True)
+        ci = sympy.Symbol("ci", real=True)
+        di = sympy.Symbol("di", real=True)
+        return [
+            t1r,
+            y1r,
+            z1r,
+            t2r,
+            y2r,
+            z2r,
+            ar,
+            br,
+            cr,
+            dr,
+            t1i,
+            y1i,
+            z1i,
+            t2i,
+            y2i,
+            z2i,
+            ai,
+            bi,
+            ci,
+            di,
+        ]
 
     @property
     def tmat_symb(self):
@@ -91,7 +132,7 @@ class Z2System2D2CConfig(Config2DBase):
         The T matrix is given in terms of symbols to compute the derivative of the covariance matrices analytically via sympy.
         We do not have to type them explicitly anymore into the code.
 
-        This is one of two analytic inputs into the code. 
+        This is one of two analytic inputs into the code.
         The other input is the structure and the parametrization of the projectors.
 
         The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2
@@ -102,36 +143,88 @@ class Z2System2D2CConfig(Config2DBase):
         Returns:
             sympy.Matrix: Analytic T matrix of the fiducial state
         """
-        [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i,
-            z1i, t2i, y2i, z2i, ai, bi, ci, di] = self.symbolvec
-        t1 = t1r+1.j*t1i
-        y1 = y1r+1.j*y1i
-        z1 = z1r+1.j*z1i
-        t2 = t2r+1.j*t2i
-        y2 = y2r+1.j*y2i
-        z2 = z2r+1.j*z2i
-        a = ar+1.j*ai
-        b = br+1.j*bi
-        c = cr+1.j*ci
-        d = dr+1.j*di
-        tmat_symb=sympy.Matrix([
-            [0, -1.j*t1, 1.j*t1, t1, -t1, -1.j*t2, 1.j*t2, t2, -t2],
-            [1.j*t1, 0, 1.j*y1, z1, 1.j*z1, -1.j*a, -1.j*c, -1.j*b, -1.j*d],
-            [-1.j*t1, -1.j*y1, 0, -1.j*z1, -z1, 1.j*c, 1.j*a, 1.j*d, 1.j*b],
-            [-t1, -z1, 1.j*z1, 0, -y1, d, b, a, c],
-            [t1, -1.j*z1, z1, y1, 0, -b, -d, -c, -a],
-            [1.j*t2, 1.j*a, -1.j*c, -d, b, 0, 1.j*y2, z2, 1.j*z2],
-            [-1.j*t2, 1.j*c, -1.j*a, -b, d, -1.j*y2, 0, -1.j*z2, -z2],
-            [-t2, 1.j*b, -1.j*d, -a, c, -z2, 1.j*z2, 0, -y2],
-            [t2, 1.j*d, -1.j*b, -c, a, -1.j*z2, z2, y2, 0]
-            ])
+        [
+            t1r,
+            y1r,
+            z1r,
+            t2r,
+            y2r,
+            z2r,
+            ar,
+            br,
+            cr,
+            dr,
+            t1i,
+            y1i,
+            z1i,
+            t2i,
+            y2i,
+            z2i,
+            ai,
+            bi,
+            ci,
+            di,
+        ] = self.symbolvec
+        t1 = t1r + 1.0j * t1i
+        y1 = y1r + 1.0j * y1i
+        z1 = z1r + 1.0j * z1i
+        t2 = t2r + 1.0j * t2i
+        y2 = y2r + 1.0j * y2i
+        z2 = z2r + 1.0j * z2i
+        a = ar + 1.0j * ai
+        b = br + 1.0j * bi
+        c = cr + 1.0j * ci
+        d = dr + 1.0j * di
+        tmat_symb = sympy.Matrix(
+            [
+                [0, -1.0j * t1, 1.0j * t1, t1, -t1, -1.0j * t2, 1.0j * t2, t2, -t2],
+                [
+                    1.0j * t1,
+                    0,
+                    1.0j * y1,
+                    z1,
+                    1.0j * z1,
+                    -1.0j * a,
+                    -1.0j * c,
+                    -1.0j * b,
+                    -1.0j * d,
+                ],
+                [
+                    -1.0j * t1,
+                    -1.0j * y1,
+                    0,
+                    -1.0j * z1,
+                    -z1,
+                    1.0j * c,
+                    1.0j * a,
+                    1.0j * d,
+                    1.0j * b,
+                ],
+                [-t1, -z1, 1.0j * z1, 0, -y1, d, b, a, c],
+                [t1, -1.0j * z1, z1, y1, 0, -b, -d, -c, -a],
+                [1.0j * t2, 1.0j * a, -1.0j * c, -d, b, 0, 1.0j * y2, z2, 1.0j * z2],
+                [
+                    -1.0j * t2,
+                    1.0j * c,
+                    -1.0j * a,
+                    -b,
+                    d,
+                    -1.0j * y2,
+                    0,
+                    -1.0j * z2,
+                    -z2,
+                ],
+                [-t2, 1.0j * b, -1.0j * d, -a, c, -z2, 1.0j * z2, 0, -y2],
+                [t2, 1.0j * d, -1.0j * b, -c, a, -1.0j * z2, z2, y2, 0],
+            ]
+        )
         return tmat_symb
-    
+
     def generate_gamma_gauge_neutral_dict(self):
         """Generate the the covariance matrix of the ungauged projectors.
         The morde order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
-        We order first by link and then by copy. 
+        We order first by link and then by copy.
         Modes of copy one are coupled to modes of copy 2. The projectors mix copies.
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
@@ -141,14 +234,18 @@ class Z2System2D2CConfig(Config2DBase):
         Returns:
             List[np.ndarray]: Covariance matrix of the ungauged projector on a single link
         """
-        dest = [0]*2
-        dest[Direction.X] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
-        dest[Direction.Y] = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
-        return [dest]*self.nlayer
+        dest = [0] * 2
+        dest[Direction.X] = np.real_if_close(
+            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix))
+        )
+        dest[Direction.Y] = np.real_if_close(
+            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz))
+        )
+        return [dest] * self.nlayer
 
 
 class Z2System2D2C(System2DBase):
-    """ 2 copy version of the Z2 system GGPEPS ansatz
+    """2 copy version of the Z2 system GGPEPS ansatz
 
     Some general notes about conventions:
 
@@ -166,11 +263,12 @@ class Z2System2D2C(System2DBase):
             cfg (Z2System2D2CConfig): Configuration containing all system-related parameters
         """
         super().__init__(cfg)
-        raise DeprecationWarning("This class is to be replaced by a generic 2D Z2 class.")
-
+        raise DeprecationWarning(
+            "This class is to be replaced by a generic 2D Z2 class."
+        )
 
     def initialize_gamma_in_sys(self):
-        """ 
+        """
         The mode-order in gamma_in_sys is dictated by the numbering of the links on the lattice.
         The numbering guarantees that we split the vertical from the horizontal links for easier gauging.
 
@@ -183,12 +281,12 @@ class Z2System2D2C(System2DBase):
             |         |
             0 --"0"-- 1 --"1"--
 
-        The vertex indices are written as <number>, the link indices are written as "<number>". 
+        The vertex indices are written as <number>, the link indices are written as "<number>".
 
-        For a 2x2 system, gamma_in has the order 
-        { l1_1, r2_0, l1_1, r2_0, l1_0, r2_1, l1_0, r2_1,  
-          l1_3, r2_2, l1_3, r2_2, l1_2, r2_3, l1_2, r2_3,  
-          d1_2, u2_0, d1_2, u2_0, d1_0, u2_2, d1_0, u2_2,  
+        For a 2x2 system, gamma_in has the order
+        { l1_1, r2_0, l1_1, r2_0, l1_0, r2_1, l1_0, r2_1,
+          l1_3, r2_2, l1_3, r2_2, l1_2, r2_3, l1_2, r2_3,
+          d1_2, u2_0, d1_2, u2_0, d1_0, u2_2, d1_0, u2_2,
           d1_3, u2_1, d1_3, u2_1, d1_1, d2_3, d1_1, d2_3 }.
 
         The naming convention here is <mode letter><number of copy>_<vertex index>.
@@ -199,19 +297,18 @@ class Z2System2D2C(System2DBase):
         """
 
         # Initialize gamma_in_sys for the full system (and trackers)
-        size = self.cfg.lattice.size # number of sites
-        id = np.eye(size) 
-        neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral_vec[0][Direction.X] ) # just use the first gamma_gauge_neutral, since they're shared by all layers
-        neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral_vec[0][Direction.Y] )
+        size = self.cfg.lattice.size  # number of sites
+        id = np.eye(size)
+        neutral_gauge_X = np.kron(
+            id, self.gamma_gauge_neutral_vec[0][Direction.X]
+        )  # just use the first gamma_gauge_neutral, since they're shared by all layers
+        neutral_gauge_Y = np.kron(id, self.gamma_gauge_neutral_vec[0][Direction.Y])
         gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y)
 
-        diffvec = [
-            mat_d_inv - gamma_in_sys for mat_d_inv in self.mat_d_inv_vec
-        ]
+        diffvec = [mat_d_inv - gamma_in_sys for mat_d_inv in self.mat_d_inv_vec]
         wi_gamma_in_vec = [utils.WoodburyInverter(diff) for diff in diffvec]
         wi_gamma_out_vec = [
-            utils.WoodburyInverter(mat_d - gamma_in_sys)
-            for mat_d in self.mat_d_vec
+            utils.WoodburyInverter(mat_d - gamma_in_sys) for mat_d in self.mat_d_vec
         ]
         incdet_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec]
 
@@ -230,18 +327,21 @@ class Z2System2D2C(System2DBase):
 
         # Though for this ansatz gamma_in_sys does not vary between layers, it is convenient to have gamma_in_sys_vec available as a vector with length = nlayers
         # for general methods in system base
-        gamma_in_sys_vec = [gamma_in_sys]*self.cfg.nlayer
+        gamma_in_sys_vec = [gamma_in_sys] * self.cfg.nlayer
 
-        return gamma_in_sys_vec, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
+        return (
+            gamma_in_sys_vec,
+            (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec),
+            (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec),
+        )
 
-
-    #Gauging
+    # Gauging
 
     def generate_rotmat(self, theta, coord, dir):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
         The mode order is (as for gamma_in_neutral) {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}, depending on whether the link is vertical or horizontal.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
-        We order first by link and then by copy. 
+        We order first by link and then by copy.
         Modes of copy one are coupled to modes of copy 2. The projectors mix copies.
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
@@ -258,16 +358,16 @@ class Z2System2D2C(System2DBase):
         # TODO: Do we want to stagger here?
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
-        rot_right = np.array([[np.cos(theta), np.sin(theta)],
-                              [-np.sin(theta), np.cos(theta)]])
+        rot_right = np.array(
+            [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
+        )
         # We have only one left mode => 2 Majorana modes
         rot_left = np.eye(2)
         # The mode order is lr (horizontally) or du (vertically).
         # We rotate the different copies in the SAME way.
         dest = block_diag(rot_left, rot_right)
-        rotmat = np.kron( np.eye(self.cfg.ncopy), dest)
+        rotmat = np.kron(np.eye(self.cfg.ncopy), dest)
         return rotmat
-
 
     def update_gauge_ind(self, link_ind, theta):
         """Update method that is called upon changing a gauge field.
@@ -286,51 +386,67 @@ class Z2System2D2C(System2DBase):
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord, dir)
-        gamma_neutral_gauge = self.gamma_gauge_neutral_vec[0][dir] # just use the first gamma_gauge_neutral, since they're shared by all layers
+        gamma_neutral_gauge = self.gamma_gauge_neutral_vec[0][
+            dir
+        ]  # just use the first gamma_gauge_neutral, since they're shared by all layers
         gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
         # Update the determinant
-        mat_inv_vec = [
-            wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec
-        ]
+        mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
         detval_vec = [
             incdet.update_index(mat_inv, update, ind_mat, ind_mat)
             for mat_inv, incdet in zip(mat_inv_vec, self.incdet_vec)
         ]
         # Update the modified determinant
-        offset = 2* self.cfg.nvirtmodes_link
-        if ind_mat - offset >=0:
-            for wi, incdet in zip(self.wi_gamma_in_mod_vec,self.incdet_mod_vec):
+        offset = 2 * self.cfg.nvirtmodes_link
+        if ind_mat - offset >= 0:
+            for wi, incdet in zip(self.wi_gamma_in_mod_vec, self.incdet_mod_vec):
                 mat_inv = wi.inv()
-                incdet.update_index(mat_inv, update, ind_mat-offset, ind_mat-offset)
+                incdet.update_index(mat_inv, update, ind_mat - offset, ind_mat - offset)
         # Update the weight
         self.weight = 0.5 * np.sum(detval_vec)
         # Update the matrix inversion
-        [ wi_gamma_in.update_index(update, ind_mat, ind_mat) for wi_gamma_in in self.wi_gamma_in_vec ]
-        [ wi_gamma_out.update_index(update, ind_mat, ind_mat) for wi_gamma_out in self.wi_gamma_out_vec ]
+        [
+            wi_gamma_in.update_index(update, ind_mat, ind_mat)
+            for wi_gamma_in in self.wi_gamma_in_vec
+        ]
+        [
+            wi_gamma_out.update_index(update, ind_mat, ind_mat)
+            for wi_gamma_out in self.wi_gamma_out_vec
+        ]
 
         if ind_mat - offset >= 0:
             # We do not update the matrix if the first link is updated (it is just not there)
-            [ wi_gamma_in_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_in_mod in self.wi_gamma_in_mod_vec ]
-            [ wi_gamma_out_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_out_mod in self.wi_gamma_out_mod_vec ]
+            [
+                wi_gamma_in_mod.update_index(update, ind_mat - offset, ind_mat - offset)
+                for wi_gamma_in_mod in self.wi_gamma_in_mod_vec
+            ]
+            [
+                wi_gamma_out_mod.update_index(
+                    update, ind_mat - offset, ind_mat - offset
+                )
+                for wi_gamma_out_mod in self.wi_gamma_out_mod_vec
+            ]
         # Substitute in the array
-        self.gamma_in_sys[ind_mat:ind_mat + rotmat.shape[0],
-                          ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
+        self.gamma_in_sys[
+            ind_mat : ind_mat + rotmat.shape[0], ind_mat : ind_mat + rotmat.shape[1]
+        ] = gamma_in_subst
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
 
-
     # Observables
-    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv:bool=True):
-        energies = [0]*self.cfg.nlayer
-        gradients = [ [0]*self.cfg.nparams_per_layer for k in range(self.cfg.nlayer) ]
+    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv: bool = True):
+        energies = [0] * self.cfg.nlayer
+        gradients = [[0] * self.cfg.nparams_per_layer for k in range(self.cfg.nlayer)]
         return np.array(energies), np.array(gradients)
-        # This function is not implemented yet! 
+        # This function is not implemented yet!
         # (and it can't be, because the ansatz doesn't have the required parameterization).
         # We return zeros just to not break the interface.
-        raise NotImplementedError("The mass energy is not implemented yet for the selected ansatz.")
+        raise NotImplementedError(
+            "The mass energy is not implemented yet for the selected ansatz."
+        )
 
-    def _compute_mag_energy_op(self, use_trans_inv:bool=True):
+    def _compute_mag_energy_op(self, use_trans_inv: bool = True):
         """Computation of the magnetic energy operator (w/o shift).
         This operator is diagonal in the gauge field (group element) basis and can thus be computed easily.
 
@@ -349,23 +465,27 @@ class Z2System2D2C(System2DBase):
         else:
             # Evaluate every plaquette of the system
             logger.error("compute_mag_energy: not implemented yet")
-            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
+            raise NotImplementedError(
+                "The non-translational invariant case is not implemented yet."
+            )
             mag_energy_bare = None
         return mag_energy_bare
-    
+
     def _compute_int_energy_op_vec_and_grad(self):
-        energies = [0]*self.cfg.nlayer
-        gradients = [ [0]*self.cfg.nparams_per_layer for k in range(self.cfg.nlayer) ]
+        energies = [0] * self.cfg.nlayer
+        gradients = [[0] * self.cfg.nparams_per_layer for k in range(self.cfg.nlayer)]
         return np.array(energies), np.array(gradients)
-        # This function is not implemented yet! 
+        # This function is not implemented yet!
         # (and it can't be, because the ansatz doesn't have the required parameterization).
         # We return zeros just to not break the interface.
-        raise NotImplementedError("The interaction energy is not implemented yet for the selected ansatz.")
-    
+        raise NotImplementedError(
+            "The interaction energy is not implemented yet for the selected ansatz."
+        )
+
     def _compute_chem_energy_op_vec_and_grad(self):
-        # This function is not implemented yet! 
+        # This function is not implemented yet!
         # (and it can't be, because the ansatz doesn't have the required parameterization).
         # We return zeros just to not break the interface.
-        energies = [0]*self.cfg.nlayer
-        gradients = [ [0]*self.cfg.nparams_per_layer for k in range(self.cfg.nlayer) ]
+        energies = [0] * self.cfg.nlayer
+        gradients = [[0] * self.cfg.nparams_per_layer for k in range(self.cfg.nlayer)]
         return np.array(energies), np.array(gradients)

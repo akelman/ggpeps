@@ -2,45 +2,47 @@
 global_vars = {}
 
 # Logger setup
-LOGGER_NAME = 'ggpeps'
+LOGGER_NAME = "ggpeps"
 logger_file = None
 
 
-# Configure JAX 
+# Configure JAX
 import jax as jax_
+
 # TODO: does this need to be here?
 # The following line ensures that JAX is configured to 64-bit precision.
 # Without this line, some of the precision tests do not pass.
 jax_.config.update("jax_enable_x64", True)
 
 # GPU or CPU
-available_devices_ = jax_.devices() # available_gpus = jax.devices('gpu')
-PREFERRED_DEVICE = available_devices_[0] # eventually should not be used in our code
-if 'gpu' in available_devices_[0].device_kind:
+available_devices_ = jax_.devices()  # available_gpus = jax.devices('gpu')
+PREFERRED_DEVICE = available_devices_[0]  # eventually should not be used in our code
+if "gpu" in available_devices_[0].device_kind:
     GPU_AVAILABLE = True
-else: 
+else:
     GPU_AVAILABLE = False
 del jax_
 del available_devices_
 
 import os as os_
+
 # Set numerical backend
-AVAILABLE_NUMERICAL_BACKENDS = ['numpy', 'jax']
+AVAILABLE_NUMERICAL_BACKENDS = ["numpy", "jax"]
 if "GGPEPS_BACKEND" in os_.environ:
     if os_.environ["GGPEPS_BACKEND"] in AVAILABLE_NUMERICAL_BACKENDS:
         PREFERRED_BACKEND = os_.environ["GGPEPS_BACKEND"]
     else:
         raise ValueError(f"Unknown backend: {os_.environ['GGPEPS_BACKEND']}")
 elif GPU_AVAILABLE:
-    PREFERRED_BACKEND = 'jax'
+    PREFERRED_BACKEND = "jax"
 else:
-    PREFERRED_BACKEND = 'numpy'
+    PREFERRED_BACKEND = "numpy"
 del os_
 
-if PREFERRED_BACKEND == 'numpy':
+if PREFERRED_BACKEND == "numpy":
     import numpy as xnp
     import scipy as xscipy
-elif PREFERRED_BACKEND == 'jax':
+elif PREFERRED_BACKEND == "jax":
     import jax.numpy as xnp
     import jax.scipy as xscipy
 else:

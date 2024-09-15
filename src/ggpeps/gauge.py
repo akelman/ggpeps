@@ -1,8 +1,9 @@
 import numpy as np
 
+
 class ZNGauge:
     """Implements a Z_N gauge group, under a convenient representation in which values are chosen on the unit circle
-    and given in multiples of 2pi/N. 
+    and given in multiples of 2pi/N.
     """
 
     def __init__(self, n: int):
@@ -15,11 +16,11 @@ class ZNGauge:
         return 0
 
     def get_possible_gauge_values(self) -> np.ndarray:
-        prefactor = 2.*np.pi / self.n
+        prefactor = 2.0 * np.pi / self.n
         dest = np.zeros(self.n)
         for i in range(self.n):
-            dest[i] = i*prefactor
+            dest[i] = i * prefactor
         return dest
 
     def get_increment(self) -> float:
-        return 2.*np.pi / self.n
+        return 2.0 * np.pi / self.n

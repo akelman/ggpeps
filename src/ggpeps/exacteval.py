@@ -11,12 +11,12 @@ from ggpeps.evaluator import Evaluator
 
 
 class ExactEvaluator(Evaluator):
-    """An ExactEvaluator exactly evaluates the expectation value of an observable by iterating over all possible states of the gauge field.
-    """
+    """An ExactEvaluator exactly evaluates the expectation value of an observable by iterating over all possible states of the gauge field."""
+
     def __init__(self, evaluator_cfg, system, gauge_fixing) -> None:
         self.system = system
         self.obsdict: dict = None
-        self.evaluator_type = 'exact'
+        self.evaluator_type = "exact"
         self.gauge_fixing: bool = gauge_fixing
 
     def compute_expval(self, obs: np.ndarray, normvec: np.ndarray):
@@ -35,11 +35,11 @@ class ExactEvaluator(Evaluator):
             prod = obs * normvec
             expval = np.transpose(np.sum(prod, axis=2))
         else:
-            expval = np.sum(obs*normvec)
-        return expval/normalization
+            expval = np.sum(obs * normvec)
+        return expval / normalization
 
     def get_obs_mean(self, obs: str):
-        """Return expectation value of an observable. 
+        """Return expectation value of an observable.
         Use this function to match the interface of the MonteCarloEvaluator."""
         return self.obsdict[obs]
 
@@ -56,17 +56,18 @@ class ExactEvaluator(Evaluator):
             else:
                 poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
                 nlinks = self.system.cfg.lattice.nlinks
-                configvec = it.product(poss_gauges, repeat=nlinks) # an iterable object with all possible field configurations for the entire lattice. TODO: think if I should add a nomralization constant
-
+                configvec = it.product(
+                    poss_gauges, repeat=nlinks
+                )  # an iterable object with all possible field configurations for the entire lattice. TODO: think if I should add a nomralization constant
 
             polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
-                (0, 0), lattice.Direction.X)
-            wilson_loop = self.system.cfg.lattice.generate_wilson_loop((0, 0),
-                                                                    (1, 1))
+                (0, 0), lattice.Direction.X
+            )
+            wilson_loop = self.system.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
 
             # Wilson loops
             sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
-            loops = self.system.cfg.lattice.generate_all_wilson_loops((0,0), sizes)
+            loops = self.system.cfg.lattice.generate_all_wilson_loops((0, 0), sizes)
 
             data = {
                 "energy": [],
@@ -86,7 +87,7 @@ class ExactEvaluator(Evaluator):
                 "chem_energy_op_grad": [],
                 "grad_norm": [],
                 "polyakov_00_x": [],
-                "number_per_site": []
+                "number_per_site": [],
             }
             # Wilson loops
             for k in range(len(sizes)):
@@ -95,27 +96,29 @@ class ExactEvaluator(Evaluator):
 
             for config in configvec:
                 self.system.update_gauge_full_system(config)
-                #logger.debug(f"Configuration: {config}")
-                
+                # logger.debug(f"Configuration: {config}")
+
                 data["energy"].append(self.system.energy)
                 data["mag_energy"].append(self.system.mag_energy)
                 data["el_energy"].append(self.system.el_energy)
-                data["mass_energy"].append(self.system.mass_energy) 
-                data["int_energy"].append(self.system.int_energy) 
-                data["chem_energy"].append(self.system.chem_energy) 
+                data["mass_energy"].append(self.system.mass_energy)
+                data["int_energy"].append(self.system.int_energy)
+                data["chem_energy"].append(self.system.chem_energy)
                 data["mag_energy_op"].append(self.system.mag_energy_op)
                 data["el_energy_op"].append(self.system.el_energy_op)
-                data["mass_energy_op"].append(self.system.mass_energy_op) 
-                data["int_energy_op"].append(self.system.int_energy_op) 
-                
+                data["mass_energy_op"].append(self.system.mass_energy_op)
+                data["int_energy_op"].append(self.system.int_energy_op)
+
                 data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
-                data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec) 
-                data["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec) 
-                data["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec) 
-                
-                data["norm"].append(self.system.calculate_lognorm(all_factors=True)) 
+                data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
+                data["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
+                data["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
+
+                data["norm"].append(self.system.calculate_lognorm(all_factors=True))
                 data["grad_norm"].append(self.system.compute_grad_norm_vec())
-                data["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
+                data["polyakov_00_x"].append(
+                    np.real(self.system.compute_path(polyakov_loop))
+                )
 
                 data["number_per_site"].append(np.real(self.system.number_per_site))
 
@@ -123,9 +126,9 @@ class ExactEvaluator(Evaluator):
                 for k in range(len(sizes)):
                     loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
                     data[loop_name].append(np.real(self.system.compute_path(loops[k])))
-            
+
             # TODO: handle this better - boundary should not be here!
-            if ggpeps.PREFERRED_BACKEND == 'jax':
+            if ggpeps.PREFERRED_BACKEND == "jax":
                 for key, val in data.items():
                     data[key] = np.asarray(val)
 
@@ -138,7 +141,7 @@ class ExactEvaluator(Evaluator):
             normvec = np.exp(data["norm"])
 
             # Transpose to enable broadcasting
-            grad_norm_transposed = np.transpose(data["grad_norm"],[2,1,0])
+            grad_norm_transposed = np.transpose(data["grad_norm"], [2, 1, 0])
 
             dest["energy"] = self.compute_expval(data["energy"], normvec)
             dest["mag_energy"] = self.compute_expval(data["mag_energy"], normvec)
@@ -147,7 +150,9 @@ class ExactEvaluator(Evaluator):
             dest["int_energy"] = self.compute_expval(data["int_energy"], normvec)
             dest["chem_energy"] = self.compute_expval(data["chem_energy"], normvec)
             dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
-            dest["number_per_site"] = self.compute_expval(data["number_per_site"], normvec)
+            dest["number_per_site"] = self.compute_expval(
+                data["number_per_site"], normvec
+            )
             dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)
 
             # Wilson loops
@@ -155,7 +160,7 @@ class ExactEvaluator(Evaluator):
                 loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
                 dest[loop_name] = self.compute_expval(data[loop_name], normvec)
 
-            #The norm that we turn in the end is the actual norm, not the lognorm!
+            # The norm that we turn in the end is the actual norm, not the lognorm!
             dest["norm"] = np.sum(normvec)
 
             # Compute the gradients
@@ -163,60 +168,104 @@ class ExactEvaluator(Evaluator):
             # Magnetic gradient
             prod_mag_op_norm = data["mag_energy_op"] * grad_norm_transposed
             expval_prod_mag = self.compute_expval(prod_mag_op_norm, normvec)
-            prod_expval_mag = self.compute_expval(data["mag_energy_op"], normvec) * dest["grad_norm"]
+            prod_expval_mag = (
+                self.compute_expval(data["mag_energy_op"], normvec) * dest["grad_norm"]
+            )
             mag_op_grad = expval_prod_mag - prod_expval_mag
-            mag_energy_grad = -2 * self.system.cfg.g_mag * mag_op_grad # the factor of two comes from the Hamiltonian
+            mag_energy_grad = (
+                -2 * self.system.cfg.g_mag * mag_op_grad
+            )  # the factor of two comes from the Hamiltonian
             dest["mag_energy_grad"] = mag_energy_grad
 
             # Electric gradient
             prod_el_op_norm = data["el_energy_op"] * grad_norm_transposed
             expval_prod_el = self.compute_expval(prod_el_op_norm, normvec)
-            prod_expval_el = self.compute_expval(data["el_energy_op"], normvec) * dest["grad_norm"]
-            el_op_grad = expval_prod_el - prod_expval_el + self.compute_expval(np.transpose(data["el_energy_op_grad"],[2,1,0]), normvec)
-            el_energy_grad = -2 * self.system.cfg.g_el * el_op_grad # the factor of two comes from the Hamiltonian
+            prod_expval_el = (
+                self.compute_expval(data["el_energy_op"], normvec) * dest["grad_norm"]
+            )
+            el_op_grad = (
+                expval_prod_el
+                - prod_expval_el
+                + self.compute_expval(
+                    np.transpose(data["el_energy_op_grad"], [2, 1, 0]), normvec
+                )
+            )
+            el_energy_grad = (
+                -2 * self.system.cfg.g_el * el_op_grad
+            )  # the factor of two comes from the Hamiltonian
             dest["el_energy_grad"] = el_energy_grad
 
             # Mass gradient
             prod_mass_op_norm = data["mass_energy_op"] * grad_norm_transposed
             expval_prod_mass = self.compute_expval(prod_mass_op_norm, normvec)
-            prod_expval_mass = self.compute_expval(data["mass_energy_op"], normvec) * dest["grad_norm"]
-            mass_energy_grad = expval_prod_mass - prod_expval_mass + self.compute_expval(np.transpose(data["mass_energy_op_grad"], [2,1,0]), normvec)
+            prod_expval_mass = (
+                self.compute_expval(data["mass_energy_op"], normvec) * dest["grad_norm"]
+            )
+            mass_energy_grad = (
+                expval_prod_mass
+                - prod_expval_mass
+                + self.compute_expval(
+                    np.transpose(data["mass_energy_op_grad"], [2, 1, 0]), normvec
+                )
+            )
             mass_energy_grad *= self.system.cfg.g_mass
             dest["mass_energy_grad"] = mass_energy_grad
 
             # Interaction gradient
             prod_int_op_norm = data["int_energy_op"] * grad_norm_transposed
             expval_prod_int = self.compute_expval(prod_int_op_norm, normvec)
-            prod_expval_int = self.compute_expval(data["int_energy_op"], normvec) * dest["grad_norm"]
-            int_energy_grad = expval_prod_int - prod_expval_int + self.compute_expval(np.transpose(data["int_energy_op_grad"], [2,1,0]), normvec)
+            prod_expval_int = (
+                self.compute_expval(data["int_energy_op"], normvec) * dest["grad_norm"]
+            )
+            int_energy_grad = (
+                expval_prod_int
+                - prod_expval_int
+                + self.compute_expval(
+                    np.transpose(data["int_energy_op_grad"], [2, 1, 0]), normvec
+                )
+            )
             int_energy_grad *= self.system.cfg.g_int
             dest["int_energy_grad"] = int_energy_grad
 
             # Chemical potential gradient
             prod_chem_op_norm = data["chem_energy"] * grad_norm_transposed
             expval_prod_chem = self.compute_expval(prod_chem_op_norm, normvec)
-            prod_expval_chem = self.compute_expval(data["chem_energy"], normvec) * dest["grad_norm"]
-            scaled_chem_grad = np.transpose(data["chem_energy_op_grad"], [2,1,0])
-            for lay in range(self.system.cfg.nlayer): # TODO: do this in a cleaner way
-                scaled_chem_grad[:,lay,:] *= self.system.cfg.g_chem[lay] 
-            chem_energy_grad = expval_prod_chem - prod_expval_chem + self.compute_expval(scaled_chem_grad, normvec)
+            prod_expval_chem = (
+                self.compute_expval(data["chem_energy"], normvec) * dest["grad_norm"]
+            )
+            scaled_chem_grad = np.transpose(data["chem_energy_op_grad"], [2, 1, 0])
+            for lay in range(self.system.cfg.nlayer):  # TODO: do this in a cleaner way
+                scaled_chem_grad[:, lay, :] *= self.system.cfg.g_chem[lay]
+            chem_energy_grad = (
+                expval_prod_chem
+                - prod_expval_chem
+                + self.compute_expval(scaled_chem_grad, normvec)
+            )
             dest["chem_energy_grad"] = chem_energy_grad
 
             # Add for the full gradient, subject to conditions on parameterization
-            total_grad = mag_energy_grad + el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
+            total_grad = (
+                mag_energy_grad
+                + el_energy_grad
+                + mass_energy_grad
+                + int_energy_grad
+                + chem_energy_grad
+            )
             self.system.cfg.enforce_parameter_conditions(total_grad)
             dest["energy_grad"] = total_grad
             self.obsdict = dest
 
         return self.obsdict
-        
+
     def generate_config_vec(self):
         """Generates gauge field configurations for all links, for the gauge fixed case."""
         poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
         nlinks = self.system.cfg.lattice.nlinks
-        non_fixed_links_ind = self.system.cfg.lattice.comp_tree  # All possible indices for the non-fixed positions
+        non_fixed_links_ind = (
+            self.system.cfg.lattice.comp_tree
+        )  # All possible indices for the non-fixed positions
         neutral_gauge = self.system.gaugemgr.get_neutral_gauge_value()
-        
+
         # Generate all possible gauge field combinations
         combinations = it.product(poss_gauges, repeat=len(non_fixed_links_ind))
 
@@ -237,40 +286,39 @@ class ExactEvaluator(Evaluator):
             "name": [],
             "nx": [],
             "ny": [],
-            "paramvec":[],
-            "ncopy":[],
-            "nlayer":[],
+            "paramvec": [],
+            "ncopy": [],
+            "nlayer": [],
             "g_el": [],
             "g_mag": [],
             "g_int": [],
             "g_mass": [],
-            "mean": []
+            "mean": [],
         }
         for key in self.obsdict.keys():
-            dest['name'].append(key)
-            dest['nx'].append(self.system.cfg.lattice.nx)
-            dest['ny'].append(self.system.cfg.lattice.ny)
-            dest['g_el'].append(self.system.cfg.g_el)
-            dest['g_mag'].append(self.system.cfg.g_mag)
-            dest['g_int'].append(self.system.cfg.g_int)
-            dest['g_mass'].append(self.system.cfg.g_mass)
-            dest['paramvec'].append(self.system.cfg.paramvec)
-            dest['ncopy'].append(self.system.cfg.ncopy)
-            dest['nlayer'].append(self.system.cfg.nlayer)
+            dest["name"].append(key)
+            dest["nx"].append(self.system.cfg.lattice.nx)
+            dest["ny"].append(self.system.cfg.lattice.ny)
+            dest["g_el"].append(self.system.cfg.g_el)
+            dest["g_mag"].append(self.system.cfg.g_mag)
+            dest["g_int"].append(self.system.cfg.g_int)
+            dest["g_mass"].append(self.system.cfg.g_mass)
+            dest["paramvec"].append(self.system.cfg.paramvec)
+            dest["ncopy"].append(self.system.cfg.ncopy)
+            dest["nlayer"].append(self.system.cfg.nlayer)
             dest["mean"].append(self.obsdict[key])
         df = pd.DataFrame(dest)
         return df
 
     def save(self, output_dir="."):
-        """Convenience function to generate a filename and save the summary in one step
-        """
+        """Convenience function to generate a filename and save the summary in one step"""
         syscfg = self.system.cfg
-        tvec = syscfg.paramvec[:,0]
-        yvec = syscfg.paramvec[:,1]
-        zvec = syscfg.paramvec[:,2]
+        tvec = syscfg.paramvec[:, 0]
+        yvec = syscfg.paramvec[:, 1]
+        zvec = syscfg.paramvec[:, 2]
         tstr = "-".join([str(t) for t in tvec])
         ystr = "-".join([str(y) for y in yvec])
         zstr = "-".join([str(z) for z in zvec])
 
         fname_summary = f"summary_exact_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_t_{tstr}_y_{ystr}_z_{zstr}.pkl"
-        self.save_summary(os.path.join(output_dir,fname_summary))
+        self.save_summary(os.path.join(output_dir, fname_summary))

@@ -9,15 +9,17 @@ from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.exacteval import ExactEvaluator
 from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig
 
-#@skip("This class of tests takes too long")
+
+# @skip("This class of tests takes too long")
 class TestMinimizerZ2(unittest.TestCase):
 
     def test_derivative_mag_energy_exact_1_layer(self):
         eps = 1e-5
         paramvec = [[0.0, 0.5, 0.5, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0], 
-                                             num_pg_layer=1, num_fermionic_layer=0)
+        system_cfg = system.Z2System2DConfig(
+            lat_2x2, 1.0, 0.0, 0.0, 0.0, [0], num_pg_layer=1, num_fermionic_layer=0
+        )
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
         gauge_fixing = False
@@ -31,10 +33,26 @@ class TestMinimizerZ2(unittest.TestCase):
                 paramvec_right = np.copy(paramvec)
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
-                system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0], 
-                                                          num_pg_layer=1, num_fermionic_layer=0)
-                system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0], 
-                                                           num_pg_layer=1, num_fermionic_layer=0)
+                system_cfg_left = system.Z2System2DConfig(
+                    lat_2x2,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    [0],
+                    num_pg_layer=1,
+                    num_fermionic_layer=0,
+                )
+                system_cfg_right = system.Z2System2DConfig(
+                    lat_2x2,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    [0],
+                    num_pg_layer=1,
+                    num_fermionic_layer=0,
+                )
 
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
@@ -48,7 +66,9 @@ class TestMinimizerZ2(unittest.TestCase):
                 res_left = exact_ev_left.evaluate()
                 res_right = exact_ev_right.evaluate()
 
-                mag_energy_deriv_num = (res_right["mag_energy"] - res_left["mag_energy"]) / (2 * eps)
+                mag_energy_deriv_num = (
+                    res_right["mag_energy"] - res_left["mag_energy"]
+                ) / (2 * eps)
                 mag_energy_deriv_ana = res["mag_energy_grad"][0, ind]
                 self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
 
@@ -57,8 +77,9 @@ class TestMinimizerZ2(unittest.TestCase):
         nlayer = 2
         paramvec = [[0.0, 0.5, 0.5, 0.0, 0.0, 0.0], [0.0, 0.3, 0.8, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0, 0], 
-                                             num_pg_layer=2, num_fermionic_layer=0)
+        system_cfg = system.Z2System2DConfig(
+            lat_2x2, 1.0, 0.0, 0.0, 0.0, [0, 0], num_pg_layer=2, num_fermionic_layer=0
+        )
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
         gauge_fixing = False
@@ -73,10 +94,26 @@ class TestMinimizerZ2(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layer, ind] -= eps
                     paramvec_right[layer, ind] += eps
-                    system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0, 0], 
-                                                              num_pg_layer=2, num_fermionic_layer=0)
-                    system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0, 0], 
-                                                               num_pg_layer=2, num_fermionic_layer=0)
+                    system_cfg_left = system.Z2System2DConfig(
+                        lat_2x2,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        [0, 0],
+                        num_pg_layer=2,
+                        num_fermionic_layer=0,
+                    )
+                    system_cfg_right = system.Z2System2DConfig(
+                        lat_2x2,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        [0, 0],
+                        num_pg_layer=2,
+                        num_fermionic_layer=0,
+                    )
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -90,7 +127,9 @@ class TestMinimizerZ2(unittest.TestCase):
                     res_left = exact_ev_left.evaluate()
                     res_right = exact_ev_right.evaluate()
 
-                    mag_energy_deriv_num = (res_right["mag_energy"] - res_left["mag_energy"]) / (2 * eps)
+                    mag_energy_deriv_num = (
+                        res_right["mag_energy"] - res_left["mag_energy"]
+                    ) / (2 * eps)
                     mag_energy_deriv_ana = res["mag_energy_grad"][layer, ind]
 
                     self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
@@ -112,8 +151,12 @@ class TestMinimizerZ2(unittest.TestCase):
                 paramvec_right = np.copy(paramvec)
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
-                system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0])
-                system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0])
+                system_cfg_left = system.Z2System2DConfig(
+                    lat_2x2, 1.0, 0.0, 0.0, 0.0, [0]
+                )
+                system_cfg_right = system.Z2System2DConfig(
+                    lat_2x2, 1.0, 0.0, 0.0, 0.0, [0]
+                )
 
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
@@ -127,18 +170,23 @@ class TestMinimizerZ2(unittest.TestCase):
                 res_left = exact_ev_left.evaluate()
                 res_right = exact_ev_right.evaluate()
 
-                el_energy_deriv_num = (res_right["el_energy"] - res_left["el_energy"]) / (2 * eps)
-                el_energy_deriv_ana = res["el_energy_grad"][0,ind]
+                el_energy_deriv_num = (
+                    res_right["el_energy"] - res_left["el_energy"]
+                ) / (2 * eps)
+                el_energy_deriv_ana = res["el_energy_grad"][0, ind]
 
-                self.assertAlmostEqual(el_energy_deriv_num, el_energy_deriv_ana, places=5)
+                self.assertAlmostEqual(
+                    el_energy_deriv_num, el_energy_deriv_ana, places=5
+                )
 
     def test_derivative_el_energy_exact_2_layer(self):
         eps = 1e-5
         nlayer = 2
         paramvec = [[0.2, 0.5, 0.5, 0.0, 0.0, 0.0], [0.1, 0.4, 0.2, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0,0], 
-                                             num_pg_layer=2, num_fermionic_layer=0)
+        system_cfg = system.Z2System2DConfig(
+            lat_2x2, 1.0, 0.0, 0.0, 0.0, [0, 0], num_pg_layer=2, num_fermionic_layer=0
+        )
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
         gauge_fixing = False
@@ -152,10 +200,26 @@ class TestMinimizerZ2(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0,0], 
-                                                              num_pg_layer=2, num_fermionic_layer=0)
-                    system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0,0], 
-                                                               num_pg_layer=2, num_fermionic_layer=0)
+                    system_cfg_left = system.Z2System2DConfig(
+                        lat_2x2,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        [0, 0],
+                        num_pg_layer=2,
+                        num_fermionic_layer=0,
+                    )
+                    system_cfg_right = system.Z2System2DConfig(
+                        lat_2x2,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        [0, 0],
+                        num_pg_layer=2,
+                        num_fermionic_layer=0,
+                    )
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -169,19 +233,21 @@ class TestMinimizerZ2(unittest.TestCase):
                     res_left = exact_ev_left.evaluate()
                     res_right = exact_ev_right.evaluate()
 
-                    el_energy_deriv_num = (res_right["el_energy"] - res_left["el_energy"]) / (2 * eps)
+                    el_energy_deriv_num = (
+                        res_right["el_energy"] - res_left["el_energy"]
+                    ) / (2 * eps)
                     el_energy_deriv_ana = res["el_energy_grad"][layerind, ind]
 
-                    self.assertAlmostEqual(el_energy_deriv_num,
-                                           el_energy_deriv_ana,
-                                           places=6)
+                    self.assertAlmostEqual(
+                        el_energy_deriv_num, el_energy_deriv_ana, places=6
+                    )
 
     @skip("Too long")
     def test_derivative_mag_energy_y(self):
         eps = 1e-4
         paramvec = [[0.1, 0.3, 1.4, 0.0, 0.0, 0.0]]
-        paramvec_left =  [[0.1, 0.3-eps, 1.4, 0.0, 0.0, 0.0]]
-        paramvec_right = [[0.1, 0.3+eps, 1.4, 0.0, 0.0, 0.0]]
+        paramvec_left = [[0.1, 0.3 - eps, 1.4, 0.0, 0.0, 0.0]]
+        paramvec_right = [[0.1, 0.3 + eps, 1.4, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
         system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
@@ -201,7 +267,9 @@ class TestMinimizerZ2(unittest.TestCase):
         min_config = MinimizerConfig()
 
         gauge_fixing = False
-        mc_mgr = EvaluatorManager(system.Z2System2D, system_cfg, mc_config, 0, gauge_fixing=False)
+        mc_mgr = EvaluatorManager(
+            system.Z2System2D, system_cfg, mc_config, 0, gauge_fixing=False
+        )
         minimizer = Minimizer(min_config, mc_mgr)
         mc_left = MonteCarloEvaluator(mc_config, sys_left, gauge_fixing)
         mc_right = MonteCarloEvaluator(mc_config, sys_right, gauge_fixing)
@@ -210,8 +278,10 @@ class TestMinimizerZ2(unittest.TestCase):
         mc_left.evaluate()
         mc_right.evaluate()
 
-        #mag_energy_deriv = minimizer.energy_gradient(minimizer.last_result)
-        mag_energy_deriv = minimizer.last_result.energy_gradient_mc() #get_obs_mean('energy_grad') 
+        # mag_energy_deriv = minimizer.energy_gradient(minimizer.last_result)
+        mag_energy_deriv = (
+            minimizer.last_result.energy_gradient_mc()
+        )  # get_obs_mean('energy_grad')
         mag_energy_left = mc_left.get_obs_mean("mag_energy")
         mag_energy_right = mc_right.get_obs_mean("mag_energy")
 

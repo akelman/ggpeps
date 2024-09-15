@@ -25,24 +25,30 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 # Global constants
 paulix = np.array([[0, 1], [1, 0]])
-pauliy = np.array([[0, -1.j], [1.j, 0]])
+pauliy = np.array([[0, -1.0j], [1.0j, 0]])
 pauliz = np.array([[1, 0], [0, -1]])
 
 # ========== Utility Functions ====================
 
-def setup_logger(logger: logging.Logger, log_file: str, level: str, runner_msg: str = ''):
+
+def setup_logger(
+    logger: logging.Logger, log_file: str, level: str, runner_msg: str = ""
+):
     log_file_handler = logging.FileHandler(log_file)
     h_stdout = logging.StreamHandler(stream=sys.stdout)
     h_stderr = logging.StreamHandler(stream=sys.stderr)
     h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
-    formatter = logging.Formatter(f"%(asctime)s [{runner_msg}%(levelname)s] %(message)s")
+    formatter = logging.Formatter(
+        f"%(asctime)s [{runner_msg}%(levelname)s] %(message)s"
+    )
     h_stdout.setFormatter(formatter)
     log_file_handler.setFormatter(formatter)
     logger.addHandler(h_stdout)
     logger.addHandler(h_stderr)
     logger.addHandler(log_file_handler)
     logger.setLevel(level.upper())
-    return 
+    return
+
 
 def fname2nlayer(fname):
     """Extract the number of layers from a filename"""
@@ -53,6 +59,7 @@ def fname2nlayer(fname):
     else:
         return None
 
+
 def fname2ncopy(fname):
     """Extract the number of copies from a filename"""
     pattern = r"(?<=ncopy_)[\d]*"
@@ -61,6 +68,7 @@ def fname2ncopy(fname):
         return int(result.group(0))
     else:
         return None
+
 
 def fname2g(fname):
     """Extract the coupling from a filename"""
@@ -71,6 +79,7 @@ def fname2g(fname):
     else:
         return None
 
+
 def fname2gel(fname):
     """Extract the electric coupling from a filename"""
     pattern = r"(?<=gel_)[\d]*\.[\d]*"
@@ -80,6 +89,7 @@ def fname2gel(fname):
     else:
         return None
 
+
 def fname2L(fname):
     """Extract the system size from a filename"""
     pattern = r"(?<=L_)[\d]*"
@@ -87,27 +97,29 @@ def fname2L(fname):
     return int(result.group(0))
 
 
-def isclose(x, y, rtol=1.e-5, atol=1.e-8):
-    return abs(x-y) <= atol + rtol * abs(y)
+def isclose(x, y, rtol=1.0e-5, atol=1.0e-8):
+    return abs(x - y) <= atol + rtol * abs(y)
 
 
-def load_matrix_dat_fmt(path,is_complex=True):
+def load_matrix_dat_fmt(path, is_complex=True):
     """Load matrix format exported from C++.
 
     Args:
         path (str): Path to file
         is_complex (bool, optional): Matrix is complex or not. Defaults to True.
     """
-    complexptrn = re.compile(r'\(([^,\)]+),([^,\)]+)\)')
+    complexptrn = re.compile(r"\(([^,\)]+),([^,\)]+)\)")
 
     def parse_complex(s):
         return complex(*map(float, complexptrn.match(s).groups()))
+
     def parse_real(s):
         return float(s)
+
     dest = []
-    with open(path,'r') as f:
+    with open(path, "r") as f:
         for line in f:
-            line_short = re.sub(' +', ' ', line.strip())
+            line_short = re.sub(" +", " ", line.strip())
             strvec = line_short.split(" ")
             numvec = []
             for s in strvec:
@@ -137,7 +149,7 @@ def merge_measurements(meas1: meas.Measurement, meas2: meas.Measurement):
 
 
 def mergeDict(dict1, dict2):
-    """ Left Merge dictionaries that contain only lists and append lists if values are common"""
+    """Left Merge dictionaries that contain only lists and append lists if values are common"""
     dest = {}
     for key in dict1:
         if key in dict2:
@@ -156,21 +168,20 @@ def print_columns(listvals, padding=4, header=False):
         padding (int, optional): Padding of the columns. Defaults to 4.
         header (bool, optional): Print a header on top of the table. Defaults to False.
     """
-    col_width = max([len(str(word))
-                     for row in listvals for word in row]) + padding
+    col_width = max([len(str(word)) for row in listvals for word in row]) + padding
     for ind, row in enumerate(listvals):
         print("".join(str(word).ljust(col_width) for word in row))
         if header and ind == 0:
             print("")
 
 
-def sizeof_fmt(num, suffix='B'):
+def sizeof_fmt(num, suffix="B"):
     """Pretty print a size as mutliples of 1024."""
-    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
         if abs(num) < 1024.0:
             return "%3.1f %s%s" % (num, unit, suffix)
         num /= 1024.0
-    return "%3.1f %s%s" % (num, 'Yi', suffix)
+    return "%3.1f %s%s" % (num, "Yi", suffix)
 
 
 def get_git_hash():
@@ -179,12 +190,14 @@ def get_git_hash():
     Returns:
         str: git hash
     """
-    # This assumes that .git is in the parent folder of util.py 
+    # This assumes that .git is in the parent folder of util.py
     packagedir = os.path.dirname(os.path.realpath(__file__))
     srcdir = os.path.join(packagedir, os.path.pardir)
-    rootdir = os.path.join(srcdir,os.path.pardir)
+    rootdir = os.path.join(srcdir, os.path.pardir)
     gitdir = os.path.join(rootdir, ".git")
-    githash = subprocess.check_output(['git', f'--git-dir={gitdir}', 'rev-parse', 'HEAD'])
+    githash = subprocess.check_output(
+        ["git", f"--git-dir={gitdir}", "rev-parse", "HEAD"]
+    )
     return githash.decode("utf-8").strip()
 
 
@@ -202,11 +215,11 @@ def select_except(arr, ind: int):
     if isinstance(arr, list):
         arr = xnp.asarray(arr)
     mask = xnp.ones(len(arr), dtype=bool)
-    if ggpeps.PREFERRED_BACKEND == 'jax': # TODO: handle based on type checking instead
+    if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
         mask = mask.at[ind].set(False)
     else:
         mask[ind] = False
-    return arr[mask] # TODO: fix for JAX
+    return arr[mask]  # TODO: fix for JAX
 
 
 def multiply_except(arr, ind: int):
@@ -219,30 +232,38 @@ def multiply_except(arr, ind: int):
     Returns:
         float: Multiplication of all array values except for arr[ind]
     """
-    if len(arr)>1:
+    if len(arr) > 1:
         others = select_except(arr, ind)
         return xnp.prod(others)
     else:
         # It does not make sense to execute this function with only one element
         return arr[0]
 
-@nb.njit(cache = True)
-def pfaffian_explicit_4x4_masked(mat,ind):
-    i0, i1, i2, i3 = ind
-    return (mat[i0, i1] * mat[i2, i3]) - (mat[i0, i2] * mat[i1, i3]) + (mat[i1, i2] * mat[i0, i3])
 
-@nb.njit(cache = True)
+@nb.njit(cache=True)
+def pfaffian_explicit_4x4_masked(mat, ind):
+    i0, i1, i2, i3 = ind
+    return (
+        (mat[i0, i1] * mat[i2, i3])
+        - (mat[i0, i2] * mat[i1, i3])
+        + (mat[i1, i2] * mat[i0, i3])
+    )
+
+
+@nb.njit(cache=True)
 def pfaffian_explicit_4x4(mat):
     return (mat[0, 1] * mat[2, 3]) - (mat[0, 2] * mat[1, 3]) + (mat[1, 2] * mat[0, 3])
 
-#@nb.njit(cache=True)
-def derivative_pfaffian_covariance_mat(pfarr,matvec,d_matvec):
+
+# @nb.njit(cache=True)
+def derivative_pfaffian_covariance_mat(pfarr, matvec, d_matvec):
     dest = 0.0
-    for pfaval,mat,d_mat in zip(pfarr,matvec,d_matvec):
-        if not isclose(pfaval,0):
+    for pfaval, mat, d_mat in zip(pfarr, matvec, d_matvec):
+        if not isclose(pfaval, 0):
             mat_inv = xnp.linalg.inv(mat)
             dest += 0.5 * pfaval * xnp.trace(mat_inv @ d_mat)
     return dest
+
 
 def derivative_pfaffian(mat, d_mat, pfaval=None):
     """Compute the derivative of a Pfaffian of a matrix A.
@@ -259,13 +280,15 @@ def derivative_pfaffian(mat, d_mat, pfaval=None):
     """
     if pfaval is None:
         pfaval = pf.pfaffian(mat)
-    
+
     if not isclose(pfaval, 0):
         return 0.5 * pfaval * xnp.trace(xnp.linalg.inv(mat) @ d_mat)
     else:
         return 0.0
 
+
 # =========== Matrix Evaluation Functions ====================
+
 
 def is_hermitian(mat):
     """Returns true if the matrix is hermitian."""
@@ -278,23 +301,26 @@ def is_hermitian(mat):
 def is_diagonal(mat):
     """Returns true if the matrix is diagonal."""
     if issparse(mat):
-        return xnp.allclose((mat-mat.diagonal()).todense(), xnp.zeros(mat.shape))
+        return xnp.allclose((mat - mat.diagonal()).todense(), xnp.zeros(mat.shape))
     else:
-        return xnp.allclose(mat-xnp.diag(xnp.diag(mat)), xnp.zeros_like(mat))
+        return xnp.allclose(mat - xnp.diag(xnp.diag(mat)), xnp.zeros_like(mat))
 
 
 def is_symmetric(mat):
-    """Returns true if the matrix is symmetric. """
+    """Returns true if the matrix is symmetric."""
     if issparse(mat):
         return xnp.allclose(mat.todense(), mat.T.todense())
     else:
         return xnp.allclose(xnp.transpose(mat), mat)
 
+
 def is_permutation(mat):
-    """Returns true if the matrix is a permutation matrix. """
+    """Returns true if the matrix is a permutation matrix."""
     n, m = mat.shape
     if issparse(mat):
-        raise NotImplementedError("Checking for sparse permutation matrices is not implemented.")
+        raise NotImplementedError(
+            "Checking for sparse permutation matrices is not implemented."
+        )
     else:
         square = n == m
         id = xnp.allclose(xnp.eye(n), mat @ xnp.transpose(mat))
@@ -304,31 +330,38 @@ def is_permutation(mat):
 
 
 def is_antisymmetric(mat):
-    """Returns true if the matrix is symmetric. """
+    """Returns true if the matrix is symmetric."""
     if issparse(mat):
         return xnp.allclose(mat.todense(), -mat.T.todense())
     else:
-        return xnp.allclose(- xnp.transpose(mat), mat)
+        return xnp.allclose(-xnp.transpose(mat), mat)
 
-def is_covmat(mat:np.ndarray) -> bool:
+
+def is_covmat(mat: np.ndarray) -> bool:
     """Returns true if the given matrix satisfies all the conditions to be a covariance matrix."""
     m, n = mat.shape
-    if m == n and is_antisymmetric(mat) and xnp.allclose(mat@mat, -xnp.eye(m)) and xnp.allclose(mat @ xnp.transpose(mat), xnp.eye(m)):
+    if (
+        m == n
+        and is_antisymmetric(mat)
+        and xnp.allclose(mat @ mat, -xnp.eye(m))
+        and xnp.allclose(mat @ xnp.transpose(mat), xnp.eye(m))
+    ):
         # note that the last check should be mat @ mat^dagger = 1, but transpose gets the same information for a matrix with real elements
         return True
     return False
 
+
 def anti_symmetrize(mat):
     """Force a matrix to be anti-symmetirc."""
     if issparse(mat):
-        return 0.5*(mat - mat.T)
+        return 0.5 * (mat - mat.T)
     else:
-        return 0.5*(mat - xnp.transpose(mat))
+        return 0.5 * (mat - xnp.transpose(mat))
 
 
 def get_nonzero_fraction(mat):
     """Returns fraction of non-zero elements."""
-    return xnp.count_nonzero(mat)/xnp.prod(mat.shape)
+    return xnp.count_nonzero(mat) / xnp.prod(mat.shape)
 
 
 def herm_conj(mat):
@@ -364,6 +397,7 @@ def anticommutator(mat1, mat2):
 
 # =========== Covariance Utility Funcitons ===========
 
+
 def tmat_to_covariance_matrix(tmat: np.ndarray) -> np.ndarray:
     """Transforms a T matrix into the corresponding covariance matrix in terms of Dirac modes.
     This function assumes that the fiducial operator has a certain form: A=exp(T_{ij}a_i^\dagger a_j^\dagger)
@@ -379,9 +413,9 @@ def tmat_to_covariance_matrix(tmat: np.ndarray) -> np.ndarray:
     idinv = xnp.linalg.inv(id - tmat @ xnp.conjugate(tmat))
     lt = -idinv @ tmat
     rt = 0.5 * idinv @ (id + tmat @ xnp.conjugate(tmat))
-    lb = - xnp.conjugate(rt)
-    rb = - xnp.conjugate(lt)
-    return 1.j*xnp.block([[lt, rt], [lb, rb]])
+    lb = -xnp.conjugate(rt)
+    rb = -xnp.conjugate(lt)
+    return 1.0j * xnp.block([[lt, rt], [lb, rb]])
 
 
 def generate_smat(n: int):
@@ -394,9 +428,10 @@ def generate_smat(n: int):
     Returns:
         np.array: n x n matrix
     """
-    pattern = xnp.array([[1], [1.j]])
-    halfmat = xnp.kron(np.eye(n//2), pattern)
+    pattern = xnp.array([[1], [1.0j]])
+    halfmat = xnp.kron(np.eye(n // 2), pattern)
     return xnp.block([halfmat, xnp.conjugate(halfmat)])
+
 
 # =========================== Cache Server =================================
 
@@ -436,6 +471,7 @@ class CacheServer:
 
 # =========================== WoodburyInverter ===============================
 
+
 class WoodburyInverter:
     def __init__(self, mat):
         self.ainv = xnp.linalg.inv(mat)
@@ -448,7 +484,9 @@ class WoodburyInverter:
         if not xnp.allclose(c, 0):
             # We cannot update with C being zero since this matrix has no inverse
             cinv = xnp.linalg.inv(c)
-            self.ainv -= ((self.ainv @ u) @ xnp.linalg.inv(cinv + v @ self.ainv @ u)) @ (v @ self.ainv)
+            self.ainv -= (
+                (self.ainv @ u) @ xnp.linalg.inv(cinv + v @ self.ainv @ u)
+            ) @ (v @ self.ainv)
         return self.ainv
 
     def update_index(self, m, indi, indj):
@@ -460,12 +498,14 @@ class WoodburyInverter:
             idmat = xnp.eye(m_m, n_m)
             u = xnp.zeros((m_a, m_m))
             v = xnp.zeros((n_m, n_a))
-            if ggpeps.PREFERRED_BACKEND == 'jax': # TODO: handle based on type checking instead
-                u = u.at[indi:indi+m_m, 0:n_m].set(idmat)
-                v = v.at[0:m_m, indj:indj+n_m].set(idmat)
+            if (
+                ggpeps.PREFERRED_BACKEND == "jax"
+            ):  # TODO: handle based on type checking instead
+                u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
+                v = v.at[0:m_m, indj : indj + n_m].set(idmat)
             else:
-                u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX - DONE
-                v[0:m_m, indj:indj+n_m] = idmat
+                u[indi : indi + m_m, 0:n_m] = idmat  # TODO: fix for JAX - DONE
+                v[0:m_m, indj : indj + n_m] = idmat
             return self.update(u, m, v)
         else:
             return self.inv()
@@ -481,8 +521,7 @@ class IncDeterminant:
         dest = self.detval
         if not xnp.allclose(c, 0):
             cinv = xnp.linalg.inv(c)
-            dest = self.detval * \
-                xnp.linalg.det(cinv + v @ ainv @ u) * xnp.linalg.det(c)
+            dest = self.detval * xnp.linalg.det(cinv + v @ ainv @ u) * xnp.linalg.det(c)
             if store:
                 self.detval = dest
         return dest
@@ -499,15 +538,18 @@ def update_index(self, ainv, m, indi, indj, store=True):
         idmat = xnp.eye(m_m, n_m)
         u = xnp.zeros(m_a, m_m)
         v = xnp.zeros(n_m, n_a)
-        if ggpeps.PREFERRED_BACKEND == 'jax': # TODO: handle based on type checking instead
-            u = u.at[indi:indi+m_m, 0:n_m].set(idmat)
-            v = v.at[0:m_m, indj:indj+n_m].set(idmat)
+        if (
+            ggpeps.PREFERRED_BACKEND == "jax"
+        ):  # TODO: handle based on type checking instead
+            u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
+            v = v.at[0:m_m, indj : indj + n_m].set(idmat)
         else:
-            u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX - DONE
-            v[0:m_m, indj:indj+n_m] = idmat
+            u[indi : indi + m_m, 0:n_m] = idmat  # TODO: fix for JAX - DONE
+            v[0:m_m, indj : indj + n_m] = idmat
         return self.update(ainv, u, m, v, store)
     else:
         return self.detval
+
 
 # =========================== IncLogAbsDeterminant ===============================
 
@@ -529,8 +571,7 @@ class IncLogAbsDeterminant:
             # We cannot update if c is zero because we cannot invert it
             # There might also be problems if c is singular !
             sign, cdetval = xnp.linalg.slogdet(c)
-            sign, combined_detval = xnp.linalg.slogdet(
-                xnp.linalg.inv(c) + v @ ainv @ u)
+            sign, combined_detval = xnp.linalg.slogdet(xnp.linalg.inv(c) + v @ ainv @ u)
             if xnp.isnan(combined_detval) or xnp.isnan(cdetval):
                 converged = False
             if converged:
@@ -548,19 +589,21 @@ class IncLogAbsDeterminant:
             idmat = xnp.eye(m_m, n_m)
             u = xnp.zeros((m_a, m_m))
             v = xnp.zeros((n_m, n_a))
-            if ggpeps.PREFERRED_BACKEND == 'jax': # TODO: handle based on type checking instead
-                u = u.at[indi:indi+m_m, 0:n_m].set(idmat)
-                v = v.at[0:m_m, indj:indj+n_m].set(idmat)
+            if (
+                ggpeps.PREFERRED_BACKEND == "jax"
+            ):  # TODO: handle based on type checking instead
+                u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
+                v = v.at[0:m_m, indj : indj + n_m].set(idmat)
             else:
-                u[indi:indi+m_m, 0:n_m] = idmat # TODO: fix for JAX - DONE
-                v[0:m_m, indj:indj+n_m] = idmat
+                u[indi : indi + m_m, 0:n_m] = idmat  # TODO: fix for JAX - DONE
+                v[0:m_m, indj : indj + n_m] = idmat
             return self.update(ainv, u, m, v, store)
         else:
             return self.det()
 
 
 # Not used (though still appears in tests)
-class BgbTransform():
+class BgbTransform:
     def __init__(self, mat_in, pure_gauge=True):
         self.mat_in = mat_in
         self.is_pure_gauge = pure_gauge
@@ -569,15 +612,17 @@ class BgbTransform():
     @property
     def mat_out(self):
         if self._mat_out is None:
-            wn,s,wp = svd(self.mat_in, full_matrices=True, compute_uv=True) # self.mat_in is the T matrix
+            wn, s, wp = svd(
+                self.mat_in, full_matrices=True, compute_uv=True
+            )  # self.mat_in is the T matrix
             wp = herm_conj(wp)
             if not self.is_pure_gauge:
                 # TODO: Fix this
                 # We are shuffling the physical mode to the front again
                 # It would look like s=perm*s
-                #TODO: This does not work properly yet. But the function is not used anywhere.
+                # TODO: This does not work properly yet. But the function is not used anywhere.
                 perm = np.zeros((wn.shape[0], wn.shape[0]))
-                i,j = np.indices(perm.shape)
+                i, j = np.indices(perm.shape)
                 perm[i == j + 1] = 1
                 perm[0, -1:] = 1
                 # Apply the permutation
@@ -587,7 +632,9 @@ class BgbTransform():
             up = np.transpose(wp)
             un_rows, un_cols = un.shape
             up_rows, up_cols = up.shape
-            unitary_transform = np.zeros((un.shape[0] + up.shape[0], un.shape[1] + up.shape[1]),dtype=complex)
+            unitary_transform = np.zeros(
+                (un.shape[0] + up.shape[0], un.shape[1] + up.shape[1]), dtype=complex
+            )
             unitary_transform[:un_rows, :un_cols] = un
             unitary_transform[-up_rows:, -up_cols:] = up
 
@@ -595,9 +642,11 @@ class BgbTransform():
             start_ind = 0 if self.is_pure_gauge else 1
             r0_diagonal = np.zeros(trafo_size, dtype=complex)
             if not self.is_pure_gauge:
-                r0_diagonal[0] = 1j / 2.
-            r0_diagonal[start_ind: start_ind+len(s)] = 1j / 2. * (1 - s**2) / (1 + s**2)
-            r0_diagonal[-len(s):] = 1j / 2. * (1 - s**2) / (1 + s**2)
+                r0_diagonal[0] = 1j / 2.0
+            r0_diagonal[start_ind : start_ind + len(s)] = (
+                1j / 2.0 * (1 - s**2) / (1 + s**2)
+            )
+            r0_diagonal[-len(s) :] = 1j / 2.0 * (1 - s**2) / (1 + s**2)
             r0 = np.diag(r0_diagonal)
 
             q0_offdiagonal = np.zeros(len(s), dtype=complex)
@@ -606,12 +655,20 @@ class BgbTransform():
             q0 = np.zeros((trafo_size, trafo_size), dtype=complex)
             if not self.is_pure_gauge:
                 q0[0, 0] = 0
-            q0[start_ind:start_ind+len(s), start_ind + len(s):start_ind+2*len(s)] = -q0_block
-            q0[start_ind + len(s): start_ind+2*len(s), start_ind:start_ind+len(s)] = q0_block
+            q0[
+                start_ind : start_ind + len(s),
+                start_ind + len(s) : start_ind + 2 * len(s),
+            ] = -q0_block
+            q0[
+                start_ind + len(s) : start_ind + 2 * len(s),
+                start_ind : start_ind + len(s),
+            ] = q0_block
 
             gamma0 = np.zeros((2 * trafo_size, 2 * trafo_size), dtype=complex)
-            gamma0 = np.block([[q0,r0],[np.conj(r0),np.conj(q0)]])
-            trafo_0 = block_diag(herm_conj(unitary_transform),np.transpose(unitary_transform))
+            gamma0 = np.block([[q0, r0], [np.conj(r0), np.conj(q0)]])
+            trafo_0 = block_diag(
+                herm_conj(unitary_transform), np.transpose(unitary_transform)
+            )
             trafo_1 = block_diag(np.conj(unitary_transform), unitary_transform)
             # This matrix has the following order: psi, r+, u-, l-, d+,t,b, r-, l+,
             # u+, d-,t,b psi_dag, r+_dag, l-_dag, u-_dag, d+_dag,t_dag,b_dag,
@@ -628,7 +685,8 @@ def autocorr_fft(arr):
     fft_vals = np.fft.fft(arr)
     spectrum = fft_vals * np.conjugate(fft_vals)
     dest = np.fft.ifft(spectrum)
-    return dest/dest[0]
+    return dest / dest[0]
+
 
 def rebin_array(a, R):
     """Rebin an array into bins of length R"""
@@ -645,7 +703,7 @@ def rebin_array(a, R):
         dest = np.mean(a[:max_fit].reshape(-1, m, R), axis=2)
     elif a.ndim == 3:
         # Shape (N,n,m): N samples of n x m matrices
-        N,m,n = a.shape
+        N, m, n = a.shape
         dest = np.mean(a[:max_fit].reshape(-1, m, n, R), axis=3)
     else:
         logger.error("rebin_array not implemented for dimensions greater than 3.")
@@ -664,7 +722,7 @@ def rebin_error(arr):
     """
     N = len(arr)
     max_exp = int(np.floor(np.log2(N / 10)))
-    rangevals = [2**i for i in range(max_exp+1)]
+    rangevals = [2**i for i in range(max_exp + 1)]
     eomarr = []
     stdarr = []
     meanarr = []
@@ -693,7 +751,7 @@ def rebin_eom(arr):
     # We want to leave a sufficient number of samples to build a reasonable mean
     max_exp = int(np.floor(np.log2(N / 10)))
     if max_exp > 0:
-        binsize= 2**(max_exp - 1)
+        binsize = 2 ** (max_exp - 1)
         data_rebin = rebin_array(arr, binsize)
     else:
         # We cannot rebin if we have too few data. We will just return the normal EOM
@@ -702,22 +760,25 @@ def rebin_eom(arr):
     return eom
 
 
-#========== Debugging Functions ====================
+# ========== Debugging Functions ====================
+
 
 def show_vector(vec, title=None):
-    """Display a matrix and interrupt the program. """
+    """Display a matrix and interrupt the program."""
     f, ax = plt.subplots(1, 1)
     ax.plot(vec)
     if title is not None and len(title) > 0:
         plt.title(title)
     plt.show()
 
+
 def show_matrix(mat, title=None, **kwargs):
-    """Display a matrix and interrupt the program. """
-    show_matrixvec([mat],title=[title], **kwargs)
+    """Display a matrix and interrupt the program."""
+    show_matrixvec([mat], title=[title], **kwargs)
+
 
 def show_matrixvec(matvec, title=None, log=False):
-    """Display a matrix and interrupt the program. """
+    """Display a matrix and interrupt the program."""
     f, axvec = plt.subplots(1, len(matvec))
     if len(matvec) == 1:
         axvec = [axvec]
@@ -728,8 +789,7 @@ def show_matrixvec(matvec, title=None, log=False):
                 # This is a dirty hack to display the 0 in a log plot
                 mat += 1e-10
                 minval += 1e-10
-            matax = axvec[ind].matshow(
-                mat, norm=LogNorm(vmin=minval, vmax=np.max(mat)))
+            matax = axvec[ind].matshow(mat, norm=LogNorm(vmin=minval, vmax=np.max(mat)))
         else:
             matax = axvec[ind].matshow(mat)
         f.colorbar(matax, ax=axvec[ind])
@@ -757,37 +817,39 @@ def show_eigenvalues(mat):
         # Plot the real eigenvalues
         f, ax = plt.subplots(1, 1)
         eigvals = np.linalg.eigvalsh(mat)
-        ax.plot(eigvals, 'o')
+        ax.plot(eigvals, "o")
     else:
         # Plot the real eigenvalues
         f, ax = plt.subplots(1, 2)
         eigvals = np.linalg.eigvals(mat)
         ax[0].set_title("Real part")
-        ax[0].plot(np.real(eigvals), 'o')
+        ax[0].plot(np.real(eigvals), "o")
         ax[0].set_title("Imaginary part")
-        ax[1].plot(np.imag(eigvals), 'o')
+        ax[1].plot(np.imag(eigvals), "o")
     plt.show()
 
 
 # ========== Workflow & Tooling Functions ====================
 
+
 def get_couplings_from_foldername(fname):
-    couplings = ['g', 'el', 'mag', 'int', 'mass']
-    res = ''
+    couplings = ["g", "el", "mag", "int", "mass"]
+    res = ""
     for arg in couplings:
-        pattern = fr"(?<={arg}_)[\d]*.[\d]*"
+        pattern = rf"(?<={arg}_)[\d]*.[\d]*"
         result = re.search(pattern, fname)
         if result is not None:
-            res += f'{arg}_{result.group(0)}_'
+            res += f"{arg}_{result.group(0)}_"
     return res
 
-def extract_params_from_results_file(fname, dest_dir='') -> bool:
+
+def extract_params_from_results_file(fname, dest_dir="") -> bool:
     """Extract parameters from a results file and save to a new .npy file
 
     Args:
         fname (str): results file path
         dest_dir (str, optional): destination directory for param file. If none is given, defaults to current directory.
-    
+
     Returns:
         bool: True if succesful, false otherwise.
     """
@@ -800,14 +862,21 @@ def extract_params_from_results_file(fname, dest_dir='') -> bool:
                 couplings = get_couplings_from_foldername(fname)
                 # Deal with renaming
                 if hasattr(data, "paramvec"):
-                    np.save( os.path.join(dest_dir, f"{couplings}extracted_paramvec.npy"), data.paramvec)
+                    np.save(
+                        os.path.join(dest_dir, f"{couplings}extracted_paramvec.npy"),
+                        data.paramvec,
+                    )
                 elif hasattr(data, "parametervec"):
-                    np.save( os.path.join(dest_dir, f"{couplings}extracted_paramvec.npy"), data.parametervec)
+                    np.save(
+                        os.path.join(dest_dir, f"{couplings}extracted_paramvec.npy"),
+                        data.parametervec,
+                    )
     else:
         print(f"File '{fname}' not found. Aborting.", file=sys.stderr)
         return False
-    
+
     return True
+
 
 def extract_params_from_run(source_dir, dest_dir):
     """Extracts all the parameters from the results files of a run (with varying couplings), and stores them as .npy files.
@@ -823,11 +892,13 @@ def extract_params_from_run(source_dir, dest_dir):
             files = os.listdir(inner_dir)
             for f in files:
                 if os.path.isfile(os.path.join(inner_dir, f)):
-                    extract_params_from_results_file(os.path.join(inner_dir, f), dest_dir)
+                    extract_params_from_results_file(
+                        os.path.join(inner_dir, f), dest_dir
+                    )
 
 
+# ========== Testing Functions ====================
 
-#========== Testing Functions ====================
 
 def compare_array_elementwise(testcase, ref, res, print_vals=True):
     testcase.assertEqual(ref.shape, res.shape)
@@ -836,4 +907,4 @@ def compare_array_elementwise(testcase, ref, res, print_vals=True):
             for j in range(ref.shape[1]):
                 if not np.isclose(ref[i, j], res[i, j]):
                     print(f"{i},{j}: ref: {ref[i,j]}, res:{res[i,j]}")
-    testcase.assertTrue(np.allclose(ref,res))
+    testcase.assertTrue(np.allclose(ref, res))

@@ -4,11 +4,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-#from matplotlib import rc,rcParams
-#from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-#rc('font',**{'family':'serif','sans-serif':['Palatino']})
-#rc('text', usetex=True)
-#rcParams['text.latex.preamble'] = [r'\usepackage{lmodern}']
+# from matplotlib import rc,rcParams
+# from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+# rc('font',**{'family':'serif','sans-serif':['Palatino']})
+# rc('text', usetex=True)
+# rcParams['text.latex.preamble'] = [r'\usepackage{lmodern}']
 
 
 def main(args):
@@ -20,17 +20,19 @@ def main(args):
     df = pd.concat(dfvec)
     obsnamevec = df.name.unique()
     if args.obs in obsnamevec:
-        df_filtered = df[df.name==args.obs]
+        df_filtered = df[df.name == args.obs]
         df_filtered.reset_index(drop=True, inplace=True)
         print(df_filtered)
 
         # The figure size is given in inches.
         # This is exactly a half column of an a4 page in 14 to 9
-        f,ax = plt.subplots(1,1,figsize=(4.14,2.66))
-        ax.errorbar(range(len(df_filtered)),
-                    df_filtered["mean"],
-                    fmt="o",
-                    yerr=df_filtered["err"])
+        f, ax = plt.subplots(1, 1, figsize=(4.14, 2.66))
+        ax.errorbar(
+            range(len(df_filtered)),
+            df_filtered["mean"],
+            fmt="o",
+            yerr=df_filtered["err"],
+        )
         ax.set_xlabel("Run", fontsize=10)
         ax.set_ylabel(f"{args.obs}", fontsize=10)
         f.tight_layout()
@@ -39,9 +41,11 @@ def main(args):
     else:
         print(f"Observable '{args.obs}' is not in the dataset", file=sys.stderr)
 
+
 if __name__ == "__main__":
 
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--fnames", nargs="+", help="Filenames")
     parser.add_argument("--obs", type=str, default="energy", help="Observable")

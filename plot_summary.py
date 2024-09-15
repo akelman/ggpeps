@@ -7,11 +7,13 @@ import matplotlib.pyplot as plt
 
 from ggpeps import utils
 
+
 def len_arr(x):
     if isinstance(x, list) or isinstance(x, np.ndarray):
         return len(x)
     else:
         return 1
+
 
 def main(args):
     dfvec = []
@@ -19,8 +21,8 @@ def main(args):
         for fname in args.ec:
             if os.path.isfile(fname):
                 df_tmp = pd.read_pickle(fname)
-                df_tmp['type'] = "EC"
-                df_tmp['err'] = np.nan # Append an empty column to make merges work
+                df_tmp["type"] = "EC"
+                df_tmp["err"] = np.nan  # Append an empty column to make merges work
                 if not "nlayer" in df_tmp.columns:
                     df_tmp["nlayer"] = utils.fname2nlayer(fname)
                 if not "ncopy" in df_tmp.columns:
@@ -30,7 +32,7 @@ def main(args):
         for fname in args.mc:
             if os.path.isfile(fname):
                 df_tmp = pd.read_pickle(fname)
-                df_tmp['type'] = "MC"
+                df_tmp["type"] = "MC"
                 if not "nlayer" in df_tmp.columns:
                     df_tmp["nlayer"] = utils.fname2nlayer(fname)
                 if not "ncopy" in df_tmp.columns:
@@ -40,49 +42,80 @@ def main(args):
 
     # Enrich dataset
     df_mc_ec["L"] = df_mc_ec["nx"].astype("str") + "x" + df_mc_ec["ny"].astype("str")
-    df_mc_ec.rename(columns={"g2_el":"g_el", "g2_mag":"g_mag", "g2":"g"}, inplace=True)
+    df_mc_ec.rename(
+        columns={"g2_el": "g_el", "g2_mag": "g_mag", "g2": "g"}, inplace=True
+    )
     obsnamevec = df_mc_ec.name.unique()
 
-    if 'g' not in df_mc_ec.columns:
-        df_mc_ec['g'] = df_mc_ec.g_el * 2
-    if 'g_mag' not in df_mc_ec.columns:
-        df_mc_ec['g_mag'] = 1 / (df_tmp.g_el * 4)
+    if "g" not in df_mc_ec.columns:
+        df_mc_ec["g"] = df_mc_ec.g_el * 2
+    if "g_mag" not in df_mc_ec.columns:
+        df_mc_ec["g_mag"] = 1 / (df_tmp.g_el * 4)
 
     if args.exact is not None and os.path.isfile(args.exact):
         df_exact = pd.read_pickle(args.exact)
-        df_exact["L"] = df_exact["nx"].astype("str") + "x" + df_exact["ny"].astype("str")
+        df_exact["L"] = (
+            df_exact["nx"].astype("str") + "x" + df_exact["ny"].astype("str")
+        )
         df_exact["type"] = "ED"
         # Add numbers to the grouping columns to enable grouping
         df_exact["nlayer"] = -1
         df_exact["ncopy"] = -1
 
         # Adapt the naming convention between the ED and the MC/EC data
-        df_exact.rename(columns={"g2_ham":"g", "value":"mean"}, inplace=True)
+        df_exact.rename(columns={"g2_ham": "g", "value": "mean"}, inplace=True)
         df_exact.drop(columns=["nz", "gauge"], inplace=True)
-        if 'g_el' not in df_exact.columns: # the next four lines should be handled in a more robust way
-            df_exact['g_el'] = df_exact.g / 2
-        if 'g' not in df_exact.columns:
-            df_exact['g'] = df_exact.g_el * 2
+        if (
+            "g_el" not in df_exact.columns
+        ):  # the next four lines should be handled in a more robust way
+            df_exact["g_el"] = df_exact.g / 2
+        if "g" not in df_exact.columns:
+            df_exact["g"] = df_exact.g_el * 2
 
-        df = pd.concat([df_mc_ec,df_exact])
-        
+        df = pd.concat([df_mc_ec, df_exact])
+
         # Compute the differences
         df_mc_ec_approx = df_mc_ec.copy()
         df_ed_approx = df_exact.copy()
         df_mc_ec_approx.g = np.round(df_mc_ec_approx.g, decimals=3)
         df_ed_approx.g = np.round(df_ed_approx.g, decimals=3)
-        df_merged = pd.merge(df_mc_ec_approx, df_ed_approx, on=["g", "L", "name", "nx", "ny"], suffixes=("_mc_ec", "_ed"))
+        df_merged = pd.merge(
+            df_mc_ec_approx,
+            df_ed_approx,
+            on=["g", "L", "name", "nx", "ny"],
+            suffixes=("_mc_ec", "_ed"),
+        )
         df_merged["diff"] = df_merged["mean_mc_ec"] - df_merged["mean_ed"]
-        df_diff = df_merged[["name", "g", "ncopy_mc_ec", "nlayer_mc_ec", "L", "diff", "type_mc_ec", "err"]].copy()
-        df_diff.rename(columns={"nlayer_mc_ec": "nlayer", "ncopy_mc_ec": "ncopy", "type_mc_ec":"type"}, inplace=True)
+        df_diff = df_merged[
+            [
+                "name",
+                "g",
+                "ncopy_mc_ec",
+                "nlayer_mc_ec",
+                "L",
+                "diff",
+                "type_mc_ec",
+                "err",
+            ]
+        ].copy()
+        df_diff.rename(
+            columns={
+                "nlayer_mc_ec": "nlayer",
+                "ncopy_mc_ec": "ncopy",
+                "type_mc_ec": "type",
+            },
+            inplace=True,
+        )
     else:
         df = df_mc_ec
         df_diff = None
         if args.diff:
-            print(f"File {args.exact} not found. We need it for the differences. Aborting.")
+            print(
+                f"File {args.exact} not found. We need it for the differences. Aborting."
+            )
             sys.exit(1)
         else:
-            print(f"File {args.exact} not found. Skipping." )
+            print(f"File {args.exact} not found. Skipping.")
 
     f, ax = plt.subplots(1, 1)
     for obs in args.obs:
@@ -96,34 +129,44 @@ def main(args):
 
             if args.diff:
                 # show errors for MC
-                for name, group in df_diff_filtered.groupby(["type", "L", "nlayer", "ncopy"]):
+                for name, group in df_diff_filtered.groupby(
+                    ["type", "L", "nlayer", "ncopy"]
+                ):
                     type, L, nlayer, ncopy = name
-                    if type == 'MC':
-                        error = group['err']
+                    if type == "MC":
+                        error = group["err"]
                     else:
                         error = None
-                    ax.errorbar(group[args.xaxis],
-                            group["diff"],
-                            fmt = 'o', 
-                            yerr = error,
-                            label = f"{type}, obs={obs}, L={L}")
+                    ax.errorbar(
+                        group[args.xaxis],
+                        group["diff"],
+                        fmt="o",
+                        yerr=error,
+                        label=f"{type}, obs={obs}, L={L}",
+                    )
             else:
-                for name, group in df_filtered.groupby(["type", "L", "nlayer", "ncopy"]):
+                for name, group in df_filtered.groupby(
+                    ["type", "L", "nlayer", "ncopy"]
+                ):
                     type, L, nlayer, ncopy = name
                     if type == "ED":
-                        ax.plot(group[args.xaxis],
-                                group["mean"],
-                                label = f"ED, obs={obs}, L={L}")
+                        ax.plot(
+                            group[args.xaxis],
+                            group["mean"],
+                            label=f"ED, obs={obs}, L={L}",
+                        )
                     else:
-                        if type == 'MC':
-                            error = group['err']
+                        if type == "MC":
+                            error = group["err"]
                         else:
                             error = None
-                        ax.errorbar(group[args.xaxis],
-                                group["mean"],
-                                fmt = 'o', 
-                                yerr = error,
-                                label = f"{type}, obs={obs}, L={L}")
+                        ax.errorbar(
+                            group[args.xaxis],
+                            group["mean"],
+                            fmt="o",
+                            yerr=error,
+                            label=f"{type}, obs={obs}, L={L}",
+                        )
 
     if args.logx:
         ax.set_xscale("log")
@@ -144,20 +187,45 @@ def main(args):
     if args.show:
         plt.show()
 
+
 if __name__ == "__main__":
-    
+
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--ed", "--exact", help="ED data", dest="exact")
     parser.add_argument("--mc", nargs="+", help="MC data")
     parser.add_argument("--ec", nargs="+", help="EC data")
-    parser.add_argument("--diff", action="store_true", default=False, help="Plot the difference to the exact results")
-    parser.add_argument("--logx", action="store_true", default=False, help="Use logarithmic scaling for x axis")
-    parser.add_argument("--logy", action="store_true", default=False, help="Use logarithmic scaling for y axis")
-    parser.add_argument("--show", action="store_true", default=False, help="Show the plot")
-    parser.add_argument("--no-save", action="store_true", default=False, help="Do not save the plot")
-    parser.add_argument("--xaxis", type=str, default="g_el", help="Quantity to be plotted on the x axis")
-    parser.add_argument("--obs", type=str, nargs="+", default=["energy"], help="Observables to plot")
+    parser.add_argument(
+        "--diff",
+        action="store_true",
+        default=False,
+        help="Plot the difference to the exact results",
+    )
+    parser.add_argument(
+        "--logx",
+        action="store_true",
+        default=False,
+        help="Use logarithmic scaling for x axis",
+    )
+    parser.add_argument(
+        "--logy",
+        action="store_true",
+        default=False,
+        help="Use logarithmic scaling for y axis",
+    )
+    parser.add_argument(
+        "--show", action="store_true", default=False, help="Show the plot"
+    )
+    parser.add_argument(
+        "--no-save", action="store_true", default=False, help="Do not save the plot"
+    )
+    parser.add_argument(
+        "--xaxis", type=str, default="g_el", help="Quantity to be plotted on the x axis"
+    )
+    parser.add_argument(
+        "--obs", type=str, nargs="+", default=["energy"], help="Observables to plot"
+    )
 
     args = parser.parse_args()
 

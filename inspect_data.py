@@ -1,4 +1,5 @@
 """Print a summary of a data file. It can be a summary_*.pkl or a data_*.pkl.gz file """
+
 import os
 import sys
 import pickle
@@ -8,21 +9,23 @@ import pandas as pd
 import gzip
 import ggpeps.utils as utils
 
-def print_output_mc_dump(version,mc):
+
+def print_output_mc_dump(version, mc):
     obsdict = mc.obsdict
     cfg = mc.cfg
-    print("==================================== Data summary =====================================")
+    print("============================== Data summary ==============================")
     print(f"\nVersion: {version}\n")
-    print("--------------------------------    Config   --------------------------------")
+    print("--------------------------------- Config ---------------------------------")
     print(cfg)
-    print("-----------------------------------------------------------------------------\n")
-    print("-------------------------------- Observables --------------------------------")
+    print("------------------------------------------------------------------------\n")
+    print("------------------------------- Observables ------------------------------")
     keys = obsdict.keys()
     numentries = [str(len(obsdict[key])) for key in obsdict]
-    data = list(zip(keys,numentries))
-    utils.print_columns([["Name","# Measurements"]]+data,header=True)
-    print("-----------------------------------------------------------------------------\n")
-    print("=======================================================================================")
+    data = list(zip(keys, numentries))
+    utils.print_columns([["Name", "# Measurements"]] + data, header=True)
+    print("------------------------------------------------------------------------\n")
+    print("==========================================================================")
+
 
 def main(args):
     if args.fname is not None and os.path.isfile(args.fname):
@@ -35,7 +38,7 @@ def main(args):
                 version = data["version"]
                 mc = data["mc"]
                 print_output_mc_dump(version, mc)
-        elif ext == ".pkl": 
+        elif ext == ".pkl":
             if name.startswith("result_min"):
                 with open(args.fname, "rb") as infile:
                     # We are dealing with a minimization result
@@ -56,11 +59,13 @@ def main(args):
     else:
         print(f"File '{args.fname}' does not exist", file=sys.stderr)
 
+
 if __name__ == "__main__":
 
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--fname", type=str, help="filename to inspect")
-    
+
     args = parser.parse_args()
     main(args)

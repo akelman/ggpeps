@@ -2,10 +2,11 @@ import copy
 import numpy as np
 import ggpeps.utils as utils
 
+
 class Measurement:
-    """Class to work with measurements
-    """
-    use_rebinning=True
+    """Class to work with measurements"""
+
+    use_rebinning = True
 
     def __init__(self, name: str, binsize: int):
         """Constructor of a Measurement
@@ -20,23 +21,23 @@ class Measurement:
         self.acc = None
         self.datavec = []
 
-    def append(self,data):
+    def append(self, data):
         """Append data to the measurement.
         The data is first added to an acquisition array and when this array reaches binsize, the mean of the data is copied to the actual datavec.
 
         Args:
             data: Data to be added
         """
-        #We assume that the data stored in one measurement is homogeneous
+        # We assume that the data stored in one measurement is homogeneous
         if self.counter == 0:
-            #We set the first element
+            # We set the first element
             self.acc = copy.deepcopy(data)
         else:
-            #Subsequent elements are added
+            # Subsequent elements are added
             self.acc += data
-        if self.counter == self.binsize-1:
-            #We just filled up the array
-            self.datavec.append(self.acc/self.binsize)
+        if self.counter == self.binsize - 1:
+            # We just filled up the array
+            self.datavec.append(self.acc / self.binsize)
             self.counter = 0
         else:
             self.counter += 1
@@ -77,7 +78,7 @@ class Measurement:
         if use_binning:
             return utils.rebin_eom(self.datavec)
         else:
-            return np.std(self.datavec, ddof=1, axis=0)/np.sqrt(len(self.datavec))
+            return np.std(self.datavec, ddof=1, axis=0) / np.sqrt(len(self.datavec))
 
     def std(self):
         """Computation of the standard deviation of the timeseries.
@@ -118,14 +119,13 @@ class Measurement:
         """
         if type(other) is Measurement:
             if other.counter == self.counter:
-                dest = Measurement(self.name+"_x_"+other.name, self.binsize)
-                dest.datavec = [
-                    x*y for (x, y) in zip(self.datavec, other.datavec)]
+                dest = Measurement(self.name + "_x_" + other.name, self.binsize)
+                dest.datavec = [x * y for (x, y) in zip(self.datavec, other.datavec)]
                 return dest
         else:
             return NotImplemented
 
-    def __add__(self,other):
+    def __add__(self, other):
         """Addition specialization for two Measurements.
         The datavecs are added.
 
@@ -137,14 +137,13 @@ class Measurement:
         """
         if type(other) is Measurement:
             if other.counter == self.counter:
-                dest = Measurement(self.name+"_+_"+other.name, self.binsize)
-                dest.datavec = [
-                    x+y for (x, y) in zip(self.datavec, other.datavec)]
+                dest = Measurement(self.name + "_+_" + other.name, self.binsize)
+                dest.datavec = [x + y for (x, y) in zip(self.datavec, other.datavec)]
                 return dest
         else:
             return NotImplemented
 
-    def __sub__(self,other):
+    def __sub__(self, other):
         """Subtraction specialization for two Measurements.
         The datavecs are subtracted.
 
@@ -156,9 +155,8 @@ class Measurement:
         """
         if type(other) is Measurement:
             if other.counter == self.counter:
-                dest = Measurement(self.name+"_-_"+other.name, self.binsize)
-                dest.datavec = [
-                    x-y for (x, y) in zip(self.datavec, other.datavec)]
+                dest = Measurement(self.name + "_-_" + other.name, self.binsize)
+                dest.datavec = [x - y for (x, y) in zip(self.datavec, other.datavec)]
                 return dest
         else:
             return NotImplemented

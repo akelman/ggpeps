@@ -19,12 +19,14 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 #################### Monte Carlo Estimator Config ###################
 
+
 class MonteCarloEvaluatorConfig:
     """Monte Carlo Configuration
 
-    This class manages the parameters of the MC simulation. 
+    This class manages the parameters of the MC simulation.
     It is more convenient than passing an extensive number of parameters to the constructor.
     """
+
     def __init__(self):
         self.warmup_steps = None
         self._seed = None
@@ -32,11 +34,13 @@ class MonteCarloEvaluatorConfig:
         self.meas_steps = None
         self.binsize: int = 1
         self.minimizer_mode: bool = False
-        self.update_size_per_step: int = 1 # this can be set anywhere from 1 to nlinks (inclusive)
+        self.update_size_per_step: int = (
+            1  # this can be set anywhere from 1 to nlinks (inclusive)
+        )
         self.gauge_fixing = False
 
         # Logging frequency
-        self.warmup_log_freq: int = 5000 # log every X steps
+        self.warmup_log_freq: int = 5000  # log every X steps
         self.run_log_freq: int = 20000
 
     @property
@@ -60,13 +64,15 @@ class MonteCarloEvaluatorConfig:
 
     @rng_state.setter
     def rng_state(self, state):
-        logger.error("MonteCarloEstimatorConfig: Do not set the state directly. Use a seed instead.")
+        logger.error(
+            "MonteCarloEstimatorConfig: Do not set the state directly. Use a seed instead."
+        )
         self.rng_state = None
         self.seed = None
 
     def get_rng_state_internal_repr(self):
         return self._rng_state.get_state()
-    
+
     def set_rng_state_internal_repr(self, state_repr):
         self._rng_state.set_state(state_repr)
         return
@@ -81,16 +87,23 @@ class MonteCarloEvaluatorConfig:
 
 
 ################################### Multiprocessing layer #######################
-    
+
+
 @ray.remote
-def run_mc(runner_id: int, mc_cfg: MonteCarloEvaluatorConfig, system_cls, system_cfg, logger_info:dict):
+def run_mc(
+    runner_id: int,
+    mc_cfg: MonteCarloEvaluatorConfig,
+    system_cls,
+    system_cfg,
+    logger_info: dict,
+):
     """Worker for running part of a MC simulation.
 
     Args:
         runner_id (int): Runner ID
-        mc_cfg (MonteCarloEvaluatorConfig): 
-        system_cls (): 
-        system_cfg (): 
+        mc_cfg (MonteCarloEvaluatorConfig):
+        system_cls ():
+        system_cfg ():
         logger_info (dict): configs for the logger (logger needs to be set up in each worker)
 
     Returns:
@@ -99,30 +112,31 @@ def run_mc(runner_id: int, mc_cfg: MonteCarloEvaluatorConfig, system_cls, system
 
     # Setup logger
     # TODO: this is probably not the best way to get the required logger configuration
-    logger_file = logger_info['filename']
-    level = logger_info['logger_level']
+    logger_file = logger_info["filename"]
+    level = logger_info["logger_level"]
     logger = logging.getLogger(ggpeps.LOGGER_NAME)
     utils.setup_logger(logger, logger_file, level, runner_msg=f"Runner {runner_id}-")
-    
+
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
-    mc = MonteCarloEvaluator(mc_cfg, system, False) # TODO: set gauge fixing properly
+    mc = MonteCarloEvaluator(mc_cfg, system, False)  # TODO: set gauge fixing properly
     mc.evaluate()
     return mc
 
 
 ################################### Monte Carlo runner ###############
 
+
 class MonteCarloEvaluator(Evaluator):
-    """Class to take care of the MC simulation on a single runner
-    """
+    """Class to take care of the MC simulation on a single runner"""
+
     def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system, gauge_fixing):
         self.cfg = evaluator_cfg
         self.system = system
-        self.evaluator_type = 'mc'
+        self.evaluator_type = "mc"
         self.obsdict: dict = {}
         self.gauge_fixing = gauge_fixing
-        
+
         self.step: int = 0
         self.init_measurements()
 
@@ -131,7 +145,7 @@ class MonteCarloEvaluator(Evaluator):
         if evaluator_cfg.update_size_per_step == self.system.cfg.lattice.nlinks:
             self.update = self.update_all_sites_single_site
         else:
-            #self.update = self.update_single_site
+            # self.update = self.update_single_site
             self.update = self.update_N_sites
 
     def init_measurements(self):
@@ -145,36 +159,57 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["int_energy"] = Measurement("Interaction Energy", binsize)
         self.obsdict["mass_energy"] = Measurement("Mass Energy", binsize)
         self.obsdict["chem_energy"] = Measurement("Chemical Energy", binsize)
-        self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
-        self.obsdict["el_energy_op"] = Measurement("Electric Energy Operator (bare)", binsize)
-        self.obsdict["int_energy_op"] = Measurement("Interaction Energy Operator (bare)", binsize)
-        self.obsdict["mass_energy_op"] = Measurement("Mass Energy Operator (bare)", binsize)
+        self.obsdict["mag_energy_op"] = Measurement(
+            "Magnetic Energy Operator (bare)", binsize
+        )
+        self.obsdict["el_energy_op"] = Measurement(
+            "Electric Energy Operator (bare)", binsize
+        )
+        self.obsdict["int_energy_op"] = Measurement(
+            "Interaction Energy Operator (bare)", binsize
+        )
+        self.obsdict["mass_energy_op"] = Measurement(
+            "Mass Energy Operator (bare)", binsize
+        )
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
         self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
 
         if self.cfg.minimizer_mode:
-            self.obsdict["el_energy_op_grad"] = Measurement("Electric Energy Operator Gradient", binsize)
-            self.obsdict["int_energy_op_grad"] = Measurement("Interaction Energy Operator Gradient", binsize)
-            self.obsdict["mass_energy_op_grad"] = Measurement("Mass Energy Operator Gradient", binsize)
-            self.obsdict["chem_energy_op_grad"] = Measurement("Chemical Energy Operator Gradient", binsize)
+            self.obsdict["el_energy_op_grad"] = Measurement(
+                "Electric Energy Operator Gradient", binsize
+            )
+            self.obsdict["int_energy_op_grad"] = Measurement(
+                "Interaction Energy Operator Gradient", binsize
+            )
+            self.obsdict["mass_energy_op_grad"] = Measurement(
+                "Mass Energy Operator Gradient", binsize
+            )
+            self.obsdict["chem_energy_op_grad"] = Measurement(
+                "Chemical Energy Operator Gradient", binsize
+            )
             self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm", binsize)
-            self.obsdict["energy_grad"] = Measurement("Gradient of Total Energy", binsize)
-        #self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
+            self.obsdict["energy_grad"] = Measurement(
+                "Gradient of Total Energy", binsize
+            )
+        # self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
 
         # Wilson loops (of various sizes)
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
-        for size in sizes: 
+        for size in sizes:
             loop_name = f"wilson_loop_0-0_{size[0]}x{size[1]}"
             self.obsdict[loop_name] = Measurement(loop_name, binsize)
-        
 
     def measure(self):
         """Measure the corresponding observables in the dictionary"""
-        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
-        
-        self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
-        #self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
+        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
+            (0, 0), lattice.Direction.X
+        )
+
+        self.obsdict["polyakov_00_x"].append(
+            np.real(self.system.compute_path(polyakov_loop))
+        )
+        # self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
@@ -192,15 +227,21 @@ class MonteCarloEvaluator(Evaluator):
 
         if self.cfg.minimizer_mode:
             self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
-            self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
-            self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
-            self.obsdict["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
+            self.obsdict["int_energy_op_grad"].append(
+                self.system.int_energy_op_grad_vec
+            )
+            self.obsdict["mass_energy_op_grad"].append(
+                self.system.mass_energy_op_grad_vec
+            )
+            self.obsdict["chem_energy_op_grad"].append(
+                self.system.chem_energy_op_grad_vec
+            )
             self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
             self.obsdict["energy_grad"].append(self.energy_gradient_mc())
-        
+
         # Wilson loops
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
-        loops = self.system.cfg.lattice.generate_all_wilson_loops((0,0), sizes)
+        loops = self.system.cfg.lattice.generate_all_wilson_loops((0, 0), sizes)
         for k in range(len(sizes)):
             loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
@@ -212,23 +253,34 @@ class MonteCarloEvaluator(Evaluator):
         # Gradient of the magnetic energy
         meas_mag_energy_op = self.obsdict["mag_energy_op"]
         prod_mag_energy_grad = meas_mag_energy_op * meas_grad_over_norm
-        mag_energy_op_grad = prod_mag_energy_grad.mean() - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
+        mag_energy_op_grad = (
+            prod_mag_energy_grad.mean()
+            - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
+        )
         # Add the constants back into the expression of the magnetic energy
-        mag_energy_grad = - 2 * self.system.cfg.g_mag * mag_energy_op_grad
+        mag_energy_grad = -2 * self.system.cfg.g_mag * mag_energy_op_grad
 
         # Gradient of the electric energy
         meas_el_energy_op = self.obsdict["el_energy_op"]
         meas_el_energy_op_grad = self.obsdict["el_energy_op_grad"]
         prod_el_energy_grad = meas_el_energy_op * meas_grad_over_norm
-        el_energy_op_grad = prod_el_energy_grad.mean() - meas_el_energy_op.mean()*meas_grad_over_norm.mean() + meas_el_energy_op_grad.mean()
+        el_energy_op_grad = (
+            prod_el_energy_grad.mean()
+            - meas_el_energy_op.mean() * meas_grad_over_norm.mean()
+            + meas_el_energy_op_grad.mean()
+        )
         # Add the constants back into the expression of the electric energy
-        el_energy_grad = - 2 * self.system.cfg.g_el * el_energy_op_grad
+        el_energy_grad = -2 * self.system.cfg.g_el * el_energy_op_grad
 
         # Gradient of the interaction energy
         meas_int_energy_op = self.obsdict["int_energy_op"]
         meas_int_energy_op_grad = self.obsdict["int_energy_op_grad"]
         prod_int_energy_grad = meas_int_energy_op * meas_grad_over_norm
-        int_energy_op_grad = prod_int_energy_grad.mean() - meas_int_energy_op.mean()*meas_grad_over_norm.mean() + meas_int_energy_op_grad.mean()
+        int_energy_op_grad = (
+            prod_int_energy_grad.mean()
+            - meas_int_energy_op.mean() * meas_grad_over_norm.mean()
+            + meas_int_energy_op_grad.mean()
+        )
         # Add the constants back into the expression of the interaction energy
         int_energy_grad = self.system.cfg.g_int * int_energy_op_grad
 
@@ -236,7 +288,11 @@ class MonteCarloEvaluator(Evaluator):
         meas_mass_energy_op = self.obsdict["mass_energy_op"]
         meas_mass_energy_op_grad = self.obsdict["mass_energy_op_grad"]
         prod_mass_energy_grad = meas_mass_energy_op * meas_grad_over_norm
-        mass_energy_op_grad = prod_mass_energy_grad.mean() - meas_mass_energy_op.mean()*meas_grad_over_norm.mean() + meas_mass_energy_op_grad.mean()
+        mass_energy_op_grad = (
+            prod_mass_energy_grad.mean()
+            - meas_mass_energy_op.mean() * meas_grad_over_norm.mean()
+            + meas_mass_energy_op_grad.mean()
+        )
         # Add the constants back into the expression of the mass energy
         mass_energy_grad = self.system.cfg.g_mass * mass_energy_op_grad
 
@@ -288,12 +344,12 @@ class MonteCarloEvaluator(Evaluator):
     def update_all_sites_single_site(self):
         """Update for the MC simulation.
         This updates iterates over all lattice sites and updates every site once.
-        The update is local. 
+        The update is local.
         The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
-        comp_tree = lattice.comp_tree #non gauge fixed links
+        comp_tree = lattice.comp_tree  # non gauge fixed links
         nlinks = lattice.nlinks
         if self.gauge_fixing:
             for i in comp_tree:
@@ -323,7 +379,7 @@ class MonteCarloEvaluator(Evaluator):
                 else:
                     # Reject
                     self.obsdict["acceptance_prob"].append(0)
-        
+
     def update_N_sites(self):
         """Update for the MC simulation.
         This updates iterates over N lattice sites and updates every site once.
@@ -332,10 +388,16 @@ class MonteCarloEvaluator(Evaluator):
         """
         nlinks = self.system.cfg.lattice.nlinks
         if self.gauge_fixing:
-            links_inds = self.cfg.rng_state.choice(self.system.cfg.lattice.comp_tree, self.cfg.update_size_per_step, replace=False)
+            links_inds = self.cfg.rng_state.choice(
+                self.system.cfg.lattice.comp_tree,
+                self.cfg.update_size_per_step,
+                replace=False,
+            )
         else:
-            links_inds = self.cfg.rng_state.choice([k for k in range(nlinks)], self.cfg.update_size_per_step, replace=False)
-        
+            links_inds = self.cfg.rng_state.choice(
+                [k for k in range(nlinks)], self.cfg.update_size_per_step, replace=False
+            )
+
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
             theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
@@ -351,8 +413,7 @@ class MonteCarloEvaluator(Evaluator):
                 self.obsdict["acceptance_prob"].append(0)
 
     def evaluate(self):
-        """Main routine to start a Monte Carlo simulation.
-        """
+        """Main routine to start a Monte Carlo simulation."""
         self.warmup()
         self.run()
 
@@ -427,29 +488,27 @@ class MonteCarloEvaluator(Evaluator):
         data_full = {
             "version": utils.get_git_hash(),
             "rng_state": self.cfg.rng_state.get_state(),
-            "mc": self
+            "mc": self,
         }
         with gzip.open(fname_full, "wb") as outfile:
             pickle.dump(data_full, outfile)
 
-    def save(self, output_dir = "."):
-        """Convenience function to combine saving the MonteCarloEstimator and the summary of the observables
-        """
+    def save(self, output_dir="."):
+        """Convenience function to combine saving the MonteCarloEstimator and the summary of the observables"""
         syscfg = self.system.cfg
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
 
         fname_full = f"data_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl.gz"
         fname_summary = f"summary_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl"
-        
+
         self.save_full(os.path.join(output_dir, fname_full))
         self.save_summary(os.path.join(output_dir, fname_summary))
 
     #### Output (plots or on the commandline) ####
 
     def print_stats(self):
-        """Print a quick summary of the observables
-        """
+        """Print a quick summary of the observables"""
         for key in self.obsdict.keys():
             val = self.obsdict[key]
             if val is not None and len(val) > 0:
@@ -463,11 +522,11 @@ class MonteCarloEvaluator(Evaluator):
         """
         dest = {
             "name": [],
-            "nx":[],
-            "ny":[],
-            "paramvec":[],
-            "ncopy":[],
-            "nlayer":[],
+            "nx": [],
+            "ny": [],
+            "paramvec": [],
+            "ncopy": [],
+            "nlayer": [],
             "g_el": [],
             "g_mag": [],
             "g_int": [],
@@ -476,22 +535,22 @@ class MonteCarloEvaluator(Evaluator):
             "warmup_steps": [],
             "meas_steps": [],
             "seed": [],
-            "err": []
+            "err": [],
         }
         for key in self.obsdict.keys():
-            dest['name'].append(key)
-            dest['nx'].append(self.system.cfg.lattice.nx)
-            dest['ny'].append(self.system.cfg.lattice.ny)
-            dest['g_el'].append(self.system.cfg.g_el)
-            dest['g_int'].append(self.system.cfg.g_int)
-            dest['g_mag'].append(self.system.cfg.g_mag)
-            dest['g_mass'].append(self.system.cfg.g_mass)
-            dest['paramvec'].append(self.system.cfg.paramvec)
-            dest['ncopy'].append(self.system.cfg.ncopy)
-            dest['nlayer'].append(self.system.cfg.nlayer)
-            dest['seed'].append(self.cfg.seed)
-            dest['warmup_steps'].append(self.cfg.warmup_steps)
-            dest['meas_steps'].append(self.cfg.meas_steps)
+            dest["name"].append(key)
+            dest["nx"].append(self.system.cfg.lattice.nx)
+            dest["ny"].append(self.system.cfg.lattice.ny)
+            dest["g_el"].append(self.system.cfg.g_el)
+            dest["g_int"].append(self.system.cfg.g_int)
+            dest["g_mag"].append(self.system.cfg.g_mag)
+            dest["g_mass"].append(self.system.cfg.g_mass)
+            dest["paramvec"].append(self.system.cfg.paramvec)
+            dest["ncopy"].append(self.system.cfg.ncopy)
+            dest["nlayer"].append(self.system.cfg.nlayer)
+            dest["seed"].append(self.cfg.seed)
+            dest["warmup_steps"].append(self.cfg.warmup_steps)
+            dest["meas_steps"].append(self.cfg.meas_steps)
             dest["mean"].append(self.get_obs_mean(key))
             dest["err"].append(self.get_obs_mean_err(key))
         df = pd.DataFrame(dest)

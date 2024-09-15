@@ -1,7 +1,8 @@
 import logging
 
 import sympy
-#import numpy as np
+
+# import numpy as np
 from ggpeps import xnp as np
 from scipy.linalg import block_diag
 
@@ -14,45 +15,88 @@ from .system_base import get_pfaffian_arrays
 
 ###################### Z2System2D ##########################
 
+
 class Z2System2D_8C_Config(Config2DBase):
     """Configuration of the Z2 system in 2D with 8 copies of virtual fermions on the links.
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
     """
 
-    _nparams = 152 
+    _nparams = 152
     ncopy = 8
     nvirtmodes_vertex = 32
     nvirtmodes_link = 16
 
-    def __init__(self, lattice, g_el, g_mag,  g_int, g_mass, g_chem, num_pg_layer=1, num_fermionic_layer=1):
-        super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, num_fermionic_layer)
+    def __init__(
+        self,
+        lattice,
+        g_el,
+        g_mag,
+        g_int,
+        g_mass,
+        g_chem,
+        num_pg_layer=1,
+        num_fermionic_layer=1,
+    ):
+        super().__init__(
+            lattice,
+            g_el,
+            g_mag,
+            g_int,
+            g_mass,
+            g_chem,
+            num_pg_layer,
+            num_fermionic_layer,
+        )
 
         # Constants used in the calculation of the electric energy
-        prefactors = [[1, -1, 1.j, 1.j]]*8
-        indices_layer1 = [  [(2,4), (3,5), (4,5), (2,3)], [(6,0), (7,1), (0,1), (6,7)], [(10,12), (11,13), (12,13), (10,11)], [(14,8), (15,9), (8,9), (14,15)], 
-                            [(18, 20), (19, 21), (20, 21), (18, 19)], [(22, 16), (23, 17), (16, 17), (22, 23)], [(26, 28), (27, 29), (28, 29), (26, 27)], [(30, 24), (31, 25), (24, 25), (30, 31)]]
-        indices_layer2 = [[(2,0), (3,1), (0,1), (2,3)], [(6,4), (7,5), (4,5), (6,7)], [(10,8), (11,9), (8,9), (10,11)], [(14,12), (15,13), (12,13), (14,15)],
-                          [(18, 16), (19, 17), (16, 17), (18, 19)], [(22, 20), (23, 21), (20, 21), (22, 23)], [(26, 24), (27, 25), (24, 25), (26, 27)], [(30, 28), (31, 29), (28, 29), (30, 31)]]
-        idxarr_lay1 = get_pfaffian_arrays(indices_layer1, prefactors) # pure gauge layers
-        idxarr_lay2 = get_pfaffian_arrays(indices_layer2, prefactors) # fermionic layers
-        self.idxarr_vec = [idxarr_lay1]*(self.num_pg_layer) + [idxarr_lay2]
-        self.el_overall_factors = [1/256**2]*(self.nlayer) # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        prefactors = [[1, -1, 1.0j, 1.0j]] * 8
+        indices_layer1 = [
+            [(2, 4), (3, 5), (4, 5), (2, 3)],
+            [(6, 0), (7, 1), (0, 1), (6, 7)],
+            [(10, 12), (11, 13), (12, 13), (10, 11)],
+            [(14, 8), (15, 9), (8, 9), (14, 15)],
+            [(18, 20), (19, 21), (20, 21), (18, 19)],
+            [(22, 16), (23, 17), (16, 17), (22, 23)],
+            [(26, 28), (27, 29), (28, 29), (26, 27)],
+            [(30, 24), (31, 25), (24, 25), (30, 31)],
+        ]
+        indices_layer2 = [
+            [(2, 0), (3, 1), (0, 1), (2, 3)],
+            [(6, 4), (7, 5), (4, 5), (6, 7)],
+            [(10, 8), (11, 9), (8, 9), (10, 11)],
+            [(14, 12), (15, 13), (12, 13), (14, 15)],
+            [(18, 16), (19, 17), (16, 17), (18, 19)],
+            [(22, 20), (23, 21), (20, 21), (22, 23)],
+            [(26, 24), (27, 25), (24, 25), (26, 27)],
+            [(30, 28), (31, 29), (28, 29), (30, 31)],
+        ]
+        idxarr_lay1 = get_pfaffian_arrays(
+            indices_layer1, prefactors
+        )  # pure gauge layers
+        idxarr_lay2 = get_pfaffian_arrays(
+            indices_layer2, prefactors
+        )  # fermionic layers
+        self.idxarr_vec = [idxarr_lay1] * (self.num_pg_layer) + [idxarr_lay2]
+        self.el_overall_factors = [1 / 256**2] * (
+            self.nlayer
+        )  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
-        raise NotImplementedError("Haven't implemented parameter conditions for pure gauge for this ansatz.")
-    
-    def enforce_parameter_conditions(self, mat):
-        """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz.
-        """
+        raise NotImplementedError(
+            "Haven't implemented parameter conditions for pure gauge for this ansatz."
+        )
 
-        zeroed_params = [] # we'll save the indices of the zeroed parameters
-        
+    def enforce_parameter_conditions(self, mat):
+        """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz."""
+
+        zeroed_params = []  # we'll save the indices of the zeroed parameters
+
         # pure gauge layers
         for layer in range(self.num_pg_layer):
             ind = 0
-            copies = [1,3,5,7] # copies which couple to physical modes
+            copies = [1, 3, 5, 7]  # copies which couple to physical modes
             for cop in copies:
-                for com in ['r', 'i']: # real or imaginary
+                for com in ["r", "i"]:  # real or imaginary
                     mat[layer, ind] = 0
                     ind += 1
                     zeroed_params.append((layer, ind))
@@ -60,20 +104,20 @@ class Z2System2D_8C_Config(Config2DBase):
         # fermionic layers
         for layer_ind in range(self.num_pg_layer, self.nlayer):
             ind = 0
-            copies = [1,3,5,7] # copies which couple to physical modes
+            copies = [1, 3, 5, 7]  # copies which couple to physical modes
             for cop in copies:
-                for com in ['r', 'i']: 
-                    ind += 1 # don't zero out t params
+                for com in ["r", "i"]:
+                    ind += 1  # don't zero out t params
                     zeroed_params.append((layer, ind))
 
-            copies = [1,2,3,4] # copies which couple to themselves
+            copies = [1, 2, 3, 4]  # copies which couple to themselves
             for cop in copies:
-                for l in ['z', 'y']:
-                    for com in ['r', 'i']:
+                for l in ["z", "y"]:
+                    for com in ["r", "i"]:
                         mat[layer_ind, ind] = 0
                         ind += 1
                         zeroed_params.append((layer, ind))
-        
+
         # save zeroed params
         self.zeroed_params = zeroed_params
         return
@@ -86,28 +130,33 @@ class Z2System2D_8C_Config(Config2DBase):
             list: List of all analytic symbols
         """
 
-        phy_virt_symbols = [] # for coupling physical and virtual modes
-        copies = [1,3,5,7] # copies which couple to physical modes
+        phy_virt_symbols = []  # for coupling physical and virtual modes
+        copies = [1, 3, 5, 7]  # copies which couple to physical modes
         for cop in copies:
-            for com in ['r', 'i']: # real or imaginary
+            for com in ["r", "i"]:  # real or imaginary
                 symbol = sympy.Symbol(f"t{cop}{com}", real=True)
                 phy_virt_symbols.append(symbol)
- 
+
         on_diag_symbols = []
-        copies = [1,2,3,4] # copies which couple to themselves (if not zeroed out in enforce_parameter_conditions)
+        copies = [
+            1,
+            2,
+            3,
+            4,
+        ]  # copies which couple to themselves (if not zeroed out in enforce_parameter_conditions)
         for cop in copies:
-            for l in ['z', 'y']:
-                for com in ['r', 'i']:
+            for l in ["z", "y"]:
+                for com in ["r", "i"]:
                     symbol = sympy.Symbol(f"{l}{cop}{com}", real=True)
                     on_diag_symbols.append(symbol)
 
-        off_diag_symbols = [] # off-diagonal blocks
-        copies_odd = [1,3,5,7]
-        copies_even = [2,4,6,8]
+        off_diag_symbols = []  # off-diagonal blocks
+        copies_odd = [1, 3, 5, 7]
+        copies_even = [2, 4, 6, 8]
         for r in copies_odd:
             for c in copies_even:
-                for l in ['p', 'q', 'r', 's']:
-                    for com in ['r', 'i']: 
+                for l in ["p", "q", "r", "s"]:
+                    for com in ["r", "i"]:
                         symbol = sympy.Symbol(f"{l}{r}{c}{com}", real=True)
                         off_diag_symbols.append(symbol)
 
@@ -121,7 +170,7 @@ class Z2System2D_8C_Config(Config2DBase):
         The T matrix is given in terms of symbols to compute the derivative of the covariance matrices analytically via sympy.
         We do not have to type them explicitly anymore into the code.
 
-        This is one of two analytic inputs into the code. 
+        This is one of two analytic inputs into the code.
         The other input is the structure and the parametrization of the projectors.
 
         The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, l_3, r_3...
@@ -137,124 +186,334 @@ class Z2System2D_8C_Config(Config2DBase):
         all_params = {}
         ind = 0
 
-        copies = [1,3,5,7] # copies which couple to physical modes
+        copies = [1, 3, 5, 7]  # copies which couple to physical modes
         for cop in copies:
-            all_params[f"t{cop}"] = self.symbolvec[ind] + 1.j*self.symbolvec[ind+1]
+            all_params[f"t{cop}"] = self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
             ind += 2
- 
-        copies = [1,2,3,4] # copies which couple to themselves (if not zeroed out in enforce_parameter_conditions)
+
+        copies = [
+            1,
+            2,
+            3,
+            4,
+        ]  # copies which couple to themselves (if not zeroed out in enforce_parameter_conditions)
         for cop in copies:
-            for l in ['z', 'y']:
-                all_params[f"{l}{cop}"] = self.symbolvec[ind] + 1.j*self.symbolvec[ind+1]
+            for l in ["z", "y"]:
+                all_params[f"{l}{cop}"] = (
+                    self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
+                )
                 ind += 2
 
-        copies_odd = [1,3,5,7]
-        copies_even = [2,4,6,8]
+        copies_odd = [1, 3, 5, 7]
+        copies_even = [2, 4, 6, 8]
         for r in copies_odd:
             for c in copies_even:
-                for l in ['p', 'q', 'r', 's']:
-                    all_params[f"{l}{r}{c}"] = self.symbolvec[ind] + 1.j*self.symbolvec[ind+1]
+                for l in ["p", "q", "r", "s"]:
+                    all_params[f"{l}{r}{c}"] = (
+                        self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
+                    )
                     ind += 2
 
         # Extract params as variables for convenience
-        z1 = all_params['z1']
-        z2 = all_params['z2']
-        y1 = all_params['y1']
-        y2 = all_params['y2']
-        z3 = all_params['z3']
-        z4 = all_params['z4']
-        y3 = all_params['y3']
-        y4 = all_params['y4']
+        z1 = all_params["z1"]
+        z2 = all_params["z2"]
+        y1 = all_params["y1"]
+        y2 = all_params["y2"]
+        z3 = all_params["z3"]
+        z4 = all_params["z4"]
+        y3 = all_params["y3"]
+        y4 = all_params["y4"]
 
-        p12, q12, r12, s12 = all_params['p12'], all_params['q12'], all_params['r12'], all_params['s12']
-        p14, q14, r14, s14 = all_params['p14'], all_params['q14'], all_params['r14'], all_params['s14']
-        p16, q16, r16, s16 = all_params['p16'], all_params['q16'], all_params['r16'], all_params['s16']
-        p18, q18, r18, s18 = all_params['p18'], all_params['q18'], all_params['r18'], all_params['s18']
+        p12, q12, r12, s12 = (
+            all_params["p12"],
+            all_params["q12"],
+            all_params["r12"],
+            all_params["s12"],
+        )
+        p14, q14, r14, s14 = (
+            all_params["p14"],
+            all_params["q14"],
+            all_params["r14"],
+            all_params["s14"],
+        )
+        p16, q16, r16, s16 = (
+            all_params["p16"],
+            all_params["q16"],
+            all_params["r16"],
+            all_params["s16"],
+        )
+        p18, q18, r18, s18 = (
+            all_params["p18"],
+            all_params["q18"],
+            all_params["r18"],
+            all_params["s18"],
+        )
 
-        p32, q32, r32, s32 = all_params['p32'], all_params['q32'], all_params['r32'], all_params['s32']
-        p34, q34, r34, s34 = all_params['p34'], all_params['q34'], all_params['r34'], all_params['s34']
-        p36, q36, r36, s36 = all_params['p36'], all_params['q36'], all_params['r36'], all_params['s36']
-        p38, q38, r38, s38 = all_params['p38'], all_params['q38'], all_params['r38'], all_params['s38']
+        p32, q32, r32, s32 = (
+            all_params["p32"],
+            all_params["q32"],
+            all_params["r32"],
+            all_params["s32"],
+        )
+        p34, q34, r34, s34 = (
+            all_params["p34"],
+            all_params["q34"],
+            all_params["r34"],
+            all_params["s34"],
+        )
+        p36, q36, r36, s36 = (
+            all_params["p36"],
+            all_params["q36"],
+            all_params["r36"],
+            all_params["s36"],
+        )
+        p38, q38, r38, s38 = (
+            all_params["p38"],
+            all_params["q38"],
+            all_params["r38"],
+            all_params["s38"],
+        )
 
-        p52, q52, r52, s52 = all_params['p52'], all_params['q52'], all_params['r52'], all_params['s52']
-        p54, q54, r54, s54 = all_params['p54'], all_params['q54'], all_params['r54'], all_params['s54']
-        p56, q56, r56, s56 = all_params['p56'], all_params['q56'], all_params['r56'], all_params['s56']
-        p58, q58, r58, s58 = all_params['p58'], all_params['q58'], all_params['r58'], all_params['s58']
+        p52, q52, r52, s52 = (
+            all_params["p52"],
+            all_params["q52"],
+            all_params["r52"],
+            all_params["s52"],
+        )
+        p54, q54, r54, s54 = (
+            all_params["p54"],
+            all_params["q54"],
+            all_params["r54"],
+            all_params["s54"],
+        )
+        p56, q56, r56, s56 = (
+            all_params["p56"],
+            all_params["q56"],
+            all_params["r56"],
+            all_params["s56"],
+        )
+        p58, q58, r58, s58 = (
+            all_params["p58"],
+            all_params["q58"],
+            all_params["r58"],
+            all_params["s58"],
+        )
 
-        p72, q72, r72, s72 = all_params['p72'], all_params['q72'], all_params['r72'], all_params['s72']
-        p74, q74, r74, s74 = all_params['p74'], all_params['q74'], all_params['r74'], all_params['s74']
-        p76, q76, r76, s76 = all_params['p76'], all_params['q76'], all_params['r76'], all_params['s76']
-        p78, q78, r78, s78 = all_params['p78'], all_params['q78'], all_params['r78'], all_params['s78']
+        p72, q72, r72, s72 = (
+            all_params["p72"],
+            all_params["q72"],
+            all_params["r72"],
+            all_params["s72"],
+        )
+        p74, q74, r74, s74 = (
+            all_params["p74"],
+            all_params["q74"],
+            all_params["r74"],
+            all_params["s74"],
+        )
+        p76, q76, r76, s76 = (
+            all_params["p76"],
+            all_params["q76"],
+            all_params["r76"],
+            all_params["s76"],
+        )
+        p78, q78, r78, s78 = (
+            all_params["p78"],
+            all_params["q78"],
+            all_params["r78"],
+            all_params["s78"],
+        )
 
         # Block matrices that appear many times in the T matrix
-        Block_1 = sympy.Matrix([-1.j*all_params['t1'], 1.j*all_params['t1'], all_params['t1'], -all_params['t1'], 0,0,0,0]) # this is a column matrix
-        Block_2a = sympy.Matrix([
-            [0,         1.j*y1, z1,         1.j*z1],
-            [-1.j*y1,   0,      -1.j*z1,    -z1],
-            [-z1,       1.j*z1, 0,          -y1],
-            [-1.j*z1,   z1,     y1,         0],
-            ])
-        Block_2b = sympy.Matrix([
-            [-1.j*p12,   -1.j*r12,  -1.j*q12,  -1.j*s12],
-            [1.j*r12,    1.j*p12,   1.j*s12,   1.j*q12],
-            [s12,        q12,       p12,       r12],
-            [-q12,       -s12,      -r12,      -p12],
-            ])
+        Block_1 = sympy.Matrix(
+            [
+                -1.0j * all_params["t1"],
+                1.0j * all_params["t1"],
+                all_params["t1"],
+                -all_params["t1"],
+                0,
+                0,
+                0,
+                0,
+            ]
+        )  # this is a column matrix
+        Block_2a = sympy.Matrix(
+            [
+                [0, 1.0j * y1, z1, 1.0j * z1],
+                [-1.0j * y1, 0, -1.0j * z1, -z1],
+                [-z1, 1.0j * z1, 0, -y1],
+                [-1.0j * z1, z1, y1, 0],
+            ]
+        )
+        Block_2b = sympy.Matrix(
+            [
+                [-1.0j * p12, -1.0j * r12, -1.0j * q12, -1.0j * s12],
+                [1.0j * r12, 1.0j * p12, 1.0j * s12, 1.0j * q12],
+                [s12, q12, p12, r12],
+                [-q12, -s12, -r12, -p12],
+            ]
+        )
         zeros_4 = sympy.zeros(4)
 
         # first row
         M00 = sympy.zeros(1)
-        M01 = -Block_1.T # copies 1,2
-        M02 = -Block_1.subs([(all_params['t1'], all_params['t3'])]).T # copies 3,4
-        M03 = -Block_1.subs([(all_params['t1'], all_params['t5'])]).T
-        M04 = -Block_1.subs([(all_params['t1'], all_params['t7'])]).T
+        M01 = -Block_1.T  # copies 1,2
+        M02 = -Block_1.subs([(all_params["t1"], all_params["t3"])]).T  # copies 3,4
+        M03 = -Block_1.subs([(all_params["t1"], all_params["t5"])]).T
+        M04 = -Block_1.subs([(all_params["t1"], all_params["t7"])]).T
 
         # second row
         M10 = -M01.T
-        M11 = sympy.Matrix( sympy.BlockMatrix([[Block_2a, Block_2b], [-Block_2b.T, Block_2a.subs([(z1, z2), (y1, y2)]) ]]) )
-        M12 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b.subs([(p12, p14), (q12,q14), (r12, r14), (s12,s14)])], [Block_2b.subs([(p12,p32), (q12,q32), (r12, r32), (s12,s32)]), zeros_4]]) )
-        M13 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b.subs([(p12, p16), (q12,q16), (r12, r16), (s12,s16)])], [Block_2b.subs([(p12,p52), (q12,q52), (r12, r52), (s12,s52)]), zeros_4]]) )
-        M14 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b.subs([(p12, p18), (q12,q18), (r12, r18), (s12,s18)])], [Block_2b.subs([(p12,p72), (q12,q72), (r12, r72), (s12,s72)]), zeros_4]]) )
+        M11 = sympy.Matrix(
+            sympy.BlockMatrix(
+                [
+                    [Block_2a, Block_2b],
+                    [-Block_2b.T, Block_2a.subs([(z1, z2), (y1, y2)])],
+                ]
+            )
+        )
+        M12 = sympy.Matrix(
+            sympy.BlockMatrix(
+                [
+                    [
+                        zeros_4,
+                        Block_2b.subs([(p12, p14), (q12, q14), (r12, r14), (s12, s14)]),
+                    ],
+                    [
+                        Block_2b.subs([(p12, p32), (q12, q32), (r12, r32), (s12, s32)]),
+                        zeros_4,
+                    ],
+                ]
+            )
+        )
+        M13 = sympy.Matrix(
+            sympy.BlockMatrix(
+                [
+                    [
+                        zeros_4,
+                        Block_2b.subs([(p12, p16), (q12, q16), (r12, r16), (s12, s16)]),
+                    ],
+                    [
+                        Block_2b.subs([(p12, p52), (q12, q52), (r12, r52), (s12, s52)]),
+                        zeros_4,
+                    ],
+                ]
+            )
+        )
+        M14 = sympy.Matrix(
+            sympy.BlockMatrix(
+                [
+                    [
+                        zeros_4,
+                        Block_2b.subs([(p12, p18), (q12, q18), (r12, r18), (s12, s18)]),
+                    ],
+                    [
+                        Block_2b.subs([(p12, p72), (q12, q72), (r12, r72), (s12, s72)]),
+                        zeros_4,
+                    ],
+                ]
+            )
+        )
 
         # third row
         M20 = -M02.T
         M21 = -M12.T
-        Block_2b_22 = Block_2b.subs([(p12, p34), (q12,q34), (r12, r34), (s12,s34)])
-        M22 = sympy.Matrix(sympy.BlockMatrix([[Block_2a.subs([(z1,z3), (y1,y3)]), Block_2b_22], [-Block_2b_22.T, Block_2a.subs([(z1,z4), (y1,y4)])]]) ) #z3,y3 should go here
-        M23 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b.subs([(p12, p36), (q12,q36), (r12, r36), (s12,s36)])], [Block_2b.subs([(p12,p54), (q12,q54), (r12, r54), (s14,s54)]), zeros_4]]) )
-        M24 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b.subs([(p12, p38), (q12,q38), (r12, r38), (s12,s38)])], [Block_2b.subs([(p12,p74), (q12,q74), (r12, r74), (s14,s74)]), zeros_4]]) )
+        Block_2b_22 = Block_2b.subs([(p12, p34), (q12, q34), (r12, r34), (s12, s34)])
+        M22 = sympy.Matrix(
+            sympy.BlockMatrix(
+                [
+                    [Block_2a.subs([(z1, z3), (y1, y3)]), Block_2b_22],
+                    [-Block_2b_22.T, Block_2a.subs([(z1, z4), (y1, y4)])],
+                ]
+            )
+        )  # z3,y3 should go here
+        M23 = sympy.Matrix(
+            sympy.BlockMatrix(
+                [
+                    [
+                        zeros_4,
+                        Block_2b.subs([(p12, p36), (q12, q36), (r12, r36), (s12, s36)]),
+                    ],
+                    [
+                        Block_2b.subs([(p12, p54), (q12, q54), (r12, r54), (s14, s54)]),
+                        zeros_4,
+                    ],
+                ]
+            )
+        )
+        M24 = sympy.Matrix(
+            sympy.BlockMatrix(
+                [
+                    [
+                        zeros_4,
+                        Block_2b.subs([(p12, p38), (q12, q38), (r12, r38), (s12, s38)]),
+                    ],
+                    [
+                        Block_2b.subs([(p12, p74), (q12, q74), (r12, r74), (s14, s74)]),
+                        zeros_4,
+                    ],
+                ]
+            )
+        )
 
         # fourth row
         M30 = -M03.T
         M31 = -M13.T
         M32 = -M23.T
-        Block_2b_33 = Block_2b.subs([(p12, p56), (q12,q56), (r12, r56), (s12,s56)])
-        M33 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b_33], [-Block_2b_33.T, zeros_4]]) )
-        M34 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b.subs([(p12, p58), (q12,q58), (r12, r58), (s12,s58)])], [Block_2b.subs([(p12,p76), (q12,q76), (r12, r76), (s14,s76)]), zeros_4]]) )
+        Block_2b_33 = Block_2b.subs([(p12, p56), (q12, q56), (r12, r56), (s12, s56)])
+        M33 = sympy.Matrix(
+            sympy.BlockMatrix([[zeros_4, Block_2b_33], [-Block_2b_33.T, zeros_4]])
+        )
+        M34 = sympy.Matrix(
+            sympy.BlockMatrix(
+                [
+                    [
+                        zeros_4,
+                        Block_2b.subs([(p12, p58), (q12, q58), (r12, r58), (s12, s58)]),
+                    ],
+                    [
+                        Block_2b.subs([(p12, p76), (q12, q76), (r12, r76), (s14, s76)]),
+                        zeros_4,
+                    ],
+                ]
+            )
+        )
 
         # fifth row
         M40 = -M04.T
         M41 = -M14.T
         M42 = -M24.T
         M43 = -M34.T
-        Block_2b_44 = Block_2b.subs([(p12, p78), (q12,q78), (r12, r78), (s12,s78)])
-        M44 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b_44], [-Block_2b_44.T, zeros_4]]) )
+        Block_2b_44 = Block_2b.subs([(p12, p78), (q12, q78), (r12, r78), (s12, s78)])
+        M44 = sympy.Matrix(
+            sympy.BlockMatrix([[zeros_4, Block_2b_44], [-Block_2b_44.T, zeros_4]])
+        )
 
         # Full T matrix
-        tmat_symb = sympy.Matrix( sympy.BlockMatrix([[M00, M01, M02, M03, M04], [M10, M11, M12, M13, M14], [M20, M21, M22, M23, M24], [M30, M31, M32, M33, M34], [M40, M41, M42, M43, M44]]) )
+        tmat_symb = sympy.Matrix(
+            sympy.BlockMatrix(
+                [
+                    [M00, M01, M02, M03, M04],
+                    [M10, M11, M12, M13, M14],
+                    [M20, M21, M22, M23, M24],
+                    [M30, M31, M32, M33, M34],
+                    [M40, M41, M42, M43, M44],
+                ]
+            )
+        )
 
         return tmat_symb
-    
+
     def generate_gamma_gauge_neutral_dict(self):
         """Generate the covariance matrix of the ungauged projectors.
         The mode order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2, l3_1...}/{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2, d3_1...}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
-        We order first by link and then by copy. 
+        We order first by link and then by copy.
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
         This function returns two different covariance matrices for ungauged projectors:
-        In the first, modes of copy 1 are coupled to modes of copy 2. 
+        In the first, modes of copy 1 are coupled to modes of copy 2.
         In the second, the projectors don't mix copies.
         The first option is used for the pure-gauge layer, the second for the fermionic layer.
 
@@ -263,44 +522,58 @@ class Z2System2D_8C_Config(Config2DBase):
         Returns:
             List[np.ndarray]: Covariance matrices of the ungauged projector on a single link
         """
-        
-        dest_mixed = [0]*2 # mixes copies
-        dest_unmixed = [0]*2 # does not mix copies 
-        
+
+        dest_mixed = [0] * 2  # mixes copies
+        dest_unmixed = [0] * 2  # does not mix copies
+
         # We want to give the projectors for the pure gauge part, which mix copies
-        mixed_X = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.paulix)))
-        mixed_Y = np.real_if_close(1.j*np.kron(utils.paulix,np.kron(utils.pauliy, utils.pauliz)))
+        mixed_X = np.real_if_close(
+            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix))
+        )
+        mixed_Y = np.real_if_close(
+            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz))
+        )
 
         dest_mixed[Direction.X] = np.kron(np.eye(4), mixed_X)
         dest_mixed[Direction.Y] = np.kron(np.eye(4), mixed_Y)
 
         # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
-        unmixed_X = np.array([  [ 0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.],
-                                [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
-                                [ 0., -1.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  1.],
-                                [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
-                                [ 0.,  0.,  0.,  0.,  0., -1.,  0.,  0.],
-                                [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.]])
+        unmixed_X = np.array(
+            [
+                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+            ]
+        )
 
-        unmixed_Y = np.array([  [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],
-                                [ 0.,  0.,  0., -1.,  0., -0.,  0.,  0.],
-                                [-1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                [ 0.,  1.,  0.,  0.,  0.,  0.,  0.,  0.],
-                                [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.],
-                                [ 0.,  0.,  0.,  0.,  0., -0.,  0., -1.],
-                                [ 0.,  0.,  0.,  0., -1.,  0.,  0.,  0.],
-                                [ 0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.]])
-        
+        unmixed_Y = np.array(
+            [
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, -1.0, 0.0, -0.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, -1.0],
+                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+            ]
+        )
+
         dest_unmixed[Direction.X] = np.kron(np.eye(4), unmixed_X)
         dest_unmixed[Direction.Y] = np.kron(np.eye(4), unmixed_Y)
-        
-        return [dest_mixed]*self.num_pg_layer + [dest_unmixed]*self.num_fermionic_layer
+
+        return [dest_mixed] * self.num_pg_layer + [
+            dest_unmixed
+        ] * self.num_fermionic_layer
 
 
 class Z2System2D_8C(System2DBase):
-    """ 2 copy version of the Z2 system GGPEPS ansatz with multiple type of virtual fermions
+    """2 copy version of the Z2 system GGPEPS ansatz with multiple type of virtual fermions
 
     Some general notes about conventions:
 
@@ -317,10 +590,12 @@ class Z2System2D_8C(System2DBase):
             cfg (Z2System2D_8C_Config): Configuration containing all system-related parameters
         """
         super().__init__(cfg)
-        raise DeprecationWarning("This class is to be replaced by a generic 2D Z2 class.")
+        raise DeprecationWarning(
+            "This class is to be replaced by a generic 2D Z2 class."
+        )
 
     def initialize_gamma_in_sys(self):
-        """ 
+        """
         The mode-order in gamma_in_sys is dictated by the numbering of the links on the lattice.
         The numbering guarantees that we split the vertical from the horizontal links for easier gauging.
 
@@ -333,12 +608,12 @@ class Z2System2D_8C(System2DBase):
             |         |
             0 --"0"-- 1 --"1"--
 
-        The vertex indices are written as <number>, the link indices are written as "<number>". 
+        The vertex indices are written as <number>, the link indices are written as "<number>".
 
         For a 2x2 system, gamma_in has the order -- TODO: NEEDS TO BE UPDATED FOR THIS ANSATZ
-        { l1_1, r2_0, l1_1, r2_0, l1_0, r2_1, l1_0, r2_1,  
-          l1_3, r2_2, l1_3, r2_2, l1_2, r2_3, l1_2, r2_3,  
-          d1_2, u2_0, d1_2, u2_0, d1_0, u2_2, d1_0, u2_2,  
+        { l1_1, r2_0, l1_1, r2_0, l1_0, r2_1, l1_0, r2_1,
+          l1_3, r2_2, l1_3, r2_2, l1_2, r2_3, l1_2, r2_3,
+          d1_2, u2_0, d1_2, u2_0, d1_0, u2_2, d1_0, u2_2,
           d1_3, u2_1, d1_3, u2_1, d1_1, d2_3, d1_1, d2_3 }.
 
         The naming convention here is <mode letter><number of copy>_<vertex index>.
@@ -353,36 +628,57 @@ class Z2System2D_8C(System2DBase):
         wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec = [], [], []
 
         # Initialize gamma_in_sys for the full system (and trackers)
-        size = self.cfg.lattice.size # number of sites
-        id = np.eye(size) 
+        size = self.cfg.lattice.size  # number of sites
+        id = np.eye(size)
 
         for layer in range(self.cfg.nlayer):
-            neutral_gauge_X = np.kron( id, self.gamma_gauge_neutral_vec[layer][Direction.X] )
-            neutral_gauge_Y = np.kron( id, self.gamma_gauge_neutral_vec[layer][Direction.Y] )
+            neutral_gauge_X = np.kron(
+                id, self.gamma_gauge_neutral_vec[layer][Direction.X]
+            )
+            neutral_gauge_Y = np.kron(
+                id, self.gamma_gauge_neutral_vec[layer][Direction.Y]
+            )
             gamma_in_sys = block_diag(neutral_gauge_X, neutral_gauge_Y)
             gamma_in_sys_vec.append(gamma_in_sys)
 
-            wi_gamma_in_vec.append( utils.WoodburyInverter(self.mat_d_inv_vec[layer] - gamma_in_sys) )
-            wi_gamma_out_vec.append( utils.WoodburyInverter(self.mat_d_vec[layer] - gamma_in_sys) )
-            incdet_vec.append( utils.IncLogAbsDeterminant(self.mat_d_inv_vec[layer] - gamma_in_sys) )
+            wi_gamma_in_vec.append(
+                utils.WoodburyInverter(self.mat_d_inv_vec[layer] - gamma_in_sys)
+            )
+            wi_gamma_out_vec.append(
+                utils.WoodburyInverter(self.mat_d_vec[layer] - gamma_in_sys)
+            )
+            incdet_vec.append(
+                utils.IncLogAbsDeterminant(self.mat_d_inv_vec[layer] - gamma_in_sys)
+            )
 
             # Initialize the modified gamma_in_sys for the full system (and trackers)
             single_link_offset = 2 * self.cfg.nvirtmodes_link
             gamma_in_sys_mod = gamma_in_sys[single_link_offset:, single_link_offset:]
-            wi_gamma_in_mod_vec.append( utils.WoodburyInverter(self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod) )
-            wi_gamma_out_mod_vec.append( utils.WoodburyInverter(self.mat_d_mod_vec[layer] - gamma_in_sys_mod) )
-            incdet_mod_vec.append( utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod) )
+            wi_gamma_in_mod_vec.append(
+                utils.WoodburyInverter(self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod)
+            )
+            wi_gamma_out_mod_vec.append(
+                utils.WoodburyInverter(self.mat_d_mod_vec[layer] - gamma_in_sys_mod)
+            )
+            incdet_mod_vec.append(
+                utils.IncLogAbsDeterminant(
+                    self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod
+                )
+            )
 
-        return gamma_in_sys_vec, (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec), (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec)
+        return (
+            gamma_in_sys_vec,
+            (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec),
+            (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec),
+        )
 
-
-    #Gauging
+    # Gauging
 
     def generate_rotmat(self, theta: float, coord: tuple, dir: Direction):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
         The mode order is (as for gamma_in_neutral) {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}, depending on whether the link is vertical or horizontal.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
-        We order first by link and then by copy. 
+        We order first by link and then by copy.
         Modes of copy one are coupled to modes of copy 2. The projectors mix copies.
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
@@ -398,22 +694,22 @@ class Z2System2D_8C(System2DBase):
             np.ndarray: Rotation matrix for gamma_in_neutral
         """
         # Gauging might be different depending on sublattice or link direction
-        if dir == Direction.X and (-1)**(coord[0] + coord[1]) == -1:
-            #theta += np.pi 
+        if dir == Direction.X and (-1) ** (coord[0] + coord[1]) == -1:
+            # theta += np.pi
             pass
 
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
-        rot_right = np.array([[np.cos(theta), np.sin(theta)],
-                              [-np.sin(theta), np.cos(theta)]])
+        rot_right = np.array(
+            [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
+        )
         # We have only one left mode => 2 Majorana modes
         rot_left = np.eye(2)
         # The mode order is lr (horizontally) or du (vertically).
         # We rotate the different copies in the SAME way.
         dest = block_diag(rot_left, rot_right)
-        rotmat = np.kron( np.eye(self.cfg.ncopy), dest)
+        rotmat = np.kron(np.eye(self.cfg.ncopy), dest)
         return rotmat
-
 
     def update_gauge_ind(self, link_ind, theta):
         """Update method that is called upon changing a gauge field.
@@ -437,43 +733,63 @@ class Z2System2D_8C(System2DBase):
         for layer in range(self.cfg.nlayer):
             gamma_neutral_gauge = self.gamma_gauge_neutral_vec[layer][dir]
             gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
-            update_vec.append( self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]) )
+            update_vec.append(
+                self.calculate_update_gamma_in(
+                    ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]
+                )
+            )
 
             # Substitute in the array
-            self.gamma_in_sys_vec[layer][ind_mat:ind_mat + rotmat.shape[0],
-                                         ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
+            self.gamma_in_sys_vec[layer][
+                ind_mat : ind_mat + rotmat.shape[0], ind_mat : ind_mat + rotmat.shape[1]
+            ] = gamma_in_subst
 
         # Update the determinant
-        mat_inv_vec = [
-            wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec
-        ]
+        mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
         detval_vec = [
             incdet.update_index(mat_inv, update, ind_mat, ind_mat)
             for mat_inv, update, incdet in zip(mat_inv_vec, update_vec, self.incdet_vec)
         ]
         # Update the modified determinant
-        offset = 2* self.cfg.nvirtmodes_link
+        offset = 2 * self.cfg.nvirtmodes_link
         if ind_mat - offset >= 0:
-            for wi, update, incdet in zip(self.wi_gamma_in_mod_vec, update_vec, self.incdet_mod_vec):
+            for wi, update, incdet in zip(
+                self.wi_gamma_in_mod_vec, update_vec, self.incdet_mod_vec
+            ):
                 mat_inv = wi.inv()
-                incdet.update_index(mat_inv, update, ind_mat-offset, ind_mat-offset)
+                incdet.update_index(mat_inv, update, ind_mat - offset, ind_mat - offset)
         # Update the weight
         self.weight = 0.5 * np.sum(detval_vec)
         # Update the matrix inversion
-        [ wi_gamma_in.update_index(update, ind_mat, ind_mat) for wi_gamma_in, update in zip(self.wi_gamma_in_vec, update_vec) ]
-        [ wi_gamma_out.update_index(update, ind_mat, ind_mat) for wi_gamma_out, update in zip(self.wi_gamma_out_vec, update_vec) ]
+        [
+            wi_gamma_in.update_index(update, ind_mat, ind_mat)
+            for wi_gamma_in, update in zip(self.wi_gamma_in_vec, update_vec)
+        ]
+        [
+            wi_gamma_out.update_index(update, ind_mat, ind_mat)
+            for wi_gamma_out, update in zip(self.wi_gamma_out_vec, update_vec)
+        ]
 
         if ind_mat - offset >= 0:
             # We do not update the matrix if the first link is updated (it is just not there)
-            [ wi_gamma_in_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_in_mod, update in zip(self.wi_gamma_in_mod_vec, update_vec) ]
-            [ wi_gamma_out_mod.update_index(update, ind_mat-offset, ind_mat-offset) for wi_gamma_out_mod, update in zip(self.wi_gamma_out_mod_vec, update_vec) ]
-        
+            [
+                wi_gamma_in_mod.update_index(update, ind_mat - offset, ind_mat - offset)
+                for wi_gamma_in_mod, update in zip(self.wi_gamma_in_mod_vec, update_vec)
+            ]
+            [
+                wi_gamma_out_mod.update_index(
+                    update, ind_mat - offset, ind_mat - offset
+                )
+                for wi_gamma_out_mod, update in zip(
+                    self.wi_gamma_out_mod_vec, update_vec
+                )
+            ]
+
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
 
-
     # Observables
-    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv:bool=True):
+    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv: bool = True):
         """Compute the mass term of the Hamiltonian for a single site.
 
         Args:
@@ -485,8 +801,10 @@ class Z2System2D_8C(System2DBase):
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
 
-        mass_energy_op = [1]*self.cfg.num_pg_layer # the mass energy for the pg layers is zero, but later we take the product of all layers, so we put a 1 here
-        gradients = [[0]*len(self.symbolvec)]*self.cfg.num_pg_layer
+        mass_energy_op = [
+            1
+        ] * self.cfg.num_pg_layer  # the mass energy for the pg layers is zero, but later we take the product of all layers, so we put a 1 here
+        gradients = [[0] * len(self.symbolvec)] * self.cfg.num_pg_layer
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             # only the fermionic layers directly contribute to the mass
@@ -494,19 +812,19 @@ class Z2System2D_8C(System2DBase):
             # Calculation prelimaries
             covmat = self.compute_ferm_cov(layer_ind)
             layer_mass_energy = 0.0
-            layer_grads = [0]*len(self.symbolvec)
-            
+            layer_grads = [0] * len(self.symbolvec)
+
             # Calculate mass term
             # Since the system is translationally invariant, we could just calculate it for one site and multiply by nsites instead
-            for site_ind in range(0, 2*self.cfg.lattice.size, 2):
-                layer_mass_energy += 0.5 * (1 + covmat[site_ind+1, site_ind] )
+            for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
+                layer_mass_energy += 0.5 * (1 + covmat[site_ind + 1, site_ind])
 
                 # Update gradients
                 for symbol_ind, symbol in enumerate(self.symbolvec):
                     d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                    layer_grads[symbol_ind] += 0.5 * d_gamma_out[site_ind+1, site_ind] 
+                    layer_grads[symbol_ind] += 0.5 * d_gamma_out[site_ind + 1, site_ind]
 
-                    # further terms of the derivative are included higher up in the computation stack 
+                    # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
 
             mass_energy_op.append(np.asarray(layer_mass_energy))
@@ -519,12 +837,12 @@ class Z2System2D_8C(System2DBase):
 
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
         # They act as a prefactor in the derivative.
-        # However, here, because the mass term only acts on the second layer, we simply multiply the mass_energy and grads by the norm of the first layer 
+        # However, here, because the mass term only acts on the second layer, we simply multiply the mass_energy and grads by the norm of the first layer
         # (this is handled higher up in the computation stack).
 
         return mass_energy_op, gradients
 
-    def _compute_mag_energy_op(self, use_trans_inv:bool=True):
+    def _compute_mag_energy_op(self, use_trans_inv: bool = True):
         """Computation of the magnetic energy operator (w/o shift).
         This operator is diagonal in the gauge field (group element) basis and can thus be computed easily.
 
@@ -543,10 +861,12 @@ class Z2System2D_8C(System2DBase):
         else:
             # Evaluate every plaquette of the system
             logging.error("compute_mag_energy: not implemented yet")
-            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
+            raise NotImplementedError(
+                "The non-translational invariant case is not implemented yet."
+            )
             mag_energy_bare = None
         return mag_energy_bare
-    
+
     def _compute_int_energy_op_vec_and_grad(self):
         """Calculate the energy and energy gradient due to the interaction of the physical fermions with the gauge fields.
         Note: this function assumes that U = U^dagger, which is valid only for Z2. For other groups, the calculation will not be as simple.
@@ -555,25 +875,40 @@ class Z2System2D_8C(System2DBase):
             tuple: Tuple of (interaction energy for a single link, gradients)
         """
 
-        int_energy_op = [1]*self.cfg.num_pg_layer # the interaction energy for the pg layers is zero, but later we take the product of all layers, so we put a 1 here
-        gradients = [[0]*len(self.symbolvec)]*self.cfg.num_pg_layer
+        int_energy_op = [
+            1
+        ] * self.cfg.num_pg_layer  # the interaction energy for the pg layers is zero, but later we take the product of all layers, so we put a 1 here
+        gradients = [[0] * len(self.symbolvec)] * self.cfg.num_pg_layer
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             layer_int_energy = 0.0
             covmat = self.compute_ferm_cov(layer_ind)
-            layer_gradients = [0]*len(self.symbolvec)
-            
-            for site_ind in range(self.cfg.lattice.size): 
+            layer_gradients = [0] * len(self.symbolvec)
+
+            for site_ind in range(self.cfg.lattice.size):
                 coord = self.cfg.lattice.ind2coord(site_ind)
-                site_ind_cov = 2 * site_ind # this is the index to use when accessing elements of the covariance matrix, which has 2 Majorana modes per site
+                site_ind_cov = (
+                    2 * site_ind
+                )  # this is the index to use when accessing elements of the covariance matrix, which has 2 Majorana modes per site
 
                 # Horizontal link
-                ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X) # index of the horizontal link
-                neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X) # coordinates of neighboring site
-                neighborX_ind = 2 * self.cfg.lattice.coord2ind(neighborX_coord) # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
+                ind_field_hor = self.cfg.lattice.coord2ind_dir(
+                    coord, Direction.X
+                )  # index of the horizontal link
+                neighborX_coord = self.cfg.lattice.get_neighbor(
+                    coord, Direction.X
+                )  # coordinates of neighboring site
+                neighborX_ind = 2 * self.cfg.lattice.coord2ind(
+                    neighborX_coord
+                )  # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
                 gaugefield_hor = self.gaugefieldvec[ind_field_hor]
-                cos_factor_hor = np.cos(gaugefield_hor) # simple way to get U from gauge value
-                hor_link_energy = 0.5 * (covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov+1, neighborX_ind+1])
+                cos_factor_hor = np.cos(
+                    gaugefield_hor
+                )  # simple way to get U from gauge value
+                hor_link_energy = 0.5 * (
+                    covmat[site_ind_cov, neighborX_ind]
+                    - covmat[site_ind_cov + 1, neighborX_ind + 1]
+                )
                 layer_int_energy += hor_link_energy * cos_factor_hor
 
                 # Vertical link
@@ -582,36 +917,53 @@ class Z2System2D_8C(System2DBase):
                 neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
                 gaugefield_vert = self.gaugefieldvec[ind_field_vert]
                 cos_factor_vert = np.cos(gaugefield_vert)
-                vert_link_energy = 0.5 * (covmat[site_ind_cov, neighborY_ind+1] + covmat[site_ind_cov+1, neighborY_ind])
+                vert_link_energy = 0.5 * (
+                    covmat[site_ind_cov, neighborY_ind + 1]
+                    + covmat[site_ind_cov + 1, neighborY_ind]
+                )
                 layer_int_energy -= vert_link_energy * cos_factor_vert
 
                 # Calculate derivatives
                 for symbol_ind, symbol in enumerate(self.symbolvec):
                     d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                    
-                    grad = 0.5 * cos_factor_hor * (d_gamma_out[site_ind_cov, neighborX_ind] - d_gamma_out[site_ind_cov+1, neighborX_ind+1])
-                    grad += - 0.5 * cos_factor_vert * (d_gamma_out[site_ind_cov, neighborY_ind+1] + d_gamma_out[site_ind_cov+1, neighborY_ind])
+
+                    grad = (
+                        0.5
+                        * cos_factor_hor
+                        * (
+                            d_gamma_out[site_ind_cov, neighborX_ind]
+                            - d_gamma_out[site_ind_cov + 1, neighborX_ind + 1]
+                        )
+                    )
+                    grad += (
+                        -0.5
+                        * cos_factor_vert
+                        * (
+                            d_gamma_out[site_ind_cov, neighborY_ind + 1]
+                            + d_gamma_out[site_ind_cov + 1, neighborY_ind]
+                        )
+                    )
                     layer_gradients[symbol_ind] += grad
-                    
+
             int_energy_op.append(layer_int_energy)
             gradients.append(layer_gradients)
-        
+
         int_energy_op = np.asarray(int_energy_op)
-        gradients = np.asarray(gradients) 
+        gradients = np.asarray(gradients)
 
         self.cfg.enforce_parameter_conditions(gradients)
-    
+
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
         # They act as a prefactor in the derivative.
-        # However, here (just as in the mass case), because the interaction term only acts on the fermionic layers, we simply multiply the int_energy and grads by the norm of the first layer 
+        # However, here (just as in the mass case), because the interaction term only acts on the fermionic layers, we simply multiply the int_energy and grads by the norm of the first layer
         # (this is handled higher up in the computation stack).
 
         return int_energy_op, gradients
 
     def _compute_chem_energy_op_vec_and_grad(self):
-        # This function is not implemented yet! 
+        # This function is not implemented yet!
         # (and it can't be, because the ansatz doesn't have the required parameterization).
         # We return zeros just to not break the interface.
-        energies = [0]*self.cfg.nlayer
-        gradients = [ [0]*self.cfg.nparams_per_layer for k in range(self.cfg.nlayer) ]
+        energies = [0] * self.cfg.nlayer
+        gradients = [[0] * self.cfg.nparams_per_layer for k in range(self.cfg.nlayer)]
         return np.array(energies), np.array(gradients)
