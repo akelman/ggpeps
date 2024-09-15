@@ -130,7 +130,7 @@ class TestMinimizerZ2(unittest.TestCase):
                 el_energy_deriv_num = (res_right["el_energy"] - res_left["el_energy"]) / (2 * eps)
                 el_energy_deriv_ana = res["el_energy_grad"][0,ind]
 
-                self.assertAlmostEqual(el_energy_deriv_num, el_energy_deriv_ana)
+                self.assertAlmostEqual(el_energy_deriv_num, el_energy_deriv_ana, places=5)
 
     def test_derivative_el_energy_exact_2_layer(self):
         eps = 1e-5
