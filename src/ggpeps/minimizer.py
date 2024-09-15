@@ -214,11 +214,6 @@ def print_callback(x, minimizer):
         logger.info("Callback message due to caching. The last_result is None.")
         return
     
-    if minimizer.evaluator_manager.type == 'exact':
-        acceptance_prob = np.nan # acceptance_prob is undefined for exact contraction
-    else:
-        acceptance_prob = res.get_obs_mean("acceptance_prob")
-    
     energy = res.get_obs_mean("energy")
     number_per_site = res.get_obs_mean("number_per_site")
     grad_paramvec = res.get_obs_mean("energy_grad")
@@ -227,7 +222,7 @@ def print_callback(x, minimizer):
     int_energy = res.get_obs_mean("int_energy")
     el_energy = res.get_obs_mean("el_energy")
     mag_energy = res.get_obs_mean("mag_energy")
-    # chem_energy = res.get_obs_mean("chem_energy") # TODO: not yet added to MC
+    chem_energy = res.get_obs_mean("chem_energy")
 
     plaquette = res.get_obs_mean("wilson_loop_0-0_1x1")
     max_grad_paramvec = np.max(np.abs(grad_paramvec))
@@ -238,10 +233,11 @@ def print_callback(x, minimizer):
         message = f"Iter: {x:03d}, {message}"
     if 'mc' in minimizer.evaluator_manager.type:
         # Acceptance probability is only defined for MC
+        acceptance_prob = res.get_obs_mean("acceptance_prob")
         message += f", acceptance prob: {acceptance_prob:.6f}"
     logger.info(message)
 
-    logger.debug(f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}")
+    logger.debug(f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}, chem: {chem_energy:.6f}")
     logger.debug(f"Parametervec: {paramvec}")
 
     # If we're at the lowest energy seen so far, log the parameters

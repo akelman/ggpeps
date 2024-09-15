@@ -144,6 +144,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["el_energy"] = Measurement("Electric Energy", binsize)
         self.obsdict["int_energy"] = Measurement("Interaction Energy", binsize)
         self.obsdict["mass_energy"] = Measurement("Mass Energy", binsize)
+        self.obsdict["chem_energy"] = Measurement("Chemical Energy", binsize)
         self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
         self.obsdict["el_energy_op"] = Measurement("Electric Energy Operator (bare)", binsize)
         self.obsdict["int_energy_op"] = Measurement("Interaction Energy Operator (bare)", binsize)
@@ -156,6 +157,7 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict["el_energy_op_grad"] = Measurement("Electric Energy Operator Gradient", binsize)
             self.obsdict["int_energy_op_grad"] = Measurement("Interaction Energy Operator Gradient", binsize)
             self.obsdict["mass_energy_op_grad"] = Measurement("Mass Energy Operator Gradient", binsize)
+            self.obsdict["chem_energy_op_grad"] = Measurement("Chemical Energy Operator Gradient", binsize)
             self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm", binsize)
             self.obsdict["energy_grad"] = Measurement("Gradient of Total Energy", binsize)
         #self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
@@ -184,6 +186,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["mag_energy"].append(self.system.mag_energy)
         self.obsdict["int_energy"].append(self.system.int_energy)
         self.obsdict["mass_energy"].append(self.system.mass_energy)
+        self.obsdict["chem_energy"].append(self.system.chem_energy)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
         self.obsdict["number_per_site"].append(self.system.number_per_site)
 
@@ -191,6 +194,7 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
             self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
             self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
+            self.obsdict["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
             self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
             self.obsdict["energy_grad"].append(self.energy_gradient_mc())
         
