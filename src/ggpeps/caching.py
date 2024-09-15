@@ -37,7 +37,7 @@ class Cache:
 
     def add_obj_to_cache(self, obj_name: str, obj_val):
         if obj_name not in self.cache_data.keys():
-            logger.warn(f"Cache does not support {obj_name}. Not adding to cache.")
+            logger.warning(f"Cache does not support {obj_name}. Not adding to cache.")
         else:
             self.cache_data[obj_name] = obj_val
         return
@@ -56,7 +56,7 @@ class Cache:
         if (
             obs_cache_len > 1000 and obs_cache_len % 50
         ):  # 1000 is an arbitrary threshold
-            logger.warn(f"Cache for obs {obs} is large: {obs_cache_len} items.")
+            logger.warning(f"Cache for obs {obs} is large: {obs_cache_len} items.")
 
         # Save to pickle file
         if save_to_file:
@@ -107,7 +107,7 @@ class Cache:
                         + f"but the current run uses mode {ggpeps.global_vars['args'].mode}. "
                         + f"Ignoring cached data."
                     )
-                    logger.warn(message)
+                    logger.warning(message)
                     # TODO: we can probably recover some of the data
         return success
 

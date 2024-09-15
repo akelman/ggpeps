@@ -116,7 +116,7 @@ class Minimizer:
             self.evaluator_manager.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
 
         message = "Reached maximum number of iterations without convergence."
-        logger.warn(message)
+        logger.warning(message)
         self.min_result = MinimizerResult(
             paramvec, self.cfg.method, energy, grad_paramvec, False, message
         )
