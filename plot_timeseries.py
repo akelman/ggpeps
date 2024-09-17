@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from ggpeps import utils
 
 
-def main():
+def main(args):
     # Collect all dataframes into a single one
     obsvec = []
     for fname in args.fnames:
