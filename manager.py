@@ -7,6 +7,7 @@ Further details about the usage of the script can be found in README.md.
 import os
 import sys
 import logging
+import platform
 from timeit import default_timer as timer
 
 os.environ["RAY_DEDUP_LOGS"] = (
@@ -67,8 +68,11 @@ def signal_handler(signum, frame):
     sys.exit(INTERRUPT_EXIT_CODE)
 
 
-signal.signal(signal.SIGTERM, signal_handler)  # register the signal handler
-signal.signal(signal.SIGUSR1, signal_handler)  # TODO: fix for windows
+# Register the signal handlers
+signal.signal(signal.SIGTERM, signal_handler)
+if platform.system().lower() != "windows":
+    # Windows does define SIGUSR1
+    signal.signal(signal.SIGUSR1, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)  # responds to CTRL-C
 
 
