@@ -51,7 +51,7 @@ You can test your installation with opening a python console (just type `python`
 import ggpeps
 ggpeps.__version__
 ```
-The result should be a version string, e.g. `0.1+g38ac83d20240911`.
+The result should be a version string, e.g. `0.1.dev952+ga571e99.d20240918`, which can be interpreted as: `version 0.1` on the `dev` branch, which is `952` commits ahead of master, with the git commit hash beginning `a571e99`, on the date `2024-09-18`.
 
 ### Installation with GPUs
 JAX is the library we use for running on GPUs. JAX must be installed wth jaxlib and connected to the correct versions of CUDA. The versions required will depend on what's available on a given cluster.
