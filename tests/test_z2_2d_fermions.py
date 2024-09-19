@@ -100,9 +100,10 @@ class TestZ2C4System(unittest.TestCase):
     def test_t_zero(self):
         """Ensure mass and interaction energy are zero when t = 0"""
 
-        gauge_fixing = False
+        ec_config = exacteval.ExactEvaluatorConfig()
+        ec_config.gauge_fixing = False
         self.system_z2.cfg.make_pure_gauge()  # sets t params to zero
-        ex_eval = exacteval.ExactEvaluator(None, self.system_z2, gauge_fixing)
+        ex_eval = exacteval.ExactEvaluator(ec_config, self.system_z2)
         dest_dict = ex_eval.evaluate()
         self.assertTrue(np.allclose(0, dest_dict["mass_energy"]))
         self.assertTrue(np.allclose(0, dest_dict["int_energy"]))
@@ -111,8 +112,9 @@ class TestZ2C4System(unittest.TestCase):
         """Ensure mass and interaction energy are zero when t != 0.
         This checks for random params, which we assume do not give t = 0"""
 
-        gauge_fixing = False
-        ex_eval = exacteval.ExactEvaluator(None, self.system_z2, gauge_fixing)
+        ec_config = exacteval.ExactEvaluatorConfig()
+        ec_config.gauge_fixing = False
+        ex_eval = exacteval.ExactEvaluator(ec_config, self.system_z2)
         dest_dict = ex_eval.evaluate()
         self.assertFalse(np.allclose(0, dest_dict["mass_energy"]))
         self.assertFalse(np.allclose(0, dest_dict["int_energy"]))

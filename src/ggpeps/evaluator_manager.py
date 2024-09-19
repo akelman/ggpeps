@@ -8,7 +8,7 @@ import numpy as np
 
 import ggpeps
 from ggpeps import utils
-from ggpeps.exacteval import ExactEvaluator
+from ggpeps.exacteval import ExactEvaluator, ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig, run_mc
 from ggpeps.system import SystemType, SystemConfigType
 
@@ -29,34 +29,34 @@ class EvaluatorManager:
         self,
         system_cls: SystemType,
         system_cfg: SystemConfigType,
-        mc_cfg: Union[MonteCarloEvaluatorConfig, None],
+        cfg: Union[MonteCarloEvaluatorConfig, ExactEvaluatorConfig],
         nrunner: int,
-        gauge_fixing: bool,
     ):
 
         self.system_cls = system_cls
         self.system_cfg = system_cfg
-        self.mc_cfg = mc_cfg
+        self.cfg = cfg
         self.nrunner = nrunner
-        self.gauge_fixing = gauge_fixing
 
         self.evaluator = None
         self.simulation_in_progress: bool = (
             False  # Flag to indicate whether a simulation should be resumed
         )
 
-        if self.mc_cfg is None:
+        if isinstance(self.cfg, ExactEvaluatorConfig):
             self.type = "exact"
-        else:
+        elif isinstance(self.cfg, MonteCarloEvaluatorConfig):
             self.type = "mc"
+        else:
+            raise ValueError("Unrecognized type of evaluator config.")
 
     def reset_evaluator(self):
         system = self.system_cls(self.system_cfg)
         system.initialize()
         if self.type == "exact":
-            self.evaluator = ExactEvaluator(None, system, self.gauge_fixing)
+            self.evaluator = ExactEvaluator(self.cfg, system)
         elif self.type == "mc":
-            self.evaluator = MonteCarloEvaluator(self.mc_cfg, system, self.gauge_fixing)
+            self.evaluator = MonteCarloEvaluator(self.cfg, system)
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
 
@@ -69,15 +69,15 @@ class EvaluatorManager:
             """
             resultvec = []
             # system_cfg_id = ray.put(self.system_cfg)
-            reduced_meas_steps = self.mc_cfg.meas_steps // self.nrunner
+            reduced_meas_steps = self.cfg.meas_steps // self.nrunner
             logger.info(
                 f"Starting {self.nrunner} runners with {reduced_meas_steps} measurement steps each (total: {self.nrunner * reduced_meas_steps})."
             )
 
             for i in range(self.nrunner):
                 # Make a copy of the MC config, and change the seed for each runner
-                cfg = copy.deepcopy(self.mc_cfg)
-                cfg.seed = self.mc_cfg.seed + i
+                cfg = copy.deepcopy(self.cfg)
+                cfg.seed = self.cfg.seed + i
                 cfg.meas_steps = reduced_meas_steps
 
                 # Make a copy of the system config
@@ -128,7 +128,7 @@ class EvaluatorManager:
             Estimator: estimator with information from all runners
         """
         system = self.system_cls(self.system_cfg)
-        dest = MonteCarloEvaluator(self.mc_cfg, system, self.gauge_fixing)
+        dest = MonteCarloEvaluator(self.cfg, system)
         if len(resultvec) > 1:
             dest.obsdict = utils.mergeDict(resultvec[0].obsdict, resultvec[1].obsdict)
             for mc_runner in resultvec[2:]:

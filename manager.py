@@ -31,6 +31,7 @@ from ggpeps import utils
 from ggpeps import lattice as lat
 from ggpeps.measurement import Measurement
 from ggpeps.mc import MonteCarloEvaluatorConfig
+from ggpeps.exacteval import ExactEvaluatorConfig
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 
@@ -207,6 +208,7 @@ def main(args):
     mc_config.warmup_steps = args.warmup_steps
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize
+    mc_config.gauge_fixing = args.gauge_fixing
     if args.use_systemsize_updates or args.update_size == "system":
         mc_config.update_size_per_step = 2 * L**2
     elif args.update_size == "halfsystem":
@@ -216,6 +218,10 @@ def main(args):
     else:
         logger.error("Unrecognized value for update_size.")
         sys.exit(1)
+
+    # Set up EC config
+    ec_config = ExactEvaluatorConfig()
+    ec_config.gauge_fixing = args.gauge_fixing
 
     if args.seed is not None:
         seed = args.seed
@@ -406,9 +412,7 @@ def main(args):
             mc_mgr = cache.load_obj_from_local_cache("evaluator_manager")
             logger.info(f"Loaded evaluator manager from cache.")
         else:
-            mc_mgr = EvaluatorManager(
-                system_type, system_cfg, mc_config, args.nrunner, args.gauge_fixing
-            )
+            mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
         ggpeps.global_vars["eval_manager"] = mc_mgr  # save for global access
 
         start = timer()
@@ -426,9 +430,7 @@ def main(args):
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
 
         mc_config.minimizer_mode = True
-        mc_mgr = EvaluatorManager(
-            system_type, system_cfg, mc_config, args.nrunner, args.gauge_fixing
-        )
+        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
 
         # Set the parameters of the minimizer according to the command line
         min_cfg = MinimizerConfig()
@@ -447,9 +449,7 @@ def main(args):
         minimizer.save(output_dir=args.output)
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
-        ex_eval = EvaluatorManager(
-            system_type, system_cfg, None, args.nrunner, args.gauge_fixing
-        )
+        ex_eval = EvaluatorManager(system_type, system_cfg, ec_config, args.nrunner)
         ggpeps.global_vars["eval_manager"] = ex_eval
 
         start = timer()
@@ -464,9 +464,7 @@ def main(args):
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
 
         start = timer()
-        ex_mgr = EvaluatorManager(
-            system_type, system_cfg, None, args.nrunner, args.gauge_fixing
-        )
+        ex_mgr = EvaluatorManager(system_type, system_cfg, ec_config, args.nrunner)
 
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
@@ -507,7 +505,6 @@ def main(args):
                 system_type,
                 system_cfg,
                 args.nrunner,
-                args.gauge_fixing,
                 port=args.port,
             )  # TODO: port is not defined!!
             minimizer = Minimizer(mc, min_cfg)
@@ -524,7 +521,6 @@ def main(args):
             system_type,
             system_cfg,
             args.nrunner,
-            args.gauge_fixing,
             port=args.port,
         )
         mc_result = mc_mgr.simulate()

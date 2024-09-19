@@ -6,7 +6,7 @@ import numpy as np
 from ggpeps import system, lattice
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 from ggpeps.evaluator_manager import EvaluatorManager
-from ggpeps.exacteval import ExactEvaluator
+from ggpeps.exacteval import ExactEvaluator, ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig
 
 
@@ -22,8 +22,8 @@ class TestMinimizerZ2(unittest.TestCase):
         )
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
-        gauge_fixing = False
-        exact_ev = ExactEvaluator(None, sys, gauge_fixing)
+        exact_cfg = ExactEvaluatorConfig()
+        exact_ev = ExactEvaluator(exact_cfg, sys)
         res = exact_ev.evaluate()
 
         for ind in range(3):
@@ -60,8 +60,8 @@ class TestMinimizerZ2(unittest.TestCase):
                 sys_left = system.Z2System2D(system_cfg_left)
                 sys_right = system.Z2System2D(system_cfg_right)
 
-                exact_ev_left = ExactEvaluator(None, sys_left, gauge_fixing)
-                exact_ev_right = ExactEvaluator(None, sys_right, gauge_fixing)
+                exact_ev_left = ExactEvaluator(exact_cfg, sys_left)
+                exact_ev_right = ExactEvaluator(exact_cfg, sys_right)
 
                 res_left = exact_ev_left.evaluate()
                 res_right = exact_ev_right.evaluate()
@@ -82,8 +82,8 @@ class TestMinimizerZ2(unittest.TestCase):
         )
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
-        gauge_fixing = False
-        exact_ev = ExactEvaluator(None, sys, gauge_fixing)
+        exact_cfg = ExactEvaluatorConfig()
+        exact_ev = ExactEvaluator(exact_cfg, sys)
         res = exact_ev.evaluate()
 
         for layer in range(nlayer):
@@ -121,8 +121,8 @@ class TestMinimizerZ2(unittest.TestCase):
                     sys_left = system.Z2System2D(system_cfg_left)
                     sys_right = system.Z2System2D(system_cfg_right)
 
-                    exact_ev_left = ExactEvaluator(None, sys_left, gauge_fixing)
-                    exact_ev_right = ExactEvaluator(None, sys_right, gauge_fixing)
+                    exact_ev_left = ExactEvaluator(exact_cfg, sys_left)
+                    exact_ev_right = ExactEvaluator(exact_cfg, sys_right)
 
                     res_left = exact_ev_left.evaluate()
                     res_right = exact_ev_right.evaluate()
@@ -141,8 +141,8 @@ class TestMinimizerZ2(unittest.TestCase):
         system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0])
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
-        gauge_fixing = False
-        exact_ev = ExactEvaluator(None, sys, gauge_fixing)
+        exact_cfg = ExactEvaluatorConfig()
+        exact_ev = ExactEvaluator(exact_cfg, sys)
         res = exact_ev.evaluate()
 
         for ind in range(3):
@@ -164,8 +164,8 @@ class TestMinimizerZ2(unittest.TestCase):
                 sys_left = system.Z2System2D(system_cfg_left)
                 sys_right = system.Z2System2D(system_cfg_right)
 
-                exact_ev_left = ExactEvaluator(None, sys_left, gauge_fixing)
-                exact_ev_right = ExactEvaluator(None, sys_right, gauge_fixing)
+                exact_ev_left = ExactEvaluator(exact_cfg, sys_left)
+                exact_ev_right = ExactEvaluator(exact_cfg, sys_right)
 
                 res_left = exact_ev_left.evaluate()
                 res_right = exact_ev_right.evaluate()
@@ -189,8 +189,8 @@ class TestMinimizerZ2(unittest.TestCase):
         )
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
-        gauge_fixing = False
-        exact_ev = ExactEvaluator(None, sys, gauge_fixing)
+        exact_cfg = ExactEvaluatorConfig()
+        exact_ev = ExactEvaluator(exact_cfg, sys)
         res = exact_ev.evaluate()
 
         for layerind in range(nlayer):
@@ -227,8 +227,8 @@ class TestMinimizerZ2(unittest.TestCase):
                     sys_left = system.Z2System2D(system_cfg_left)
                     sys_right = system.Z2System2D(system_cfg_right)
 
-                    exact_ev_left = ExactEvaluator(None, sys_left, gauge_fixing)
-                    exact_ev_right = ExactEvaluator(None, sys_right, gauge_fixing)
+                    exact_ev_left = ExactEvaluator(exact_cfg, sys_left)
+                    exact_ev_right = ExactEvaluator(exact_cfg, sys_right)
 
                     res_left = exact_ev_left.evaluate()
                     res_right = exact_ev_right.evaluate()
@@ -263,16 +263,14 @@ class TestMinimizerZ2(unittest.TestCase):
         mc_config.meas_steps = 10000
         mc_config.binsize = 1
         mc_config.minimizer_mode = True
+        mc_config.gauge_fixing = False
 
         min_config = MinimizerConfig()
 
-        gauge_fixing = False
-        mc_mgr = EvaluatorManager(
-            system.Z2System2D, system_cfg, mc_config, 0, gauge_fixing=False
-        )
+        mc_mgr = EvaluatorManager(system.Z2System2D, system_cfg, mc_config, 0)
         minimizer = Minimizer(min_config, mc_mgr)
-        mc_left = MonteCarloEvaluator(mc_config, sys_left, gauge_fixing)
-        mc_right = MonteCarloEvaluator(mc_config, sys_right, gauge_fixing)
+        mc_left = MonteCarloEvaluator(mc_config, sys_left)
+        mc_right = MonteCarloEvaluator(mc_config, sys_right)
 
         minimizer.last_result = minimizer.evaluator_manager.simulate()
         mc_left.evaluate()

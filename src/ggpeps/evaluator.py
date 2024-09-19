@@ -15,11 +15,10 @@ class EvaluatorResult:
 class Evaluator(ABC):
     """Base class for the different evaluators (ExactEvaluator and MonteCarloEvaluator)."""
 
-    def __init__(self, evaluator_cfg, system, gauge_fixing):
+    def __init__(self, evaluator_cfg, system):
         self.system = system
         self.obsdict: dict = None
         self.cfg = evaluator_cfg
-        self.gauge_fixing: bool = gauge_fixing
         self.evaluator_type: str | None = None  # exact or mc
 
     @abstractmethod

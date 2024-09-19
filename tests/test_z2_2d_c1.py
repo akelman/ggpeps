@@ -8,7 +8,7 @@ from ggpeps import lattice
 from ggpeps.lattice import Direction
 
 from ggpeps.evaluator_manager import EvaluatorManager
-from ggpeps.exacteval import ExactEvaluator
+from ggpeps.exacteval import ExactEvaluatorConfig, ExactEvaluator
 from ggpeps.mc import MonteCarloEvaluatorConfig, MonteCarloEvaluator
 from ggpeps.utils import compare_array_elementwise
 
@@ -1372,10 +1372,8 @@ class TestZ2SystemMethods(unittest.TestCase):
         mc_config.warmup_steps = 10
         mc_config.meas_steps = 10
         mc_config.binsize = 1
-        gauge_fixing = False
-        mc_mgr = EvaluatorManager(
-            system.Z2System2D, system_cfg, mc_config, 0, gauge_fixing
-        )
+        mc_config.gauge_fixing = False
+        mc_mgr = EvaluatorManager(system.Z2System2D, system_cfg, mc_config, 0)
         mc_result = mc_mgr.simulate()
         el_energy = mc_result.get_obs_mean("el_energy")
         self.assertAlmostEqual(el_energy, 0.0)
@@ -1394,15 +1392,16 @@ class TestZ2SystemMethods(unittest.TestCase):
         sys_exact = system.Z2System2D(system_cfg)
         sys_mc = system.Z2System2D(system_cfg)
 
-        exact_ev = ExactEvaluator(None, sys_exact)
+        exact_cfg = ExactEvaluatorConfig()
+        exact_ev = ExactEvaluator(exact_cfg, sys_exact)
         res = exact_ev.evaluate()
 
         mc_config = MonteCarloEvaluatorConfig()
         mc_config.binsize = 1
         mc_config.meas_steps = 40000
         mc_config.warmup_steps = 10000
-        gauge_fixing = False
-        mc = MonteCarloEvaluator(mc_config, sys_mc, gauge_fixing)
+        mc_config.gauge_fixing = False
+        mc = MonteCarloEvaluator(mc_config, sys_mc)
         mc.evaluate()
 
         self.assertAlmostEqual(

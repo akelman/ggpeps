@@ -6,6 +6,7 @@ import numpy as np
 from ggpeps import lattice
 from ggpeps import system, exacteval
 
+from ggpeps.exacteval import ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluatorConfig, MonteCarloEvaluator
 
 
@@ -18,7 +19,8 @@ class Testgaugefixing(unittest.TestCase):
         self.lat2 = lattice.Lattice2D(2, 2)
         self.lat4 = lattice.Lattice2D(4, 4)
 
-        eval_cfg = None
+        eval_cfg = ExactEvaluatorConfig()
+        eval_cfg.gauge_fixing = False
         paramvec = np.random.rand(2, 20)
 
         # Build 2x2 system and evaluator
@@ -26,7 +28,7 @@ class Testgaugefixing(unittest.TestCase):
         cfg2.paramvec = paramvec
         self.system_z2_2 = system.Z2System2D(cfg2)
         self.system_z2_2.cfg.enforce_parameter_conditions(self.system_z2_2.cfg.paramvec)
-        self.evaluator2 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_2, False)
+        self.evaluator2 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_2)
         self.configvec2 = [config for config in self.evaluator2.generate_config_vec()]
         self.neutral_gauge2 = self.system_z2_2.gaugemgr.get_neutral_gauge_value()
 
@@ -35,7 +37,7 @@ class Testgaugefixing(unittest.TestCase):
         self.system_z2_4 = system.Z2System2D(cfg4)
         cfg4.paramvec = paramvec
         self.system_z2_4.cfg.enforce_parameter_conditions(self.system_z2_4.cfg.paramvec)
-        self.evaluator4 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_4, False)
+        self.evaluator4 = exacteval.ExactEvaluator(eval_cfg, self.system_z2_4)
         self.configvec4 = [config for config in self.evaluator4.generate_config_vec()]
         self.netural_gauge4 = self.system_z2_4.gaugemgr.get_neutral_gauge_value()
 
@@ -81,11 +83,11 @@ class Testgaugefixing(unittest.TestCase):
     def test_exacteval(self):
         """Ensure that exact evaluation gives the same results with and without gauge fixing"""
 
-        self.evaluator2.gauge_fixing = False
+        self.evaluator2.cfg.gauge_fixing = False
         no_gauge_fixing_eval = self.evaluator2.evaluate()
 
         self.evaluator2.obsdict = None
-        self.evaluator2.gauge_fixing = True
+        self.evaluator2.cfg.gauge_fixing = True
         gauge_fixing_eval = self.evaluator2.evaluate()
 
         for key, val in no_gauge_fixing_eval.items():
@@ -100,6 +102,7 @@ class Testgaugefixing(unittest.TestCase):
         mc_config.meas_steps = 20000  # 40000
         mc_config.binsize = 1
         mc_config.update_size_per_step = 2
+        mc_config.gauge_fixing = False
 
         # MC evaluators - with and without gauge fixing
         cfg = system.Z2System2D_G2C_F2C_Config(self.lat2, 1, 1, 1, 1)
@@ -107,12 +110,9 @@ class Testgaugefixing(unittest.TestCase):
         system_z2_2_A = system.Z2System2D(cfg)
         system_z2_2_B = system.Z2System2D(cfg)
 
-        mc_evaluator_no_gf = MonteCarloEvaluator(
-            mc_config, system_z2_2_A, gauge_fixing=False
-        )
-        mc_evaluator_gf = MonteCarloEvaluator(
-            mc_config, system_z2_2_B, gauge_fixing=True
-        )
+        mc_evaluator_no_gf = MonteCarloEvaluator(mc_config, system_z2_2_A)
+        mc_config.gauge_fixing = True
+        mc_evaluator_gf = MonteCarloEvaluator(mc_config, system_z2_2_B)
 
         # Evaluations
         res_no_gf = mc_evaluator_no_gf.evaluate()

@@ -10,14 +10,25 @@ import ggpeps.lattice as lattice
 from ggpeps.evaluator import Evaluator
 
 
+class ExactEvaluatorConfig:
+    """ExactEvaluator Configuration
+
+    This class manages the parameters of the exact simulation.
+    It is more convenient than passing an extensive number of parameters to the constructor.
+    """
+
+    def __init__(self):
+        self.gauge_fixing = False
+
+
 class ExactEvaluator(Evaluator):
     """An ExactEvaluator exactly evaluates the expectation value of an observable by iterating over all possible states of the gauge field."""
 
-    def __init__(self, evaluator_cfg, system, gauge_fixing) -> None:
+    def __init__(self, evaluator_cfg, system) -> None:
+        self.cfg = evaluator_cfg
         self.system = system
         self.obsdict: dict = None
         self.evaluator_type = "exact"
-        self.gauge_fixing: bool = gauge_fixing
 
     def compute_expval(self, obs: np.ndarray, normvec: np.ndarray):
         """Compute the expectation value of an observable.
@@ -51,7 +62,7 @@ class ExactEvaluator(Evaluator):
             dict: Dictionary of the results
         """
         if self.obsdict is None:
-            if self.gauge_fixing:
+            if self.cfg.gauge_fixing:
                 configvec = self.generate_config_vec()
             else:
                 poss_gauges = self.system.gaugemgr.get_possible_gauge_values()

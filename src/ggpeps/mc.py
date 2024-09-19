@@ -119,7 +119,7 @@ def run_mc(
 
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
-    mc = MonteCarloEvaluator(mc_cfg, system, False)  # TODO: set gauge fixing properly
+    mc = MonteCarloEvaluator(mc_cfg, system)
     mc.evaluate()
     return mc
 
@@ -130,12 +130,11 @@ def run_mc(
 class MonteCarloEvaluator(Evaluator):
     """Class to take care of the MC simulation on a single runner"""
 
-    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system, gauge_fixing):
+    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
         self.cfg = evaluator_cfg
         self.system = system
         self.evaluator_type = "mc"
         self.obsdict: dict = {}
-        self.gauge_fixing = gauge_fixing
 
         self.step: int = 0
         self.init_measurements()
@@ -323,6 +322,8 @@ class MonteCarloEvaluator(Evaluator):
         """Update for the MC simulation.
         This updates randomly chooses a single site and updates it.
         The update is local. The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+
+        TODO: add gauge fixing here
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
@@ -351,7 +352,7 @@ class MonteCarloEvaluator(Evaluator):
         lattice = self.system.cfg.lattice
         comp_tree = lattice.comp_tree  # non gauge fixed links
         nlinks = lattice.nlinks
-        if self.gauge_fixing:
+        if self.cfg.gauge_fixing:
             for i in comp_tree:
                 # Uniformly pick a gauge to replace
                 theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
@@ -387,7 +388,7 @@ class MonteCarloEvaluator(Evaluator):
         The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
         """
         nlinks = self.system.cfg.lattice.nlinks
-        if self.gauge_fixing:
+        if self.cfg.gauge_fixing:
             links_inds = self.cfg.rng_state.choice(
                 self.system.cfg.lattice.comp_tree,
                 self.cfg.update_size_per_step,
