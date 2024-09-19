@@ -353,10 +353,7 @@ def is_covmat(mat: np.ndarray) -> bool:
 
 def anti_symmetrize(mat):
     """Force a matrix to be anti-symmetirc."""
-    if issparse(mat):
-        return 0.5 * (mat - mat.T)
-    else:
-        return 0.5 * (mat - xnp.transpose(mat))
+    return 0.5 * (mat - mat.T)
 
 
 def get_nonzero_fraction(mat):
