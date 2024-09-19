@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 
 from ggpeps import lattice, system, utils
+from ggpeps import xnp as xnp
 
 
 class TestSystemBase(unittest.TestCase):
@@ -363,11 +364,13 @@ class TestSystemBase(unittest.TestCase):
         # We know that the gamma dirac matrices have all the same shape
         m, _ = self.system_z2_1c.gamma_dirac_vec[-1].shape
         smat = utils.generate_smat(m)
-        gamma_maj_vec = [
-            np.real(smat @ gamma_dirac @ np.transpose(smat))
-            for gamma_dirac in self.system_z2_1c.gamma_dirac_vec
-        ]
-        new_calc = np.real(
-            smat @ self.system_z2_1c.gamma_dirac_vec @ np.transpose(smat)
+        gamma_maj_vec = xnp.array(
+            [
+                xnp.real(smat @ gamma_dirac @ xnp.transpose(smat))
+                for gamma_dirac in self.system_z2_1c.gamma_dirac_vec
+            ]
+        )
+        new_calc = xnp.real(
+            smat @ self.system_z2_1c.gamma_dirac_vec @ xnp.transpose(smat)
         )
         self.assertTrue((gamma_maj_vec == new_calc).all())

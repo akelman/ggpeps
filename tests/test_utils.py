@@ -1,8 +1,11 @@
 import unittest
 from unittest import skip
-from ggpeps import utils, lattice, system
-from pfapack import pfaffian as pf
+
 import numpy as np
+from pfapack import pfaffian as pf
+
+from ggpeps import utils, lattice, system
+from ggpeps import xnp as xnp
 
 
 class TestUtils(unittest.TestCase):
@@ -86,13 +89,18 @@ class TestUtils(unittest.TestCase):
         deriv_mat[1, 0] = -1
         for i in range(10):
             mat_rand = utils.anti_symmetrize(np.random.rand(4, 4))
-            derivative_ana = utils.derivative_pfaffian(mat_rand, deriv_mat)
             mat_rand_right = mat_rand.copy()
             mat_rand_right[0, 1] += eps
             mat_rand_right[1, 0] -= eps
             mat_rand_left = mat_rand.copy()
             mat_rand_left[0, 1] -= eps
             mat_rand_left[1, 0] += eps
+
+            mat_rand = xnp.array(mat_rand)
+            mat_rand_right = xnp.array(mat_rand_right)
+            mat_rand_left = xnp.array(mat_rand_left)
+
+            derivative_ana = utils.derivative_pfaffian(mat_rand, deriv_mat)
             derivative_numeric = (
                 pf.pfaffian(mat_rand_right) - pf.pfaffian(mat_rand_left)
             ) / (2 * eps)

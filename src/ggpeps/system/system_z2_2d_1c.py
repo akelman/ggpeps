@@ -2,8 +2,8 @@ import logging
 
 import sympy
 
-# import numpy as np
-from ggpeps import xnp as np
+import numpy as np
+from ggpeps import xnp as xnp
 from scipy.linalg import block_diag
 
 import ggpeps
