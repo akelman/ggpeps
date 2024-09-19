@@ -1,7 +1,7 @@
 import os
 import re
 import sys
-import utils
+from ggpeps import utils
 import pickle
 import numpy as np
 import pandas as pd
