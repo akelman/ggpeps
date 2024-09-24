@@ -15,6 +15,8 @@ def lint(session):
         "--select",
         "E,W,F",
         ".",
+        "--extend-ignore",
+        "E203",  # whitespace around : in slices
         "--max-line-length",
         "89",
     )

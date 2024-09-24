@@ -7,7 +7,7 @@ from ggpeps import lattice
 from ggpeps import system, exacteval
 
 
-# ======================= Z2 fermionic system (4 copies) =========================================
+# ======================= Z2 fermionic system (4 copies) =======================
 
 
 class TestZ2C4System(unittest.TestCase):

@@ -1,11 +1,7 @@
 import unittest
 import numpy as np
 
-import ggpeps.system as system
-import ggpeps.lattice as lattice
-from ggpeps.evaluator_manager import EvaluatorManager
-from ggpeps.minimizer import Minimizer, MinimizerConfig, Cache
-from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig
+from ggpeps.minimizer import Cache
 
 
 class TestCache(unittest.TestCase):
