@@ -18,16 +18,18 @@ def calculate_lognormvec_numpy(
     for ind in range(nlayer):
         gamma_in_sys = gamma_in_sys_vec[ind]
         mat_d = mat_d_vec[ind]
+
+        sign, logval = np.linalg.slogdet(
+            (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d)
+        )
+
         if all_factors:
-            sign, logval = np.linalg.slogdet(
-                (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d)
-            ) - mat_d.shape[0] * np.log(2)
+            logval -= mat_d.shape[0] * np.log(2)
         else:
             # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
-            sign, logval = np.linalg.slogdet(
-                (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d)
-            )
+            pass
         dest[ind] = logval
+
     # The factor 1/2 is the square-root
     return dest / 2
 
