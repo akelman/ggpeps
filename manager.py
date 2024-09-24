@@ -342,7 +342,7 @@ def main(args):
 
     # Device selection: Checks if GPUs are available. If yes it uses the first available GPU;
     # if not, defaults to using the CPU.
-    logger.info("========= BACKEND INFO =========")
+    logger.info("======= BACKEND INFO =======")
     if ggpeps.GPU_AVAILABLE:
         logger.info(f"Found GPU, using {ggpeps.PREFERRED_DEVICE}.")
         # TODO: add basic GPU info
