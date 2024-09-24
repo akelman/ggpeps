@@ -268,7 +268,10 @@ class U1System2D(System2DBase):
 
     def update_gauge_ind(self, link_ind, theta):
         # Update the gaugefield
-        self._gaugefieldvec[link_ind] = theta
+        if ggpeps.PREFERRED_BACKEND == "jax":
+            self._gaugefieldvec = self._gaugefieldvec.at[link_ind].set(theta)
+        else:
+            self._gaugefieldvec[link_ind] = theta
         # There are two directions per vertex
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
