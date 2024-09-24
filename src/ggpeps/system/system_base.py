@@ -1081,7 +1081,7 @@ class System2DBase(ABC):
                 # the derivative calculation is computationally expensive
                 # we can skip it for parameters that are forced by the ansatz to be zero
                 if ggpeps.PREFERRED_BACKEND == "jax":
-                    dest.at[symbol_ind].set(
+                    dest = dest.at[symbol_ind].set(
                         self.compute_grad_over_norm(symbol, layerind)
                     )
                 else:

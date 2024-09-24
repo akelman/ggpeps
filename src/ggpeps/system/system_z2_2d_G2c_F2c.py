@@ -106,7 +106,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
                 if isinstance(mat, np.ndarray):  # TODO: handle jax better
                     mat[coord] = 0
                 else:
-                    mat.at[coord].set(0)
+                    mat = mat.at[coord].set(0)
                 zeroed_params.append(coord)
 
         zero_for_fermionic_layer = [
@@ -127,7 +127,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
                 if isinstance(mat, np.ndarray):
                     mat[coord] = 0
                 else:
-                    mat.at[coord].set(0)
+                    mat = mat.at[coord].set(0)
                 zeroed_params.append(coord)
 
         # save zeroed params
