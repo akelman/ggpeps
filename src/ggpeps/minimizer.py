@@ -213,7 +213,7 @@ class Minimizer:
         flattened_energygrad = min_result.jac
         energy = min_result.fun
         converged = min_result.success
-        message = f"message: {min_result.message} Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {min_result.njev}"
+        message = f"{min_result.message} Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {min_result.njev}"
 
         dest = MinimizerResult(
             flattened_paramvec,
