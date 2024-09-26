@@ -296,7 +296,7 @@ def main(args):
                 g_mag,
                 g_int,
                 g_mass,
-                g_chem,
+                None,  # no chemical potential for this ansatz, which does not include matter
                 num_pg_layer=args.num_pg_layer,
                 num_fermionic_layer=0,
             )
@@ -308,7 +308,7 @@ def main(args):
                 g_mag,
                 g_int,
                 g_mass,
-                g_chem,
+                None,  # no chemical potential for this ansatz, which does not include matter
                 num_pg_layer=args.num_pg_layer,
                 num_fermionic_layer=0,
             )
