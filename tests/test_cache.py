@@ -20,7 +20,7 @@ class TestCache(unittest.TestCase):
     def test_cache_keys(self):
         # Test that all cached variables are present
         self.assertEqual(self.cache.cache_data["cache_version"], 0.1)
-        self.assertTrue("git_hash" in self.cache.cache_data.keys())
+        self.assertTrue("ggpeps_version" in self.cache.cache_data.keys())
 
         self.assertEqual(self.cache.cache_data["mode"], "eval-mc")
         self.assertEqual(self.cache.cache_data["evaluator_manager"], None)

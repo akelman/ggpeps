@@ -18,7 +18,7 @@ class Cache:
         self.cache_file: str = cache_file
         self.cache_data: dict = {
             "cache_version": self.cache_version,
-            "git_hash": utils.get_git_hash(),
+            "ggpeps_version": ggpeps.__version__,
             "mode": mode,
             "evaluator_manager": None,
             "energy": {},
