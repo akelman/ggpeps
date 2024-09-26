@@ -1,11 +1,11 @@
 # Gaussian PEPS simulation
 
 This repository contains the code for simulations with Gaussian Fermionic Projected Entangled Pair States (GGPEPS).
-The aim is to simulate lattice gauge theories. Currently only $Z_N$ theories are operational.
+The aim is to simulate lattice gauge theories. Currently, only $\mathbb{Z}_N$ theories are operational.
 
 ## Installation
 The code is written for Python 3 and tested to work with Python 3.9.
-Earlier and later versions should work as well (though there may be issues relating to type hint in python < 3.9).
+Earlier and later versions should work as well (though there may be issues relating to type hints in python < 3.9).
 
 To make sure that all requirements of the package are fulfilled, the easiest way to use the code is to create a virtual environment and install the necessary packages independent of the python packages of the operating system.
 
@@ -16,9 +16,8 @@ For the rest of the tutorial, we assume it to be in `~/.pyenv/`.
     cd ~/.pyenv
     python -m venv gaussianenv
     ```
-    Assuming you are using bash or zsh, you can activate the environment with `source ~/.pyenv/gaussianenv/bin/activate`.
-    Upon activation, you will notice that your prompt changes.
-    As long as it is prefixed with `(gaussianenv)` the virtual environment is active.
+    Assuming you are using bash or zsh, you can activate the environment with `source ~/.pyenv/gaussianenv/bin/activate`. If you are using csh, instead use `source ~/.pyenv/gaussianenv/bin/activate.csh`.
+    Upon activation, you will notice that your prompt changes. As long as it is prefixed by `(gaussianenv)` the virtual environment is active.
     The virtual environment can be deactivated with `deactivate`.
 <br/>
 2. **Clone the code**
@@ -39,14 +38,14 @@ For the next step, please navigate into the repo that you just downloaded and ac
     ```
     This command installs the package as an editable package, i.e. all changes in the source code will be directly reflected in the installed package.
 
-    If you do not intend to develop the code, you can install with
+    If you do not intend to edit the code, you can install with
     ```
     pip install .
     ```
 
     Both commands will install the package `ggpeps` into your environment (and the necessary dependencies).
 
-You can test your installation with opening a python console (just type `python`) and executing
+You can test your installation by opening a python console (just type `python`) and executing
 ```python
 import ggpeps
 ggpeps.__version__
@@ -77,24 +76,23 @@ All scripts in the main folder call parts of the package and provide the infrast
 
 The package `ggpeps` is divided into several parts:
 
-- `plot/`: Helper scripts for plots.
-- `system/`: Module containing all system implementations. Currently, two-dimensional systems for $Z_2$ with one and two copies of virtual fermions on the links are implemented for the pure gauge case, and 2D systems with 2,4,8 copies of virtual fermions on the links for the fermionic case.
+- `system/`: Module containing all system implementations. Currently, two-dimensional systems for $\mathbb{Z}_2$ with one and two copies of virtual fermions on the links are implemented for the pure gauge case, and 2D systems with 2,4,8 copies of virtual fermions on the links for the fermionic case.
 The system configs contain all information defining an ansatz (the $T$ matrix, $\Gamma_\text{in}$, etc.), while the system classes define observables, intermediate calculations, etc.
 The implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
 - `exacteval.py`: For small systems and finite gauge groups, the expectation values of the states can be evaluated exactly by contracting the full PEPS.
-- `gauge.py`: Implementation of the gauge groups
-- `lattice.py`: Implementation of two- and three-dimensional lattices
-- `mc.py`: Implementation of the Monte Carlo sampling
-- `measurement.py`: Measurement class to manage the timeseries data of the MC simulation
+- `gauge.py`: Implementation of the gauge groups.
+- `lattice.py`: Implementation of two- and three-dimensional lattices.
+- `mc.py`: Implementation of the Monte Carlo sampling.
+- `measurement.py`: Measurement class to manage the timeseries data of the MC simulation.
 - `minimizer.py`: Minimizer class with a custom minimizer and a wrapper of the `scipy.optimize.minimize` function.
-- `utils.py`: Utility functions
+- `utils.py`: Utility functions.
 
 Each implemented ansatz has it's own config class, each a subclass of Config2DBase (found in `system_base.py`). Currently, these are the implemented ansatz's (each located in a file of the same name):
 - `system_u1_2d`: Not working - the implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
-- `system_z2_2d`: $Z_2$, 1 copy of virtual modes per layer, pure gauge.
-- `system_z2_2d_2c`: $Z_2$, 2 copies of virtual modes per layer, pure gauge.
-- `system_z2_2d_8c`: $Z_2$, 8 copies of virtual modes per layer. This is extremely impractical to run, even for 2x2 systems, due to the large number of virtual modes; it was built for testing purposes. Because there are so many parameters, this ansatz is more systematic in handling them.
-- `system_z2_2d_G2c_F2c`: $Z_2$, 2 copies of virtual modes per layer (PG and matter layers), includes matter.
+- `system_z2_2d`: $\mathbb{Z}_2$, 1 copy of virtual modes per layer, pure gauge.
+- `system_z2_2d_2c`: $\mathbb{Z}_2$, 2 copies of virtual modes per layer, pure gauge.
+- `system_z2_2d_8c`: $\mathbb{Z}_2$, 8 copies of virtual modes per layer. This is extremely impractical to run, even for 2x2 systems, due to the large number of virtual modes; it was built for testing purposes. Because there are so many parameters, this ansatz is more systematic in handling them.
+- `system_z2_2d_G2c_F2c`: $\mathbb{Z}_2$, 2 copies of virtual modes per layer (PG and matter layers), includes matter.
 - `system_z2_2d_G2c_F4c`: *this is misnamed, and includes 4 copies per layer for both layers*. However the extra copies in the PG layer are set to zero, which makes it effectively 2 copies (though with matrix sizes, and computational cost, of 4 copies).
 
 The pure gauge ansatz's all techincally contain a parameter for coupling to matter, but (a) it is manually set to zero, (b) other parts of the ansatz (e.g. the Gamma_in) do not obey the symmetries required for including matter.
@@ -110,7 +108,7 @@ To set up your editor to automatically format your code (e.g. on save), see [Bla
 
 ## Data Generation
 
-The script `manager.py` is the central point for data generation. It supports different modes: `eval`, and `min` where both can be evaluated with `exact` and `mc`.
+The script `manager.py` is the central point for data generation. It supports different modes: `eval` and `min` where both can be evaluated with `exact` and `mc`.
 
 All modes write log files to disk and to console. 
 The files are named according to the parameters that were provided via the commandline. 
@@ -124,22 +122,22 @@ In the following, we will describe the different modes in more detail.
 
 `eval-mc`: 
 The evaluation mode computes the expectation value of a set of observables with given set of parameters using Monte Carlo.
-To simulate a $2\times 2$ system with MC, we can call
+To simulate a $2\times 2$ system with MC, we can run
 ```
 python manager.py eval 2
 ```
-The call generates three files: a log file, a data file and a summary file.
+The call generates three files: a log file, a data file, and a summary file.
 The log file is identical to the text printed on the console.
 It is especially useful to check computations performed on a cluster.
 
 The data file contains the full timeseries of the computation and can get quite large.
-It is compressed by default to save disk space
+It is compressed by default to save disk space.
 
 The summary file is most relevant for most plots since it contains the mean values of observables including errors (computed via binning analysis).
 
 `eval-exact`:
 The exact evaluation mode computes the expectation value of a set of observables with given set of parameters using exact contraction.
-This works only for small systems of $L=2$.
+This works only for small systems of $L=2$. For systems of size $L=4$, it may also be possible to run in `exact` mode if gauge fixing is turned on, though this will still be slower than MC. 
 
 ```
 python manager.py eval 2
@@ -149,7 +147,7 @@ python manager.py eval 2
 In minimization mode, the Kogut-Susskind Hamiltonian for the gauge theory in question is minimized by using different minimizers. 
 The expectation values for a given set of parameters are computed with Monte Carlo.
 The update according to the computed energy and gradients is controlled by the optimizer.
-Currently, scipy optimizers like `BFGS` and a custom gradient based optimizer is available.
+Currently, scipy optimizers (such as `BFGS`) as well as a custom gradient based optimizer are available.
 
 ```
 python manager.py min 2 --method BFGS
@@ -210,7 +208,7 @@ python -m unittest tests/test_lattice.py
 ### Testing across multiple architectures
 The package supports CPU and GPU operation.
 To test both these modes independently, the tests are run with `nox` to run in different environments.
-Additionally, it enables testing of the environment, coverage testing and lint testing.
+Additionally, it enables testing of the environment, coverage testing, and lint testing.
 
 The full `nox` test suite can be executed with
 ```
