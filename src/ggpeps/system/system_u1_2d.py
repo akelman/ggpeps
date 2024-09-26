@@ -507,7 +507,9 @@ class U1System2D(System2DBase):
                 overlap_same_gauge = np.exp(0.5 * self.incdet_vec[i].det())
 
                 diff_try = gamma_in_try - mat_d_inv
-                overlap_diff_gauge = pf.pfaffian(diff_try)
+                overlap_diff_gauge = pf.pfaffian(
+                    np.array(diff_try)
+                )  # When using jax, this line produces garbage unless diff_try is first cast to numpy, which causes a test to fail. TODO: investigate why
                 dest.append(
                     prefactor * np.real(overlap_diff_gauge) / overlap_same_gauge
                 )
