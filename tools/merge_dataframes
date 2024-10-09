@@ -4,11 +4,12 @@
 import os, sys
 import pandas as pd
 
+
 def main(args):
     fnamevec = args.fnames
     # Check whether the outputfile exists already
     if os.path.exists(args.outfile):
-        print("Outputfile exists already. Aborting here.", file = sys.stderr)
+        print("Outputfile exists already. Aborting here.", file=sys.stderr)
         sys.exit(1)
 
     dfvec = []
@@ -18,16 +19,17 @@ def main(args):
             dfvec.append(df_tmp)
         else:
             print(f"No such file {fname}. Skipping.")
-    
+
     df = pd.concat(dfvec)
     df.to_pickle(args.outfile)
 
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("fnames", nargs="+", help="Filenames to be merged")
-    parser.add_argument("--outfile", default = "merge.pkl", help="Output filename")
+    parser.add_argument("--outfile", default="merge.pkl", help="Output filename")
     args = parser.parse_args()
 
     main(args)

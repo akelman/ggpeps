@@ -4,20 +4,20 @@
 import os
 import numpy as np
 
+
 def main(fnames):
     for fname in fnames:
         if os.path.isfile(fname):
             data = np.load(fname)
             basename = os.path.basename(fname)
             name, ext = os.path.splitext(basename)
-            name_out = name+".txt"
-            np.savetxt(name_out,data, delimiter="\n")
+            name_out = name + ".txt"
+            np.savetxt(name_out, data, delimiter="\n")
         else:
             print(f"File '{fname}' not found. Skipping.")
-    
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
