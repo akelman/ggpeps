@@ -10,7 +10,6 @@ def name_from_path(prefix, path):
 
 
 def folder2coupling(foldername, arg):
-    # pattern = rf"(?<={arg}_)[\d]*.[\d]*"
     pattern = rf"(?<={arg}_)[^_]+"
     result = re.search(pattern, foldername)
     if arg == "gf":
