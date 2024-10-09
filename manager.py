@@ -558,7 +558,7 @@ if __name__ == "__main__":
         choices=["eval-mc", "eval-exact", "min-mc", "min-exact", "minmult-mc"],
         help="Mode of the program",
     )
-    parser.add_argument("L", type=int, help="Size of the square system (one side)")
+    parser.add_argument("--L", type=int, help="Size of the square system (one side)")
 
     # Hamiltonian couplings
     parser.add_argument(
