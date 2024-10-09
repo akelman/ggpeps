@@ -99,12 +99,8 @@ The pure gauge ansatz's all techincally contain a parameter for coupling to matt
 
 ## Code Formatting
 Code is formatted using `black` with the default configuration.
-To format your code, run 
-```python
-black .
-```
-from the main repository directory. 
-To set up your editor to automatically format your code (e.g. on save), see [Black Editor Integrations](https://black.readthedocs.io/en/stable/integrations/editors.html).
+To format your code, run `python black .` from the main repository directory. 
+To set up your editor to automatically format your code (e.g. on save), see [Black Editor Integrations](https://black.readthedocs.io/en/stable/integrations/editors.html). Black is not listed in the package dependencies, and must be installed manually (`pip install black`).
 
 ## Data Generation
 
@@ -124,7 +120,7 @@ In the following, we will describe the different modes in more detail.
 The evaluation mode computes the expectation value of a set of observables with given set of parameters using Monte Carlo.
 To simulate a $2\times 2$ system with MC, we can run
 ```
-python manager.py eval 2
+python manager.py eval-mc 2
 ```
 The call generates three files: a log file, a data file, and a summary file.
 The log file is identical to the text printed on the console.
@@ -140,7 +136,7 @@ The exact evaluation mode computes the expectation value of a set of observables
 This works only for small systems of $L=2$. For systems of size $L=4$, it may also be possible to run in `exact` mode if gauge fixing is turned on, though this will still be slower than MC. 
 
 ```
-python manager.py eval 2
+python manager.py eval-exact 2
 ```
 
 `min-mc`:
@@ -150,7 +146,7 @@ The update according to the computed energy and gradients is controlled by the o
 Currently, scipy optimizers (such as `BFGS`) as well as a custom gradient based optimizer are available.
 
 ```
-python manager.py min 2 --method BFGS
+python manager.py min-mc 2 --method BFGS
 ```
 
 `min-exact`:
@@ -158,7 +154,7 @@ For small systems, we can substitute the Monte Carlo evaluation part in the mini
 Exact contraction is only available for systems of size 2x2.
 
 ```
-python manager.py minexact 2 --method BFGS
+python manager.py min-exact 2 --method BFGS
 ```
 
 For an overview of all command line parameters call `python manager.py --help`.
