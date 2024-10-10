@@ -51,7 +51,6 @@ def main(args):
                         args.args,
                         args.num_threads,
                     )
-                    print(slurmfile_format)
                     print(slurmfile_format, file=f)
             else:
                 print(f"Folder '{folder}' does not exist")
