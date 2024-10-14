@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 import gzip
 
 
-def main(args):
-    f, axvec = plt.subplots(4, 1)
+def main(args, save_path=None):
+    f, axvec = plt.subplots(4, 1, figsize=(20, 13))
     for fname in args.fname:
         if os.path.isfile(fname):
             basename, ext = os.path.splitext(fname)
@@ -47,7 +47,11 @@ def main(args):
     axvec[3].set_xlabel(r"$\tau$")
     axvec[3].set_yscale("log")
     # f.tight_layout()
-    plt.show()
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        plt.close()
+    else:
+        plt.show()
 
 
 if __name__ == "__main__":
@@ -57,6 +61,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--fname", nargs="+", help="MC pickle or txt file")
     parser.add_argument("--obs", type=str, default="energy", help="Observable")
+    parser.add_argument("--show", type=str, default="show", help="Observable")
 
     args = parser.parse_args()
 
