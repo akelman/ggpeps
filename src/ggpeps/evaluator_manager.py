@@ -71,7 +71,7 @@ class EvaluatorManager:
             # system_cfg_id = ray.put(self.system_cfg)
             reduced_meas_steps = self.cfg.meas_steps // self.nrunner
             logger.info(
-                f"Starting {self.nrunner} runners with {reduced_meas_steps} measurement steps each (total: {self.nrunner * reduced_meas_steps})."
+                f"Starting {self.nrunner} ray runners with {reduced_meas_steps} measurement steps each (total: {self.nrunner * reduced_meas_steps})."
             )
 
             for i in range(self.nrunner):
@@ -93,11 +93,16 @@ class EvaluatorManager:
                     "logger_level": ggpeps.global_vars["args"].level,
                 }
 
+                cpu_frac = (
+                    1 / ggpeps.global_vars["args"].nrunner
+                )  # multiplied by the number of available cpus?
                 gpu_frac = 0.0
                 if ggpeps.GPU_AVAILABLE:
                     gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
 
-                run_mc_modified = run_mc.options(num_gpus=gpu_frac)
+                run_mc_modified = run_mc.options(
+                    num_gpus=gpu_frac
+                )  # according to the ray documentation, we should also specify num_cpus
                 resultvec.append(
                     run_mc_modified.remote(
                         i, cfg, self.system_cls, self.system_cfg, logger_info
