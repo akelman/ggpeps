@@ -32,7 +32,7 @@ def build_and_check_dists(session):
     # session.run("python", "-m", "twine", "check", "dist/*")
 
 
-@nox.session(python=["3.8"])
+@nox.session(python=["3"])
 def tests_jax(session):
     build_and_check_dists(session)
 
@@ -44,7 +44,7 @@ def tests_jax(session):
     session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "jax"})
 
 
-@nox.session(python=["3.8"])
+@nox.session(python=["3"])
 def tests_numpy(session):
     build_and_check_dists(session)
 
@@ -56,7 +56,7 @@ def tests_numpy(session):
     session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "numpy"})
 
 
-@nox.session(python=["3.8"])
+@nox.session(python=["3"])
 def tests(session):
     build_and_check_dists(session)
 
