@@ -323,12 +323,17 @@ class MonteCarloEvaluator(Evaluator):
         This updates randomly chooses a single site and updates it.
         The update is local. The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
 
-        TODO: add gauge fixing here
+        TODO: test gauge fixing with this function
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
         nlinks = lattice.nlinks
-        link_ind = self.cfg.rng_state.randint(0, nlinks)
+        if self.cfg.gauge_fixing:
+            link_ind = self.cfg.rng_state.choice(
+                self.system.cfg.lattice.comp_tree, replace=False
+            )
+        else:
+            link_ind = self.cfg.rng_state.randint(0, nlinks)
         # Uniformly pick a gauge value
         theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
         # Store the old values
