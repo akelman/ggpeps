@@ -54,7 +54,7 @@ def compute_grad_over_norm_jax(
         -0.5 * np.trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
     which is very expensive to calculate.
     To reduce the number of expensive matrix multiplications, we use the fact that
-        Tr(A @ B.T) = \sum_ij a_ij b_ij
+        Tr(A @ B.T) = sum_ij a_ij b_ij
     i.e. trace of a square matrix which is the product of two real matrices can be rewritten as
     the sum of entry-wise products of their elements, i.e. as the sum of all elements of their Hadamard product [1].
     Note that for current systems, the input matrices are always real, but this should be checked if the system changes
