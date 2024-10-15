@@ -9,7 +9,7 @@ def name_from_path(prefix, path):
     return prefix + path
 
 
-def folder2coupling(foldername, arg):
+def folder2arg(foldername, arg):
     pattern = rf"(?<={arg}_)[^_]+"
     result = re.search(pattern, foldername)
     if arg == "gf":
@@ -29,7 +29,7 @@ def folder2coupling(foldername, arg):
 
 def format_slurmfile(slurmfile, name, folder, time, command, args, num_threads):
     for arg in args:
-        command += " " + folder2coupling(folder, arg)
+        command += " " + folder2arg(folder, arg)
     return slurmfile.format(jobname=name, time=time, command=command, ncpu=num_threads)
 
 
