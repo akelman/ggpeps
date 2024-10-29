@@ -43,7 +43,7 @@ class Lattice2D:
         )  # number of links not in the tree - complementary tree links
 
         # We trust the user not to modify these
-        self.maximal_tree = self.generate_maximal_tree()
+        self.maximal_tree = self.generate_tree()
         self.comp_tree = self.generate_tree_complement()
 
     def __str__(self):
@@ -292,24 +292,41 @@ class Lattice2D:
 
         return loops
 
-    def generate_maximal_tree(self):
-        """Generate a maximal tree on the lattice.
+    def generate_tree(self, num_of_rows=None):
+        """Generate a tree on the lattice.
         This allows all values on the tree to be fixed to the identity when gauge_fixing
         (no integration is needed over links on the tree).
         This method is built for a lattice with periodic boundary conditions.
 
-        The particular maximal tree returned by this function includes all the horizontal links but the last one on each row,
+        The particular tree returned by this function includes all the horizontal links in the first num_of_rows rows but the last one on each row.
+
+        If num_of rows is not given than the
         and all the vertical links but the last one on the first column.
 
         Returns:
             list: List of link-indices in the tree
         """
-        tree = [
-            self.coord2ind_dir((x, y), Direction(0))
-            for y in range(self.ny)
-            for x in range(self.nx - 1)
-        ]
-        tree += [self.coord2ind_dir((0, y), Direction(1)) for y in range(self.ny - 1)]
+
+        if (
+            num_of_rows is None or num_of_rows > self.ny
+        ):  # If number of rows to fix is not given or larfer than lattice size we generate a maximal tree
+            num_of_rows = self.ny
+            tree = [
+                self.coord2ind_dir((x, y), Direction(0))
+                for y in range(self.ny)
+                for x in range(self.nx - 1)
+            ]
+
+            tree += [
+                self.coord2ind_dir((0, y), Direction(1)) for y in range(self.ny - 1)
+            ]
+        else:
+            tree = [
+                self.coord2ind_dir((x, y), Direction(0))
+                for y in range(num_of_rows)
+                for x in range(self.nx - 1)
+            ]
+
         return tree
 
     def generate_tree_complement(self):
@@ -464,7 +481,7 @@ if __name__ == "__main__":
     print(lat_3x2)
     wilson_loop = lat_3x2.generate_wilson_loop((0, 0), (1, 1))
     print(wilson_loop)
-    lst = lat_3x2.generate_maximal_tree()
+    lst = lat_3x2.generate_tree()
     print(lst)
     print([lat_3x2.ind2coord_dir(ind) for ind in lst])
     print(len(lst))
