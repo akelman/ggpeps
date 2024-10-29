@@ -41,6 +41,48 @@ class Testgaugefixing(unittest.TestCase):
         self.configvec4 = [config for config in self.evaluator4.generate_config_vec()]
         self.netural_gauge4 = self.system_z2_4.gaugemgr.get_neutral_gauge_value()
 
+        # Build a 2x2 system where a the tree contains only 1 row
+        self.lat2_1_row_fix = lattice.Lattice2D(2, 2)
+        self.lat2_1_row_fix.maximal_tree = self.lat2_1_row_fix.generate_tree(1)
+        cfg2_1_row_fix = system.Z2System2D_G2C_F2C_Config(
+            self.lat2_1_row_fix, 1, 1, 1, 1, [0, 0]
+        )
+        cfg2_1_row_fix.paramvec = paramvec
+        self.system_z2_2_fix_1_row = system.Z2System2D(cfg2_1_row_fix)
+        self.system_z2_2_fix_1_row.cfg.enforce_parameter_conditions(
+            self.system_z2_2_fix_1_row.cfg.paramvec
+        )
+        self.evaluator2_fix_1_row = exacteval.ExactEvaluator(
+            eval_cfg, self.system_z2_2_fix_1_row
+        )
+        self.configvec2_fix_1_row = [
+            config for config in self.evaluator2_fix_1_row.generate_config_vec()
+        ]
+        self.neutral_gauge2 = (
+            self.system_z2_2_fix_1_row.gaugemgr.get_neutral_gauge_value()
+        )
+
+        # Build a 2x2 system where a the tree contains only 2 rows
+        self.lat2_2_row_fix = lattice.Lattice2D(2, 2)
+        self.lat2_2_row_fix.maximal_tree = self.lat2_2_row_fix.generate_tree(2)
+        cfg2_2_row_fix = system.Z2System2D_G2C_F2C_Config(
+            self.lat2_2_row_fix, 1, 1, 1, 1, [0, 0]
+        )
+        cfg2_2_row_fix.paramvec = paramvec
+        self.system_z2_2_fix_2_row = system.Z2System2D(cfg2_2_row_fix)
+        self.system_z2_2_fix_2_row.cfg.enforce_parameter_conditions(
+            self.system_z2_2_fix_2_row.cfg.paramvec
+        )
+        self.evaluator2_fix_2_row = exacteval.ExactEvaluator(
+            eval_cfg, self.system_z2_2_fix_2_row
+        )
+        self.configvec2_fix_2_row = [
+            config for config in self.evaluator2_fix_1_row.generate_config_vec()
+        ]
+        self.neutral_gauge2 = (
+            self.system_z2_2_fix_1_row.gaugemgr.get_neutral_gauge_value()
+        )
+
     def test_configvec_2x2(self):
         """Ensure that the configvec for gauge fixing is generated correctly.
         Ensure that the links in the tree are set to the unity in all configurations
@@ -89,6 +131,17 @@ class Testgaugefixing(unittest.TestCase):
         self.evaluator2.obsdict = None
         self.evaluator2.cfg.gauge_fixing = True
         gauge_fixing_eval = self.evaluator2.evaluate()
+
+        for key, val in no_gauge_fixing_eval.items():
+            self.assertTrue(np.allclose(val, gauge_fixing_eval[key]))
+
+    def test_gf_some_rows_exacteval(self):
+        self.evaluator2_fix_1_row.cfg.gauge_fixing = False
+        no_gauge_fixing_eval = self.evaluator2_fix_1_row.evaluate()
+
+        self.evaluator2_fix_1_row.obsdict = None
+        self.evaluator2_fix_1_row.cfg.gauge_fixing = True
+        gauge_fixing_eval = self.evaluator2_fix_1_row.evaluate()
 
         for key, val in no_gauge_fixing_eval.items():
             self.assertTrue(np.allclose(val, gauge_fixing_eval[key]))
