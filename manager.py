@@ -240,7 +240,7 @@ def main(args):
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
     if args.gauge_fixing and args.rows_gauge_fixing >= 0:
-        lattice.maximal_tree = lattice.generate_tree(args.gauge_fixing)
+        lattice.maximal_tree = lattice.generate_tree(args.rows_gauge_fixing)
         lattice.comp_tree = lattice.generate_tree_complement()
 
     # TODO: get from command line
