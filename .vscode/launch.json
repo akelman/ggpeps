@@ -160,5 +160,56 @@
                 "--ignore_cache"
             ],
         },
+        {
+            "name": "build_slurm",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/build_slurm",
+            "console": "integratedTerminal",
+            "args": [
+                "-i", "landau_slurm_master",
+                 "-t", "0",
+                 "-f", "L_4_gf_T_update_size_2",
+                "-c", "python manager.py eval-exact --g 0.2", 
+                "--args", "gf", "L", "update_size"
+            ]
+        },
+        {
+        "name": "Eval 1 row gauge fixing",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "${workspaceFolder}/manager.py",
+        "console": "integratedTerminal",
+        "args": [
+            "eval-mc",
+            "--L", "2",
+            "--level", "debug",
+            "--warmup_steps", "1000",
+            "--meas_steps", "1000",
+            "--seed", "15", 
+            "--fermions",
+            "--ncopy", "2",
+            "--num_pg_layer", "1",
+            "--num_fermionic_layer", "1",
+            "--g", "0.5", 
+            "--int", "1.0",
+            "--mass", "1.0",
+            "--ignore_cache",
+            "--gauge_fixing",
+            "--rows_gauge_fixing", "1"
+        ]
+},
+{
+    "name": "Plot eom analysis",
+    "type": "debugpy",
+    "request": "launch",
+    "program": "${workspaceFolder}/plot/plot_eom_analysis.py",
+    "console": "integratedTerminal",
+    "args": [
+        "--pkl_fname", "G:/My Drive/Research/MC/test_step_size/g_2.5_el_1.2500_mag_0.2000_int_1.0_mass_1.0/L4/L_4_gf_F_update_size_1/data_mc_L_04-04_gel_0.500_gmag_0.500_gint_1.000_nlayer_02_wsteps_0100000_msteps_1000000.pkl.gz",
+         "--log_fname", "G:/My Drive/Research/MC/test_step_size/g_2.5_el_1.2500_mag_0.2000_int_1.0_mass_1.0/L4/L_4_gf_F_update_size_1/log_eval-mc_L_4x4_gel_0.5_gmag_0.5_gint_1.0_gmass_1.0_num_pg_layer_1_num_fermionic_layer_1_wsteps_100000_msteps_1000000.log",
+         "--obs", "energy"
+    ]
+}
     ]
 }
