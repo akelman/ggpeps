@@ -763,12 +763,12 @@ def autocorr_rebin_eom(arr):
     N = len(arr)
     autocorr_array = autocorr_fft(arr)
     for i in range(len(autocorr_array)):  # find first two elements below 1/100
-        if i == N / 10:  # limit the number of bins to a minimum of 10.
-            eom = rebin_eom(arr, 20)
+        if i >= N / 10:  # limit the number of bins to a minimum of 10.
+            eom = rebin_eom(arr, 10)
             return eom
 
-        elif autocorr_fft[i] <= 1 / 100 and autocorr_fft[i + 1] <= 1 / 100:
-            num_of_bins = i
+        elif autocorr_array[i] <= 1 / 100 and autocorr_array[i + 1] <= 1 / 100:
+            num_of_bins = N // i
             eom = rebin_eom(arr, num_of_bins)
             return eom
 
