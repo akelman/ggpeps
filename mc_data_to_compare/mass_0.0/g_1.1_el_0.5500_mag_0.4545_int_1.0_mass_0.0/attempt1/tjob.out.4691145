@@ -1,0 +1,68 @@
+2024-07-28 16:11:47,972 [INFO] Git hash: 13337660ff069c0591320b162b7e9193d3f8b13a
+2024-07-28 16:11:47,972 [INFO] Logging level: info
+2024-07-28 16:11:47,972 [INFO] Mode: min-mc
+2024-07-28 16:11:47,972 [INFO] Seed: 1131710634
+2024-07-28 16:11:47,973 [INFO] ======= RAW COMMAND ========
+2024-07-28 16:11:47,973 [INFO] manager.py min-mc 4 --fermions --ncopy 2 --nlayer 2 --params paramvec.npy --warmup_steps 50000 --meas_steps 120000 --update_size 8 --nrunner 4 --g 1.1 --int 1.0 --mass 0.0
+2024-07-28 16:11:47,973 [INFO] ============================
+2024-07-28 16:11:47,982 [INFO] ========= GPU INFO =========
+2024-07-28 16:11:47,983 [INFO] No GPUs found, falling back to CPU.
+2024-07-28 16:11:47,983 [INFO] ============================
+2024-07-28 16:11:47,983 [INFO] ======= SYSTEM INFO ========
+2024-07-28 16:11:47,983 [INFO] L: 4
+2024-07-28 16:11:47,983 [INFO] # of layers: 2
+2024-07-28 16:11:47,983 [INFO] # of copies: 2
+2024-07-28 16:11:47,983 [INFO] fermions: True
+2024-07-28 16:11:47,983 [INFO] g (lambda): 1.1
+2024-07-28 16:11:47,983 [INFO] g_el: 0.55
+2024-07-28 16:11:47,983 [INFO] g_mag: 0.45454545454545453
+2024-07-28 16:11:47,983 [INFO] g_int: 1.0
+2024-07-28 16:11:47,983 [INFO] g_mass: 0.0
+2024-07-28 16:11:47,983 [INFO] Rebinning EOM: True
+2024-07-28 16:11:47,984 [INFO] Starting parameters: [[ 0.         -2.40404381  0.06235486  0.         -0.03930116  0.02570194 -0.86789621  1.63420534 -0.48050886  0.32365748  0.         -0.57834489  0.67735453  0.         -0.00508246  0.06794535
+   0.93614442  0.62925059  0.19743901 -0.80041006]
+ [ 3.0479293   0.          0.          0.          0.          0.          0.72591674  0.6554002   0.64491155  0.65708742  1.35546787  0.          0.          0.          0.          0.
+   2.23331132  1.59756399  1.42258382  1.59441826]]
+2024-07-28 16:11:47,984 [INFO] ============================
+2024-07-28 16:11:47,984 [INFO] ========= MC INFO ==========
+2024-07-28 16:11:47,984 [INFO] Seed: 1131710634
+2024-07-28 16:11:47,984 [INFO] Warmup steps: 50000
+2024-07-28 16:11:47,984 [INFO] Measurement steps: 120000
+2024-07-28 16:11:47,984 [INFO] Bin size: 1
+2024-07-28 16:11:47,984 [INFO] Update size: 8 (out of 32 total links)
+2024-07-28 16:11:47,984 [INFO] Number of Ray runners: 4 (zero indicates not using Ray)
+2024-07-28 16:11:47,985 [INFO] ============================
+2024-07-28 16:11:47,985 [INFO] ====== MINIMIZER INFO ======
+2024-07-28 16:11:47,985 [INFO] Method: BFGS
+2024-07-28 16:11:47,985 [INFO] Max Iterations: 100
+2024-07-28 16:11:47,985 [INFO] Learning rate: 0.1
+2024-07-28 16:11:47,985 [INFO] Min grad: 1e-05
+2024-07-28 16:11:47,985 [INFO] ============================
+2024-07-28 16:11:48,004 [INFO] Loaded cache file cache.pkl
+2024-07-28 16:11:48,007 [INFO] Callback message due to caching. The last_result is None.
+2024-07-28 16:11:48,008 [INFO] Callback message due to caching. The last_result is None.
+2024-07-28 16:11:48,009 [INFO] Callback message due to caching. The last_result is None.
+2024-07-28 16:11:48,032 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-07-28 23:21:55,114 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-07-29 06:31:25,966 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-07-29 13:43:34,651 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-07-29 20:32:26,185 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-07-30 03:24:43,780 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-07-30 09:35:32,998 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-07-30 15:26:57,959 [INFO] ==== Minimizer Result ====
+converged: False
+Value: -337.8350915946385
+Method: BFGS
+Parameters: [ 0.         -2.4023487   0.06453416  0.         -0.08302673  0.00394637 -0.84363727  1.6559264  -0.47583706  0.33436592  0.         -0.57854319  0.67816334  0.         -0.02402884 -0.01138494
+  0.94964862  0.65396882  0.21138396 -0.80396321  3.06780857  0.          0.          0.          0.          0.          0.63354175  0.90380352  0.62577423  0.49447036  1.36439417  0.
+  0.          0.          0.          0.          2.36440284  1.46509464  1.37014062  1.60685186]
+Message: message: Desired error not necessarily achieved due to precision loss. Total iters: 3, function evals: 49, jac evals: 37
+==========================
+
+2024-07-30 15:26:59,066 [INFO] Added evaluator manager to cache.
+2024-07-30 15:26:59,068 [INFO] Saved cache file to cache.pkl.
+2024-07-30 15:26:59,068 [INFO] ========== TIME ============
+2024-07-30 15:26:59,068 [INFO] The simulation took 170109.95370931993s.
+2024-07-30 15:26:59,068 [INFO] ============================
+
+

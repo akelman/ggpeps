@@ -171,6 +171,8 @@ class MonteCarloEvaluator(Evaluator):
             "Mass Energy Operator (bare)", binsize
         )
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
+        self.obsdict["FM 1x1"] = Measurement("FM 1x1", binsize)
+        self.obsdict["FM 2x2"] = Measurement("FM 2x2", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
         self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
 
@@ -244,6 +246,7 @@ class MonteCarloEvaluator(Evaluator):
         for k in range(len(sizes)):
             loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
+        self.obsdict["FM 1x1"].append(self.system.string_op)
 
     def energy_gradient_mc(self):
         # Compute the energy gradient from the MC results
@@ -554,5 +557,6 @@ class MonteCarloEvaluator(Evaluator):
             dest["meas_steps"].append(self.cfg.meas_steps)
             dest["mean"].append(self.get_obs_mean(key))
             dest["err"].append(self.get_obs_mean_err(key))
+        dest["mean"][12]=dest["mean"][12]/np.sqrt(dest["mean"][16])
         df = pd.DataFrame(dest)
         return df

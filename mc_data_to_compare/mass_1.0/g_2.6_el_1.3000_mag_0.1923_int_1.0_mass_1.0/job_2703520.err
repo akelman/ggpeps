@@ -1,0 +1,5 @@
+/easybuild/software/Python/3.11.3-GCCcore-12.3.0/lib/python3.11/subprocess.py:1850: RuntimeWarning: os.fork() was called. os.fork() is incompatible with multithreaded code, and JAX is multithreaded, so this will likely lead to a deadlock.
+  self.pid = _fork_exec(
+2024-08-08 11:08:20,901	INFO worker.py:1749 -- Started a local Ray instance.
+[36m(run_mc pid=2240776)[0m E0810 04:30:30.385567531 2240826 chttp2_transport.cc:2890]             keepalive_ping_end state error: 0 (expect: 1)
+srun: error: node014: task 0: Exited with exit code 1

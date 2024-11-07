@@ -1,0 +1,12 @@
+/usr/people/snirgaz/arielkelman/anaconda3/lib/python3.9/subprocess.py:1754: RuntimeWarning: os.fork() was called. os.fork() is incompatible with multithreaded code, and JAX is multithreaded, so this will likely lead to a deadlock.
+  self.pid = _posixsubprocess.fork_exec(
+2024-09-16 11:54:48,051	INFO worker.py:1783 -- Started a local Ray instance.
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** JOB 5471055 ON landau77 CANCELLED AT 2024-09-23T11:53:49 DUE TO TIME LIMIT ***
+slurmstepd: error: *** STEP 5471055.0 ON landau77 CANCELLED AT 2024-09-23T11:53:49 DUE TO TIME LIMIT ***
+*** SIGTERM received at time=1727081629 on cpu 71 ***
+PC: @     0x7fa0c25ca065  (unknown)  pthread_cond_timedwait@@GLIBC_2.3.2
+    @     0x7fa0c25ce980  (unknown)  (unknown)
+[2024-09-23 11:53:49,122 E 20568 20568] logging.cc:440: *** SIGTERM received at time=1727081629 on cpu 71 ***
+[2024-09-23 11:53:49,122 E 20568 20568] logging.cc:440: PC: @     0x7fa0c25ca065  (unknown)  pthread_cond_timedwait@@GLIBC_2.3.2
+[2024-09-23 11:53:49,122 E 20568 20568] logging.cc:440:     @     0x7fa0c25ce980  (unknown)  (unknown)

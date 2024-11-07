@@ -1,0 +1,12 @@
+/usr/people/snirgaz/arielkelman/anaconda3/lib/python3.9/subprocess.py:1754: RuntimeWarning: os.fork() was called. os.fork() is incompatible with multithreaded code, and JAX is multithreaded, so this will likely lead to a deadlock.
+  self.pid = _posixsubprocess.fork_exec(
+2024-09-16 11:54:23,069	INFO worker.py:1783 -- Started a local Ray instance.
+Traceback (most recent call last):
+  File "/usr/people/snirgaz/arielkelman/projects/gaussian-peps/manager.py", line 716, in <module>
+    main(args)
+  File "/usr/people/snirgaz/arielkelman/projects/gaussian-peps/manager.py", line 443, in main
+    minimizer.save(output_dir=args.output)
+  File "/usr/people/snirgaz/arielkelman/projects/gaussian-peps/src/ggpeps/minimizer.py", line 237, in save
+    self.last_result.save_summary(os.path.join(output_dir, fname_mc_summary))
+AttributeError: 'NoneType' object has no attribute 'save_summary'
+srun: error: landau79: task 0: Exited with exit code 1

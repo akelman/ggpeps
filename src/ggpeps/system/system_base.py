@@ -326,6 +326,8 @@ class System2DBase(ABC):
         self._mass_energy_op_vec: Optional[List[float]] = None
         self._int_energy_op: Optional[float] = None
         self._int_energy_op_vec: Optional[List[float]] = None
+        self._string_op: Optional[float] = None
+        self._string_op_vec: Optional[List[float]] = None
         self._chem_energy_op_vec = None
 
         # Woodbury Update and Matrix Inversion
@@ -368,6 +370,8 @@ class System2DBase(ABC):
         self._mass_energy_op_vec = None
         self._int_energy_op = None
         self._int_energy_op_vec = None
+        self._string_op = None
+        self._string_op_vec = None
         self._chem_energy_op_vec = None
 
         self._el_energy_op_grad_vec = None
@@ -1537,6 +1541,19 @@ class System2DBase(ABC):
             self._int_energy_op = xnp.sum(self.int_energy_op_vec)
         return self._int_energy_op
 
+    @property
+    def string_op(self) -> float:
+        """Compute the interaction energy operator for the whole system without shift.
+        This is a get function.
+
+        Returns:
+            float: Interaction energy operator (w/o shift) for the whole system
+        """
+        if self._string_op is None:
+            nsites = self.cfg.lattice.size
+            self._string_op = xnp.sum(self.string_op_vec)
+        return self._string_op
+
     # Functions that return the layer-resolved energies of each energy operator
     @property
     def el_energy_op_vec(self):
@@ -1580,6 +1597,21 @@ class System2DBase(ABC):
                 self._compute_int_energy_op_vec_and_grad()
             )
         return self._int_energy_op_vec
+
+    @property
+    def string_op_vec(self):
+        """Compute interaction energy operator w/o shift for all layers for the whole system.
+        This is a get function.
+
+        Returns:
+            list: Layer-resolved interaction energy w/o shift
+        """
+        if self._string_op_vec is None:
+            # This vector is the interaction energy on a single site.
+            self._string_op_vec = ( self._compute_string_op_vec()
+            )
+        return self._string_op_vec
+
 
     @property
     def chem_energy_op_vec(self):

@@ -1,0 +1,22 @@
+2024-07-28 16:11:45,089	INFO worker.py:1518 -- Started a local Ray instance.
+2024-07-29 05:59:43,833	WARNING worker.py:1829 -- The log monitor on node landau53 failed with the following error:
+Traceback (most recent call last):
+  File "/usr/people/snirgaz/arielkelman/.pyenv/gaussianenv/lib/python3.9/site-packages/ray/_private/log_monitor.py", line 520, in <module>
+    log_monitor.run()
+  File "/usr/people/snirgaz/arielkelman/.pyenv/gaussianenv/lib/python3.9/site-packages/ray/_private/log_monitor.py", line 436, in run
+    anything_published = self.check_log_files_and_publish_updates()
+  File "/usr/people/snirgaz/arielkelman/.pyenv/gaussianenv/lib/python3.9/site-packages/ray/_private/log_monitor.py", line 339, in check_log_files_and_publish_updates
+    file_info.reopen_if_necessary()
+  File "/usr/people/snirgaz/arielkelman/.pyenv/gaussianenv/lib/python3.9/site-packages/ray/_private/log_monitor.py", line 79, in reopen_if_necessary
+    new_inode = os.stat(self.filename).st_ino
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/ray/session_2024-07-28_16-11-41_150211_50459/logs/monitor.log'
+
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** STEP 4691149.0 ON landau53 CANCELLED AT 2024-08-05T09:37:00 ***
+*** SIGTERM received at time=1722839820 on cpu 19 ***
+PC: @     0x7fc8754a6065  (unknown)  pthread_cond_timedwait@@GLIBC_2.3.2
+    @     0x7fc8754aa980  (unknown)  (unknown)
+[2024-08-05 09:37:00,291 E 50459 50459] logging.cc:361: *** SIGTERM received at time=1722839820 on cpu 19 ***
+[2024-08-05 09:37:00,291 E 50459 50459] logging.cc:361: PC: @     0x7fc8754a6065  (unknown)  pthread_cond_timedwait@@GLIBC_2.3.2
+[2024-08-05 09:37:00,293 E 50459 50459] logging.cc:361:     @     0x7fc8754aa980  (unknown)  (unknown)
+slurmstepd: error: *** JOB 4691149 ON landau53 CANCELLED AT 2024-08-05T09:37:00 ***

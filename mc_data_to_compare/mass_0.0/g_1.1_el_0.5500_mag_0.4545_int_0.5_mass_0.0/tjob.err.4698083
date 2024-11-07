@@ -1,0 +1,10 @@
+2024-08-01 07:45:59,360	INFO worker.py:1518 -- Started a local Ray instance.
+Traceback (most recent call last):
+  File "/usr/people/snirgaz/arielkelman/projects/gaussian-peps/manager.py", line 500, in <module>
+    main(args)
+  File "/usr/people/snirgaz/arielkelman/projects/gaussian-peps/manager.py", line 354, in main
+    minimizer.save(output_dir = args.output)
+  File "/usr/people/snirgaz/arielkelman/projects/gaussian-peps/ggpeps/minimizer.py", line 202, in save
+    self.last_result.save_summary(os.path.join(output_dir, fname_mc_summary))
+AttributeError: 'NoneType' object has no attribute 'save_summary'
+srun: error: landau52: task 0: Exited with exit code 1

@@ -1,0 +1,3 @@
+slurmstepd: error: *** JOB 4549274 ON landau52 CANCELLED AT 2024-07-18T16:39:46 ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** STEP 4549274.0 ON landau52 CANCELLED AT 2024-07-18T16:39:46 ***

@@ -1,0 +1,2 @@
+srun: error: node012: task 0: Exited with exit code 10
+slurmstepd: error: *** JOB 2658909 ON node012 CANCELLED AT 2024-08-06T18:37:43 DUE TO JOB REQUEUE ***

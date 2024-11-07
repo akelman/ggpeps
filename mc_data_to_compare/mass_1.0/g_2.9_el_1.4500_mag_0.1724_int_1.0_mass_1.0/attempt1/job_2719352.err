@@ -1,0 +1,106 @@
+CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+/easybuild/software/Python/3.11.3-GCCcore-12.3.0/lib/python3.11/subprocess.py:1850: RuntimeWarning: os.fork() was called. os.fork() is incompatible with multithreaded code, and JAX is multithreaded, so this will likely lead to a deadlock.
+  self.pid = _fork_exec(
+2024-08-17 03:03:34,238	INFO worker.py:1749 -- Started a local Ray instance.
+[36m(pid=2317476)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=2317477)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=2317475)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=2317478)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=2356187)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=gcs_server)[0m E0817 23:17:10.027544386 2317288 chttp2_transport.cc:2890]             keepalive_ping_end state error: 0 (expect: 1)
+[36m(pid=2383051)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=gcs_server)[0m E0818 12:46:14.914637362 2317310 chttp2_transport.cc:2890]             keepalive_ping_end state error: 0 (expect: 1)
+[36m(pid=gcs_server)[0m E0818 12:47:26.473076387 2383038 chttp2_transport.cc:2890]             keepalive_ping_end state error: 0 (expect: 1)
+[33m(raylet)[0m E0818 12:51:41.082677786 2317420 chttp2_transport.cc:2890]             keepalive_ping_end state error: 0 (expect: 1)
+[36m(pid=2436630)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=2463051)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=2490897)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=2516745)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=2553323)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=2581526)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=2618115)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=2682185)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=2766602)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(run_mc pid=2618115)[0m [2024-08-21 08:07:01,531 E 2618115 2619073] gcs_rpc_client.h:560: Failed to connect to GCS within 60 seconds. GCS may have been killed. It's either GCS is terminated by `ray stop` or is killed unexpectedly. If it is killed unexpectedly, see the log file gcs_server.out. https://docs.ray.io/en/master/ray-observability/user-guides/configure-logging.html#logging-directory-structure. The program will terminate.
+[36m(pid=2792222)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=gcs_server)[0m E0821 14:17:39.950696272 2791969 chttp2_transport.cc:2890]             keepalive_ping_end state error: 0 (expect: 1)
+[36m(run_mc pid=2766602)[0m [2024-08-21 14:17:52,420 E 2766602 2766706] gcs_rpc_client.h:560: Failed to connect to GCS within 60 seconds. GCS may have been killed. It's either GCS is terminated by `ray stop` or is killed unexpectedly. If it is killed unexpectedly, see the log file gcs_server.out. https://docs.ray.io/en/master/ray-observability/user-guides/configure-logging.html#logging-directory-structure. The program will terminate.
+[36m(pid=2820574)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=2820573)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=3186834)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=3224768)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=3258675)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+[36m(pid=3289872)[0m CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+E0823 08:31:02.545190514 2317742 chttp2_transport.cc:2890]             keepalive_ping_end state error: 0 (expect: 1)
+2024-08-23 12:50:59,982	WARNING worker.py:859 -- Local object store memory usage:
+
+(global lru) capacity: 74152517222
+(global lru) used: 0%
+(global lru) num objects: 0
+(global lru) num evictions: 0
+(global lru) bytes evicted: 0
+
+Traceback (most recent call last):
+  File "/home/akelman/data_pi-emontsp/akelman/code/gaussian-peps/manager.py", line 510, in <module>
+    main(args)
+  File "/home/akelman/data_pi-emontsp/akelman/code/gaussian-peps/manager.py", line 356, in main
+    result = minimizer.minimize()
+             ^^^^^^^^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/akelman/code/gaussian-peps/ggpeps/minimizer.py", line 73, in minimize
+    return self.minimize_scipy()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/akelman/code/gaussian-peps/ggpeps/minimizer.py", line 178, in minimize_scipy
+    min_result = minimize(energy_wrapper,
+                 ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/scipy/optimize/_minimize.py", line 708, in minimize
+    res = _minimize_bfgs(fun, x0, args, jac, callback, **options)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/scipy/optimize/_optimize.py", line 1398, in _minimize_bfgs
+    _line_search_wolfe12(f, myfprime, xk, pk, gfk,
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/scipy/optimize/_optimize.py", line 1134, in _line_search_wolfe12
+    ret = line_search_wolfe1(f, fprime, xk, pk, gfk,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/scipy/optimize/_linesearch.py", line 94, in line_search_wolfe1
+    stp, fval, old_fval = scalar_search_wolfe1(
+                          ^^^^^^^^^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/scipy/optimize/_linesearch.py", line 171, in scalar_search_wolfe1
+    stp, phi1, phi0, task = dcsrch(
+                            ^^^^^^^
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/scipy/optimize/_dcsrch.py", line 255, in __call__
+    phi1 = self.phi(stp)
+           ^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/scipy/optimize/_linesearch.py", line 85, in phi
+    return f(xk + s*pk, *args)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/scipy/optimize/_differentiable_functions.py", line 278, in fun
+    self._update_fun()
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/scipy/optimize/_differentiable_functions.py", line 262, in _update_fun
+    self._update_fun_impl()
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/scipy/optimize/_differentiable_functions.py", line 163, in update_fun
+    self.f = fun_wrapped(self.x)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/scipy/optimize/_differentiable_functions.py", line 145, in fun_wrapped
+    fx = fun(np.copy(x), *args)
+         ^^^^^^^^^^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/akelman/code/gaussian-peps/ggpeps/minimizer.py", line 129, in energy_wrapper
+    self.last_result = self.evaluator_manager.simulate()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/akelman/code/gaussian-peps/ggpeps/evaluator_manager.py", line 90, in simulate
+    resultvec = ray.get(resultvec)
+                ^^^^^^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/ray/_private/auto_init_hook.py", line 21, in auto_init_wrapper
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/ray/_private/client_mode_hook.py", line 103, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/ray/_private/worker.py", line 2623, in get
+    values, debugger_breakpoint = worker.get_objects(object_refs, timeout=timeout)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data1/projects/pi-emontsp/pyenvs/gpeps/lib/python3.11/site-packages/ray/_private/worker.py", line 863, in get_objects
+    raise value
+ray.exceptions.ObjectFetchTimedOutError: Failed to retrieve object 9e7872a82e7456d9ffffffffffffffffffffffff0100000001000000. To see information about where this ObjectRef was created in Python, set the environment variable RAY_record_ref_creation_sites=1 during `ray start` and `ray.init()`.
+
+Fetch for object 9e7872a82e7456d9ffffffffffffffffffffffff0100000001000000 timed out because no locations were found for the object. This may indicate a system-level bug.
+slurmstepd: error: Detected 17 oom_kill events in StepId=2719352.0. Some of the step tasks have been OOM Killed.
+srun: error: node872: task 0: Out Of Memory

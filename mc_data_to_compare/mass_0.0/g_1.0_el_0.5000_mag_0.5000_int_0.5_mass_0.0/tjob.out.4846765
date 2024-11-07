@@ -1,0 +1,120 @@
+2024-08-05 13:51:41,359 [INFO] Git hash: 13337660ff069c0591320b162b7e9193d3f8b13a
+2024-08-05 13:51:41,360 [INFO] Logging level: info
+2024-08-05 13:51:41,360 [INFO] Mode: min-mc
+2024-08-05 13:51:41,360 [INFO] Seed: 1882266666
+2024-08-05 13:51:41,360 [INFO] ======= RAW COMMAND ========
+2024-08-05 13:51:41,360 [INFO] manager.py min-mc 4 --fermions --ncopy 2 --nlayer 2 --params paramvec.npy --warmup_steps 50000 --meas_steps 120000 --update_size 8 --nrunner 4 --g 1.0 --int 0.5 --mass 0.0
+2024-08-05 13:51:41,360 [INFO] ============================
+2024-08-05 13:51:41,385 [INFO] ========= GPU INFO =========
+2024-08-05 13:51:41,385 [INFO] No GPUs found, falling back to CPU.
+2024-08-05 13:51:41,385 [INFO] ============================
+2024-08-05 13:51:41,385 [INFO] ======= SYSTEM INFO ========
+2024-08-05 13:51:41,385 [INFO] L: 4
+2024-08-05 13:51:41,385 [INFO] # of layers: 2
+2024-08-05 13:51:41,385 [INFO] # of copies: 2
+2024-08-05 13:51:41,385 [INFO] fermions: True
+2024-08-05 13:51:41,385 [INFO] g (lambda): 1.0
+2024-08-05 13:51:41,385 [INFO] g_el: 0.5
+2024-08-05 13:51:41,385 [INFO] g_mag: 0.5
+2024-08-05 13:51:41,385 [INFO] g_int: 0.5
+2024-08-05 13:51:41,385 [INFO] g_mass: 0.0
+2024-08-05 13:51:41,386 [INFO] Rebinning EOM: True
+2024-08-05 13:51:41,386 [INFO] Starting parameters: [[ 0.         -1.6048272   1.78905625  0.          0.3488288   1.21597739 -3.0989526   2.87861995 -1.87708396  2.53249254  0.          1.63400421 -0.20356633  0.          2.15078136 -1.01442149
+  -1.15126974  1.96782278 -1.70274772  1.75237776]
+ [-7.67940045  0.          0.          0.          0.          0.         -8.6997523   7.12757236 -8.51092618  8.63550833 -8.59391033  0.          0.          0.          0.          0.
+   3.69124912  7.20738227  6.11968358  7.04485766]]
+2024-08-05 13:51:41,386 [INFO] ============================
+2024-08-05 13:51:41,386 [INFO] ========= MC INFO ==========
+2024-08-05 13:51:41,386 [INFO] Seed: 1882266666
+2024-08-05 13:51:41,386 [INFO] Warmup steps: 50000
+2024-08-05 13:51:41,386 [INFO] Measurement steps: 120000
+2024-08-05 13:51:41,386 [INFO] Bin size: 1
+2024-08-05 13:51:41,386 [INFO] Update size: 8 (out of 32 total links)
+2024-08-05 13:51:41,386 [INFO] Number of Ray runners: 4 (zero indicates not using Ray)
+2024-08-05 13:51:41,386 [INFO] ============================
+2024-08-05 13:51:41,387 [INFO] ====== MINIMIZER INFO ======
+2024-08-05 13:51:41,387 [INFO] Method: BFGS
+2024-08-05 13:51:41,387 [INFO] Max Iterations: 100
+2024-08-05 13:51:41,387 [INFO] Learning rate: 0.1
+2024-08-05 13:51:41,387 [INFO] Min grad: 1e-05
+2024-08-05 13:51:41,387 [INFO] ============================
+2024-08-05 13:51:41,403 [INFO] Loaded cache file cache.pkl
+2024-08-05 13:51:41,406 [INFO] Callback message due to caching. The last_result is None.
+2024-08-05 13:51:41,407 [INFO] Callback message due to caching. The last_result is None.
+2024-08-05 13:51:41,409 [INFO] Callback message due to caching. The last_result is None.
+2024-08-05 13:51:41,447 [INFO] Callback message due to caching. The last_result is None.
+2024-08-05 13:51:41,450 [INFO] Callback message due to caching. The last_result is None.
+2024-08-05 13:51:41,451 [INFO] Callback message due to caching. The last_result is None.
+2024-08-05 13:51:41,453 [INFO] Callback message due to caching. The last_result is None.
+2024-08-05 13:51:41,455 [INFO] Callback message due to caching. The last_result is None.
+2024-08-05 13:51:41,458 [INFO] Callback message due to caching. The last_result is None.
+2024-08-05 13:51:41,489 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-05 20:57:27,450 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-06 04:03:24,082 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-06 11:08:35,810 [INFO] Energy: 10.799879981, Occupation: 0.161287, Max grad paramvec: 0.559576, acceptance prob: 0.853425
+2024-08-06 11:08:35,812 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-06 18:20:00,744 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-07 01:24:54,974 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-07 08:30:55,655 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-07 15:35:45,464 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-07 22:33:53,479 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-08 05:25:32,572 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-08 12:06:31,998 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-08 19:10:31,777 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-09 03:11:24,002 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-09 11:12:25,886 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-09 19:03:21,710 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-10 02:59:40,729 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-10 11:02:27,586 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-10 19:01:32,066 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-11 02:18:56,642 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-11 09:33:27,000 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-11 17:05:57,060 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-12 00:16:34,958 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-12 07:11:54,386 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-12 13:44:06,183 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-12 20:37:02,774 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-13 03:36:49,138 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-13 10:37:03,477 [INFO] Energy: 10.792483207, Occupation: 0.155327, Max grad paramvec: 0.231813, acceptance prob: 0.857737
+2024-08-13 10:37:03,481 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-13 17:15:27,899 [INFO] Energy: 10.772833493, Occupation: 0.149043, Max grad paramvec: 0.219424, acceptance prob: 0.858720
+2024-08-13 17:15:27,902 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-14 00:09:45,693 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-14 07:36:52,061 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-14 15:12:00,845 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-14 22:31:41,301 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-15 06:03:36,465 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-15 13:13:47,779 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-15 20:28:49,825 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-16 03:46:54,580 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-16 11:28:02,958 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-16 19:00:11,442 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-17 02:22:08,942 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-17 09:47:05,213 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-17 17:27:15,200 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-18 01:05:52,617 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-18 08:12:30,213 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-18 15:40:02,981 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-18 23:20:25,105 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-19 06:52:22,349 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-19 14:15:11,362 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-19 21:46:59,939 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-20 05:19:23,634 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-20 12:24:41,273 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-08-20 19:52:49,808 [INFO] ==== Minimizer Result ====
+converged: False
+Value: 10.772833492758979
+Method: BFGS
+Parameters: [ 0.         -1.40196767  1.99440495  0.          0.43382626  1.33743691 -2.96664271  2.96791426 -1.94568936  2.4329698   0.          1.75233551 -0.01364116  0.          2.12030682 -1.03852489
+ -1.37619986  1.93169927 -1.41246276  1.86347238 -7.48892375  0.          0.          0.          0.          0.         -8.71118136  7.3301979  -8.51012294  8.42226092 -8.3891827   0.
+  0.          0.          0.          0.          3.57840152  7.33899641  6.49735062  7.17845534]
+Message: message: Desired error not necessarily achieved due to precision loss. Total iters: 12, function evals: 304, jac evals: 292
+==========================
+
+2024-08-20 19:52:51,589 [INFO] Added evaluator manager to cache.
+2024-08-20 19:52:51,592 [INFO] Saved cache file to cache.pkl.
+2024-08-20 19:52:51,592 [INFO] ========== TIME ============
+2024-08-20 19:52:51,593 [INFO] The simulation took 1317668.404640399s.
+2024-08-20 19:52:51,593 [INFO] ============================
+
+

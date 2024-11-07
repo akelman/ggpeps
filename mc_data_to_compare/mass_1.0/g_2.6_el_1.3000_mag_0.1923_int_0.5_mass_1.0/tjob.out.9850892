@@ -1,0 +1,72 @@
+2024-10-07 14:37:11,330 [INFO] Git hash: 63974963f8dfc6789e7e37a09df06dd012b29c1c
+2024-10-07 14:37:11,331 [INFO] Logging level: info
+2024-10-07 14:37:11,331 [INFO] Mode: min-mc
+2024-10-07 14:37:11,332 [INFO] Seed: 284739957
+2024-10-07 14:37:11,332 [INFO] ======= RAW COMMAND ========
+2024-10-07 14:37:11,332 [INFO] manager.py min-mc 4 --fermions --ncopy 2 --num_pg_layer 1 --num_fermionic_layer 1 --update_size 8 --ignore_cache_eval --nrunner 4 --warmup_steps 50000 --meas_steps 120000 --params paramvec.npy --g 2.6 --int 0.5 --mass 1.0
+2024-10-07 14:37:11,332 [INFO] ============================
+2024-10-07 14:37:11,337 [INFO] ========= GPU INFO =========
+2024-10-07 14:37:11,337 [INFO] No GPUs found, falling back to CPU.
+2024-10-07 14:37:11,337 [INFO] Numerical backend: numpy
+2024-10-07 14:37:11,337 [INFO] ============================
+2024-10-07 14:37:11,337 [INFO] ======= SYSTEM INFO ========
+2024-10-07 14:37:11,337 [INFO] L: 4
+2024-10-07 14:37:11,338 [INFO] # of PG layers: 1
+2024-10-07 14:37:11,338 [INFO] # of matter layers: 1
+2024-10-07 14:37:11,338 [INFO] # of copies: 2
+2024-10-07 14:37:11,338 [INFO] fermions: True
+2024-10-07 14:37:11,338 [INFO] Gauge fixing: False
+2024-10-07 14:37:11,338 [INFO] g (lambda): 2.6
+2024-10-07 14:37:11,338 [INFO] g_el: 1.3
+2024-10-07 14:37:11,338 [INFO] g_mag: 0.1923076923076923
+2024-10-07 14:37:11,338 [INFO] g_int: 0.5
+2024-10-07 14:37:11,338 [INFO] g_mass: 1.0
+2024-10-07 14:37:11,339 [INFO] g_chem: [0 0]
+2024-10-07 14:37:11,339 [INFO] Rebinning EOM: True
+2024-10-07 14:37:11,340 [INFO] Starting parameters: [[ 0.          1.63940154  3.88750124  0.         -2.49202007  0.34009511  1.17412763 -3.06363221  1.94361546  4.50578492  0.          0.49799458 -4.29653845  0.          5.00346179  2.71315714
+   2.4046038   2.88549684  7.81637582  2.64602891]
+ [ 3.87965877  0.          0.          0.          0.          0.          0.60981347  0.92573977  9.98170135 -8.90687995  2.91239471  0.          0.          0.          0.          0.
+   2.98464143 -5.12327378  7.79471338 12.6794022 ]]
+2024-10-07 14:37:11,340 [INFO] ============================
+2024-10-07 14:37:11,340 [INFO] ========= MC INFO ==========
+2024-10-07 14:37:11,340 [INFO] Seed: 284739957
+2024-10-07 14:37:11,340 [INFO] Warmup steps: 50000
+2024-10-07 14:37:11,340 [INFO] Measurement steps: 120000
+2024-10-07 14:37:11,340 [INFO] Bin size: 1
+2024-10-07 14:37:11,340 [INFO] Update size: 8 (out of 32 total links)
+2024-10-07 14:37:11,340 [INFO] Number of Ray runners: 4 (zero indicates not using Ray)
+2024-10-07 14:37:11,340 [INFO] ============================
+2024-10-07 14:37:11,340 [INFO] ====== MINIMIZER INFO ======
+2024-10-07 14:37:11,340 [INFO] Method: BFGS
+2024-10-07 14:37:11,340 [INFO] Max Iterations: 100
+2024-10-07 14:37:11,340 [INFO] Learning rate: 0.1
+2024-10-07 14:37:11,340 [INFO] Min grad: 1e-05
+2024-10-07 14:37:11,340 [INFO] ============================
+2024-10-07 14:37:11,365 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-10-07 21:20:01,694 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-10-08 04:10:52,296 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-10-08 10:29:42,925 [INFO] Energy: 4.946502126, Occupation: 0.018083, Plaquette: 0.032817, Max grad paramvec: 0.014956, acceptance prob: 0.987133
+2024-10-08 10:29:42,927 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-10-08 16:12:54,668 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-10-08 21:58:56,776 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-10-09 03:35:44,323 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-10-09 09:22:09,649 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-10-09 15:05:41,274 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-10-09 21:00:59,239 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-10-10 02:46:15,518 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-10-10 08:32:30,885 [INFO] ==== Minimizer Result ====
+converged: False
+Value: 4.946502125649793
+Method: BFGS
+Parameters: [ 0.          1.63365548  3.87715178  0.         -2.48538088  0.35177775  1.1524624  -3.06653911  1.95873425  4.50751064  0.          0.50058132 -4.30127609  0.          4.99991321  2.71401112
+  2.40857003  2.86965548  7.81500932  2.66853362  3.87653592  0.          0.          0.          0.          0.          0.61006356  0.9259961   9.98195221 -8.90663704  2.91062857  0.
+  0.          0.          0.          0.          2.98555069 -5.12237031  7.79561149 12.68030624]
+Message: message: Desired error not necessarily achieved due to precision loss. Total iters: 1, function evals: 56, jac evals: 44
+==========================
+
+2024-10-10 08:32:31,826 [INFO] Saved cache file to cache.pkl.
+2024-10-10 08:32:31,826 [INFO] ========== TIME ============
+2024-10-10 08:32:31,826 [INFO] The simulation took 237319.5218831133s.
+2024-10-10 08:32:31,826 [INFO] ============================
+
+

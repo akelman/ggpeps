@@ -98,6 +98,7 @@ class ExactEvaluator(Evaluator):
                 "chem_energy_op_grad": [],
                 "grad_norm": [],
                 "polyakov_00_x": [],
+                "FM": [],
                 "number_per_site": [],
             }
             # Wilson loops
@@ -138,6 +139,7 @@ class ExactEvaluator(Evaluator):
                     loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
                     data[loop_name].append(np.real(self.system.compute_path(loops[k])))
 
+                data["FM"].append(self.system.string_op)
             # TODO: handle this better - boundary should not be here!
             if ggpeps.PREFERRED_BACKEND == "jax":
                 for key, val in data.items():
@@ -170,6 +172,9 @@ class ExactEvaluator(Evaluator):
             for k in range(len(sizes)):
                 loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
                 dest[loop_name] = self.compute_expval(data[loop_name], normvec)
+
+            # print(self.compute_expval(data["FM"], normvec))
+            dest["FM"] = self.compute_expval(data["FM"], normvec)/(np.sqrt(np.abs(dest["wilson_loop_0-0_1x1"])))
 
             # The norm that we turn in the end is the actual norm, not the lognorm!
             dest["norm"] = np.sum(normvec)

@@ -1,0 +1,14 @@
+usage: manager.py [-h] [--g G] [--g_el G_EL] [--g_mag G_MAG] [--g_int G_INT]
+                  [--g_mass G_MASS] [--nlayer NLAYER] [--ncopy NCOPY]
+                  [--params PARAMS [PARAMS ...]] [--fermions] [--gauge_fixing]
+                  [--seed SEED] [--warmup_steps WARMUP_STEPS]
+                  [--meas_steps MEAS_STEPS] [--binsize BINSIZE] [--no-bin-eom]
+                  [--use-systemsize-updates] [--update_size UPDATE_SIZE]
+                  [--compute-grads] [--method METHOD] [--maxiter MAXITER]
+                  [--alpha ALPHA] [--min-grad MIN_GRAD] [--level LEVEL]
+                  [--warmup_log_freq WARMUP_LOG_FREQ]
+                  [--run_log_freq RUN_LOG_FREQ] [--output OUTPUT]
+                  [--ignore_cache] [--nrunner NRUNNER]
+                  {eval-mc,eval-exact,min-mc,min-exact,minmult-mc} L
+manager.py: error: unrecognized arguments: --ignore_cache_eval
+srun: error: landau72: task 0: Exited with exit code 2

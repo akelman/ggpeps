@@ -1,0 +1,48 @@
+2024-06-30 10:12:27,747 [INFO] Git hash: 13337660ff069c0591320b162b7e9193d3f8b13a
+2024-06-30 10:12:27,748 [INFO] Logging level: info
+2024-06-30 10:12:27,748 [INFO] Mode: min-mc
+2024-06-30 10:12:27,748 [INFO] Seed: 248081842
+2024-06-30 10:12:27,748 [INFO] ======= RAW COMMAND ========
+2024-06-30 10:12:27,749 [INFO] manager.py min-mc 4 --fermions --ncopy 2 --nlayer 2 --params paramvec.npy --warmup_steps 50000 --meas_steps 120000 --update_size 8 --g 0.2 --int 0.5 --mass 0.0
+2024-06-30 10:12:27,749 [INFO] ============================
+2024-06-30 10:12:27,787 [INFO] ========= GPU INFO =========
+2024-06-30 10:12:27,787 [INFO] No GPUs found, falling back to CPU.
+2024-06-30 10:12:27,787 [INFO] ============================
+2024-06-30 10:12:27,787 [INFO] ======= SYSTEM INFO ========
+2024-06-30 10:12:27,787 [INFO] L: 4
+2024-06-30 10:12:27,787 [INFO] # of layers: 2
+2024-06-30 10:12:27,787 [INFO] # of copies: 2
+2024-06-30 10:12:27,787 [INFO] fermions: True
+2024-06-30 10:12:27,788 [INFO] g (lambda): 0.2
+2024-06-30 10:12:27,788 [INFO] g_el: 0.1
+2024-06-30 10:12:27,788 [INFO] g_mag: 2.5
+2024-06-30 10:12:27,788 [INFO] g_int: 0.5
+2024-06-30 10:12:27,788 [INFO] g_mass: 0.0
+2024-06-30 10:12:27,788 [INFO] Rebinning EOM: True
+2024-06-30 10:12:27,789 [INFO] Starting parameters: [[ 0.          2.8181598  -0.86642879  0.         -0.90340925  0.32922824 -1.29710916  0.0896319  -0.06051171 -0.75062694  0.          1.01800135  0.59167982  0.          0.85569937  0.84014392
+   1.0165514   0.20326731 -0.29156139  0.94740338]
+ [ 2.36310197  0.          0.          0.          0.          0.          1.71000613  1.72955839  0.82406412  0.65416409 -0.5169803   0.          0.          0.          0.          0.
+  -0.02440226  1.13828533  1.503308    0.44240036]]
+2024-06-30 10:12:27,789 [INFO] ============================
+2024-06-30 10:12:27,789 [INFO] ========= MC INFO ==========
+2024-06-30 10:12:27,789 [INFO] Seed: 248081842
+2024-06-30 10:12:27,789 [INFO] Warmup steps: 50000
+2024-06-30 10:12:27,789 [INFO] Measurement steps: 120000
+2024-06-30 10:12:27,789 [INFO] Bin size: 1
+2024-06-30 10:12:27,789 [INFO] Update size: 8 (out of 32 total links)
+2024-06-30 10:12:27,789 [INFO] Number of Ray runners: 0 (zero indicates not using Ray)
+2024-06-30 10:12:27,789 [INFO] ============================
+2024-06-30 10:12:27,790 [INFO] ====== MINIMIZER INFO ======
+2024-06-30 10:12:27,790 [INFO] Method: BFGS
+2024-06-30 10:12:27,790 [INFO] Max Iterations: 100
+2024-06-30 10:12:27,790 [INFO] Learning rate: 0.1
+2024-06-30 10:12:27,790 [INFO] Min grad: 1e-05
+2024-06-30 10:12:27,790 [INFO] ============================
+2024-06-30 10:12:32,554 [INFO] Loaded cache file cache.pkl
+2024-06-30 10:12:32,557 [INFO] Callback message due to caching. The last_result is None.
+2024-07-02 08:09:01,732 [INFO] Energy: -0.806934340, Occupation: 0.417747, Max grad paramvec: 3.699113, acceptance prob: 0.500110
+2024-07-05 16:08:01,287 [INFO] Energy: -1.074444457, Occupation: 0.432940, Max grad paramvec: 1.217078, acceptance prob: 0.500093
+2024-07-07 11:03:32,454 [INFO] Energy: -1.394162447, Occupation: 0.457478, Max grad paramvec: 1.146902, acceptance prob: 0.499786
+2024-07-10 23:42:45,506 [INFO] Energy: -1.486361222, Occupation: 0.469400, Max grad paramvec: 2.759440, acceptance prob: 0.499479
+2024-07-12 19:49:52,660 [INFO] Energy: -1.532264286, Occupation: 0.502965, Max grad paramvec: 0.505763, acceptance prob: 0.499852
+2024-07-18 16:39:46,105 [INFO] Added evaluator manager to cache.

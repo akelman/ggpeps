@@ -1,0 +1,61 @@
+/usr/people/snirgaz/arielkelman/anaconda3/lib/python3.9/subprocess.py:1754: RuntimeWarning: os.fork() was called. os.fork() is incompatible with multithreaded code, and JAX is multithreaded, so this will likely lead to a deadlock.
+  self.pid = _posixsubprocess.fork_exec(
+2024-09-24 08:12:39,920	INFO worker.py:1783 -- Started a local Ray instance.
+Traceback (most recent call last):
+  File "/usr/people/snirgaz/arielkelman/projects/gaussian-peps/manager.py", line 716, in <module>
+    main(args)
+  File "/usr/people/snirgaz/arielkelman/projects/gaussian-peps/manager.py", line 440, in main
+    result = minimizer.minimize()
+  File "/usr/people/snirgaz/arielkelman/projects/gaussian-peps/src/ggpeps/minimizer.py", line 76, in minimize
+    return self.minimize_scipy()
+  File "/usr/people/snirgaz/arielkelman/projects/gaussian-peps/src/ggpeps/minimizer.py", line 204, in minimize_scipy
+    min_result = minimize(
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/scipy/optimize/_minimize.py", line 708, in minimize
+    res = _minimize_bfgs(fun, x0, args, jac, callback, **options)
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/scipy/optimize/_optimize.py", line 1398, in _minimize_bfgs
+    _line_search_wolfe12(f, myfprime, xk, pk, gfk,
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/scipy/optimize/_optimize.py", line 1134, in _line_search_wolfe12
+    ret = line_search_wolfe1(f, fprime, xk, pk, gfk,
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/scipy/optimize/_linesearch.py", line 94, in line_search_wolfe1
+    stp, fval, old_fval = scalar_search_wolfe1(
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/scipy/optimize/_linesearch.py", line 171, in scalar_search_wolfe1
+    stp, phi1, phi0, task = dcsrch(
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/scipy/optimize/_dcsrch.py", line 255, in __call__
+    phi1 = self.phi(stp)
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/scipy/optimize/_linesearch.py", line 85, in phi
+    return f(xk + s*pk, *args)
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/scipy/optimize/_differentiable_functions.py", line 278, in fun
+    self._update_fun()
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/scipy/optimize/_differentiable_functions.py", line 262, in _update_fun
+    self._update_fun_impl()
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/scipy/optimize/_differentiable_functions.py", line 163, in update_fun
+    self.f = fun_wrapped(self.x)
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/scipy/optimize/_differentiable_functions.py", line 145, in fun_wrapped
+    fx = fun(np.copy(x), *args)
+  File "/usr/people/snirgaz/arielkelman/projects/gaussian-peps/src/ggpeps/minimizer.py", line 143, in energy_wrapper
+    self.last_result = self.evaluator_manager.simulate()
+  File "/usr/people/snirgaz/arielkelman/projects/gaussian-peps/src/ggpeps/evaluator_manager.py", line 107, in simulate
+    resultvec = ray.get(resultvec)
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/ray/_private/auto_init_hook.py", line 21, in auto_init_wrapper
+    return fn(*args, **kwargs)
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/ray/_private/client_mode_hook.py", line 103, in wrapper
+    return func(*args, **kwargs)
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/ray/_private/worker.py", line 2661, in get
+    values, debugger_breakpoint = worker.get_objects(object_refs, timeout=timeout)
+  File "/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/ray/_private/worker.py", line 873, in get_objects
+    raise value
+ray.exceptions.OutOfMemoryError: Task was killed due to the node running low on memory.
+Memory on the node (IP: 10.0.10.103, ID: 9a604f713518a1a75d5441768f1cb301955c9c5997fd3683d6b87066) where the task (task ID: e83a9c37011ee49ec3bdc8301cef58285de319dd01000000, name=run_mc, pid=47237, memory used=0.52GB) was running was 239.00GB / 251.56GB (0.95005), which exceeds the memory usage threshold of 0.95. Ray killed this worker (ID: f4cbd150990cbb0775824715e654b9046d02c48c595773224802dc9d) because it was the most recently scheduled task; to see more information about memory usage on this node, use `ray logs raylet.out -ip 10.0.10.103`. To see the logs of the worker, use `ray logs worker-f4cbd150990cbb0775824715e654b9046d02c48c595773224802dc9d*out -ip 10.0.10.103. Top 10 memory users:
+PID	MEM(GB)	COMMAND
+46889	1.27	/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/bin/python /usr/people/snirgaz/arielkelman/projects/ga...
+47237	0.52	ray::run_mc
+46929	0.32	/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/ray/core/src/ray/gcs/gcs_s...
+47054	0.04	/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/bin/python /usr/people/snirgaz/arielkelman/.pyenv/ggpe...
+47113	0.04	/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/lib/python3.9/site-packages/ray/core/src/ray/raylet/ra...
+47053	0.04	/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/bin/python -u /usr/people/snirgaz/arielkelman/.pyenv/g...
+47114	0.04	/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/bin/python -u /usr/people/snirgaz/arielkelman/.pyenv/g...
+47201	0.03	/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/bin/python -u /usr/people/snirgaz/arielkelman/.pyenv/g...
+47199	0.03	/usr/people/snirgaz/arielkelman/.pyenv/ggpeps/bin/python -u /usr/people/snirgaz/arielkelman/.pyenv/g...
+46873	0.00	srun python /usr/people/snirgaz/arielkelman/projects/gaussian-peps/manager.py min-mc 4 --fermions --...
+Refer to the documentation on how to address the out of memory issue: https://docs.ray.io/en/latest/ray-core/scheduling/ray-oom-prevention.html. Consider provisioning more memory on this node or reducing task parallelism by requesting more CPUs per task. To adjust the kill threshold, set the environment variable `RAY_memory_usage_threshold` when starting Ray. To disable worker killing, set the environment variable `RAY_memory_monitor_refresh_ms` to zero.
+srun: error: landau93: task 0: Exited with exit code 1

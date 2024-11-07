@@ -1,0 +1,59 @@
+2024-09-16 11:54:24,020 [INFO] Git hash: 63974963f8dfc6789e7e37a09df06dd012b29c1c
+2024-09-16 11:54:24,020 [INFO] Logging level: info
+2024-09-16 11:54:24,021 [INFO] Mode: min-mc
+2024-09-16 11:54:24,021 [INFO] Seed: 654419606
+2024-09-16 11:54:24,021 [INFO] ======= RAW COMMAND ========
+2024-09-16 11:54:24,021 [INFO] manager.py min-mc 4 --fermions --ncopy 2 --num_pg_layer 1 --num_fermionic_layer 1 --params paramvec.npy --nrunner 4 --warmup_steps 40000 --meas_steps 120000 --update_size 8 --ignore_cache_eval --g 2.1 --int 1.0 --mass 1.0
+2024-09-16 11:54:24,021 [INFO] ============================
+2024-09-16 11:54:24,044 [INFO] ========= GPU INFO =========
+2024-09-16 11:54:24,045 [INFO] No GPUs found, falling back to CPU.
+2024-09-16 11:54:24,045 [INFO] Numerical backend: numpy
+2024-09-16 11:54:24,045 [INFO] ============================
+2024-09-16 11:54:24,045 [INFO] ======= SYSTEM INFO ========
+2024-09-16 11:54:24,045 [INFO] L: 4
+2024-09-16 11:54:24,045 [INFO] # of PG layers: 1
+2024-09-16 11:54:24,045 [INFO] # of matter layers: 1
+2024-09-16 11:54:24,045 [INFO] # of copies: 2
+2024-09-16 11:54:24,045 [INFO] fermions: True
+2024-09-16 11:54:24,045 [INFO] Gauge fixing: False
+2024-09-16 11:54:24,045 [INFO] g (lambda): 2.1
+2024-09-16 11:54:24,045 [INFO] g_el: 1.05
+2024-09-16 11:54:24,046 [INFO] g_mag: 0.23809523809523808
+2024-09-16 11:54:24,046 [INFO] g_int: 1.0
+2024-09-16 11:54:24,046 [INFO] g_mass: 1.0
+2024-09-16 11:54:24,046 [INFO] g_chem: [0 0]
+2024-09-16 11:54:24,046 [INFO] Rebinning EOM: True
+2024-09-16 11:54:24,047 [INFO] Starting parameters: [[   0.          285.96250905  876.89583321    0.          783.83690419  454.14418112 -347.72371891 -102.39409628 1234.92434381 1263.073566      0.          -92.43338606  919.07026483    0.
+   849.44054112  405.26086816   65.72738858  911.37354684  929.16779006  440.56442349]
+ [ 755.45869272    0.            0.            0.            0.            0.          198.74012818  402.44754511 1621.2340985   588.49989137 -749.5517955     0.            0.            0.
+     0.            0.          958.83403412 -402.82171516 -381.12463831 -194.37792201]]
+2024-09-16 11:54:24,047 [INFO] ============================
+2024-09-16 11:54:24,047 [INFO] ========= MC INFO ==========
+2024-09-16 11:54:24,047 [INFO] Seed: 654419606
+2024-09-16 11:54:24,047 [INFO] Warmup steps: 40000
+2024-09-16 11:54:24,047 [INFO] Measurement steps: 120000
+2024-09-16 11:54:24,047 [INFO] Bin size: 1
+2024-09-16 11:54:24,047 [INFO] Update size: 8 (out of 32 total links)
+2024-09-16 11:54:24,047 [INFO] Number of Ray runners: 4 (zero indicates not using Ray)
+2024-09-16 11:54:24,047 [INFO] ============================
+2024-09-16 11:54:24,047 [INFO] ====== MINIMIZER INFO ======
+2024-09-16 11:54:24,047 [INFO] Method: BFGS
+2024-09-16 11:54:24,047 [INFO] Max Iterations: 100
+2024-09-16 11:54:24,047 [INFO] Learning rate: 0.1
+2024-09-16 11:54:24,047 [INFO] Min grad: 1e-05
+2024-09-16 11:54:24,047 [INFO] ============================
+2024-09-16 11:54:24,108 [INFO] Loaded cache file cache.pkl
+2024-09-16 11:54:24,112 [INFO] Callback message due to caching. The last_result is None.
+2024-09-16 11:54:24,114 [INFO] Callback message due to caching. The last_result is None.
+2024-09-16 11:54:24,117 [INFO] Callback message due to caching. The last_result is None.
+2024-09-16 11:54:24,141 [INFO] Callback message due to caching. The last_result is None.
+2024-09-16 11:54:24,164 [INFO] ==== Minimizer Result ====
+converged: False
+Value: 2.884004628074072
+Method: BFGS
+Parameters: [   0.          285.96853514  876.88277309    0.          783.83042574  454.1330815  -347.75440879 -102.37210496 1234.90787279 1263.10299327    0.          -92.43553891  919.06254178    0.
+  849.42587402  405.2755497    65.7135403   911.38999632  929.15397073  440.57969392  755.45850451    0.            0.            0.            0.            0.          198.74020025  402.4475996
+ 1621.23416576  588.49994554 -749.55174265    0.            0.            0.            0.            0.          958.83410551 -402.82164599 -381.1245612  -194.37784819]
+Message: message: Desired error not necessarily achieved due to precision loss. Total iters: 4, function evals: 80, jac evals: 67
+==========================
+

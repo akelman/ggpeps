@@ -1,0 +1,176 @@
+2024-10-18 13:30:16,293 [INFO] Git hash: 63974963f8dfc6789e7e37a09df06dd012b29c1c
+2024-10-18 13:30:16,293 [INFO] Logging level: info
+2024-10-18 13:30:16,293 [INFO] Mode: min-mc
+2024-10-18 13:30:16,293 [INFO] Seed: 475169773
+2024-10-18 13:30:16,293 [INFO] ======= RAW COMMAND ========
+2024-10-18 13:30:16,294 [INFO] manager.py min-mc 4 --fermions --ncopy 2 --num_pg_layer 1 --num_fermionic_layer 1 --warmup_steps 50000 --meas_steps 120000 --update_size 8 --nrunner 8 --g 0.3 --int 0.5 --mass 0.0
+2024-10-18 13:30:16,294 [INFO] ============================
+2024-10-18 13:30:16,296 [INFO] ========= GPU INFO =========
+2024-10-18 13:30:16,296 [INFO] No GPUs found, falling back to CPU.
+2024-10-18 13:30:16,296 [INFO] Numerical backend: numpy
+2024-10-18 13:30:16,296 [INFO] ============================
+2024-10-18 13:30:16,296 [INFO] ======= SYSTEM INFO ========
+2024-10-18 13:30:16,296 [INFO] L: 4
+2024-10-18 13:30:16,296 [INFO] # of PG layers: 1
+2024-10-18 13:30:16,296 [INFO] # of matter layers: 1
+2024-10-18 13:30:16,296 [INFO] # of copies: 2
+2024-10-18 13:30:16,296 [INFO] fermions: True
+2024-10-18 13:30:16,296 [INFO] Gauge fixing: False
+2024-10-18 13:30:16,297 [INFO] g (lambda): 0.3
+2024-10-18 13:30:16,297 [INFO] g_el: 0.15
+2024-10-18 13:30:16,297 [INFO] g_mag: 1.6666666666666667
+2024-10-18 13:30:16,297 [INFO] g_int: 0.5
+2024-10-18 13:30:16,297 [INFO] g_mass: 0.0
+2024-10-18 13:30:16,297 [INFO] g_chem: [0 0]
+2024-10-18 13:30:16,297 [INFO] Rebinning EOM: True
+2024-10-18 13:30:16,299 [INFO] Starting parameters: [[0.         0.18593825 0.13480447 0.         0.56536682 0.72280923 0.98262523 0.41579651 0.06363433 0.87630265 0.         0.02416577 0.3686663  0.         0.72050622 0.75865047 0.98318668
+  0.1134113  0.45939374 0.79782917]
+ [0.83630695 0.         0.         0.         0.         0.         0.25244386 0.76134992 0.03393742 0.27107245 0.34259546 0.         0.         0.         0.         0.         0.8471568
+  0.75901697 0.32556196 0.66835453]]
+2024-10-18 13:30:16,299 [INFO] ============================
+2024-10-18 13:30:16,299 [INFO] ========= MC INFO ==========
+2024-10-18 13:30:16,299 [INFO] Seed: 475169773
+2024-10-18 13:30:16,299 [INFO] Warmup steps: 50000
+2024-10-18 13:30:16,299 [INFO] Measurement steps: 120000
+2024-10-18 13:30:16,299 [INFO] Bin size: 1
+2024-10-18 13:30:16,299 [INFO] Update size: 8 (out of 32 total links)
+2024-10-18 13:30:16,299 [INFO] Number of Ray runners: 8 (zero indicates not using Ray)
+2024-10-18 13:30:16,299 [INFO] ============================
+2024-10-18 13:30:16,299 [INFO] ====== MINIMIZER INFO ======
+2024-10-18 13:30:16,299 [INFO] Method: BFGS
+2024-10-18 13:30:16,300 [INFO] Max Iterations: 100
+2024-10-18 13:30:16,300 [INFO] Learning rate: 0.1
+2024-10-18 13:30:16,300 [INFO] Min grad: 1e-05
+2024-10-18 13:30:16,300 [INFO] ============================
+2024-10-18 13:30:16,322 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-18 16:17:28,068 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-18 19:23:17,516 [INFO] Energy: 51.100123031, Occupation: 0.157459, Plaquette: 0.003733, Max grad paramvec: 53.565305, acceptance prob: 0.912177
+2024-10-18 19:23:17,518 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-18 22:30:13,824 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-19 01:33:52,286 [INFO] Energy: 42.306199535, Occupation: 0.153618, Plaquette: 0.142750, Max grad paramvec: 41.568735, acceptance prob: 0.897867
+2024-10-19 01:33:52,287 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-19 04:24:52,026 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-19 07:18:44,538 [INFO] Energy: 34.475459600, Occupation: 0.238530, Plaquette: 0.329050, Max grad paramvec: 75.098058, acceptance prob: 0.773051
+2024-10-19 07:18:44,539 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-19 10:05:56,184 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-19 12:55:52,893 [INFO] Energy: 29.552546550, Occupation: 0.281369, Plaquette: 0.471017, Max grad paramvec: 83.800487, acceptance prob: 0.716093
+2024-10-19 12:55:52,894 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-19 15:40:30,819 [INFO] Energy: 22.976094330, Occupation: 0.234062, Plaquette: 0.662733, Max grad paramvec: 154.361364, acceptance prob: 0.626695
+2024-10-19 15:40:30,821 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-19 18:19:31,939 [INFO] Energy: 17.116868311, Occupation: 0.307814, Plaquette: 0.776267, Max grad paramvec: 51.900517, acceptance prob: 0.575568
+2024-10-19 18:19:31,941 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-19 21:32:47,739 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-20 00:16:56,694 [INFO] Energy: 16.476243274, Occupation: 0.320566, Plaquette: 0.785933, Max grad paramvec: 43.832421, acceptance prob: 0.578914
+2024-10-20 00:16:56,695 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-20 03:01:02,583 [INFO] Energy: 15.243795181, Occupation: 0.331678, Plaquette: 0.807183, Max grad paramvec: 44.533076, acceptance prob: 0.576941
+2024-10-20 03:01:02,585 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-20 05:42:44,992 [INFO] Energy: 13.207535734, Occupation: 0.363606, Plaquette: 0.835150, Max grad paramvec: 33.731163, acceptance prob: 0.570925
+2024-10-20 05:42:44,994 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-20 08:20:21,020 [INFO] Energy: 9.754069730, Occupation: 0.192049, Plaquette: 0.913167, Max grad paramvec: 25.253161, acceptance prob: 0.532814
+2024-10-20 08:20:21,038 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-20 10:56:41,251 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-20 13:57:01,049 [INFO] Energy: 8.402264569, Occupation: 0.109099, Plaquette: 0.949533, Max grad paramvec: 15.021351, acceptance prob: 0.516338
+2024-10-20 13:57:01,052 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-20 16:45:01,913 [INFO] Energy: 7.370322831, Occupation: 0.073175, Plaquette: 0.975367, Max grad paramvec: 8.445891, acceptance prob: 0.506933
+2024-10-20 16:45:01,915 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-20 19:19:08,895 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-20 21:31:32,796 [INFO] Energy: 6.676226716, Occupation: 0.098891, Plaquette: 0.977217, Max grad paramvec: 7.697697, acceptance prob: 0.509322
+2024-10-20 21:31:32,808 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-20 23:44:50,047 [INFO] Energy: 5.769987994, Occupation: 0.093722, Plaquette: 0.989650, Max grad paramvec: 4.137995, acceptance prob: 0.505246
+2024-10-20 23:44:50,049 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-21 02:02:18,324 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-21 04:15:20,958 [INFO] Energy: 5.588884764, Occupation: 0.123721, Plaquette: 0.983633, Max grad paramvec: 3.255625, acceptance prob: 0.507859
+2024-10-21 04:15:20,960 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-21 06:28:54,199 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-21 08:41:32,432 [INFO] Energy: 5.568295545, Occupation: 0.138911, Plaquette: 0.980217, Max grad paramvec: 2.353613, acceptance prob: 0.509311
+2024-10-21 08:41:32,434 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-21 10:54:17,326 [INFO] Energy: 5.433309879, Occupation: 0.138013, Plaquette: 0.982467, Max grad paramvec: 1.564482, acceptance prob: 0.509012
+2024-10-21 10:54:17,392 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-21 13:06:07,071 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-21 15:34:00,602 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-21 18:03:19,962 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-21 20:17:46,206 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-21 22:34:44,173 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-22 00:48:57,152 [INFO] Energy: 3.853437740, Occupation: 0.178660, Plaquette: 0.999633, Max grad paramvec: 5.039649, acceptance prob: 0.500444
+2024-10-22 00:48:57,154 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-22 03:18:23,075 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-22 05:32:35,897 [INFO] Energy: 3.655943768, Occupation: 0.202938, Plaquette: 0.996900, Max grad paramvec: 4.951461, acceptance prob: 0.501065
+2024-10-22 05:32:35,900 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-22 07:48:05,001 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-22 10:01:12,170 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-22 12:14:00,216 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-22 14:26:25,896 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-22 17:37:14,294 [INFO] Energy: 3.632902759, Occupation: 0.204092, Plaquette: 0.997167, Max grad paramvec: 4.760148, acceptance prob: 0.501228
+2024-10-22 17:37:14,296 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-22 20:45:31,951 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-22 23:42:44,147 [INFO] Energy: 3.486570148, Occupation: 0.226723, Plaquette: 0.997050, Max grad paramvec: 4.735043, acceptance prob: 0.501372
+2024-10-22 23:42:44,152 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-23 02:39:20,293 [INFO] Energy: 3.203268739, Occupation: 0.261993, Plaquette: 0.997200, Max grad paramvec: 4.006784, acceptance prob: 0.500613
+2024-10-23 02:39:20,295 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-23 05:34:19,646 [INFO] Energy: 3.070450265, Occupation: 0.314605, Plaquette: 0.997483, Max grad paramvec: 2.579787, acceptance prob: 0.500285
+2024-10-23 05:34:19,649 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-23 08:30:46,051 [INFO] Energy: 2.752431630, Occupation: 0.360080, Plaquette: 0.996200, Max grad paramvec: 2.028671, acceptance prob: 0.501274
+2024-10-23 08:30:46,054 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-23 11:27:08,000 [INFO] Energy: 2.733063580, Occupation: 0.362728, Plaquette: 0.999367, Max grad paramvec: 1.547099, acceptance prob: 0.500342
+2024-10-23 11:27:08,003 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-23 14:22:16,839 [INFO] Energy: 2.646500615, Occupation: 0.392112, Plaquette: 0.996633, Max grad paramvec: 1.485748, acceptance prob: 0.500501
+2024-10-23 14:22:16,842 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-23 17:17:06,511 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-23 20:11:28,107 [INFO] Energy: 2.621399066, Occupation: 0.399959, Plaquette: 0.996500, Max grad paramvec: 1.343097, acceptance prob: 0.500577
+2024-10-23 20:11:28,110 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-23 23:05:10,142 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-24 02:11:35,751 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-24 05:22:07,080 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-24 08:20:45,195 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-24 11:18:43,829 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-24 14:15:25,251 [INFO] Energy: 2.575467208, Occupation: 0.401213, Plaquette: 0.997883, Max grad paramvec: 1.043534, acceptance prob: 0.500432
+2024-10-24 14:15:25,253 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-24 17:11:48,699 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-24 20:07:19,942 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-24 23:03:08,463 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-25 01:58:33,633 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-25 04:53:33,740 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-25 07:48:15,317 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-25 10:50:40,950 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-25 14:05:40,435 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-25 17:04:40,426 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-25 20:03:10,557 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-25 23:01:09,566 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-26 01:58:01,866 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-26 04:54:11,054 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-26 07:50:02,091 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-26 10:45:38,685 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-26 13:41:05,067 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-26 16:36:10,292 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-26 19:37:38,386 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-26 22:52:51,745 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-27 01:55:04,191 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-27 03:54:30,859 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-27 06:52:17,922 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-27 09:49:45,806 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-27 12:46:36,153 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-27 15:28:15,903 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-27 17:56:37,555 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-27 20:28:44,795 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-27 23:00:36,323 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-28 01:34:41,627 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-28 04:19:51,650 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-28 07:28:54,471 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-28 10:36:56,350 [INFO] Starting 8 runners with 15000 measurement steps each (total: 120000).
+2024-10-28 13:44:28,017 [INFO] ==== Minimizer Result ====
+converged: False
+Value: 2.5754672083821006
+Method: BFGS
+Parameters: [ 0.          0.2105624  -1.44592759  0.          0.31911489  0.65983645  0.19113702 -0.61250739  0.86548411  0.88735963  0.          0.10960684  0.55588296  0.          0.47570674  1.7856053
+  1.23650247 -0.00975465  0.89315474 -0.32922901  0.5925961   0.          0.          0.          0.          0.         -0.34914532  0.44439049  0.0370165  -0.74909998  0.84825947  0.
+  0.          0.          0.          0.          0.1492556   0.31663494  0.59819736  0.76091958]
+Message: message: Desired error not necessarily achieved due to precision loss. Total iters: 28, function evals: 134, jac evals: 128
+==========================
+
+2024-10-28 13:44:29,588 [INFO] Added evaluator manager to cache.
+2024-10-28 13:44:29,592 [INFO] Saved cache file to cache.pkl.
+2024-10-28 13:44:29,592 [INFO] ========== TIME ============
+2024-10-28 13:44:29,592 [INFO] The simulation took 868451.6957945228s.
+2024-10-28 13:44:29,592 [INFO] ============================
+
+

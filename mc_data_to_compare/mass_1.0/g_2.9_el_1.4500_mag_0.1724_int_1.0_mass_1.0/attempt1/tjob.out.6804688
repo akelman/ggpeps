@@ -1,0 +1,74 @@
+2024-09-24 08:12:40,884 [INFO] Git hash: 63974963f8dfc6789e7e37a09df06dd012b29c1c
+2024-09-24 08:12:40,885 [INFO] Logging level: info
+2024-09-24 08:12:40,885 [INFO] Mode: min-mc
+2024-09-24 08:12:40,885 [INFO] Seed: 1864514389
+2024-09-24 08:12:40,885 [INFO] ======= RAW COMMAND ========
+2024-09-24 08:12:40,885 [INFO] manager.py min-mc 4 --fermions --ncopy 2 --num_pg_layer 1 --num_fermionic_layer 1 --params paramvec.npy --nrunner 4 --warmup_steps 40000 --meas_steps 120000 --update_size 8 --ignore_cache_eval --g 2.9 --int 1.0 --mass 1.0
+2024-09-24 08:12:40,885 [INFO] ============================
+2024-09-24 08:12:40,888 [INFO] ========= GPU INFO =========
+2024-09-24 08:12:40,888 [INFO] No GPUs found, falling back to CPU.
+2024-09-24 08:12:40,888 [INFO] Numerical backend: numpy
+2024-09-24 08:12:40,888 [INFO] ============================
+2024-09-24 08:12:40,888 [INFO] ======= SYSTEM INFO ========
+2024-09-24 08:12:40,888 [INFO] L: 4
+2024-09-24 08:12:40,888 [INFO] # of PG layers: 1
+2024-09-24 08:12:40,888 [INFO] # of matter layers: 1
+2024-09-24 08:12:40,888 [INFO] # of copies: 2
+2024-09-24 08:12:40,888 [INFO] fermions: True
+2024-09-24 08:12:40,889 [INFO] Gauge fixing: False
+2024-09-24 08:12:40,889 [INFO] g (lambda): 2.9
+2024-09-24 08:12:40,889 [INFO] g_el: 1.45
+2024-09-24 08:12:40,889 [INFO] g_mag: 0.1724137931034483
+2024-09-24 08:12:40,889 [INFO] g_int: 1.0
+2024-09-24 08:12:40,889 [INFO] g_mass: 1.0
+2024-09-24 08:12:40,889 [INFO] g_chem: [0 0]
+2024-09-24 08:12:40,889 [INFO] Rebinning EOM: True
+2024-09-24 08:12:40,890 [INFO] Starting parameters: [[ 0.         -0.38581716  0.11885255  0.         -1.8207031   1.17890219 -0.24830351  0.7538169  -0.63866285  1.01073967  0.          1.66187064  1.18731213  0.          0.98472036  1.19674821
+  -0.00460712  0.38526557  0.99006466  1.17748357]
+ [ 0.5316898   0.          0.          0.          0.          0.          0.78479454  0.02009767  1.09542004  0.01272254 -0.26388915  0.          0.          0.          0.          0.
+   0.1555596   0.04853337  0.30151009 -0.02366034]]
+2024-09-24 08:12:40,890 [INFO] ============================
+2024-09-24 08:12:40,891 [INFO] ========= MC INFO ==========
+2024-09-24 08:12:40,891 [INFO] Seed: 1864514389
+2024-09-24 08:12:40,891 [INFO] Warmup steps: 40000
+2024-09-24 08:12:40,891 [INFO] Measurement steps: 120000
+2024-09-24 08:12:40,891 [INFO] Bin size: 1
+2024-09-24 08:12:40,891 [INFO] Update size: 8 (out of 32 total links)
+2024-09-24 08:12:40,891 [INFO] Number of Ray runners: 4 (zero indicates not using Ray)
+2024-09-24 08:12:40,891 [INFO] ============================
+2024-09-24 08:12:40,891 [INFO] ====== MINIMIZER INFO ======
+2024-09-24 08:12:40,891 [INFO] Method: BFGS
+2024-09-24 08:12:40,892 [INFO] Max Iterations: 100
+2024-09-24 08:12:40,892 [INFO] Learning rate: 0.1
+2024-09-24 08:12:40,892 [INFO] Min grad: 1e-05
+2024-09-24 08:12:40,892 [INFO] ============================
+2024-09-24 08:12:40,926 [INFO] Loaded cache file cache.pkl
+2024-09-24 08:12:40,935 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,940 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,941 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,943 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,946 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,948 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,950 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,951 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,952 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,954 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,955 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,957 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,958 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,960 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,961 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,962 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,964 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,966 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,969 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,970 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,971 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,974 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,976 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,978 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,980 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:40,984 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:41,162 [INFO] Callback message due to caching. The last_result is None.
+2024-09-24 08:12:41,196 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).
+2024-09-24 13:14:13,838 [INFO] Starting 4 runners with 30000 measurement steps each (total: 120000).

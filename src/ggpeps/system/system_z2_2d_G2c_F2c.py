@@ -806,6 +806,54 @@ class Z2System2D(System2DBase):
             mag_energy_bare = None
         return mag_energy_bare
 
+    def _compute_string_op_vec(self):
+        L=1
+        FM_op = [0] * self.cfg.num_pg_layer
+
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            layer_FM  = 0.0
+            covmat = self.compute_ferm_cov(layer_ind)
+
+            site_ind_in = 0
+            site_ind_fin = 3
+
+            coord_in = self.cfg.lattice.ind2coord(site_ind_in)
+            coord_fin = self.cfg.lattice.ind2coord(site_ind_fin)
+
+            ind_field_in = self.cfg.lattice.coord2ind_dir(coord_in, Direction.X)  # index of the horizontal link
+
+            site_ind_cov_in  = 2 * site_ind_in  
+            site_ind_cov_fin = 2 * site_ind_fin
+
+            path_inds_hor = range(L)
+            path_inds_ver = range(L,L*self.cfg.lattice.ny+L,self.cfg.lattice.ny)
+
+            path_list = []
+
+            for ind in path_inds_hor:
+                coord = self.cfg.lattice.ind2coord(ind)
+                ind_field  = self.cfg.lattice.coord2ind_dir(coord , Direction.X) 
+                path_list.append((ind_field, False))
+
+            for ind in path_inds_ver:
+                coord = self.cfg.lattice.ind2coord(ind)
+                ind_field  = self.cfg.lattice.coord2ind_dir(coord , Direction.Y) 
+                path_list.append((ind_field, False))
+
+            path_factor = self.compute_path(path_list)
+
+            #Since for L-shaped strings the endpoints are always on the same sublattice, we still have \psi^\dagger               \psi after the PH transformation
+            # FM_num = 0.5*path_factor*( covmat[site_ind_cov_in, site_ind_cov_fin] + covmat[site_ind_cov_in+1, site_ind_cov_fin+1])
+            FM_num = 0.25*path_factor*(-1j*covmat[site_ind_cov_in, site_ind_cov_fin] -1j*covmat[site_ind_cov_in+1, site_ind_cov_fin+1] + covmat[site_ind_cov_in+1, site_ind_cov_fin] - covmat[site_ind_cov_in, site_ind_cov_fin+1])
+
+            FM_op.append(np.abs(FM_num))
+
+        FM_op = xnp.asarray(FM_op)
+
+        return FM_op
+
+
+
     def _compute_int_energy_op_vec_and_grad(self):
         """Calculate the energy and energy gradient due to the interaction of the physical fermions with the gauge fields.
         Note: this function assumes that U = U^dagger, which is valid only for Z2. For other groups, the calculation will not be as simple.

@@ -1,0 +1,4 @@
+CUDA backend failed to initialize: jaxlib/cuda/versions_helpers.cc:99: operation cuInit(0) failed: CUDA_ERROR_NO_DEVICE.(Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** JOB 2658887 ON node872 CANCELLED AT 2024-08-08T09:21:13 ***
+slurmstepd: error: *** STEP 2658887.0 ON node872 CANCELLED AT 2024-08-08T09:21:13 ***

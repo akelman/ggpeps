@@ -1,0 +1,5 @@
+/easybuild/software/Python/3.11.3-GCCcore-12.3.0/lib/python3.11/subprocess.py:1850: RuntimeWarning: os.fork() was called. os.fork() is incompatible with multithreaded code, and JAX is multithreaded, so this will likely lead to a deadlock.
+  self.pid = _fork_exec(
+2024-08-17 02:03:26,790	INFO worker.py:1749 -- Started a local Ray instance.
+slurmstepd: error: Detected 8 oom_kill events in StepId=2719347.0. Some of the step tasks have been OOM Killed.
+srun: error: node018: task 0: Out Of Memory

@@ -1,0 +1,47 @@
+#!/bin/bash -l
+
+# Standard output and error:
+#SBATCH -o ./tjob.out.%j
+#SBATCH -e ./tjob.err.%j
+
+# Initial working directory:
+#SBATCH -D ./
+
+# Job Name:
+#SBATCH -J L4_g_0.1_el_0.0500_mag_5.0000_int_0.5_mass_1.0
+
+# Queue (Partition):
+#SBATCH -A alex-account
+#SBATCH --partition=alexq
+
+# Number of nodes and MPI tasks per node:
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+
+# Number of cpus
+#SBATCH --cpus-per-task=8
+#SBATCH -c 8
+#SBATCH --mem-per-cpu=2GB
+
+#SBATCH --nodelist=landau52
+
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=ariel.kelman@mail.huji.ac.il
+#
+# Wall clock limit:
+#SBATCH --time=0
+
+#Load some modules
+module purge
+source ~/.pyenv/ggpeps/bin/activate
+
+PROJECTS=/usr/people/snirgaz/arielkelman/projects/gaussian-peps
+
+# Run the program: 
+srun python $PROJECTS/manager.py min-mc 4 --fermions --ncopy 2 --num_pg_layer 1 --num_fermionic_layer 1 --update_size 8 --ignore_cache_eval --nrunner 4 --warmup_steps 50000 --meas_steps 120000 --params paramvec.npy --g 0.1 --int 0.5 --mass 1.0
+
+if [ -d /tmp/ray ]
+then
+	rm -rf /tmp/ray
+fi
+

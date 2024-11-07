@@ -1,0 +1,57 @@
+2024-09-16 11:54:39,838 [INFO] Git hash: 63974963f8dfc6789e7e37a09df06dd012b29c1c
+2024-09-16 11:54:39,839 [INFO] Logging level: info
+2024-09-16 11:54:39,839 [INFO] Mode: min-mc
+2024-09-16 11:54:39,840 [INFO] Seed: 2013347694
+2024-09-16 11:54:39,840 [INFO] ======= RAW COMMAND ========
+2024-09-16 11:54:39,840 [INFO] manager.py min-mc 4 --fermions --ncopy 2 --num_pg_layer 1 --num_fermionic_layer 1 --params paramvec.npy --nrunner 4 --warmup_steps 40000 --meas_steps 120000 --update_size 8 --ignore_cache_eval --g 2.2 --int 1.0 --mass 1.0
+2024-09-16 11:54:39,840 [INFO] ============================
+2024-09-16 11:54:39,873 [INFO] ========= GPU INFO =========
+2024-09-16 11:54:39,873 [INFO] No GPUs found, falling back to CPU.
+2024-09-16 11:54:39,873 [INFO] Numerical backend: numpy
+2024-09-16 11:54:39,873 [INFO] ============================
+2024-09-16 11:54:39,873 [INFO] ======= SYSTEM INFO ========
+2024-09-16 11:54:39,874 [INFO] L: 4
+2024-09-16 11:54:39,874 [INFO] # of PG layers: 1
+2024-09-16 11:54:39,874 [INFO] # of matter layers: 1
+2024-09-16 11:54:39,874 [INFO] # of copies: 2
+2024-09-16 11:54:39,874 [INFO] fermions: True
+2024-09-16 11:54:39,874 [INFO] Gauge fixing: False
+2024-09-16 11:54:39,874 [INFO] g (lambda): 2.2
+2024-09-16 11:54:39,874 [INFO] g_el: 1.1
+2024-09-16 11:54:39,874 [INFO] g_mag: 0.22727272727272727
+2024-09-16 11:54:39,875 [INFO] g_int: 1.0
+2024-09-16 11:54:39,875 [INFO] g_mass: 1.0
+2024-09-16 11:54:39,875 [INFO] g_chem: [0 0]
+2024-09-16 11:54:39,875 [INFO] Rebinning EOM: True
+2024-09-16 11:54:39,876 [INFO] Starting parameters: [[ 0.          0.25792707  0.20210252  0.         -0.36372687  0.09375574  2.39495974 -0.05526706 -0.33947385  1.36032483  0.          0.45487266  0.51427721  0.          0.43650542  0.02701849
+   0.2146017  -0.08084431  0.90726237  1.93086715]
+ [ 1.29439702  0.          0.          0.          0.          0.         -0.65236117 -0.9978077   2.31355411 -0.3581535   1.13500548  0.          0.          0.          0.          0.
+   2.92623453  1.13903057  1.12273931 -0.66577037]]
+2024-09-16 11:54:39,877 [INFO] ============================
+2024-09-16 11:54:39,877 [INFO] ========= MC INFO ==========
+2024-09-16 11:54:39,877 [INFO] Seed: 2013347694
+2024-09-16 11:54:39,877 [INFO] Warmup steps: 40000
+2024-09-16 11:54:39,877 [INFO] Measurement steps: 120000
+2024-09-16 11:54:39,877 [INFO] Bin size: 1
+2024-09-16 11:54:39,877 [INFO] Update size: 8 (out of 32 total links)
+2024-09-16 11:54:39,877 [INFO] Number of Ray runners: 4 (zero indicates not using Ray)
+2024-09-16 11:54:39,877 [INFO] ============================
+2024-09-16 11:54:39,877 [INFO] ====== MINIMIZER INFO ======
+2024-09-16 11:54:39,878 [INFO] Method: BFGS
+2024-09-16 11:54:39,878 [INFO] Max Iterations: 100
+2024-09-16 11:54:39,878 [INFO] Learning rate: 0.1
+2024-09-16 11:54:39,878 [INFO] Min grad: 1e-05
+2024-09-16 11:54:39,878 [INFO] ============================
+2024-09-16 11:54:39,930 [INFO] Loaded cache file cache.pkl
+2024-09-16 11:54:39,934 [INFO] Callback message due to caching. The last_result is None.
+2024-09-16 11:54:39,942 [INFO] Callback message due to caching. The last_result is None.
+2024-09-16 11:54:39,981 [INFO] ==== Minimizer Result ====
+converged: False
+Value: 2.721502327655522
+Method: BFGS
+Parameters: [ 0.          0.25646455  0.2046728   0.         -0.35931621  0.09781554  2.42199488 -0.07330965 -0.34143764  1.35633624  0.          0.45174163  0.51436734  0.          0.43617252  0.03200532
+  0.21778058 -0.06161599  0.89370674  1.9208467   1.29601534  0.          0.          0.          0.          0.         -0.65335716 -0.99891925  2.31290585 -0.3582634   1.13468782  0.
+  0.          0.          0.          0.          2.92744611  1.13866172  1.12168738 -0.66679308]
+Message: message: Desired error not necessarily achieved due to precision loss. Total iters: 2, function evals: 68, jac evals: 57
+==========================
+
