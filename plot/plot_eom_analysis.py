@@ -43,7 +43,7 @@ def main(args, save_path=None):
                     for match in matches:
                         timestamp = datetime.strptime(match[0], "%Y-%m-%d %H:%M:%S,%f")
                         time.append((timestamp - start_time).total_seconds())
-                        step_numbers.append(int(match[1]) - warmup_steps + 1)
+                        step_numbers.append(int(match[1]) - warmup_steps)
             else:
                 print(f"Unkown file type {log_ext}. Aborting.", file=sys.stderr)
                 sys.exit(1)
@@ -79,10 +79,15 @@ def compute_dynamic_eom_mean(obsvec, step_numbers):
     """Compute dynamical mean and dynamical eom, i.e. mean and eom up to particular step number."""
     dyn_eom = []
     dyn_mean = []
+    eom, decay_time = utils.autocorr_rebin_eom(obsvec, True)
     for step in step_numbers:
-        dyn_array = obsvec[0:step]
+        dyn_array = obsvec[0 : step + 1]
+        num_of_bins = step // decay_time
         mean = np.mean(dyn_array)
-        eom = utils.autocorr_rebin_eom(dyn_array)
+        if num_of_bins == 0:
+            eom = utils.rebin_eom(dyn_array, 1)
+        else:
+            eom = utils.rebin_eom(dyn_array, num_of_bins)
         dyn_eom.append(eom)
         dyn_mean.append(mean)
     return dyn_mean, dyn_eom
