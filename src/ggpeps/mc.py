@@ -557,6 +557,7 @@ class MonteCarloEvaluator(Evaluator):
             dest["meas_steps"].append(self.cfg.meas_steps)
             dest["mean"].append(self.get_obs_mean(key))
             dest["err"].append(self.get_obs_mean_err(key))
-        dest["mean"][12]=dest["mean"][12]/np.sqrt(dest["mean"][16])
+        #dest["mean"]["FM 1x1"]=dest["mean"]["FM 1x1"]/np.sqrt(dest["mean"]["wilson_0-0_1x1"])
+        dest.loc["FM 1x1","mean"]=dest["FM 1x1","mean"]/np.sqrt(dest["wilson_loop_0-0_1x1","mean"])
         df = pd.DataFrame(dest)
         return df

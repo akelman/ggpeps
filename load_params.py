@@ -16,7 +16,7 @@ g_int0=1
 FM_list=[]
 ws_list=[]
 
-for g0 in np.arange(0.1,2.9,0.1):
+for g0 in np.arange(1.1,1.2,0.1):
     g    =  "{0:.1f}".format(g0)
     g_el  = "{0:.4f}".format(g0/2)
     g_mag = "{0:.4f}".format(1/(2*g0))
@@ -40,18 +40,18 @@ for g0 in np.arange(0.1,2.9,0.1):
     eval_config = ExactEvaluatorConfig()
     ex_eval = ExactEvaluator(eval_config, system)
 
-    # mc_config = MonteCarloEvaluatorConfig()
-    # mc_config.warmup_steps = 50000
-    # mc_config.meas_steps = 100000
-    # mc_config.binsize = 1
-    # mc_config.gauge_fixing = False
+    mc_config = MonteCarloEvaluatorConfig()
+    mc_config.warmup_steps = 5000
+    mc_config.meas_steps = 10000
+    mc_config.binsize = 1
+    mc_config.gauge_fixing = False
 
 
-    # mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, 0)
-    # mc_result = mc_mgr.simulate()
-    # mc_result.print_stats()
-    # mc_result.save()
-    # mc_result.save()
+    mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, 0)
+    mc_result = mc_mgr.simulate()
+    mc_result.print_stats()
+    mc_result.save()
+    mc_result.save()
 
 
 
