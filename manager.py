@@ -14,14 +14,6 @@ from timeit import default_timer as timer
 os.environ["RAY_DEDUP_LOGS"] = "0"
 import ray
 
-# Set up ray before we actually start with the simulation
-# This is important because
-# (1) Ray uses randomness internally and we don't want it to mix up the setting of the seed
-# (2) If ray is initialized after JAX is imported (which happens upon importing ggpeps),
-#       we get warnings about multithreading deadlocks,
-#       see: https://github.com/ray-project/ray/issues/44087
-ray.init()
-
 import numpy as np
 
 np.set_printoptions(linewidth=200)
