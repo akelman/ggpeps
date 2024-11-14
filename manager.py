@@ -203,6 +203,17 @@ def main(args):
     if not validate_inputs(args):
         sys.exit(1)
 
+    # Set up ray before we actually start with the simulation
+    # (i)  Ray uses randomness internally and we don't want it to mix up the setting of the seed
+    # (ii) If ray is initialized after JAX is imported (which happens upon importing ggpeps),
+    #      we get warnings about multithreading deadlocks,
+    #      see: https://github.com/ray-project/ray/issues/44087
+    if ggpeps.GPU_AVAILABLE and args.nrunner > 0:
+        # TODO: is it necessary to specify the number of CPUs/GPUs here? Or is in eval manager enough?
+        ray.init(num_cpus=args.nrunner, num_gpus=1)
+    elif args.nrunner > 0:
+        ray.init(num_cpus=args.nrunner)
+
     # Set up the MC Config
     mc_config = MonteCarloEvaluatorConfig()
     mc_config.warmup_steps = args.warmup_steps
