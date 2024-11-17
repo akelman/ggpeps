@@ -1,6 +1,7 @@
 ############## JAX VERSIONS ##############
 
 from typing import List
+from functools import partial
 
 import jax
 import jax.numpy as jnp
@@ -13,6 +14,7 @@ jax.config.update("jax_enable_x64", True)
 import ggpeps
 
 
+@partial(jax.jit, static_argnames=["all_factors"])
 def calculate_lognormvec_jax(
     gamma_in_sys_vec,
     mat_d_vec,
@@ -41,6 +43,7 @@ def calculate_lognormvec_jax(
     return dest / 2
 
 
+@jit
 def compute_grad_over_norm_jax(
     gamma_in_sys: jnp.ndarray,
     diff: jnp.ndarray,
@@ -81,6 +84,7 @@ def compute_grad_over_norm_jax(
     return dest
 
 
+@jit
 def compute_el_grad_vec_jax(system):
     """Computation of the electric energy gradients.
     We start by calculating the electric energies, since these are needed for evaluating the gradients.
