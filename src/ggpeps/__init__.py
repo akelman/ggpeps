@@ -17,7 +17,8 @@ jax_.config.update("jax_enable_x64", True)
 # GPU or CPU
 available_devices_ = jax_.devices()  # available_gpus = jax.devices('gpu')
 PREFERRED_DEVICE = available_devices_[0]
-if "gpu" in PREFERRED_DEVICE.device_kind:
+device_name = PREFERRED_DEVICE.device_kind.lower()
+if "gpu" in device_name or "nvidia" in device_name: # heuristic
     GPU_AVAILABLE = True
 else:
     GPU_AVAILABLE = False
