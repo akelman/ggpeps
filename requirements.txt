@@ -15,6 +15,7 @@ jax>=0.4.19
 jaxlib>=0.4.19
 jsonschema==4.14.0
 kiwisolver==1.4.4
+line_profiler==3.3.1
 matplotlib>=3.5.3
 mpmath==1.2.1
 msgpack==1.0.4
