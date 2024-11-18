@@ -77,9 +77,9 @@ def compute_grad_over_norm_jax(
     Returns:
         float: Gradient of the norm divided by the norm.
     """
-    A = gamma_in_sys @ deriv_d
-    B = mat_d_inv @ diff
-    dest = -0.5 * (A * B.T).sum()
+    dest = -0.5 * jnp.trace(
+        jnp.matmul(jnp.matmul(gamma_in_sys, deriv_d), jnp.matmul(mat_d_inv, diff))
+    )
     return dest
 
 
