@@ -1,9 +1,39 @@
-# Gaussian PEPS simulation
+# Gauged Gaussian PEPS
 
-This repository contains the code for simulations with Gaussian Fermionic Projected Entangled Pair States (GGPEPS).
-The aim is to simulate lattice gauge theories. Currently, only $\mathbb{Z}_N$ theories are operational.
 
-## Installation
+This repository contains the code for simulations of lattice gauge theories (LGTs) with Gauged Gaussian Fermionic Projected Entangled Pair States (GGFPEPS).
+Currently, only $\mathbb{Z}_N$ theories are operational.
+
+The purpose of this README is to provide:
+1. source of information for new team members;
+2. an up-to-date high-level description of the structure of the project, and how to run simulations;
+3. a record of papers that use this code and the theory around it. 
+
+**Contents**
+<!-- @import "[TOC]" {cmd="toc" depthFrom=2 depthTo=3 orderedList=true} -->
+
+<!-- code_chunk_output -->
+
+1. [Development](#development)
+    1. [Installation](#installation)
+    2. [Structure of the Code](#structure-of-the-code)
+    3. [Code Formatting](#code-formatting)
+    4. [Data Generation](#data-generation)
+    5. [Tests](#tests)
+    6. [Known Issues](#known-issues)
+    7. [Ideas](#ideas)
+2. [Use](#use)
+    1. [High Performance Computing](#high-performance-computing)
+    2. [Data Analysis / Exploration](#data-analysis--exploration)
+3. [Papers](#papers)
+
+<!-- /code_chunk_output -->
+
+
+
+## Development 
+
+### Installation
 The code is written for Python 3 and tested to work with Python 3.9.
 Earlier and later versions should work as well (though there may be issues relating to type hints in python < 3.9).
 
@@ -14,10 +44,10 @@ You can create the environment in a folder of your choice.
 For the rest of the tutorial, we assume it to be in `~/.pyenv/`.
     ```
     cd ~/.pyenv
-    python -m venv gaussianenv
+    python -m venv ggpeps
     ```
     Assuming you are using bash or zsh, you can activate the environment with `source ~/.pyenv/gaussianenv/bin/activate`. If you are using csh, instead use `source ~/.pyenv/gaussianenv/bin/activate.csh`.
-    Upon activation, you will notice that your prompt changes. As long as it is prefixed by `(gaussianenv)` the virtual environment is active.
+    Upon activation, you will notice that your prompt changes. As long as it is prefixed by `(ggpeps)` the virtual environment is active.
     The virtual environment can be deactivated with `deactivate`.
 <br/>
 2. **Clone the code**
@@ -52,7 +82,7 @@ ggpeps.__version__
 ```
 The result should be a version string, e.g. `0.1.dev952+ga571e99.d20240918`, which can be interpreted as: `version 0.1` on the `dev` branch, which is `952` commits ahead of master, with the git commit hash beginning `a571e99`, on the date `2024-09-18`.
 
-### Installation with GPUs
+#### Installation with GPUs
 JAX is the library we use for running on GPUs. JAX must be installed wth jaxlib and connected to the correct versions of CUDA. The versions required will depend on what's available on a given cluster.
 
 First, purge any loaded modules, with `module purge`.
@@ -65,9 +95,7 @@ Then install the remaining requirements.
 
 TODO: Add a build to `pyproject.toml` which works for JAX on systems with a GPU and CUDA.
 
-# Development 
-
-## Structure of the Code
+### Structure of the Code
 
 The repository is split into two main parts: the package `ggpeps` and utility scripts in the main folder.
 
@@ -97,12 +125,12 @@ Each implemented ansatz has it's own config class, each a subclass of Config2DBa
 
 The pure gauge ansatz's all techincally contain a parameter for coupling to matter, but (a) it is manually set to zero, (b) other parts of the ansatz (e.g. the Gamma_in) do not obey the symmetries required for including matter.
 
-## Code Formatting
+### Code Formatting
 Code is formatted using `black` with the default configuration.
 To format your code, run `python black .` from the main repository directory. 
 To set up your editor to automatically format your code (e.g. on save), see [Black Editor Integrations](https://black.readthedocs.io/en/stable/integrations/editors.html). Black is not listed in the package dependencies, and must be installed manually (`pip install black`).
 
-## Data Generation
+### Data Generation
 
 The script `manager.py` is the central point for data generation. It supports different modes: `eval` and `min` where both can be evaluated with `exact` and `mc`.
 
@@ -110,7 +138,7 @@ All modes write log files to disk and to console.
 The files are named according to the parameters that were provided via the commandline. 
 In addition to the progress of the computation, they also store a git hash which enables the user to identify which version of the code was used to generate particular data.
 
-All data is stored in the form of pandas dataframes in pickle (`.pkl`) files.
+All data is stored as pandas dataframes in pickle (`.pkl`) files.
 While these files are convenient to work with in Python, they are a bit unintuitive to inspect on the commandline.
 The tool `inspect_data.py` takes all output files generated with this code and displays them concisely.
 
@@ -159,13 +187,54 @@ python manager.py min-exact 2 --method BFGS
 
 For an overview of all command line parameters call `python manager.py --help`.
 
-## High Performance Computing
+### Tests
+
+The code is accompagnied by an extensive suit of tests which are located in the folder `tests`.
+The full test-suite can be executed with
+```
+python -m unittest
+```
+from the main project folder.
+
+If you want to execute a more specialized test, you can execute the files separately as well:
+```
+python -m unittest tests/test_lattice.py
+```
+
+#### Testing across multiple architectures
+The package supports CPU and GPU operation.
+To test both these modes independently, the tests are run with `nox` to run in different environments.
+Additionally, it enables testing of the environment, coverage testing, and lint testing.
+
+The full `nox` test suite can be executed with
+```
+nox
+```
+It will run all so-called sessions. For an overview of available sessions, execute `nox --list`.
+Individual sessions can be executed with `nox -s <name of session>`.
+
+
+### Known Issues
+
+- Current implementation of U1 is not working properly
+- Bogoliubov transform yields wrong results if used with fermions (this is not used in any case)
+
+### Ideas
+
+- Add U1 system properly
+- Add system in 3d
+- Add option for DMRG like cylinder compression to obtain transfer matrices
+- Make data file optional?
+
+## Use
+
+### High Performance Computing
 
 The repo includes several scripts to help with running many jobs on a computing cluster.
 It can also interpret signals, e.g. as sent by slurm, to automatically cache and end a computation.
 
 
-## Data Analysis / Exploration
+### Data Analysis / Exploration
 
 The data from different modes is stored in the form of pickled pandas dataframes.
 
@@ -187,46 +256,9 @@ This script is meant for data exploration and should not be used to produce pape
 
 Further information about the capabilities of `plot_summary.py` can be obtained with `python plot_summary.py --help`.
 
-## Tests
 
-The code is accompagnied by an extensive suit of tests which are located in the folder `tests`.
-The full test-suite can be executed with
-```
-python -m unittest
-```
-from the main project folder.
+## Papers
 
-If you want to execute a more specialized test, you can execute the files separately as well:
-```
-python -m unittest tests/test_lattice.py
-```
-
-### Testing across multiple architectures
-The package supports CPU and GPU operation.
-To test both these modes independently, the tests are run with `nox` to run in different environments.
-Additionally, it enables testing of the environment, coverage testing, and lint testing.
-
-The full `nox` test suite can be executed with
-```
-nox
-```
-It will run all so-called sessions. For an overview of available sessions, execute `nox --list`.
-Individual sessions can be executed with `nox -s <name of session>`.
-
-
-## Known Issues
-
-- Current implementation of U1 is not working properly
-- Bogoliubov transform yields wrong results if used with fermions (this is not used in any case)
-
-## Ideas
-
-- Add U1 system properly
-- Add system in 3d
-- Add option for DMRG like cylinder compression to obtain transfer matrices
-- Make data file optional?
-
-# Papers
 The following is a list of papers that have used (versions of) this code:
 1. Emonts et al, Finding the ground state of a lattice gauge theory with fermionic tensor networks: A $2+1\mathrm{D}$ ${\mathbb{Z}}_{2}$ demonstration, PRD vol 107 (2023).
 
