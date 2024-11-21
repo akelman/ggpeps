@@ -394,8 +394,10 @@ def main(args):
         logger.info("====== MINIMIZER INFO ======")
         logger.info(f"Method: {args.method.upper()}")
         logger.info(f"Max Iterations: {args.maxiter}")
-        logger.info(f"Learning rate: {args.alpha}")
-        logger.info(f"Min grad: {args.min_grad}")
+        if args.method.upper() == "CUSTOM":
+            # these are only used by the custom (basic gradient descent) minimizer and are not passed to scipy
+            logger.info(f"Learning rate: {args.alpha}")
+            logger.info(f"Min grad: {args.min_grad}")
         logger.info("============================")
 
     # Set up cache
