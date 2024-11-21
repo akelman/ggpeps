@@ -23,7 +23,7 @@ For the rest of the tutorial, we assume it to be in `~/.pyenv/`.
 2. **Clone the code**
 You can obtain the code by cloning the repo with:
     ```
-    git clone git@gitlab.mpcdf.mpg.de:pemonts/gaussian-peps.git
+    git clone git@gitlab.com:patrick.emonts/gaussian-peps.git
     ```
     Note that you have to be a member of the project to clone it.
     Cloning via SSH works only if you have added a (public) SSH key to the repository.
