@@ -3,7 +3,6 @@ import itertools as it
 
 import numpy as np
 import pandas as pd
-import jax.numpy as jnp
 
 import ggpeps
 import ggpeps.lattice as lattice

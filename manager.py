@@ -168,6 +168,35 @@ def main(args):
     else:
         os.makedirs(args.output)
 
+    # Validate input arguments
+    if not validate_inputs(args):
+        sys.exit(1)
+
+    # Set up ray before we actually start with the simulation
+    # (i)  Ray uses randomness internally and we don't want it to mix up the setting of the seed
+    # (ii) If ray is initialized after JAX is imported (which happens upon importing ggpeps),
+    #      we get warnings about multithreading deadlocks,
+    #      see: https://github.com/ray-project/ray/issues/44087
+    if ggpeps.GPU_AVAILABLE and args.nrunner > 0:
+        # TODO: is it necessary to specify the number of CPUs/GPUs here? Or is in eval manager enough?
+        ray.init(num_cpus=args.nrunner, num_gpus=1)
+    elif args.nrunner > 0:
+        ray.init(num_cpus=args.nrunner)
+
+    # Configure JAX
+    import jax
+
+    jax.config.update("jax_enable_x64", True)
+
+    # GPU or CPU
+    available_devices_ = jax.devices()  # available_gpus = jax.devices('gpu')
+    PREFERRED_DEVICE = available_devices_[0]
+    device_name = PREFERRED_DEVICE.device_kind.lower()
+    if "gpu" in device_name or "nvidia" in device_name:  # heuristic
+        ggpeps.GPU_AVAILABLE = True
+    else:
+        ggpeps.GPU_AVAILABLE = False
+
     # Set up the simulation
     L = args.L
     g = args.g
@@ -190,21 +219,6 @@ def main(args):
     log_filename = args2logname(args, couplings)
     ggpeps.logger_file = log_filename
     utils.setup_logger(logger, log_filename, args.level)
-
-    # Validate input arguments
-    if not validate_inputs(args):
-        sys.exit(1)
-
-    # Set up ray before we actually start with the simulation
-    # (i)  Ray uses randomness internally and we don't want it to mix up the setting of the seed
-    # (ii) If ray is initialized after JAX is imported (which happens upon importing ggpeps),
-    #      we get warnings about multithreading deadlocks,
-    #      see: https://github.com/ray-project/ray/issues/44087
-    if ggpeps.GPU_AVAILABLE and args.nrunner > 0:
-        # TODO: is it necessary to specify the number of CPUs/GPUs here? Or is in eval manager enough?
-        ray.init(num_cpus=args.nrunner, num_gpus=1)
-    elif args.nrunner > 0:
-        ray.init(num_cpus=args.nrunner)
 
     # Set up the MC Config
     mc_config = MonteCarloEvaluatorConfig()

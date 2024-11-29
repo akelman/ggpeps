@@ -6,28 +6,10 @@ LOGGER_NAME = "ggpeps"
 logger_file = None
 
 
-# Configure JAX
-import jax as jax_
-
-# TODO: does this need to be here?
-# The following line ensures that JAX is configured to 64-bit precision.
-# Without this line, some of the precision tests do not pass.
-jax_.config.update("jax_enable_x64", True)
-
-# GPU or CPU
-available_devices_ = jax_.devices()  # available_gpus = jax.devices('gpu')
-PREFERRED_DEVICE = available_devices_[0]
-device_name = PREFERRED_DEVICE.device_kind.lower()
-if "gpu" in device_name or "nvidia" in device_name: # heuristic
-    GPU_AVAILABLE = True
-else:
-    GPU_AVAILABLE = False
-del jax_
-del available_devices_
-
 import os as os_
 
 # Set numerical backend
+GPU_AVAILABLE = False  # Default to False
 AVAILABLE_NUMERICAL_BACKENDS = ["numpy", "jax"]
 if "GGPEPS_BACKEND" in os_.environ:
     if os_.environ["GGPEPS_BACKEND"] in AVAILABLE_NUMERICAL_BACKENDS:
