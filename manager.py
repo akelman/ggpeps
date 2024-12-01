@@ -95,7 +95,9 @@ def args2logname(args, couplings: dict) -> str:
     return os.path.join(args.output, fname)
 
 
-def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomState):
+def translate_parameters(
+    system_cfg, params: str, rng_state: np.random.RandomState
+) -> (np.array, str):
     """Translate the parameters given on the commandline to a form useful in the code
 
     Args:
@@ -117,20 +119,24 @@ def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomSta
         # The parameters are stored in a file and we can load them
         dest = np.load(params[0])
         dest = np.reshape(dest, (nlayer, -1))
+        source = "command-line provided file"
     elif params is None or params == "rand":
         # No parameters are given and we randomize
         dest = rng_state.rand(nlayer, nparams)
+        source = "random state"
     else:
         # The parameters are listed explicitly in the command line
         dest = np.asarray(params, dtype=float)
         try:
             dest = dest.reshape((nlayer, nparams))
+            source = "command-line provided parameters"
         except:
             logger.warning(
                 "Reshape of provided parameters impossible. Starting with random parameters."
             )
             dest = rng_state.rand(nlayer, nparams)
-    return dest
+            source = "random state"
+    return dest, source
 
 
 def validate_inputs(args) -> bool:
@@ -342,7 +348,7 @@ def main(args):
     mc_config.seed = seed
 
     # Translate the command line input to a valid parameter vector
-    paramvec = translate_parameters(system_cfg, args.params, rngstate)
+    paramvec, param_source = translate_parameters(system_cfg, args.params, rngstate)
     system_cfg.paramvec = paramvec
 
     # Ensure pure gauge (setting t parameter(s) to zero) if enabled
@@ -386,6 +392,7 @@ def main(args):
     logger.info(f"g_mass: {g_mass}")
     logger.info(f"g_chem: {g_chem}")
     logger.info(f"Rebinning EOM: {Measurement.use_rebinning}")
+    logger.info(f"Loaded parameters from: {param_source}")
     logger.info(f"Starting parameters: {paramvec}")
     logger.info("============================")
 
