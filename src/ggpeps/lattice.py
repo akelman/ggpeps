@@ -300,7 +300,7 @@ class Lattice2D:
 
         The particular tree returned by this function includes all the horizontal links in the first num_of_rows rows but the last one on each row.
 
-        If num_of_rows is not given then the
+        If num_of_rows is not given then a maximal tree containing all the rows but the last link
         and all the vertical links but the last one on the first column.
 
         Args:
@@ -309,26 +309,22 @@ class Lattice2D:
         Returns:
             list: List of link-indices in the tree
         """
-
+        tree = []
         if (
             num_of_rows is None or num_of_rows > self.ny
         ):  # If number of rows to fix is not given or larger than lattice size we generate a maximal tree
             num_of_rows = self.ny
-            tree = [
-                self.coord2ind_dir((x, y), Direction(0))
-                for y in range(self.ny)
-                for x in range(self.nx - 1)
-            ]
 
             tree += [
                 self.coord2ind_dir((0, y), Direction(1)) for y in range(self.ny - 1)
             ]
-        else:
-            tree = [
-                self.coord2ind_dir((x, y), Direction(0))
-                for y in range(num_of_rows)
-                for x in range(self.nx - 1)
-            ]
+
+        # add horizontal links, except for the last
+        tree += [
+            self.coord2ind_dir((x, y), Direction(0))
+            for y in range(num_of_rows)
+            for x in range(self.nx - 1)
+        ]
 
         return tree
 
