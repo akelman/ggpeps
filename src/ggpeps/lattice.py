@@ -292,7 +292,7 @@ class Lattice2D:
 
         return loops
 
-    def generate_tree(self, num_of_rows=None):
+    def generate_tree(self, num_of_rows: int = None):
         """Generate a tree on the lattice.
         This allows all values on the tree to be fixed to the identity when gauge_fixing
         (no integration is needed over links on the tree).
@@ -300,8 +300,11 @@ class Lattice2D:
 
         The particular tree returned by this function includes all the horizontal links in the first num_of_rows rows but the last one on each row.
 
-        If num_of rows is not given than the
+        If num_of_rows is not given then the
         and all the vertical links but the last one on the first column.
+
+        Args:
+            num_of_rows (int, optional): Number of rows to fix. Defaults to None.
 
         Returns:
             list: List of link-indices in the tree
@@ -309,7 +312,7 @@ class Lattice2D:
 
         if (
             num_of_rows is None or num_of_rows > self.ny
-        ):  # If number of rows to fix is not given or larfer than lattice size we generate a maximal tree
+        ):  # If number of rows to fix is not given or larger than lattice size we generate a maximal tree
             num_of_rows = self.ny
             tree = [
                 self.coord2ind_dir((x, y), Direction(0))
