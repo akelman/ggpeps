@@ -1,3 +1,10 @@
+"""
+As arguments this file receives the summary pkl file and the log file from a run in debug mode (only debug mode!).
+
+This file plots three plots analysing the eom (error of mean - computed with autocorrelation and rebinning) - 
+Dynamical mean of observable as a function of step number, EOM as a funcion of step number and EOM as a function of time.
+"""
+
 import os
 import re
 import sys
@@ -79,7 +86,7 @@ def compute_dynamic_eom_mean(obsvec, step_numbers):
     """Compute dynamical mean and dynamical eom, i.e. mean and eom up to particular step number."""
     dyn_eom = []
     dyn_mean = []
-    eom, decay_time = utils.autocorr_rebin_eom(obsvec, True)
+    eom, decay_time = utils.autocorr_rebin_eom(obsvec)
     for step in step_numbers:
         dyn_array = obsvec[0 : step + 1]
         num_of_bins = step // decay_time
