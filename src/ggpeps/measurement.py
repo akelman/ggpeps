@@ -76,7 +76,9 @@ class Measurement:
             float: Error on the mean
         """
         if use_binning:
-            return utils.rebin_eom(self.datavec)
+            return utils.autocorr_rebin_eom(
+                self.datavec
+            )  # compute eom when taking into account autocorrelation
         else:
             return np.std(self.datavec, ddof=1, axis=0) / np.sqrt(len(self.datavec))
 
