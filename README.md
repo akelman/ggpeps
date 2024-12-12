@@ -5,7 +5,7 @@ This repository contains the code for simulations of lattice gauge theories (LGT
 Currently, only $\mathbb{Z}_N$ theories are operational.
 
 The purpose of this README is to provide:
-1. source of information for new team members;
+1. a source of information for new team members;
 2. an up-to-date high-level description of the structure of the project, and how to run simulations;
 3. a record of papers that use this code and the theory around it. 
 
@@ -18,13 +18,14 @@ The purpose of this README is to provide:
     1. [Installation](#installation)
     2. [Structure of the Code](#structure-of-the-code)
     3. [Code Formatting](#code-formatting)
-    4. [Data Generation](#data-generation)
-    5. [Tests](#tests)
-    6. [Known Issues](#known-issues)
-    7. [Ideas](#ideas)
+    4. [Tests](#tests)
+    5. [Known Issues](#known-issues)
+    6. [Ideas](#ideas)
 2. [Use](#use)
-    1. [High Performance Computing](#high-performance-computing)
-    2. [Data Analysis / Exploration](#data-analysis--exploration)
+    1. [Data Generation](#data-generation)
+    2. [Reproducibility](#reproducibility)
+    3. [High Performance Computing](#high-performance-computing)
+    4. [Data Analysis / Exploration](#data-analysis--exploration)
 3. [Papers](#papers)
 
 <!-- /code_chunk_output -->
@@ -130,63 +131,6 @@ Code is formatted using `black` with the default configuration.
 To format your code, run `python black .` from the main repository directory. 
 To set up your editor to automatically format your code (e.g. on save), see [Black Editor Integrations](https://black.readthedocs.io/en/stable/integrations/editors.html). Black is not listed in the package dependencies, and must be installed manually (`pip install black`).
 
-### Data Generation
-
-The script `manager.py` is the central point for data generation. It supports different modes: `eval` and `min` where both can be evaluated with `exact` and `mc`.
-
-All modes write log files to disk and to console. 
-The files are named according to the parameters that were provided via the commandline. 
-In addition to the progress of the computation, they also store a git hash which enables the user to identify which version of the code was used to generate particular data.
-
-All data is stored as pandas dataframes in pickle (`.pkl`) files.
-While these files are convenient to work with in Python, they are a bit unintuitive to inspect on the commandline.
-The tool `inspect_data.py` takes all output files generated with this code and displays them concisely.
-
-In the following, we will describe the different modes in more detail.
-
-`eval-mc`: 
-The evaluation mode computes the expectation value of a set of observables with given set of parameters using Monte Carlo.
-To simulate a $2\times 2$ system with MC, we can run
-```
-python manager.py eval-mc 2
-```
-The call generates three files: a log file, a data file, and a summary file.
-The log file is identical to the text printed on the console.
-It is especially useful to check computations performed on a cluster.
-
-The data file contains the full timeseries of the computation and can get quite large.
-It is compressed by default to save disk space.
-
-The summary file is most relevant for most plots since it contains the mean values of observables including errors (computed via binning analysis).
-
-`eval-exact`:
-The exact evaluation mode computes the expectation value of a set of observables with given set of parameters using exact contraction.
-This works only for small systems of $L=2$. For systems of size $L=4$, it may also be possible to run in `exact` mode if gauge fixing is turned on, though this will still be slower than MC. 
-
-```
-python manager.py eval-exact 2
-```
-
-`min-mc`:
-In minimization mode, the Kogut-Susskind Hamiltonian for the gauge theory in question is minimized by using different minimizers. 
-The expectation values for a given set of parameters are computed with Monte Carlo.
-The update according to the computed energy and gradients is controlled by the optimizer.
-Currently, scipy optimizers (such as `BFGS`) as well as a custom gradient based optimizer are available.
-
-```
-python manager.py min-mc 2 --method BFGS
-```
-
-`min-exact`:
-For small systems, we can substitute the Monte Carlo evaluation part in the minimization (just as we did in `eval` mode) with an exact contraction.
-Exact contraction is only available for systems of size 2x2.
-
-```
-python manager.py min-exact 2 --method BFGS
-```
-
-For an overview of all command line parameters call `python manager.py --help`.
-
 ### Tests
 
 The code is accompagnied by an extensive suit of tests which are located in the folder `tests`.
@@ -224,9 +168,73 @@ Individual sessions can be executed with `nox -s <name of session>`.
 - Add U1 system properly
 - Add system in 3d
 - Add option for DMRG like cylinder compression to obtain transfer matrices
-- Make data file optional?
+
 
 ## Use
+
+### Data Generation
+
+The script `manager.py` is the central point for data generation. It supports different modes: `eval` and `min` where both can be evaluated with `exact` and `mc`.
+
+All modes write log files to disk and to console. 
+The files are named according to the parameters that were provided via the commandline. 
+In addition to the progress of the computation, they also store a git hash which enables the user to identify which version of the code was used to generate particular data.
+
+All data is stored as pandas dataframes in pickle (`.pkl`) files.
+While these files are convenient to work with in Python, they are a bit unintuitive to inspect on the commandline.
+The tool `inspect_data.py` takes all output files generated with this code and displays them concisely.
+
+In the following, we will describe the different modes in more detail.
+
+`eval-mc`: 
+The evaluation mode computes the expectation value of a set of observables with given set of parameters using Monte Carlo.
+To simulate a $2\times 2$ system with MC, we can run
+```
+python manager.py eval-mc 2
+```
+The call generates three files: a log file, a data file, and a summary file.
+The log file is identical to the text printed on the console.
+It is especially useful to check computations performed on a cluster.
+
+The data file contains the full timeseries of the computation and can get quite large.
+It is compressed by default to save disk space.
+
+The summary file is most relevant for most plots since it contains the mean values of observables including errors (computed via binning analysis).
+
+`eval-exact`:
+The exact evaluation mode computes the expectation value of a set of observables with given set of parameters using exact contraction.
+This works only for small systems of $L=2$. For systems of size $L=4$, it may also be possible to run in `exact` mode if gauge fixing is turned on, though this will still be slower than MC with the default number of steps. 
+
+```
+python manager.py eval-exact 2
+```
+
+`min-mc`:
+In minimization mode, the Kogut-Susskind Hamiltonian for the gauge theory in question is minimized. 
+The expectation values for a given set of parameters are computed with Monte Carlo.
+The update according to the computed energy and gradients is controlled by the optimizer.
+Several different minimizers are available. 
+Currently, scipy optimizers (such as `BFGS`) as well as a custom gradient based optimizer are available.
+
+```
+python manager.py min-mc 2 --method BFGS
+```
+
+`min-exact`:
+For small systems, we can substitute the Monte Carlo evaluation part in the minimization (just as we did in `eval` mode) with an exact contraction.
+Exact contraction is only practical for systems of size 2x2.
+
+```
+python manager.py min-exact 2 --method BFGS
+```
+
+For an overview of all command line parameters call `python manager.py --help`.
+
+### Reproducibility
+Successive runs produce identical output, provided they use the same version of the code with the same command-line arguments, and also use the same seed (if the parameters are provided, and no Monte Carlo is used, randomness should have no effect, and so the seed does not matter).
+
+The exception is related to caching, which can interfere with the randomness as well as the minimizer.
+
 
 ### High Performance Computing
 
@@ -252,7 +260,6 @@ A typical use can look like
 python plot_summary.py --ec summary_min* --obs el_energy mag_energy energy --show
 ```
 The option `--show` displays the interactive matplotlib plot before saving the plot to disk.
-This script is meant for data exploration and should not be used to produce paper-style plots.
 
 Further information about the capabilities of `plot_summary.py` can be obtained with `python plot_summary.py --help`.
 
