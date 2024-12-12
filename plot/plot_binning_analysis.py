@@ -61,7 +61,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--fname", nargs="+", help="MC pickle or txt file")
     parser.add_argument("--obs", type=str, default="energy", help="Observable")
-    parser.add_argument("--show", type=str, default="show", help="Observable")
 
     args = parser.parse_args()
 
