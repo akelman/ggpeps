@@ -57,8 +57,9 @@ def save_state_on_exit():
             cache.add_obj_to_cache("evaluator_manager", eval_manager)
             logger.info(f"Added evaluator manager to cache.")
 
-    cache.save_cache_file()
-    logger.info(f"Saved cache file to {cache.cache_file}.")
+    cache_file = ggpeps.global_vars["args"].cache_file
+    cache.save_cache_file(cache_file)
+    logger.info(f"Saved cache file to {cache_file}.")
     return
 
 
@@ -425,12 +426,16 @@ def main(args):
     # Set up cache
     # and save the command line arguments to ggpeps global variable so that they are available everywhere
     cache = Cache(args.mode)
-    ggpeps.global_vars["args"] = args
-    ggpeps.global_vars["cache"] = cache
     if not args.ignore_cache:
-        cache.load_cache_file(cache.cache_file)
+        cache.load_cache_file(args.cache_file)
         if args.ignore_cache_eval:
             cache.add_obj_to_cache("evaluator_manager", None)
+    if not os.path.isabs(args.cache_file):
+        # Save the cache filename as an absolute path (so that it can be used throughout the code,
+        # without needing to track the destination).
+        args.cache_file = os.path.join(args.output, os.path.basename(args.cache_file))
+    ggpeps.global_vars["args"] = args
+    ggpeps.global_vars["cache"] = cache
 
     # Call different functions depending on the mode specified via CLI
     if args.mode == "eval-mc":
@@ -727,13 +732,19 @@ if __name__ == "__main__":
         "--ignore_cache",
         action="store_true",
         default=False,
-        help="Ignore the cache and start from scratch. A new cache will be saved (and overwrite the old one).",
+        help="Ignore the cache and start from scratch. A new cache will be saved (and overwrite the old one if it exists).",
     )
     parser.add_argument(
         "--ignore_cache_eval",
         action="store_true",
         default=False,
         help="Ignore the cache eval manager.",
+    )
+    parser.add_argument(
+        "--cache_file",
+        type=str,
+        default="cache.pkl",
+        help="Filename of the cache.",
     )
 
     # Arguments for ray
