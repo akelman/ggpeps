@@ -20,11 +20,12 @@ np.set_printoptions(linewidth=200)
 
 import ggpeps
 from ggpeps.caching import Cache
-from ggpeps.system import Z2System2DConfig, Z2System2D_1c
-from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
-from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D
-from ggpeps.system import Z2System2D_G2C_F4C_Config, Z2System2D_G2C_F4C
-from ggpeps.system import Z2System2D_8C_Config, Z2System2D_8C
+from ggpeps.system import Z2System2DConfig
+from ggpeps.system import Z2System2D2CConfig
+from ggpeps.system import Z2System2D_G2C_F2C_Config
+from ggpeps.system import Z2System2D_G2C_F4C_Config
+from ggpeps.system import Z2System2D_8C_Config
+from ggpeps.system import Z2System2D
 
 from ggpeps import utils
 from ggpeps import lattice as lat
@@ -337,7 +338,7 @@ def main(args):
             )
         else:
             logger.error(
-                "Not Implemented: Only 1, 2, or 4 copies are possible without fermions."
+                "Not Implemented: Only 1 or 2 copies are possible without fermions."
             )
             sys.exit(1)
     system_type = Z2System2D
