@@ -59,7 +59,7 @@ def save_state_on_exit():
 
     cache_file = ggpeps.global_vars["args"].cache_file
     cache.save_cache_file(cache_file)
-    logger.info(f"Saved cache file to {cache_file}.")
+    logger.info(f"Saved cache file to {os.path.basename(cache_file)} in output folder.")
     return
 
 
