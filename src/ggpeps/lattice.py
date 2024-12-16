@@ -31,7 +31,7 @@ class Lattice2D:
 
     dim = 2
 
-    def __init__(self, nx: int, ny: int):
+    def __init__(self, nx: int, ny: int, gf_num_of_rows: int = -1):
         self.nx = nx
         self.ny = ny
         self.nlinks = 2 * nx * ny
@@ -43,7 +43,11 @@ class Lattice2D:
         )  # number of links not in the tree - complementary tree links
 
         # We trust the user not to modify these
-        self.maximal_tree = self.generate_tree()
+        if gf_num_of_rows == -1:  # If we gauge_fix over a maximal tree
+            self.maximal_tree = self.generate_tree()
+        else:  # We fix a specific number of rows
+            self.maximal_tree = self.generate_tree(gf_num_of_rows)
+
         self.comp_tree = self.generate_tree_complement()
 
     def __str__(self):
