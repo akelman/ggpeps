@@ -62,25 +62,25 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
             [1, -1, 1.0j, 1.0j],
             [1, -1, 1.0j, 1.0j],
         ]
-        indices_layer1 = [
+        indices_layer_pg = [
             [(2, 4), (3, 5), (4, 5), (2, 3)],
             [(6, 0), (7, 1), (0, 1), (6, 7)],
             [(10, 12), (11, 13), (12, 13), (10, 11)],
             [(14, 8), (15, 9), (8, 9), (14, 15)],
         ]
-        indices_layer2 = [
+        indices_layer_fermionic = [
             [(2, 0), (3, 1), (0, 1), (2, 3)],
             [(6, 4), (7, 5), (4, 5), (6, 7)],
             [(10, 8), (11, 9), (8, 9), (10, 11)],
             [(14, 12), (15, 13), (12, 13), (14, 15)],
         ]
-        idxarr_lay1 = get_pfaffian_arrays(
-            indices_layer1, prefactors
-        )  # pure gauge layers
-        idxarr_lay2 = get_pfaffian_arrays(
-            indices_layer2, prefactors
-        )  # fermionic layers
-        self.idxarr_vec = [idxarr_lay1] * (self.num_pg_layer) + [idxarr_lay2]
+
+        idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
+        idxarr_lay_fermionic = get_pfaffian_arrays(indices_layer_fermionic, prefactors)
+        self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [
+            idxarr_lay_fermionic
+        ] * self.num_fermionic_layer
+
         self.el_overall_factors = [1 / 256] * (
             self.nlayer
         )  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
