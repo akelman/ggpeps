@@ -103,6 +103,7 @@ class Config2DBase(ABC):
             g_mag (float): prefactor for magnetic energy
             g_int (float): prefactor for gauge-matter coupling
             g_mass (float): mass of physical fermions (i.e. prefactor on the mass term).
+            g_chem (Optional[np.array]): chemical potential for the fermions. If None, all are set to zero.
             num_pg_layer (int, optional): number of pure gauge layers. Defaults to 1.
             num_fermionic_layer (int, optional): number of fermionic layers. Defaults to 0.
         """
