@@ -208,7 +208,7 @@ def main(args):
     mc_config.warmup_steps = args.warmup_steps
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize
-    mc_config.gauge_fixing = args.gauge_fixing
+    mc_config.gauge_fixing = bool(args.gauge_fixing)
     if args.use_systemsize_updates or args.update_size == "system":
         mc_config.update_size_per_step = 2 * L**2
     elif args.update_size == "halfsystem":
@@ -238,11 +238,10 @@ def main(args):
     logger.info("============================")
 
     # We are focussing on 2 dimensions for the moment
-    lattice = lat.Lattice2D(L, L)
-    if args.gauge_fixing and args.rows_gauge_fixing >= 0:
-        lattice.maximal_tree = lattice.generate_tree(args.rows_gauge_fixing)
-        lattice.comp_tree = lattice.generate_tree_complement()
-
+    if args.gauge_fixing:
+        lattice = lat.Lattice2D(L, L, args.gauge_fixing)
+    else:
+        lattice = lat.Lattice2D(L, L)
     # TODO: get from command line
     nlayer = args.num_pg_layer + args.num_fermionic_layer
     g_chem = np.array([0] * nlayer)
@@ -620,10 +619,14 @@ if __name__ == "__main__":
     )  # TODO: improve handling of pure-gauge and fermions arguments
 
     # Evaluator settings
-    parser.add_argument("--gauge_fixing", action="store_true", default=False)
     parser.add_argument(
-        "--rows_gauge_fixing", type=int, default=-1
-    )  # when it's -1 we fix the gauge for a maximal tree.
+        "--gauge_fixing",
+        nargs="?",  # Optional value
+        const=-1,  # Value when argument is used without a value
+        type=int,  # Convert the input to an integer if provided
+        default=0,  # Default value when argument is not used
+        help="Gauge fixing: 0 (default) if not provided, -1 if --gauge_fixing is used without a value - for a maximal treee, or any integer if we fix a specific number of rows.",
+    )
 
     # Monte Carlo settings
     parser.add_argument(
