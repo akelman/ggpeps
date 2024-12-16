@@ -221,7 +221,7 @@ def main(args):
 
     # Set up EC config
     ec_config = ExactEvaluatorConfig()
-    ec_config.gauge_fixing = args.gauge_fixing
+    ec_config.gauge_fixing = bool(args.gauge_fixing)
 
     if args.seed is not None:
         seed = args.seed
