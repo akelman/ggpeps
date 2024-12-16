@@ -794,16 +794,17 @@ class Z2System2D(System2DBase):
         if use_trans_inv:
             # Evaluate one plaquette and multiply by number of plaquettes
             wilson_plaquette = self.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
-            mag_energy_bare = xnp.real(self.compute_path(wilson_plaquette))
+            nplaq = self.cfg.lattice.nplaquettes
+            mag_energy_bare = nplaq * xnp.real(self.compute_path(wilson_plaquette))
         else:
             # Evaluate every plaquette of the system
-            logger.error(
-                "compute_mag_energy: non-translational invariant case not implemented yet"
-            )
-            raise NotImplementedError(
-                "The non-translational invariant case is not implemented yet."
-            )
-            mag_energy_bare = None
+            mag_energy_bare = 0
+            for x in range(self.cfg.lattice.nx):
+                for y in range(self.cfg.lattice.ny):
+                    wilson_plaquette = self.cfg.lattice.generate_wilson_loop(
+                        (x, y), (1, 1)
+                    )
+                    mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
         return mag_energy_bare
 
     def _compute_int_energy_op_vec_and_grad(self):
