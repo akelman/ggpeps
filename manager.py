@@ -99,7 +99,7 @@ def args2logname(args, couplings: dict) -> str:
 
 def translate_parameters(
     system_cfg, params: str, rng_state: np.random.RandomState
-) -> (np.array, str):
+) -> tuple[np.array, str]:
     """Translate the parameters given on the commandline to a form useful in the code
 
     Args:
