@@ -16,9 +16,11 @@ def folder2arg(foldername, arg):
         if result is not None:
             if result.group(0) == "T":
                 return f"--gauge_fixing"
+            elif result.group(0) == "F":
+                return ""  # relies on the fact that the default value for gauge_fixing is False
             else:
-                return ""
-        else:  # relies on the fact that the default value for gauge_fixing is False
+                return f"--{arg} {result.group(0)}"
+        else:
             return ""
 
     if result is not None:
