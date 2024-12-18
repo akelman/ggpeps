@@ -225,17 +225,17 @@ class TestLattice(unittest.TestCase):
 
     def test_maximal_tree_generation(self):
         """Ensure that maximal trees are generated correctly"""
-        lat_2x2 = lattice.Lattice2D(2, 2)
-        lat_4x4 = lattice.Lattice2D(4, 4)
+        lat_2x2 = lattice.Lattice2D(2, 2, -1)
+        lat_4x4 = lattice.Lattice2D(4, 4, -1)
         tree2_expected = {0, 2, 4}
         tree4_expected = {0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 16, 17, 18}
-        self.assertEqual(tree2_expected, set(lat_2x2.maximal_tree))
-        self.assertEqual(tree4_expected, set(lat_4x4.maximal_tree))
+        self.assertEqual(tree2_expected, set(lat_2x2.fixed_tree))
+        self.assertEqual(tree4_expected, set(lat_4x4.fixed_tree))
 
     def test_complementary_maximal_tree_generation(self):
         """Ensure that complement of the maximal tree (all the links which are not in the tree) is generated correctly."""
-        lat_2x2 = lattice.Lattice2D(2, 2)
-        lat_4x4 = lattice.Lattice2D(4, 4)
+        lat_2x2 = lattice.Lattice2D(2, 2, -1)
+        lat_4x4 = lattice.Lattice2D(4, 4, -1)
         comp_tree2_expected = {1, 3, 5, 6, 7}
         comp_tree4_expected = {
             3,
@@ -262,5 +262,5 @@ class TestLattice(unittest.TestCase):
     def test_tree_againt_complement(self):
         """Check that the maximal tree and its complement are disjoint"""
         self.assertTrue(
-            set(self.lat2d.maximal_tree).isdisjoint(set(self.lat2d.comp_tree))
+            set(self.lat2d.fixed_tree).isdisjoint(set(self.lat2d.comp_tree))
         )
