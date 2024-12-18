@@ -360,7 +360,7 @@ def main(args):
     logger.info(f"fermions: {args.fermions}")
     if args.gauge_fixing == -1:
         logger.info(f"Gauge fixing: True - maximal tree")
-    elif args.gauge_fixing == -1:
+    elif args.gauge_fixing == 0:
         logger.info(f"Gauge fixing: False")
     else:
         logger.info(f"Gauge fixing: {args.gauge_fixing}")
