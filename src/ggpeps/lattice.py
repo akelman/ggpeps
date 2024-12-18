@@ -27,28 +27,29 @@ class Lattice2D:
     Args:
         nx (int): Extend of the lattice in x direction (given in number of vertices)
         ny (int): Extend of the lattice in y direction (given in number of vertices)
+        gf_num_of_rows (int): Number of rows on which we fix the gauge when gauge fixing. If -1: we fix a maximal tree. It generates a tree in which the links are fixed accordingly.
     """
 
     dim = 2
 
-    def __init__(self, nx: int, ny: int, gf_num_of_rows: int = -1):
+    def __init__(self, nx: int, ny: int, gf_num_of_rows: int = 0):
         self.nx = nx
         self.ny = ny
         self.nlinks = 2 * nx * ny
         self.nplaquettes = nx * ny
         self.size = nx * ny  # number of sites
-        self.ntreelinks = nx * ny - 1
-        self.ncomptreelinks = (
-            nx * ny + 1
-        )  # number of links not in the tree - complementary tree links
 
         # We trust the user not to modify these
         if gf_num_of_rows == -1:  # If we gauge_fix over a maximal tree
-            self.maximal_tree = self.generate_tree()
+            self.fixed_tree = self.generate_tree()
         else:  # We fix a specific number of rows
-            self.maximal_tree = self.generate_tree(gf_num_of_rows)
+            self.fixed_tree = self.generate_tree(gf_num_of_rows)
 
         self.comp_tree = self.generate_tree_complement()
+        self.ncomptreelinks = len(
+            self.comp_tree
+        )  # number of links not in the tree - complementary tree links
+        self.ntreelinks = len(self.fixed_tree)
 
     def __str__(self):
         """Generate a string representation of the lattice.
@@ -308,7 +309,7 @@ class Lattice2D:
         and all the vertical links but the last one on the first column.
 
         Args:
-            num_of_rows (int, optional): Number of rows to fix. Defaults to None.
+            num_of_rows (int, optional): Number of rows to fix. Defaults to None. If None then it generates a maximal tree.
 
         Returns:
             list: List of link-indices in the tree
@@ -339,7 +340,7 @@ class Lattice2D:
         Returns:
             list: List of links which are not in the maximal tree
         """
-        fixed_links_ind = [i for i in range(self.nlinks) if i not in self.maximal_tree]
+        fixed_links_ind = [i for i in range(self.nlinks) if i not in self.fixed_tree]
         return fixed_links_ind
 
 

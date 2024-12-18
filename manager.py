@@ -208,7 +208,6 @@ def main(args):
     mc_config.warmup_steps = args.warmup_steps
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize
-    mc_config.gauge_fixing = bool(args.gauge_fixing)
     if args.use_systemsize_updates or args.update_size == "system":
         mc_config.update_size_per_step = 2 * L**2
     elif args.update_size == "halfsystem":
@@ -221,7 +220,6 @@ def main(args):
 
     # Set up EC config
     ec_config = ExactEvaluatorConfig()
-    ec_config.gauge_fixing = bool(args.gauge_fixing)
 
     if args.seed is not None:
         seed = args.seed
@@ -238,10 +236,7 @@ def main(args):
     logger.info("============================")
 
     # We are focussing on 2 dimensions for the moment
-    if args.gauge_fixing:
-        lattice = lat.Lattice2D(L, L, args.gauge_fixing)
-    else:
-        lattice = lat.Lattice2D(L, L)
+    lattice = lat.Lattice2D(L, L, args.gauge_fixing)
     # TODO: get from command line
     nlayer = args.num_pg_layer + args.num_fermionic_layer
     g_chem = np.array([0] * nlayer)
@@ -363,7 +358,12 @@ def main(args):
     logger.info(f"# of matter layers: {system_cfg.num_fermionic_layer}")
     logger.info(f"# of copies: {args.ncopy}")
     logger.info(f"fermions: {args.fermions}")
-    logger.info(f"Gauge fixing: {args.gauge_fixing}")
+    if args.gauge_fixing == -1:
+        logger.info(f"Gauge fixing: True - maximal tree")
+    elif args.gauge_fixing == -1:
+        logger.info(f"Gauge fixing: False")
+    else:
+        logger.info(f"Gauge fixing: {args.gauge_fixing}")
     logger.info(f"g (lambda): {g}")
     logger.info(f"g_el: {g_el}")
     logger.info(f"g_mag: {g_mag}")

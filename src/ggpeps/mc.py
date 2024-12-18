@@ -37,7 +37,6 @@ class MonteCarloEvaluatorConfig:
         self.update_size_per_step: int = (
             1  # this can be set anywhere from 1 to nlinks (inclusive)
         )
-        self.gauge_fixing = False
 
         # Logging frequency
         self.warmup_log_freq: int = 5000  # log every X steps
@@ -328,12 +327,9 @@ class MonteCarloEvaluator(Evaluator):
         # Pick a site to update
         lattice = self.system.cfg.lattice
         nlinks = lattice.nlinks
-        if self.cfg.gauge_fixing:
-            link_ind = self.cfg.rng_state.choice(
-                self.system.cfg.lattice.comp_tree, replace=False
-            )
-        else:
-            link_ind = self.cfg.rng_state.randint(0, nlinks)
+        link_ind = self.cfg.rng_state.choice(
+            self.system.cfg.lattice.comp_tree, replace=False
+        )
         # Uniformly pick a gauge value
         theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
         # Store the old values
@@ -357,34 +353,19 @@ class MonteCarloEvaluator(Evaluator):
         lattice = self.system.cfg.lattice
         comp_tree = lattice.comp_tree  # non gauge fixed links
         nlinks = lattice.nlinks
-        if self.cfg.gauge_fixing:
-            for i in comp_tree:
-                # Uniformly pick a gauge to replace
-                theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
-                # Store the old values
-                weight_old = self.system.weight
-                weight_new = self.system.calculate_weight_attempt(i, theta)
-                if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
-                    # Accept
-                    self.obsdict["acceptance_prob"].append(1)
-                    self.system.update_gauge_ind(i, theta)
-                else:
-                    # Reject
-                    self.obsdict["acceptance_prob"].append(0)
-        else:
-            for i in range(nlinks):
-                # Uniformly pick a gauge to replace
-                theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
-                # Store the old values
-                weight_old = self.system.weight
-                weight_new = self.system.calculate_weight_attempt(i, theta)
-                if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
-                    # Accept
-                    self.obsdict["acceptance_prob"].append(1)
-                    self.system.update_gauge_ind(i, theta)
-                else:
-                    # Reject
-                    self.obsdict["acceptance_prob"].append(0)
+        for i in comp_tree:
+            # Uniformly pick a gauge to replace
+            theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+            # Store the old values
+            weight_old = self.system.weight
+            weight_new = self.system.calculate_weight_attempt(i, theta)
+            if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
+                # Accept
+                self.obsdict["acceptance_prob"].append(1)
+                self.system.update_gauge_ind(i, theta)
+            else:
+                # Reject
+                self.obsdict["acceptance_prob"].append(0)
 
     def update_N_sites(self):
         """Update for the MC simulation.
@@ -392,17 +373,11 @@ class MonteCarloEvaluator(Evaluator):
         The update is local.
         The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
         """
-        nlinks = self.system.cfg.lattice.nlinks
-        if self.cfg.gauge_fixing:
-            links_inds = self.cfg.rng_state.choice(
-                self.system.cfg.lattice.comp_tree,
-                self.cfg.update_size_per_step,
-                replace=False,
-            )
-        else:
-            links_inds = self.cfg.rng_state.choice(
-                [k for k in range(nlinks)], self.cfg.update_size_per_step, replace=False
-            )
+        links_inds = self.cfg.rng_state.choice(
+            self.system.cfg.lattice.comp_tree,
+            self.cfg.update_size_per_step,
+            replace=False,
+        )
 
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
