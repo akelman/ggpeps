@@ -535,6 +535,7 @@ class MonteCarloEvaluator(Evaluator):
             "mean": [],
             "warmup_steps": [],
             "meas_steps": [],
+            "update_size": [],
             "seed": [],
             "err": [],
         }
@@ -552,6 +553,7 @@ class MonteCarloEvaluator(Evaluator):
             dest["seed"].append(self.cfg.seed)
             dest["warmup_steps"].append(self.cfg.warmup_steps)
             dest["meas_steps"].append(self.cfg.meas_steps)
+            dest["update_size"].append(self.cfg.update_size_per_step)
             dest["mean"].append(self.get_obs_mean(key))
             dest["err"].append(self.get_obs_mean_err(key))
         df = pd.DataFrame(dest)
