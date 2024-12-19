@@ -914,13 +914,14 @@ class Z2System2D(System2DBase):
             layer_chem_energy = 0.0
             layer_grads = [0] * len(self.symbolvec)
 
-            # Calculate mass term
+            # Calculate chem term
             # Since the system is translationally invariant, we could just calculate it for one site and multiply by nsites instead
             for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
                 site_factor = (-1) ** (site_ind)  # even or odd sublattice
                 layer_chem_energy += (
                     0.5 * site_factor * (1 + covmat[site_ind + 1, site_ind])
                 )
+                layer_chem_energy += 0.5  # constant offset which arises from particle-hole transformation
 
                 for symbol_ind, symbol in enumerate(self.symbolvec):
                     if (layer_ind, symbol_ind) not in self.cfg.zeroed_params:

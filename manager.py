@@ -88,7 +88,7 @@ def args2logname(args, couplings: dict) -> str:
     Returns:
         str: Filename of the log file
     """
-    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}"
+    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_gchem_{np.array2string(couplings['g_chem'], separator=',')}"
 
     if "exact" in args.mode:
         fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}.log"
@@ -221,7 +221,17 @@ def main(args):
         g_mag = args.g_mag
     g_int = args.g_int
     g_mass = args.g_mass
-    couplings = {"g_el": g_el, "g_mag": g_mag, "g_int": g_int, "g_mass": g_mass}
+    if args.g_chem is None:
+        g_chem = np.zeros(args.num_pg_layer + args.num_fermionic_layer)
+    else:
+        g_chem = np.array(args.g_chem)
+    couplings = {
+        "g_el": g_el,
+        "g_mag": g_mag,
+        "g_int": g_int,
+        "g_mass": g_mass,
+        "g_chem": g_chem,
+    }
 
     # Set up the logger
     log_filename = args2logname(args, couplings)
@@ -264,10 +274,6 @@ def main(args):
 
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
-
-    # TODO: get from command line
-    nlayer = args.num_pg_layer + args.num_fermionic_layer
-    g_chem = np.array([0] * nlayer)
 
     # Depending on the parameters, we instantiate different systems
     # Since they all share the same interface, we do not care much about the details of the system after this point
@@ -392,7 +398,7 @@ def main(args):
     logger.info(f"g_mag: {g_mag}")
     logger.info(f"g_int: {g_int}")
     logger.info(f"g_mass: {g_mass}")
-    logger.info(f"g_chem: {g_chem}")
+    logger.info(f"g_chem: {np.array2string(g_chem, separator=', ', precision=2)}")
     logger.info(f"Rebinning EOM: {Measurement.use_rebinning}")
     logger.info(f"Loaded parameters from: {param_source}")
     logger.info(f"Starting parameters: {paramvec}")
@@ -612,7 +618,15 @@ if __name__ == "__main__":
         "--g_int", "--int", type=float, default=0.0, help="gauge matter coupling"
     )
     parser.add_argument(
-        "--g_mass", "--mass", "--m", type=float, default=0.0, help="matter constant"
+        "--g_mass", "--mass", "--m", type=float, default=0.0, help="matter coupling"
+    )
+    parser.add_argument(
+        "--g_chem",
+        "--chem",
+        nargs="+",
+        type=float,
+        default=None,
+        help="chemical potentials",
     )
 
     # Ansatz parameters
