@@ -47,7 +47,7 @@ For the rest of the tutorial, we assume it to be in `~/.pyenv/`.
     cd ~/.pyenv
     python -m venv ggpeps
     ```
-    Assuming you are using bash or zsh, you can activate the environment with `source ~/.pyenv/gaussianenv/bin/activate`. If you are using csh, instead use `source ~/.pyenv/gaussianenv/bin/activate.csh`.
+    Assuming you are using bash or zsh, you can activate the environment with `source ~/.pyenv/ggpeps/bin/activate`. If you are using csh, instead use `source ~/.pyenv/ggpeps/bin/activate.csh`.
     Upon activation, you will notice that your prompt changes. As long as it is prefixed by `(ggpeps)` the virtual environment is active.
     The virtual environment can be deactivated with `deactivate`.
 <br/>
