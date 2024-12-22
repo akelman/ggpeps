@@ -779,7 +779,7 @@ class Z2System2D(System2DBase):
         res = compute_el_grad_vec(self)
         return res
 
-    def _compute_mag_energy_op(self, use_trans_inv: bool = False):
+    def _compute_mag_energy_op(self, use_trans_inv: bool = True):
         """Computation of the magnetic energy operator (w/o shift).
         This operator is diagonal in the gauge field (group element) basis and can thus be computed easily.
 
