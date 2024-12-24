@@ -311,7 +311,7 @@ class MonteCarloEvaluator(Evaluator):
         logger.debug("Starting MC measurement")
         while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
             if self.step % self.cfg.run_log_freq == 0:
-                acceptance_ratio = self.obsdict["acceptance_prob"][
+                acceptance_ratio = self.obsdict["acceptance_prob"].datavec[
                     -self.cfg.run_log_freq : :
                 ]
                 logger.debug(
