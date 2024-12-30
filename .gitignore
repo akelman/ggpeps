@@ -57,3 +57,4 @@ plots.py
 scan_fixed_point.py
 transformation.py
 load_*
+test_FM.py
