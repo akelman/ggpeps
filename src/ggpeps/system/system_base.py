@@ -1543,15 +1543,10 @@ class System2DBase(ABC):
 
     @property
     def string_op(self) -> float:
-        """Compute the interaction energy operator for the whole system without shift.
-        This is a get function.
-
-        Returns:
-            float: Interaction energy operator (w/o shift) for the whole system
-        """
         if self._string_op is None:
             nsites = self.cfg.lattice.size
-            self._string_op = xnp.sum(self.string_op_vec)
+            # the FM_num op is a length 2 array with the 1x1 and 2x2 loops
+            self._string_op = [xnp.sum(op) for op in self.string_op_vec]
         return self._string_op
 
     # Functions that return the layer-resolved energies of each energy operator

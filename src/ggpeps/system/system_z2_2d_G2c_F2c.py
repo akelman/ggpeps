@@ -238,42 +238,12 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         tmat_symb = sympy.Matrix(
             [
                 [0, -1.0j * t1, 1.0j * t1, t1, -t1, -1.0j * t2, 1.0j * t2, t2, -t2],
-                [
-                    1.0j * t1,
-                    0,
-                    1.0j * y1,
-                    z1,
-                    1.0j * z1,
-                    -1.0j * a,
-                    -1.0j * c,
-                    -1.0j * b,
-                    -1.0j * d,
-                ],
-                [
-                    -1.0j * t1,
-                    -1.0j * y1,
-                    0,
-                    -1.0j * z1,
-                    -z1,
-                    1.0j * c,
-                    1.0j * a,
-                    1.0j * d,
-                    1.0j * b,
-                ],
+                [ 1.0j * t1, 0, 1.0j * y1, z1, 1.0j * z1, -1.0j * a, -1.0j * c, -1.0j * b, -1.0j * d, ],
+                [ -1.0j * t1, -1.0j * y1, 0, -1.0j * z1, -z1, 1.0j * c, 1.0j * a, 1.0j * d, 1.0j * b, ],
                 [-t1, -z1, 1.0j * z1, 0, -y1, d, b, a, c],
                 [t1, -1.0j * z1, z1, y1, 0, -b, -d, -c, -a],
                 [1.0j * t2, 1.0j * a, -1.0j * c, -d, b, 0, 1.0j * y2, z2, 1.0j * z2],
-                [
-                    -1.0j * t2,
-                    1.0j * c,
-                    -1.0j * a,
-                    -b,
-                    d,
-                    -1.0j * y2,
-                    0,
-                    -1.0j * z2,
-                    -z2,
-                ],
+                [ -1.0j * t2, 1.0j * c, -1.0j * a, -b, d, -1.0j * y2, 0, -1.0j * z2, -z2, ],
                 [-t2, 1.0j * b, -1.0j * d, -a, c, -z2, 1.0j * z2, 0, -y2],
                 [t2, 1.0j * d, -1.0j * b, -c, a, -1.0j * z2, z2, y2, 0],
             ]
@@ -806,8 +776,8 @@ class Z2System2D(System2DBase):
             mag_energy_bare = None
         return mag_energy_bare
 
-    def _compute_string_op_vec(self):
-        L=1
+    def compute_FM_num(self, L):
+        #Assume a square loop with size L as support, with the bottom-left corner at the origin
         FM_op = [0] * self.cfg.num_pg_layer
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
@@ -815,7 +785,9 @@ class Z2System2D(System2DBase):
             covmat = self.compute_ferm_cov(layer_ind)
 
             site_ind_in = 0
-            site_ind_fin = 3
+            site_ind_fin = self.cfg.lattice.coord2ind((L%self.cfg.lattice.nx,L%self.cfg.lattice.ny))
+            # print("L: ", L)
+            # print(site_ind_fin)
 
             coord_in = self.cfg.lattice.ind2coord(site_ind_in)
             coord_fin = self.cfg.lattice.ind2coord(site_ind_fin)
@@ -849,9 +821,10 @@ class Z2System2D(System2DBase):
             FM_op.append(np.abs(FM_num))
 
         FM_op = xnp.asarray(FM_op)
-
         return FM_op
 
+    def _compute_string_op_vec(self):
+                return [self.compute_FM_num(1),self.compute_FM_num(2)]
 
 
     def _compute_int_energy_op_vec_and_grad(self):

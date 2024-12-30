@@ -57,7 +57,7 @@ for g0 in np.arange(1.1,1.2,0.1):
 
     res = ex_eval.evaluate()
 
-    FM=res["FM"]
+    FM=res["FM 1x1"]
     w =res["wilson_loop_0-0_1x1"]
     FM_list.append(FM)
     ws_list.append(w)

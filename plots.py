@@ -22,4 +22,6 @@ plt.xticks(theta, ['0', 'π/2', 'π', '3π/2', '2π'])
 
 
 plt.legend()
+plt.savefig("scan_phase.pdf")
 plt.show()
+

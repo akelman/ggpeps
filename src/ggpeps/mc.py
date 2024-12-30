@@ -246,7 +246,8 @@ class MonteCarloEvaluator(Evaluator):
         for k in range(len(sizes)):
             loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
-        self.obsdict["FM 1x1"].append(self.system.string_op)
+        self.obsdict["FM 1x1"].append(self.system.string_op[0])
+        self.obsdict["FM 2x2"].append(self.system.string_op[1])
 
     def energy_gradient_mc(self):
         # Compute the energy gradient from the MC results
@@ -557,7 +558,7 @@ class MonteCarloEvaluator(Evaluator):
             dest["meas_steps"].append(self.cfg.meas_steps)
             dest["mean"].append(self.get_obs_mean(key))
             dest["err"].append(self.get_obs_mean_err(key))
-        #dest["mean"]["FM 1x1"]=dest["mean"]["FM 1x1"]/np.sqrt(dest["mean"]["wilson_0-0_1x1"])
-        dest.loc["FM 1x1","mean"]=dest["FM 1x1","mean"]/np.sqrt(dest["wilson_loop_0-0_1x1","mean"])
+        dest["mean"][12]=dest["mean"][12]/np.sqrt(dest["mean"][16])
+        dest["mean"][13]=dest["mean"][13]/np.sqrt(dest["mean"][16])
         df = pd.DataFrame(dest)
         return df
