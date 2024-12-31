@@ -824,7 +824,7 @@ class Z2System2D(System2DBase):
         return FM_op
 
     def _compute_string_op_vec(self):
-                return [self.compute_FM_num(1),self.compute_FM_num(2)]
+                return [self.compute_FM_num(l) for l in range(1,self.cfg.lattice.nx//2+1)]
 
 
     def _compute_int_energy_op_vec_and_grad(self):
