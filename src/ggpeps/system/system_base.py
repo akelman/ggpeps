@@ -1595,14 +1595,9 @@ class System2DBase(ABC):
 
     @property
     def string_op_vec(self):
-        """Compute interaction energy operator w/o shift for all layers for the whole system.
-        This is a get function.
+        """Compute layer resolved meson string."""
 
-        Returns:
-            list: Layer-resolved interaction energy w/o shift
-        """
         if self._string_op_vec is None:
-            # This vector is the interaction energy on a single site.
             self._string_op_vec = self._compute_string_op_vec()
         return self._string_op_vec
 
