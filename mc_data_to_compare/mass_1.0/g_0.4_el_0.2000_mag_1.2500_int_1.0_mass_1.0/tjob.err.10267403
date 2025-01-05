@@ -1,6 +1,0 @@
-/usr/people/snirgaz/arielkelman/anaconda3/lib/python3.9/subprocess.py:1754: RuntimeWarning: os.fork() was called. os.fork() is incompatible with multithreaded code, and JAX is multithreaded, so this will likely lead to a deadlock.
-  self.pid = _posixsubprocess.fork_exec(
-2024-10-29 14:39:34,234	INFO worker.py:1783 -- Started a local Ray instance.
-slurmstepd: error: Detected 1 oom-kill event(s) in step 10267403.0 cgroup. Some of your processes may have been killed by the cgroup out-of-memory handler.
-srun: error: landau52: task 0: Out Of Memory
-slurmstepd: error: Detected 1 oom-kill event(s) in step 10267403.batch cgroup. Some of your processes may have been killed by the cgroup out-of-memory handler.

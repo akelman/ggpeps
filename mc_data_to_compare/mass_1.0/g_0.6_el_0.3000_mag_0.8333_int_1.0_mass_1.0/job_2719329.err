@@ -1,6 +1,0 @@
-/easybuild/software/Python/3.11.3-GCCcore-12.3.0/lib/python3.11/subprocess.py:1850: RuntimeWarning: os.fork() was called. os.fork() is incompatible with multithreaded code, and JAX is multithreaded, so this will likely lead to a deadlock.
-  self.pid = _fork_exec(
-2024-08-16 21:06:10,409	INFO worker.py:1749 -- Started a local Ray instance.
-[2024-08-20 08:03:30,071 E 3643149 3643815] gcs_rpc_client.h:560: Failed to connect to GCS within 60 seconds. GCS may have been killed. It's either GCS is terminated by `ray stop` or is killed unexpectedly. If it is killed unexpectedly, see the log file gcs_server.out. https://docs.ray.io/en/master/ray-observability/user-guides/configure-logging.html#logging-directory-structure. The program will terminate.
-slurmstepd: error: Detected 5 oom_kill events in StepId=2719329.0. Some of the step tasks have been OOM Killed.
-srun: error: node016: task 0: Out Of Memory
