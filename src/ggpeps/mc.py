@@ -173,7 +173,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["FM 1x1"] = Measurement("FM 1x1", binsize)
         self.obsdict["FM 2x2"] = None
-        if self.system.cfg.lattice.nx>2:
+        if self.system.cfg.lattice.nx > 2:
             self.obsdict["FM 2x2"] = Measurement("FM 2x2", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
         self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
@@ -249,7 +249,7 @@ class MonteCarloEvaluator(Evaluator):
             loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
         self.obsdict["FM 1x1"].append(self.system.string_op[0])
-        if self.system.cfg.lattice.nx>2:
+        if self.system.cfg.lattice.nx > 2:
             self.obsdict["FM 2x2"].append(self.system.string_op[1])
 
     def energy_gradient_mc(self):
@@ -561,8 +561,8 @@ class MonteCarloEvaluator(Evaluator):
             dest["meas_steps"].append(self.cfg.meas_steps)
             dest["mean"].append(self.get_obs_mean(key))
             dest["err"].append(self.get_obs_mean_err(key))
-        dest["mean"][12]=dest["mean"][12]/np.sqrt(dest["mean"][16])
-        if self.system.cfg.lattice.nx>2:
-            dest["mean"][13]=dest["mean"][13]/np.sqrt(dest["mean"][16])
+        dest["mean"][12] = dest["mean"][12] / np.sqrt(dest["mean"][16])
+        if self.system.cfg.lattice.nx > 2:
+            dest["mean"][13] = dest["mean"][13] / np.sqrt(dest["mean"][16])
         df = pd.DataFrame(dest)
         return df

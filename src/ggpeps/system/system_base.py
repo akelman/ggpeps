@@ -1603,10 +1603,8 @@ class System2DBase(ABC):
         """
         if self._string_op_vec is None:
             # This vector is the interaction energy on a single site.
-            self._string_op_vec = ( self._compute_string_op_vec()
-            )
+            self._string_op_vec = self._compute_string_op_vec()
         return self._string_op_vec
-
 
     @property
     def chem_energy_op_vec(self):

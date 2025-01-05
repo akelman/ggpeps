@@ -238,12 +238,42 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         tmat_symb = sympy.Matrix(
             [
                 [0, -1.0j * t1, 1.0j * t1, t1, -t1, -1.0j * t2, 1.0j * t2, t2, -t2],
-                [ 1.0j * t1, 0, 1.0j * y1, z1, 1.0j * z1, -1.0j * a, -1.0j * c, -1.0j * b, -1.0j * d, ],
-                [ -1.0j * t1, -1.0j * y1, 0, -1.0j * z1, -z1, 1.0j * c, 1.0j * a, 1.0j * d, 1.0j * b, ],
+                [
+                    1.0j * t1,
+                    0,
+                    1.0j * y1,
+                    z1,
+                    1.0j * z1,
+                    -1.0j * a,
+                    -1.0j * c,
+                    -1.0j * b,
+                    -1.0j * d,
+                ],
+                [
+                    -1.0j * t1,
+                    -1.0j * y1,
+                    0,
+                    -1.0j * z1,
+                    -z1,
+                    1.0j * c,
+                    1.0j * a,
+                    1.0j * d,
+                    1.0j * b,
+                ],
                 [-t1, -z1, 1.0j * z1, 0, -y1, d, b, a, c],
                 [t1, -1.0j * z1, z1, y1, 0, -b, -d, -c, -a],
                 [1.0j * t2, 1.0j * a, -1.0j * c, -d, b, 0, 1.0j * y2, z2, 1.0j * z2],
-                [ -1.0j * t2, 1.0j * c, -1.0j * a, -b, d, -1.0j * y2, 0, -1.0j * z2, -z2, ],
+                [
+                    -1.0j * t2,
+                    1.0j * c,
+                    -1.0j * a,
+                    -b,
+                    d,
+                    -1.0j * y2,
+                    0,
+                    -1.0j * z2,
+                    -z2,
+                ],
                 [-t2, 1.0j * b, -1.0j * d, -a, c, -z2, 1.0j * z2, 0, -y2],
                 [t2, 1.0j * d, -1.0j * b, -c, a, -1.0j * z2, z2, y2, 0],
             ]
@@ -777,46 +807,59 @@ class Z2System2D(System2DBase):
         return mag_energy_bare
 
     def compute_FM_num(self, L):
-        #Assume a square loop with size L as support, with the bottom-left corner at the origin
+        # Assume a square loop with size L as support, with the bottom-left corner at the origin
         FM_op = [0] * self.cfg.num_pg_layer
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
-            layer_FM  = 0.0
+            layer_FM = 0.0
             covmat = self.compute_ferm_cov(layer_ind)
 
             site_ind_in = 0
-            site_ind_fin = self.cfg.lattice.coord2ind((L%self.cfg.lattice.nx,L%self.cfg.lattice.ny))
+            site_ind_fin = self.cfg.lattice.coord2ind(
+                (L % self.cfg.lattice.nx, L % self.cfg.lattice.ny)
+            )
             # print("L: ", L)
             # print(site_ind_fin)
 
             coord_in = self.cfg.lattice.ind2coord(site_ind_in)
             coord_fin = self.cfg.lattice.ind2coord(site_ind_fin)
 
-            ind_field_in = self.cfg.lattice.coord2ind_dir(coord_in, Direction.X)  # index of the horizontal link
+            ind_field_in = self.cfg.lattice.coord2ind_dir(
+                coord_in, Direction.X
+            )  # index of the horizontal link
 
-            site_ind_cov_in  = 2 * site_ind_in  
+            site_ind_cov_in = 2 * site_ind_in
             site_ind_cov_fin = 2 * site_ind_fin
 
             path_inds_hor = range(L)
-            path_inds_ver = range(L,L*self.cfg.lattice.ny+L,self.cfg.lattice.ny)
+            path_inds_ver = range(L, L * self.cfg.lattice.ny + L, self.cfg.lattice.ny)
 
             path_list = []
 
             for ind in path_inds_hor:
                 coord = self.cfg.lattice.ind2coord(ind)
-                ind_field  = self.cfg.lattice.coord2ind_dir(coord , Direction.X) 
+                ind_field = self.cfg.lattice.coord2ind_dir(coord, Direction.X)
                 path_list.append((ind_field, False))
 
             for ind in path_inds_ver:
                 coord = self.cfg.lattice.ind2coord(ind)
-                ind_field  = self.cfg.lattice.coord2ind_dir(coord , Direction.Y) 
+                ind_field = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
                 path_list.append((ind_field, False))
 
             path_factor = self.compute_path(path_list)
 
-            #Since for L-shaped strings the endpoints are always on the same sublattice, we still have \psi^\dagger               \psi after the PH transformation
+            # Since for L-shaped strings the endpoints are always on the same sublattice, we still have \psi^\dagger               \psi after the PH transformation
             # FM_num = 0.5*path_factor*( covmat[site_ind_cov_in, site_ind_cov_fin] + covmat[site_ind_cov_in+1, site_ind_cov_fin+1])
-            FM_num = 0.25*path_factor*(-1j*covmat[site_ind_cov_in, site_ind_cov_fin] -1j*covmat[site_ind_cov_in+1, site_ind_cov_fin+1] + covmat[site_ind_cov_in+1, site_ind_cov_fin] - covmat[site_ind_cov_in, site_ind_cov_fin+1])
+            FM_num = (
+                0.25
+                * path_factor
+                * (
+                    -1j * covmat[site_ind_cov_in, site_ind_cov_fin]
+                    - 1j * covmat[site_ind_cov_in + 1, site_ind_cov_fin + 1]
+                    + covmat[site_ind_cov_in + 1, site_ind_cov_fin]
+                    - covmat[site_ind_cov_in, site_ind_cov_fin + 1]
+                )
+            )
 
             FM_op.append(np.abs(FM_num))
 
@@ -824,8 +867,7 @@ class Z2System2D(System2DBase):
         return FM_op
 
     def _compute_string_op_vec(self):
-                return [self.compute_FM_num(l) for l in range(1,self.cfg.lattice.nx//2+1)]
-
+        return [self.compute_FM_num(l) for l in range(1, self.cfg.lattice.nx // 2 + 1)]
 
     def _compute_int_energy_op_vec_and_grad(self):
         """Calculate the energy and energy gradient due to the interaction of the physical fermions with the gauge fields.

@@ -141,7 +141,7 @@ class ExactEvaluator(Evaluator):
                     data[loop_name].append(np.real(self.system.compute_path(loops[k])))
 
                 data["FM 1x1"].append(self.system.string_op[0])
-                if self.system.cfg.lattice.nx>2:
+                if self.system.cfg.lattice.nx > 2:
                     data["FM 2x2"].append(self.system.string_op[1])
             # TODO: handle this better - boundary should not be here!
             if ggpeps.PREFERRED_BACKEND == "jax":
@@ -177,10 +177,14 @@ class ExactEvaluator(Evaluator):
                 dest[loop_name] = self.compute_expval(data[loop_name], normvec)
 
             # print(self.compute_expval(data["FM"], normvec))
-            dest["FM 1x1"] = self.compute_expval(data["FM 1x1"], normvec)/(np.sqrt(np.abs(dest["wilson_loop_0-0_1x1"])))
-            dest["FM 2x2"] = None 
-            if self.system.cfg.lattice.nx>2:
-                dest["FM 2x2"] = self.compute_expval(data["FM 2x2"], normvec)/(np.sqrt(np.abs(dest["wilson_loop_0-0_2x2"])))
+            dest["FM 1x1"] = self.compute_expval(data["FM 1x1"], normvec) / (
+                np.sqrt(np.abs(dest["wilson_loop_0-0_1x1"]))
+            )
+            dest["FM 2x2"] = None
+            if self.system.cfg.lattice.nx > 2:
+                dest["FM 2x2"] = self.compute_expval(data["FM 2x2"], normvec) / (
+                    np.sqrt(np.abs(dest["wilson_loop_0-0_2x2"]))
+                )
 
             # The norm that we turn in the end is the actual norm, not the lognorm!
             dest["norm"] = np.sum(normvec)
