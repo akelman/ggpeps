@@ -171,10 +171,6 @@ class MonteCarloEvaluator(Evaluator):
             "Mass Energy Operator (bare)", binsize
         )
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
-        self.obsdict["FM 1x1"] = Measurement("FM 1x1", binsize)
-        self.obsdict["FM 2x2"] = None
-        if self.system.cfg.lattice.nx > 2:
-            self.obsdict["FM 2x2"] = Measurement("FM 2x2", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
         self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
 
@@ -202,6 +198,15 @@ class MonteCarloEvaluator(Evaluator):
         for size in sizes:
             loop_name = f"wilson_loop_0-0_{size[0]}x{size[1]}"
             self.obsdict[loop_name] = Measurement(loop_name, binsize)
+
+        max_string = (
+            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
+        )
+        for k in range(1, max_string):
+            self.obsdict[f"square_string_0-0_{k}x{k}"] = Measurement(
+                f"square_string_0-0_{k}x{k}", binsize
+            )
+            self.obsdict[f"FM_{k}x{k}"] = Measurement(f"FM {k}x{k}", binsize)
 
     def measure(self):
         """Measure the corresponding observables in the dictionary"""
@@ -242,15 +247,29 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
             self.obsdict["energy_grad"].append(self.energy_gradient_mc())
 
+        # TODO: save sizes/loops/strings in a more efficient way, so that they are not recomputed each step
         # Wilson loops
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
         loops = self.system.cfg.lattice.generate_all_wilson_loops((0, 0), sizes)
         for k in range(len(sizes)):
             loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
-        self.obsdict["FM 1x1"].append(self.system.string_op[0])
-        if self.system.cfg.lattice.nx > 2:
-            self.obsdict["FM 2x2"].append(self.system.string_op[1])
+        # Meson strings
+        max_string = (
+            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
+        )
+        strings = [
+            self.system.cfg.lattice.generate_L_string((0, 0), (k, k))
+            for k in range(1, max_string)
+        ]
+        for k in range(1, max_string):
+            string_name = f"square_string_0-0_{k}x{k}"
+            self.obsdict[string_name].append(self.system.meson_string(strings[k - 1]))
+            self.obsdict[f"FM_{k}x{k}"].datavec = self.obsdict[
+                string_name
+            ].datavec / np.sqrt(np.abs(self.obsdict[f"wilson_loop_0-0_{k}x{k}"].mean()))
+
+        return
 
     def energy_gradient_mc(self):
         # Compute the energy gradient from the MC results
@@ -561,8 +580,5 @@ class MonteCarloEvaluator(Evaluator):
             dest["meas_steps"].append(self.cfg.meas_steps)
             dest["mean"].append(self.get_obs_mean(key))
             dest["err"].append(self.get_obs_mean_err(key))
-        dest["mean"][12] = dest["mean"][12] / np.sqrt(dest["mean"][16])
-        if self.system.cfg.lattice.nx > 2:
-            dest["mean"][13] = dest["mean"][13] / np.sqrt(dest["mean"][16])
         df = pd.DataFrame(dest)
         return df
