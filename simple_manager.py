@@ -21,10 +21,6 @@ np.set_printoptions(linewidth=200)
 import ggpeps
 from ggpeps.caching import Cache
 from ggpeps.system import Z2System2DConfig
-from ggpeps.system import Z2System2D2CConfig
-from ggpeps.system import Z2System2D_G2C_F2C_Config
-from ggpeps.system import Z2System2D_G2C_F4C_Config
-from ggpeps.system import Z2System2D_8C_Config
 from ggpeps.system import Z2System2D
 
 from ggpeps import utils
