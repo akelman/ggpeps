@@ -945,6 +945,53 @@ class Z2System2D(System2DBase):
 
         return chem_energy_op, gradients
 
+    def _meson_string_vec(self, path):
+        """Compute a layer resolved meson string for the given path.
+        This is \psi^dagger (start) * String * \psi(end)
+
+        Args:
+            path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
+
+        Returns:
+            array: meson_str_vec
+        """
+
+        meson_op_vec = [0] * self.cfg.num_pg_layer
+
+        # value of the fields
+        path_factor = self.compute_path(path)
+
+        # indices into the covariance matrices at the start and end of the path
+        start_site_ind = path[0][0]
+        # TODO: check that this works for any path, not just positive L-shaped ones
+        coord, direction = self.cfg.lattice.ind2coord_dir(path[-1][0])  # end_link
+        end_site_ind = self.cfg.lattice.coord2ind(
+            self.cfg.lattice.get_neighbor(coord, direction)
+        )
+        site_ind_cov_in = 2 * start_site_ind
+        site_ind_cov_fin = 2 * end_site_ind
+
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            covmat = self.compute_ferm_cov(layer_ind)
+
+            # Since for the L-shaped strings considered here the endpoints are always on the same sublattice,
+            # we still have \psi^\dagger \psi after the PH transformation
+            layer_val = (
+                0.25
+                * path_factor
+                * (
+                    -1j * covmat[site_ind_cov_in, site_ind_cov_fin]
+                    - 1j * covmat[site_ind_cov_in + 1, site_ind_cov_fin + 1]
+                    + covmat[site_ind_cov_in + 1, site_ind_cov_fin]
+                    - covmat[site_ind_cov_in, site_ind_cov_fin + 1]
+                )
+            )
+
+            meson_op_vec.append(
+                xnp.abs(layer_val)
+            )  # Is the absolute value necessary? why?
+        return xnp.array(meson_op_vec)
+
     def compute_FM_num(self, L: int):
         """Compute the numerator of the Fredenhagen-Marcu (FM) parameter.
         Assumes a square loop with size L as support, with the bottom-left corner at the origin
