@@ -30,8 +30,7 @@ from ggpeps.system import Z2System2D
 from ggpeps import utils
 from ggpeps import lattice as lat
 from ggpeps.measurement import Measurement
-from ggpeps.mc import MonteCarloEvaluatorConfig
-from ggpeps.exacteval import ExactEvaluatorConfig
+from ggpeps.mc2 import MonteCarloEvaluatorConfig2
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 
@@ -88,12 +87,9 @@ def args2logname(args, couplings: dict) -> str:
     Returns:
         str: Filename of the log file
     """
-    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_gchem_{np.array2string(couplings['g_chem'], separator=',')}"
+    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}"
 
-    if "exact" in args.mode:
-        fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}.log"
-    else:
-        fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}_num_pg_layer_{args.num_pg_layer}_num_fermionic_layer_{args.num_fermionic_layer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
+    fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
     return os.path.join(args.output, fname)
 
 
@@ -141,25 +137,6 @@ def translate_parameters(
     return dest, source
 
 
-def validate_inputs(args) -> bool:
-
-    if args.L % 2 != 0:
-        logger.error(
-            "The lattice dimension must currently be an even number."
-        )  # this is important when staggering
-        return False
-    if args.ncopy == 1 and args.g_mass != 0:
-        logger.error(
-            "Not Implemented: the mass term has not yet been implemented for the 1 copy case."
-        )
-        return False
-    if args.ncopy not in [1, 2, 4, 8]:
-        logger.error("Not Implemented: only 1,2,4, or 8 copies are possible.")
-        return False
-
-    return True
-
-
 def main(args):
     raw_command = " ".join(sys.argv)
     ind = raw_command.index("manager.py")
@@ -175,10 +152,6 @@ def main(args):
             sys.exit(1)
     else:
         os.makedirs(args.output)
-
-    # Validate input arguments
-    if not validate_inputs(args):
-        sys.exit(1)
 
     # Set up ray before we actually start with the simulation
     # (i)  Ray uses randomness internally and we don't want it to mix up the setting of the seed
@@ -219,12 +192,9 @@ def main(args):
             g_mag = 1 / (4 * g_el)
     else:
         g_mag = args.g_mag
-    g_int = args.g_int
-    g_mass = args.g_mass
-    if args.g_chem is None:
-        g_chem = np.zeros(args.num_pg_layer + args.num_fermionic_layer)
-    else:
-        g_chem = np.array(args.g_chem)
+    g_int = 0
+    g_mass = 0
+    g_chem = np.array([0])
     couplings = {
         "g_el": g_el,
         "g_mag": g_mag,
@@ -239,7 +209,7 @@ def main(args):
     utils.setup_logger(logger, log_filename, args.level)
 
     # Set up the MC Config
-    mc_config = MonteCarloEvaluatorConfig()
+    mc_config = MonteCarloEvaluatorConfig2()
     mc_config.warmup_steps = args.warmup_steps
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize
@@ -253,10 +223,6 @@ def main(args):
     else:
         logger.error("Unrecognized value for update_size.")
         sys.exit(1)
-
-    # Set up EC config
-    ec_config = ExactEvaluatorConfig()
-    ec_config.gauge_fixing = args.gauge_fixing
 
     if args.seed is not None:
         seed = args.seed
@@ -275,79 +241,17 @@ def main(args):
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L)
 
-    # Depending on the parameters, we instantiate different systems
-    # Since they all share the same interface, we do not care much about the details of the system after this point
-    if args.fermions:
-        if args.ncopy == 2:
-            # Z2 system with 4 copies of virtual fermions on the links (2 for the pure gauge case, 2 for interacting with physical fermions)
-            system_cfg = Z2System2D_G2C_F2C_Config(
-                lattice,
-                g_el,
-                g_mag,
-                g_int,
-                g_mass,
-                g_chem,
-                num_pg_layer=args.num_pg_layer,
-                num_fermionic_layer=args.num_fermionic_layer,
-            )
-        elif args.ncopy == 4:
-            # Z2 system with 6 copies of virtual fermions on the links (2 for the pure gauge case, 4 for interacting with physical fermions)
-            system_cfg = Z2System2D_G2C_F4C_Config(
-                lattice,
-                g_el,
-                g_mag,
-                g_int,
-                g_mass,
-                g_chem,
-                num_pg_layer=args.num_pg_layer,
-                num_fermionic_layer=args.num_fermionic_layer,
-            )
-        elif args.ncopy == 8:
-            system_cfg = Z2System2D_8C_Config(
-                lattice,
-                g_el,
-                g_mag,
-                g_int,
-                g_mass,
-                g_chem,
-                num_pg_layer=args.num_pg_layer,
-                num_fermionic_layer=args.num_fermionic_layer,
-            )
-        else:
-            logger.error(
-                "Not Implemented: Only 2, 4, or 8 copies are possible with fermions."
-            )
-            sys.exit(1)
-    else:
-        if args.ncopy == 1:
-            # Z2 system with one copy of virtual fermions on the links
-            system_cfg = Z2System2DConfig(
-                lattice,
-                g_el,
-                g_mag,
-                g_int,
-                g_mass,
-                None,  # no chemical potential for this ansatz, which does not include matter
-                num_pg_layer=args.num_pg_layer,
-                num_fermionic_layer=0,
-            )
-        elif args.ncopy == 2:
-            # Z2 system with two copies of virtual fermions on the links
-            system_cfg = Z2System2D2CConfig(
-                lattice,
-                g_el,
-                g_mag,
-                g_int,
-                g_mass,
-                None,  # no chemical potential for this ansatz, which does not include matter
-                num_pg_layer=args.num_pg_layer,
-                num_fermionic_layer=0,
-            )
-        else:
-            logger.error(
-                "Not Implemented: Only 1 or 2 copies are possible without fermions."
-            )
-            sys.exit(1)
+    # Z2 system with one copy of virtual fermions on the links
+    system_cfg = Z2System2DConfig(
+        lattice,
+        g_el,
+        g_mag,
+        g_int,
+        g_mass,
+        None,  # no chemical potential for this ansatz, which does not include matter
+        num_pg_layer=1,
+        num_fermionic_layer=0,
+    )
     system_type = Z2System2D
 
     # We use a local random number generator instead of the global numpy one to assure
@@ -360,37 +264,18 @@ def main(args):
     system_cfg.paramvec = paramvec
 
     # Ensure pure gauge (setting t parameter(s) to zero) if enabled
-    if not args.fermions:
-        system_cfg.make_pure_gauge()
-
-    # Enforce the required parameter conditions to get the correct use of layers
-    # This only has an effect for the ansatz's with fermions
-    system_cfg.enforce_parameter_conditions(system_cfg.paramvec)
+    system_cfg.make_pure_gauge()
 
     # Switch to control the binning analysis on EOM (Error of mean)
     if args.no_bin_eom:
         Measurement.use_rebinning = False
-
-    # Device selection: Checks if GPUs are available. If yes it uses the first available GPU;
-    # if not, defaults to using the CPU.
-    logger.info("======= BACKEND INFO =======")
-    if ggpeps.GPU_AVAILABLE:
-        logger.info(f"Found GPU, using {ggpeps.PREFERRED_DEVICE}.")
-        # TODO: add basic GPU info
-        # logger.info(f"GPU info: {ggpeps.PREFERRED_DEVICE.device_kind}"
-    else:
-        logger.info("No GPUs found, falling back to CPU.")
-    logger.info(f"Numerical backend: {ggpeps.PREFERRED_BACKEND}")
-    arr = ggpeps.xnp.array([1.2, 1.3])
-    logger.info(f"Precision: {arr.dtype}")
-    logger.info("============================")
 
     # Update Log
     logger.info("======= SYSTEM INFO ========")
     logger.info(f"L: {L}")
     logger.info(f"# of PG layers: {system_cfg.num_pg_layer}")
     logger.info(f"# of matter layers: {system_cfg.num_fermionic_layer}")
-    logger.info(f"# of copies: {args.ncopy}")
+    logger.info(f"# of copies: {1}")
     logger.info(f"fermions: {args.fermions}")
     logger.info(f"Gauge fixing: {args.gauge_fixing}")
     logger.info(f"g (lambda): {g}")
@@ -444,7 +329,7 @@ def main(args):
     ggpeps.global_vars["cache"] = cache
 
     # Call different functions depending on the mode specified via CLI
-    if args.mode == "eval-mc":
+    if args.mode == "eval-mc2":
         # Evaluate observables for a given set of parameters with Monte Carlo
 
         mc_config.minimizer_mode = args.compute_grads
@@ -466,7 +351,7 @@ def main(args):
             f"Acceptance probability: {mc_result.get_obs_mean('acceptance_prob')}"
         )
         logger.info("============================")
-    elif args.mode == "min-mc":
+    elif args.mode == "min-mc2":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
 
         mc_config.minimizer_mode = True
@@ -487,84 +372,6 @@ def main(args):
         stop = timer()
         logger.info(result)
         minimizer.save(output_dir=args.output)
-    elif args.mode == "eval-exact":
-        # Evaluate observables for a given set of parameters with exact contraction
-        ex_eval = EvaluatorManager(system_type, system_cfg, ec_config, args.nrunner)
-        ggpeps.global_vars["eval_manager"] = ex_eval
-
-        start = timer()
-        dest = ex_eval.simulate()
-        stop = timer()
-
-        dest_dict = dest.obsdict
-        dest.save(output_dir=args.output)
-        for key, val in dest_dict.items():
-            logger.info(f"{key}: {val}")
-    elif args.mode == "min-exact":
-        # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
-
-        start = timer()
-        ex_mgr = EvaluatorManager(system_type, system_cfg, ec_config, args.nrunner)
-
-        min_cfg = MinimizerConfig()
-        min_cfg.method = args.method.upper()
-        min_cfg.max_iter = args.maxiter
-        min_cfg.alpha = args.alpha
-        min_cfg.min_grad = args.min_grad
-
-        minimizer = Minimizer(min_cfg, ex_mgr)
-        ggpeps.global_vars["minimizer"] = minimizer
-
-        start = timer()
-        result = minimizer.minimize()
-        stop = timer()
-        logger.info(result)
-        minimizer.save(output_dir=args.output)
-    elif args.mode == "minmult-mc":
-        """This mode has not been used in a while and might not work anymore.
-        The port variable is intended for use with ray, but this does not currently work with the EvaluatorManager.
-        It's possible the the port workaround is unneeded with current versions of ray.
-        """
-
-        # Optimize the parameters with multiple runs (useful if BFGS has problems with the Hessian)
-
-        # Set the parameters of the minimizer according to the command line
-        min_cfg = MinimizerConfig()
-        min_cfg.method = args.method
-        min_cfg.max_iter = args.maxiter
-        min_cfg.alpha = args.alpha
-        min_cfg.use_metric = args.use_metric
-
-        start = timer()
-        resultvec = []
-        mc_config.minimizer_mode = True
-        for i in range(args.minmult_iter):
-            logger.info(f"Minimization iteration: {i:02d}")
-            mc = EvaluatorManager(
-                mc_config,
-                system_type,
-                system_cfg,
-                args.nrunner,
-                port=args.port,
-            )  # TODO: port is not defined!!
-            minimizer = Minimizer(mc, min_cfg)
-
-            resultvec.append(minimizer.minimize())
-            system_cfg.paramvec = resultvec[-1].paramvec
-        stop = timer()
-        # TODO: We can merge the resultvec to get a full result
-        minimizer.save(output_dir=args.output)
-        # We run a final iteration of the MC simulation with all observables
-        mc_config.minimizer_mode = False
-        mc_mgr = EvaluatorManager(
-            mc_config,
-            system_type,
-            system_cfg,
-            args.nrunner,
-            port=args.port,
-        )
-        mc_result = mc_mgr.simulate()
-        mc_result.save(output_dir=args.output)
     else:
         logger.error(f"Mode '{args.mode}' unknown.")
 
@@ -585,15 +392,14 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        epilog="""Possible modes: eval-mc, eval-exact, min-mc (minimize with MC), min-exact, minmult-mc. \
-                    Possible logging levels: critical, error, warning, info, debug.""",
+        epilog="""Possible logging levels: critical, error, warning, info, debug.""",
     )
 
     # Mode and lattice size
     parser.add_argument(
         "mode",
         type=str,
-        choices=["eval-mc", "eval-exact", "min-mc", "min-exact", "minmult-mc"],
+        choices=["eval-mc2", "min-mc2"],
         help="Mode of the program",
     )
     parser.add_argument("L", type=int, help="Size of the square system (one side)")
@@ -614,40 +420,8 @@ if __name__ == "__main__":
         type=float,
         help="magnetic coupling constant (if not given, computed as [2*g]^-1)",
     )
-    parser.add_argument(
-        "--g_int", "--int", type=float, default=0.0, help="gauge matter coupling"
-    )
-    parser.add_argument(
-        "--g_mass", "--mass", "--m", type=float, default=0.0, help="matter coupling"
-    )
-    parser.add_argument(
-        "--g_chem",
-        "--chem",
-        nargs="+",
-        type=float,
-        default=None,
-        help="chemical potentials",
-    )
 
-    # Ansatz parameters
-    parser.add_argument(
-        "--num_pg_layer",
-        default=1,
-        type=int,
-        help="Number of pure gauge PEPS layers for the variational state",
-    )
-    parser.add_argument(
-        "--num_fermionic_layer",
-        default=1,
-        type=int,
-        help="Number of matter PEPS layers for the variational state",
-    )
-    parser.add_argument(
-        "--ncopy",
-        default=1,
-        type=int,
-        help="Number of virtual fermions on the links per layer",
-    )
+    # Ansatz parameters -- hard coded in main()
 
     # Other system parameters
     parser.add_argument(

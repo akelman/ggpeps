@@ -10,6 +10,7 @@ import ggpeps
 from ggpeps import utils
 from ggpeps.exacteval import ExactEvaluator, ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig, run_mc
+from ggpeps.mc2 import MonteCarloEvaluator2, MonteCarloEvaluatorConfig2
 from ggpeps.system import SystemType, SystemConfigType
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -47,6 +48,8 @@ class EvaluatorManager:
             self.type = "exact"
         elif isinstance(self.cfg, MonteCarloEvaluatorConfig):
             self.type = "mc"
+        elif isinstance(self.cfg, MonteCarloEvaluatorConfig2):
+            self.type = "mc2"
         else:
             raise ValueError("Unrecognized type of evaluator config.")
 
@@ -57,6 +60,8 @@ class EvaluatorManager:
             self.evaluator = ExactEvaluator(self.cfg, system)
         elif self.type == "mc":
             self.evaluator = MonteCarloEvaluator(self.cfg, system)
+        elif self.type == "mc2":
+            self.evaluator = MonteCarloEvaluator2(self.cfg, system)
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
 
