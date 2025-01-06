@@ -947,7 +947,7 @@ class Z2System2D(System2DBase):
 
     def _meson_string_vec(self, path):
         """Compute a layer resolved meson string for the given path.
-        This is \psi^dagger (start) * String * \psi(end)
+        This is \psi^dagger (start) * String * \psi(end) before particle-hole, and assumes that start and end are on the same sublattice.
 
         Args:
             path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
@@ -962,12 +962,9 @@ class Z2System2D(System2DBase):
         path_factor = self.compute_path(path)
 
         # indices into the covariance matrices at the start and end of the path
-        start_site_ind = path[0][0]
-        # TODO: check that this works for any path, not just positive L-shaped ones
-        coord, direction = self.cfg.lattice.ind2coord_dir(path[-1][0])  # end_link
-        end_site_ind = self.cfg.lattice.coord2ind(
-            self.cfg.lattice.get_neighbor(coord, direction)
-        )
+        # TODO: it is a waste to calculate this for every gauge config - instead, this function should accept
+        #       as input the start and end site indices
+        start_site_ind, end_site_ind = self.cfg.lattice.get_path_endpoints(path)
         site_ind_cov_in = 2 * start_site_ind
         site_ind_cov_fin = 2 * end_site_ind
 

@@ -164,6 +164,51 @@ class Lattice2D:
             yn = (y + 1) % self.ny
         return (xn, yn)
 
+    def get_path_endpoints(self, path, use_indices: bool = True) -> tuple:
+        """Get the lattice site endpoints of a path.
+        The start will be one of the sites adjacent to the first link, which one is determined by whether the link
+        is conjugated or not.
+        The end will be one of the sites adjacent to the last link, which one is determined by whether the link
+        is conjugated or not.
+
+        The <site_id> can be either a tuple of coordinates or an integer id of a link (depending on use_indices).
+
+        Args:
+            path (list): list of links, with each link represented as a tuple of the form (((x,y), dir), conj).
+            use_indices (bool, optional): Return the loop in terms of site indices rather than coordinates. Defaults to True.
+
+        Returns:
+            tuple: (start, end) coordinates or indices of the start and end of the path
+        """
+        # TODO: write tests for this function
+
+        if path == []:
+            raise ValueError("There are no start/end points for an empty path.")
+
+        start_link = path[0]
+        if isinstance(start_link[0], int):
+            start_site_coord, dir = self.ind2coord_dir(start_link[0])
+        else:
+            start_site_coord, dir = start_link[0]
+        if start_link[1]:  # link is conjugated
+            start_site_coord = self.get_neighbor(start_site_coord, dir)
+
+        end_link = path[-1]
+        if isinstance(end_link[0], int):
+            end_site_coord, dir = self.ind2coord_dir(end_link[0])
+        else:
+            end_site_coord, dir = end_link[0]
+        if not end_link[1]:  # link is not conjugated
+            end_site_coord = self.get_neighbor(end_site_coord, dir)
+
+        if use_indices:
+            start_site = self.coord2ind(start_site_coord)
+            end_site = self.coord2ind(end_site_coord)
+        else:
+            start_site = start_site_coord
+            end_site = end_site_coord
+        return (start_site, end_site)
+
     def generate_polyakov_loop(
         self, coord: tuple, dir: Direction, use_indices: bool = True
     ) -> list:
