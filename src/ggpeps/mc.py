@@ -206,7 +206,6 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict[f"square_string_0-0_{k}x{k}"] = Measurement(
                 f"square_string_0-0_{k}x{k}", binsize
             )
-            self.obsdict[f"FM_{k}x{k}"] = Measurement(f"FM {k}x{k}", binsize)
 
     def measure(self):
         """Measure the corresponding observables in the dictionary"""
@@ -265,9 +264,6 @@ class MonteCarloEvaluator(Evaluator):
         for k in range(1, max_string):
             string_name = f"square_string_0-0_{k}x{k}"
             self.obsdict[string_name].append(self.system.meson_string(strings[k - 1]))
-            self.obsdict[f"FM_{k}x{k}"].datavec = self.obsdict[
-                string_name
-            ].datavec / np.sqrt(np.abs(self.obsdict[f"wilson_loop_0-0_{k}x{k}"].mean()))
 
         return
 
