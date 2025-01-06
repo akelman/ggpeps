@@ -199,6 +199,7 @@ class MonteCarloEvaluator(Evaluator):
             loop_name = f"wilson_loop_0-0_{size[0]}x{size[1]}"
             self.obsdict[loop_name] = Measurement(loop_name, binsize)
 
+        # Meson strings
         max_string = (
             1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
         )
@@ -253,6 +254,7 @@ class MonteCarloEvaluator(Evaluator):
         for k in range(len(sizes)):
             loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
+
         # Meson strings
         max_string = (
             1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
