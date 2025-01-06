@@ -1399,6 +1399,14 @@ class System2DBase(ABC):
             "This is an abstract method. Implement in child class please."
         )
 
+    def _meson_string_vec(self, path):
+        """Compute a meson string.
+        This is an abstract method and has to be overwritten in a subclass.
+        """
+        raise NotImplementedError(
+            "This is an abstract method. Implement in child class please."
+        )
+
     ################## Energy Calculations ######################
     @property
     def energy(self) -> float:
@@ -1664,6 +1672,18 @@ class System2DBase(ABC):
             float: the occupation number per site
         """
         return self.mass_energy_op / self.cfg.lattice.size
+
+    def meson_string(self, path) -> float:
+        """Calculate the value of a meson string given a path.
+
+        Args:
+            path (list):
+
+        Returns:
+            float:
+        """
+        meson_val = xnp.sum(self._meson_string_vec(path))  # sum over layers/flavors
+        return meson_val
 
     def compute_path(self, path):
         """Compute the observable corresponding the path given as an argument

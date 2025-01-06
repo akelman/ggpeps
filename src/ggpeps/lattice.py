@@ -164,6 +164,51 @@ class Lattice2D:
             yn = (y + 1) % self.ny
         return (xn, yn)
 
+    def get_path_endpoints(self, path, use_indices: bool = True) -> tuple:
+        """Get the lattice site endpoints of a path.
+        The start will be one of the sites adjacent to the first link, which one is determined by whether the link
+        is conjugated or not.
+        The end will be one of the sites adjacent to the last link, which one is determined by whether the link
+        is conjugated or not.
+
+        The <site_id> can be either a tuple of coordinates or an integer id of a link (depending on use_indices).
+
+        Args:
+            path (list): list of links, with each link represented as a tuple of the form (((x,y), dir), conj).
+            use_indices (bool, optional): Return the loop in terms of site indices rather than coordinates. Defaults to True.
+
+        Returns:
+            tuple: (start, end) coordinates or indices of the start and end of the path
+        """
+        # TODO: write tests for this function
+
+        if path == []:
+            raise ValueError("There are no start/end points for an empty path.")
+
+        start_link = path[0]
+        if isinstance(start_link[0], int):
+            start_site_coord, dir = self.ind2coord_dir(start_link[0])
+        else:
+            start_site_coord, dir = start_link[0]
+        if start_link[1]:  # link is conjugated
+            start_site_coord = self.get_neighbor(start_site_coord, dir)
+
+        end_link = path[-1]
+        if isinstance(end_link[0], int):
+            end_site_coord, dir = self.ind2coord_dir(end_link[0])
+        else:
+            end_site_coord, dir = end_link[0]
+        if not end_link[1]:  # link is not conjugated
+            end_site_coord = self.get_neighbor(end_site_coord, dir)
+
+        if use_indices:
+            start_site = self.coord2ind(start_site_coord)
+            end_site = self.coord2ind(end_site_coord)
+        else:
+            start_site = start_site_coord
+            end_site = end_site_coord
+        return (start_site, end_site)
+
     def generate_polyakov_loop(
         self, coord: tuple, dir: Direction, use_indices: bool = True
     ) -> list:
@@ -205,16 +250,16 @@ class Lattice2D:
     def generate_wilson_loop(
         self, coord: tuple, size: tuple, use_indices: bool = True
     ) -> list:
-        """Generate a Wilson loop with bottom left corner at coord and an extend specified by the tuple size.
+        """Generate a Wilson loop with bottom left corner at coord and an extent specified by the tuple size.
         This method is aware of the periodic boundary conditions of the lattice.
         The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
-        The <link_id> can be either a tuple of coordinates or an integer id of a link (depending on use_indices).
+        The <link_id> can be either a tuple of coordinates with a direction or an integer id of a link (depending on use_indices).
         The bool in the tuples returned by this function signifies the orientation.
         "True" means flip gauge field, "False" means no flip.
 
         Args:
             coord (tuple): bottom left corner (x,y) of the Wilson loop
-            size (tuple): extend in (x,y)
+            size (tuple): extent in (x,y)
             use_indices (bool, optional): Use link indices instead of coordinate representation. Defaults to True.
 
         Returns:
@@ -235,6 +280,39 @@ class Lattice2D:
         for i in range(ext_y):
             coord_link = (x, (y + ext_y - i - 1) % self.ny)
             dest.append(((coord_link, Direction.Y), True))
+        if use_indices:
+            # Transform the coordinates to indices
+            dest = [(self.coord2ind_dir(*coorddir), conj) for (coorddir, conj) in dest]
+        return dest
+
+    def generate_L_string(
+        self, coord: tuple, size: tuple, use_indices: bool = True
+    ) -> list:
+        """Generate an L shaped path with bottom left corner at coord and an extent specified by the tuple size.
+        This method is aware of the periodic boundary conditions of the lattice.
+        The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
+        The <link_id> can be either a tuple of coordinates with a direction or an integer id of a link (depending on use_indices).
+        The bool in the tuples returned by this function signifies the orientation.
+        "True" means flip (conjugate) gauge field, "False" means no flip.
+        Since we go only rightward/upward, here we never take the conjugate.
+
+        Args:
+            coord (tuple): bottom left corner (x,y) of the path
+            size (tuple): extent in (x,y)
+            use_indices (bool, optional): Use link indices instead of coordinate representation. Defaults to True.
+
+        Returns:
+            list: List of tuples of the form (link_id,<bool>)
+        """
+        ext_x, ext_y = size
+        x, y = coord
+        dest = []
+        for i in range(ext_x):
+            coord_link = ((x + i) % self.nx, y)
+            dest.append(((coord_link, Direction.X), False))
+        for i in range(ext_y):
+            coord_link = ((x + ext_x) % self.nx, (y + i) % self.ny)
+            dest.append(((coord_link, Direction.Y), False))
         if use_indices:
             # Transform the coordinates to indices
             dest = [(self.coord2ind_dir(*coorddir), conj) for (coorddir, conj) in dest]

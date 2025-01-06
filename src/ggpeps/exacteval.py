@@ -75,9 +75,16 @@ class ExactEvaluator(Evaluator):
             )
             wilson_loop = self.system.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
 
-            # Wilson loops
+            # Wilson loop & meson string preliminaries
             sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
             loops = self.system.cfg.lattice.generate_all_wilson_loops((0, 0), sizes)
+            max_string = (
+                1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
+            )
+            strings = [
+                self.system.cfg.lattice.generate_L_string((0, 0), (k, k))
+                for k in range(1, max_string)
+            ]
 
             data = {
                 "energy": [],
@@ -103,6 +110,9 @@ class ExactEvaluator(Evaluator):
             for k in range(len(sizes)):
                 loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
                 data[loop_name] = []
+            # Meson strings - for now, we compute only "square" meson strings
+            for k in range(1, max_string):
+                data[f"square_string_0-0_{k}x{k}"] = []
 
             for config in configvec:
                 self.system.update_gauge_full_system(config)
@@ -137,6 +147,12 @@ class ExactEvaluator(Evaluator):
                     loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
                     data[loop_name].append(np.real(self.system.compute_path(loops[k])))
 
+                # Meson strings
+                for k in range(1, max_string):
+                    data[f"square_string_0-0_{k}x{k}"].append(
+                        self.system.meson_string(strings[k - 1])
+                    )
+
             # TODO: handle this better - boundary should not be here!
             if ggpeps.PREFERRED_BACKEND == "jax":
                 for key, val in data.items():
@@ -169,6 +185,16 @@ class ExactEvaluator(Evaluator):
             for k in range(len(sizes)):
                 loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
                 dest[loop_name] = self.compute_expval(data[loop_name], normvec)
+
+            # Meson strings
+            for k in range(1, max_string):
+                string_name = f"square_string_0-0_{k}x{k}"
+                dest[string_name] = self.compute_expval(data[string_name], normvec)
+
+                # Fredenhagen-Marcu (FM) parameter
+                dest[f"FM_{k}x{k}"] = dest[string_name] / np.sqrt(
+                    np.abs(dest[f"wilson_loop_0-0_{k}x{k}"])
+                )
 
             # The norm that we turn in the end is the actual norm, not the lognorm!
             dest["norm"] = np.sum(normvec)

@@ -29,6 +29,8 @@ paramvec*
 # We do not commit performance data
 perf.data
 *.scorep_init.*
+# No need for vim swap files
+*.swp
 # Ignore the data that we stored
 cache
 inputfile_*
@@ -54,4 +56,3 @@ src/*.egg-info
 src/ggpeps/_version.py
 # Ignore coverage files
 .coverage
-
