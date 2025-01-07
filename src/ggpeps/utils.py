@@ -760,13 +760,14 @@ def rebin_eom(arr, num_of_bins=20):
 def autocorr_rebin_eom(arr):
     """Calculate the autocorrelation, and finds the corrrelation decay time (when the auto-correlation decays below 1/100)
     and calculate the error using bins with the correlation time size
-        Args:
+
+    Args:
         arr (np.ndarray): Timeseries of a measurement
 
     Returns:
-        1. eom: float with the EOM estimation
-
-        2. decay_time: float with the decay time (in terms of step number) of the autocorrelation
+        tuple of
+            eom: float with the EOM estimation
+            decay_time: float with the decay time (in terms of step number) of the autocorrelation
     """
     N = len(arr)
     autocorr_array = autocorr_fft(arr)
@@ -774,13 +775,11 @@ def autocorr_rebin_eom(arr):
         if i >= N / 10:  # limit the number of bins to a minimum of 10.
             eom = rebin_eom(arr, 10)
             decay_time = i
-            return eom, decay_time
-
         elif autocorr_array[i] <= 1 / 100 and autocorr_array[i + 1] <= 1 / 100:
             num_of_bins = N // i
             eom = rebin_eom(arr, num_of_bins)
             decay_time = i
-            return eom, decay_time
+        return eom, decay_time
 
 
 # ========== Debugging Functions ====================

@@ -46,10 +46,6 @@ class Lattice2D:
             self.fixed_tree = self.generate_tree(gf_num_of_rows)
 
         self.comp_tree = self.generate_tree_complement()
-        self.ncomptreelinks = len(
-            self.comp_tree
-        )  # number of links not in the tree - complementary tree links
-        self.ntreelinks = len(self.fixed_tree)
 
     def __str__(self):
         """Generate a string representation of the lattice.
