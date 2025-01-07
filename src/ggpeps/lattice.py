@@ -41,9 +41,8 @@ class Lattice2D:
 
         # We trust the user not to modify these
         if gf_num_of_rows == -1:  # If we gauge_fix over a maximal tree
-            self.fixed_tree = self.generate_tree()
-        else:  # We fix a specific number of rows
-            self.fixed_tree = self.generate_tree(gf_num_of_rows)
+            gf_num_of_rows = None  # We fix a maximal tree
+        self.fixed_tree = self.generate_tree(gf_num_of_rows)
 
         self.comp_tree = self.generate_tree_complement()
 
