@@ -18,26 +18,43 @@ if __name__ == "__main__":
     import plot_binning_analysis
     import plot_timeseries
 
-    base_path = "G:/My Drive/Research/MC/test_gauge_fixing_and_system_size/g_2.5_el_1.2500_mag_0.2000_int_1.0_mass_1.0/"  # g =2.5
+    base_path_single = (
+        "G:/My Drive/Research/MC/trans_inv_mag_with_grad/single_plaquette/"  # g =2.5
+    )
+    base_path_all = "G:/My Drive/Research/MC/trans_inv_mag_with_grad/all_plaquettes/"
     # base_path = "G:/My Drive/Research/MC/test_gauge_fixing_and_system_size/g_0.5_el_0.2500_mag_1.0000_int_1.0_mass_1.0/"  # g = 0.5
     # base_path = "G:/My Drive/Research/MC/rows_gauge_test/g_1.0_el_0.5000_mag_0.5000_int_1.0_mass_1.0/"  # g = 1.0
-    pattern_L6 = base_path + "/L_6*/**/*.gz"
-    pattern_L4 = base_path + "/L_4*/**/*.gz"
-    pattern_L2 = base_path + "/L_2*/**/*.gz"
+    pattern_single = base_path_single + "/L_*/*.gz"
+    pattern_all = base_path_all + "/L_*/*.gz"
 
-    file_list_L6 = glob.glob(pattern_L6, recursive=True)  # List of all .gz files in L_6
-    file_list_L4 = glob.glob(pattern_L4, recursive=True)  # List of all .gz files in L_4
-    file_list_L2 = glob.glob(pattern_L2, recursive=True)  # List of all .gz files in L_2
+    file_list_single = glob.glob(
+        pattern_single, recursive=True
+    )  # List of all .gz files in L_6
+    file_list_all = glob.glob(
+        pattern_all, recursive=True
+    )  # List of all .gz files in L_4
 
-    fname_lst = [file_list_L6]
-    obs_lst = ["energy", "mag_energy", "el_energy", "mass_energy", "int_energy"]
+    fname_lst = [
+        [file_list_single[i], file_list_all[i]] for i in range(len(file_list_all))
+    ]
+    obs_lst = [
+        "energy_grad",
+        "energy",
+        "mag_energy",
+        "el_energy",
+        "mass_energy",
+        "int_energy",
+    ]
     for fname in fname_lst:
         for obs in obs_lst:
             save_plot(
                 plot_binning_analysis.main,
                 fname,
                 obs,
-                fname[0][0 : len(base_path) + 3] + "\\" + obs + "_binning_analysis.png",
+                fname[0][0 : len(base_path_single) + 9]
+                + "\\"
+                + obs
+                + "_binning_analysis_600.pdf",
             )
     # with specific file names
     # fname_lst = [
