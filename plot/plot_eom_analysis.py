@@ -129,53 +129,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("--log_fname", nargs="+", help="MC log file - on debug mode")
 
-    # args = parser.parse_args()
+    args = parser.parse_args()
 
-    class Args:
-        def __init__(self, obs, pkl_fname, log_fname, grad_ind=None, layer_num=None):
-            self.obs = obs
-            self.pkl_fname = pkl_fname
-            self.log_fname = log_fname
-            self.obs = obs
-            self.grad_ind = grad_ind
-            self.layer_num = layer_num
-
-    base_dir_single = "G:/My Drive/Research/MC/trans_inv_mag/single_plaquette"
-    base_dir_all = "G:/My Drive/Research/MC/trans_inv_mag/all_plaquettes"
-    obs_lst = [
-        "energy",
-        "mag_energy",
-        "el_energy",
-        "mass_energy",
-        "int_energy",
-    ]
-    # obs_lst = ["energy_grad"]
-    # Iterate over the folders named 'L_4_gf_F_update_size_1' to 'L_4_gf_F_update_size_15'
-    for L in range(2, 7, 2):
-        for g in [0.1, 0.5, 1.0, 2.5]:
-            gz_files = []
-            log_files = []
-            folder_name = f"L_{L}_g_{g}"
-            folder_path_single = os.path.join(base_dir_single, folder_name)
-            folder_path_all = os.path.join(base_dir_all, folder_name)
-
-            # Find .gz and .log files in each folder
-            gz_files.append(glob.glob(os.path.join(folder_path_single, "*.gz"))[0])
-            log_files.append(glob.glob(os.path.join(folder_path_single, "*.log"))[0])
-            gz_files.append(glob.glob(os.path.join(folder_path_all, "*.gz"))[0])
-            log_files.append(glob.glob(os.path.join(folder_path_all, "*.log"))[0])
-            for obs in obs_lst:
-                args = Args(obs, gz_files, log_files)
-                # for layer_num in range(2):
-                # args.layer_num = layer_num
-                # for grad_ind in range(20):
-                # args.grad_ind = grad_ind
-                main(
-                    args,
-                    gz_files[1][0 : len(base_dir_single) + 9] + "\\" + obs
-                    # + "_layer_num_"
-                    # + str(args.layer_num)
-                    # + "_grad_ind_"
-                    # + str(args.grad_ind)
-                    + "_log_log_scale" + "_eom_analysis.pdf",
-                )
+    main(args)
