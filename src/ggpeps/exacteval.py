@@ -17,7 +17,7 @@ class ExactEvaluatorConfig:
     """
 
     def __init__(self):
-        self.gauge_fixing = False
+        pass
 
 
 class ExactEvaluator(Evaluator):
@@ -61,14 +61,9 @@ class ExactEvaluator(Evaluator):
             dict: Dictionary of the results
         """
         if self.obsdict is None:
-            if self.cfg.gauge_fixing:
-                configvec = self.generate_config_vec()
-            else:
-                poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
-                nlinks = self.system.cfg.lattice.nlinks
-                configvec = it.product(
-                    poss_gauges, repeat=nlinks
-                )  # an iterable object with all possible field configurations for the entire lattice. TODO: think if I should add a nomralization constant
+            configvec = (
+                self.generate_config_vec()
+            )  # an iterable object with all possible field configurations for all the links we go over.
 
             polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
                 (0, 0), lattice.Direction.X
@@ -311,6 +306,14 @@ class ExactEvaluator(Evaluator):
             for i, pos in enumerate(non_fixed_links_ind):
                 configvec[pos] = combo[i]
             yield configvec
+
+    def generate_config_vec_no_gf(self):
+        poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
+        nlinks = self.system.cfg.lattice.nlinks
+        configvec = it.product(
+            poss_gauges, repeat=nlinks
+        )  # an iterable object with all possible field configurations for the entire lattice.
+        return configvec
 
     def summary(self):
         """Summarize the results of the exact contraction in a dataframe.

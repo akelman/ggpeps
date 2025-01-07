@@ -27,23 +27,23 @@ class Lattice2D:
     Args:
         nx (int): Extend of the lattice in x direction (given in number of vertices)
         ny (int): Extend of the lattice in y direction (given in number of vertices)
+        gf_num_of_rows (int): Number of rows on which we fix the gauge when gauge fixing. If -1: we fix a maximal tree. It generates a tree in which the links are fixed accordingly.
     """
 
     dim = 2
 
-    def __init__(self, nx: int, ny: int):
+    def __init__(self, nx: int, ny: int, gf_num_of_rows: int = 0):
         self.nx = nx
         self.ny = ny
         self.nlinks = 2 * nx * ny
         self.nplaquettes = nx * ny
         self.size = nx * ny  # number of sites
-        self.ntreelinks = nx * ny - 1
-        self.ncomptreelinks = (
-            nx * ny + 1
-        )  # number of links not in the tree - complementary tree links
 
         # We trust the user not to modify these
-        self.maximal_tree = self.generate_maximal_tree()
+        if gf_num_of_rows == -1:  # If we gauge_fix over a maximal tree
+            gf_num_of_rows = None  # We fix a maximal tree
+        self.fixed_tree = self.generate_tree(gf_num_of_rows)
+
         self.comp_tree = self.generate_tree_complement()
 
     def __str__(self):
@@ -370,24 +370,40 @@ class Lattice2D:
 
         return loops
 
-    def generate_maximal_tree(self):
-        """Generate a maximal tree on the lattice.
+    def generate_tree(self, num_of_rows: int = None):
+        """Generate a tree on the lattice.
         This allows all values on the tree to be fixed to the identity when gauge_fixing
         (no integration is needed over links on the tree).
         This method is built for a lattice with periodic boundary conditions.
 
-        The particular maximal tree returned by this function includes all the horizontal links but the last one on each row,
+        The particular tree returned by this function includes all the horizontal links in the first num_of_rows rows but the last one on each row.
+
+        If num_of_rows is not given then a maximal tree containing all the rows but the last link
         and all the vertical links but the last one on the first column.
+
+        Args:
+            num_of_rows (int, optional): Number of rows to fix. Defaults to None. If None then it generates a maximal tree.
 
         Returns:
             list: List of link-indices in the tree
         """
-        tree = [
+        tree = []
+        if (
+            num_of_rows is None or num_of_rows > self.ny
+        ):  # If number of rows to fix is not given or larger than lattice size we generate a maximal tree
+            num_of_rows = self.ny
+
+            tree += [
+                self.coord2ind_dir((0, y), Direction(1)) for y in range(self.ny - 1)
+            ]
+
+        # add horizontal links, except for the last
+        tree += [
             self.coord2ind_dir((x, y), Direction(0))
-            for y in range(self.ny)
+            for y in range(num_of_rows)
             for x in range(self.nx - 1)
         ]
-        tree += [self.coord2ind_dir((0, y), Direction(1)) for y in range(self.ny - 1)]
+
         return tree
 
     def generate_tree_complement(self):
@@ -397,7 +413,7 @@ class Lattice2D:
         Returns:
             list: List of links which are not in the maximal tree
         """
-        fixed_links_ind = [i for i in range(self.nlinks) if i not in self.maximal_tree]
+        fixed_links_ind = [i for i in range(self.nlinks) if i not in self.fixed_tree]
         return fixed_links_ind
 
 
@@ -542,7 +558,7 @@ if __name__ == "__main__":
     print(lat_3x2)
     wilson_loop = lat_3x2.generate_wilson_loop((0, 0), (1, 1))
     print(wilson_loop)
-    lst = lat_3x2.generate_maximal_tree()
+    lst = lat_3x2.generate_tree()
     print(lst)
     print([lat_3x2.ind2coord_dir(ind) for ind in lst])
     print(len(lst))

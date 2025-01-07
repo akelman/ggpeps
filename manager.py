@@ -243,7 +243,6 @@ def main(args):
     mc_config.warmup_steps = args.warmup_steps
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize
-    mc_config.gauge_fixing = args.gauge_fixing
     if args.use_systemsize_updates or args.update_size == "system":
         mc_config.update_size_per_step = 2 * L**2
     elif args.update_size == "halfsystem":
@@ -256,7 +255,6 @@ def main(args):
 
     # Set up EC config
     ec_config = ExactEvaluatorConfig()
-    ec_config.gauge_fixing = args.gauge_fixing
 
     if args.seed is not None:
         seed = args.seed
@@ -273,7 +271,7 @@ def main(args):
     logger.info("============================")
 
     # We are focussing on 2 dimensions for the moment
-    lattice = lat.Lattice2D(L, L)
+    lattice = lat.Lattice2D(L, L, args.gauge_fixing)
 
     # Depending on the parameters, we instantiate different systems
     # Since they all share the same interface, we do not care much about the details of the system after this point
@@ -392,7 +390,12 @@ def main(args):
     logger.info(f"# of matter layers: {system_cfg.num_fermionic_layer}")
     logger.info(f"# of copies: {args.ncopy}")
     logger.info(f"fermions: {args.fermions}")
-    logger.info(f"Gauge fixing: {args.gauge_fixing}")
+    if args.gauge_fixing == -1:
+        logger.info(f"Gauge fixing: True - maximal tree")
+    elif args.gauge_fixing == 0:
+        logger.info(f"Gauge fixing: False")
+    else:
+        logger.info(f"Gauge fixing: {args.gauge_fixing}")
     logger.info(f"g (lambda): {g}")
     logger.info(f"g_el: {g_el}")
     logger.info(f"g_mag: {g_mag}")
@@ -596,7 +599,7 @@ if __name__ == "__main__":
         choices=["eval-mc", "eval-exact", "min-mc", "min-exact", "minmult-mc"],
         help="Mode of the program",
     )
-    parser.add_argument("L", type=int, help="Size of the square system (one side)")
+    parser.add_argument("--L", type=int, help="Size of the square system (one side)")
 
     # Hamiltonian couplings
     parser.add_argument(
@@ -663,7 +666,14 @@ if __name__ == "__main__":
     )  # TODO: improve handling of pure-gauge and fermions arguments
 
     # Evaluator settings
-    parser.add_argument("--gauge_fixing", action="store_true", default=False)
+    parser.add_argument(
+        "--gauge_fixing",
+        nargs="?",  # Optional value
+        const=-1,  # Value when argument is used without a value
+        type=int,  # Convert the input to an integer if provided
+        default=0,  # Default value when argument is not used
+        help="Gauge fixing: 0 if not provided (default), -1 if --gauge_fixing is used without a value - fix a maximal tree, or any integer if we fix a specific number of rows.",
+    )
 
     # Monte Carlo settings
     parser.add_argument(

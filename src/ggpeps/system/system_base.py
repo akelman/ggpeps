@@ -1514,8 +1514,7 @@ class System2DBase(ABC):
             float: Magnetic energy operator (w/o shift) for the whole system
         """
         if self._mag_energy_op is None:
-            nplaq = self.cfg.lattice.nplaquettes
-            self._mag_energy_op = nplaq * self._compute_mag_energy_op()
+            self._mag_energy_op = self._compute_mag_energy_op()
         return self._mag_energy_op
 
     @property
