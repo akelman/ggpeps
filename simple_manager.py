@@ -135,7 +135,7 @@ def translate_parameters(
 
 def main(args):
     raw_command = " ".join(sys.argv)
-    ind = raw_command.index("manager.py")
+    ind = raw_command.index("simple_manager.py")
     raw_command = raw_command[ind:]
 
     # Make sure that the output directory is fine
