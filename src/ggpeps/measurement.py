@@ -43,7 +43,7 @@ class Measurement:
             self.counter += 1
 
     def extend(self, data):
-        """Extends the internal datavec directly wihtout binning
+        """Extends the internal datavec directly without binning
 
         Args:
             data: Binned data of another mesaurement
