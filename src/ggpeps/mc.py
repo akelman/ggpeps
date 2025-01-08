@@ -244,7 +244,6 @@ class MonteCarloEvaluator(Evaluator):
                 self.system.chem_energy_op_grad_vec
             )
             self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
-            self.obsdict["energy_grad"].append(self.energy_gradient_mc())
 
         # TODO: save sizes/loops/strings in a more efficient way, so that they are not recomputed each step
         # Wilson loops
@@ -344,7 +343,17 @@ class MonteCarloEvaluator(Evaluator):
             self.update()
             self.measure()
             self.step += 1
+
+        if self.cfg.minimizer_mode:
+            # Update gradients which depend on expectation values
+            # For interface reasons, we insert meas_steps copies of this gradient
+            total_grad = self.energy_gradient_mc()
+            self.obsdict["energy_grad"].extend(
+                [total_grad] * len(self.obsdict["energy"])
+            )
+
         logger.debug("Finished MC measurement")
+        return
 
     def update_single_site(self):
         """Update for the MC simulation.
