@@ -775,11 +775,12 @@ def autocorr_rebin_eom(arr):
         if i >= N / 10:  # limit the number of bins to a minimum of 10.
             eom = rebin_eom(arr, 10)
             decay_time = i
+            return eom, decay_time
         elif autocorr_array[i] <= 1 / 100 and autocorr_array[i + 1] <= 1 / 100:
             num_of_bins = N // i
             eom = rebin_eom(arr, num_of_bins)
             decay_time = i
-        return eom, decay_time
+            return eom, decay_time
 
 
 # ========== Debugging Functions ====================
