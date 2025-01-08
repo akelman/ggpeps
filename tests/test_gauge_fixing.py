@@ -34,7 +34,7 @@ class Testgaugefixing(unittest.TestCase):
         configvec2 = [config for config in evaluator2.generate_config_vec()]
         neutral_gauge2 = system_z2_2.gaugemgr.get_neutral_gauge_value()
 
-        self.assertEqual(len(configvec2), 2 ** (len(lat2.comptree)))
+        self.assertEqual(len(configvec2), 2 ** (len(lat2.comp_tree)))
 
         tuple_configvec2 = []
         for config in configvec2:
@@ -59,7 +59,7 @@ class Testgaugefixing(unittest.TestCase):
         configvec4 = [config for config in evaluator4.generate_config_vec()]
         neutral_gauge4 = system_z2_4.gaugemgr.get_neutral_gauge_value()
 
-        self.assertEqual(len(configvec4), 2 ** (len(lat4.comptree)))
+        self.assertEqual(len(configvec4), 2 ** (len(lat4.comp_tree)))
 
         tuple_configvec4 = []
         for config in configvec4:
