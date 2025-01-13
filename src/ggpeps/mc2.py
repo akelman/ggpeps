@@ -297,6 +297,15 @@ class MonteCarloEvaluator2(Evaluator):
             self.update()
             self.measure()
             self.step += 1
+
+        if self.cfg.minimizer_mode:
+            # Update gradients which depend on expectation values
+            # For interface reasons, we insert meas_steps copies of this gradient
+            total_grad = self.energy_gradient_mc()
+            self.obsdict["energy_grad"].extend(
+                [total_grad] * len(self.obsdict["energy"])
+            )
+
         logger.debug("Finished MC measurement")
 
     def update_single_site(self):
