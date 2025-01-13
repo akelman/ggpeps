@@ -75,6 +75,10 @@ class Measurement:
         Returns:
             float: Error on the mean
         """
+        if np.allclose(self.datavec, 0):
+            # this happens if an observable is constant and equal to zero (e.g. a coupling is zero)
+            return 0
+
         if use_binning:
             if isinstance(self.datavec[0], np.ndarray):
                 # self.datavec is an array of higher dimension
