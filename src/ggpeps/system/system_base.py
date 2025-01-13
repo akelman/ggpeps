@@ -1771,7 +1771,7 @@ class System2DBase(ABC):
                 mode_order += [mode1, mode2, mode3, mode4]
 
         # Convert to a list of strings
-        # This was left as a tupple above in case there was ever any use for that format
+        # This was left as a tuple above in case there was ever any use for that format
         mode_order_str = []
         for mode in mode_order:
             mode_str = mode[0] + "_" + str(mode[1]) + "_" + str(mode[2])
