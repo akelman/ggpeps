@@ -620,7 +620,7 @@ class Z2System2D(System2DBase):
             gradients.append(np.asarray(layer_grads))
 
         chem_energy_op = np.asarray(chem_energy_op)
-        gradients = np.asarray(gradients)
+        gradients = np.asarray(gradients, dtype=np.float64)
 
         self.cfg.enforce_parameter_conditions(gradients)
 
