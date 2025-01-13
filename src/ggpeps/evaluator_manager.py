@@ -22,7 +22,8 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 @ray.remote
 def run_mc(
     runner_id: int,
-    mc_cfg: MonteCarloEvaluatorConfig,
+    evaluator_class: Union[MonteCarloEvaluator, MonteCarloEvaluator2],
+    evaluator_cfg: Union[MonteCarloEvaluatorConfig, MonteCarloEvaluatorConfig2],
     system_cls,
     system_cfg,
     logger_info: dict,
@@ -49,7 +50,7 @@ def run_mc(
 
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
-    mc = MonteCarloEvaluator(mc_cfg, system)
+    mc = evaluator_class(evaluator_cfg, system)
     mc.evaluate()
     return mc
 
@@ -103,9 +104,18 @@ class EvaluatorManager:
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
 
+    def get_evaluator_class(self):
+        if self.type == "exact":
+            evaluator_class = ExactEvaluator
+        elif self.type == "mc":
+            evaluator_class = MonteCarloEvaluator
+        elif self.type == "mc2":
+            evaluator_class = MonteCarloEvaluator2
+        return evaluator_class
+
     def simulate(self):
         if (
-            self.type == "mc" and self.nrunner > 0
+            "mc" in self.type and self.nrunner > 0
         ):  # The exacteval implementation currently only supports a single runner
             """Start the simulation of the runners.
             Currently only Monte Carlo is supported, and multiple runners cannot be resumed from where they left off.
@@ -143,12 +153,19 @@ class EvaluatorManager:
                 if ggpeps.GPU_AVAILABLE:
                     gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
 
+                evaluator_class = self.get_evaluator_class()
+
                 run_mc_modified = run_mc.options(
                     num_gpus=gpu_frac
                 )  # according to the ray documentation, we should also specify num_cpus
                 resultvec.append(
                     run_mc_modified.remote(
-                        i, cfg, self.system_cls, self.system_cfg, logger_info
+                        i,
+                        evaluator_class,
+                        cfg,
+                        self.system_cls,
+                        self.system_cfg,
+                        logger_info,
                     )
                 )
 
