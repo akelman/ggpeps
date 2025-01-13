@@ -85,44 +85,6 @@ class MonteCarloEvaluatorConfig:
         return dest
 
 
-################################### Multiprocessing layer #######################
-
-
-@ray.remote
-def run_mc(
-    runner_id: int,
-    mc_cfg: MonteCarloEvaluatorConfig,
-    system_cls,
-    system_cfg,
-    logger_info: dict,
-):
-    """Worker for running part of a MC simulation.
-
-    Args:
-        runner_id (int): Runner ID
-        mc_cfg (MonteCarloEvaluatorConfig):
-        system_cls ():
-        system_cfg ():
-        logger_info (dict): configs for the logger (logger needs to be set up in each worker)
-
-    Returns:
-        MonteCarloEvaluator
-    """
-
-    # Setup logger
-    # TODO: this is probably not the best way to get the required logger configuration
-    logger_file = logger_info["filename"]
-    level = logger_info["logger_level"]
-    logger = logging.getLogger(ggpeps.LOGGER_NAME)
-    utils.setup_logger(logger, logger_file, level, runner_msg=f"Runner {runner_id}-")
-
-    system = system_cls(copy.deepcopy(system_cfg))
-    system.initialize()
-    mc = MonteCarloEvaluator(mc_cfg, system)
-    mc.evaluate()
-    return mc
-
-
 ################################### Monte Carlo runner ###############
 
 
