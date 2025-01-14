@@ -1,2 +1,5 @@
 # Migrate code style to Black
 d5d7b49bbf29f460ea06b70754b7b5743b4cf6d4
+
+# Fix some files that had drifted from Black style
+67c157f807c6549a181fbe3ee0aca1fa212b1a03

@@ -26,7 +26,7 @@
             "console": "integratedTerminal",
             "args": [
                 "eval-mc",
-                "2",
+                "--L", "2",
                 "--level", "debug",
                 "--warmup_steps", "1000",
                 "--meas_steps", "1000",
@@ -49,7 +49,7 @@
             "console": "integratedTerminal",
             "args": [
                 "eval-exact",
-                "2",
+                "--L", "2",
                 "--ncopy", "2",
                 "--num_pg_layer", "1",
                 "--num_fermionic_layer", "1",
@@ -69,7 +69,7 @@
             "justMyCode": true,
             "args": [
                 "min-mc",
-                "2",
+                "--L", "2",
                 "--fermions",
                 "--g_el", "0.5",
                 "--g_mag", "0.5",
@@ -94,7 +94,7 @@
             "console": "integratedTerminal",
             "args": [
                 "min-exact",
-                "2",
+                "--L", "2",
                 "--fermions",
                 "--g_el",
                 "1.0",
@@ -120,20 +120,19 @@
             "console": "integratedTerminal",
             "args": [
                 "min-exact",
-                "2",
+                "--L", "2",
                 "--fermions",
                 "--g_el", "0.0",
                 "--g_mag", "0.0",
                 "--g_mass", "0.0",
                 "--g_int", "1.0",
-                "--method",
-                "BFGS",
+                "--method", "BFGS",
                 "--ncopy", "2",
                 "--num_pg_layer", "1", 
-                "--num_fermionic_layer", "2",
+                "--num_fermionic_layer", "1",
                 "--seed", "1438378742",
                 "--ignore_cache"
-            ],
+            ]
         },
         {
             "name": "Minimize (MC) L=2, cp=2, nl=2",
@@ -143,7 +142,7 @@
             "console": "integratedTerminal",
             "args": [
                 "min-mc",
-                "2",
+                "--L", "2",
                 "--fermions",
                 "--g_el", "0.5",
                 "--g_mag", "0.5",
@@ -158,7 +157,7 @@
                 "--maxiter", "5",
                 "--seed", "2",
                 "--ignore_cache"
-            ],
-        },
+            ]
+        }
     ]
 }

@@ -20,11 +20,12 @@ np.set_printoptions(linewidth=200)
 
 import ggpeps
 from ggpeps.caching import Cache
-from ggpeps.system import Z2System2DConfig, Z2System2D_1c
-from ggpeps.system import Z2System2D2CConfig, Z2System2D2C
-from ggpeps.system import Z2System2D_G2C_F2C_Config, Z2System2D
-from ggpeps.system import Z2System2D_G2C_F4C_Config, Z2System2D_G2C_F4C
-from ggpeps.system import Z2System2D_8C_Config, Z2System2D_8C
+from ggpeps.system import Z2System2DConfig
+from ggpeps.system import Z2System2D2CConfig
+from ggpeps.system import Z2System2D_G2C_F2C_Config
+from ggpeps.system import Z2System2D_G2C_F4C_Config
+from ggpeps.system import Z2System2D_8C_Config
+from ggpeps.system import Z2System2D
 
 from ggpeps import utils
 from ggpeps import lattice as lat
@@ -56,8 +57,9 @@ def save_state_on_exit():
             cache.add_obj_to_cache("evaluator_manager", eval_manager)
             logger.info(f"Added evaluator manager to cache.")
 
-    cache.save_cache_file()
-    logger.info(f"Saved cache file to {cache.cache_file}.")
+    cache_file = ggpeps.global_vars["args"].cache_file
+    cache.save_cache_file(cache_file)
+    logger.info(f"Saved cache file to {os.path.basename(cache_file)} in output folder.")
     return
 
 
@@ -86,7 +88,7 @@ def args2logname(args, couplings: dict) -> str:
     Returns:
         str: Filename of the log file
     """
-    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}"
+    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_gchem_{np.array2string(couplings['g_chem'], separator=',')}"
 
     if "exact" in args.mode:
         fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}.log"
@@ -95,7 +97,9 @@ def args2logname(args, couplings: dict) -> str:
     return os.path.join(args.output, fname)
 
 
-def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomState):
+def translate_parameters(
+    system_cfg, params: str, rng_state: np.random.RandomState
+) -> tuple[np.array, str]:
     """Translate the parameters given on the commandline to a form useful in the code
 
     Args:
@@ -117,20 +121,24 @@ def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomSta
         # The parameters are stored in a file and we can load them
         dest = np.load(params[0])
         dest = np.reshape(dest, (nlayer, -1))
+        source = "command-line provided file"
     elif params is None or params == "rand":
         # No parameters are given and we randomize
         dest = rng_state.rand(nlayer, nparams)
+        source = "random state"
     else:
         # The parameters are listed explicitly in the command line
         dest = np.asarray(params, dtype=float)
         try:
             dest = dest.reshape((nlayer, nparams))
+            source = "command-line provided parameters"
         except:
             logger.warning(
                 "Reshape of provided parameters impossible. Starting with random parameters."
             )
             dest = rng_state.rand(nlayer, nparams)
-    return dest
+            source = "random state"
+    return dest, source
 
 
 def validate_inputs(args) -> bool:
@@ -168,6 +176,35 @@ def main(args):
     else:
         os.makedirs(args.output)
 
+    # Validate input arguments
+    if not validate_inputs(args):
+        sys.exit(1)
+
+    # Set up ray before we actually start with the simulation
+    # (i)  Ray uses randomness internally and we don't want it to mix up the setting of the seed
+    # (ii) If ray is initialized after JAX is imported (which happens upon importing ggpeps),
+    #      we get warnings about multithreading deadlocks,
+    #      see: https://github.com/ray-project/ray/issues/44087
+    if ggpeps.GPU_AVAILABLE and args.nrunner > 0:
+        # TODO: is it necessary to specify the number of CPUs/GPUs here? Or is in eval manager enough?
+        ray.init(num_cpus=args.nrunner, num_gpus=1)
+    elif args.nrunner > 0:
+        ray.init(num_cpus=args.nrunner)
+
+    # Configure JAX
+    import jax
+
+    jax.config.update("jax_enable_x64", True)
+
+    # GPU or CPU
+    available_devices_ = jax.devices()  # available_gpus = jax.devices('gpu')
+    PREFERRED_DEVICE = available_devices_[0]
+    device_name = PREFERRED_DEVICE.device_kind.lower()
+    if "gpu" in device_name or "nvidia" in device_name:  # heuristic
+        ggpeps.GPU_AVAILABLE = True
+    else:
+        ggpeps.GPU_AVAILABLE = False
+
     # Set up the simulation
     L = args.L
     g = args.g
@@ -184,34 +221,28 @@ def main(args):
         g_mag = args.g_mag
     g_int = args.g_int
     g_mass = args.g_mass
-    couplings = {"g_el": g_el, "g_mag": g_mag, "g_int": g_int, "g_mass": g_mass}
+    if args.g_chem is None:
+        g_chem = np.zeros(args.num_pg_layer + args.num_fermionic_layer)
+    else:
+        g_chem = np.array(args.g_chem)
+    couplings = {
+        "g_el": g_el,
+        "g_mag": g_mag,
+        "g_int": g_int,
+        "g_mass": g_mass,
+        "g_chem": g_chem,
+    }
 
     # Set up the logger
     log_filename = args2logname(args, couplings)
     ggpeps.logger_file = log_filename
     utils.setup_logger(logger, log_filename, args.level)
 
-    # Validate input arguments
-    if not validate_inputs(args):
-        sys.exit(1)
-
-    # Set up ray before we actually start with the simulation
-    # (i)  Ray uses randomness internally and we don't want it to mix up the setting of the seed
-    # (ii) If ray is initialized after JAX is imported (which happens upon importing ggpeps),
-    #      we get warnings about multithreading deadlocks,
-    #      see: https://github.com/ray-project/ray/issues/44087
-    if ggpeps.GPU_AVAILABLE and args.nrunner > 0:
-        # TODO: is it necessary to specify the number of CPUs/GPUs here? Or is in eval manager enough?
-        ray.init(num_cpus=args.nrunner, num_gpus=1)
-    elif args.nrunner > 0:
-        ray.init(num_cpus=args.nrunner)
-
     # Set up the MC Config
     mc_config = MonteCarloEvaluatorConfig()
     mc_config.warmup_steps = args.warmup_steps
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize
-    mc_config.gauge_fixing = args.gauge_fixing
     if args.use_systemsize_updates or args.update_size == "system":
         mc_config.update_size_per_step = 2 * L**2
     elif args.update_size == "halfsystem":
@@ -224,7 +255,6 @@ def main(args):
 
     # Set up EC config
     ec_config = ExactEvaluatorConfig()
-    ec_config.gauge_fixing = args.gauge_fixing
 
     if args.seed is not None:
         seed = args.seed
@@ -241,11 +271,7 @@ def main(args):
     logger.info("============================")
 
     # We are focussing on 2 dimensions for the moment
-    lattice = lat.Lattice2D(L, L)
-
-    # TODO: get from command line
-    nlayer = args.num_pg_layer + args.num_fermionic_layer
-    g_chem = np.array([0] * nlayer)
+    lattice = lat.Lattice2D(L, L, args.gauge_fixing)
 
     # Depending on the parameters, we instantiate different systems
     # Since they all share the same interface, we do not care much about the details of the system after this point
@@ -317,7 +343,7 @@ def main(args):
             )
         else:
             logger.error(
-                "Not Implemented: Only 1, 2, or 4 copies are possible without fermions."
+                "Not Implemented: Only 1 or 2 copies are possible without fermions."
             )
             sys.exit(1)
     system_type = Z2System2D
@@ -328,7 +354,7 @@ def main(args):
     mc_config.seed = seed
 
     # Translate the command line input to a valid parameter vector
-    paramvec = translate_parameters(system_cfg, args.params, rngstate)
+    paramvec, param_source = translate_parameters(system_cfg, args.params, rngstate)
     system_cfg.paramvec = paramvec
 
     # Ensure pure gauge (setting t parameter(s) to zero) if enabled
@@ -364,14 +390,20 @@ def main(args):
     logger.info(f"# of matter layers: {system_cfg.num_fermionic_layer}")
     logger.info(f"# of copies: {args.ncopy}")
     logger.info(f"fermions: {args.fermions}")
-    logger.info(f"Gauge fixing: {args.gauge_fixing}")
+    if args.gauge_fixing == -1:
+        logger.info(f"Gauge fixing: True - maximal tree")
+    elif args.gauge_fixing == 0:
+        logger.info(f"Gauge fixing: False")
+    else:
+        logger.info(f"Gauge fixing: {args.gauge_fixing}")
     logger.info(f"g (lambda): {g}")
     logger.info(f"g_el: {g_el}")
     logger.info(f"g_mag: {g_mag}")
     logger.info(f"g_int: {g_int}")
     logger.info(f"g_mass: {g_mass}")
-    logger.info(f"g_chem: {g_chem}")
+    logger.info(f"g_chem: {np.array2string(g_chem, separator=', ', precision=2)}")
     logger.info(f"Rebinning EOM: {Measurement.use_rebinning}")
+    logger.info(f"Loaded parameters from: {param_source}")
     logger.info(f"Starting parameters: {paramvec}")
     logger.info("============================")
 
@@ -394,19 +426,25 @@ def main(args):
         logger.info("====== MINIMIZER INFO ======")
         logger.info(f"Method: {args.method.upper()}")
         logger.info(f"Max Iterations: {args.maxiter}")
-        logger.info(f"Learning rate: {args.alpha}")
-        logger.info(f"Min grad: {args.min_grad}")
+        if args.method.upper() == "CUSTOM":
+            # these are only used by the custom (basic gradient descent) minimizer and are not passed to scipy
+            logger.info(f"Learning rate: {args.alpha}")
+            logger.info(f"Min grad: {args.min_grad}")
         logger.info("============================")
 
     # Set up cache
     # and save the command line arguments to ggpeps global variable so that they are available everywhere
     cache = Cache(args.mode)
-    ggpeps.global_vars["args"] = args
-    ggpeps.global_vars["cache"] = cache
     if not args.ignore_cache:
-        cache.load_cache_file(cache.cache_file)
+        cache.load_cache_file(args.cache_file)
         if args.ignore_cache_eval:
             cache.add_obj_to_cache("evaluator_manager", None)
+    if not os.path.isabs(args.cache_file):
+        # Save the cache filename as an absolute path (so that it can be used throughout the code,
+        # without needing to track the destination).
+        args.cache_file = os.path.join(args.output, os.path.basename(args.cache_file))
+    ggpeps.global_vars["args"] = args
+    ggpeps.global_vars["cache"] = cache
 
     # Call different functions depending on the mode specified via CLI
     if args.mode == "eval-mc":
@@ -561,7 +599,7 @@ if __name__ == "__main__":
         choices=["eval-mc", "eval-exact", "min-mc", "min-exact", "minmult-mc"],
         help="Mode of the program",
     )
-    parser.add_argument("L", type=int, help="Size of the square system (one side)")
+    parser.add_argument("--L", type=int, help="Size of the square system (one side)")
 
     # Hamiltonian couplings
     parser.add_argument(
@@ -583,7 +621,15 @@ if __name__ == "__main__":
         "--g_int", "--int", type=float, default=0.0, help="gauge matter coupling"
     )
     parser.add_argument(
-        "--g_mass", "--mass", "--m", type=float, default=0.0, help="matter constant"
+        "--g_mass", "--mass", "--m", type=float, default=0.0, help="matter coupling"
+    )
+    parser.add_argument(
+        "--g_chem",
+        "--chem",
+        nargs="+",
+        type=float,
+        default=None,
+        help="chemical potentials",
     )
 
     # Ansatz parameters
@@ -620,7 +666,14 @@ if __name__ == "__main__":
     )  # TODO: improve handling of pure-gauge and fermions arguments
 
     # Evaluator settings
-    parser.add_argument("--gauge_fixing", action="store_true", default=False)
+    parser.add_argument(
+        "--gauge_fixing",
+        nargs="?",  # Optional value
+        const=-1,  # Value when argument is used without a value
+        type=int,  # Convert the input to an integer if provided
+        default=0,  # Default value when argument is not used
+        help="Gauge fixing: 0 if not provided (default), -1 if --gauge_fixing is used without a value - fix a maximal tree, or any integer if we fix a specific number of rows.",
+    )
 
     # Monte Carlo settings
     parser.add_argument(
@@ -703,13 +756,19 @@ if __name__ == "__main__":
         "--ignore_cache",
         action="store_true",
         default=False,
-        help="Ignore the cache and start from scratch. A new cache will be saved (and overwrite the old one).",
+        help="Ignore the cache and start from scratch. A new cache will be saved (and overwrite the old one if it exists).",
     )
     parser.add_argument(
         "--ignore_cache_eval",
         action="store_true",
         default=False,
         help="Ignore the cache eval manager.",
+    )
+    parser.add_argument(
+        "--cache_file",
+        type=str,
+        default="cache.pkl",
+        help="Filename of the cache.",
     )
 
     # Arguments for ray

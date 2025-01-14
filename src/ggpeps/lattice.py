@@ -27,23 +27,23 @@ class Lattice2D:
     Args:
         nx (int): Extend of the lattice in x direction (given in number of vertices)
         ny (int): Extend of the lattice in y direction (given in number of vertices)
+        gf_num_of_rows (int): Number of rows on which we fix the gauge when gauge fixing. If -1: we fix a maximal tree. It generates a tree in which the links are fixed accordingly.
     """
 
     dim = 2
 
-    def __init__(self, nx: int, ny: int):
+    def __init__(self, nx: int, ny: int, gf_num_of_rows: int = 0):
         self.nx = nx
         self.ny = ny
         self.nlinks = 2 * nx * ny
         self.nplaquettes = nx * ny
         self.size = nx * ny  # number of sites
-        self.ntreelinks = nx * ny - 1
-        self.ncomptreelinks = (
-            nx * ny + 1
-        )  # number of links not in the tree - complementary tree links
 
         # We trust the user not to modify these
-        self.maximal_tree = self.generate_maximal_tree()
+        if gf_num_of_rows == -1:  # If we gauge_fix over a maximal tree
+            gf_num_of_rows = None  # We fix a maximal tree
+        self.fixed_tree = self.generate_tree(gf_num_of_rows)
+
         self.comp_tree = self.generate_tree_complement()
 
     def __str__(self):
@@ -164,6 +164,51 @@ class Lattice2D:
             yn = (y + 1) % self.ny
         return (xn, yn)
 
+    def get_path_endpoints(self, path, use_indices: bool = True) -> tuple:
+        """Get the lattice site endpoints of a path.
+        The start will be one of the sites adjacent to the first link, which one is determined by whether the link
+        is conjugated or not.
+        The end will be one of the sites adjacent to the last link, which one is determined by whether the link
+        is conjugated or not.
+
+        The <site_id> can be either a tuple of coordinates or an integer id of a link (depending on use_indices).
+
+        Args:
+            path (list): list of links, with each link represented as a tuple of the form (((x,y), dir), conj).
+            use_indices (bool, optional): Return the loop in terms of site indices rather than coordinates. Defaults to True.
+
+        Returns:
+            tuple: (start, end) coordinates or indices of the start and end of the path
+        """
+        # TODO: write tests for this function
+
+        if path == []:
+            raise ValueError("There are no start/end points for an empty path.")
+
+        start_link = path[0]
+        if isinstance(start_link[0], int):
+            start_site_coord, dir = self.ind2coord_dir(start_link[0])
+        else:
+            start_site_coord, dir = start_link[0]
+        if start_link[1]:  # link is conjugated
+            start_site_coord = self.get_neighbor(start_site_coord, dir)
+
+        end_link = path[-1]
+        if isinstance(end_link[0], int):
+            end_site_coord, dir = self.ind2coord_dir(end_link[0])
+        else:
+            end_site_coord, dir = end_link[0]
+        if not end_link[1]:  # link is not conjugated
+            end_site_coord = self.get_neighbor(end_site_coord, dir)
+
+        if use_indices:
+            start_site = self.coord2ind(start_site_coord)
+            end_site = self.coord2ind(end_site_coord)
+        else:
+            start_site = start_site_coord
+            end_site = end_site_coord
+        return (start_site, end_site)
+
     def generate_polyakov_loop(
         self, coord: tuple, dir: Direction, use_indices: bool = True
     ) -> list:
@@ -205,16 +250,16 @@ class Lattice2D:
     def generate_wilson_loop(
         self, coord: tuple, size: tuple, use_indices: bool = True
     ) -> list:
-        """Generate a Wilson loop with bottom left corner at coord and an extend specified by the tuple size.
+        """Generate a Wilson loop with bottom left corner at coord and an extent specified by the tuple size.
         This method is aware of the periodic boundary conditions of the lattice.
         The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
-        The <link_id> can be either a tuple of coordinates or an integer id of a link (depending on use_indices).
+        The <link_id> can be either a tuple of coordinates with a direction or an integer id of a link (depending on use_indices).
         The bool in the tuples returned by this function signifies the orientation.
         "True" means flip gauge field, "False" means no flip.
 
         Args:
             coord (tuple): bottom left corner (x,y) of the Wilson loop
-            size (tuple): extend in (x,y)
+            size (tuple): extent in (x,y)
             use_indices (bool, optional): Use link indices instead of coordinate representation. Defaults to True.
 
         Returns:
@@ -235,6 +280,39 @@ class Lattice2D:
         for i in range(ext_y):
             coord_link = (x, (y + ext_y - i - 1) % self.ny)
             dest.append(((coord_link, Direction.Y), True))
+        if use_indices:
+            # Transform the coordinates to indices
+            dest = [(self.coord2ind_dir(*coorddir), conj) for (coorddir, conj) in dest]
+        return dest
+
+    def generate_L_string(
+        self, coord: tuple, size: tuple, use_indices: bool = True
+    ) -> list:
+        """Generate an L shaped path with bottom left corner at coord and an extent specified by the tuple size.
+        This method is aware of the periodic boundary conditions of the lattice.
+        The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
+        The <link_id> can be either a tuple of coordinates with a direction or an integer id of a link (depending on use_indices).
+        The bool in the tuples returned by this function signifies the orientation.
+        "True" means flip (conjugate) gauge field, "False" means no flip.
+        Since we go only rightward/upward, here we never take the conjugate.
+
+        Args:
+            coord (tuple): bottom left corner (x,y) of the path
+            size (tuple): extent in (x,y)
+            use_indices (bool, optional): Use link indices instead of coordinate representation. Defaults to True.
+
+        Returns:
+            list: List of tuples of the form (link_id,<bool>)
+        """
+        ext_x, ext_y = size
+        x, y = coord
+        dest = []
+        for i in range(ext_x):
+            coord_link = ((x + i) % self.nx, y)
+            dest.append(((coord_link, Direction.X), False))
+        for i in range(ext_y):
+            coord_link = ((x + ext_x) % self.nx, (y + i) % self.ny)
+            dest.append(((coord_link, Direction.Y), False))
         if use_indices:
             # Transform the coordinates to indices
             dest = [(self.coord2ind_dir(*coorddir), conj) for (coorddir, conj) in dest]
@@ -292,24 +370,40 @@ class Lattice2D:
 
         return loops
 
-    def generate_maximal_tree(self):
-        """Generate a maximal tree on the lattice.
+    def generate_tree(self, num_of_rows: int = None):
+        """Generate a tree on the lattice.
         This allows all values on the tree to be fixed to the identity when gauge_fixing
         (no integration is needed over links on the tree).
         This method is built for a lattice with periodic boundary conditions.
 
-        The particular maximal tree returned by this function includes all the horizontal links but the last one on each row,
+        The particular tree returned by this function includes all the horizontal links in the first num_of_rows rows but the last one on each row.
+
+        If num_of_rows is not given then a maximal tree containing all the rows but the last link
         and all the vertical links but the last one on the first column.
+
+        Args:
+            num_of_rows (int, optional): Number of rows to fix. Defaults to None. If None then it generates a maximal tree.
 
         Returns:
             list: List of link-indices in the tree
         """
-        tree = [
+        tree = []
+        if (
+            num_of_rows is None or num_of_rows > self.ny
+        ):  # If number of rows to fix is not given or larger than lattice size we generate a maximal tree
+            num_of_rows = self.ny
+
+            tree += [
+                self.coord2ind_dir((0, y), Direction(1)) for y in range(self.ny - 1)
+            ]
+
+        # add horizontal links, except for the last
+        tree += [
             self.coord2ind_dir((x, y), Direction(0))
-            for y in range(self.ny)
+            for y in range(num_of_rows)
             for x in range(self.nx - 1)
         ]
-        tree += [self.coord2ind_dir((0, y), Direction(1)) for y in range(self.ny - 1)]
+
         return tree
 
     def generate_tree_complement(self):
@@ -319,7 +413,7 @@ class Lattice2D:
         Returns:
             list: List of links which are not in the maximal tree
         """
-        fixed_links_ind = [i for i in range(self.nlinks) if i not in self.maximal_tree]
+        fixed_links_ind = [i for i in range(self.nlinks) if i not in self.fixed_tree]
         return fixed_links_ind
 
 
@@ -464,7 +558,7 @@ if __name__ == "__main__":
     print(lat_3x2)
     wilson_loop = lat_3x2.generate_wilson_loop((0, 0), (1, 1))
     print(wilson_loop)
-    lst = lat_3x2.generate_maximal_tree()
+    lst = lat_3x2.generate_tree()
     print(lst)
     print([lat_3x2.ind2coord_dir(ind) for ind in lst])
     print(len(lst))

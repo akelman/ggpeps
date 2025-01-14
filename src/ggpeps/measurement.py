@@ -43,7 +43,7 @@ class Measurement:
             self.counter += 1
 
     def extend(self, data):
-        """Extends the internal datavec directly wihtout binning
+        """Extends the internal datavec directly without binning
 
         Args:
             data: Binned data of another mesaurement
@@ -75,8 +75,20 @@ class Measurement:
         Returns:
             float: Error on the mean
         """
+        if np.allclose(self.datavec, np.mean(self.datavec)):
+            # this happens if an observable is constant.
+            # In this case the autocorrelation array's first value is 0, and so we can't get a normalized auttocorrelation.
+            return 0
+
         if use_binning:
-            return utils.rebin_eom(self.datavec)
+            if isinstance(self.datavec[0], np.ndarray):
+                # self.datavec is an array of higher dimension
+                # we do not yet support finding the autocorrelation for such observables (TODO)
+                return utils.rebin_eom(self.datavec)
+            else:
+                # self.datavec is a float
+                # compute eom when taking into account autocorrelation
+                return utils.autocorr_rebin_eom(self.datavec)[0]
         else:
             return np.std(self.datavec, ddof=1, axis=0) / np.sqrt(len(self.datavec))
 

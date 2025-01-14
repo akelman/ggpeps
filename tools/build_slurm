@@ -9,23 +9,29 @@ def name_from_path(prefix, path):
     return prefix + path
 
 
-def folder2coupling(foldername, arg):
-    pattern = rf"(?<={arg}_)[\d]*.[\d]*"
+def folder2arg(foldername, arg):
+    pattern = rf"(?<={arg}_)[^_]+"
     result = re.search(pattern, foldername)
+    if arg == "gf":
+        if result is not None:
+            if result.group(0) == "T":
+                return f"--gauge_fixing"
+            elif result.group(0) == "F":
+                return ""  # relies on the fact that the default value for gauge_fixing is False
+            else:
+                return f"--{arg} {result.group(0)}"
+        else:
+            return ""
+
     if result is not None:
         return f"--{arg} {result.group(0)}"
     else:
         return ""
 
 
-def folder2flag(foldername, arg):
-    # Do search for flag, and if found, return flag as can be appended to command for manager.py
-    pass
-
-
 def format_slurmfile(slurmfile, name, folder, time, command, args, num_threads):
     for arg in args:
-        command += " " + folder2coupling(folder, arg)
+        command += " " + folder2arg(folder, arg)
     return slurmfile.format(jobname=name, time=time, command=command, ncpu=num_threads)
 
 

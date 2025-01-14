@@ -37,7 +37,6 @@ class MonteCarloEvaluatorConfig:
         self.update_size_per_step: int = (
             1  # this can be set anywhere from 1 to nlinks (inclusive)
         )
-        self.gauge_fixing = False
 
         # Logging frequency
         self.warmup_log_freq: int = 5000  # log every X steps
@@ -199,6 +198,15 @@ class MonteCarloEvaluator(Evaluator):
             loop_name = f"wilson_loop_0-0_{size[0]}x{size[1]}"
             self.obsdict[loop_name] = Measurement(loop_name, binsize)
 
+        # Meson strings
+        max_string = (
+            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
+        )
+        for k in range(1, max_string):
+            self.obsdict[f"square_string_0-0_{k}x{k}"] = Measurement(
+                f"square_string_0-0_{k}x{k}", binsize
+            )
+
     def measure(self):
         """Measure the corresponding observables in the dictionary"""
         polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
@@ -236,14 +244,28 @@ class MonteCarloEvaluator(Evaluator):
                 self.system.chem_energy_op_grad_vec
             )
             self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
-            self.obsdict["energy_grad"].append(self.energy_gradient_mc())
 
+        # TODO: save sizes/loops/strings in a more efficient way, so that they are not recomputed each step
         # Wilson loops
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
         loops = self.system.cfg.lattice.generate_all_wilson_loops((0, 0), sizes)
         for k in range(len(sizes)):
             loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
+
+        # Meson strings
+        max_string = (
+            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
+        )
+        strings = [
+            self.system.cfg.lattice.generate_L_string((0, 0), (k, k))
+            for k in range(1, max_string)
+        ]
+        for k in range(1, max_string):
+            string_name = f"square_string_0-0_{k}x{k}"
+            self.obsdict[string_name].append(self.system.meson_string(strings[k - 1]))
+
+        return
 
     def energy_gradient_mc(self):
         # Compute the energy gradient from the MC results
@@ -312,23 +334,40 @@ class MonteCarloEvaluator(Evaluator):
         logger.debug("Starting MC measurement")
         while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
             if self.step % self.cfg.run_log_freq == 0:
-                logger.debug(f"Run: {self.step}")
+                acceptance_ratio = np.mean(
+                    self.obsdict["acceptance_prob"].datavec[-self.cfg.run_log_freq : :]
+                )
+                logger.debug(
+                    f"Run: {self.step}. Acceptance ratio of last {self.cfg.run_log_freq} steps is {acceptance_ratio}"
+                )
             self.update()
             self.measure()
             self.step += 1
+
+        if self.cfg.minimizer_mode:
+            # Update gradients which depend on expectation values
+            # For interface reasons, we insert meas_steps copies of this gradient
+            total_grad = self.energy_gradient_mc()
+            self.obsdict["energy_grad"].extend(
+                [total_grad] * len(self.obsdict["energy"])
+            )
+
         logger.debug("Finished MC measurement")
+        return
 
     def update_single_site(self):
         """Update for the MC simulation.
         This updates randomly chooses a single site and updates it.
         The update is local. The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
 
-        TODO: add gauge fixing here
+        TODO: test gauge fixing with this function
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
         nlinks = lattice.nlinks
-        link_ind = self.cfg.rng_state.randint(0, nlinks)
+        link_ind = self.cfg.rng_state.choice(
+            self.system.cfg.lattice.comp_tree, replace=False
+        )
         # Uniformly pick a gauge value
         theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
         # Store the old values
@@ -351,35 +390,19 @@ class MonteCarloEvaluator(Evaluator):
         # Pick a site to update
         lattice = self.system.cfg.lattice
         comp_tree = lattice.comp_tree  # non gauge fixed links
-        nlinks = lattice.nlinks
-        if self.cfg.gauge_fixing:
-            for i in comp_tree:
-                # Uniformly pick a gauge to replace
-                theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
-                # Store the old values
-                weight_old = self.system.weight
-                weight_new = self.system.calculate_weight_attempt(i, theta)
-                if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
-                    # Accept
-                    self.obsdict["acceptance_prob"].append(1)
-                    self.system.update_gauge_ind(i, theta)
-                else:
-                    # Reject
-                    self.obsdict["acceptance_prob"].append(0)
-        else:
-            for i in range(nlinks):
-                # Uniformly pick a gauge to replace
-                theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
-                # Store the old values
-                weight_old = self.system.weight
-                weight_new = self.system.calculate_weight_attempt(i, theta)
-                if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
-                    # Accept
-                    self.obsdict["acceptance_prob"].append(1)
-                    self.system.update_gauge_ind(i, theta)
-                else:
-                    # Reject
-                    self.obsdict["acceptance_prob"].append(0)
+        for i in comp_tree:
+            # Uniformly pick a gauge to replace
+            theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+            # Store the old values
+            weight_old = self.system.weight
+            weight_new = self.system.calculate_weight_attempt(i, theta)
+            if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
+                # Accept
+                self.obsdict["acceptance_prob"].append(1)
+                self.system.update_gauge_ind(i, theta)
+            else:
+                # Reject
+                self.obsdict["acceptance_prob"].append(0)
 
     def update_N_sites(self):
         """Update for the MC simulation.
@@ -387,17 +410,11 @@ class MonteCarloEvaluator(Evaluator):
         The update is local.
         The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
         """
-        nlinks = self.system.cfg.lattice.nlinks
-        if self.cfg.gauge_fixing:
-            links_inds = self.cfg.rng_state.choice(
-                self.system.cfg.lattice.comp_tree,
-                self.cfg.update_size_per_step,
-                replace=False,
-            )
-        else:
-            links_inds = self.cfg.rng_state.choice(
-                [k for k in range(nlinks)], self.cfg.update_size_per_step, replace=False
-            )
+        links_inds = self.cfg.rng_state.choice(
+            self.system.cfg.lattice.comp_tree,
+            self.cfg.update_size_per_step,
+            replace=False,
+        )
 
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
@@ -535,6 +552,7 @@ class MonteCarloEvaluator(Evaluator):
             "mean": [],
             "warmup_steps": [],
             "meas_steps": [],
+            "update_size": [],
             "seed": [],
             "err": [],
         }
@@ -552,6 +570,7 @@ class MonteCarloEvaluator(Evaluator):
             dest["seed"].append(self.cfg.seed)
             dest["warmup_steps"].append(self.cfg.warmup_steps)
             dest["meas_steps"].append(self.cfg.meas_steps)
+            dest["update_size"].append(self.cfg.update_size_per_step)
             dest["mean"].append(self.get_obs_mean(key))
             dest["err"].append(self.get_obs_mean_err(key))
         df = pd.DataFrame(dest)

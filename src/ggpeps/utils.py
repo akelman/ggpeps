@@ -733,7 +733,7 @@ def rebin_error(arr):
     return rangevals, meanarr, eomarr, stdarr
 
 
-def rebin_eom(arr):
+def rebin_eom(arr, num_of_bins=20):
     """Calculate the error on the mean (EOM) by rebinning.
     As a heuristic for the EOM we use that the biggest bin will give the best estimate.
     We do not rebin to the maximal extent, but use the heuristic of taking the largest binsize of the form 2^i that can fit N/20.
@@ -746,7 +746,7 @@ def rebin_eom(arr):
     """
     N = len(arr)
     # We want to leave a sufficient number of samples to build a reasonable mean
-    max_exp = int(np.floor(np.log2(N / 10)))
+    max_exp = int(np.floor(np.log2(N / (num_of_bins / 2))))
     if max_exp > 0:
         binsize = 2 ** (max_exp - 1)
         data_rebin = rebin_array(arr, binsize)
@@ -755,6 +755,32 @@ def rebin_eom(arr):
         data_rebin = arr
     eom = np.std(data_rebin, ddof=1, axis=0) / np.sqrt(len(data_rebin))
     return eom
+
+
+def autocorr_rebin_eom(arr):
+    """Calculate the autocorrelation, and finds the corrrelation decay time (when the auto-correlation decays below 1/100)
+    and calculate the error using bins with the correlation time size
+
+    Args:
+        arr (np.ndarray): Timeseries of a measurement
+
+    Returns:
+        tuple of
+            eom: float with the EOM estimation
+            decay_time: float with the decay time (in terms of step number) of the autocorrelation
+    """
+    N = len(arr)
+    autocorr_array = autocorr_fft(arr)
+    for i in range(len(autocorr_array)):  # find first two elements below 1/100
+        if i >= N / 10:  # limit the number of bins to a minimum of 10.
+            eom = rebin_eom(arr, 10)
+            decay_time = i
+            return eom, decay_time
+        elif autocorr_array[i] <= 1 / 100 and autocorr_array[i + 1] <= 1 / 100:
+            num_of_bins = N // i
+            eom = rebin_eom(arr, num_of_bins)
+            decay_time = i
+            return eom, decay_time
 
 
 # ========== Debugging Functions ====================

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from ggpeps import utils
 
 
-def main(args):
+def main(args, save_path=None):
     # Collect all dataframes into a single one
     obsvec = []
     for fname in args.fnames:
@@ -27,7 +27,7 @@ def main(args):
             print(f"File '{fname}' not found. Continuing anyway.", file=sys.stderr)
 
     # Plot the timeseries
-    f, axvec = plt.subplots(2, 1)
+    f, axvec = plt.subplots(2, 1, figsize=(20, 13))
     for obs in obsvec:
         axvec[0].plot(np.real(obs), "o")
         autocorr = np.abs(utils.autocorr_fft(np.real(obs)))
@@ -37,7 +37,11 @@ def main(args):
     axvec[1].set_xlabel(r"$\tau$")
     axvec[1].set_ylabel("Autocorrelation")
     axvec[1].set_yscale("log")
-    plt.show()
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        plt.close()
+    else:
+        plt.show()
 
 
 if __name__ == "__main__":

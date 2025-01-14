@@ -13,9 +13,10 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class Cache:
-    def __init__(self, mode: str, cache_file: str = "cache.pkl"):
+    def __init__(self, mode: str):
         self.cache_version = 0.1
-        self.cache_file: str = cache_file
+        # self.cache_filebase: str = dest_dir
+        # self.cache_filename: str = cache_file
         self.cache_data: dict = {
             "cache_version": self.cache_version,
             "ggpeps_version": ggpeps.__version__,
@@ -31,8 +32,10 @@ class Cache:
     def key2paramvec(self, key: bytes):
         return np.frombuffer(key)
 
-    def save_cache_file(self):
-        with open(self.cache_file, "wb") as outfile:
+    def save_cache_file(self, dest_filepath: str):
+        # if os.path.exists(dest_filepath):
+        #    logger.warning(f"Overwriting cache file {dest_filepath}")
+        with open(dest_filepath, "wb") as outfile:
             pickle.dump(self.cache_data, outfile)
 
     def add_obj_to_cache(self, obj_name: str, obj_val):
@@ -60,7 +63,7 @@ class Cache:
 
         # Save to pickle file
         if save_to_file:
-            self.save_cache_file()
+            self.save_cache_file(ggpeps.global_vars["args"].cache_file)
 
     def load_obs_from_local_cache(self, paramvec: np.ndarray, obs: str):
         if obs not in ["energy", "energy_grad"]:
@@ -120,10 +123,10 @@ def remove_eval_manager_from_cache(cache_files):
     """
     for cache_file in cache_files:
         if os.path.exists(cache_file):
-            cache = Cache("", cache_file)
+            cache = Cache("")
             cache.load_cache_file(cache_file)
             cache.cache_data["evaluator_manager"] = None
-            cache.save_cache_file()
+            cache.save_cache_file(cache_file)
     return
 
 

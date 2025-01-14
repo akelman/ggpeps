@@ -3,7 +3,6 @@ import itertools as it
 
 import numpy as np
 import pandas as pd
-import jax.numpy as jnp
 
 import ggpeps
 import ggpeps.lattice as lattice
@@ -18,7 +17,7 @@ class ExactEvaluatorConfig:
     """
 
     def __init__(self):
-        self.gauge_fixing = False
+        pass
 
 
 class ExactEvaluator(Evaluator):
@@ -62,23 +61,25 @@ class ExactEvaluator(Evaluator):
             dict: Dictionary of the results
         """
         if self.obsdict is None:
-            if self.cfg.gauge_fixing:
-                configvec = self.generate_config_vec()
-            else:
-                poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
-                nlinks = self.system.cfg.lattice.nlinks
-                configvec = it.product(
-                    poss_gauges, repeat=nlinks
-                )  # an iterable object with all possible field configurations for the entire lattice. TODO: think if I should add a nomralization constant
+            configvec = (
+                self.generate_config_vec()
+            )  # an iterable object with all possible field configurations for all the links we go over.
 
             polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
                 (0, 0), lattice.Direction.X
             )
             wilson_loop = self.system.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
 
-            # Wilson loops
+            # Wilson loop & meson string preliminaries
             sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
             loops = self.system.cfg.lattice.generate_all_wilson_loops((0, 0), sizes)
+            max_string = (
+                1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
+            )
+            strings = [
+                self.system.cfg.lattice.generate_L_string((0, 0), (k, k))
+                for k in range(1, max_string)
+            ]
 
             data = {
                 "energy": [],
@@ -104,6 +105,9 @@ class ExactEvaluator(Evaluator):
             for k in range(len(sizes)):
                 loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
                 data[loop_name] = []
+            # Meson strings - for now, we compute only "square" meson strings
+            for k in range(1, max_string):
+                data[f"square_string_0-0_{k}x{k}"] = []
 
             for config in configvec:
                 self.system.update_gauge_full_system(config)
@@ -138,6 +142,12 @@ class ExactEvaluator(Evaluator):
                     loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
                     data[loop_name].append(np.real(self.system.compute_path(loops[k])))
 
+                # Meson strings
+                for k in range(1, max_string):
+                    data[f"square_string_0-0_{k}x{k}"].append(
+                        self.system.meson_string(strings[k - 1])
+                    )
+
             # TODO: handle this better - boundary should not be here!
             if ggpeps.PREFERRED_BACKEND == "jax":
                 for key, val in data.items():
@@ -170,6 +180,16 @@ class ExactEvaluator(Evaluator):
             for k in range(len(sizes)):
                 loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
                 dest[loop_name] = self.compute_expval(data[loop_name], normvec)
+
+            # Meson strings
+            for k in range(1, max_string):
+                string_name = f"square_string_0-0_{k}x{k}"
+                dest[string_name] = self.compute_expval(data[string_name], normvec)
+
+                # Fredenhagen-Marcu (FM) parameter
+                dest[f"FM_{k}x{k}"] = dest[string_name] / np.sqrt(
+                    np.abs(dest[f"wilson_loop_0-0_{k}x{k}"])
+                )
 
             # The norm that we turn in the end is the actual norm, not the lognorm!
             dest["norm"] = np.sum(normvec)
@@ -286,6 +306,14 @@ class ExactEvaluator(Evaluator):
             for i, pos in enumerate(non_fixed_links_ind):
                 configvec[pos] = combo[i]
             yield configvec
+
+    def generate_config_vec_no_gf(self):
+        poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
+        nlinks = self.system.cfg.lattice.nlinks
+        configvec = it.product(
+            poss_gauges, repeat=nlinks
+        )  # an iterable object with all possible field configurations for the entire lattice.
+        return configvec
 
     def summary(self):
         """Summarize the results of the exact contraction in a dataframe.

@@ -14,30 +14,29 @@ jax.config.update("jax_enable_x64", True)
 import ggpeps
 
 
+@jit
+def calculate_lognormvec_jit(gamma_in_sys: jnp.ndarray, mat_d: jnp.ndarray) -> float:
+    # This is still the plain formula, without any update mechanism
+    # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
+    sign, logval = jnp.linalg.slogdet((jnp.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d))
+    return logval
+
+
+batch_calculate_lognormvec = jax.vmap(calculate_lognormvec_jit)
+
+
 @partial(jax.jit, static_argnames=["all_factors"])
 def calculate_lognormvec_jax(
     gamma_in_sys_vec,
     mat_d_vec,
     all_factors: bool = False,
 ) -> float:
-    # This is still the plain formula, without any update mechanism
-    nlayer = len(mat_d_vec)
-    dest = jnp.zeros(nlayer)
 
-    for ind in range(nlayer):
-        gamma_in_sys = gamma_in_sys_vec[ind]
-        mat_d = mat_d_vec[ind]
+    dest = batch_calculate_lognormvec(jnp.array(gamma_in_sys_vec), mat_d_vec)
 
-        sign, logval = jnp.linalg.slogdet(
-            (jnp.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d)
-        )
-
-        if all_factors:
-            logval -= mat_d.shape[0] * jnp.log(2)
-        else:
-            # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
-            pass
-        dest = dest.at[ind].set(logval)
+    if all_factors:
+        # add back in global factor of 2**(-n)
+        dest = dest - mat_d_vec[0].shape[0] * jnp.log(2)
 
     # The factor 1/2 is the square-root
     return dest / 2
@@ -78,9 +77,9 @@ def compute_grad_over_norm_jax(
     Returns:
         float: Gradient of the norm divided by the norm.
     """
-    A = gamma_in_sys @ deriv_d
-    B = mat_d_inv @ diff
-    dest = -0.5 * (A * B.T).sum()
+    dest = -0.5 * jnp.trace(
+        jnp.matmul(jnp.matmul(gamma_in_sys, deriv_d), jnp.matmul(mat_d_inv, diff))
+    )
     return dest
 
 
