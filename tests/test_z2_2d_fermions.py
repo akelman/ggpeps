@@ -16,8 +16,8 @@ class TestZ2C4System(unittest.TestCase):
         lat = lattice.Lattice2D(2, 2)
         paramvec = np.random.rand(2, 20)
         cfg = system.Z2System2D_G2C_F2C_Config(
-            lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1
-        )
+                lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1
+                )
         cfg.paramvec = paramvec
         self.system_z2 = system.Z2System2D(cfg)
         self.system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
@@ -33,20 +33,20 @@ class TestZ2C4System(unittest.TestCase):
                     self.assertAlmostEqual(mat[coord], 0)
 
         zero_for_fermionic_layer = [
-            3,
-            13,
-            1,
-            2,
-            4,
-            5,
-            11,
-            12,
-            14,
-            15,
-        ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
+                3,
+                13,
+                1,
+                2,
+                4,
+                5,
+                11,
+                12,
+                14,
+                15,
+                ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
         for layer_ind in range(
-            self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer
-        ):
+                self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer
+                ):
             for ind in zero_for_fermionic_layer:
                 with self.subTest(ind=ind, layerind=layer_ind):
                     coord = (layer_ind, ind)
@@ -58,17 +58,17 @@ class TestZ2C4System(unittest.TestCase):
         covmat_layer1 = self.system_z2.compute_ferm_cov(layer=0)
         covmat_layer2 = self.system_z2.compute_ferm_cov(layer=1)
         expected_covmat = np.array(
-            [
-                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0],
-            ]
-        )
+                [
+                    [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0],
+                    ]
+                )
         self.assertTrue(np.allclose(covmat_layer1, expected_covmat))
         self.assertTrue(np.allclose(covmat_layer2, expected_covmat))
 
@@ -83,17 +83,17 @@ class TestZ2C4System(unittest.TestCase):
         covmat_layer1 = self.system_z2.compute_ferm_cov(layer=0)
         covmat_layer2 = self.system_z2.compute_ferm_cov(layer=1)
         expected_covmat = np.array(
-            [
-                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0],
-            ]
-        )
+                [
+                    [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0],
+                    ]
+                )
         self.assertTrue(np.allclose(covmat_layer1, expected_covmat))
         self.assertFalse(np.allclose(covmat_layer2, expected_covmat))
 
@@ -155,11 +155,11 @@ class TestZ2C4System(unittest.TestCase):
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
                     system_cfg_left = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2, 1.0, 0.0, 0.0, 0.0, None
-                    )
+                            lat_2x2, 1.0, 0.0, 0.0, 0.0, None
+                            )
                     system_cfg_right = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2, 1.0, 0.0, 0.0, 0.0, None
-                    )
+                            lat_2x2, 1.0, 0.0, 0.0, 0.0, None
+                            )
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -174,8 +174,8 @@ class TestZ2C4System(unittest.TestCase):
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
-                    )
+                            deriv_ana[layerind, ind], deriv_num, places=5
+                            )
 
     @skip("This gradient tests with the 4 copy ansatz take to long")
     def test_grad_el_energy_4C(self):
@@ -197,11 +197,11 @@ class TestZ2C4System(unittest.TestCase):
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
                     system_cfg_left = system.Z2System2D_G2C_F4C_Config(
-                        lat_2x2, 1.0, 0.0, 0.0, 0.0, None
-                    )
+                            lat_2x2, 1.0, 0.0, 0.0, 0.0, None
+                            )
                     system_cfg_right = system.Z2System2D_G2C_F4C_Config(
-                        lat_2x2, 1.0, 0.0, 0.0, 0.0, None
-                    )
+                            lat_2x2, 1.0, 0.0, 0.0, 0.0, None
+                            )
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -214,8 +214,8 @@ class TestZ2C4System(unittest.TestCase):
                     deriv_num = (val_right - val_left) / (2 * eps)
 
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
-                    )
+                            deriv_ana[layerind, ind], deriv_num, places=5
+                            )
 
     def test_grad_mass_energy_2C(self):
         # This is comparison of the analytic derivative against the numeric derivative
@@ -242,11 +242,11 @@ class TestZ2C4System(unittest.TestCase):
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
                     system_cfg_left = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2, 0.0, 0.0, 1.0, 1.0, None
-                    )
+                            lat_2x2, 0.0, 0.0, 1.0, 1.0, None
+                            )
                     system_cfg_right = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2, 0.0, 0.0, 1.0, 1.0, None
-                    )
+                            lat_2x2, 0.0, 0.0, 1.0, 1.0, None
+                            )
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -263,8 +263,8 @@ class TestZ2C4System(unittest.TestCase):
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
-                    )
+                            deriv_ana[layerind, ind], deriv_num, places=5
+                            )
 
     def test_grad_mass_energy_2flavor(self):
         # This is comparison of the analytic derivative against the numeric derivative
@@ -273,8 +273,8 @@ class TestZ2C4System(unittest.TestCase):
         paramvec = np.random.rand(3, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D_G2C_F2C_Config(
-            lat_2x2, 0.0, 0.0, 0.0, 1.0, None, num_pg_layer=1, num_fermionic_layer=2
-        )
+                lat_2x2, 0.0, 0.0, 0.0, 1.0, None, num_pg_layer=1, num_fermionic_layer=2
+                )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
 
@@ -293,25 +293,25 @@ class TestZ2C4System(unittest.TestCase):
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
                     system_cfg_left = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        1.0,
-                        1.0,
-                        None,
-                        num_pg_layer=1,
-                        num_fermionic_layer=2,
-                    )
+                            lat_2x2,
+                            0.0,
+                            0.0,
+                            1.0,
+                            1.0,
+                            None,
+                            num_pg_layer=1,
+                            num_fermionic_layer=2,
+                            )
                     system_cfg_right = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        1.0,
-                        1.0,
-                        None,
-                        num_pg_layer=1,
-                        num_fermionic_layer=2,
-                    )
+                            lat_2x2,
+                            0.0,
+                            0.0,
+                            1.0,
+                            1.0,
+                            None,
+                            num_pg_layer=1,
+                            num_fermionic_layer=2,
+                            )
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -328,8 +328,8 @@ class TestZ2C4System(unittest.TestCase):
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
-                    )
+                            deriv_ana[layerind, ind], deriv_num, places=5
+                            )
 
     @skip("This gradient tests with the 4 copy ansatz take to long")
     def test_grad_mass_energy_4C(self):
@@ -357,25 +357,25 @@ class TestZ2C4System(unittest.TestCase):
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
                     system_cfg_left = system.Z2System2D_G2C_F4C_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0,
-                        None,
-                        num_pg_layer=1,
-                        num_fermionic_layer=1,
-                    )
+                            lat_2x2,
+                            0.0,
+                            0.0,
+                            0.0,
+                            1.0,
+                            None,
+                            num_pg_layer=1,
+                            num_fermionic_layer=1,
+                            )
                     system_cfg_right = system.Z2System2D_G2C_F4C_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0,
-                        None,
-                        num_pg_layer=1,
-                        num_fermionic_layer=1,
-                    )
+                            lat_2x2,
+                            0.0,
+                            0.0,
+                            0.0,
+                            1.0,
+                            None,
+                            num_pg_layer=1,
+                            num_fermionic_layer=1,
+                            )
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -392,8 +392,8 @@ class TestZ2C4System(unittest.TestCase):
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
-                    )
+                            deriv_ana[layerind, ind], deriv_num, places=5
+                            )
 
     def test_grad_int_energy_2C(self):
         # This is comparison of the analytic derivative against the numeric derivative
@@ -402,8 +402,8 @@ class TestZ2C4System(unittest.TestCase):
         paramvec = np.random.rand(2, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D_G2C_F2C_Config(
-            lat_2x2, 0.0, 0.0, 1.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=1
-        )
+                lat_2x2, 0.0, 0.0, 1.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=1
+                )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
 
@@ -424,25 +424,25 @@ class TestZ2C4System(unittest.TestCase):
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
                     system_cfg_left = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        1.0,
-                        0.0,
-                        None,
-                        num_pg_layer=1,
-                        num_fermionic_layer=1,
-                    )
+                            lat_2x2,
+                            0.0,
+                            0.0,
+                            1.0,
+                            0.0,
+                            None,
+                            num_pg_layer=1,
+                            num_fermionic_layer=1,
+                            )
                     system_cfg_right = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        1.0,
-                        0.0,
-                        None,
-                        num_pg_layer=1,
-                        num_fermionic_layer=1,
-                    )
+                            lat_2x2,
+                            0.0,
+                            0.0,
+                            1.0,
+                            0.0,
+                            None,
+                            num_pg_layer=1,
+                            num_fermionic_layer=1,
+                            )
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -459,8 +459,8 @@ class TestZ2C4System(unittest.TestCase):
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
-                    )
+                            deriv_ana[layerind, ind], deriv_num, places=5
+                            )
 
     @skip("This gradient tests with the 4 copy ansatz take to long")
     def test_grad_int_energy_4C(self):
@@ -470,8 +470,8 @@ class TestZ2C4System(unittest.TestCase):
         paramvec = np.random.rand(2, 52)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D_G2C_F4C_Config(
-            lat_2x2, 0.0, 0.0, 1.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=1
-        )
+                lat_2x2, 0.0, 0.0, 1.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=1
+                )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
 
@@ -492,25 +492,25 @@ class TestZ2C4System(unittest.TestCase):
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
                     system_cfg_left = system.Z2System2D_G2C_F4C_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        1.0,
-                        0.0,
-                        None,
-                        num_pg_layer=1,
-                        num_fermionic_layer=1,
-                    )
+                            lat_2x2,
+                            0.0,
+                            0.0,
+                            1.0,
+                            0.0,
+                            None,
+                            num_pg_layer=1,
+                            num_fermionic_layer=1,
+                            )
                     system_cfg_right = system.Z2System2D_G2C_F4C_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        1.0,
-                        0.0,
-                        None,
-                        num_pg_layer=1,
-                        num_fermionic_layer=1,
-                    )
+                            lat_2x2,
+                            0.0,
+                            0.0,
+                            1.0,
+                            0.0,
+                            None,
+                            num_pg_layer=1,
+                            num_fermionic_layer=1,
+                            )
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -527,8 +527,8 @@ class TestZ2C4System(unittest.TestCase):
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
-                    )
+                            deriv_ana[layerind, ind], deriv_num, places=5
+                            )
 
     def test_grad_chem_energy_2flavor(self):
         # This is comparison of the analytic derivative against the numeric derivative
@@ -538,15 +538,15 @@ class TestZ2C4System(unittest.TestCase):
         paramvec = np.random.rand(3, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D_G2C_F2C_Config(
-            lat_2x2,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            g_chem,
-            num_pg_layer=1,
-            num_fermionic_layer=2,
-        )
+                lat_2x2,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                g_chem,
+                num_pg_layer=1,
+                num_fermionic_layer=2,
+                )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
 
@@ -568,25 +568,25 @@ class TestZ2C4System(unittest.TestCase):
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
                     system_cfg_left = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        g_chem,
-                        num_pg_layer=1,
-                        num_fermionic_layer=2,
-                    )
+                            lat_2x2,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            g_chem,
+                            num_pg_layer=1,
+                            num_fermionic_layer=2,
+                            )
                     system_cfg_right = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        g_chem,
-                        num_pg_layer=1,
-                        num_fermionic_layer=2,
-                    )
+                            lat_2x2,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            g_chem,
+                            num_pg_layer=1,
+                            num_fermionic_layer=2,
+                            )
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -601,5 +601,25 @@ class TestZ2C4System(unittest.TestCase):
                     deriv_num = (val_right - val_left) / (2 * eps)
 
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
-                    )
+                            deriv_ana[layerind, ind], deriv_num, places=5
+                            )
+
+        def test_FM(self):
+
+            system_type = Z2System2D
+            lat = lattice.Lattice2D(2, 2)
+
+            # Compare with ED for g_int = 1, g = 1.1 m = 0
+            g_int0=1
+            g0=1.1
+            FM_ed = 0.056378472489371945
+            param  = np.array([ [0.0, -2.40404381, 0.06235486, 0.0, -0.03930116, 0.02570194, -0.86789621, 1.63420534, -0.48050886, 0.32365748, 0.0, -0.57834489, 0.67735453, 0.0, -0.00508246, 0.06794535, 0.93614442, 0.62925059, 0.19743901, -0.80041006], [3.0479293, 0.0, 0.0, 0.0, 0.0, 0.0, 0.72591674, 0.6554002, 0.64491155, 0.65708742, 1.35546787, 0.0, 0.0, 0.0, 0.0, 0.0, 2.23331132, 1.59756399, 1.42258382, 1.59441826] ])
+            system_cfg = Z2System2D_G2C_F2C_Config(lat, g0/2, 1/(2*g0), g_int0, 0, [0,0],num_pg_layer=1,num_fermionic_layer=1)
+            system_cfg.paramvec = param
+            system = system_type(system_cfg)
+            eval_config = ExactEvaluatorConfig()
+            ex_eval = ExactEvaluator(eval_config, system)
+            res = ex_eval.evaluate()
+            FM=res["FM_1x1"]
+            self.assertAlmostEqual(FM, FM_ed, places=2)
+
