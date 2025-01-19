@@ -43,6 +43,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=1,
+        trans_inv: bool = True,
     ):
         super().__init__(
             lattice,
@@ -53,6 +54,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
+            trans_inv,
         )
 
         # Constants used in the calculation of the electric energy

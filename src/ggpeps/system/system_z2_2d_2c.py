@@ -40,6 +40,7 @@ class Z2System2D2CConfig(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=0,
+        trans_inv: bool = True,
     ):
         # The parameters have the following order: [[t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i...],[..next layer..],....]
         if num_fermionic_layer != 0:
@@ -47,7 +48,9 @@ class Z2System2D2CConfig(Config2DBase):
             raise ValueError(
                 "The Z2System2D2C ansatz does not support fermionic layers."
             )
-        super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0)
+        super().__init__(
+            lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0, trans_inv
+        )
 
         # This is for pure-gauge only atm
         self.num_pg_layer = self.nlayer

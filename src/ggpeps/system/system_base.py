@@ -94,6 +94,7 @@ class Config2DBase(ABC):
         g_chem: Optional[np.array],
         num_pg_layer: int = 1,
         num_fermionic_layer: int = 0,
+        trans_inv: bool = True,
     ):
         """Constructor.
 
@@ -113,6 +114,7 @@ class Config2DBase(ABC):
         self.num_pg_layer = num_pg_layer
         self.num_fermionic_layer = num_fermionic_layer
         self.nlayer = self.num_pg_layer + self.num_fermionic_layer
+        self.trans_inv = trans_inv
 
         self._paramvec: Optional[np.ndarray] = None
         self.zeroed_params: List[int] = (
