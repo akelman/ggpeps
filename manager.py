@@ -110,9 +110,7 @@ def translate_parameters(
     Returns:
         np.array: Array of parameters that are suited for the simulation according to the command line parameters
     """
-    nparams = system_cfg._nparams_per_layer
-    nlayer = system_cfg.nlayer
-    shape = (nlayer, nparams)
+    shape = system_cfg.param_shape()
     if (
         params is not None
         and len(params) == 1

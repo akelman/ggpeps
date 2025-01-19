@@ -160,6 +160,8 @@ class Config2DBase(ABC):
 
     @paramvec.setter
     def paramvec(self, val):
+        if not isinstance(val, np.ndarray):
+            val = np.array(val)
         if self.check_params(val):
             self._paramvec = val
             self.nlayer = len(val)
@@ -174,9 +176,9 @@ class Config2DBase(ABC):
         Args:
             params (list or np.ndarray): two dimensional array of input parameters
         """
-        lenvec = np.asarray([len(x) for x in params])
-        # We know that we need _nparams parameters for each layer
-        return np.all(lenvec == self._nparams_per_layer)
+        shape = params.shape
+        target_shape = self.param_shape()
+        return shape == target_shape
 
     @property
     def nparams_per_layer(self):
@@ -184,6 +186,15 @@ class Config2DBase(ABC):
 
     def nvarparams(self):
         return self._nparams_per_layer * self.nlayer
+
+    def param_shape(self):
+        """Return the shape required for valid parameters."""
+        if self.trans_inv:
+            # TODO: remove this option, and add preprocessing layer to make full params all have len(shape) == 3
+            shape = (self.nlayer, self._nparams_per_layer)
+        else:
+            shape = (self.nlayer, self.num_independent_sites, self._nparams_per_layer)
+        return shape
 
     def print_parametervec(self, symbolvec):
         """Printing of the parametervec
