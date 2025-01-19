@@ -144,6 +144,11 @@ class Config2DBase(ABC):
                 "The number of chemical potentials must match the number of layers."
             )
 
+        if self.trans_inv and self.num_independent_sites != 1:
+            raise ValueError(
+                "Translation invariant systems must have num_independent_sites = 1."
+            )
+
     def __str__(self):
         # define a string method that can be used, e.g., in filenaming
         # note that this string doesn't include the number of copies
