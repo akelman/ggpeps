@@ -25,6 +25,7 @@ class Z2System2D_8C_Config(Config2DBase):
     ncopy = 8
     nvirtmodes_vertex = 32
     nvirtmodes_link = 16
+    num_independent_sites = 1
 
     def __init__(
         self,

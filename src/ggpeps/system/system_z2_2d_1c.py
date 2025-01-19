@@ -26,6 +26,7 @@ class Z2System2DConfig(Config2DBase):
         4  # We have one virtual mode per direction (1 mode x 4 directions)
     )
     nvirtmodes_link = 2  # We have two virtual modes per link (l/r or u/d)
+    num_independent_sites = 1
 
     def __init__(
         self,

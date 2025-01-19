@@ -79,10 +79,13 @@ class Config2DBase(ABC):
     This class cannot be instantiated directly.
     """
 
-    # Number of parameters
+    # Ansatz settings
     # This will be overwritten by the specifications of each ansatz
     _nparams_per_layer: int = None
     ncopy: int = None
+    num_independent_sites: int = (
+        None  # number of different sets of parameters that can be independently varied for different sites (min: 1, max: num_sites)
+    )
 
     def __init__(
         self,

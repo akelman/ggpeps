@@ -35,6 +35,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
     ncopy = 2
     nvirtmodes_vertex = 8
     nvirtmodes_link = 4
+    num_independent_sites = 1
 
     def __init__(
         self,
