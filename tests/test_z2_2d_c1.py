@@ -1365,7 +1365,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec = [[0, 0, 0, 0, 0, 0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2DConfig(
-            lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=2, num_fermionic_layer=0
+            lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=0
         )
         system_cfg.paramvec = paramvec
         mc_config = MonteCarloEvaluatorConfig()

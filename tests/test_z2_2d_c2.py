@@ -209,7 +209,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         paramvec = np.random.rand(1, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D2CConfig(
-            lat_2x2, 1.0, None, None, None, None, num_pg_layer=2, num_fermionic_layer=0
+            lat_2x2, 1.0, None, None, None, None, num_pg_layer=1, num_fermionic_layer=0
         )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
@@ -227,7 +227,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                     None,
                     None,
                     None,
-                    num_pg_layer=2,
+                    num_pg_layer=1,
                     num_fermionic_layer=0,
                 )
                 system_cfg_right = system.Z2System2D2CConfig(
@@ -237,7 +237,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                     None,
                     None,
                     None,
-                    num_pg_layer=2,
+                    num_pg_layer=1,
                     num_fermionic_layer=0,
                 )
                 system_cfg_left.paramvec = paramvec_left
