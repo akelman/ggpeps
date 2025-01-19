@@ -21,7 +21,7 @@ class Z2System2D_8C_Config(Config2DBase):
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
     """
 
-    _nparams = 152
+    _nparams_per_layer = 152
     ncopy = 8
     nvirtmodes_vertex = 32
     nvirtmodes_link = 16

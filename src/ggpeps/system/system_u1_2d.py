@@ -28,7 +28,7 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class U1System2DConfig(Config2DBase):
-    _nparams = 3
+    _nparams_per_layer = 3
     ncopy = 1
     nvirtmodes_link = 8
     nvirtmodes_link = 4

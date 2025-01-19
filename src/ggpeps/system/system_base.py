@@ -81,7 +81,7 @@ class Config2DBase(ABC):
 
     # Number of parameters
     # This will be overwritten by the specifications of each ansatz
-    _nparams: int = 1
+    _nparams_per_layer: int = None
     ncopy: int = None
 
     def __init__(
@@ -168,14 +168,14 @@ class Config2DBase(ABC):
         """
         lenvec = np.asarray([len(x) for x in params])
         # We know that we need _nparams parameters for each layer
-        return np.all(lenvec == self._nparams)
+        return np.all(lenvec == self._nparams_per_layer)
 
     @property
     def nparams_per_layer(self):
-        return self._nparams
+        return self._nparams_per_layer
 
     def nvarparams(self):
-        return self._nparams * self.nlayer
+        return self._nparams_per_layer * self.nlayer
 
     def print_parametervec(self, symbolvec):
         """Printing of the parametervec
