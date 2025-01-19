@@ -112,6 +112,7 @@ def translate_parameters(
     """
     nparams = system_cfg._nparams_per_layer
     nlayer = system_cfg.nlayer
+    shape = (nlayer, nparams)
     if (
         params is not None
         and len(params) == 1
@@ -120,23 +121,23 @@ def translate_parameters(
     ):
         # The parameters are stored in a file and we can load them
         dest = np.load(params[0])
-        dest = np.reshape(dest, (nlayer, -1))
+        dest = np.reshape(dest, shape)
         source = "command-line provided file"
     elif params is None or params == "rand":
         # No parameters are given and we randomize
-        dest = rng_state.rand(nlayer, nparams)
+        dest = rng_state.rand(*shape)
         source = "random state"
     else:
         # The parameters are listed explicitly in the command line
         dest = np.asarray(params, dtype=float)
         try:
-            dest = dest.reshape((nlayer, nparams))
+            dest = dest.reshape(shape)
             source = "command-line provided parameters"
         except:
             logger.warning(
                 "Reshape of provided parameters impossible. Starting with random parameters."
             )
-            dest = rng_state.rand(nlayer, nparams)
+            dest = rng_state.rand(shape)
             source = "random state"
     return dest, source
 
