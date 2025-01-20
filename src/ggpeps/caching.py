@@ -84,7 +84,8 @@ class Cache:
                 == ggpeps.global_vars["minimizer"].evaluator_manager.nrunner
             ):
                 if np.allclose(
-                    eval_manager.system_cfg.paramvec, np.reshape(paramvec, (-1, 20))
+                    eval_manager.system_cfg.paramvec,
+                    np.reshape(paramvec, eval_manager.system_cfg.param_shape()),
                 ):
                     ggpeps.global_vars["minimizer"].evaluator_manager = eval_manager
         return None

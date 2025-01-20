@@ -139,7 +139,7 @@ class Minimizer:
                 self.last_paramvec = flattened_paramvec
                 self.evaluator_manager.system_cfg.paramvec = np.reshape(
                     flattened_paramvec,
-                    (-1, self.evaluator_manager.system_cfg._nparams_per_layer),
+                    self.evaluator_manager.system_cfg.param_shape(),
                 )
                 self.last_result = self.evaluator_manager.simulate()
 
@@ -184,7 +184,7 @@ class Minimizer:
                 # self.evaluator.mc_cfg.minimizer_mode = True # make sure to calculate derivatives
                 self.evaluator_manager.system_cfg.paramvec = np.reshape(
                     flattened_paramvec,
-                    (-1, self.evaluator_manager.system_cfg._nparams_per_layer),
+                    self.evaluator_manager.system_cfg.param_shape(),
                 )
                 self.last_result = self.evaluator_manager.simulate()
 
