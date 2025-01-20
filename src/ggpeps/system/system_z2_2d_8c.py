@@ -25,6 +25,8 @@ class Z2System2D_8C_Config(Config2DBase):
     ncopy = 8
     nvirtmodes_vertex = 32
     nvirtmodes_link = 16
+
+    trans_inv: bool = True
     num_independent_sites = 1
 
     def __init__(
@@ -37,7 +39,6 @@ class Z2System2D_8C_Config(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=1,
-        trans_inv: bool = True,
     ):
         super().__init__(
             lattice,
@@ -48,7 +49,7 @@ class Z2System2D_8C_Config(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
-            trans_inv,
+            self.trans_inv,
         )
 
         # Constants used in the calculation of the electric energy

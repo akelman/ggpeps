@@ -26,6 +26,8 @@ class Z2System2DConfig(Config2DBase):
         4  # We have one virtual mode per direction (1 mode x 4 directions)
     )
     nvirtmodes_link = 2  # We have two virtual modes per link (l/r or u/d)
+
+    trans_inv: bool = True
     num_independent_sites = 1
 
     def __init__(
@@ -38,14 +40,13 @@ class Z2System2DConfig(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=0,
-        trans_inv: bool = True,
     ):
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         if num_fermionic_layer != 0:
             # This ansatz does not support fermionic layers
             raise ValueError("The Z2System2D ansatz does not support fermionic layers.")
         super().__init__(
-            lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0, trans_inv
+            lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0, self.trans_inv
         )
 
         # This is for pure-gauge only atm

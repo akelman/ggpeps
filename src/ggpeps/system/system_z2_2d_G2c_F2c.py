@@ -35,6 +35,8 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
     ncopy = 2
     nvirtmodes_vertex = 8
     nvirtmodes_link = 4
+
+    trans_inv: bool = True
     num_independent_sites = 1
 
     def __init__(
@@ -47,7 +49,6 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=1,
-        trans_inv: bool = True,
     ):
         super().__init__(
             lattice,
@@ -58,7 +59,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
-            trans_inv,
+            self.trans_inv,
         )
 
         # Constants used in the calculation of the electric energy

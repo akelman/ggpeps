@@ -32,6 +32,8 @@ class U1System2DConfig(Config2DBase):
     ncopy = 1
     nvirtmodes_link = 8
     nvirtmodes_link = 4
+
+    trans_inv: bool = True
     num_independent_sites = 1
 
     def __init__(
@@ -44,7 +46,6 @@ class U1System2DConfig(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=0,
-        trans_inv: bool = True,
     ):
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         super().__init__(
@@ -56,7 +57,7 @@ class U1System2DConfig(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
-            trans_inv,
+            self.trans_inv,
         )
 
     def make_pure_gauge(self):
