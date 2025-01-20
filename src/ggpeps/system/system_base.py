@@ -196,6 +196,25 @@ class Config2DBase(ABC):
             shape = (self.nlayer, self.num_independent_sites, self._nparams_per_layer)
         return shape
 
+    def parse_params(self, paramvec, layer, site):
+        """Process the parameters and return the parameters for the given layer and site.
+
+        Args:
+            paramvec (array): parameters
+            layer (int): the layer for which the parameters are needed
+            site (int): the site for which the parameters are needed
+
+        Returns:
+            array: parameters for the given site and layer (this will be a subarray of paramvec)
+        """
+        shape = self.param_shape()
+        if len(shape) == 2:
+            res = paramvec[layer]
+        else:
+            ind = 0  # TODO: modify this to account for not every site being independent
+            res = paramvec[layer][ind]
+        return res
+
     def print_parametervec(self, symbolvec):
         """Printing of the parametervec
 
