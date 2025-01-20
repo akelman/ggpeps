@@ -49,6 +49,7 @@
             "console": "integratedTerminal",
             "args": [
                 "eval-exact",
+                "--fermions",
                 "--L", "2",
                 "--ncopy", "2",
                 "--num_pg_layer", "1",
