@@ -531,7 +531,7 @@ class System2DBase(ABC):
             )  # vectorized operation over all layers
         return self._gamma_maj_vec
 
-    def _expand_gamma_maj_to_system(self, covmats):
+    def _expand_gamma_maj_to_system(self, covmats_vec):
         """Expand the covariance matrix in Majorana modes to the full system.
         In order to obtain a structure that is convenient for further computations,
             (A    B)
@@ -541,7 +541,7 @@ class System2DBase(ABC):
         This method is overwritten for the U1 system.
 
         Args:
-            covmat (xnp.ndarray): 2D covariance matrix of a single site
+            covmats_vec (list[xnp.ndarray]): list (per layer) of 2D covariance matrices of a single site
 
         Returns:
             xnp.ndarray: 2D covariance matrix of the full system
@@ -563,7 +563,7 @@ class System2DBase(ABC):
 
         # TODO: properly vectorize!
         gamma_maj_sys_vec = []
-        for covmat in covmats:
+        for covmat in covmats_vec:
 
             # Extract the parts of the covariance matrix
             amat = covmat[:2, :2]  # assumes 1 fermion per site (two majorana modes)
