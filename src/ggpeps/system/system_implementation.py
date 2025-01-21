@@ -284,7 +284,8 @@ class Z2System2D(System2DBase):
             raise NotImplementedError("Translation invariance must be set to True.")
 
         mass_energy_op = [0] * self.cfg.num_pg_layer
-        gradients = [[0] * len(self.symbolvec)] * self.cfg.num_pg_layer
+        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+        site_ind_params = 0
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             # only the fermionic layers directly contribute to the mass
@@ -292,7 +293,6 @@ class Z2System2D(System2DBase):
             # Calculation prelimaries
             covmat = self.compute_ferm_cov(layer_ind)
             layer_mass_energy = 0.0
-            layer_grads = [0] * len(self.symbolvec)
 
             # Calculate mass term
             # Since the system is translationally invariant, we could just calculate it for one site and multiply by nsites instead
@@ -302,12 +302,12 @@ class Z2System2D(System2DBase):
                 )  # TODO: fix for JAX - NOT NEEDED
 
                 for symbol_ind, symbol in enumerate(self.symbolvec):
-                    if (layer_ind, symbol_ind) not in self.cfg.zeroed_params:
+                    if (layer_ind, site_ind, symbol_ind) not in self.cfg.zeroed_params:
                         # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
 
                         d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                        layer_grads[symbol_ind] += (
+                        gradients[layer_ind, site_ind_params, symbol_ind] += (
                             0.5 * d_gamma_out[site_ind + 1, site_ind]
                         )
 
@@ -315,14 +315,9 @@ class Z2System2D(System2DBase):
                     # because computing them requires knowing various expectation values, which are not available here
 
             mass_energy_op.append(xnp.asarray(layer_mass_energy))
-            gradients.append(xnp.asarray(layer_grads))
 
         mass_energy_op = xnp.asarray(mass_energy_op)
-        gradients = np.asarray(gradients)
 
-        gradients = np.reshape(
-            gradients, self.cfg.param_shape()
-        )  # Support for site-dependent parameters
         self.cfg.enforce_parameter_conditions(gradients)
 
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
@@ -458,10 +453,7 @@ class Z2System2D(System2DBase):
                 "The non-translational invariant case is not implemented yet."
             )
 
-        res = compute_el_grad_vec(self)
-        gradients = np.reshape(
-            res, self.cfg.param_shape()
-        )  # Support for site-dependent parameters
+        gradients = compute_el_grad_vec(self)
         return gradients
 
     def _compute_mag_energy_op(self, use_trans_inv: bool = True):
@@ -501,12 +493,12 @@ class Z2System2D(System2DBase):
         """
 
         int_energy_op = [0] * self.cfg.num_pg_layer
-        gradients = [[0] * len(self.symbolvec)] * self.cfg.num_pg_layer
+        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+        site_ind_params = 0
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             layer_int_energy = 0.0
             covmat = self.compute_ferm_cov(layer_ind)
-            layer_gradients = [0] * len(self.symbolvec)
 
             for site_ind in range(self.cfg.lattice.size):
                 coord = self.cfg.lattice.ind2coord(site_ind)
@@ -548,7 +540,11 @@ class Z2System2D(System2DBase):
 
                 # Calculate derivatives
                 for symbol_ind, symbol in enumerate(self.symbolvec):
-                    if (layer_ind, symbol_ind) not in self.cfg.zeroed_params:
+                    if (
+                        layer_ind,
+                        site_ind_params,
+                        symbol_ind,
+                    ) not in self.cfg.zeroed_params:
                         # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
 
@@ -569,17 +565,12 @@ class Z2System2D(System2DBase):
                                 + d_gamma_out[site_ind_cov + 1, neighborY_ind]
                             )
                         )
-                        layer_gradients[symbol_ind] += grad
+                        gradients[layer_ind, site_ind_params, symbol_ind] += grad
 
             int_energy_op.append(layer_int_energy)
-            gradients.append(layer_gradients)
 
         int_energy_op = xnp.asarray(int_energy_op)
-        gradients = np.asarray(gradients)
 
-        gradients = np.reshape(
-            gradients, self.cfg.param_shape()
-        )  # Support for site-dependent parameters
         self.cfg.enforce_parameter_conditions(gradients)
 
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
@@ -593,7 +584,8 @@ class Z2System2D(System2DBase):
         """Calculate the chemical potential energy operator and its gradient."""
 
         chem_energy_op = [0] * self.cfg.num_pg_layer
-        gradients = [[0] * len(self.symbolvec)] * self.cfg.num_pg_layer
+        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+        site_ind_params = 0
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             # only the fermionic layers directly contribute to the chemical potential
@@ -601,7 +593,6 @@ class Z2System2D(System2DBase):
             # Calculation prelimaries
             covmat = self.compute_ferm_cov(layer_ind)
             layer_chem_energy = 0.0
-            layer_grads = [0] * len(self.symbolvec)
 
             # Calculate chem term
             # Since the system is translationally invariant, we could just calculate it for one site and multiply by nsites instead
@@ -613,12 +604,16 @@ class Z2System2D(System2DBase):
                 layer_chem_energy += 0.5  # constant offset which arises from particle-hole transformation
 
                 for symbol_ind, symbol in enumerate(self.symbolvec):
-                    if (layer_ind, symbol_ind) not in self.cfg.zeroed_params:
+                    if (
+                        layer_ind,
+                        site_ind_params,
+                        symbol_ind,
+                    ) not in self.cfg.zeroed_params:
                         # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
 
                         d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                        layer_grads[symbol_ind] += (
+                        gradients[layer_ind, site_ind_params, symbol_ind] += (
                             0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
                         )
 
@@ -626,14 +621,9 @@ class Z2System2D(System2DBase):
                     # because computing them requires knowing various expectation values, which are not available here
 
             chem_energy_op.append(np.asarray(layer_chem_energy))
-            gradients.append(np.asarray(layer_grads))
 
         chem_energy_op = np.asarray(chem_energy_op)
-        gradients = np.asarray(gradients, dtype=np.float64)
 
-        gradients = np.reshape(
-            gradients, self.cfg.param_shape()
-        )  # Support for site-dependent parameters
         self.cfg.enforce_parameter_conditions(gradients)
 
         return chem_energy_op, gradients

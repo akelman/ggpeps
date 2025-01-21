@@ -1118,18 +1118,21 @@ class System2DBase(ABC):
             xnp.ndarray: Vector of gradients for the norm
         """
 
-        dest = xnp.zeros(len(self.symbolvec))
+        dest_grad = xnp.zeros(self.cfg.param_shape()[1:], dtype=xnp.float64)
+        site_ind = 0
         for symbol_ind, symbol in enumerate(self.symbolvec):
             if (layerind, symbol_ind) not in self.cfg.zeroed_params:
                 # the derivative calculation is computationally expensive
                 # we can skip it for parameters that are forced by the ansatz to be zero
                 if ggpeps.PREFERRED_BACKEND == "jax":
-                    dest = dest.at[symbol_ind].set(
+                    dest_grad = dest_grad.at[site_ind, symbol_ind].set(
                         self.compute_grad_over_norm(symbol, layerind)
                     )
                 else:
-                    dest[symbol_ind] = self.compute_grad_over_norm(symbol, layerind)
-        return dest
+                    dest_grad[site_ind, symbol_ind] = self.compute_grad_over_norm(
+                        symbol, layerind
+                    )
+        return dest_grad
 
     ################## Weight management ######################
 

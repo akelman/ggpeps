@@ -88,15 +88,16 @@ def compute_el_grad_vec_numpy(system):
         list: list of gradients for the full system
     """
 
-    dest_grad = []
+    dest_grad = np.zeros(system.cfg.param_shape(), dtype=np.float64)
     overall_factors = system.cfg.el_overall_factors
     idxarrs = system.cfg.idxarr_vec
     el_energy_vec = (
         system.el_energy_op_vec
     )  # this gets the electric energy, and ensures that the intermediate steps are calculated
 
+    site_ind = 0  # for now, only support params of single site
+
     for layerind in range(system.cfg.nlayer):
-        layer_derivative = []
 
         # Abbreviations for more readable code
         mat_b = system.mat_b_mod_vec[layerind]
@@ -122,7 +123,7 @@ def compute_el_grad_vec_numpy(system):
             if (layerind, symbol_ind) in system.cfg.zeroed_params:
                 # the derivative calculation is compuationally expensive
                 # we can skip it for parameters that are forced by the ansatz to be zero
-                layer_derivative.append(0.0)
+                dest_grad[layerind, site_ind, symbol_ind] = 0
             else:
                 deriv_gamma_maj_sys = system.gamma_maj_sys_deriv_vec(symbol)[layerind]
                 d_mat_a, d_mat_b, d_mat_d = (
@@ -170,8 +171,7 @@ def compute_el_grad_vec_numpy(system):
                 d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
                 # Scale to system size
                 d_el_energy *= nlinks
-                layer_derivative.append(np.real(d_el_energy))
-        dest_grad.append(layer_derivative)
+                dest_grad[layerind, site_ind, symbol_ind] = d_el_energy
 
     dest_grad = np.asarray(dest_grad)
 
@@ -182,7 +182,7 @@ def compute_el_grad_vec_numpy(system):
             prod_other_layers = ggpeps.utils.multiply_except(el_energy_vec, i)
             dest_grad[i] *= prod_other_layers
 
-    # system.cfg.enforce_parameter_conditions(dest_grad)
+    system.cfg.enforce_parameter_conditions(dest_grad)
     return dest_grad
 
 
