@@ -182,7 +182,7 @@ def compute_el_grad_vec_numpy(system):
             prod_other_layers = ggpeps.utils.multiply_except(el_energy_vec, i)
             dest_grad[i] *= prod_other_layers
 
-    system.cfg.enforce_parameter_conditions(dest_grad)
+    # system.cfg.enforce_parameter_conditions(dest_grad)
     return dest_grad
 
 

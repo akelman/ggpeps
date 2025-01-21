@@ -62,8 +62,9 @@ class U1System2DConfig(Config2DBase):
 
     def make_pure_gauge(self):
         # The order of the parameters is [t,y,z]
-        for ind in range(self.nlayer):
-            self.paramvec[ind, 0] = 0
+        for lay in range(self.nlayer):
+            for site_ind in range(self.num_independent_sites):
+                self.paramvec[lay, site_ind, 0] = 0
 
     def _create_symbolvec(self):
         t = sympy.Symbol("t", real=True)

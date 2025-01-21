@@ -320,6 +320,9 @@ class Z2System2D(System2DBase):
         mass_energy_op = xnp.asarray(mass_energy_op)
         gradients = np.asarray(gradients)
 
+        gradients = np.reshape(
+            gradients, self.cfg.param_shape()
+        )  # Support for site-dependent parameters
         self.cfg.enforce_parameter_conditions(gradients)
 
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
@@ -456,7 +459,10 @@ class Z2System2D(System2DBase):
             )
 
         res = compute_el_grad_vec(self)
-        return res
+        gradients = np.reshape(
+            res, self.cfg.param_shape()
+        )  # Support for site-dependent parameters
+        return gradients
 
     def _compute_mag_energy_op(self, use_trans_inv: bool = True):
         """Computation of the magnetic energy operator (w/o shift).
@@ -571,6 +577,9 @@ class Z2System2D(System2DBase):
         int_energy_op = xnp.asarray(int_energy_op)
         gradients = np.asarray(gradients)
 
+        gradients = np.reshape(
+            gradients, self.cfg.param_shape()
+        )  # Support for site-dependent parameters
         self.cfg.enforce_parameter_conditions(gradients)
 
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
@@ -622,6 +631,9 @@ class Z2System2D(System2DBase):
         chem_energy_op = np.asarray(chem_energy_op)
         gradients = np.asarray(gradients, dtype=np.float64)
 
+        gradients = np.reshape(
+            gradients, self.cfg.param_shape()
+        )  # Support for site-dependent parameters
         self.cfg.enforce_parameter_conditions(gradients)
 
         return chem_energy_op, gradients

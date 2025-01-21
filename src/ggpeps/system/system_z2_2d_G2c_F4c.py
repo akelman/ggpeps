@@ -107,10 +107,11 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
 
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.num_pg_layer):
-            for t_ind in t_indices:
-                coord = (layer_ind, t_ind)
-                mat[coord] = 0
-                zeroed_params.append(coord)
+            for site_ind in range(self.num_independent_sites):
+                for t_ind in t_indices:
+                    coord = (layer_ind, site_ind, t_ind)
+                    mat[coord] = 0
+                    zeroed_params.append(coord)
 
         zero_for_fermionic_layer = [
             1,
@@ -131,10 +132,11 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
             31,
         ]  # indices of y's, z's in symbolvec
         for layer_ind in range(self.num_pg_layer, self.nlayer):
-            for ind in zero_for_fermionic_layer:
-                coord = (layer_ind, ind)
-                mat[coord] = 0
-                zeroed_params.append(coord)
+            for site_ind in range(self.num_independent_sites):
+                for ind in zero_for_fermionic_layer:
+                    coord = (layer_ind, site_ind, ind)
+                    mat[coord] = 0
+                    zeroed_params.append(coord)
 
         # It is also possible to test the 2 copy ansatz within this one, by zeroing all the extra parameters
         # (a2, b2, c2, d2, and all the p,q,r,s params)

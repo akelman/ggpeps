@@ -73,11 +73,12 @@ class Z2System2D2CConfig(Config2DBase):
     def make_pure_gauge(self):
         """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t."""
         # The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
-        for ind in range(self.nlayer):
-            self.paramvec[ind, 0] = 0  # Set t1r to 0
-            self.paramvec[ind, 10] = 0  # Set t1i to 0
-            self.paramvec[ind, 3] = 0  # Set t2r to 0
-            self.paramvec[ind, 13] = 0  # Set t2i to 0
+        for lay in range(self.nlayer):
+            for site_ind in range(self.num_independent_sites):
+                self.paramvec[lay, site_ind, 0] = 0  # Set t1r to 0
+                self.paramvec[lay, site_ind, 10] = 0  # Set t1i to 0
+                self.paramvec[lay, site_ind, 3] = 0  # Set t2r to 0
+                self.paramvec[lay, site_ind, 13] = 0  # Set t2i to 0
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.

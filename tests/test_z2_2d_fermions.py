@@ -27,10 +27,11 @@ class TestZ2C4System(unittest.TestCase):
         mat = self.system_z2.cfg.paramvec
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.system_z2.cfg.num_pg_layer):
-            for t_ind in t_indices:
-                with self.subTest(tind=t_ind, layerind=layer_ind):
-                    coord = (layer_ind, t_ind)
-                    self.assertAlmostEqual(mat[coord], 0)
+            for site_ind in range(self.system_z2.cfg.num_independent_sites):
+                for t_ind in t_indices:
+                    with self.subTest(tind=t_ind, layerind=layer_ind):
+                        coord = (layer_ind, site_ind, t_ind)
+                        self.assertAlmostEqual(mat[coord], 0)
 
         zero_for_fermionic_layer = [
             3,
@@ -47,10 +48,11 @@ class TestZ2C4System(unittest.TestCase):
         for layer_ind in range(
             self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer
         ):
-            for ind in zero_for_fermionic_layer:
-                with self.subTest(ind=ind, layerind=layer_ind):
-                    coord = (layer_ind, ind)
-                    self.assertAlmostEqual(mat[coord], 0)
+            for site_ind in range(self.system_z2.cfg.num_independent_sites):
+                for ind in zero_for_fermionic_layer:
+                    with self.subTest(ind=ind, layerind=layer_ind):
+                        coord = (layer_ind, site_ind, ind)
+                        self.assertAlmostEqual(mat[coord], 0)
 
     def test_covmat_for_no_fermions(self):
         """Ensure the correct covariance matrix is generated when t = 0."""
@@ -147,6 +149,9 @@ class TestZ2C4System(unittest.TestCase):
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
+
+        site = 0
+
         for layerind in range(2):
             for ind in range(len(symbolvec)):
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
@@ -174,7 +179,7 @@ class TestZ2C4System(unittest.TestCase):
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
+                        deriv_ana[layerind, site, ind], deriv_num, places=5
                     )
 
     @skip("This gradient tests with the 4 copy ansatz take to long")
@@ -189,6 +194,9 @@ class TestZ2C4System(unittest.TestCase):
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
+
+        site = 0
+
         for layerind in range(2):
             for ind in range(len(symbolvec)):
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
@@ -214,7 +222,7 @@ class TestZ2C4System(unittest.TestCase):
                     deriv_num = (val_right - val_left) / (2 * eps)
 
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
+                        deriv_ana[layerind, site, ind], deriv_num, places=5
                     )
 
     def test_grad_mass_energy_2C(self):
@@ -232,6 +240,9 @@ class TestZ2C4System(unittest.TestCase):
 
         deriv_ana = system_z2_2_2.mass_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
+
+        site = 0
+
         for layerind in range(2):
             # we could skip the first layer, since the first layer does not contribute to the
             # mass energy
@@ -263,7 +274,7 @@ class TestZ2C4System(unittest.TestCase):
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
+                        deriv_ana[layerind, site, ind], deriv_num, places=5
                     )
 
     def test_grad_mass_energy_2flavor(self):
@@ -283,6 +294,9 @@ class TestZ2C4System(unittest.TestCase):
 
         deriv_ana = system_z2_2_2.mass_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
+
+        site = 0
+
         for layerind in range(3):
             # we could skip the first layer, since the first layer does not contribute to the
             # mass energy
@@ -328,7 +342,7 @@ class TestZ2C4System(unittest.TestCase):
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
+                        deriv_ana[layerind, site, ind], deriv_num, places=5
                     )
 
     @skip("This gradient tests with the 4 copy ansatz take to long")
@@ -347,6 +361,9 @@ class TestZ2C4System(unittest.TestCase):
 
         deriv_ana = system_z2_2_2.mass_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
+
+        site = 0
+
         for layerind in range(1, 2):
             # we skip the first layer, since the first layer does not contribute to the
             # mass energy, and is less important to test
@@ -392,7 +409,7 @@ class TestZ2C4System(unittest.TestCase):
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
+                        deriv_ana[layerind, site, ind], deriv_num, places=5
                     )
 
     def test_grad_int_energy_2C(self):
@@ -414,6 +431,9 @@ class TestZ2C4System(unittest.TestCase):
 
         deriv_ana = system_z2_2_2.int_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
+
+        site = 0
+
         for layerind in range(2):
             # we could skip the first layer, since the first layer does not contribute to the
             # interaction energy
@@ -459,7 +479,7 @@ class TestZ2C4System(unittest.TestCase):
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
+                        deriv_ana[layerind, site, ind], deriv_num, places=5
                     )
 
     @skip("This gradient tests with the 4 copy ansatz take to long")
@@ -482,6 +502,9 @@ class TestZ2C4System(unittest.TestCase):
 
         deriv_ana = system_z2_2_2.int_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
+
+        site = 0
+
         for layerind in range(1, 2):
             # we skip the first layer, since the first layer does not contribute to the
             # interaction energy, and is less important to test
@@ -527,7 +550,7 @@ class TestZ2C4System(unittest.TestCase):
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
+                        deriv_ana[layerind, site, ind], deriv_num, places=5
                     )
 
     def test_grad_chem_energy_2flavor(self):
@@ -553,10 +576,12 @@ class TestZ2C4System(unittest.TestCase):
         config = np.array([0] * 7 + [np.pi] * 1)
         system_z2_2_2.update_gauge_full_system(config)
 
+        site = 0
+
         deriv_ana = system_z2_2_2.chem_energy_op_grad_vec
         # Scale the gradients by the appropriate chemical potential
         for lay in range(3):
-            deriv_ana[lay, :] *= g_chem[lay]
+            deriv_ana[lay, :, :] *= g_chem[lay]
         symbolvec = system_z2_2_2.symbolvec
         for layerind in range(3):
             # we could skip the first layer, since the first layer does not contribute to the
@@ -601,5 +626,5 @@ class TestZ2C4System(unittest.TestCase):
                     deriv_num = (val_right - val_left) / (2 * eps)
 
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
+                        deriv_ana[layerind, site, ind], deriv_num, places=5
                     )

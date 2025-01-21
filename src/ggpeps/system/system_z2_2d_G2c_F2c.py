@@ -88,9 +88,10 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         """
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.nlayer):
-            for t_ind in t_indices:
-                coord = (layer_ind, t_ind)
-                self.paramvec[coord] = 0
+            for site_ind in range(self.num_independent_sites):
+                for t_ind in t_indices:
+                    coord = (layer_ind, site_ind, t_ind)
+                    self.paramvec[coord] = 0
 
     def enforce_parameter_conditions(self, mat):
         """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz."""
@@ -100,13 +101,14 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.num_pg_layer):
-            for t_ind in t_indices:
-                coord = (layer_ind, t_ind)
-                if isinstance(mat, np.ndarray):  # TODO: handle jax better
-                    mat[coord] = 0
-                else:
-                    mat = mat.at[coord].set(0)
-                zeroed_params.append(coord)
+            for site_ind in range(self.num_independent_sites):
+                for t_ind in t_indices:
+                    coord = (layer_ind, site_ind, t_ind)
+                    if isinstance(mat, np.ndarray):  # TODO: handle jax better
+                        mat[coord] = 0
+                    else:
+                        mat = mat.at[coord].set(0)
+                    zeroed_params.append(coord)
 
         zero_for_fermionic_layer = [
             3,
@@ -121,13 +123,14 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             15,
         ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
         for layer_ind in range(self.num_pg_layer, self.nlayer):
-            for ind in zero_for_fermionic_layer:
-                coord = (layer_ind, ind)
-                if isinstance(mat, np.ndarray):
-                    mat[coord] = 0
-                else:
-                    mat = mat.at[coord].set(0)
-                zeroed_params.append(coord)
+            for site_ind in range(self.num_independent_sites):
+                for ind in zero_for_fermionic_layer:
+                    coord = (layer_ind, site_ind, ind)
+                    if isinstance(mat, np.ndarray):
+                        mat[coord] = 0
+                    else:
+                        mat = mat.at[coord].set(0)
+                    zeroed_params.append(coord)
 
         # save zeroed params
         self.zeroed_params = zeroed_params

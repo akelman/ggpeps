@@ -264,6 +264,9 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         system_z2_2_2 = system.Z2System2D(system_cfg)
         symbolvec = system_z2_2_2.symbolvec
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
+
+        site = 0
+
         for ind in range(len(symbolvec)):
             with self.subTest(symbol=symbolvec[ind]):
                 paramvec_left = np.copy(paramvec)
@@ -301,7 +304,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                 val_right = system_z2_2_2_right.el_energy_op
                 deriv_num = (val_right - val_left) / (2 * eps)
 
-                self.assertAlmostEqual(deriv_ana[0, ind], deriv_num, places=5)
+                self.assertAlmostEqual(deriv_ana[0, site, ind], deriv_num, places=5)
 
     def test_grad_el_energy_2_layer(self):
         # This is comparison of the analytic derivative against the numeric derivative
@@ -316,6 +319,8 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
+
+        site = 0
 
         for layerind in range(nlayer):
             for ind in range(len(symbolvec)):
@@ -356,7 +361,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                     deriv_num = (val_right - val_left) / (2 * eps)
 
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
+                        deriv_ana[layerind, site, ind], deriv_num, places=5
                     )
 
     def test_el_energy_1_layer_single_eval(self):

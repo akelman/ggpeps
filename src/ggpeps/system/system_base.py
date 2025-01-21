@@ -162,6 +162,9 @@ class Config2DBase(ABC):
     def paramvec(self, val):
         if not isinstance(val, np.ndarray):
             val = np.array(val)
+        if self.trans_inv and val.ndim == 2:
+            # if the system is translation invariant, we add an extra dimension corresponding to the site index
+            val = np.expand_dims(val, axis=1)
         if self.check_params(val):
             self._paramvec = val
             self.nlayer = len(val)
@@ -189,11 +192,7 @@ class Config2DBase(ABC):
 
     def param_shape(self):
         """Return the shape required for valid parameters."""
-        if self.trans_inv:
-            # TODO: remove this option, and add preprocessing layer to make full params all have len(shape) == 3
-            shape = (self.nlayer, self._nparams_per_layer)
-        else:
-            shape = (self.nlayer, self.num_independent_sites, self._nparams_per_layer)
+        shape = (self.nlayer, self.num_independent_sites, self._nparams_per_layer)
         return shape
 
     def parse_params(self, paramvec, layer, site):
@@ -490,9 +489,10 @@ class System2DBase(ABC):
             xnp.ndarray: parameter matrix T
         """
         if self._tmat_vec is None:
+            site_ind = 0  # TODO: generalize for translation invariant systems
             self.cfg.enforce_parameter_conditions(self.cfg.paramvec)
             self._tmat_vec = [
-                self._eval_tmat_symb(params) for params in self.cfg.paramvec
+                self._eval_tmat_symb(params[site_ind]) for params in self.cfg.paramvec
             ]
             # self._tmat_vec = xnp.array(self._tmat_vec)
         return self._tmat_vec
@@ -1100,7 +1100,9 @@ class System2DBase(ABC):
         for layerind in range(self.cfg.nlayer):
             dest.append(self.compute_grad_norm(layerind))
         dest = xnp.asarray(dest)
+
         # Enforce ansatz conditions on the parameters
+        dest = np.reshape(dest, self.cfg.param_shape())
         self.cfg.enforce_parameter_conditions(dest)
         return dest
 
