@@ -21,7 +21,7 @@ class TestMC(unittest.TestCase):
         system_cfg.paramvec = paramvec
         self.sys = system.Z2System2D(system_cfg)
 
-    def test_mc_observable_length(self):
+    def test_mc_observable_length_binsize1(self):
         """Ensure that the length of the observables is correct"""
 
         mc_cfg = MonteCarloEvaluatorConfig()
@@ -34,9 +34,30 @@ class TestMC(unittest.TestCase):
 
         for obs in mc_evaluator.obsdict:
 
-            print(obs)
             datavec = mc_evaluator.obsdict[obs].datavec
             if obs == "acceptance_prob":
                 self.assertEqual(len(datavec), mc_cfg.warmup_steps + mc_cfg.meas_steps)
             else:
                 self.assertEqual(len(datavec), mc_cfg.meas_steps)
+
+    def test_mc_observable_length_binsize5(self):
+        """Ensure that the length of the observables is correct with binning during measurement"""
+
+        binsize = 5
+        mc_cfg = MonteCarloEvaluatorConfig()
+        mc_cfg.warmup_steps = 70
+        mc_cfg.meas_steps = 40
+        mc_cfg.binsize = binsize
+        mc_cfg.minimizer_mode = True
+        mc_evaluator = MonteCarloEvaluator(mc_cfg, self.sys)
+        mc_evaluator.evaluate()
+
+        for obs in mc_evaluator.obsdict:
+
+            datavec = mc_evaluator.obsdict[obs].datavec
+            if obs == "acceptance_prob":
+                self.assertEqual(
+                    len(datavec) * binsize, mc_cfg.warmup_steps + mc_cfg.meas_steps
+                )
+            else:
+                self.assertEqual(len(datavec) * binsize, mc_cfg.meas_steps)
