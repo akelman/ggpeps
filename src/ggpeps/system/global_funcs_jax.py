@@ -83,7 +83,10 @@ def compute_grad_over_norm_jax(
     return dest
 
 
-@jit
+# Two issues:
+# (a) cannot jit, because this function calls pfaffian code, which is not built for jax
+# (b) TODO: should accept required matrices, which will not need to be static
+# @partial(jax.jit, static_argnames=["system"])
 def compute_el_grad_vec_jax(system):
     """Computation of the electric energy gradients.
     We start by calculating the electric energies, since these are needed for evaluating the gradients.
@@ -98,15 +101,16 @@ def compute_el_grad_vec_jax(system):
         list: list of gradients for the full system
     """
 
-    dest_grad = []
+    dest_grad = jnp.zeros(system.cfg.param_shape(), dtype=jnp.float64)
     overall_factors = system.cfg.el_overall_factors
     idxarrs = system.cfg.idxarr_vec
     el_energy_vec = (
         system.el_energy_op_vec
     )  # this gets the electric energy, and ensures that the intermediate steps are calculated
 
+    site_ind = 0  # for now, only support params of single site
+
     for layerind in range(system.cfg.nlayer):
-        layer_derivative = []
 
         # Abbreviations for more readable code
         mat_b = system.mat_b_mod_vec[layerind]
@@ -132,7 +136,7 @@ def compute_el_grad_vec_jax(system):
             if (layerind, symbol_ind) in system.cfg.zeroed_params:
                 # the derivative calculation is compuationally expensive
                 # we can skip it for parameters that are forced by the ansatz to be zero
-                layer_derivative.append(0.0)
+                dest_grad.at[layerind, site_ind, symbol_ind].set(0)
             else:
                 deriv_gamma_maj_sys = system.gamma_maj_sys_deriv_vec(symbol)[layerind]
                 d_mat_a, d_mat_b, d_mat_d = (
@@ -180,10 +184,7 @@ def compute_el_grad_vec_jax(system):
                 d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
                 # Scale to system size
                 d_el_energy *= nlinks
-                layer_derivative.append(jnp.real(d_el_energy))
-        dest_grad.append(layer_derivative)
-
-    dest_grad = jnp.asarray(dest_grad)
+                dest_grad.at[layerind, site_ind, symbol_ind].set(jnp.real(d_el_energy))
 
     # We have to weigh the different layers with the electric energy operator expectation of the other layers.
     # They act as a prefactor in the derivative

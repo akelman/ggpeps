@@ -307,9 +307,14 @@ class Z2System2D(System2DBase):
                         # we can skip it for parameters that are forced by the ansatz to be zero
 
                         d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                        gradients[layer_ind, site_ind_params, symbol_ind] += (
-                            0.5 * d_gamma_out[site_ind + 1, site_ind]
-                        )
+                        if ggpeps.PREFERRED_BACKEND == "numpy":
+                            gradients[layer_ind, site_ind_params, symbol_ind] += (
+                                0.5 * d_gamma_out[site_ind + 1, site_ind]
+                            )
+                        elif ggpeps.PREFERRED_BACKEND == "jax":
+                            gradients = gradients.at[
+                                layer_ind, site_ind_params, symbol_ind
+                            ].add(0.5 * d_gamma_out[site_ind + 1, site_ind])
 
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
@@ -565,7 +570,12 @@ class Z2System2D(System2DBase):
                                 + d_gamma_out[site_ind_cov + 1, neighborY_ind]
                             )
                         )
-                        gradients[layer_ind, site_ind_params, symbol_ind] += grad
+                        if ggpeps.PREFERRED_BACKEND == "numpy":
+                            gradients[layer_ind, site_ind_params, symbol_ind] += grad
+                        elif ggpeps.PREFERRED_BACKEND == "jax":
+                            gradients = gradients.at[
+                                layer_ind, site_ind_params, symbol_ind
+                            ].add(grad)
 
             int_energy_op.append(layer_int_energy)
 
@@ -613,9 +623,16 @@ class Z2System2D(System2DBase):
                         # we can skip it for parameters that are forced by the ansatz to be zero
 
                         d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                        gradients[layer_ind, site_ind_params, symbol_ind] += (
-                            0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
-                        )
+                        if ggpeps.PREFERRED_BACKEND == "numpy":
+                            gradients[layer_ind, site_ind_params, symbol_ind] += (
+                                0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
+                            )
+                        elif ggpeps.PREFERRED_BACKEND == "jax":
+                            gradients = gradients.at[
+                                layer_ind, site_ind_params, symbol_ind
+                            ].add(
+                                0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
+                            )
 
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
