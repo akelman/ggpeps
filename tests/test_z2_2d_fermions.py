@@ -603,3 +603,78 @@ class TestZ2C4System(unittest.TestCase):
                     self.assertAlmostEqual(
                         deriv_ana[layerind, ind], deriv_num, places=5
                     )
+
+    def test_FM(self):
+
+        system_type = system.Z2System2D
+        lat = lattice.Lattice2D(2, 2)
+
+        # Compare with ED for g_int = 1, g = 1.1 m = 0
+        g_int0 = 1
+        g0 = 1.1
+        FM_ed = 0.056378472489371945
+        param = np.array(
+            [
+                [
+                    0.0,
+                    -2.40404381,
+                    0.06235486,
+                    0.0,
+                    -0.03930116,
+                    0.02570194,
+                    -0.86789621,
+                    1.63420534,
+                    -0.48050886,
+                    0.32365748,
+                    0.0,
+                    -0.57834489,
+                    0.67735453,
+                    0.0,
+                    -0.00508246,
+                    0.06794535,
+                    0.93614442,
+                    0.62925059,
+                    0.19743901,
+                    -0.80041006,
+                ],
+                [
+                    3.0479293,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.72591674,
+                    0.6554002,
+                    0.64491155,
+                    0.65708742,
+                    1.35546787,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    2.23331132,
+                    1.59756399,
+                    1.42258382,
+                    1.59441826,
+                ],
+            ]
+        )
+        system_cfg = system.Z2System2D_G2C_F2C_Config(
+            lat,
+            g0 / 2,
+            1 / (2 * g0),
+            g_int0,
+            0,
+            [0, 0],
+            num_pg_layer=1,
+            num_fermionic_layer=1,
+        )
+        system_cfg.paramvec = param
+        sys = system_type(system_cfg)
+        eval_config = exacteval.ExactEvaluatorConfig()
+        ex_eval = exacteval.ExactEvaluator(eval_config, sys)
+        res = ex_eval.evaluate()
+        FM = res["FM_1x1"]
+        self.assertAlmostEqual(FM, FM_ed, places=2)
