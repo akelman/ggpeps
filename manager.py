@@ -426,10 +426,10 @@ def main(args):
         logger.info("====== MINIMIZER INFO ======")
         logger.info(f"Method: {args.method.upper()}")
         logger.info(f"Max Iterations: {args.maxiter}")
+        logger.info(f"Convergence tolerance: {args.tol}")
         if args.method.upper() == "CUSTOM":
-            # these are only used by the custom (basic gradient descent) minimizer and are not passed to scipy
+            # this is only used by the custom (basic gradient descent) minimizer and is not passed to scipy
             logger.info(f"Learning rate: {args.alpha}")
-            logger.info(f"Min grad: {args.min_grad}")
         logger.info("============================")
 
     # Set up cache
@@ -480,7 +480,7 @@ def main(args):
         min_cfg.method = args.method.upper()
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
-        min_cfg.min_grad = args.min_grad
+        min_cfg.tol = args.tol
 
         minimizer = Minimizer(min_cfg, mc_mgr)
         ggpeps.global_vars["minimizer"] = minimizer  # save for global access
@@ -513,7 +513,7 @@ def main(args):
         min_cfg.method = args.method.upper()
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
-        min_cfg.min_grad = args.min_grad
+        min_cfg.tol = args.tol
 
         minimizer = Minimizer(min_cfg, ex_mgr)
         ggpeps.global_vars["minimizer"] = minimizer
@@ -729,10 +729,10 @@ if __name__ == "__main__":
         "--alpha", "--lr", type=float, default=0.1, help="Learning rate"
     )
     parser.add_argument(
-        "--min-grad",
+        "--tol",
         type=float,
         default=1e-5,
-        help="Minimal gradient to use as a stopping criterion",
+        help="Tolerance for convergence condition (e.g. minimal gradient to use as a stopping criterion)",
     )
 
     # Output settings

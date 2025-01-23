@@ -41,7 +41,7 @@ class MinimizerConfig:
 
     def __init__(self):
         self.max_iter: int = 100
-        self.min_grad: float = 1e-5
+        self.tol: float = 1e-5  # convergence tol (e.g. stop when grad falls below tol)
         self.alpha: float = 1e-2
         self._method: str = "CG"
 
@@ -98,11 +98,9 @@ class Minimizer:
             # Update logs
             print_callback(ind, self)
 
-            # Check if the maximum of the gradient is smaller than min_grad
-            if max_grad_paramvec < abs(self.cfg.min_grad):
-                message = (
-                    f"Reached convergence: max grad paramvec < {self.cfg.min_grad}"
-                )
+            # Check if the maximum of the gradient is smaller than convergence tolerance
+            if max_grad_paramvec < abs(self.cfg.tol):
+                message = f"Reached convergence: max grad paramvec < {self.cfg.tol}"
                 logger.info(message)
                 self.min_result = MinimizerResult(
                     paramvec, self.cfg.method, energy, grad_paramvec, True, message
@@ -206,6 +204,7 @@ class Minimizer:
             flattened_paramvec,
             method=self.cfg.method,
             jac=gradient_wrapper,
+            tol=self.cfg.tol,
             callback=lambda x: print_callback(x, self),
             options={"maxiter": self.cfg.max_iter},
         )
