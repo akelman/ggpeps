@@ -483,7 +483,7 @@ def main(args):
         if min_cfg.method in Minimizer.grad_methods:
             mc_config.compute_grads = True
         else:
-            # no need to computed grads if not using a gradient-based method
+            # no need to compute grads if not using a gradient-based method
             mc_config.compute_grads = False
         mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
 
