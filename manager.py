@@ -472,15 +472,20 @@ def main(args):
     elif args.mode == "min-mc":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
 
-        mc_config.minimizer_mode = True
-        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
-
-        # Set the parameters of the minimizer according to the command line
+        # Set the parameters of the minimizer
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
         min_cfg.tol = args.tol
+
+        # Set up the evaluator
+        if min_cfg.method in Minimizer.grad_methods:
+            mc_config.minimizer_mode = True
+        else:
+            # no need to computed grads if not using a gradient-based method
+            mc_config.minimizer_mode = False
+        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
 
         minimizer = Minimizer(min_cfg, mc_mgr)
         ggpeps.global_vars["minimizer"] = minimizer  # save for global access

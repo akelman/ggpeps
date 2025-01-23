@@ -55,7 +55,9 @@ class MinimizerConfig:
 
 
 class Minimizer:
-    supported_methods = ["CG", "BFGS", "L-BFGS-B", "POWELL", "NELDER-MEAD", "TNC"]
+    grad_methods = ["CG", "BFGS", "L-BFGS-B", "POWELL", "NELDER-MEAD", "TNC"]
+    no_grad_methods = ["POWELL", "NELDER-MEAD"]
+    supported_methods = grad_methods + no_grad_methods
 
     def __init__(self, cfg: MinimizerConfig, evaluator_manager: EvaluatorManager):
         self.cfg: MinimizerConfig = cfg
@@ -194,6 +196,7 @@ class Minimizer:
 
             return parametergrad.reshape((-1))
 
+        # Manage settings for different minimization algorithms
         options_dict = {}
         if self.cfg.method != "TNC":
             # TNC does not support a maximum number of iterations
@@ -214,7 +217,7 @@ class Minimizer:
             options=options_dict,
         )
         flattened_paramvec = min_result.x
-        if self.cfg.method in ["POWELL", "NELDER-MEAD"]:
+        if self.cfg.method in self.no_grad_methods:
             # these methods do not use the gradient
             flattened_energygrad = None
             num_jac_evals = 0
