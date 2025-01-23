@@ -148,10 +148,11 @@ class Minimizer:
             #   we can still use the cached values
             energy = self.last_result.get_obs_mean("energy")
             self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy)
-            parametergrad = self.last_result.get_obs_mean("energy_grad")
-            self.cache.add_obs_to_cache(
-                flattened_paramvec, "energy_grad", parametergrad
-            )
+            if self.evaluator_manager.cfg.compute_grads:
+                parametergrad = self.last_result.get_obs_mean("energy_grad")
+                self.cache.add_obs_to_cache(
+                    flattened_paramvec, "energy_grad", parametergrad
+                )
             logger.debug(f"Calculated energy: {energy}")
 
             return energy
@@ -264,7 +265,12 @@ def print_callback(x, minimizer):
 
     energy = res.get_obs_mean("energy")
     number_per_site = res.get_obs_mean("number_per_site")
-    grad_paramvec = res.get_obs_mean("energy_grad")
+    if minimizer.evaluator_manager.cfg.compute_grads:
+        grad_paramvec = res.get_obs_mean("energy_grad")
+        max_grad_paramvec = np.max(np.abs(grad_paramvec))
+    else:
+        grad_paramvec = None
+        max_grad_paramvec = np.nan
 
     mass_energy = res.get_obs_mean("mass_energy")
     int_energy = res.get_obs_mean("int_energy")
@@ -273,7 +279,6 @@ def print_callback(x, minimizer):
     chem_energy = res.get_obs_mean("chem_energy")
 
     plaquette = res.get_obs_mean("wilson_loop_0-0_1x1")
-    max_grad_paramvec = np.max(np.abs(grad_paramvec))
 
     message = f"Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
     if minimizer.cfg.method == "CUSTOM":

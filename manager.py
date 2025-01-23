@@ -480,7 +480,7 @@ def main(args):
         min_cfg.tol = args.tol
 
         # Set up the evaluator
-        if min_cfg.method in Minimizer.grad_methods:
+        if min_cfg.method in Minimizer.grad_methods or args.compute_grads:
             mc_config.compute_grads = True
         else:
             # no need to compute grads if not using a gradient-based method
@@ -497,6 +497,8 @@ def main(args):
         minimizer.save(output_dir=args.output)
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
+
+        ec_config.compute_grads = args.compute_grads
         ex_eval = EvaluatorManager(system_type, system_cfg, ec_config, args.nrunner)
         ggpeps.global_vars["eval_manager"] = ex_eval
 
@@ -511,14 +513,19 @@ def main(args):
     elif args.mode == "min-exact":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
 
-        start = timer()
-        ex_mgr = EvaluatorManager(system_type, system_cfg, ec_config, args.nrunner)
-
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
         min_cfg.tol = args.tol
+
+        if min_cfg.method in Minimizer.grad_methods or args.compute_grads:
+            ec_config.compute_grads = True
+        else:
+            # no need to compute grads if not using a gradient-based method
+            ec_config.compute_grads = False
+
+        ex_mgr = EvaluatorManager(system_type, system_cfg, ec_config, args.nrunner)
 
         minimizer = Minimizer(min_cfg, ex_mgr)
         ggpeps.global_vars["minimizer"] = minimizer
@@ -533,7 +540,6 @@ def main(args):
         The port variable is intended for use with ray, but this does not currently work with the EvaluatorManager.
         It's possible the the port workaround is unneeded with current versions of ray.
         """
-
         # Optimize the parameters with multiple runs (useful if BFGS has problems with the Hessian)
 
         # Set the parameters of the minimizer according to the command line

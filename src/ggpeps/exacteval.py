@@ -17,7 +17,7 @@ class ExactEvaluatorConfig:
     """
 
     def __init__(self):
-        pass
+        self.compute_grads: bool = True
 
 
 class ExactEvaluator(Evaluator):
@@ -124,13 +124,20 @@ class ExactEvaluator(Evaluator):
                 data["mass_energy_op"].append(self.system.mass_energy_op)
                 data["int_energy_op"].append(self.system.int_energy_op)
 
-                data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
-                data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
-                data["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
-                data["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
+                if self.cfg.compute_grads:
+                    data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
+                    data["mass_energy_op_grad"].append(
+                        self.system.mass_energy_op_grad_vec
+                    )
+                    data["int_energy_op_grad"].append(
+                        self.system.int_energy_op_grad_vec
+                    )
+                    data["chem_energy_op_grad"].append(
+                        self.system.chem_energy_op_grad_vec
+                    )
+                    data["grad_norm"].append(self.system.compute_grad_norm_vec())
 
                 data["norm"].append(self.system.calculate_lognorm(all_factors=True))
-                data["grad_norm"].append(self.system.compute_grad_norm_vec())
                 data["polyakov_00_x"].append(
                     np.real(self.system.compute_path(polyakov_loop))
                 )
@@ -161,9 +168,6 @@ class ExactEvaluator(Evaluator):
             # We need to change from log values to regular values here
             normvec = np.exp(data["norm"])
 
-            # Transpose to enable broadcasting
-            grad_norm_transposed = np.transpose(data["grad_norm"], [2, 1, 0])
-
             dest["energy"] = self.compute_expval(data["energy"], normvec)
             dest["mag_energy"] = self.compute_expval(data["mag_energy"], normvec)
             dest["el_energy"] = self.compute_expval(data["el_energy"], normvec)
@@ -174,7 +178,11 @@ class ExactEvaluator(Evaluator):
             dest["number_per_site"] = self.compute_expval(
                 data["number_per_site"], normvec
             )
-            dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)
+            if self.cfg.compute_grads:
+                # Transpose to enable broadcasting
+                grad_norm_transposed = np.transpose(data["grad_norm"], [2, 1, 0])
+
+                dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)
 
             # Wilson loops
             for k in range(len(sizes)):
@@ -195,97 +203,104 @@ class ExactEvaluator(Evaluator):
             dest["norm"] = np.sum(normvec)
 
             # Compute the gradients
-
-            # Magnetic gradient
-            prod_mag_op_norm = data["mag_energy_op"] * grad_norm_transposed
-            expval_prod_mag = self.compute_expval(prod_mag_op_norm, normvec)
-            prod_expval_mag = (
-                self.compute_expval(data["mag_energy_op"], normvec) * dest["grad_norm"]
-            )
-            mag_op_grad = expval_prod_mag - prod_expval_mag
-            mag_energy_grad = (
-                -2 * self.system.cfg.g_mag * mag_op_grad
-            )  # the factor of two comes from the Hamiltonian
-            dest["mag_energy_grad"] = mag_energy_grad
-
-            # Electric gradient
-            prod_el_op_norm = data["el_energy_op"] * grad_norm_transposed
-            expval_prod_el = self.compute_expval(prod_el_op_norm, normvec)
-            prod_expval_el = (
-                self.compute_expval(data["el_energy_op"], normvec) * dest["grad_norm"]
-            )
-            el_op_grad = (
-                expval_prod_el
-                - prod_expval_el
-                + self.compute_expval(
-                    np.transpose(data["el_energy_op_grad"], [2, 1, 0]), normvec
+            if self.cfg.compute_grads:
+                # Magnetic gradient
+                prod_mag_op_norm = data["mag_energy_op"] * grad_norm_transposed
+                expval_prod_mag = self.compute_expval(prod_mag_op_norm, normvec)
+                prod_expval_mag = (
+                    self.compute_expval(data["mag_energy_op"], normvec)
+                    * dest["grad_norm"]
                 )
-            )
-            el_energy_grad = (
-                -2 * self.system.cfg.g_el * el_op_grad
-            )  # the factor of two comes from the Hamiltonian
-            dest["el_energy_grad"] = el_energy_grad
+                mag_op_grad = expval_prod_mag - prod_expval_mag
+                mag_energy_grad = (
+                    -2 * self.system.cfg.g_mag * mag_op_grad
+                )  # the factor of two comes from the Hamiltonian
+                dest["mag_energy_grad"] = mag_energy_grad
 
-            # Mass gradient
-            prod_mass_op_norm = data["mass_energy_op"] * grad_norm_transposed
-            expval_prod_mass = self.compute_expval(prod_mass_op_norm, normvec)
-            prod_expval_mass = (
-                self.compute_expval(data["mass_energy_op"], normvec) * dest["grad_norm"]
-            )
-            mass_energy_grad = (
-                expval_prod_mass
-                - prod_expval_mass
-                + self.compute_expval(
-                    np.transpose(data["mass_energy_op_grad"], [2, 1, 0]), normvec
+                # Electric gradient
+                prod_el_op_norm = data["el_energy_op"] * grad_norm_transposed
+                expval_prod_el = self.compute_expval(prod_el_op_norm, normvec)
+                prod_expval_el = (
+                    self.compute_expval(data["el_energy_op"], normvec)
+                    * dest["grad_norm"]
                 )
-            )
-            mass_energy_grad *= self.system.cfg.g_mass
-            dest["mass_energy_grad"] = mass_energy_grad
-
-            # Interaction gradient
-            prod_int_op_norm = data["int_energy_op"] * grad_norm_transposed
-            expval_prod_int = self.compute_expval(prod_int_op_norm, normvec)
-            prod_expval_int = (
-                self.compute_expval(data["int_energy_op"], normvec) * dest["grad_norm"]
-            )
-            int_energy_grad = (
-                expval_prod_int
-                - prod_expval_int
-                + self.compute_expval(
-                    np.transpose(data["int_energy_op_grad"], [2, 1, 0]), normvec
+                el_op_grad = (
+                    expval_prod_el
+                    - prod_expval_el
+                    + self.compute_expval(
+                        np.transpose(data["el_energy_op_grad"], [2, 1, 0]), normvec
+                    )
                 )
-            )
-            int_energy_grad *= self.system.cfg.g_int
-            dest["int_energy_grad"] = int_energy_grad
+                el_energy_grad = (
+                    -2 * self.system.cfg.g_el * el_op_grad
+                )  # the factor of two comes from the Hamiltonian
+                dest["el_energy_grad"] = el_energy_grad
 
-            # Chemical potential gradient
-            prod_chem_op_norm = data["chem_energy"] * grad_norm_transposed
-            expval_prod_chem = self.compute_expval(prod_chem_op_norm, normvec)
-            prod_expval_chem = (
-                self.compute_expval(data["chem_energy"], normvec) * dest["grad_norm"]
-            )
-            scaled_chem_grad = np.transpose(data["chem_energy_op_grad"], [2, 1, 0])
-            for lay in range(self.system.cfg.nlayer):  # TODO: do this in a cleaner way
-                scaled_chem_grad[:, lay, :] *= self.system.cfg.g_chem[lay]
-            chem_energy_grad = (
-                expval_prod_chem
-                - prod_expval_chem
-                + self.compute_expval(scaled_chem_grad, normvec)
-            )
-            dest["chem_energy_grad"] = chem_energy_grad
+                # Mass gradient
+                prod_mass_op_norm = data["mass_energy_op"] * grad_norm_transposed
+                expval_prod_mass = self.compute_expval(prod_mass_op_norm, normvec)
+                prod_expval_mass = (
+                    self.compute_expval(data["mass_energy_op"], normvec)
+                    * dest["grad_norm"]
+                )
+                mass_energy_grad = (
+                    expval_prod_mass
+                    - prod_expval_mass
+                    + self.compute_expval(
+                        np.transpose(data["mass_energy_op_grad"], [2, 1, 0]), normvec
+                    )
+                )
+                mass_energy_grad *= self.system.cfg.g_mass
+                dest["mass_energy_grad"] = mass_energy_grad
 
-            # Add for the full gradient, subject to conditions on parameterization
-            total_grad = (
-                mag_energy_grad
-                + el_energy_grad
-                + mass_energy_grad
-                + int_energy_grad
-                + chem_energy_grad
-            )
-            self.system.cfg.enforce_parameter_conditions(total_grad)
-            dest["energy_grad"] = total_grad
+                # Interaction gradient
+                prod_int_op_norm = data["int_energy_op"] * grad_norm_transposed
+                expval_prod_int = self.compute_expval(prod_int_op_norm, normvec)
+                prod_expval_int = (
+                    self.compute_expval(data["int_energy_op"], normvec)
+                    * dest["grad_norm"]
+                )
+                int_energy_grad = (
+                    expval_prod_int
+                    - prod_expval_int
+                    + self.compute_expval(
+                        np.transpose(data["int_energy_op_grad"], [2, 1, 0]), normvec
+                    )
+                )
+                int_energy_grad *= self.system.cfg.g_int
+                dest["int_energy_grad"] = int_energy_grad
+
+                # Chemical potential gradient
+                prod_chem_op_norm = data["chem_energy"] * grad_norm_transposed
+                expval_prod_chem = self.compute_expval(prod_chem_op_norm, normvec)
+                prod_expval_chem = (
+                    self.compute_expval(data["chem_energy"], normvec)
+                    * dest["grad_norm"]
+                )
+                scaled_chem_grad = np.transpose(data["chem_energy_op_grad"], [2, 1, 0])
+                for lay in range(
+                    self.system.cfg.nlayer
+                ):  # TODO: do this in a cleaner way
+                    scaled_chem_grad[:, lay, :] *= self.system.cfg.g_chem[lay]
+                chem_energy_grad = (
+                    expval_prod_chem
+                    - prod_expval_chem
+                    + self.compute_expval(scaled_chem_grad, normvec)
+                )
+                dest["chem_energy_grad"] = chem_energy_grad
+
+                # Add for the full gradient, subject to conditions on parameterization
+                total_grad = (
+                    mag_energy_grad
+                    + el_energy_grad
+                    + mass_energy_grad
+                    + int_energy_grad
+                    + chem_energy_grad
+                )
+                self.system.cfg.enforce_parameter_conditions(total_grad)
+                dest["energy_grad"] = total_grad
+
             self.obsdict = dest
-
         return self.obsdict
 
     def generate_config_vec(self):
