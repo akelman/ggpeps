@@ -194,6 +194,11 @@ class Minimizer:
 
             return parametergrad.reshape((-1))
 
+        options_dict = {}
+        if self.cfg.method != "TNC":
+            # TNC does not support a maximum number of iterations
+            options_dict["maxiter"] = self.cfg.max_iter
+
         # Use the random initialization from the system.initialize as first guess.
         # We might want to change this later.
         flattened_paramvec = np.reshape(
@@ -206,13 +211,19 @@ class Minimizer:
             jac=gradient_wrapper,
             tol=self.cfg.tol,
             callback=lambda x: print_callback(x, self),
-            options={"maxiter": self.cfg.max_iter},
+            options=options_dict,
         )
         flattened_paramvec = min_result.x
-        flattened_energygrad = min_result.jac
+        if self.cfg.method in ["POWELL", "NELDER-MEAD"]:
+            # these methods do not use the gradient
+            flattened_energygrad = None
+            num_jac_evals = 0
+        else:
+            flattened_energygrad = min_result.jac
+            num_jac_evals = min_result.njev
         energy = min_result.fun
         converged = min_result.success
-        message = f"{min_result.message} Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {min_result.njev}"
+        message = f"{min_result.message} Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {num_jac_evals}"
 
         dest = MinimizerResult(
             flattened_paramvec,
