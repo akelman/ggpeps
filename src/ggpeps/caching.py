@@ -57,7 +57,7 @@ class Cache:
 
         obs_cache_len = len(obs_cache)
         if (
-            obs_cache_len > 1000 and obs_cache_len % 50
+            obs_cache_len >= 1000 and not obs_cache_len % 500
         ):  # 1000 is an arbitrary threshold
             logger.warning(f"Cache for obs {obs} is large: {obs_cache_len} items.")
 
