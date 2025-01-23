@@ -262,7 +262,7 @@ class TestMinimizerZ2(unittest.TestCase):
         mc_config.warmup_steps = 1000
         mc_config.meas_steps = 10000
         mc_config.binsize = 1
-        mc_config.minimizer_mode = True
+        mc_config.compute_grads = True
         mc_config.gauge_fixing = False
 
         min_config = MinimizerConfig()

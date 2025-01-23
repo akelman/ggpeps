@@ -28,7 +28,7 @@ class TestMC(unittest.TestCase):
         mc_cfg.warmup_steps = 7
         mc_cfg.meas_steps = 4
         mc_cfg.binsize = 1
-        mc_cfg.minimizer_mode = True
+        mc_cfg.compute_grads = True
         mc_evaluator = MonteCarloEvaluator(mc_cfg, self.sys)
         mc_evaluator.evaluate()
 
@@ -48,7 +48,7 @@ class TestMC(unittest.TestCase):
         mc_cfg.warmup_steps = 70
         mc_cfg.meas_steps = 40
         mc_cfg.binsize = binsize
-        mc_cfg.minimizer_mode = True
+        mc_cfg.compute_grads = True
         mc_evaluator = MonteCarloEvaluator(mc_cfg, self.sys)
         mc_evaluator.evaluate()
 

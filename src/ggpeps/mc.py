@@ -33,7 +33,7 @@ class MonteCarloEvaluatorConfig:
         self._rng_state = None
         self.meas_steps = None
         self.binsize: int = 1
-        self.minimizer_mode: bool = False
+        self.compute_grads: bool = False
         self.update_size_per_step: int = (
             1  # this can be set anywhere from 1 to nlinks (inclusive)
         )
@@ -173,7 +173,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["norm"] = Measurement("Norm", binsize)
         self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
 
-        if self.cfg.minimizer_mode:
+        if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"] = Measurement(
                 "Electric Energy Operator Gradient", binsize
             )
@@ -232,7 +232,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
         self.obsdict["number_per_site"].append(self.system.number_per_site)
 
-        if self.cfg.minimizer_mode:
+        if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
             self.obsdict["int_energy_op_grad"].append(
                 self.system.int_energy_op_grad_vec
@@ -344,7 +344,7 @@ class MonteCarloEvaluator(Evaluator):
             self.measure()
             self.step += 1
 
-        if self.cfg.minimizer_mode:
+        if self.cfg.compute_grads:
             # Update gradients which depend on expectation values
             # For interface reasons, we insert meas_steps copies of this gradient
             total_grad = self.energy_gradient_mc()

@@ -450,7 +450,7 @@ def main(args):
     if args.mode == "eval-mc":
         # Evaluate observables for a given set of parameters with Monte Carlo
 
-        mc_config.minimizer_mode = args.compute_grads
+        mc_config.compute_grads = args.compute_grads
         if cache.load_obj_from_local_cache("evaluator_manager") is not None:
             mc_mgr = cache.load_obj_from_local_cache("evaluator_manager")
             logger.info(f"Loaded evaluator manager from cache.")
@@ -481,10 +481,10 @@ def main(args):
 
         # Set up the evaluator
         if min_cfg.method in Minimizer.grad_methods:
-            mc_config.minimizer_mode = True
+            mc_config.compute_grads = True
         else:
             # no need to computed grads if not using a gradient-based method
-            mc_config.minimizer_mode = False
+            mc_config.compute_grads = False
         mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
 
         minimizer = Minimizer(min_cfg, mc_mgr)
@@ -545,7 +545,7 @@ def main(args):
 
         start = timer()
         resultvec = []
-        mc_config.minimizer_mode = True
+        mc_config.compute_grads = True
         for i in range(args.minmult_iter):
             logger.info(f"Minimization iteration: {i:02d}")
             mc = EvaluatorManager(
@@ -563,7 +563,7 @@ def main(args):
         # TODO: We can merge the resultvec to get a full result
         minimizer.save(output_dir=args.output)
         # We run a final iteration of the MC simulation with all observables
-        mc_config.minimizer_mode = False
+        mc_config.compute_grads = False
         mc_mgr = EvaluatorManager(
             mc_config,
             system_type,

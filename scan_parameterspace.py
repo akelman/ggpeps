@@ -54,7 +54,7 @@ def main(args):
             mc_config.meas_steps = args.meas_steps
             if args.seed is not None:
                 mc_config.seed = args.seed
-            mc_config.minimizer_mode = False
+            mc_config.compute_grads = False
             mc_mgr = MonteCarloManager(mc_config, system_cls, system_cfg, 0)
             mc_result = mc_mgr.simulate()
             fname_summary = "summary_mc_L_{:02d}-{:02d}_g2el_{:.3f}_int_{:.3f}_g2mag_{:.3f}_t_{}_y_{}_z_{}.pkl".format(
