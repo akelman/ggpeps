@@ -55,7 +55,7 @@ class MinimizerConfig:
 
 
 class Minimizer:
-    grad_methods = ["CG", "BFGS", "L-BFGS-B", "POWELL", "NELDER-MEAD", "TNC"]
+    grad_methods = ["CG", "BFGS", "L-BFGS-B", "TNC"]
     no_grad_methods = ["POWELL", "NELDER-MEAD"]
     supported_methods = grad_methods + no_grad_methods
 
