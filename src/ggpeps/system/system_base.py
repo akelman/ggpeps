@@ -259,7 +259,7 @@ class Config2DBase(ABC):
         """
         if self._symbolvec is None:
             self._symbolvec = self._create_symbolvec()
-        return self._create_symbolvec()
+        return self._symbolvec
 
     @property
     @abstractmethod
