@@ -131,6 +131,9 @@ class Config2DBase(ABC):
             None  # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
         )
 
+        # Translation invariance
+        self.site_params = {site: 0 for site in range(self.lattice.size)}
+
         # Parameters of the Hamiltonian
         self.g_el = g_el
         self.g_mag = g_mag
@@ -492,14 +495,14 @@ class System2DBase(ABC):
             self.cfg.enforce_parameter_conditions(self.cfg.paramvec)
             self._tmat_layervec_sitevec = []
             for layer in range(self.cfg.nlayer):
-                lay_params = self.cfg.paramvec[layer]
-                tmat_lay = []
-                for site_ind in range(self.cfg.num_independent_sites):
-                    # maybe here generalize to all sites?
-
-                    params = lay_params[site_ind]
-                    tmat = self._eval_tmat_symb(params)
-                    tmat_lay.append(tmat)
+                tmats = [
+                    self._eval_tmat_symb(self.cfg.paramvec[layer][ind])
+                    for ind in range(self.cfg.num_independent_sites)
+                ]
+                tmat_lay = [
+                    tmats[self.cfg.site_params[site]]
+                    for site in range(self.cfg.lattice.size)
+                ]
                 self._tmat_layervec_sitevec.append(tmat_lay)
             # self._tmat_layervec_sitevec = xnp.array(self._tmat_layervec_sitevec)
         return self._tmat_layervec_sitevec
