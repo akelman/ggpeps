@@ -304,7 +304,7 @@ class System2DBase(ABC):
         # Parameter based matrices
         self._tmat_layervec_sitevec: Optional[List[xnp.ndarray]] = None
         self._gamma_dirac_layervec_sitevec: Optional[xnp.ndarray] = None
-        self._gamma_maj_vec: Optional[xnp.ndarray] = None
+        self._gamma_maj_layervec_sitevec: Optional[xnp.ndarray] = None
         self._gamma_maj_sys_vec: Optional[xnp.ndarray] = None
 
         # Partial covariance matrices
@@ -531,7 +531,7 @@ class System2DBase(ABC):
         return self._gamma_dirac_layervec_sitevec
 
     @property
-    def gamma_maj_vec(self):
+    def gamma_maj_layervec_sitevec(self):
         """Return the covariance matrix in Majorana modes.
         The definition of Majorana modes used is
             \gamma_1 = c + c^\dagger
@@ -542,26 +542,20 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: list of covariance matrices in Majorana modes for all layers
         """
-        if self._gamma_maj_vec is None:
-            site = 0  # TODO: generalize to all sites
+        if self._gamma_maj_layervec_sitevec is None:
 
             # We know that the gamma dirac matrices have all the same shape
-            m, _ = self.gamma_dirac_layervec_sitevec[-1][site].shape
+            m, _ = self.gamma_dirac_layervec_sitevec[-1][0].shape
             smat = utils.generate_smat(m)
 
-            self._gamma_maj_vec = xnp.real(
-                [
-                    smat
-                    @ self.gamma_dirac_layervec_sitevec[lay][site]
-                    @ xnp.transpose(smat)
-                    for lay in range(self.cfg.nlayer)
-                ]
+            # Vectorized operation over all layers and sites
+            # note: since self.gamma_dirac_layervec_sitevec is already a vector over sites, here we are being
+            #       slightly inneficent - we do the matrix multiplication for each entry, even though many of
+            #       the gamma_dirac's are the same.
+            self._gamma_maj_layervec_sitevec = xnp.real(
+                smat @ self.gamma_dirac_layervec_sitevec @ xnp.transpose(smat)
             )
-
-            # self._gamma_maj_vec = xnp.real(
-            #    smat @ self.gamma_dirac_layervec_sitevec @ xnp.transpose(smat)
-            # )  # vectorized operation over all layers and sites
-        return self._gamma_maj_vec
+        return self._gamma_maj_layervec_sitevec
 
     def _expand_gamma_maj_to_system(self, covmats_vec):
         """Expand the covariance matrix in Majorana modes to the full system.
@@ -659,8 +653,12 @@ class System2DBase(ABC):
             [xnp.ndarray]: Covariance matrix of the full system
         """
         if self._gamma_maj_sys_vec is None:
+            site = 0  # TODO: expand to all sites
             self._gamma_maj_sys_vec = self._expand_gamma_maj_to_system(
-                self.gamma_maj_vec
+                [
+                    self.gamma_maj_layervec_sitevec[lay][site]
+                    for lay in range(self.cfg.nlayer)
+                ]
             )
         return self._gamma_maj_sys_vec
 

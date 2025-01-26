@@ -278,7 +278,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         self.assertTrue(np.allclose(deriv_ana, deriv_num))
 
     def test_gamma_maj_covariance_real(self):
-        gamma_maj = self.system_z2_2_2_real.gamma_maj_vec[0]
+        lay = 0
+        site = 0
+        gamma_maj = self.system_z2_2_2_real.gamma_maj_layervec_sitevec[lay][site]
         m, n = gamma_maj.shape
         self.assertEqual(m, n)
         self.assertEqual(m, 10)
@@ -288,7 +290,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         self.assertTrue(np.allclose(gamma_maj @ np.transpose(gamma_maj), np.eye(m)))
 
     def test_gamma_maj_covariance(self):
-        gamma_maj = self.system_z2_2_2.gamma_maj_vec[0]
+        lay = 0
+        site = 0
+        gamma_maj = self.system_z2_2_2.gamma_maj_layervec_sitevec[lay][site]
         m, n = gamma_maj.shape
         self.assertEqual(m, n)
         self.assertEqual(m, 10)
@@ -306,7 +310,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
         cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(cfg)
-        gamma_maj = system_z2_2_2.gamma_maj_vec[0]
+        lay = 0
+        site = 0
+        gamma_maj = system_z2_2_2.gamma_maj_layervec_sitevec[lay][site]
         ref = np.asarray(
             [
                 [
@@ -936,11 +942,13 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_left = system.Z2System2D(cfg_left)
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
+        lay = 0
+        site = 0
         symbvec = system_z2_2_2.symbolvec
         # Derivative wrt y
         deriv_ana = system_z2_2_2.compute_gamma_maj_deriv(symbvec[1], 0)
-        gamma_left = system_z2_2_2_left.gamma_maj_vec[0]
-        gamma_right = system_z2_2_2_right.gamma_maj_vec[0]
+        gamma_left = system_z2_2_2_left.gamma_maj_layervec_sitevec[lay][site]
+        gamma_right = system_z2_2_2_right.gamma_maj_layervec_sitevec[lay][site]
         deriv_num = (gamma_right - gamma_left) / (2 * eps)
         self.assertTrue(np.allclose(deriv_ana, deriv_num))
 
@@ -964,9 +972,11 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_left = system.Z2System2D(cfg_left)
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
+        lay = 0
+        site = 0
         deriv_ana = system_z2_2_2.compute_gamma_maj_deriv(system_z2_2_2.symbolvec[0], 0)
-        gamma_left = system_z2_2_2_left.gamma_maj_vec[0]
-        gamma_right = system_z2_2_2_right.gamma_maj_vec[0]
+        gamma_left = system_z2_2_2_left.gamma_maj_layervec_sitevec[lay][site]
+        gamma_right = system_z2_2_2_right.gamma_maj_layervec_sitevec[lay][site]
         deriv_num = (gamma_right - gamma_left) / (2 * eps)
 
         compare_array_elementwise(self, deriv_num, deriv_ana, print_vals=False)
@@ -991,9 +1001,11 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_left = system.Z2System2D(cfg_left)
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
+        lay = 0
+        site = 0
         deriv_ana = system_z2_2_2.compute_gamma_maj_deriv(system_z2_2_2.symbolvec[1], 0)
-        gamma_left = system_z2_2_2_left.gamma_maj_vec[0]
-        gamma_right = system_z2_2_2_right.gamma_maj_vec[0]
+        gamma_left = system_z2_2_2_left.gamma_maj_layervec_sitevec[lay][site]
+        gamma_right = system_z2_2_2_right.gamma_maj_layervec_sitevec[lay][site]
         deriv_num = (gamma_right - gamma_left) / (2 * eps)
 
         compare_array_elementwise(self, deriv_num, deriv_ana, print_vals=False)
@@ -1017,9 +1029,11 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_left = system.Z2System2D(cfg_left)
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
+        lay = 0
+        site = 0
         deriv_ana = system_z2_2_2.compute_gamma_maj_deriv(system_z2_2_2.symbolvec[2], 0)
-        gamma_left = system_z2_2_2_left.gamma_maj_vec[0]
-        gamma_right = system_z2_2_2_right.gamma_maj_vec[0]
+        gamma_left = system_z2_2_2_left.gamma_maj_layervec_sitevec[lay][site]
+        gamma_right = system_z2_2_2_right.gamma_maj_layervec_sitevec[lay][site]
         deriv_num = (gamma_right - gamma_left) / (2 * eps)
 
         compare_array_elementwise(self, deriv_num, deriv_ana, print_vals=False)

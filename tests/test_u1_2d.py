@@ -41,7 +41,9 @@ class TestU1SystemMethods(unittest.TestCase):
         self.assertTrue(utils.is_antisymmetric(gamma_dirac))
 
     def test_gamma_maj_covariance(self):
-        gamma_maj = self.system_u1_2_2.gamma_maj_vec[0]
+        lay = 0
+        site = 0
+        gamma_maj = self.system_u1_2_2.gamma_maj_layervec_sitevec[lay][site]
         m, n = gamma_maj.shape
         self.assertEqual(m, n)
         self.assertTrue(utils.is_antisymmetric(gamma_maj))
@@ -115,7 +117,9 @@ class TestU1SystemMethods(unittest.TestCase):
         cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0, 0.0, None)
         cfg.paramvec = paramvec
         system_u1_2_2 = system.U1System2D(cfg)
-        gamma_maj = system_u1_2_2.gamma_maj_vec[0]
+        lay = 0
+        site = 0
+        gamma_maj = system_u1_2_2.gamma_maj_layervec_sitevec[lay][site]
         gamma_maj_cpp = utils.load_matrix_dat_fmt(
             "misc/gamma_maj_cpp_t_0.1_y_0.4_z_0.2.dat", is_complex=False
         )
@@ -139,7 +143,9 @@ class TestU1SystemMethods(unittest.TestCase):
         cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0, 0.0, None)
         cfg.paramvec = paramvec
         system_u1_2_2 = system.U1System2D(cfg)
-        gamma_maj = system_u1_2_2.gamma_maj_vec[0]
+        lay = 0
+        site = 0
+        gamma_maj = system_u1_2_2.gamma_maj_layervec_sitevec[lay][site]
         gamma_maj_cpp = utils.load_matrix_dat_fmt(
             "misc/gamma_maj_cpp_t_0.0_y_0.4_z_0.2.dat", is_complex=False
         )
