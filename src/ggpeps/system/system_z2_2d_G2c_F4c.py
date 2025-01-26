@@ -33,9 +33,6 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
     nvirtmodes_vertex = 16
     nvirtmodes_link = 8
 
-    trans_inv: bool = True
-    num_independent_sites = 1
-
     def __init__(
         self,
         lattice,
@@ -56,7 +53,6 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
-            self.trans_inv,
         )
 
         # Constants used in the calculation of the electric energy
@@ -107,9 +103,9 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
 
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.num_pg_layer):
-            for site_ind in range(self.num_independent_sites):
+            for uc_ind in range(self.max_unitcell_size):
                 for t_ind in t_indices:
-                    coord = (layer_ind, site_ind, t_ind)
+                    coord = (layer_ind, uc_ind, t_ind)
                     mat[coord] = 0
                     zeroed_params.append(coord)
 
@@ -132,9 +128,9 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
             31,
         ]  # indices of y's, z's in symbolvec
         for layer_ind in range(self.num_pg_layer, self.nlayer):
-            for site_ind in range(self.num_independent_sites):
+            for uc_ind in range(self.max_unitcell_size):
                 for ind in zero_for_fermionic_layer:
-                    coord = (layer_ind, site_ind, ind)
+                    coord = (layer_ind, uc_ind, ind)
                     mat[coord] = 0
                     zeroed_params.append(coord)
 

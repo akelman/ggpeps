@@ -83,9 +83,6 @@ class Config2DBase(ABC):
     # This will be overwritten by the specifications of each ansatz
     _nparams_per_layer: int = None
     ncopy: int = None
-    num_independent_sites: int = (
-        None  # number of different sets of parameters that can be independently varied for different sites (min: 1, max: num_sites)
-    )
 
     def __init__(
         self,
@@ -97,7 +94,6 @@ class Config2DBase(ABC):
         g_chem: Optional[np.array],
         num_pg_layer: int = 1,
         num_fermionic_layer: int = 0,
-        trans_inv: bool = True,
     ):
         """Constructor.
 
@@ -117,7 +113,6 @@ class Config2DBase(ABC):
         self.num_pg_layer = num_pg_layer
         self.num_fermionic_layer = num_fermionic_layer
         self.nlayer = self.num_pg_layer + self.num_fermionic_layer
-        self.trans_inv = trans_inv
 
         self._paramvec: Optional[np.ndarray] = None
         self.zeroed_params: List[int] = (
@@ -132,7 +127,12 @@ class Config2DBase(ABC):
         )
 
         # Translation invariance
-        self.site_params = {site: 0 for site in range(self.lattice.size)}
+        self.site_params_dict = {
+            site: 0 for site in range(self.lattice.size)
+        }  # map from site to index of independent parameters
+        self.max_unitcell_size = len(
+            set(self.site_params_dict.values())
+        )  # number of different sets of parameters across sites (min: 1, max: num_sites)
 
         # Parameters of the Hamiltonian
         self.g_el = g_el
@@ -145,11 +145,6 @@ class Config2DBase(ABC):
         elif len(self.g_chem) != self.nlayer:
             raise ValueError(
                 "The number of chemical potentials must match the number of layers."
-            )
-
-        if self.trans_inv and self.num_independent_sites != 1:
-            raise ValueError(
-                "Translation invariant systems must have num_independent_sites = 1."
             )
 
     def __str__(self):
@@ -195,7 +190,7 @@ class Config2DBase(ABC):
 
     def param_shape(self):
         """Return the shape required for valid parameters."""
-        shape = (self.nlayer, self.num_independent_sites, self._nparams_per_layer)
+        shape = (self.nlayer, self.max_unitcell_size, self._nparams_per_layer)
         return shape
 
     def parse_params(self, paramvec, layer, site):
@@ -226,6 +221,15 @@ class Config2DBase(ABC):
         for ind in range(self.nlayer):
             for symb, val in zip(symbolvec, self._paramvec[ind]):
                 print(str(symb), val)
+
+    @property
+    def trans_inv(self) -> bool:
+        """Flag to indicate whether the system is translationally invariant.
+
+        Returns:
+            bool: True is ansatz is translationally invariant, False otherwise.
+        """
+        return self.max_unitcell_size == 1
 
     @abstractmethod
     def make_pure_gauge(self):
@@ -497,10 +501,10 @@ class System2DBase(ABC):
             for layer in range(self.cfg.nlayer):
                 tmats = [
                     self._eval_tmat_symb(self.cfg.paramvec[layer][ind])
-                    for ind in range(self.cfg.num_independent_sites)
+                    for ind in range(self.cfg.max_unitcell_size)
                 ]
                 tmat_lay = [
-                    tmats[self.cfg.site_params[site]]
+                    tmats[self.cfg.site_params_dict[site]]
                     for site in range(self.cfg.lattice.size)
                 ]
                 self._tmat_layervec_sitevec.append(tmat_lay)

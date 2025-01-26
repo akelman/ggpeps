@@ -33,9 +33,6 @@ class U1System2DConfig(Config2DBase):
     nvirtmodes_link = 8
     nvirtmodes_link = 4
 
-    trans_inv: bool = True
-    num_independent_sites = 1
-
     def __init__(
         self,
         lattice,
@@ -57,14 +54,13 @@ class U1System2DConfig(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
-            self.trans_inv,
         )
 
     def make_pure_gauge(self):
         # The order of the parameters is [t,y,z]
         for lay in range(self.nlayer):
-            for site_ind in range(self.num_independent_sites):
-                self.paramvec[lay, site_ind, 0] = 0
+            for uc_ind in range(self.max_unitcell_size):
+                self.paramvec[lay, uc_ind, 0] = 0
 
     def _create_symbolvec(self):
         t = sympy.Symbol("t", real=True)

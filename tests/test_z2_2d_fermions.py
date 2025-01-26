@@ -27,10 +27,10 @@ class TestZ2C4System(unittest.TestCase):
         mat = self.system_z2.cfg.paramvec
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.system_z2.cfg.num_pg_layer):
-            for site_ind in range(self.system_z2.cfg.num_independent_sites):
+            for uc_ind in range(self.system_z2.cfg.max_unitcell_size):
                 for t_ind in t_indices:
                     with self.subTest(tind=t_ind, layerind=layer_ind):
-                        coord = (layer_ind, site_ind, t_ind)
+                        coord = (layer_ind, uc_ind, t_ind)
                         self.assertAlmostEqual(mat[coord], 0)
 
         zero_for_fermionic_layer = [
@@ -48,10 +48,10 @@ class TestZ2C4System(unittest.TestCase):
         for layer_ind in range(
             self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer
         ):
-            for site_ind in range(self.system_z2.cfg.num_independent_sites):
+            for uc_ind in range(self.system_z2.cfg.max_unitcell_size):
                 for ind in zero_for_fermionic_layer:
                     with self.subTest(ind=ind, layerind=layer_ind):
-                        coord = (layer_ind, site_ind, ind)
+                        coord = (layer_ind, uc_ind, ind)
                         self.assertAlmostEqual(mat[coord], 0)
 
     def test_covmat_for_no_fermions(self):

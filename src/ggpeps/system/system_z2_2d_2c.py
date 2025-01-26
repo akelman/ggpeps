@@ -30,9 +30,6 @@ class Z2System2D2CConfig(Config2DBase):
     )
     nvirtmodes_link = 4  # Number of virtual modes per link (2 copies and l/r or u/d)
 
-    trans_inv: bool = True
-    num_independent_sites = 1
-
     def __init__(
         self,
         lattice,
@@ -50,9 +47,7 @@ class Z2System2D2CConfig(Config2DBase):
             raise ValueError(
                 "The Z2System2D2C ansatz does not support fermionic layers."
             )
-        super().__init__(
-            lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0, self.trans_inv
-        )
+        super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0)
 
         # This is for pure-gauge only atm
         self.num_pg_layer = self.nlayer
@@ -74,11 +69,11 @@ class Z2System2D2CConfig(Config2DBase):
         """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t."""
         # The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
         for lay in range(self.nlayer):
-            for site_ind in range(self.num_independent_sites):
-                self.paramvec[lay, site_ind, 0] = 0  # Set t1r to 0
-                self.paramvec[lay, site_ind, 10] = 0  # Set t1i to 0
-                self.paramvec[lay, site_ind, 3] = 0  # Set t2r to 0
-                self.paramvec[lay, site_ind, 13] = 0  # Set t2i to 0
+            for uc_ind in range(self.max_unitcell_size):
+                self.paramvec[lay, uc_ind, 0] = 0  # Set t1r to 0
+                self.paramvec[lay, uc_ind, 10] = 0  # Set t1i to 0
+                self.paramvec[lay, uc_ind, 3] = 0  # Set t2r to 0
+                self.paramvec[lay, uc_ind, 13] = 0  # Set t2i to 0
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.

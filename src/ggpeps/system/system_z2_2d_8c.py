@@ -26,9 +26,6 @@ class Z2System2D_8C_Config(Config2DBase):
     nvirtmodes_vertex = 32
     nvirtmodes_link = 16
 
-    trans_inv: bool = True
-    num_independent_sites = 1
-
     def __init__(
         self,
         lattice,
@@ -49,7 +46,6 @@ class Z2System2D_8C_Config(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
-            self.trans_inv,
         )
 
         # Constants used in the calculation of the electric energy
@@ -97,32 +93,32 @@ class Z2System2D_8C_Config(Config2DBase):
 
         # pure gauge layers
         for layer in range(self.num_pg_layer):
-            for site_ind in range(self.num_independent_sites):
+            for uc_ind in range(self.max_unitcell_size):
                 ind = 0
                 copies = [1, 3, 5, 7]  # copies which couple to physical modes
                 for cop in copies:
                     for com in ["r", "i"]:  # real or imaginary
-                        mat[layer, site_ind, ind] = 0
+                        mat[layer, uc_ind, ind] = 0
                         ind += 1
-                        zeroed_params.append((layer, site_ind, ind))
+                        zeroed_params.append((layer, uc_ind, ind))
 
         # fermionic layers
         for layer_ind in range(self.num_pg_layer, self.nlayer):
-            for site_ind in range(self.num_independent_sites):
+            for uc_ind in range(self.max_unitcell_size):
                 ind = 0
                 copies = [1, 3, 5, 7]  # copies which couple to physical modes
                 for cop in copies:
                     for com in ["r", "i"]:
                         ind += 1  # don't zero out t params
-                        zeroed_params.append((layer, site_ind, ind))
+                        zeroed_params.append((layer, uc_ind, ind))
 
                 copies = [1, 2, 3, 4]  # copies which couple to themselves
                 for cop in copies:
                     for l in ["z", "y"]:
                         for com in ["r", "i"]:
-                            mat[layer_ind, site_ind, ind] = 0
+                            mat[layer_ind, uc_ind, ind] = 0
                             ind += 1
-                            zeroed_params.append((layer, site_ind, ind))
+                            zeroed_params.append((layer, uc_ind, ind))
 
         # save zeroed params
         self.zeroed_params = zeroed_params

@@ -27,9 +27,6 @@ class Z2System2DConfig(Config2DBase):
     )
     nvirtmodes_link = 2  # We have two virtual modes per link (l/r or u/d)
 
-    trans_inv: bool = True
-    num_independent_sites = 1
-
     def __init__(
         self,
         lattice,
@@ -45,9 +42,8 @@ class Z2System2DConfig(Config2DBase):
         if num_fermionic_layer != 0:
             # This ansatz does not support fermionic layers
             raise ValueError("The Z2System2D ansatz does not support fermionic layers.")
-        super().__init__(
-            lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0, self.trans_inv
-        )
+
+        super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0)
 
         # This is for pure-gauge only atm
         self.num_pg_layer = self.nlayer
@@ -65,11 +61,11 @@ class Z2System2DConfig(Config2DBase):
     def make_pure_gauge(self):
         # The order of the parameters is [tr,yr,zr,ti,yi,zi] ({r,i} referring to the real/imaginary components)
         for lay in range(self.nlayer):
-            for site_ind in range(self.num_independent_sites):
+            for uc_ind in range(self.max_unitcell_size):
                 # t real
-                self.paramvec[lay, site_ind, 0] = 0
+                self.paramvec[lay, uc_ind, 0] = 0
                 # t imag
-                self.paramvec[lay, site_ind, 3] = 0
+                self.paramvec[lay, uc_ind, 3] = 0
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.

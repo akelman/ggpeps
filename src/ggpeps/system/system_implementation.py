@@ -285,7 +285,7 @@ class Z2System2D(System2DBase):
 
         mass_energy_op = [0] * self.cfg.num_pg_layer
         gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
-        site_ind_params = 0
+        uc_ind = 0  # index of the "unit cell" to pick out which site-dependent parameters to consider - TODO: extend to all sites
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             # only the fermionic layers directly contribute to the mass
@@ -302,19 +302,19 @@ class Z2System2D(System2DBase):
                 )  # TODO: fix for JAX - NOT NEEDED
 
                 for symbol_ind, symbol in enumerate(self.symbolvec):
-                    if (layer_ind, site_ind, symbol_ind) not in self.cfg.zeroed_params:
+                    if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
                         # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
 
                         d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
                         if ggpeps.PREFERRED_BACKEND == "numpy":
-                            gradients[layer_ind, site_ind_params, symbol_ind] += (
+                            gradients[layer_ind, uc_ind, symbol_ind] += (
                                 0.5 * d_gamma_out[site_ind + 1, site_ind]
                             )
                         elif ggpeps.PREFERRED_BACKEND == "jax":
-                            gradients = gradients.at[
-                                layer_ind, site_ind_params, symbol_ind
-                            ].add(0.5 * d_gamma_out[site_ind + 1, site_ind])
+                            gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(
+                                0.5 * d_gamma_out[site_ind + 1, site_ind]
+                            )
 
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
@@ -499,7 +499,7 @@ class Z2System2D(System2DBase):
 
         int_energy_op = [0] * self.cfg.num_pg_layer
         gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
-        site_ind_params = 0
+        uc_ind = 0
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             layer_int_energy = 0.0
@@ -547,7 +547,7 @@ class Z2System2D(System2DBase):
                 for symbol_ind, symbol in enumerate(self.symbolvec):
                     if (
                         layer_ind,
-                        site_ind_params,
+                        uc_ind,
                         symbol_ind,
                     ) not in self.cfg.zeroed_params:
                         # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
@@ -571,11 +571,11 @@ class Z2System2D(System2DBase):
                             )
                         )
                         if ggpeps.PREFERRED_BACKEND == "numpy":
-                            gradients[layer_ind, site_ind_params, symbol_ind] += grad
+                            gradients[layer_ind, uc_ind, symbol_ind] += grad
                         elif ggpeps.PREFERRED_BACKEND == "jax":
-                            gradients = gradients.at[
-                                layer_ind, site_ind_params, symbol_ind
-                            ].add(grad)
+                            gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(
+                                grad
+                            )
 
             int_energy_op.append(layer_int_energy)
 
@@ -595,7 +595,7 @@ class Z2System2D(System2DBase):
 
         chem_energy_op = [0] * self.cfg.num_pg_layer
         gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
-        site_ind_params = 0
+        uc_ind = 0
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             # only the fermionic layers directly contribute to the chemical potential
@@ -616,7 +616,7 @@ class Z2System2D(System2DBase):
                 for symbol_ind, symbol in enumerate(self.symbolvec):
                     if (
                         layer_ind,
-                        site_ind_params,
+                        uc_ind,
                         symbol_ind,
                     ) not in self.cfg.zeroed_params:
                         # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
@@ -624,13 +624,11 @@ class Z2System2D(System2DBase):
 
                         d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
                         if ggpeps.PREFERRED_BACKEND == "numpy":
-                            gradients[layer_ind, site_ind_params, symbol_ind] += (
+                            gradients[layer_ind, uc_ind, symbol_ind] += (
                                 0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
                             )
                         elif ggpeps.PREFERRED_BACKEND == "jax":
-                            gradients = gradients.at[
-                                layer_ind, site_ind_params, symbol_ind
-                            ].add(
+                            gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(
                                 0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
                             )
 
