@@ -303,7 +303,7 @@ class System2DBase(ABC):
 
         # Parameter based matrices
         self._tmat_layervec_sitevec: Optional[List[xnp.ndarray]] = None
-        self._gamma_dirac_vec: Optional[xnp.ndarray] = None
+        self._gamma_dirac_layervec_sitevec: Optional[xnp.ndarray] = None
         self._gamma_maj_vec: Optional[xnp.ndarray] = None
         self._gamma_maj_sys_vec: Optional[xnp.ndarray] = None
 
@@ -508,23 +508,27 @@ class System2DBase(ABC):
         return self._tmat_layervec_sitevec
 
     @property
-    def gamma_dirac_vec(self) -> xnp.ndarray:
+    def gamma_dirac_layervec_sitevec(self) -> xnp.ndarray:
         """Return the vector of covariance matrices in dirac modes.
 
         Returns:
             xnp.ndarray: Vector of covariance matrices in Dirac modes
         """
-        if self._gamma_dirac_vec is None:
-            # TODO: currently just takes the first site, generalize to all sites
-            site_ind = 0
-            tmats = [
-                self.tmat_layervec_sitevec[lay][site_ind]
-                for lay in range(self.cfg.nlayer)
-            ]
-            self._gamma_dirac_vec = xnp.array(
-                [utils.tmat_to_covariance_matrix(tmat) for tmat in tmats]
+        if self._gamma_dirac_layervec_sitevec is None:
+
+            self._gamma_dirac_layervec_sitevec = []
+            for lay in range(self.cfg.nlayer):
+
+                gamma_dirac_lay = [
+                    xnp.array(utils.tmat_to_covariance_matrix(tmat))
+                    for tmat in self.tmat_layervec_sitevec[lay]
+                ]
+                self._gamma_dirac_layervec_sitevec.append(gamma_dirac_lay)
+
+            self._gamma_dirac_layervec_sitevec = xnp.array(
+                self._gamma_dirac_layervec_sitevec
             )
-        return self._gamma_dirac_vec
+        return self._gamma_dirac_layervec_sitevec
 
     @property
     def gamma_maj_vec(self):
@@ -539,12 +543,24 @@ class System2DBase(ABC):
             xnp.ndarray: list of covariance matrices in Majorana modes for all layers
         """
         if self._gamma_maj_vec is None:
+            site = 0  # TODO: generalize to all sites
+
             # We know that the gamma dirac matrices have all the same shape
-            m, _ = self.gamma_dirac_vec[-1].shape
+            m, _ = self.gamma_dirac_layervec_sitevec[-1][site].shape
             smat = utils.generate_smat(m)
+
             self._gamma_maj_vec = xnp.real(
-                smat @ self.gamma_dirac_vec @ xnp.transpose(smat)
-            )  # vectorized operation over all layers
+                [
+                    smat
+                    @ self.gamma_dirac_layervec_sitevec[lay][site]
+                    @ xnp.transpose(smat)
+                    for lay in range(self.cfg.nlayer)
+                ]
+            )
+
+            # self._gamma_maj_vec = xnp.real(
+            #    smat @ self.gamma_dirac_layervec_sitevec @ xnp.transpose(smat)
+            # )  # vectorized operation over all layers and sites
         return self._gamma_maj_vec
 
     def _expand_gamma_maj_to_system(self, covmats_vec):

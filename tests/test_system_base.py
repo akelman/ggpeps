@@ -362,15 +362,16 @@ class TestSystemBase(unittest.TestCase):
     def test_gamma_maj_from_dirac(self):
         """Test that gamma_maj is correctly calculated from the Dirac matrices"""
         # We know that the gamma dirac matrices have all the same shape
-        m, _ = self.system_z2_1c.gamma_dirac_vec[-1].shape
+        site = 0
+        m, _ = self.system_z2_1c.gamma_dirac_layervec_sitevec[-1][site].shape
         smat = utils.generate_smat(m)
         gamma_maj_vec = xnp.array(
             [
                 xnp.real(smat @ gamma_dirac @ xnp.transpose(smat))
-                for gamma_dirac in self.system_z2_1c.gamma_dirac_vec
+                for gamma_dirac in self.system_z2_1c.gamma_dirac_layervec_sitevec
             ]
         )
         new_calc = xnp.real(
-            smat @ self.system_z2_1c.gamma_dirac_vec @ xnp.transpose(smat)
+            smat @ self.system_z2_1c.gamma_dirac_layervec_sitevec @ xnp.transpose(smat)
         )
         self.assertTrue((gamma_maj_vec == new_calc).all())

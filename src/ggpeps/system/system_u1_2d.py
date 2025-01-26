@@ -146,28 +146,29 @@ class U1System2D(System2DBase):
         return dest
 
     @property
-    def gamma_dirac_vec(self):
+    def gamma_dirac_layervec_sitevec(self):
         """Return the vector of covariance matrices in dirac modes.
 
         Returns:
             [np.array]: Vector of covariance matrices in Dirac modes
         """
-        if self._gamma_dirac_vec is None:
-            # TODO: currently just takes the first site, generalize to all sites
-            site_ind = 0
-            tmats = [
-                self.tmat_layervec_sitevec[lay][site_ind]
-                for lay in range(self.cfg.nlayer)
-            ]
+        if self._gamma_dirac_layervec_sitevec is None:
 
             perm = self.permutation_dirac()
-            self._gamma_dirac_vec = np.asarray(
-                [
-                    perm @ utils.tmat_to_covariance_matrix(tmat) @ np.transpose(perm)
-                    for tmat in tmats
+            self._gamma_dirac_layervec_sitevec = []
+            for lay in range(self.cfg.nlayer):
+                gamma_dirac_lay = [
+                    perm
+                    @ xnp.array(utils.tmat_to_covariance_matrix(tmat))
+                    @ np.transpose(perm)
+                    for tmat in self.tmat_layervec_sitevec[lay]
                 ]
+                self._gamma_dirac_layervec_sitevec.append(gamma_dirac_lay)
+
+            self._gamma_dirac_layervec_sitevec = xnp.array(
+                self._gamma_dirac_layervec_sitevec
             )
-        return self._gamma_dirac_vec
+        return self._gamma_dirac_layervec_sitevec
 
     def _expand_gamma_maj_to_system(self, covmats):
         vec = []

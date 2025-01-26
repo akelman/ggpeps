@@ -69,7 +69,9 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         self.assertTrue(utils.is_antisymmetric(tmat))
 
     def test_gamma_dirac_covariance_real(self):
-        gamma_dirac = self.system_z2_2_2_real.gamma_dirac_vec[0]
+        lay = 0
+        site = 0
+        gamma_dirac = self.system_z2_2_2_real.gamma_dirac_layervec_sitevec[lay][site]
         m, n = gamma_dirac.shape
         res = gamma_dirac @ np.transpose(np.conjugate(gamma_dirac))
         ref = 0.25 * np.eye(gamma_dirac.shape[0])
@@ -78,7 +80,9 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         self.assertTrue(utils.is_antisymmetric(gamma_dirac))
 
     def test_gamma_dirac_covariance(self):
-        gamma_dirac = self.system_z2_2_2.gamma_dirac_vec[0]
+        lay = 0
+        site = 0
+        gamma_dirac = self.system_z2_2_2.gamma_dirac_layervec_sitevec[lay][site]
         m, n = gamma_dirac.shape
         res = gamma_dirac @ np.transpose(np.conjugate(gamma_dirac))
         ref = 0.25 * np.eye(gamma_dirac.shape[0])

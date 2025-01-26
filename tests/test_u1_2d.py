@@ -30,7 +30,9 @@ class TestU1SystemMethods(unittest.TestCase):
         self.assertTrue(utils.is_antisymmetric(np.real(tmat)))
 
     def test_gamma_dirac_covariance(self):
-        gamma_dirac = self.system_u1_2_2.gamma_dirac_vec[0]
+        lay = 0
+        site = 0
+        gamma_dirac = self.system_u1_2_2.gamma_dirac_layervec_sitevec[lay][site]
         m, n = gamma_dirac.shape
         res = gamma_dirac @ np.transpose(np.conjugate(gamma_dirac))
         ref = 0.25 * np.eye(gamma_dirac.shape[0])
@@ -101,7 +103,7 @@ class TestU1SystemMethods(unittest.TestCase):
         cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0, 0.0, None)
         cfg.paramvec = paramvec
         system_u1_2_2 = system.U1System2D(cfg)
-        gamma_dirac = system_u1_2_2.gamma_dirac_vec[0]
+        gamma_dirac = system_u1_2_2.gamma_dirac_layervec_sitevec[0]
         gamma_dirac_cpp = utils.load_matrix_dat_fmt(
             "misc/gamma_dirac_cpp_t_0.1_y_0.4_z_0.2.dat"
         )
@@ -125,7 +127,7 @@ class TestU1SystemMethods(unittest.TestCase):
         cfg = system.U1System2DConfig(lat, 1.0, 0.0, 1.0, 0.0, None)
         cfg.paramvec = paramvec
         system_u1_2_2 = system.U1System2D(cfg)
-        gamma_dirac = system_u1_2_2.gamma_dirac_vec[0]
+        gamma_dirac = system_u1_2_2.gamma_dirac_layervec_sitevec[0]
         gamma_dirac_cpp = utils.load_matrix_dat_fmt(
             "misc/gamma_dirac_cpp_t_0.0_y_0.4_z_0.2.dat"
         )

@@ -86,7 +86,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         self.assertTrue(utils.is_antisymmetric(tmat))
 
     def test_gamma_dirac_covariance_real(self):
-        gamma_dirac = self.system_z2_2_2_real.gamma_dirac_vec[0]
+        lay = 0
+        site = 0
+        gamma_dirac = self.system_z2_2_2_real.gamma_dirac_layervec_sitevec[lay][site]
         m, n = gamma_dirac.shape
         res = gamma_dirac @ np.transpose(np.conjugate(gamma_dirac))
         ref = 0.25 * np.eye(gamma_dirac.shape[0])
@@ -95,7 +97,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         self.assertTrue(utils.is_antisymmetric(gamma_dirac))
 
     def test_gamma_dirac_covariance(self):
-        gamma_dirac = self.system_z2_2_2.gamma_dirac_vec[0]
+        lay = 0
+        site = 0
+        gamma_dirac = self.system_z2_2_2.gamma_dirac_layervec_sitevec[lay][site]
         m, n = gamma_dirac.shape
         res = gamma_dirac @ np.transpose(np.conjugate(gamma_dirac))
         ref = 0.25 * np.eye(gamma_dirac.shape[0])
@@ -112,7 +116,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
         cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(cfg)
-        gamma_dirac = system_z2_2_2.gamma_dirac_vec[0]
+        lay = 0
+        site = 0
+        gamma_dirac = system_z2_2_2.gamma_dirac_layervec_sitevec[lay][site]
         ref = np.asarray(
             [
                 [
@@ -261,11 +267,13 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_left = system.Z2System2D(cfg_left)
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
+        lay = 0
+        site = 0
         symbvec = system_z2_2_2.symbolvec
         # Derivative wrt y
         deriv_ana = system_z2_2_2.compute_gamma_dirac_deriv(symbvec[1], 0)
-        gamma_left = system_z2_2_2_left.gamma_dirac_vec[0]
-        gamma_right = system_z2_2_2_right.gamma_dirac_vec[0]
+        gamma_left = system_z2_2_2_left.gamma_dirac_layervec_sitevec[lay][site]
+        gamma_right = system_z2_2_2_right.gamma_dirac_layervec_sitevec[lay][site]
         deriv_num = (gamma_right - gamma_left) / (2 * eps)
         self.assertTrue(np.allclose(deriv_ana, deriv_num))
 
