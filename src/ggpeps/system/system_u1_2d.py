@@ -153,11 +153,18 @@ class U1System2D(System2DBase):
             [np.array]: Vector of covariance matrices in Dirac modes
         """
         if self._gamma_dirac_vec is None:
+            # TODO: currently just takes the first site, generalize to all sites
+            site_ind = 0
+            tmats = [
+                self.tmat_layervec_sitevec[lay][site_ind]
+                for lay in range(self.cfg.nlayer)
+            ]
+
             perm = self.permutation_dirac()
             self._gamma_dirac_vec = np.asarray(
                 [
                     perm @ utils.tmat_to_covariance_matrix(tmat) @ np.transpose(perm)
-                    for tmat in self.tmat_vec
+                    for tmat in tmats
                 ]
             )
         return self._gamma_dirac_vec

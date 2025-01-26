@@ -21,7 +21,9 @@ class TestU1SystemMethods(unittest.TestCase):
         self.system_u1_2_2 = system.U1System2D(cfg)
 
     def test_tmat_antisymmetric(self):
-        tmat = self.system_u1_2_2.tmat_vec[0]
+        lay = 0
+        site = 0
+        tmat = self.system_u1_2_2.tmat_layervec_sitevec[lay][site]
         m, n = tmat.shape
         self.assertEqual(m, 9)
         self.assertEqual(n, 9)

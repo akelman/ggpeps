@@ -49,17 +49,23 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         symbvec = system_z2_2_2.symbolvec
         # Derivative wrt yr
         deriv_ana = system_z2_2_2.compute_tmat_deriv(symbvec[1])
-        tmat_left = system_z2_2_2_left.tmat_vec[0]
-        tmat_right = system_z2_2_2_right.tmat_vec[0]
+        lay = 0
+        site = 0
+        tmat_left = system_z2_2_2_left.tmat_layervec_sitevec[lay][site]
+        tmat_right = system_z2_2_2_right.tmat_layervec_sitevec[lay][site]
         deriv_num = (tmat_right - tmat_left) / (2 * eps)
         self.assertTrue(np.allclose(deriv_ana, deriv_num))
 
     def test_tmat_antisymmetric_real(self):
-        tmat = self.system_z2_2_2_real.tmat_vec[0]
+        lay = 0
+        site = 0
+        tmat = self.system_z2_2_2_real.tmat_layervec_sitevec[lay][site]
         self.assertTrue(utils.is_antisymmetric(tmat))
 
     def test_tmat_antisymmetric(self):
-        tmat = self.system_z2_2_2.tmat_vec[0]
+        lay = 0
+        site = 0
+        tmat = self.system_z2_2_2.tmat_layervec_sitevec[lay][site]
         self.assertTrue(utils.is_antisymmetric(tmat))
 
     def test_gamma_dirac_covariance_real(self):

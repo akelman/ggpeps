@@ -299,7 +299,7 @@ class System2DBase(ABC):
         # All variables that contain _vec are arrays of length nlayer in the first dimension.
 
         # Parameter based matrices
-        self._tmat_vec: Optional[List[xnp.ndarray]] = None
+        self._tmat_layervec_sitevec: Optional[List[xnp.ndarray]] = None
         self._gamma_dirac_vec: Optional[xnp.ndarray] = None
         self._gamma_maj_vec: Optional[xnp.ndarray] = None
         self._gamma_maj_sys_vec: Optional[xnp.ndarray] = None
@@ -479,7 +479,7 @@ class System2DBase(ABC):
         )  # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
 
     @property
-    def tmat_vec(self) -> List[xnp.ndarray]:
+    def tmat_layervec_sitevec(self) -> List[xnp.ndarray]:
         """
         Generate the T-matrix vector (single virtual fermion on the link).
         Analytically, this mode order is not advantageous,
@@ -488,14 +488,21 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: parameter matrix T
         """
-        if self._tmat_vec is None:
-            site_ind = 0  # TODO: generalize for translation invariant systems
+        if self._tmat_layervec_sitevec is None:
             self.cfg.enforce_parameter_conditions(self.cfg.paramvec)
-            self._tmat_vec = [
-                self._eval_tmat_symb(params[site_ind]) for params in self.cfg.paramvec
-            ]
-            # self._tmat_vec = xnp.array(self._tmat_vec)
-        return self._tmat_vec
+            self._tmat_layervec_sitevec = []
+            for layer in range(self.cfg.nlayer):
+                lay_params = self.cfg.paramvec[layer]
+                tmat_lay = []
+                for site_ind in range(self.cfg.num_independent_sites):
+                    # maybe here generalize to all sites?
+
+                    params = lay_params[site_ind]
+                    tmat = self._eval_tmat_symb(params)
+                    tmat_lay.append(tmat)
+                self._tmat_layervec_sitevec.append(tmat_lay)
+            # self._tmat_layervec_sitevec = xnp.array(self._tmat_layervec_sitevec)
+        return self._tmat_layervec_sitevec
 
     @property
     def gamma_dirac_vec(self) -> xnp.ndarray:
@@ -505,8 +512,14 @@ class System2DBase(ABC):
             xnp.ndarray: Vector of covariance matrices in Dirac modes
         """
         if self._gamma_dirac_vec is None:
+            # TODO: currently just takes the first site, generalize to all sites
+            site_ind = 0
+            tmats = [
+                self.tmat_layervec_sitevec[lay][site_ind]
+                for lay in range(self.cfg.nlayer)
+            ]
             self._gamma_dirac_vec = xnp.array(
-                [utils.tmat_to_covariance_matrix(tmat) for tmat in self.tmat_vec]
+                [utils.tmat_to_covariance_matrix(tmat) for tmat in tmats]
             )
         return self._gamma_dirac_vec
 
@@ -1013,7 +1026,8 @@ class System2DBase(ABC):
             xnp.ndarray: Derivative of gamma_dirac wrt to symb
         """
         deriv_t = self.compute_tmat_deriv(symb)
-        tmat = self.tmat_vec[layerind]
+        # TODO: currently just takes the first site, generalize to all sites
+        tmat = self.tmat_layervec_sitevec[layerind][0]
         tmatc = xnp.conjugate(tmat)
         idttinv_minus = xnp.linalg.inv(xnp.eye(deriv_t.shape[0]) - tmat @ tmatc)
         idtt_plus = xnp.eye(deriv_t.shape[0]) + tmat @ tmatc

@@ -116,7 +116,9 @@ class TestBGBTransform(unittest.TestCase):
         system_u1_cfg = system.U1System2DConfig(lat, 1, 0, 0, 0.0, None)
         system_u1_cfg.paramvec = np.asarray([[0.0, 1.0, 2.0]])
         system_u1 = system.U1System2D(system_u1_cfg)
-        tmat_double = system_u1.tmat_vec[0]
+        lay = 0
+        site = 0
+        tmat_double = system_u1.tmat_layervec_sitevec[lay][site]
         gamma_dirac = utils.tmat_to_covariance_matrix(tmat_double)
         # Delete the rows and columns belonging to the physical fermions
         gamma_dirac = np.delete(gamma_dirac, [9], axis=1)
@@ -139,7 +141,9 @@ class TestBGBTransform(unittest.TestCase):
         system_u1_cfg = system.U1System2DConfig(lat, 1, 0, 0)
         system_u1_cfg.paramvec = np.asarray([[0.7, 1.0, 2.0]])
         system_u1 = system.U1System2D(system_u1_cfg)
-        tmat_double = system_u1.tmat_vec[0]
+        lay = 0
+        site = 0
+        tmat_double = system_u1.tmat_layervec_sitevec[lay][site]
         # We use the function explicitly to avoid the permutation matrix
         gamma_dirac = utils.tmat_to_covariance_matrix(tmat_double)
         # gamma_dirac = system_u1.gamma_dirac_vec[0]
