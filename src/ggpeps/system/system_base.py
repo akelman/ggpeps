@@ -557,7 +557,7 @@ class System2DBase(ABC):
             )
         return self._gamma_maj_layervec_sitevec
 
-    def _expand_gamma_maj_to_system(self, covmats_vec):
+    def _expand_gamma_maj_to_system(self, covmats_layervec_sitevec):
         """Expand the covariance matrix in Majorana modes to the full system.
         In order to obtain a structure that is convenient for further computations,
             (A    B)
@@ -567,11 +567,17 @@ class System2DBase(ABC):
         This method is overwritten for the U1 system.
 
         Args:
-            covmats_vec (list[xnp.ndarray]): list (per layer) of 2D covariance matrices of a single site
+            covmats_layervec_sitevec (List[List[xnp.ndarray]]): list (per layer) of 2D covariance matrices of all sites
 
         Returns:
             xnp.ndarray: 2D covariance matrix of the full system
         """
+        # TODO: expand to handle different values on different sites
+        site = 0
+        covmats = [
+            covmats_layervec_sitevec[lay][site] for lay in range(self.cfg.nlayer)
+        ]
+
         # Preliminaries
         nsites = self.cfg.lattice.size
         id = xnp.eye(nsites)
@@ -589,7 +595,7 @@ class System2DBase(ABC):
 
         # TODO: properly vectorize!
         gamma_maj_sys_vec = []
-        for covmat in covmats_vec:
+        for covmat in covmats:
 
             # Extract the parts of the covariance matrix
             amat = covmat[:2, :2]  # assumes 1 fermion per site (two majorana modes)
@@ -653,12 +659,8 @@ class System2DBase(ABC):
             [xnp.ndarray]: Covariance matrix of the full system
         """
         if self._gamma_maj_sys_vec is None:
-            site = 0  # TODO: expand to all sites
             self._gamma_maj_sys_vec = self._expand_gamma_maj_to_system(
-                [
-                    self.gamma_maj_layervec_sitevec[lay][site]
-                    for lay in range(self.cfg.nlayer)
-                ]
+                self.gamma_maj_layervec_sitevec
             )
         return self._gamma_maj_sys_vec
 
@@ -1087,16 +1089,20 @@ class System2DBase(ABC):
         """
         dest = {}
         for symb in self.symbolvec:
-            # TODO: once self.compute_gamma_maj_deriv handles all layers and returns a numpy array,
+            # TODO: once self.compute_gamma_maj_deriv handles all layers (and sites?) and returns a numpy array,
             #       clean this - _expand...() should just take the output of compute_gamma_maj_deriv()
-            dest[symb] = self._expand_gamma_maj_to_system(
-                xnp.array(
+            arr = xnp.array(
+                [
                     [
-                        self.compute_gamma_maj_deriv(symb, i)
-                        for i in range(self.cfg.nlayer)
+                        self.compute_gamma_maj_deriv(symb, lay)
+                        for site in range(self.cfg.lattice.size)
+                        # TODO: expand to depend on all sites
                     ]
-                )
+                    for lay in range(self.cfg.nlayer)
+                ]
             )
+
+            dest[symb] = self._expand_gamma_maj_to_system(arr)
         return dest
 
     def gamma_maj_sys_deriv_vec(self, symb: sympy.Symbol) -> xnp.ndarray:

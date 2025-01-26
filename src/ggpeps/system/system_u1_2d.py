@@ -170,7 +170,15 @@ class U1System2D(System2DBase):
             )
         return self._gamma_dirac_layervec_sitevec
 
-    def _expand_gamma_maj_to_system(self, covmats):
+    def _expand_gamma_maj_to_system(self, covmats_layervec_sitevec):
+        # To support non translationally-invariant systems, it would be necessary to use
+        # covmats_layervec_sitevec to handle different values on different sites.
+        # The U1 ansatz does not support this at the moment, so we just use the first site
+        site = 0
+        covmats = [
+            covmats_layervec_sitevec[lay][site] for lay in range(self.cfg.nlayer)
+        ]
+
         vec = []
         for covmat in covmats:
             permbuilder = lat.PermutationBuilderGMS2DU1(
