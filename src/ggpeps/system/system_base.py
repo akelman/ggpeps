@@ -572,11 +572,6 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: 2D covariance matrix of the full system
         """
-        # TODO: expand to handle different values on different sites
-        site = 0
-        covmats = [
-            covmats_layervec_sitevec[lay][site] for lay in range(self.cfg.nlayer)
-        ]
 
         # Preliminaries
         nsites = self.cfg.lattice.size
@@ -595,16 +590,18 @@ class System2DBase(ABC):
 
         # TODO: properly vectorize!
         gamma_maj_sys_vec = []
-        for covmat in covmats:
+        for covmats_sitevec in covmats_layervec_sitevec:
+            covmats = covmats_sitevec
 
             # Extract the parts of the covariance matrix
-            amat = covmat[:2, :2]  # assumes 1 fermion per site (two majorana modes)
-            bmat = covmat[:2, 2:]
-            dmat = covmat[2:, 2:]
+            # assumes 1 fermion per site (two majorana modes)
+            amats = [covmats[site][:2, :2] for site in range(self.cfg.lattice.size)]
+            bmats = [covmats[site][:2, 2:] for site in range(self.cfg.lattice.size)]
+            dmats = [covmats[site][2:, 2:] for site in range(self.cfg.lattice.size)]
             # Expand them
-            amat_sys = xnp.kron(id, amat)
-            bmat_sys = xnp.kron(id, bmat)
-            dmat_sys = xnp.kron(id, dmat)
+            amat_sys = block_diag(*amats)
+            bmat_sys = block_diag(*bmats)
+            dmat_sys = block_diag(*dmats)
             # Reassemble them in the correct order
             mat_sys_unordered = xnp.block(
                 [[amat_sys, bmat_sys], [-xnp.transpose(bmat_sys), dmat_sys]]
