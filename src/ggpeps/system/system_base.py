@@ -306,7 +306,8 @@ class System2DBase(ABC):
         # All variables that contain _vec are arrays of length nlayer in the first dimension.
 
         # Parameter based matrices
-        self._tmat_layervec_sitevec: Optional[List[xnp.ndarray]] = None
+        self._tmat_layervec_unitcellvec: Optional[List[List[xnp.ndarray]]] = None
+        self._tmat_layervec_sitevec: Optional[List[List[xnp.ndarray]]] = None
         self._gamma_dirac_layervec_sitevec: Optional[xnp.ndarray] = None
         self._gamma_maj_layervec_sitevec: Optional[xnp.ndarray] = None
         self._gamma_maj_sys_vec: Optional[xnp.ndarray] = None
@@ -486,7 +487,20 @@ class System2DBase(ABC):
         )  # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
 
     @property
-    def tmat_layervec_sitevec(self) -> List[xnp.ndarray]:
+    def tmat_layervec_unitcellvec(self) -> List[List[xnp.ndarray]]:
+        if self._tmat_layervec_unitcellvec is None:
+            self.cfg.enforce_parameter_conditions(self.cfg.paramvec)
+            self._tmat_layervec_unitcellvec = []
+            for layer in range(self.cfg.nlayer):
+                tmats = [
+                    self._eval_tmat_symb(self.cfg.paramvec[layer][ind])
+                    for ind in range(self.cfg.max_unitcell_size)
+                ]
+                self._tmat_layervec_unitcellvec.append(tmats)
+        return self._tmat_layervec_unitcellvec
+
+    @property
+    def tmat_layervec_sitevec(self) -> List[List[xnp.ndarray]]:
         """
         Generate the T-matrix vector (single virtual fermion on the link).
         Analytically, this mode order is not advantageous,
@@ -499,10 +513,7 @@ class System2DBase(ABC):
             self.cfg.enforce_parameter_conditions(self.cfg.paramvec)
             self._tmat_layervec_sitevec = []
             for layer in range(self.cfg.nlayer):
-                tmats = [
-                    self._eval_tmat_symb(self.cfg.paramvec[layer][ind])
-                    for ind in range(self.cfg.max_unitcell_size)
-                ]
+                tmats = self.tmat_layervec_unitcellvec[layer]
                 tmat_lay = [
                     tmats[self.cfg.site_params_dict[site]]
                     for site in range(self.cfg.lattice.size)
