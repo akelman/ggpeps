@@ -383,8 +383,14 @@ class TestSystemBaseDimensions(unittest.TestCase):
     def setUp(self):
         lat = lattice.Lattice2D(2, 2)
 
-        paramvec2C = np.random.rand(1, 20)
-        cfg2C = system.Z2System2D2CConfig(lat, 0, 0, 0, 0, None)
+        pg_layers = 1
+        fermionic_layers = 1
+        nlayers = pg_layers + fermionic_layers
+        unitcell_size = 1
+        paramvec2C = np.random.rand(nlayers, unitcell_size, 20)
+        cfg2C = system.Z2System2D_G2C_F2C_Config(
+            lat, 0, 0, 0, 0, None, pg_layers, fermionic_layers
+        )
         cfg2C.paramvec = paramvec2C
         self.system_z2_2c = system.Z2System2D(cfg2C)
 
@@ -496,7 +502,6 @@ class TestSystemBaseDimensions(unittest.TestCase):
 
         lay = 0
         uc_ind = 0
-        symb_ind = 0  # arbitrarily chosen symbol
         grad_over_norm = self.system_z2_2c.compute_grad_norm(lay, uc_ind)
         actual_shape = grad_over_norm.shape
 
