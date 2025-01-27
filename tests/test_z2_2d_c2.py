@@ -220,6 +220,8 @@ class TestZ2C2SystemMethods(unittest.TestCase):
     def test_grad_over_norm(self):
         # This is comparison of the analytic derivative against the numeric derivative
         eps = 1e-5
+        lay = 0
+        uc_ind = 0
         paramvec = np.random.rand(1, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D2CConfig(
@@ -261,7 +263,9 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                 system_z2_2_2_right = system.Z2System2D(system_cfg_right)
 
                 # This is a single layer construction, we always use layer 0 to test.
-                deriv_ana = system_z2_2_2.compute_grad_over_norm(symbolvec[ind], 0)
+                deriv_ana = system_z2_2_2.compute_grad_over_norm(
+                    symbolvec[ind], lay, uc_ind
+                )
                 norm_left = system_z2_2_2_left.calculate_lognorm(all_factors=True)
                 norm_right = system_z2_2_2_right.calculate_lognorm(all_factors=True)
                 deriv_num = (norm_right - norm_left) / (2 * eps)

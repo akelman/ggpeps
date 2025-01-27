@@ -285,7 +285,6 @@ class Z2System2D(System2DBase):
 
         mass_energy_op = [0] * self.cfg.num_pg_layer
         gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
-        uc_ind = 0  # index of the "unit cell" to pick out which site-dependent parameters to consider - TODO: extend to all sites
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             # only the fermionic layers directly contribute to the mass
@@ -301,20 +300,27 @@ class Z2System2D(System2DBase):
                     1 + covmat[site_ind + 1, site_ind]
                 )  # TODO: fix for JAX - NOT NEEDED
 
-                for symbol_ind, symbol in enumerate(self.symbolvec):
-                    if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
-                        # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
-                        # we can skip it for parameters that are forced by the ansatz to be zero
+                for uc_ind in range(self.cfg.max_unitcell_size):
+                    for symbol_ind, symbol in enumerate(self.symbolvec):
+                        if (
+                            layer_ind,
+                            uc_ind,
+                            symbol_ind,
+                        ) not in self.cfg.zeroed_params:
+                            # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
+                            # we can skip it for parameters that are forced by the ansatz to be zero
 
-                        d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                        if ggpeps.PREFERRED_BACKEND == "numpy":
-                            gradients[layer_ind, uc_ind, symbol_ind] += (
-                                0.5 * d_gamma_out[site_ind + 1, site_ind]
-                            )
-                        elif ggpeps.PREFERRED_BACKEND == "jax":
-                            gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(
-                                0.5 * d_gamma_out[site_ind + 1, site_ind]
-                            )
+                            d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[
+                                symbol_ind
+                            ]
+                            if ggpeps.PREFERRED_BACKEND == "numpy":
+                                gradients[layer_ind, uc_ind, symbol_ind] += (
+                                    0.5 * d_gamma_out[site_ind + 1, site_ind]
+                                )
+                            elif ggpeps.PREFERRED_BACKEND == "jax":
+                                gradients = gradients.at[
+                                    layer_ind, uc_ind, symbol_ind
+                                ].add(0.5 * d_gamma_out[site_ind + 1, site_ind])
 
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
@@ -499,7 +505,6 @@ class Z2System2D(System2DBase):
 
         int_energy_op = [0] * self.cfg.num_pg_layer
         gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
-        uc_ind = 0
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             layer_int_energy = 0.0
@@ -544,38 +549,41 @@ class Z2System2D(System2DBase):
                 layer_int_energy -= vert_link_energy * cos_factor_vert
 
                 # Calculate derivatives
-                for symbol_ind, symbol in enumerate(self.symbolvec):
-                    if (
-                        layer_ind,
-                        uc_ind,
-                        symbol_ind,
-                    ) not in self.cfg.zeroed_params:
-                        # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
-                        # we can skip it for parameters that are forced by the ansatz to be zero
+                for uc_ind in range(self.cfg.max_unitcell_size):
+                    for symbol_ind, symbol in enumerate(self.symbolvec):
+                        if (
+                            layer_ind,
+                            uc_ind,
+                            symbol_ind,
+                        ) not in self.cfg.zeroed_params:
+                            # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
+                            # we can skip it for parameters that are forced by the ansatz to be zero
 
-                        d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                        grad = (
-                            0.5
-                            * cos_factor_hor
-                            * (
-                                d_gamma_out[site_ind_cov, neighborX_ind]
-                                - d_gamma_out[site_ind_cov + 1, neighborX_ind + 1]
+                            d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[
+                                symbol_ind
+                            ]
+                            grad = (
+                                0.5
+                                * cos_factor_hor
+                                * (
+                                    d_gamma_out[site_ind_cov, neighborX_ind]
+                                    - d_gamma_out[site_ind_cov + 1, neighborX_ind + 1]
+                                )
                             )
-                        )
-                        grad += (
-                            -0.5
-                            * cos_factor_vert
-                            * (
-                                d_gamma_out[site_ind_cov, neighborY_ind + 1]
-                                + d_gamma_out[site_ind_cov + 1, neighborY_ind]
+                            grad += (
+                                -0.5
+                                * cos_factor_vert
+                                * (
+                                    d_gamma_out[site_ind_cov, neighborY_ind + 1]
+                                    + d_gamma_out[site_ind_cov + 1, neighborY_ind]
+                                )
                             )
-                        )
-                        if ggpeps.PREFERRED_BACKEND == "numpy":
-                            gradients[layer_ind, uc_ind, symbol_ind] += grad
-                        elif ggpeps.PREFERRED_BACKEND == "jax":
-                            gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(
-                                grad
-                            )
+                            if ggpeps.PREFERRED_BACKEND == "numpy":
+                                gradients[layer_ind, uc_ind, symbol_ind] += grad
+                            elif ggpeps.PREFERRED_BACKEND == "jax":
+                                gradients = gradients.at[
+                                    layer_ind, uc_ind, symbol_ind
+                                ].add(grad)
 
             int_energy_op.append(layer_int_energy)
 
@@ -595,7 +603,6 @@ class Z2System2D(System2DBase):
 
         chem_energy_op = [0] * self.cfg.num_pg_layer
         gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
-        uc_ind = 0
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             # only the fermionic layers directly contribute to the chemical potential
@@ -613,24 +620,33 @@ class Z2System2D(System2DBase):
                 )
                 layer_chem_energy += 0.5  # constant offset which arises from particle-hole transformation
 
-                for symbol_ind, symbol in enumerate(self.symbolvec):
-                    if (
-                        layer_ind,
-                        uc_ind,
-                        symbol_ind,
-                    ) not in self.cfg.zeroed_params:
-                        # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
-                        # we can skip it for parameters that are forced by the ansatz to be zero
+                for uc_ind in range(self.cfg.max_unitcell_size):
+                    for symbol_ind, symbol in enumerate(self.symbolvec):
+                        if (
+                            layer_ind,
+                            uc_ind,
+                            symbol_ind,
+                        ) not in self.cfg.zeroed_params:
+                            # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
+                            # we can skip it for parameters that are forced by the ansatz to be zero
 
-                        d_gamma_out = self.d_gamma_out_symbolvec(layer_ind)[symbol_ind]
-                        if ggpeps.PREFERRED_BACKEND == "numpy":
-                            gradients[layer_ind, uc_ind, symbol_ind] += (
-                                0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
-                            )
-                        elif ggpeps.PREFERRED_BACKEND == "jax":
-                            gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(
-                                0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
-                            )
+                            d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[
+                                symbol_ind
+                            ]
+                            if ggpeps.PREFERRED_BACKEND == "numpy":
+                                gradients[layer_ind, uc_ind, symbol_ind] += (
+                                    0.5
+                                    * site_factor
+                                    * d_gamma_out[site_ind + 1, site_ind]
+                                )
+                            elif ggpeps.PREFERRED_BACKEND == "jax":
+                                gradients = gradients.at[
+                                    layer_ind, uc_ind, symbol_ind
+                                ].add(
+                                    0.5
+                                    * site_factor
+                                    * d_gamma_out[site_ind + 1, site_ind]
+                                )
 
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here

@@ -360,9 +360,15 @@ class System2DBase(ABC):
         self._d_gamma_out_symbolvec: Optional[List[List[xnp.ndarray]]] = (
             None  # gradients of gamma_out for all symbols: first index is layer, second index is symbol
         )
-        self._grad_over_norm_dict: Optional[dict[tuple[sympy.Symbol, int], float]] = {
-            (var, ind): None
-            for var, ind in it.product(self.symbolvec, range(self.cfg.nlayer))
+        self._grad_over_norm_dict: Optional[
+            dict[tuple[sympy.Symbol, int, int], float]
+        ] = {
+            (var, lay, uc_ind): None
+            for var, lay, uc_ind in it.product(
+                self.symbolvec,
+                range(self.cfg.nlayer),
+                range(self.cfg.max_unitcell_size),
+            )
         }
 
         # Observables
@@ -423,8 +429,12 @@ class System2DBase(ABC):
         self._int_energy_op_grad_vec = None
         self._chem_energy_op_grad_vec = None
         self._grad_over_norm_dict = {
-            (var, ind): None
-            for var, ind in it.product(self.symbolvec, range(self.cfg.nlayer))
+            (var, lay, uc_ind): None
+            for var, lay, uc_ind in it.product(
+                self.symbolvec,
+                range(self.cfg.nlayer),
+                range(self.cfg.max_unitcell_size),
+            )
         }
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
         return
@@ -626,7 +636,7 @@ class System2DBase(ABC):
         return xnp.array(gamma_maj_sys_vec)
 
     ## MOVE TO GLOBAL
-    def d_gamma_out_symbolvec(self, layer: int):
+    def d_gamma_out_symbolvec(self, layer: int, uc_ind: int):
         """Return a vector containing the derivatives of gamma_out (for the given layer) for each symbol.
 
         Returns:
@@ -640,7 +650,9 @@ class System2DBase(ABC):
 
             for symbol in self.symbolvec:
                 mat_b = self.mat_b_vec[layer]
-                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layer]
+                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[
+                    layer, uc_ind
+                ]
                 d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(
                     deriv_gamma_maj_sys, offset
                 )
@@ -1046,7 +1058,7 @@ class System2DBase(ABC):
 
     ################## Computation of derivatives ######################
 
-    def compute_gamma_dirac_deriv(self, symb: sympy.Symbol, layerind: int):
+    def compute_gamma_dirac_deriv(self, symb: sympy.Symbol, layerind: int, uc_ind: int):
         """Return the numerical derivative of the gamma_dirac, the Dirac covariance matrix of one fiducial state.
 
         Args:
@@ -1057,8 +1069,7 @@ class System2DBase(ABC):
             xnp.ndarray: Derivative of gamma_dirac wrt to symb
         """
         deriv_t = self.compute_tmat_deriv(symb)
-        # TODO: currently just takes the first site, generalize to all sites
-        tmat = self.tmat_layervec_sitevec[layerind][0]
+        tmat = self.tmat_layervec_unitcellvec[layerind][uc_ind]
         tmatc = xnp.conjugate(tmat)
         idttinv_minus = xnp.linalg.inv(xnp.eye(deriv_t.shape[0]) - tmat @ tmatc)
         idtt_plus = xnp.eye(deriv_t.shape[0]) + tmat @ tmatc
@@ -1076,7 +1087,7 @@ class System2DBase(ABC):
         d_rb = -xnp.conjugate(d_lt)
         return 1.0j * xnp.block([[d_lt, d_rt], [d_lb, d_rb]])
 
-    def compute_gamma_maj_deriv(self, symb: sympy.Symbol, layerind: int):
+    def compute_gamma_maj_deriv(self, symb: sympy.Symbol, layerind: int, uc_ind: int):
         """Return the numerical derivative of the gamma_maj, the Majorana covariance matrix of one fiducial state.
 
         Args:
@@ -1086,35 +1097,45 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Derivative of gamma_maj wrt to symb
         """
-        gamma_dirac_deriv = self.compute_gamma_dirac_deriv(symb, layerind)
+        gamma_dirac_deriv = self.compute_gamma_dirac_deriv(symb, layerind, uc_ind)
         m, _ = gamma_dirac_deriv.shape
         smat = utils.generate_smat(m)
         return xnp.real(smat @ gamma_dirac_deriv @ xnp.transpose(smat))
 
     def _generate_gamma_maj_sys_deriv_dict(self):
-        """Internal function to generate a dictionary of all possible derivatives of gamma_maj_sys, the system-wide covariance matrix of the fiducial state.
+        """Internal function to generate a dictionary of all possible derivatives of gamma_maj_sys, the system-wide
+        covariance matrix of the fiducial state.
         The key to the dictionary is the symbol with respect to which we derived.
         Each entry contains a list with len(list) = nlayer.
 
         Returns:
             dict: Dictionary with all derivatives
         """
+        # TODO: should we save the computations here in private variables (as done elsewhere)?
         dest = {}
         for symb in self.symbolvec:
-            # TODO: once self.compute_gamma_maj_deriv handles all layers (and sites?) and returns a numpy array,
-            #       clean this - _expand...() should just take the output of compute_gamma_maj_deriv()
-            arr = xnp.array(
-                [
-                    [
-                        self.compute_gamma_maj_deriv(symb, lay)
-                        for site in range(self.cfg.lattice.size)
-                        # TODO: expand to depend on all sites
-                    ]
-                    for lay in range(self.cfg.nlayer)
-                ]
-            )
+            arr = []
+            for lay in range(self.cfg.nlayer):
+                uc_vec = []
+                for uc_ind in range(self.cfg.max_unitcell_size):
+                    gamma_maj_deriv = self.compute_gamma_maj_deriv(symb, lay, uc_ind)
 
-            dest[symb] = self._expand_gamma_maj_to_system(arr)
+                    gamma_maj_derivs_sitevec = []
+                    for site in range(self.cfg.lattice.size):
+                        if self.cfg.site_params_dict[site] == uc_ind:
+                            gamma_maj_derivs_sitevec.append(gamma_maj_deriv)
+                        else:
+                            gamma_maj_derivs_sitevec.append(
+                                xnp.zeros_like(gamma_maj_deriv)
+                            )
+
+                    gamma_maj_sys_derivs = self._expand_gamma_maj_to_system(
+                        [gamma_maj_derivs_sitevec]
+                    )[0]
+                    uc_vec.append(gamma_maj_sys_derivs)
+                arr.append(uc_vec)
+
+            dest[symb] = xnp.array(arr)
         return dest
 
     def gamma_maj_sys_deriv_vec(self, symb: sympy.Symbol) -> xnp.ndarray:
@@ -1134,7 +1155,7 @@ class System2DBase(ABC):
                 )
             return self._gamma_maj_sys_deriv_dict[symb]
         else:
-            print("gamma_maj_sys_deriv: Invalid variable name", sys.stderr)
+            logger.error("gamma_maj_sys_deriv: Invalid variable name.")
         return None
 
     ## MOVE TO GLOBAL
@@ -1147,39 +1168,42 @@ class System2DBase(ABC):
         """
         dest = []
         for layerind in range(self.cfg.nlayer):
-            dest.append(self.compute_grad_norm(layerind))
+            for uc_ind in range(self.cfg.max_unitcell_size):
+                dest.append(self.compute_grad_norm(layerind, uc_ind))
         dest = xnp.asarray(dest)
 
-        # Enforce ansatz conditions on the parameters
+        # Enforce ansatz conditions on the gradients
         dest = np.reshape(dest, self.cfg.param_shape())
         self.cfg.enforce_parameter_conditions(dest)
         return dest
 
     ## MOVE TO GLOBAL
-    def compute_grad_norm(self, layerind: int) -> xnp.ndarray:
+    def compute_grad_norm(self, layerind: int, uc_ind: int) -> xnp.ndarray:
         """Compute the gradient of the norm for a given layer wrt to all parameters.
         The parameter order is the same as in the symbolvec
 
         Args:
             layerind (int): layer index
+            uc_ind (int): unit cell index
 
         Returns:
             xnp.ndarray: Vector of gradients for the norm
         """
 
         dest_grad = xnp.zeros(self.cfg.param_shape()[1:], dtype=xnp.float64)
-        site_ind = 0
         for symbol_ind, symbol in enumerate(self.symbolvec):
-            if (layerind, symbol_ind) not in self.cfg.zeroed_params:
+            if (layerind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
                 # the derivative calculation is computationally expensive
                 # we can skip it for parameters that are forced by the ansatz to be zero
+
+                # Compute gradient
                 if ggpeps.PREFERRED_BACKEND == "jax":
-                    dest_grad = dest_grad.at[site_ind, symbol_ind].set(
-                        self.compute_grad_over_norm(symbol, layerind)
+                    dest_grad = dest_grad.at[uc_ind, symbol_ind].set(
+                        self.compute_grad_over_norm(symbol, layerind, uc_ind)
                     )
                 else:
-                    dest_grad[site_ind, symbol_ind] = self.compute_grad_over_norm(
-                        symbol, layerind
+                    dest_grad[uc_ind, symbol_ind] = self.compute_grad_over_norm(
+                        symbol, layerind, uc_ind
                     )
         return dest_grad
 
@@ -1318,7 +1342,9 @@ class System2DBase(ABC):
         return cumval
 
     ## MOVE TO GLOBAL
-    def compute_grad_over_norm(self, var: sympy.Symbol, layerind: int) -> float:
+    def compute_grad_over_norm(
+        self, var: sympy.Symbol, layerind: int, uc_ind: int
+    ) -> float:
         """Compute the quotient of derivative of the norm over the norm itself.
         We can avoid a lot of factors by computing the quotient directly.
 
@@ -1329,23 +1355,23 @@ class System2DBase(ABC):
         Returns:
             float: Value of the gradient divided by the norm of the state
         """
-        if self._grad_over_norm_dict[(var, layerind)] is None:
+        if self._grad_over_norm_dict[(var, layerind, uc_ind)] is None:
             diff = self.wi_gamma_in_vec[layerind].inv()
             # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
             offset = 2 * self.cfg.lattice.size
             # Extract only the part of the virtual-virtual correlations
             # deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:] # TODO: fix for JAX - DONE
             _, _, deriv_d = extract_partial_covmats(
-                self.gamma_maj_sys_deriv_vec(var)[layerind], offset
+                self.gamma_maj_sys_deriv_vec(var)[layerind, uc_ind], offset
             )
             mat_d_inv = self.mat_d_inv_vec[layerind]
 
             # TODO: We might save one matrix-matrix multiplication here
             # The derivd and mat_d_inv are constant
-            self._grad_over_norm_dict[(var, layerind)] = compute_grad_over_norm(
+            self._grad_over_norm_dict[(var, layerind, uc_ind)] = compute_grad_over_norm(
                 self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv
             )
-        return self._grad_over_norm_dict[(var, layerind)]
+        return self._grad_over_norm_dict[(var, layerind, uc_ind)]
 
     ################## Local Gauge ######################
 
