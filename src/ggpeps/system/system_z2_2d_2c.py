@@ -23,7 +23,7 @@ class Z2System2D2CConfig(Config2DBase):
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
     """
 
-    _nparams = 20
+    _nparams_per_layer = 20
     ncopy = 2
     nvirtmodes_vertex = (
         8  # We have two virtual modes per direction (4 directions x 2 modes)
@@ -68,11 +68,12 @@ class Z2System2D2CConfig(Config2DBase):
     def make_pure_gauge(self):
         """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t."""
         # The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
-        for ind in range(self.nlayer):
-            self.paramvec[ind, 0] = 0  # Set t1r to 0
-            self.paramvec[ind, 10] = 0  # Set t1i to 0
-            self.paramvec[ind, 3] = 0  # Set t2r to 0
-            self.paramvec[ind, 13] = 0  # Set t2i to 0
+        for lay in range(self.nlayer):
+            for uc_ind in range(self.max_unitcell_size):
+                self.paramvec[lay, uc_ind, 0] = 0  # Set t1r to 0
+                self.paramvec[lay, uc_ind, 10] = 0  # Set t1i to 0
+                self.paramvec[lay, uc_ind, 3] = 0  # Set t2r to 0
+                self.paramvec[lay, uc_ind, 13] = 0  # Set t2i to 0
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.

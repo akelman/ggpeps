@@ -13,7 +13,7 @@ from ggpeps.system.system_z2_2d_G2c_F4c import Z2System2D_G2C_F4C_Config
 from ggpeps.system.system_z2_2d_8c import Z2System2D_8C_Config
 
 # System2D
-from ggpeps.system.system_z2_2d_G2c_F2c import Z2System2D
+from ggpeps.system.system_implementation import Z2System2D
 
 # there may be a better way to this after python 3.12
 from typing import Union  # TypeAlias

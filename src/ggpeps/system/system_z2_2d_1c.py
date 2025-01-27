@@ -20,7 +20,7 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class Z2System2DConfig(Config2DBase):
-    _nparams = 6
+    _nparams_per_layer = 6
     ncopy = 1
     nvirtmodes_vertex = (
         4  # We have one virtual mode per direction (1 mode x 4 directions)
@@ -42,6 +42,7 @@ class Z2System2DConfig(Config2DBase):
         if num_fermionic_layer != 0:
             # This ansatz does not support fermionic layers
             raise ValueError("The Z2System2D ansatz does not support fermionic layers.")
+
         super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0)
 
         # This is for pure-gauge only atm
@@ -59,11 +60,12 @@ class Z2System2DConfig(Config2DBase):
 
     def make_pure_gauge(self):
         # The order of the parameters is [tr,yr,zr,ti,yi,zi] ({r,i} referring to the real/imaginary components)
-        for ind in range(self.nlayer):
-            # t real
-            self.paramvec[ind, 0] = 0
-            # t imag
-            self.paramvec[ind, 3] = 0
+        for lay in range(self.nlayer):
+            for uc_ind in range(self.max_unitcell_size):
+                # t real
+                self.paramvec[lay, uc_ind, 0] = 0
+                # t imag
+                self.paramvec[lay, uc_ind, 3] = 0
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.

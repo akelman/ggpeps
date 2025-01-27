@@ -28,7 +28,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
     Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... and so on}.
     """
 
-    _nparams = 52  # 36
+    _nparams_per_layer = 52  # 36
     ncopy = 4
     nvirtmodes_vertex = 16
     nvirtmodes_link = 8
@@ -103,10 +103,11 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
 
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.num_pg_layer):
-            for t_ind in t_indices:
-                coord = (layer_ind, t_ind)
-                mat[coord] = 0
-                zeroed_params.append(coord)
+            for uc_ind in range(self.max_unitcell_size):
+                for t_ind in t_indices:
+                    coord = (layer_ind, uc_ind, t_ind)
+                    mat[coord] = 0
+                    zeroed_params.append(coord)
 
         zero_for_fermionic_layer = [
             1,
@@ -127,10 +128,11 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
             31,
         ]  # indices of y's, z's in symbolvec
         for layer_ind in range(self.num_pg_layer, self.nlayer):
-            for ind in zero_for_fermionic_layer:
-                coord = (layer_ind, ind)
-                mat[coord] = 0
-                zeroed_params.append(coord)
+            for uc_ind in range(self.max_unitcell_size):
+                for ind in zero_for_fermionic_layer:
+                    coord = (layer_ind, uc_ind, ind)
+                    mat[coord] = 0
+                    zeroed_params.append(coord)
 
         # It is also possible to test the 2 copy ansatz within this one, by zeroing all the extra parameters
         # (a2, b2, c2, d2, and all the p,q,r,s params)

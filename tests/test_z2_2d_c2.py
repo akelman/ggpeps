@@ -49,21 +49,29 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         symbvec = system_z2_2_2.symbolvec
         # Derivative wrt yr
         deriv_ana = system_z2_2_2.compute_tmat_deriv(symbvec[1])
-        tmat_left = system_z2_2_2_left.tmat_vec[0]
-        tmat_right = system_z2_2_2_right.tmat_vec[0]
+        lay = 0
+        site = 0
+        tmat_left = system_z2_2_2_left.tmat_layervec_sitevec[lay][site]
+        tmat_right = system_z2_2_2_right.tmat_layervec_sitevec[lay][site]
         deriv_num = (tmat_right - tmat_left) / (2 * eps)
         self.assertTrue(np.allclose(deriv_ana, deriv_num))
 
     def test_tmat_antisymmetric_real(self):
-        tmat = self.system_z2_2_2_real.tmat_vec[0]
+        lay = 0
+        site = 0
+        tmat = self.system_z2_2_2_real.tmat_layervec_sitevec[lay][site]
         self.assertTrue(utils.is_antisymmetric(tmat))
 
     def test_tmat_antisymmetric(self):
-        tmat = self.system_z2_2_2.tmat_vec[0]
+        lay = 0
+        site = 0
+        tmat = self.system_z2_2_2.tmat_layervec_sitevec[lay][site]
         self.assertTrue(utils.is_antisymmetric(tmat))
 
     def test_gamma_dirac_covariance_real(self):
-        gamma_dirac = self.system_z2_2_2_real.gamma_dirac_vec[0]
+        lay = 0
+        site = 0
+        gamma_dirac = self.system_z2_2_2_real.gamma_dirac_layervec_sitevec[lay][site]
         m, n = gamma_dirac.shape
         res = gamma_dirac @ np.transpose(np.conjugate(gamma_dirac))
         ref = 0.25 * np.eye(gamma_dirac.shape[0])
@@ -72,7 +80,9 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         self.assertTrue(utils.is_antisymmetric(gamma_dirac))
 
     def test_gamma_dirac_covariance(self):
-        gamma_dirac = self.system_z2_2_2.gamma_dirac_vec[0]
+        lay = 0
+        site = 0
+        gamma_dirac = self.system_z2_2_2.gamma_dirac_layervec_sitevec[lay][site]
         m, n = gamma_dirac.shape
         res = gamma_dirac @ np.transpose(np.conjugate(gamma_dirac))
         ref = 0.25 * np.eye(gamma_dirac.shape[0])
@@ -81,7 +91,9 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         self.assertTrue(utils.is_antisymmetric(gamma_dirac))
 
     def test_gamma_maj_covariance_real(self):
-        gamma_maj = self.system_z2_2_2_real.gamma_maj_vec[0]
+        lay = 0
+        site = 0
+        gamma_maj = self.system_z2_2_2_real.gamma_maj_layervec_sitevec[lay][site]
         m, n = gamma_maj.shape
         self.assertEqual(m, n)
         self.assertEqual(m, 18)
@@ -91,7 +103,9 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         self.assertTrue(np.allclose(gamma_maj @ np.transpose(gamma_maj), np.eye(m)))
 
     def test_gamma_maj_covariance(self):
-        gamma_maj = self.system_z2_2_2.gamma_maj_vec[0]
+        lay = 0
+        site = 0
+        gamma_maj = self.system_z2_2_2.gamma_maj_layervec_sitevec[lay][site]
         m, n = gamma_maj.shape
         self.assertEqual(m, n)
         self.assertEqual(m, 18)
@@ -206,10 +220,12 @@ class TestZ2C2SystemMethods(unittest.TestCase):
     def test_grad_over_norm(self):
         # This is comparison of the analytic derivative against the numeric derivative
         eps = 1e-5
+        lay = 0
+        uc_ind = 0
         paramvec = np.random.rand(1, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D2CConfig(
-            lat_2x2, 1.0, None, None, None, None, num_pg_layer=2, num_fermionic_layer=0
+            lat_2x2, 1.0, None, None, None, None, num_pg_layer=1, num_fermionic_layer=0
         )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
@@ -227,7 +243,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                     None,
                     None,
                     None,
-                    num_pg_layer=2,
+                    num_pg_layer=1,
                     num_fermionic_layer=0,
                 )
                 system_cfg_right = system.Z2System2D2CConfig(
@@ -237,7 +253,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                     None,
                     None,
                     None,
-                    num_pg_layer=2,
+                    num_pg_layer=1,
                     num_fermionic_layer=0,
                 )
                 system_cfg_left.paramvec = paramvec_left
@@ -247,7 +263,9 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                 system_z2_2_2_right = system.Z2System2D(system_cfg_right)
 
                 # This is a single layer construction, we always use layer 0 to test.
-                deriv_ana = system_z2_2_2.compute_grad_over_norm(symbolvec[ind], 0)
+                deriv_ana = system_z2_2_2.compute_grad_over_norm(
+                    symbolvec[ind], lay, uc_ind
+                )
                 norm_left = system_z2_2_2_left.calculate_lognorm(all_factors=True)
                 norm_right = system_z2_2_2_right.calculate_lognorm(all_factors=True)
                 deriv_num = (norm_right - norm_left) / (2 * eps)
@@ -264,6 +282,9 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         system_z2_2_2 = system.Z2System2D(system_cfg)
         symbolvec = system_z2_2_2.symbolvec
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
+
+        site = 0
+
         for ind in range(len(symbolvec)):
             with self.subTest(symbol=symbolvec[ind]):
                 paramvec_left = np.copy(paramvec)
@@ -301,7 +322,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                 val_right = system_z2_2_2_right.el_energy_op
                 deriv_num = (val_right - val_left) / (2 * eps)
 
-                self.assertAlmostEqual(deriv_ana[0, ind], deriv_num, places=5)
+                self.assertAlmostEqual(deriv_ana[0, site, ind], deriv_num, places=5)
 
     def test_grad_el_energy_2_layer(self):
         # This is comparison of the analytic derivative against the numeric derivative
@@ -316,6 +337,8 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
         symbolvec = system_z2_2_2.symbolvec
+
+        site = 0
 
         for layerind in range(nlayer):
             for ind in range(len(symbolvec)):
@@ -356,7 +379,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                     deriv_num = (val_right - val_left) / (2 * eps)
 
                     self.assertAlmostEqual(
-                        deriv_ana[layerind, ind], deriv_num, places=5
+                        deriv_ana[layerind, site, ind], deriv_num, places=5
                     )
 
     def test_el_energy_1_layer_single_eval(self):

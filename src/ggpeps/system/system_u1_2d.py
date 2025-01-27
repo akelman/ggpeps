@@ -28,7 +28,7 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class U1System2DConfig(Config2DBase):
-    _nparams = 3
+    _nparams_per_layer = 3
     ncopy = 1
     nvirtmodes_link = 8
     nvirtmodes_link = 4
@@ -58,8 +58,9 @@ class U1System2DConfig(Config2DBase):
 
     def make_pure_gauge(self):
         # The order of the parameters is [t,y,z]
-        for ind in range(self.nlayer):
-            self.paramvec[ind, 0] = 0
+        for lay in range(self.nlayer):
+            for uc_ind in range(self.max_unitcell_size):
+                self.paramvec[lay, uc_ind, 0] = 0
 
     def _create_symbolvec(self):
         t = sympy.Symbol("t", real=True)
@@ -141,23 +142,39 @@ class U1System2D(System2DBase):
         return dest
 
     @property
-    def gamma_dirac_vec(self):
+    def gamma_dirac_layervec_sitevec(self):
         """Return the vector of covariance matrices in dirac modes.
 
         Returns:
             [np.array]: Vector of covariance matrices in Dirac modes
         """
-        if self._gamma_dirac_vec is None:
-            perm = self.permutation_dirac()
-            self._gamma_dirac_vec = np.asarray(
-                [
-                    perm @ utils.tmat_to_covariance_matrix(tmat) @ np.transpose(perm)
-                    for tmat in self.tmat_vec
-                ]
-            )
-        return self._gamma_dirac_vec
+        if self._gamma_dirac_layervec_sitevec is None:
 
-    def _expand_gamma_maj_to_system(self, covmats):
+            perm = self.permutation_dirac()
+            self._gamma_dirac_layervec_sitevec = []
+            for lay in range(self.cfg.nlayer):
+                gamma_dirac_lay = [
+                    perm
+                    @ xnp.array(utils.tmat_to_covariance_matrix(tmat))
+                    @ np.transpose(perm)
+                    for tmat in self.tmat_layervec_sitevec[lay]
+                ]
+                self._gamma_dirac_layervec_sitevec.append(gamma_dirac_lay)
+
+            self._gamma_dirac_layervec_sitevec = xnp.array(
+                self._gamma_dirac_layervec_sitevec
+            )
+        return self._gamma_dirac_layervec_sitevec
+
+    def _expand_gamma_maj_to_system(self, covmats_layervec_sitevec):
+        # To support non translationally-invariant systems, it would be necessary to use
+        # covmats_layervec_sitevec to handle different values on different sites.
+        # The U1 ansatz does not support this at the moment, so we just use the first site
+        site = 0
+        covmats = [
+            covmats_layervec_sitevec[lay][site] for lay in range(self.cfg.nlayer)
+        ]
+
         vec = []
         for covmat in covmats:
             permbuilder = lat.PermutationBuilderGMS2DU1(

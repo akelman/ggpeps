@@ -138,7 +138,8 @@ class Minimizer:
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = flattened_paramvec
                 self.evaluator_manager.system_cfg.paramvec = np.reshape(
-                    flattened_paramvec, (-1, self.evaluator_manager.system_cfg._nparams)
+                    flattened_paramvec,
+                    self.evaluator_manager.system_cfg.param_shape(),
                 )
                 self.last_result = self.evaluator_manager.simulate()
 
@@ -183,7 +184,8 @@ class Minimizer:
                 self.last_paramvec = flattened_paramvec
                 # self.evaluator.mc_cfg.compute_grads = True # make sure to calculate derivatives
                 self.evaluator_manager.system_cfg.paramvec = np.reshape(
-                    flattened_paramvec, (-1, self.evaluator_manager.system_cfg._nparams)
+                    flattened_paramvec,
+                    self.evaluator_manager.system_cfg.param_shape(),
                 )
                 self.last_result = self.evaluator_manager.simulate()
 
