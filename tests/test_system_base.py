@@ -498,9 +498,9 @@ class TestSystemBaseDimensions(unittest.TestCase):
         uc_ind = 0
         symb_ind = 0  # arbitrarily chosen symbol
         grad_over_norm = self.system_z2_2c.compute_grad_norm(lay, uc_ind)
-        actual_shape = grad_over_norm[symb_ind].shape
+        actual_shape = grad_over_norm.shape
 
-        target_shape = self.system_z2_2c.cfg.param_shape()[-1:]
+        target_shape = (len(self.system_z2_2c.symbolvec),)
 
         self.assertTrue(actual_shape == target_shape)
 

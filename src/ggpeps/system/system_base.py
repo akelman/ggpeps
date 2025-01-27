@@ -1168,12 +1168,13 @@ class System2DBase(ABC):
         """
         dest = []
         for layerind in range(self.cfg.nlayer):
+            layer_grad = []
             for uc_ind in range(self.cfg.max_unitcell_size):
-                dest.append(self.compute_grad_norm(layerind, uc_ind))
+                layer_grad.append(self.compute_grad_norm(layerind, uc_ind))
+            dest.append(layer_grad)
         dest = xnp.asarray(dest)
 
         # Enforce ansatz conditions on the gradients
-        dest = np.reshape(dest, self.cfg.param_shape())
         self.cfg.enforce_parameter_conditions(dest)
         return dest
 
@@ -1190,7 +1191,7 @@ class System2DBase(ABC):
             xnp.ndarray: Vector of gradients for the norm
         """
 
-        dest_grad = xnp.zeros(self.cfg.param_shape()[1:], dtype=xnp.float64)
+        dest_grad = xnp.zeros(len(self.symbolvec), dtype=xnp.float64)
         for symbol_ind, symbol in enumerate(self.symbolvec):
             if (layerind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
                 # the derivative calculation is computationally expensive
@@ -1198,11 +1199,11 @@ class System2DBase(ABC):
 
                 # Compute gradient
                 if ggpeps.PREFERRED_BACKEND == "jax":
-                    dest_grad = dest_grad.at[uc_ind, symbol_ind].set(
+                    dest_grad = dest_grad.at[symbol_ind].set(
                         self.compute_grad_over_norm(symbol, layerind, uc_ind)
                     )
                 else:
-                    dest_grad[uc_ind, symbol_ind] = self.compute_grad_over_norm(
+                    dest_grad[symbol_ind] = self.compute_grad_over_norm(
                         symbol, layerind, uc_ind
                     )
         return dest_grad
