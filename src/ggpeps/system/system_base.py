@@ -363,11 +363,11 @@ class System2DBase(ABC):
         self._grad_over_norm_dict: Optional[
             dict[tuple[sympy.Symbol, int, int], float]
         ] = {
-            (var, lay, uc_ind): None
-            for var, lay, uc_ind in it.product(
-                self.symbolvec,
+            (lay, uc_ind, symb): None
+            for lay, uc_ind, symb in it.product(
                 range(self.cfg.nlayer),
                 range(self.cfg.max_unitcell_size),
+                self.symbolvec,
             )
         }
 
@@ -429,11 +429,11 @@ class System2DBase(ABC):
         self._int_energy_op_grad_vec = None
         self._chem_energy_op_grad_vec = None
         self._grad_over_norm_dict = {
-            (var, lay, uc_ind): None
-            for var, lay, uc_ind in it.product(
-                self.symbolvec,
+            (lay, uc_ind, symb): None
+            for lay, uc_ind, symb in it.product(
                 range(self.cfg.nlayer),
                 range(self.cfg.max_unitcell_size),
+                self.symbolvec,
             )
         }
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
@@ -1355,7 +1355,7 @@ class System2DBase(ABC):
         Returns:
             float: Value of the gradient divided by the norm of the state
         """
-        if self._grad_over_norm_dict[(var, layerind, uc_ind)] is None:
+        if self._grad_over_norm_dict[(layerind, uc_ind, var)] is None:
             diff = self.wi_gamma_in_vec[layerind].inv()
             # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
             offset = 2 * self.cfg.lattice.size
@@ -1368,10 +1368,10 @@ class System2DBase(ABC):
 
             # TODO: We might save one matrix-matrix multiplication here
             # The derivd and mat_d_inv are constant
-            self._grad_over_norm_dict[(var, layerind, uc_ind)] = compute_grad_over_norm(
+            self._grad_over_norm_dict[(layerind, uc_ind, var)] = compute_grad_over_norm(
                 self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv
             )
-        return self._grad_over_norm_dict[(var, layerind, uc_ind)]
+        return self._grad_over_norm_dict[(layerind, uc_ind, var)]
 
     ################## Local Gauge ######################
 
