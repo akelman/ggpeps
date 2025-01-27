@@ -375,3 +375,147 @@ class TestSystemBase(unittest.TestCase):
             smat @ self.system_z2_1c.gamma_dirac_layervec_sitevec @ xnp.transpose(smat)
         )
         self.assertTrue((gamma_maj_vec == new_calc).all())
+
+
+class TestSystemBaseDimensions(unittest.TestCase):
+    """Class to test that various attributes of the system have the correct shape."""
+
+    def setUp(self):
+        lat = lattice.Lattice2D(2, 2)
+
+        paramvec2C = np.random.rand(1, 20)
+        cfg2C = system.Z2System2D2CConfig(lat, 0, 0, 0, 0, None)
+        cfg2C.paramvec = paramvec2C
+        self.system_z2_2c = system.Z2System2D(cfg2C)
+
+    def test_paramvec(self):
+
+        paramvec = np.array(self.system_z2_2c.cfg.paramvec)
+        actual_shape = paramvec.shape
+
+        target_shape = self.system_z2_2c.cfg.param_shape()
+        self.assertTrue(actual_shape == target_shape)
+
+    def test_tmat_layervec_unitcellvec(self):
+
+        tmat_layervec_unitcellvec = np.array(
+            self.system_z2_2c.tmat_layervec_unitcellvec
+        )
+        actual_shape = tmat_layervec_unitcellvec.shape
+
+        num_dirac_modes = 1 + 2 * 4  # (1 physical + 2 copies * 4 links)
+        target_shape = (
+            self.system_z2_2c.cfg.nlayer,
+            self.system_z2_2c.cfg.max_unitcell_size,
+            num_dirac_modes,
+            num_dirac_modes,
+        )
+        self.assertTrue(actual_shape == target_shape)
+
+    def test_tmat_layervec_sitevec(self):
+
+        tmat_layervec_sitevec = np.array(self.system_z2_2c.tmat_layervec_sitevec)
+        actual_shape = tmat_layervec_sitevec.shape
+
+        num_dirac_modes = 1 + 2 * 4  # 1 physical + 2 copies * 4 links
+        target_shape = (
+            self.system_z2_2c.cfg.nlayer,
+            self.system_z2_2c.cfg.lattice.size,
+            num_dirac_modes,
+            num_dirac_modes,
+        )
+        self.assertTrue(actual_shape == target_shape)
+
+    def test_gamma_dirac_layervec_sitevec(self):
+
+        gamma_dirac_layervec_sitevec = np.array(
+            self.system_z2_2c.gamma_dirac_layervec_sitevec
+        )
+        actual_shape = gamma_dirac_layervec_sitevec.shape
+
+        num_dirac_modes = 2 * (1 + 2 * 4)  # 2 modes * (1 physical + 2 copies * 4 links)
+        target_shape = (
+            self.system_z2_2c.cfg.nlayer,
+            self.system_z2_2c.cfg.lattice.size,
+            num_dirac_modes,
+            num_dirac_modes,
+        )
+        self.assertTrue(actual_shape == target_shape)
+
+    def test_gamma_maj_layervec_sitevec(self):
+
+        gamma_maj_layervec_sitevec = np.array(
+            self.system_z2_2c.gamma_maj_layervec_sitevec
+        )
+        actual_shape = gamma_maj_layervec_sitevec.shape
+
+        num_maj_modes = 2 * (1 + 2 * 4)  # 2 modes * (1 physical + 2 copies * 4 links)
+        target_shape = (
+            self.system_z2_2c.cfg.nlayer,
+            self.system_z2_2c.cfg.lattice.size,
+            num_maj_modes,
+            num_maj_modes,
+        )
+        self.assertTrue(actual_shape == target_shape)
+
+    def test_gamma_maj_sys_vec(self):
+
+        gamma_maj_sys_vec = np.array(self.system_z2_2c.gamma_maj_sys_vec)
+        actual_shape = gamma_maj_sys_vec.shape
+
+        num_modes_per_site = 2 * (
+            1 + 2 * 4
+        )  # 2 modes * (1 physical + 2 copies * 4 links)
+        num_modes = num_modes_per_site * self.system_z2_2c.cfg.lattice.size
+        target_shape = (
+            self.system_z2_2c.cfg.nlayer,
+            num_modes,
+            num_modes,
+        )
+        self.assertTrue(actual_shape == target_shape)
+
+    def test_gamma_maj_sys_deriv(self):
+
+        symb = self.system_z2_2c.symbolvec[0]  # arbitrarily chosen symbol
+        gamma_maj_sys_deriv_vec = self.system_z2_2c.gamma_maj_sys_deriv_vec(symb)
+        actual_shape = gamma_maj_sys_deriv_vec.shape
+
+        num_modes_per_site = 2 * (
+            1 + 2 * 4
+        )  # 2 modes * (1 physical + 2 copies * 4 links)
+        num_modes = num_modes_per_site * self.system_z2_2c.cfg.lattice.size
+        target_shape = (
+            self.system_z2_2c.cfg.nlayer,
+            self.system_z2_2c.cfg.max_unitcell_size,
+            num_modes,
+            num_modes,
+        )
+        self.assertTrue(actual_shape == target_shape)
+
+    def test_grad_norm(self):
+
+        lay = 0
+        uc_ind = 0
+        symb_ind = 0  # arbitrarily chosen symbol
+        grad_over_norm = self.system_z2_2c.compute_grad_norm(lay, uc_ind)
+        actual_shape = grad_over_norm[symb_ind].shape
+
+        target_shape = self.system_z2_2c.cfg.param_shape()[-1:]
+
+        self.assertTrue(actual_shape == target_shape)
+
+    def test_grad_norm_vec(self):
+
+        grad_over_norm_vec = self.system_z2_2c.compute_grad_norm_vec()
+        actual_shape = grad_over_norm_vec.shape
+
+        target_shape = self.system_z2_2c.cfg.param_shape()
+
+        self.assertTrue(actual_shape == target_shape)
+
+    def test_grad_over_norm_dict(self):
+
+        grad_over_norm_dict = self.system_z2_2c._grad_over_norm_dict
+        key = list(grad_over_norm_dict.keys())[0]  # pick the first key arbitrarily
+
+        self.assertTrue(len(key) == 3)
