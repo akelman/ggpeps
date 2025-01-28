@@ -32,6 +32,30 @@ def main(args, save_path=None):
                     obsvec = np.asarray(
                         dumpobj["mc"].obsdict[args.obs].get_timeseries()
                     )
+                    if (
+                        "grad" in args.obs
+                    ):  # If we are plotting a gradient we need more than jusr the
+                        # observable timeseries to compute the dynamical eom. We need 3 more operators.
+                        obs_without_grad = args.obs[
+                            :-5
+                        ]  # The name of the observable whose gradient we are plotting
+                        op_obsvec = np.asarray(
+                            dumpobj["mc"]
+                            .obsdict[obs_without_grad + "_op"]
+                            .get_timeseries()
+                        )
+                        op_grad_datobsvec = np.asarray(
+                            dumpobj["mc"]
+                            .obsdict[obs_without_grad + "_op_grad"]
+                            .get_timeseries()
+                        )
+                        norm_obsvec = np.asarray(
+                            dumpobj["mc"].obsdict["norm"].get_timeseries()
+                        )
+                        grad_norm_obsvec = np.asarray(
+                            dumpobj["mc"].obsdict["grad_norm"].get_timeseries()
+                        )
+
                     warmup_steps = dumpobj["mc"].cfg.warmup_steps
             else:
                 print(f"Unkown file type {pkl_ext}. Aborting.", file=sys.stderr)
@@ -59,9 +83,12 @@ def main(args, save_path=None):
                 and args.grad_ind is not None
                 and args.layer_num is not None
             ):
-                # if it is a gradient, we plot the graph just for the index.
-                obsvec = obsvec[:, args.layer_num, args.grad_ind]
-            dyn_mean, dyn_eom = compute_dynamic_eom_mean(obsvec, step_numbers)
+                # if it is a gradient, we plot the graph for the specific index and layer num. We also need to compute the dynamic mean and eom differently.
+                op_grad_datobsvec = op_grad_datobsvec[:, args.layer_num, args.grad_ind]
+                grad_norm_obsvec = grad_norm_obsvec[:, args.layer_num, args.grad_ind]
+
+            else:
+                dyn_mean, dyn_eom = compute_dynamic_eom_mean(obsvec, step_numbers)
 
             axvec[0].plot(step_numbers, dyn_mean, "o", label=args.pkl_fname[i])
             axvec[1].plot(time, dyn_eom, "o")
