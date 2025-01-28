@@ -56,6 +56,14 @@ class U1System2DConfig(Config2DBase):
             num_fermionic_layer,
         )
 
+        # Translation invariance
+        self.site_params_dict = {
+            site: 0 for site in range(self.lattice.size)
+        }  # map from site to index of independent parameters
+        self.max_unitcell_size = len(
+            set(self.site_params_dict.values())
+        )  # number of different sets of parameters across sites (min: 1, max: num_sites)
+
     def make_pure_gauge(self):
         # The order of the parameters is [t,y,z]
         for lay in range(self.nlayer):

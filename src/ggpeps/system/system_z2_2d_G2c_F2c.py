@@ -58,6 +58,14 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             num_fermionic_layer,
         )
 
+        # Translation invariance
+        self.site_params_dict = {
+            site: 0 for site in range(self.lattice.size)
+        }  # map from site to index of independent parameters
+        self.max_unitcell_size = len(
+            set(self.site_params_dict.values())
+        )  # number of different sets of parameters across sites (min: 1, max: num_sites)
+
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
         indices_layer_pg = [

@@ -45,6 +45,14 @@ class Z2System2DConfig(Config2DBase):
 
         super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0)
 
+        # Translation invariance
+        self.site_params_dict = {
+            site: 0 for site in range(self.lattice.size)
+        }  # map from site to index of independent parameters
+        self.max_unitcell_size = len(
+            set(self.site_params_dict.values())
+        )  # number of different sets of parameters across sites (min: 1, max: num_sites)
+
         # This is for pure-gauge only atm
         self.num_pg_layer = self.nlayer
         self.num_fermionic_layer = 0
