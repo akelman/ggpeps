@@ -46,6 +46,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=1,
+        unitcell_size=1,
     ):
         super().__init__(
             lattice,
@@ -59,8 +60,10 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         )
 
         # Translation invariance
+        # For now, we use unitcell_size to construct the structure of the translation (in)variance.
+        # More general ways to do so are supported - just change these lines
         self.site_params_dict = {
-            site: 0 for site in range(self.lattice.size)
+            site: site % unitcell_size for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
         self.max_unitcell_size = len(
             set(self.site_params_dict.values())
