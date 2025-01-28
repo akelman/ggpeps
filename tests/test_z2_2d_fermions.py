@@ -14,7 +14,11 @@ class TestZ2C4System(unittest.TestCase):
     def setUp(self):
 
         lat = lattice.Lattice2D(2, 2)
-        paramvec = np.random.rand(2, 20)
+        num_pg_layer = 1
+        num_fermionic_layer = 1
+        nlayer = num_pg_layer + num_fermionic_layer
+        max_unitcell_size = 1
+        paramvec = np.random.rand(nlayer, max_unitcell_size, 20)
         cfg = system.Z2System2D_G2C_F2C_Config(
             lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1
         )
@@ -703,3 +707,36 @@ class TestZ2C4System(unittest.TestCase):
         res = ex_eval.evaluate()
         FM = res["FM_1x1"]
         self.assertAlmostEqual(FM, FM_ed, places=2)
+
+
+class TestTransVariance(unittest.TestCase):
+    """Test the ansatz when it is not translationally invariant."""
+
+    def setUp(self):
+
+        lat = lattice.Lattice2D(2, 2)
+        num_pg_layer = 1
+        num_fermionic_layer = 1
+        nlayer = num_pg_layer + num_fermionic_layer
+        max_unitcell_size = 2
+        paramvec = np.random.rand(nlayer, max_unitcell_size, 20)
+        cfg = system.Z2System2D_G2C_F2C_Config(
+            lat,
+            1,
+            1,
+            1,
+            1,
+            None,
+            num_pg_layer=1,
+            num_fermionic_layer=1,
+            unitcell_size=max_unitcell_size,
+        )
+        cfg.paramvec = paramvec
+        self.system_z2 = system.Z2System2D(cfg)
+        self.system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
+
+    def test_tmat_layervec_sitevec(self):
+        for lay in range(self.system_z2.cfg.nlayer):
+            tmats = self.system_z2.tmat_layervec_sitevec[lay]
+            self.assertTrue(np.allclose(tmats[0], tmats[2]))
+            self.assertFalse(np.allclose(tmats[0], tmats[1]))
