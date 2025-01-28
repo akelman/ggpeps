@@ -783,6 +783,57 @@ def autocorr_rebin_eom(arr):
             return eom, decay_time
 
 
+def product_error_propagation(datavecs, errors=None):
+    """Calculate the error propagation of the product of multiple measurements, i.e. the error of <x>*<y>*...*<z>.
+    Args:
+        datavecs (np.ndarray): Timeseries of measurements
+        errors (list, optional): List of errors for each measurement. If not provided, errors will be calculated.
+
+    Returns:
+        float: Error of the product of the data vectors
+    """
+    if errors is None:
+        errors = [autocorr_rebin_eom(datavec)[0] for datavec in datavecs]
+    means = [np.mean(datavec) for datavec in datavecs]
+    return np.sqrt(
+        sum((err * np.prod(means) / mean) ** 2 for err, mean in zip(errors, means))
+    )
+
+
+def sum_error_propagation(datavecs, errors=None):
+    """Calculate the error propagation of the sum of multiple measurements, i.e. the error of <x> + <y> + ... + <z>.
+    Args:
+        datavecs (np.ndarray): Timeseries of measurements
+        errors (list, optional): List of errors for each measurement. If not provided, errors will be calculated.
+
+    Returns:
+        float: Error of the sum of the data vectors
+    """
+    if errors is None:
+        errors = [autocorr_rebin_eom(datavec)[0] for datavec in datavecs]
+    return np.sqrt(sum(err**2 for err in errors))
+
+
+def compute_grad_err(op_datavec, op_grad_datavec, norm_datavec, grad_norm_datavec):
+    """Compute the error of the gradient of an observable.
+
+    Args:
+        op_datavec(np.ndarray): Timeseries of the observable
+        op_grad_datavec(np.ndarray): Timeseries of the gradient of the observable
+        norm_datavec(np.ndarray): Timeseries of the norm of the ansatz
+        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz
+    Returns:
+        float: Error of the gradient of the observable
+    """
+    # Terms contibuting to the gradient of the mean of the energy
+    term1 = op_grad_datavec
+    term2 = op_datavec * grad_norm_datavec / norm_datavec
+    term1_error = autocorr_rebin_eom(term1)[0]
+    term2_error = autocorr_rebin_eom(term2)[0]
+    term3_error = product_error_propagation([term1, term2], [term1_error, term2_error])
+    return np.sqrt(term1_error**2 + term2_error**2 + term3_error**2)
+
+
 # ========== Debugging Functions ====================
 
 
