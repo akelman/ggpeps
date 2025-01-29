@@ -29,31 +29,37 @@ def main(args, save_path=None):
             if pkl_ext == ".gz":
                 with gzip.open(args.pkl_fname[i], "rb") as infile:
                     dumpobj = pickle.load(infile)
-                    obsvec = np.asarray(
-                        dumpobj["mc"].obsdict[args.obs].get_timeseries()
-                    )
                     if (
-                        "grad" in args.obs
-                    ):  # If we are plotting a gradient we need more than jusr the
+                        args.obs == "energy_grad"
+                    ):  # If we are plotting a gradient we need more than just the
                         # observable timeseries to compute the dynamical eom. We need 3 more operators.
-                        obs_without_grad = args.obs[
-                            :-5
-                        ]  # The name of the observable whose gradient we are plotting
-                        op_obsvec = np.asarray(
+                        energy_obsvec = np.asarray(
+                            dumpobj["mc"].obsdict["energy"].get_timeseries()
+                        )
+                        el_energy_grad = np.asarray(
+                            dumpobj["mc"].obsdict["el_energy_op_grad"].get_timeseries()
+                        )
+                        mass_energy_grad = np.asarray(
                             dumpobj["mc"]
-                            .obsdict[obs_without_grad + "_op"]
+                            .obsdict["mass_energy_op_grad"]
                             .get_timeseries()
                         )
-                        op_grad_datobsvec = np.asarray(
-                            dumpobj["mc"]
-                            .obsdict[obs_without_grad + "_op_grad"]
-                            .get_timeseries()
+                        int_energy_grad = np.asarray(
+                            dumpobj["mc"].obsdict["int_energy_op_grad"].get_timeseries()
+                        )
+
+                        energy_grad_obsvec = (
+                            el_energy_grad + mass_energy_grad + int_energy_grad
                         )
                         norm_obsvec = np.asarray(
                             dumpobj["mc"].obsdict["norm"].get_timeseries()
                         )
                         grad_norm_obsvec = np.asarray(
                             dumpobj["mc"].obsdict["grad_norm"].get_timeseries()
+                        )
+                    else:
+                        obsvec = np.asarray(
+                            dumpobj["mc"].obsdict[args.obs].get_timeseries()
                         )
 
                     warmup_steps = dumpobj["mc"].cfg.warmup_steps
@@ -78,32 +84,48 @@ def main(args, save_path=None):
             else:
                 print(f"Unkown file type {log_ext}. Aborting.", file=sys.stderr)
                 sys.exit(1)
-            if (
-                "grad" in args.obs
-                and args.grad_ind is not None
-                and args.layer_num is not None
-            ):
-                # if it is a gradient, we plot the graph for the specific index and layer num. We also need to compute the dynamic mean and eom differently.
-                op_grad_datobsvec_sliced = op_grad_datobsvec[
-                    :, args.layer_num, args.grad_ind
-                ]
-                grad_norm_obsvec_sliced = grad_norm_obsvec[
-                    :, args.layer_num, args.grad_ind
-                ]
-                dyn_mean, dyn_eom = compute_dynamic_eom_mean_grad(
-                    op_obsvec,
-                    op_grad_datobsvec_sliced,
-                    norm_obsvec,
-                    grad_norm_obsvec,
-                    step_numbers,
-                )
+            if "grad" in args.obs:
+                if args.grad_ind is not None and args.layer_num is not None:
+                    for layer in args.layer_num:
+                        for grad_ind in args.grad_ind:
+                            energy_grad_obsvec_sliced = energy_grad_obsvec[
+                                :, layer, grad_ind
+                            ]  # if it is a gradient, we plot the graph for the specific index and layer num. We also need to compute the dynamic mean and eom differently.
+
+                            grad_norm_obsvec_sliced = grad_norm_obsvec[
+                                :, layer, grad_ind
+                            ]
+                            dyn_mean, dyn_eom = compute_dynamic_eom_mean_grad(
+                                energy_obsvec,
+                                energy_grad_obsvec_sliced,
+                                norm_obsvec,
+                                grad_norm_obsvec_sliced,
+                                step_numbers,
+                            )
+                            axvec[0].plot(
+                                step_numbers,
+                                dyn_mean,
+                                "o",
+                                label="layer "
+                                + str(layer)
+                                + ", grad_ind "
+                                + str(grad_ind),
+                            )
+                            axvec[1].plot(time, dyn_eom, "o")
+                            axvec[2].plot(step_numbers, dyn_eom, "o")
+                else:
+                    print(
+                        "Please provide gradient indices and layer numbers for plotting gradient.",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
 
             else:
                 dyn_mean, dyn_eom = compute_dynamic_eom_mean(obsvec, step_numbers)
 
-            axvec[0].plot(step_numbers, dyn_mean, "o", label=args.pkl_fname[i])
-            axvec[1].plot(time, dyn_eom, "o")
-            axvec[2].plot(step_numbers, dyn_eom, "o")
+                axvec[0].plot(step_numbers, dyn_mean, "o", label=args.pkl_fname[i])
+                axvec[1].plot(time, dyn_eom, "o")
+                axvec[2].plot(step_numbers, dyn_eom, "o")
         else:
             print(
                 f"Files '{args.pkl_fname[i]}' or '{args.log_fname[i]}' not found.",
@@ -149,13 +171,15 @@ def compute_dynamic_eom_mean(obsvec, step_numbers):
 
 
 def compute_dynamic_eom_mean_grad(
-    op_obsvec, op_grad_datobsvec, norm_obsvec, grad_norm_obsvec, step_numbers
+    op_obsvec, op_grad_obsvec, norm_obsvec, grad_norm_obsvec, step_numbers
 ):
-    dyn_eom = []
-    dyn_mean = []
-    for step in step_numbers:
+    dyn_eom = [None]  # It doesn't make sense to compute the eom for the first step.
+    dyn_mean = [None]
+    for step in step_numbers[
+        1:
+    ]:  # We are starting from 1 because we already computed the first step.
         op_dyn = op_obsvec[0 : step + 1]
-        op_grad_dyn = op_grad_datobsvec[0 : step + 1]
+        op_grad_dyn = op_grad_obsvec[0 : step + 1]
         norm_dyn = norm_obsvec[0 : step + 1]
         grad_norm_dyn = grad_norm_obsvec[0 : step + 1]
         eom = utils.compute_grad_err(op_dyn, op_grad_dyn, norm_dyn, grad_norm_dyn)
@@ -174,10 +198,15 @@ if __name__ == "__main__":
     parser.add_argument("--pkl_fname", nargs="+", help="MC pickle file")
     parser.add_argument("--obs", type=str, default="energy", help="Observable")
     parser.add_argument(
-        "--grad_ind", type=int, default=None, help="Gradient index (default: 0)"
+        "--grad_ind",
+        nargs="+",
+        type=int,
+        default=None,
+        help="Gradient indices (default: None)",
     )
     parser.add_argument(
         "--layer_num",
+        nargs="+",
         type=int,
         default=None,
         help="Layer number - when calculating gradient",
