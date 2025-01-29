@@ -84,8 +84,19 @@ def main(args, save_path=None):
                 and args.layer_num is not None
             ):
                 # if it is a gradient, we plot the graph for the specific index and layer num. We also need to compute the dynamic mean and eom differently.
-                op_grad_datobsvec = op_grad_datobsvec[:, args.layer_num, args.grad_ind]
-                grad_norm_obsvec = grad_norm_obsvec[:, args.layer_num, args.grad_ind]
+                op_grad_datobsvec_sliced = op_grad_datobsvec[
+                    :, args.layer_num, args.grad_ind
+                ]
+                grad_norm_obsvec_sliced = grad_norm_obsvec[
+                    :, args.layer_num, args.grad_ind
+                ]
+                dyn_mean, dyn_eom = compute_dynamic_eom_mean_grad(
+                    op_obsvec,
+                    op_grad_datobsvec_sliced,
+                    norm_obsvec,
+                    grad_norm_obsvec,
+                    step_numbers,
+                )
 
             else:
                 dyn_mean, dyn_eom = compute_dynamic_eom_mean(obsvec, step_numbers)
@@ -132,6 +143,23 @@ def compute_dynamic_eom_mean(obsvec, step_numbers):
             eom = utils.rebin_eom(dyn_array, 1)
         else:
             eom = utils.rebin_eom(dyn_array, num_of_bins)
+        dyn_eom.append(eom)
+        dyn_mean.append(mean)
+    return dyn_mean, dyn_eom
+
+
+def compute_dynamic_eom_mean_grad(
+    op_obsvec, op_grad_datobsvec, norm_obsvec, grad_norm_obsvec, step_numbers
+):
+    dyn_eom = []
+    dyn_mean = []
+    for step in step_numbers:
+        op_dyn = op_obsvec[0 : step + 1]
+        op_grad_dyn = op_grad_datobsvec[0 : step + 1]
+        norm_dyn = norm_obsvec[0 : step + 1]
+        grad_norm_dyn = grad_norm_obsvec[0 : step + 1]
+        eom = utils.compute_grad_err(op_dyn, op_grad_dyn, norm_dyn, grad_norm_dyn)
+        mean = utils.compute_grad_mean(op_dyn, grad_norm_dyn, norm_dyn, grad_norm_dyn)
         dyn_eom.append(eom)
         dyn_mean.append(mean)
     return dyn_mean, dyn_eom
