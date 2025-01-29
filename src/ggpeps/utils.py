@@ -834,6 +834,22 @@ def compute_grad_err(op_datavec, op_grad_datavec, norm_datavec, grad_norm_datave
     return np.sqrt(term1_error**2 + term2_error**2 + term3_error**2)
 
 
+def compute_grad_mean(op_datavec, op_grad_datavec, norm_datavec, grad_norm_datavec):
+    """Compute the mean of the gradient of an observable.
+
+    Args:
+        op_datavec(np.ndarray): Timeseries of the observable
+        op_grad_datavec(np.ndarray): Timeseries of the gradient of the observable
+        norm_datavec(np.ndarray): Timeseries of the norm of the ansatz
+        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz
+    Returns:
+        float: Mean of the gradient of the observable
+    """
+    mean = np.mean(op_grad_datavec + op_datavec * grad_norm_datavec / norm_datavec)
+    mean = mean - np.mean(op_datavec) * np.mean(grad_norm_datavec / norm_datavec)
+    return mean
+
+
 # ========== Debugging Functions ====================
 
 
