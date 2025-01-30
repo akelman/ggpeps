@@ -431,9 +431,7 @@ class System2DBase(ABC):
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
         return
 
-    def _exract_partial_covmatvec(
-        self, offset: int
-    ):  # TODO: fix spelling mistake in name
+    def _extract_partial_covmatvec(self, offset: int):
         # We are assuming one physical mode per site
 
         mat_a_vec = self.gamma_maj_sys_vec[:, :offset, :offset]
@@ -695,7 +693,7 @@ class System2DBase(ABC):
         if self._mat_a_vec is None:
             offset = 2 * self.cfg.lattice.size
             self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = (
-                self._exract_partial_covmatvec(offset)
+                self._extract_partial_covmatvec(offset)
             )
         return self._mat_a_vec
 
@@ -711,7 +709,7 @@ class System2DBase(ABC):
         if self._mat_b_vec is None:
             offset = 2 * self.cfg.lattice.size
             self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = (
-                self._exract_partial_covmatvec(offset)
+                self._extract_partial_covmatvec(offset)
             )
         return self._mat_b_vec
 
@@ -727,7 +725,7 @@ class System2DBase(ABC):
         if self._mat_d_vec is None:
             offset = 2 * self.cfg.lattice.size
             self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = (
-                self._exract_partial_covmatvec(offset)
+                self._extract_partial_covmatvec(offset)
             )
         return self._mat_d_vec
 
@@ -774,7 +772,7 @@ class System2DBase(ABC):
         if self._mat_a_mod_vec is None:
             offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = (
-                self._exract_partial_covmatvec(offset)
+                self._extract_partial_covmatvec(offset)
             )
         return self._mat_a_mod_vec
 
@@ -791,7 +789,7 @@ class System2DBase(ABC):
         if self._mat_b_mod_vec is None:
             offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = (
-                self._exract_partial_covmatvec(offset)
+                self._extract_partial_covmatvec(offset)
             )
         return self._mat_b_mod_vec
 
@@ -808,7 +806,7 @@ class System2DBase(ABC):
         if self._mat_d_mod_vec is None:
             offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = (
-                self._exract_partial_covmatvec(offset)
+                self._extract_partial_covmatvec(offset)
             )
         return self._mat_d_mod_vec
 
