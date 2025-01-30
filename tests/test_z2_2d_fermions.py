@@ -710,12 +710,15 @@ class TestZ2C4System(unittest.TestCase):
 
 
 class TestTransVariance(unittest.TestCase):
-    """Test the ansatz when it is not translationally invariant."""
+    """Test the ansatz when it is not translationally invariant.
+    This class only tests the case when even/odd sublattices have different parameters,
+    but parameters are the same within each sublattice.
+    Many of the tests could be adapted to the more general case."""
 
     def setUp(self):
 
         lat = lattice.Lattice2D(2, 2)
-        num_pg_layer = 1
+        num_pg_layer = 0
         num_fermionic_layer = 1
         nlayer = num_pg_layer + num_fermionic_layer
         max_unitcell_size = 2
@@ -727,8 +730,8 @@ class TestTransVariance(unittest.TestCase):
             1,
             1,
             None,
-            num_pg_layer=1,
-            num_fermionic_layer=1,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
             unitcell_size=max_unitcell_size,
         )
         cfg.paramvec = paramvec
@@ -738,5 +741,99 @@ class TestTransVariance(unittest.TestCase):
     def test_tmat_layervec_sitevec(self):
         for lay in range(self.system_z2.cfg.nlayer):
             tmats = self.system_z2.tmat_layervec_sitevec[lay]
-            self.assertTrue(np.allclose(tmats[0], tmats[2]))
+            for tm in tmats[0::2]:
+                # All even sites should have the same T-matrix
+                self.assertTrue(np.allclose(tm, tmats[0]))
+            for tm in tmats[1::2]:
+                # All odd sites should have the same T-matrix
+                self.assertTrue(np.allclose(tm, tmats[1]))
+
+            # The gamma_maj for even and odd sites should be different (with high probability for random parameters)
             self.assertFalse(np.allclose(tmats[0], tmats[1]))
+
+    def test_gamma_maj_layervec_sitevec(self):
+        for lay in range(self.system_z2.cfg.nlayer):
+            gammas = self.system_z2.gamma_maj_layervec_sitevec[lay]
+            for tm in gammas[0::2]:
+                # All even sites should have the same gamma_maj
+                self.assertTrue(np.allclose(tm, gammas[0]))
+            for tm in gammas[1::2]:
+                # All odd sites should have the same gamma_maj
+                self.assertTrue(np.allclose(tm, gammas[1]))
+
+            # The T-matrices for even and odd sites should be different (with high probability for random parameters)
+            self.assertFalse(np.allclose(gammas[0], gammas[1]))
+
+    def test_mat_a_even(self):
+        """If t=0 on a given site, then mat_a should be [[0, 1], [-1, 0]] on that site."""
+        # Set t = 0 on even sites
+        t_inds = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
+        paramvec = self.system_z2.cfg.paramvec
+        for lay in range(self.system_z2.cfg.nlayer):
+            uc_ind = 0  # index for even sites
+            for t_ind in t_inds:
+                paramvec[lay, uc_ind, t_ind] = 0.0
+        self.system_z2.cfg.paramvec = paramvec
+
+        target = np.array([[0, 1], [-1, 0]])
+        mat_a = self.system_z2.mat_a_vec[0]  # we only have one layer in this test
+        for site in range(self.system_z2.cfg.lattice.size):
+            site_ind = 2 * site
+            mat = mat_a[site_ind : site_ind + 2, site_ind : site_ind + 2]
+
+            if site % 2 == 0:
+                # on even sites (where t was set to zero), mat_a should be target
+                self.assertTrue(np.allclose(mat, target))
+            else:
+                # on odd sites, mat_a should not be target
+                self.assertFalse(np.allclose(mat, target))
+
+    def test_mat_a_odd(self):
+        """If t=0 on a given site, then mat_a should be [[0, 1], [-1, 0]] on that site.
+        Same as previous test, but for odd sites."""
+        # Set t = 0 on odd sites
+        t_inds = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
+        paramvec = self.system_z2.cfg.paramvec
+        for lay in range(self.system_z2.cfg.nlayer):
+            uc_ind = 1  # index for odd sites
+            for t_ind in t_inds:
+                paramvec[lay, uc_ind, t_ind] = 0.0
+        self.system_z2.cfg.paramvec = paramvec
+
+        target = np.array([[0, 1], [-1, 0]])
+        mat_a = self.system_z2.mat_a_vec[0]  # we only have one layer in this test
+        for site in range(self.system_z2.cfg.lattice.size):
+            site_ind = 2 * site
+            mat = mat_a[site_ind : site_ind + 2, site_ind : site_ind + 2]
+
+            if site % 2 == 0:
+                # on even sites (where t was set to zero), mat_a should be target
+                self.assertFalse(np.allclose(mat, target))
+            else:
+                # on odd sites, mat_a should not be target
+                self.assertTrue(np.allclose(mat, target))
+
+    def test_mass(self):
+        """Ensure mass on even sites is zero when t = 0 for the even sites."""
+        # Set t = 0 on even sites
+        t_inds = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
+        paramvec = self.system_z2.cfg.paramvec
+        for lay in range(self.system_z2.cfg.nlayer):
+            uc_ind = 0  # index for even sites
+            for t_ind in t_inds:
+                paramvec[lay, uc_ind, t_ind] = 0.0
+        self.system_z2.cfg.paramvec = paramvec
+
+        # Check the mass
+        lay = 0  # we are testing a system with one fermionic layer
+        covmat = self.system_z2.compute_ferm_cov(lay)
+        for site in range(self.system_z2.cfg.lattice.size):
+            site_ind = 2 * site  # index into covariance matrix
+            mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
+
+            if site % 2 == 0:
+                # on even sites (where t was set to zero), mass should be zero
+                self.assertTrue(np.allclose(mass_site, 0))
+            else:
+                # on odd sites, mass should not be zero
+                self.assertFalse(np.allclose(mass_site, 0))
