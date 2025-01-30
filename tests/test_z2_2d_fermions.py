@@ -5,6 +5,7 @@ import numpy as np
 
 from ggpeps import lattice
 from ggpeps import system, exacteval
+from ggpeps.modearray import generate_permutation_matrix
 
 
 # ======================= Z2 fermionic system (4 copies) =======================
@@ -775,7 +776,7 @@ class TestTransVariance(unittest.TestCase):
                 paramvec[lay, uc_ind, t_ind] = 0.0
         self.system_z2.cfg.paramvec = paramvec
 
-        target = np.array([[0, 1], [-1, 0]])
+        target_even = np.array([[0, 1], [-1, 0]])
         mat_a = self.system_z2.mat_a_vec[0]  # we only have one layer in this test
         for site in range(self.system_z2.cfg.lattice.size):
             site_ind = 2 * site
@@ -783,10 +784,23 @@ class TestTransVariance(unittest.TestCase):
 
             if site % 2 == 0:
                 # on even sites (where t was set to zero), mat_a should be target
-                self.assertTrue(np.allclose(mat, target))
+                self.assertTrue(np.allclose(mat, target_even))
             else:
                 # on odd sites, mat_a should not be target
-                self.assertFalse(np.allclose(mat, target))
+                self.assertFalse(np.allclose(mat, target_even))
+
+                # all the odd sites should still be the same as each other
+                mat_site_1 = mat_a[2:4, 2:4]
+                self.assertTrue(np.allclose(mat, mat_site_1))
+
+        # Check that the off-diagonal blocks are zero
+        for site1 in range(self.system_z2.cfg.lattice.size):
+            ind1 = 2 * site1
+            for site2 in range(self.system_z2.cfg.lattice.size):
+                ind2 = 2 * site2
+                if site1 != site2:
+                    block = mat_a[ind1 : ind1 + 2, ind2 : ind2 + 2]
+                    self.assertTrue(np.allclose(block, 0))
 
     def test_mat_a_odd(self):
         """If t=0 on a given site, then mat_a should be [[0, 1], [-1, 0]] on that site.
@@ -800,7 +814,7 @@ class TestTransVariance(unittest.TestCase):
                 paramvec[lay, uc_ind, t_ind] = 0.0
         self.system_z2.cfg.paramvec = paramvec
 
-        target = np.array([[0, 1], [-1, 0]])
+        target_odd = np.array([[0, 1], [-1, 0]])
         mat_a = self.system_z2.mat_a_vec[0]  # we only have one layer in this test
         for site in range(self.system_z2.cfg.lattice.size):
             site_ind = 2 * site
@@ -808,10 +822,138 @@ class TestTransVariance(unittest.TestCase):
 
             if site % 2 == 0:
                 # on even sites (where t was set to zero), mat_a should be target
-                self.assertFalse(np.allclose(mat, target))
+                self.assertFalse(np.allclose(mat, target_odd))
+
+                # all the even sites should still be the same as each other
+                mat_site_0 = mat_a[0:2, 0:2]
+                self.assertTrue(np.allclose(mat, mat_site_0))
             else:
                 # on odd sites, mat_a should not be target
-                self.assertTrue(np.allclose(mat, target))
+                self.assertTrue(np.allclose(mat, target_odd))
+
+        # Check that the off-diagonal blocks are zero
+        for site1 in range(self.system_z2.cfg.lattice.size):
+            ind1 = 2 * site1
+            for site2 in range(self.system_z2.cfg.lattice.size):
+                ind2 = 2 * site2
+                if site1 != site2:
+                    block = mat_a[ind1 : ind1 + 2, ind2 : ind2 + 2]
+                    self.assertTrue(np.allclose(block, 0))
+
+    def test_mat_b_even(self):
+        """If t=0 on a given site, then mat_b should be all zeros on that site."""
+        # Set t = 0 on even sites
+        t_inds = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
+        paramvec = self.system_z2.cfg.paramvec
+        for lay in range(self.system_z2.cfg.nlayer):
+            uc_ind = 0  # index for even sites
+            for t_ind in t_inds:
+                paramvec[lay, uc_ind, t_ind] = 0.0
+        self.system_z2.cfg.paramvec = paramvec
+
+        shape = (2, 2 * self.system_z2.cfg.ncopy * 4)
+        target_even = np.zeros(shape)
+        mat_b = self.system_z2.mat_b_vec[0]  # we only have one layer in this test
+
+        # Change mat_b to site-based mode order
+        modes_link_order = self.system_z2.get_link_based_mode_order()
+        modes_site_order = self.system_z2.get_site_based_mode_order()
+        mat_perm = generate_permutation_matrix(modes_link_order, modes_site_order)
+        mat_b = mat_b @ mat_perm
+
+        for site in range(self.system_z2.cfg.lattice.size):
+            site_ind = 2 * site
+            mat = mat_b[site_ind : site_ind + 2, 8 * site_ind : 8 * (site_ind + 2)]
+
+            if site % 2 == 0:
+                # on even sites (where t was set to zero), mat_b should be target
+                self.assertTrue(np.allclose(mat, target_even))
+            else:
+                # on odd sites, mat_b should not be target
+                self.assertFalse(np.allclose(mat, target_even))
+
+                # all the odd sites should still be the same as each other
+                mat_site_1 = mat_b[2:4, 16:32]
+                self.assertTrue(np.allclose(mat, mat_site_1))
+
+        # Check that the off-diagonal blocks are zero
+        for site1 in range(self.system_z2.cfg.lattice.size):
+            ind1 = 2 * site1
+            for site2 in range(self.system_z2.cfg.lattice.size):
+                ind2 = 2 * site2
+                if site1 != site2:
+                    block = mat_b[ind1 : ind1 + 2, 8 * ind2 : 8 * (ind2 + 2)]
+                    self.assertTrue(np.allclose(block, 0))
+
+    def test_mat_d(self):
+        """Test that the D matrix is the same on all even sites, and the same on all odd sites,
+        and zero where sites are mixed."""
+
+        mat_d = self.system_z2.mat_d_vec[0]  # we only have one layer in this test
+
+        # Change mat_d to site-based mode order
+        modes_link_order = self.system_z2.get_link_based_mode_order()
+        modes_site_order = self.system_z2.get_site_based_mode_order()
+        mat_perm = generate_permutation_matrix(modes_link_order, modes_site_order)
+        mat_perm = np.array(
+            mat_perm
+        )  # multiplication of ModeArray with np.ndarray is not working properly
+        mat_d = np.transpose(mat_perm) @ mat_d @ mat_perm
+
+        mat_site_0 = mat_d[0:16, 0:16]
+        mat_site_1 = mat_d[16:32, 16:32]
+        self.assertFalse(np.allclose(mat_site_0, mat_site_1))
+        for site in range(self.system_z2.cfg.lattice.size):
+            site_ind = 2 * site
+            mat = mat_d[
+                8 * site_ind : 8 * (site_ind + 2), 8 * site_ind : 8 * (site_ind + 2)
+            ]
+
+            if site % 2 == 0:
+                # on even sites mat_d should match site 0
+                self.assertTrue(np.allclose(mat, mat_site_0))
+            else:
+                # on odd sites mat_d should match site 1
+                self.assertTrue(np.allclose(mat, mat_site_1))
+
+        # Check that the off-diagonal blocks are zero
+        for site1 in range(self.system_z2.cfg.lattice.size):
+            ind1 = 2 * site1
+            for site2 in range(self.system_z2.cfg.lattice.size):
+                ind2 = 2 * site2
+                if site1 != site2:
+                    block = mat_d[8 * ind1 : 8 * (ind1 + 2), 8 * ind2 : 8 * (ind2 + 2)]
+                    self.assertTrue(np.allclose(block, 0))
+
+    def test_covmat_even(self):
+        # Set t = 0 on even sites
+        t_inds = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
+        paramvec = self.system_z2.cfg.paramvec
+        for lay in range(self.system_z2.cfg.nlayer):
+            uc_ind = 0  # index for even sites
+            for t_ind in t_inds:
+                paramvec[lay, uc_ind, t_ind] = 0.0
+        self.system_z2.cfg.paramvec = paramvec
+
+        # Check the mass
+        lay = 0  # we are testing a system with one fermionic layer
+        covmat = self.system_z2.compute_ferm_cov(lay)
+
+        target_even = np.array([[0, 1], [-1, 0]])
+        for site in range(self.system_z2.cfg.lattice.size):
+            site_ind = 2 * site
+            mat = covmat[site_ind : site_ind + 2, site_ind : site_ind + 2]
+
+            if site % 2 == 0:
+                # on even sites (where t was set to zero), covmat should be target
+                self.assertTrue(np.allclose(mat, target_even))
+            else:
+                # on odd sites, covmat should not be target
+                self.assertFalse(np.allclose(mat, target_even))
+
+                # all the odd sites should still be the same as each other
+                # mat_site_1 = covmat[2:4, 2:4]
+                # self.assertTrue(np.allclose(mat, mat_site_1))
 
     def test_mass(self):
         """Ensure mass on even sites is zero when t = 0 for the even sites."""
