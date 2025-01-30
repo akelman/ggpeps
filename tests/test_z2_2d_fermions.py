@@ -935,7 +935,10 @@ class TestTransVariance(unittest.TestCase):
                 paramvec[lay, uc_ind, t_ind] = 0.0
         self.system_z2.cfg.paramvec = paramvec
 
-        # Check the mass
+        config = np.array([0] * 7 + [np.pi] * 1)
+        self.system_z2.update_gauge_full_system(config)
+
+        # Check the covmat
         lay = 0  # we are testing a system with one fermionic layer
         covmat = self.system_z2.compute_ferm_cov(lay)
 
@@ -952,8 +955,8 @@ class TestTransVariance(unittest.TestCase):
                 self.assertFalse(np.allclose(mat, target_even))
 
                 # all the odd sites should still be the same as each other
-                # mat_site_1 = covmat[2:4, 2:4]
-                # self.assertTrue(np.allclose(mat, mat_site_1))
+                mat_site_1 = covmat[2:4, 2:4]
+                self.assertTrue(np.allclose(mat, mat_site_1))
 
     def test_mass(self):
         """Ensure mass on even sites is zero when t = 0 for the even sites."""
@@ -965,6 +968,9 @@ class TestTransVariance(unittest.TestCase):
             for t_ind in t_inds:
                 paramvec[lay, uc_ind, t_ind] = 0.0
         self.system_z2.cfg.paramvec = paramvec
+
+        config = np.array([0] * 7 + [np.pi] * 1)
+        self.system_z2.update_gauge_full_system(config)
 
         # Check the mass
         lay = 0  # we are testing a system with one fermionic layer
