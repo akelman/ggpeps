@@ -783,21 +783,26 @@ def autocorr_rebin_eom(arr):
             return eom, decay_time
 
 
-def product_error_propagation(datavecs, errors=None):
-    """Calculate the error propagation of the product of multiple measurements, i.e. the error of <x>*<y>*...*<z>.
+def product_error_propagation(datavec1, datavec2, error1=None, error2=None):
+    """Calculate the error propagation of the product of two measurements, i.e. the error of <x>*<y>.
     Args:
-        datavecs (np.ndarray): Timeseries of measurements
-        errors (list, optional): List of errors for each measurement. If not provided, errors will be calculated.
+        datavec1 (np.ndarray): Timeseries of the first measurement
+        datavec2 (np.ndarray): Timeseries of the second measurement
+        error1 (float, optional): Error of the first measurement. If not provided, error will be calculated.
+        error2 (float, optional): Error of the second measurement. If not provided, error will be calculated.
 
     Returns:
         float: Error of the product of the data vectors
     """
-    if errors is None:
-        errors = [autocorr_rebin_eom(datavec)[0] for datavec in datavecs]
-    means = [np.mean(datavec) for datavec in datavecs]
-    return np.sqrt(
-        sum((err * np.prod(means) / mean) ** 2 for err, mean in zip(errors, means))
-    )
+    if error1 is None:
+        error1 = autocorr_rebin_eom(datavec1)[0]
+    if error2 is None:
+        error2 = autocorr_rebin_eom(datavec2)[0]
+
+    mean1 = np.mean(datavec1)
+    mean2 = np.mean(datavec2)
+
+    return np.sqrt((error1 * mean2) ** 2 + (error2 * mean1) ** 2)
 
 
 def sum_error_propagation(datavecs, errors=None):
@@ -830,7 +835,7 @@ def compute_grad_err(op_datavec, op_grad_datavec, norm_datavec, grad_norm_datave
     term2 = op_datavec * grad_norm_datavec / norm_datavec
     term1_error = autocorr_rebin_eom(term1)[0]
     term2_error = autocorr_rebin_eom(term2)[0]
-    term3_error = product_error_propagation([term1, term2], [term1_error, term2_error])
+    term3_error = product_error_propagation(term1, term2, term1_error, term2_error)
     return np.sqrt(term1_error**2 + term2_error**2 + term3_error**2)
 
 
