@@ -612,9 +612,12 @@ class Z2System2D(System2DBase):
             layer_chem_energy = 0.0
 
             # Calculate chem term
-            # Since the system is translationally invariant, we could just calculate it for one site and multiply by nsites instead
-            for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
-                site_factor = (-1) ** (site_ind)  # even or odd sublattice
+            # Since we set the system to have different parameters on the even and odd sites when using a non-zero
+            # chemical potential (i.e. the system is translationally invariant by two sites),
+            # we could just calculate it for one even and one odd site and multiply by the size of the system
+            for site in range(self.cfg.lattice.size):
+                site_ind = 2 * site
+                site_factor = (-1) ** (site)  # even or odd sublattice
                 layer_chem_energy += (
                     0.5 * site_factor * (1 + covmat[site_ind + 1, site_ind])
                 )
