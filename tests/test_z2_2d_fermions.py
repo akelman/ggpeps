@@ -985,3 +985,50 @@ class TestTransVariance(unittest.TestCase):
             else:
                 # on odd sites, mass should not be zero
                 self.assertFalse(np.allclose(mass_site, 0))
+
+    def test_swap_even_odd(self):
+        """Swapping the parameters on the even and odd sites should:
+        - not change the mass or interaction energy,
+        - multiply the chem energy by minus 1,
+        - swap the blocks in gamma_maj,
+        """
+
+        # Set the gauge configuration
+        config = np.zeros(8)
+        config[0] = np.pi
+        self.system_z2.update_gauge_full_system(config)
+
+        # Use the paramvec from setUp(), and extract various values for comparison
+        gamma_maj_even = self.system_z2.gamma_maj_layervec_sitevec[0][0]
+        mass_op = self.system_z2.mass_energy_op
+        int_op = self.system_z2.int_energy_op
+        chem_op = np.sum(self.system_z2.chem_energy_op_vec)
+
+        # Swap the parameters for the even and odd sites, build a new system
+        new_paramvec = np.copy(self.system_z2.cfg.paramvec)
+        new_paramvec[:, [0, 1], :] = new_paramvec[:, [1, 0], :]
+        cfg = self.system_z2.cfg
+        cfg.paramvec = new_paramvec
+        system_z2 = system.Z2System2D(cfg)
+        system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
+
+        # Set the config for the new system - it must be shifted to account for the swapping of the even/odd sublattices
+        config = np.zeros(8)
+        config[1] = np.pi
+        system_z2.update_gauge_full_system(config)
+
+        # Extract the values from the new system for comparison
+        new_gamma_maj_odd = system_z2.gamma_maj_layervec_sitevec[0][1]
+        new_mass_op = system_z2.mass_energy_op
+        new_int_op = system_z2.int_energy_op
+        new_chem_op = np.sum(system_z2.chem_energy_op_vec)
+
+        # Correct for chem offsets
+        chem_val = chem_op - 2  # 2 is num_fermionic_layer*nsites/2
+        new_chem_val = new_chem_op - 2
+
+        # Compare
+        self.assertTrue(np.allclose(gamma_maj_even, new_gamma_maj_odd))
+        self.assertAlmostEqual(mass_op, new_mass_op)
+        self.assertAlmostEqual(int_op, new_int_op)
+        self.assertAlmostEqual(chem_val, -new_chem_val)
