@@ -182,7 +182,7 @@ class Config2DBase(ABC):
 
     def param_shape(self):
         """Return the shape required for valid parameters."""
-        shape = (self.nlayer, self.max_unitcell_size, self._nparams_per_layer)
+        shape = (self.nlayer, self.unitcell_size, self._nparams_per_layer)
         return shape
 
     def parse_params(self, paramvec, layer, site):
@@ -221,7 +221,7 @@ class Config2DBase(ABC):
         Returns:
             bool: True is ansatz is translationally invariant, False otherwise.
         """
-        return self.max_unitcell_size == 1
+        return self.unitcell_size == 1
 
     @abstractmethod
     def make_pure_gauge(self):
@@ -358,7 +358,7 @@ class System2DBase(ABC):
             (lay, uc_ind, symb): None
             for lay, uc_ind, symb in it.product(
                 range(self.cfg.nlayer),
-                range(self.cfg.max_unitcell_size),
+                range(self.cfg.unitcell_size),
                 self.symbolvec,
             )
         }
@@ -424,7 +424,7 @@ class System2DBase(ABC):
             (lay, uc_ind, symb): None
             for lay, uc_ind, symb in it.product(
                 range(self.cfg.nlayer),
-                range(self.cfg.max_unitcell_size),
+                range(self.cfg.unitcell_size),
                 self.symbolvec,
             )
         }
@@ -494,7 +494,7 @@ class System2DBase(ABC):
             for layer in range(self.cfg.nlayer):
                 tmats = [
                     self._eval_tmat_symb(self.cfg.paramvec[layer][ind])
-                    for ind in range(self.cfg.max_unitcell_size)
+                    for ind in range(self.cfg.unitcell_size)
                 ]
                 self._tmat_layervec_unitcellvec.append(tmats)
         return self._tmat_layervec_unitcellvec
@@ -1107,7 +1107,7 @@ class System2DBase(ABC):
             arr = []
             for lay in range(self.cfg.nlayer):
                 uc_vec = []
-                for uc_ind in range(self.cfg.max_unitcell_size):
+                for uc_ind in range(self.cfg.unitcell_size):
                     gamma_maj_deriv = self.compute_gamma_maj_deriv(symb, lay, uc_ind)
 
                     gamma_maj_derivs_sitevec = []
@@ -1159,7 +1159,7 @@ class System2DBase(ABC):
         dest = []
         for layerind in range(self.cfg.nlayer):
             layer_grad = []
-            for uc_ind in range(self.cfg.max_unitcell_size):
+            for uc_ind in range(self.cfg.unitcell_size):
                 layer_grad.append(self.compute_grad_norm(layerind, uc_ind))
             dest.append(layer_grad)
         dest = xnp.asarray(dest)

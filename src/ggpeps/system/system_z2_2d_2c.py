@@ -40,6 +40,7 @@ class Z2System2D2CConfig(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=0,
+        unitcell_size=1,
     ):
         # The parameters have the following order: [[t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i...],[..next layer..],....]
         if num_fermionic_layer != 0:
@@ -53,9 +54,13 @@ class Z2System2D2CConfig(Config2DBase):
         self.site_params_dict = {
             site: 0 for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
-        self.max_unitcell_size = len(
+        self.unitcell_size = len(
             set(self.site_params_dict.values())
         )  # number of different sets of parameters across sites (min: 1, max: num_sites)
+        if self.unitcell_size != 1:
+            logger.warning(
+                f"This ansatz has not been tested for unit cells of size {self.unitcell_size}."
+            )
 
         # This is for pure-gauge only atm
         self.num_pg_layer = self.nlayer
@@ -77,7 +82,7 @@ class Z2System2D2CConfig(Config2DBase):
         """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t."""
         # The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
         for lay in range(self.nlayer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 self.paramvec[lay, uc_ind, 0] = 0  # Set t1r to 0
                 self.paramvec[lay, uc_ind, 10] = 0  # Set t1i to 0
                 self.paramvec[lay, uc_ind, 3] = 0  # Set t2r to 0

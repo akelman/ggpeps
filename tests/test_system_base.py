@@ -412,7 +412,7 @@ class TestSystemBaseDimensions(unittest.TestCase):
         num_dirac_modes = 1 + 2 * 4  # (1 physical + 2 copies * 4 links)
         target_shape = (
             self.system_z2_2c.cfg.nlayer,
-            self.system_z2_2c.cfg.max_unitcell_size,
+            self.system_z2_2c.cfg.unitcell_size,
             num_dirac_modes,
             num_dirac_modes,
         )
@@ -492,7 +492,7 @@ class TestSystemBaseDimensions(unittest.TestCase):
         num_modes = num_modes_per_site * self.system_z2_2c.cfg.lattice.size
         target_shape = (
             self.system_z2_2c.cfg.nlayer,
-            self.system_z2_2c.cfg.max_unitcell_size,
+            self.system_z2_2c.cfg.unitcell_size,
             num_modes,
             num_modes,
         )

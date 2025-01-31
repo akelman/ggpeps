@@ -43,6 +43,7 @@ class U1System2DConfig(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=0,
+        unitcell_size=1,
     ):
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         super().__init__(
@@ -60,14 +61,18 @@ class U1System2DConfig(Config2DBase):
         self.site_params_dict = {
             site: 0 for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
-        self.max_unitcell_size = len(
+        self.unitcell_size = len(
             set(self.site_params_dict.values())
         )  # number of different sets of parameters across sites (min: 1, max: num_sites)
+        if self.unitcell_size != 1:
+            logger.warning(
+                f"This ansatz has not been tested for unit cells of size {self.unitcell_size}."
+            )
 
     def make_pure_gauge(self):
         # The order of the parameters is [t,y,z]
         for lay in range(self.nlayer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 self.paramvec[lay, uc_ind, 0] = 0
 
     def _create_symbolvec(self):

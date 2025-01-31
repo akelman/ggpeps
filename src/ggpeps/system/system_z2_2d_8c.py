@@ -3,6 +3,7 @@ import logging
 import sympy
 
 # import numpy as np
+import ggpeps
 from ggpeps import xnp as np
 from scipy.linalg import block_diag
 
@@ -11,6 +12,8 @@ from ggpeps.lattice import Direction
 
 from .system_base import Config2DBase, System2DBase
 from .system_base import get_pfaffian_arrays
+
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 ###################### Z2System2D ##########################
@@ -36,6 +39,7 @@ class Z2System2D_8C_Config(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=1,
+        unitcell_size=1,
     ):
         super().__init__(
             lattice,
@@ -52,9 +56,13 @@ class Z2System2D_8C_Config(Config2DBase):
         self.site_params_dict = {
             site: 0 for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
-        self.max_unitcell_size = len(
+        self.unitcell_size = len(
             set(self.site_params_dict.values())
         )  # number of different sets of parameters across sites (min: 1, max: num_sites)
+        if self.unitcell_size != 1:
+            logger.warning(
+                f"This ansatz has not been tested for unit cells of size {self.unitcell_size}."
+            )
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j]] * 8
@@ -101,7 +109,7 @@ class Z2System2D_8C_Config(Config2DBase):
 
         # pure gauge layers
         for layer in range(self.num_pg_layer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 ind = 0
                 copies = [1, 3, 5, 7]  # copies which couple to physical modes
                 for cop in copies:
@@ -112,7 +120,7 @@ class Z2System2D_8C_Config(Config2DBase):
 
         # fermionic layers
         for layer_ind in range(self.num_pg_layer, self.nlayer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 ind = 0
                 copies = [1, 3, 5, 7]  # copies which couple to physical modes
                 for cop in copies:

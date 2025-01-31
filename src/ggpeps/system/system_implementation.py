@@ -300,7 +300,7 @@ class Z2System2D(System2DBase):
                     1 + covmat[site_ind + 1, site_ind]
                 )  # TODO: fix for JAX - NOT NEEDED
 
-                for uc_ind in range(self.cfg.max_unitcell_size):
+                for uc_ind in range(self.cfg.unitcell_size):
                     for symbol_ind, symbol in enumerate(self.symbolvec):
                         if (
                             layer_ind,
@@ -549,7 +549,7 @@ class Z2System2D(System2DBase):
                 layer_int_energy -= vert_link_energy * cos_factor_vert
 
                 # Calculate derivatives
-                for uc_ind in range(self.cfg.max_unitcell_size):
+                for uc_ind in range(self.cfg.unitcell_size):
                     for symbol_ind, symbol in enumerate(self.symbolvec):
                         if (
                             layer_ind,
@@ -623,7 +623,7 @@ class Z2System2D(System2DBase):
                 )
                 layer_chem_energy += 0.5  # constant offset which arises from particle-hole transformation
 
-                for uc_ind in range(self.cfg.max_unitcell_size):
+                for uc_ind in range(self.cfg.unitcell_size):
                     for symbol_ind, symbol in enumerate(self.symbolvec):
                         if (
                             layer_ind,

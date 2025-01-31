@@ -65,9 +65,13 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         self.site_params_dict = {
             site: site % unitcell_size for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
-        self.max_unitcell_size = len(
+        self.unitcell_size = len(
             set(self.site_params_dict.values())
         )  # number of different sets of parameters across sites (min: 1, max: num_sites)
+        if self.unitcell_size not in [1, 2]:
+            logger.warning(
+                f"This ansatz has not been tested for unit cells of size {self.unitcell_size}."
+            )
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
@@ -95,7 +99,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         """
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.nlayer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 for t_ind in t_indices:
                     coord = (layer_ind, uc_ind, t_ind)
                     self.paramvec[coord] = 0
@@ -108,7 +112,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.num_pg_layer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 for t_ind in t_indices:
                     coord = (layer_ind, uc_ind, t_ind)
                     if isinstance(mat, np.ndarray):  # TODO: handle jax better
@@ -130,7 +134,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             15,
         ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
         for layer_ind in range(self.num_pg_layer, self.nlayer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 for ind in zero_for_fermionic_layer:
                     coord = (layer_ind, uc_ind, ind)
                     if isinstance(mat, np.ndarray):

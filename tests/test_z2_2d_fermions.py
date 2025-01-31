@@ -18,8 +18,8 @@ class TestZ2C4System(unittest.TestCase):
         num_pg_layer = 1
         num_fermionic_layer = 1
         nlayer = num_pg_layer + num_fermionic_layer
-        max_unitcell_size = 1
-        paramvec = np.random.rand(nlayer, max_unitcell_size, 20)
+        unitcell_size = 1
+        paramvec = np.random.rand(nlayer, unitcell_size, 20)
         cfg = system.Z2System2D_G2C_F2C_Config(
             lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1
         )
@@ -32,7 +32,7 @@ class TestZ2C4System(unittest.TestCase):
         mat = self.system_z2.cfg.paramvec
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.system_z2.cfg.num_pg_layer):
-            for uc_ind in range(self.system_z2.cfg.max_unitcell_size):
+            for uc_ind in range(self.system_z2.cfg.unitcell_size):
                 for t_ind in t_indices:
                     with self.subTest(tind=t_ind, layerind=layer_ind):
                         coord = (layer_ind, uc_ind, t_ind)
@@ -53,7 +53,7 @@ class TestZ2C4System(unittest.TestCase):
         for layer_ind in range(
             self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer
         ):
-            for uc_ind in range(self.system_z2.cfg.max_unitcell_size):
+            for uc_ind in range(self.system_z2.cfg.unitcell_size):
                 for ind in zero_for_fermionic_layer:
                     with self.subTest(ind=ind, layerind=layer_ind):
                         coord = (layer_ind, uc_ind, ind)
@@ -722,8 +722,8 @@ class TestTransVariance(unittest.TestCase):
         num_pg_layer = 0
         num_fermionic_layer = 1
         nlayer = num_pg_layer + num_fermionic_layer
-        max_unitcell_size = 2
-        paramvec = np.random.rand(nlayer, max_unitcell_size, 20)
+        unitcell_size = 2
+        paramvec = np.random.rand(nlayer, unitcell_size, 20)
         cfg = system.Z2System2D_G2C_F2C_Config(
             lat,
             1,
@@ -733,7 +733,7 @@ class TestTransVariance(unittest.TestCase):
             None,
             num_pg_layer=num_pg_layer,
             num_fermionic_layer=num_fermionic_layer,
-            unitcell_size=max_unitcell_size,
+            unitcell_size=unitcell_size,
         )
         cfg.paramvec = paramvec
         self.system_z2 = system.Z2System2D(cfg)

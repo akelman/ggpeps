@@ -43,6 +43,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=1,
+        unitcell_size=1,
     ):
         super().__init__(
             lattice,
@@ -59,9 +60,13 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
         self.site_params_dict = {
             site: 0 for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
-        self.max_unitcell_size = len(
+        self.unitcell_size = len(
             set(self.site_params_dict.values())
         )  # number of different sets of parameters across sites (min: 1, max: num_sites)
+        if self.unitcell_size != 1:
+            logger.warning(
+                f"This ansatz has not been tested for unit cells of size {self.unitcell_size}."
+            )
 
         # Constants used in the calculation of the electric energy
         prefactors = [
@@ -111,7 +116,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
 
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.num_pg_layer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 for t_ind in t_indices:
                     coord = (layer_ind, uc_ind, t_ind)
                     mat[coord] = 0
@@ -136,7 +141,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
             31,
         ]  # indices of y's, z's in symbolvec
         for layer_ind in range(self.num_pg_layer, self.nlayer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 for ind in zero_for_fermionic_layer:
                     coord = (layer_ind, uc_ind, ind)
                     mat[coord] = 0

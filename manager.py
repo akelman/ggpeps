@@ -272,6 +272,14 @@ def main(args):
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L, args.gauge_fixing)
 
+    # Determine setting for translation invariance
+    if args.unitcell_size != 1:
+        unitcell_size = args.unitcell_size
+    elif np.any(g_chem):
+        unitcell_size = 2
+    else:
+        unitcell_size = 1
+
     # Depending on the parameters, we instantiate different systems
     # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.fermions:
@@ -286,6 +294,7 @@ def main(args):
                 g_chem,
                 num_pg_layer=args.num_pg_layer,
                 num_fermionic_layer=args.num_fermionic_layer,
+                unitcell_size=unitcell_size,
             )
         elif args.ncopy == 4:
             # Z2 system with 6 copies of virtual fermions on the links (2 for the pure gauge case, 4 for interacting with physical fermions)
@@ -395,6 +404,7 @@ def main(args):
         logger.info(f"Gauge fixing: False")
     else:
         logger.info(f"Gauge fixing: {args.gauge_fixing}")
+    logger.info(f"Unit cell size: {unitcell_size}")
     logger.info(f"g (lambda): {g}")
     logger.info(f"g_el: {g_el}")
     logger.info(f"g_mag: {g_mag}")
@@ -674,6 +684,12 @@ if __name__ == "__main__":
         default=False,
         help="Use an ansatz that allows for the inclusion of fermions",
     )  # TODO: improve handling of pure-gauge and fermions arguments
+    parser.add_argument(
+        "--unitcell_size",
+        type=int,
+        default=1,
+        help="Specify the size of the largest unit cell in the system. This determines the degree of translation invariance.",
+    )
 
     # Evaluator settings
     parser.add_argument(
