@@ -349,8 +349,8 @@ class System2DBase(ABC):
         self._mass_energy_op_grad_vec: Optional[xnp.ndarray] = None
         self._int_energy_op_grad_vec: Optional[xnp.ndarray] = None
         self._chem_energy_op_grad_vec = None
-        self._d_gamma_out_symbolvec: Optional[List[List[xnp.ndarray]]] = (
-            None  # gradients of gamma_out for all symbols: first index is layer, second index is symbol
+        self._d_gamma_out_symbolvec: Optional[List[List[List[xnp.ndarray]]]] = (
+            None  # gradients of gamma_out for all symbols: first index is layer, second index uc_ind, third is symbol
         )
         self._grad_over_norm_dict: Optional[
             dict[tuple[sympy.Symbol, int, int], float]
@@ -635,7 +635,9 @@ class System2DBase(ABC):
         if self._d_gamma_out_symbolvec is None:
             self._d_gamma_out_symbolvec = [None] * self.cfg.nlayer
         if self._d_gamma_out_symbolvec[layer] is None:
-            self._d_gamma_out_symbolvec[layer] = []
+            self._d_gamma_out_symbolvec[layer] = [None] * self.cfg.unitcell_size
+        if self._d_gamma_out_symbolvec[layer][uc_ind] is None:
+            self._d_gamma_out_symbolvec[layer][uc_ind] = []
             offset = 2 * self.cfg.lattice.size
 
             for symbol in self.symbolvec:
@@ -657,9 +659,9 @@ class System2DBase(ABC):
                     @ diff_d_gamma_inv
                     @ xnp.transpose(mat_b)
                 )
-                self._d_gamma_out_symbolvec[layer].append(d_gamma_out)
+                self._d_gamma_out_symbolvec[layer][uc_ind].append(d_gamma_out)
 
-        return self._d_gamma_out_symbolvec[layer]
+        return self._d_gamma_out_symbolvec[layer][uc_ind]
 
     @property
     def gamma_maj_sys_vec(self):
