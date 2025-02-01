@@ -589,8 +589,7 @@ class TestZ2C4System(unittest.TestCase):
             deriv_ana[lay, :, :] *= g_chem[lay]
         symbolvec = system_z2_2_2.symbolvec
         for layerind in range(3):
-            # we could skip the first layer, since the first layer does not contribute to the
-            # mass energy
+            # we could skip the pure gauge layers, since they do not contribute
             for ind in range(len(symbolvec)):
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
@@ -719,8 +718,8 @@ class TestTransVariance(unittest.TestCase):
     def setUp(self):
 
         lat = lattice.Lattice2D(2, 2)
-        num_pg_layer = 0
-        num_fermionic_layer = 1
+        num_pg_layer = 1
+        num_fermionic_layer = 2
         nlayer = num_pg_layer + num_fermionic_layer
         unitcell_size = 2
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
@@ -777,7 +776,8 @@ class TestTransVariance(unittest.TestCase):
         self.system_z2.cfg.paramvec = paramvec
 
         target_even = np.array([[0, 1], [-1, 0]])
-        mat_a = self.system_z2.mat_a_vec[0]  # we only have one layer in this test
+        lay = self.system_z2.cfg.num_pg_layer  # the index of the first fermionic layer
+        mat_a = self.system_z2.mat_a_vec[lay]
         for site in range(self.system_z2.cfg.lattice.size):
             site_ind = 2 * site
             mat = mat_a[site_ind : site_ind + 2, site_ind : site_ind + 2]
@@ -815,7 +815,8 @@ class TestTransVariance(unittest.TestCase):
         self.system_z2.cfg.paramvec = paramvec
 
         target_odd = np.array([[0, 1], [-1, 0]])
-        mat_a = self.system_z2.mat_a_vec[0]  # we only have one layer in this test
+        lay = self.system_z2.cfg.num_pg_layer  # the index of the first fermionic layer
+        mat_a = self.system_z2.mat_a_vec[lay]
         for site in range(self.system_z2.cfg.lattice.size):
             site_ind = 2 * site
             mat = mat_a[site_ind : site_ind + 2, site_ind : site_ind + 2]
@@ -853,7 +854,9 @@ class TestTransVariance(unittest.TestCase):
 
         shape = (2, 2 * self.system_z2.cfg.ncopy * 4)
         target_even = np.zeros(shape)
-        mat_b = self.system_z2.mat_b_vec[0]  # we only have one layer in this test
+
+        lay = self.system_z2.cfg.num_pg_layer  # the index of the first fermionic layer
+        mat_b = self.system_z2.mat_b_vec[lay]
 
         # Change mat_b to site-based mode order
         modes_link_order = self.system_z2.get_link_based_mode_order()
@@ -938,25 +941,25 @@ class TestTransVariance(unittest.TestCase):
         config = np.array([0] * 7 + [np.pi] * 1)
         self.system_z2.update_gauge_full_system(config)
 
-        # Check the covmat
-        lay = 0  # we are testing a system with one fermionic layer
-        covmat = self.system_z2.compute_ferm_cov(lay)
+        # Check the covmat for all fermionic layers
+        for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
+            covmat = self.system_z2.compute_ferm_cov(lay)
 
-        target_even = np.array([[0, 1], [-1, 0]])
-        for site in range(self.system_z2.cfg.lattice.size):
-            site_ind = 2 * site
-            mat = covmat[site_ind : site_ind + 2, site_ind : site_ind + 2]
+            target_even = np.array([[0, 1], [-1, 0]])
+            for site in range(self.system_z2.cfg.lattice.size):
+                site_ind = 2 * site
+                mat = covmat[site_ind : site_ind + 2, site_ind : site_ind + 2]
 
-            if site % 2 == 0:
-                # on even sites (where t was set to zero), covmat should be target
-                self.assertTrue(np.allclose(mat, target_even))
-            else:
-                # on odd sites, covmat should not be target
-                self.assertFalse(np.allclose(mat, target_even))
+                if site % 2 == 0:
+                    # on even sites (where t was set to zero), covmat should be target
+                    self.assertTrue(np.allclose(mat, target_even))
+                else:
+                    # on odd sites, covmat should not be target
+                    self.assertFalse(np.allclose(mat, target_even))
 
-                # all the odd sites should still be the same as each other
-                mat_site_1 = covmat[2:4, 2:4]
-                self.assertTrue(np.allclose(mat, mat_site_1))
+                    # all the odd sites should still be the same as each other
+                    mat_site_1 = covmat[2:4, 2:4]
+                    self.assertTrue(np.allclose(mat, mat_site_1))
 
     def test_mass(self):
         """Ensure mass on even sites is zero when t = 0 for the even sites."""
@@ -973,18 +976,18 @@ class TestTransVariance(unittest.TestCase):
         self.system_z2.update_gauge_full_system(config)
 
         # Check the mass
-        lay = 0  # we are testing a system with one fermionic layer
-        covmat = self.system_z2.compute_ferm_cov(lay)
-        for site in range(self.system_z2.cfg.lattice.size):
-            site_ind = 2 * site  # index into covariance matrix
-            mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
+        for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
+            covmat = self.system_z2.compute_ferm_cov(lay)
+            for site in range(self.system_z2.cfg.lattice.size):
+                site_ind = 2 * site  # index into covariance matrix
+                mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
 
-            if site % 2 == 0:
-                # on even sites (where t was set to zero), mass should be zero
-                self.assertTrue(np.allclose(mass_site, 0))
-            else:
-                # on odd sites, mass should not be zero
-                self.assertFalse(np.allclose(mass_site, 0))
+                if site % 2 == 0:
+                    # on even sites (where t was set to zero), mass should be zero
+                    self.assertTrue(np.allclose(mass_site, 0))
+                else:
+                    # on odd sites, mass should not be zero
+                    self.assertFalse(np.allclose(mass_site, 0))
 
     def test_swap_even_odd(self):
         """Swapping the parameters on the even and odd sites should:
@@ -1024,8 +1027,13 @@ class TestTransVariance(unittest.TestCase):
         new_chem_op = np.sum(system_z2.chem_energy_op_vec)
 
         # Correct for chem offsets
-        chem_val = chem_op - 2  # 2 is num_fermionic_layer*nsites/2
-        new_chem_val = new_chem_op - 2
+        chem_offset = (
+            0.5
+            * self.system_z2.cfg.lattice.size
+            * self.system_z2.cfg.num_fermionic_layer
+        )
+        chem_val = chem_op - chem_offset
+        new_chem_val = new_chem_op - chem_offset
 
         # Compare
         self.assertTrue(np.allclose(gamma_maj_even, new_gamma_maj_odd))
@@ -1049,8 +1057,7 @@ class TestTransVariance(unittest.TestCase):
         symbolvec = system_z2.symbolvec
 
         for layerind in range(self.system_z2.cfg.nlayer):
-            # we could skip the first layer, since the first layer does not contribute to the
-            # mass energy
+            # we could skip the pure gauge layers, since they do not contribute
             for uc_ind in range(unitcell_size):
                 for ind in range(len(symbolvec)):
                     with self.subTest(
@@ -1115,8 +1122,7 @@ class TestTransVariance(unittest.TestCase):
         symbolvec = system_z2.symbolvec
 
         for layerind in range(self.system_z2.cfg.nlayer):
-            # we could skip the first layer, since the first layer does not contribute to the
-            # mass energy
+            # we could skip the pure gauge layers, since they do not contribute
             for uc_ind in range(unitcell_size):
                 for ind in range(len(symbolvec)):
                     with self.subTest(
