@@ -246,9 +246,10 @@ class Minimizer:
         if self.min_result is not None:
             sys_cfg = self.evaluator_manager.system_cfg
 
-            # FIXME: Adapt the filenames here
-            fname_mc_summary = f"summary_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_gel_{sys_cfg.g_el:.4f}_gmag_{sys_cfg.g_mag:.4f}_gint_{sys_cfg.g_int:.4f}_gmass_{sys_cfg.g_mass:.4f}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
-            fname_result_min = f"result_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_gel_{sys_cfg.g_el:.4f}_gmag_{sys_cfg.g_mag:.4f}_gint_{sys_cfg.g_int:.4f}_gmass_{sys_cfg.g_mass:.4f}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
+            couplings_str = f"gel_{sys_cfg.g_el}_gmag_{sys_cfg.g_mag}_gint_{sys_cfg.g_int}_gmass_{sys_cfg.g_mass}_gchem_{np.array2string(sys_cfg.g_chem, separator=',')}"
+
+            fname_mc_summary = f"summary_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
+            fname_result_min = f"result_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
 
             self.last_result.save_summary(os.path.join(output_dir, fname_mc_summary))
             with open(os.path.join(output_dir, fname_result_min), "wb") as outfile:
