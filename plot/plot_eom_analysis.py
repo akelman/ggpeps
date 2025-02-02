@@ -68,7 +68,7 @@ def main(args, save_path=None):
 
                     warmup_steps = dumpobj["mc"].cfg.warmup_steps
             else:
-                print(f"Unkown file type {pkl_ext}. Aborting.", file=sys.stderr)
+                print(f"Unknown file type {pkl_ext}. Aborting.", file=sys.stderr)
                 sys.exit(1)
             if log_ext == ".log":
                 with open(args.log_fname[i], "r") as infile:
@@ -94,7 +94,7 @@ def main(args, save_path=None):
                         time.append((timestamp - start_time).total_seconds())
                         step_numbers.append(int(match[1]) - warmup_steps)
             else:
-                print(f"Unkown file type {log_ext}. Aborting.", file=sys.stderr)
+                print(f"Unknown file type {log_ext}. Aborting.", file=sys.stderr)
                 sys.exit(1)
             if args.obs == "energy_grad":
                 if args.grad_ind is not None and args.layer_num is not None:
