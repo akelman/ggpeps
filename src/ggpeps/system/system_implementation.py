@@ -616,8 +616,9 @@ class Z2System2D(System2DBase):
             # chemical potential (i.e. the system is translationally invariant by two sites),
             # we could just calculate it for one even and one odd site and multiply by the size of the system
             for site in range(self.cfg.lattice.size):
-                site_ind = 2 * site
-                site_factor = (-1) ** (site)  # even or odd sublattice
+                site_ind = 2 * site  # index into covariance matrix
+                x, y = self.cfg.lattice.ind2coord(site)
+                site_factor = (-1) ** (x + y)  # even or odd sublattice
                 layer_chem_energy += (
                     0.5 * site_factor * (1 + covmat[site_ind + 1, site_ind])
                 )
