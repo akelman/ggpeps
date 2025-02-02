@@ -1,3 +1,4 @@
+import sys
 import sympy
 import logging
 from typing import List
@@ -59,19 +60,29 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             num_fermionic_layer,
         )
 
-        # Translation invariance
-        # For now, we use unitcell_size to construct the structure of the translation (in)variance.
+        # Translation invariance (or variance)
+        if unitcell_size not in [1, 2]:
+            logger.error(
+                "This ansatz only supports unitcell_size = 1 or 2. \
+                         This can be adapted by adding in a specification in the config to map sites to parameters."
+            )
+            sys.exit(1)
+        # map from site to index of independent parameters (default is unitcell_size = 1)
+        self.site_params_dict = {site: 0 for site in range(self.lattice.size)}
+
+        # For now, we use hard code the unitcell_size = 1 or 2 case
         # More general ways to do so are supported - just change these lines
-        self.site_params_dict = {
-            site: site % unitcell_size for site in range(self.lattice.size)
-        }  # map from site to index of independent parameters
+        if unitcell_size == 2:
+            for site in range(self.lattice.size):
+                x, y = self.lattice.ind2coord(site)
+                uc_ind = 1 if (x + y) % 2 else 0  # 0 for even sublattice, 1 for odd
+                self.site_params_dict[site] = uc_ind
         self.unitcell_size = len(
             set(self.site_params_dict.values())
         )  # number of different sets of parameters across sites (min: 1, max: num_sites)
-        if self.unitcell_size not in [1, 2]:
-            logger.warning(
-                f"This ansatz has not been tested for unit cells of size {self.unitcell_size}."
-            )
+        if self.unitcell_size != unitcell_size:
+            # It should be impossible to reach here
+            raise ValueError("Inconsistent unitcell_size.")
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]

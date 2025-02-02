@@ -53,16 +53,16 @@ class Z2System2D_8C_Config(Config2DBase):
         )
 
         # Translation invariance
+        if unitcell_size not in [1]:
+            logger.error(
+                "This ansatz only supports unitcell_size = 1 or 2. \
+                This can be adapted by adding in a specification in the config to map sites to parameters."
+            )
+            raise ValueError("Invalid unitcell_size.")
         self.site_params_dict = {
             site: 0 for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
-        self.unitcell_size = len(
-            set(self.site_params_dict.values())
-        )  # number of different sets of parameters across sites (min: 1, max: num_sites)
-        if self.unitcell_size != 1:
-            logger.warning(
-                f"This ansatz has not been tested for unit cells of size {self.unitcell_size}."
-            )
+        self.unitcell_size = 1
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j]] * 8
