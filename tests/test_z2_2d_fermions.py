@@ -751,7 +751,7 @@ class TestTransVariance(unittest.TestCase):
                     # even sublattice - all even sites should have the same tmat
                     self.assertTrue(np.allclose(tm, tmats[0]))
 
-            # The gamma_maj for even and odd sites should be different (with high probability for random parameters)
+            # The tmat for even and odd sites should be different (with high probability for random parameters)
             self.assertFalse(np.allclose(tmats[0], tmats[1]))
 
     def test_gamma_maj_layervec_sitevec(self):
@@ -767,7 +767,7 @@ class TestTransVariance(unittest.TestCase):
                     # even sublattice - all even sites should have the same gamma_maj
                     self.assertTrue(np.allclose(gamma, gammas[0]))
 
-            # The T-matrices for even and odd sites should be different (with high probability for random parameters)
+            # The gamma_maj for even and odd sites should be different (with high probability for random parameters)
             self.assertFalse(np.allclose(gammas[0], gammas[1]))
 
     def test_mat_a_even(self):
