@@ -741,12 +741,15 @@ class TestTransVariance(unittest.TestCase):
     def test_tmat_layervec_sitevec(self):
         for lay in range(self.system_z2.cfg.nlayer):
             tmats = self.system_z2.tmat_layervec_sitevec[lay]
-            for tm in tmats[0::2]:
-                # All even sites should have the same T-matrix
-                self.assertTrue(np.allclose(tm, tmats[0]))
-            for tm in tmats[1::2]:
-                # All odd sites should have the same T-matrix
-                self.assertTrue(np.allclose(tm, tmats[1]))
+            for site in range(self.system_z2.cfg.lattice.size):
+                x, y = self.system_z2.cfg.lattice.ind2coord(site)
+                tm = tmats[site]
+                if (x + y) % 2:
+                    # odd sublattice - all odd sites should have the same tmat
+                    self.assertTrue(np.allclose(tm, tmats[1]))
+                else:
+                    # even sublattice - all even sites should have the same tmat
+                    self.assertTrue(np.allclose(tm, tmats[0]))
 
             # The gamma_maj for even and odd sites should be different (with high probability for random parameters)
             self.assertFalse(np.allclose(tmats[0], tmats[1]))
@@ -754,12 +757,15 @@ class TestTransVariance(unittest.TestCase):
     def test_gamma_maj_layervec_sitevec(self):
         for lay in range(self.system_z2.cfg.nlayer):
             gammas = self.system_z2.gamma_maj_layervec_sitevec[lay]
-            for tm in gammas[0::2]:
-                # All even sites should have the same gamma_maj
-                self.assertTrue(np.allclose(tm, gammas[0]))
-            for tm in gammas[1::2]:
-                # All odd sites should have the same gamma_maj
-                self.assertTrue(np.allclose(tm, gammas[1]))
+            for site in range(self.system_z2.cfg.lattice.size):
+                x, y = self.system_z2.cfg.lattice.ind2coord(site)
+                gamma = gammas[site]
+                if (x + y) % 2:
+                    # odd sublattice - all odd sites should have the same gamma_maj
+                    self.assertTrue(np.allclose(gamma, gammas[1]))
+                else:
+                    # even sublattice - all even sites should have the same gamma_maj
+                    self.assertTrue(np.allclose(gamma, gammas[0]))
 
             # The T-matrices for even and odd sites should be different (with high probability for random parameters)
             self.assertFalse(np.allclose(gammas[0], gammas[1]))
@@ -782,7 +788,8 @@ class TestTransVariance(unittest.TestCase):
             site_ind = 2 * site
             mat = mat_a[site_ind : site_ind + 2, site_ind : site_ind + 2]
 
-            if site % 2 == 0:
+            x, y = self.system_z2.cfg.lattice.ind2coord(site)
+            if (x + y) % 2 == 0:
                 # on even sites (where t was set to zero), mat_a should be target
                 self.assertTrue(np.allclose(mat, target_even))
             else:
@@ -821,7 +828,8 @@ class TestTransVariance(unittest.TestCase):
             site_ind = 2 * site
             mat = mat_a[site_ind : site_ind + 2, site_ind : site_ind + 2]
 
-            if site % 2 == 0:
+            x, y = self.system_z2.cfg.lattice.ind2coord(site)
+            if (x + y) % 2 == 0:
                 # on even sites (where t was set to zero), mat_a should be target
                 self.assertFalse(np.allclose(mat, target_odd))
 
@@ -868,7 +876,8 @@ class TestTransVariance(unittest.TestCase):
             site_ind = 2 * site
             mat = mat_b[site_ind : site_ind + 2, 8 * site_ind : 8 * (site_ind + 2)]
 
-            if site % 2 == 0:
+            x, y = self.system_z2.cfg.lattice.ind2coord(site)
+            if (x + y) % 2 == 0:
                 # on even sites (where t was set to zero), mat_b should be target
                 self.assertTrue(np.allclose(mat, target_even))
             else:
@@ -912,7 +921,8 @@ class TestTransVariance(unittest.TestCase):
                 8 * site_ind : 8 * (site_ind + 2), 8 * site_ind : 8 * (site_ind + 2)
             ]
 
-            if site % 2 == 0:
+            x, y = self.system_z2.cfg.lattice.ind2coord(site)
+            if (x + y) % 2 == 0:
                 # on even sites mat_d should match site 0
                 self.assertTrue(np.allclose(mat, mat_site_0))
             else:
@@ -950,7 +960,8 @@ class TestTransVariance(unittest.TestCase):
                 site_ind = 2 * site
                 mat = covmat[site_ind : site_ind + 2, site_ind : site_ind + 2]
 
-                if site % 2 == 0:
+                x, y = self.system_z2.cfg.lattice.ind2coord(site)
+                if (x + y) % 2 == 0:
                     # on even sites (where t was set to zero), covmat should be target
                     self.assertTrue(np.allclose(mat, target_even))
                 else:
@@ -982,7 +993,8 @@ class TestTransVariance(unittest.TestCase):
                 site_ind = 2 * site  # index into covariance matrix
                 mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
 
-                if site % 2 == 0:
+                x, y = self.system_z2.cfg.lattice.ind2coord(site)
+                if (x + y) % 2 == 0:
                     # on even sites (where t was set to zero), mass should be zero
                     self.assertTrue(np.allclose(mass_site, 0))
                 else:
