@@ -58,9 +58,6 @@ def main(args, save_path=None):
                         energy_grad_obsvec = (
                             el_energy_grad + mass_energy_grad + int_energy_grad
                         )
-                        norm_obsvec = np.asarray(
-                            dumpobj["mc"].obsdict["norm"].get_timeseries()
-                        )
                         grad_norm_obsvec = np.asarray(
                             dumpobj["mc"].obsdict["grad_norm"].get_timeseries()
                         )
@@ -79,6 +76,14 @@ def main(args, save_path=None):
                     # Define a regular expression to extract the date, time, and run number
                     pattern = r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) \[DEBUG\] Run: (\d+)"
                     matches = re.findall(pattern, content)
+                    # Add a final match for the "Finished MC measurement" pattern
+                    final_pattern = r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) \[DEBUG\] Finished MC measurement"
+                    final_match = re.findall(final_pattern, content)
+                    if final_match:
+                        diff = int(matches[1][1]) - int(matches[0][1])
+                        matches.append(
+                            (final_match[0], str(int(matches[-1][1]) + diff))
+                        )
                     start_time = datetime.strptime(
                         matches[0][0], "%Y-%m-%d %H:%M:%S,%f"
                     )
@@ -105,24 +110,20 @@ def main(args, save_path=None):
                             dyn_mean, dyn_eom = compute_dynamic_eom_mean_grad(
                                 energy_obsvec,
                                 energy_grad_obsvec_sliced,
-                                norm_obsvec,
                                 grad_norm_obsvec_sliced,
                                 step_numbers,
                             )
-                            if dyn_mean[-1] > 0.1:
-                                axvec[0].plot(
-                                    step_numbers[1:],
-                                    dyn_mean,
-                                    "o",
-                                    label="layer "
-                                    + str(layer)
-                                    + ", grad_ind "
-                                    + str(grad_ind),
-                                )
-                                axvec[1].plot(step_numbers[1:], dyn_eom, "o")
-                                axvec[2].plot(
-                                    step_numbers[1:], np.abs(dyn_eom / dyn_mean), "o"
-                                )
+                            axvec[0].plot(
+                                step_numbers[1:],
+                                dyn_mean,
+                                "o",
+                                label="layer "
+                                + str(layer)
+                                + ", grad_ind "
+                                + str(grad_ind),
+                            )
+                            axvec[1].plot(step_numbers[1:], dyn_eom, "o")
+                            axvec[2].plot(time[1:], dyn_eom, "o")
 
                 else:
                     print(
@@ -135,8 +136,8 @@ def main(args, save_path=None):
                 dyn_mean, dyn_eom = compute_dynamic_eom_mean(obsvec, step_numbers)
 
                 axvec[0].plot(step_numbers, dyn_mean, "o", label=args.pkl_fname[i])
-                axvec[1].plot(time, dyn_eom, "o")
-                axvec[2].plot(step_numbers, dyn_eom, "o")
+                axvec[1].plot(step_numbers, dyn_eom, "o")
+                axvec[2].plot(time, dyn_eom, "o")
         else:
             print(
                 f"Files '{args.pkl_fname[i]}' or '{args.log_fname[i]}' not found.",
@@ -150,11 +151,10 @@ def main(args, save_path=None):
     axvec[1].set_xlabel(f"step number")
     # axvec[1].set_yscale("log")
     # axvec[1].set_xscale("log")
-    axvec[2].set_ylabel(f"EOM/Mean {args.obs}")
+    axvec[2].set_ylabel(f"EOM {args.obs}")
     # axvec[2].set_yscale("log")
     # axvec[2].set_xscale("log")
-    axvec[2].set_xlabel(f"step number")
-    axvec[2].set_ylim(0, 3)
+    axvec[2].set_xlabel(f"time [sec]")
 
     # f.tight_layout()
     if save_path:
@@ -183,7 +183,7 @@ def compute_dynamic_eom_mean(obsvec, step_numbers):
 
 
 def compute_dynamic_eom_mean_grad(
-    op_obsvec, op_grad_obsvec, norm_obsvec, grad_norm_obsvec, step_numbers
+    op_obsvec, op_grad_obsvec, grad_norm_obsvec, step_numbers
 ):
     dyn_eom = []
     dyn_mean = []
@@ -192,10 +192,9 @@ def compute_dynamic_eom_mean_grad(
     ]:  # We are starting from 1 because there is no error at the first step.
         op_dyn = op_obsvec[0 : step + 1]
         op_grad_dyn = op_grad_obsvec[0 : step + 1]
-        norm_dyn = norm_obsvec[0 : step + 1]
         grad_norm_dyn = grad_norm_obsvec[0 : step + 1]
-        eom = utils.compute_grad_err(op_dyn, op_grad_dyn, norm_dyn, grad_norm_dyn)
-        mean = utils.compute_grad_mean(op_dyn, op_grad_dyn, norm_dyn, grad_norm_dyn)
+        eom = utils.compute_grad_err(op_dyn, op_grad_dyn, grad_norm_dyn)
+        mean = utils.compute_grad_mean(op_dyn, op_grad_dyn, grad_norm_dyn)
         dyn_eom.append(eom)
         dyn_mean.append(mean)
     return np.array(dyn_mean), np.array(dyn_eom)
@@ -250,7 +249,7 @@ if __name__ == "__main__":
     obs_lst = ["energy_grad"]
     # Iterate over the folders named 'L_4_gf_F_update_size_1' to 'L_4_gf_F_update_size_15'
     for L in range(2, 7, 2):
-        for g in [0.5, 1.0, 2.5]:
+        for g in [0.1, 1.0, 0.5, 2.5]:
             gz_files = []
             log_files = []
             folder_name = f"L_{L}_g_{g}"
@@ -270,14 +269,14 @@ if __name__ == "__main__":
                 # args.layer_num = layer_num
                 # for grad_ind in range(20):
                 # args.grad_ind = grad_ind
-                # main(
-                #     args,
-                #     gz_files[0][0 : len(base_dir_single) + 10]
-                #     + "_"
-                #     + obs  # + "_layer_num_"
-                #     # + str(args.layer_num)
-                #     # + "_grad_ind_"
-                #     # + str(args.grad_ind)
-                #     + "_eom_analysis.pdf",
-                # )
-                main(args)
+                main(
+                    args,
+                    gz_files[0][0 : len(base_dir_single) + 10]
+                    + "_"
+                    + obs  # + "_layer_num_"
+                    # + str(args.layer_num)
+                    # + "_grad_ind_"
+                    # + str(args.grad_ind)
+                    + "_eom_analysis.pdf",
+                )
+                # main(args)

@@ -819,39 +819,37 @@ def sum_error_propagation(datavecs, errors=None):
     return np.sqrt(sum(err**2 for err in errors))
 
 
-def compute_grad_err(op_datavec, op_grad_datavec, norm_datavec, grad_norm_datavec):
+def compute_grad_err(op_datavec, op_grad_datavec, grad_norm_datavec):
     """Compute the error of the gradient of an observable.
 
     Args:
         op_datavec(np.ndarray): Timeseries of the observable
         op_grad_datavec(np.ndarray): Timeseries of the gradient of the observable
-        norm_datavec(np.ndarray): Timeseries of the norm of the ansatz
-        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz
+        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm of the ansatz
     Returns:
         float: Error of the gradient of the observable
     """
     # Terms contibuting to the gradient of the mean of the energy
     term1 = op_grad_datavec
-    term2 = op_datavec * grad_norm_datavec / norm_datavec
+    term2 = op_datavec * grad_norm_datavec
     term1_error = autocorr_rebin_eom(term1)[0]
     term2_error = autocorr_rebin_eom(term2)[0]
     term3_error = product_error_propagation(term1, term2, term1_error, term2_error)
     return np.sqrt(term1_error**2 + term2_error**2 + term3_error**2)
 
 
-def compute_grad_mean(op_datavec, op_grad_datavec, norm_datavec, grad_norm_datavec):
+def compute_grad_mean(op_datavec, op_grad_datavec, grad_norm_datavec):
     """Compute the mean of the gradient of an observable.
 
     Args:
         op_datavec(np.ndarray): Timeseries of the observable
         op_grad_datavec(np.ndarray): Timeseries of the gradient of the observable
-        norm_datavec(np.ndarray): Timeseries of the norm of the ansatz
-        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz
+        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm of the ansatz
     Returns:
         float: Mean of the gradient of the observable
     """
-    mean = np.mean(op_grad_datavec + op_datavec * grad_norm_datavec / norm_datavec)
-    mean = mean - np.mean(op_datavec) * np.mean(grad_norm_datavec / norm_datavec)
+    mean = np.mean(op_grad_datavec + op_datavec * grad_norm_datavec)
+    mean = mean - np.mean(op_datavec) * np.mean(grad_norm_datavec)
     return mean
 
 
