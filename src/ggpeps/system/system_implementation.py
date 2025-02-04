@@ -705,3 +705,15 @@ class Z2System2D(System2DBase):
                 xnp.abs(layer_val)
             )  # Is the absolute value necessary? why?
         return xnp.array(meson_op_vec)
+
+    def occupation(self, lay: int, site: int) -> float:
+        """Compute the occupation number for the given layer and site.
+
+        Returns:
+            float: the occupation number for the given layer and site
+        """
+
+        covmat = self.compute_ferm_cov(lay)
+        site_ind = 2 * site  # index into covariance matrix
+        mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
+        return mass_site

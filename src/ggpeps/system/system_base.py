@@ -1785,6 +1785,16 @@ class System2DBase(ABC):
         """
         return self.mass_energy_op / self.cfg.lattice.size
 
+    def occupation(self, lay: int, site: int) -> float:
+        """Compute the occupation number for the given layer and site.
+
+        Returns:
+            float: the occupation number for the given layer and site
+        """
+        raise NotImplementedError(
+            "This is an abstract method. Implement in child class please."
+        )
+
     def meson_string(self, path) -> float:
         """Calculate the value of a meson string given a path.
 

@@ -108,6 +108,9 @@ class ExactEvaluator(Evaluator):
             # Meson strings - for now, we compute only "square" meson strings
             for k in range(1, max_string):
                 data[f"square_string_0-0_{k}x{k}"] = []
+            # Occupations
+            for site in range(self.system.cfg.lattice.size):
+                data[f"occupation_site_lay1_{site}"] = []
 
             for config in configvec:
                 self.system.update_gauge_full_system(config)
@@ -155,6 +158,12 @@ class ExactEvaluator(Evaluator):
                         self.system.meson_string(strings[k - 1])
                     )
 
+                # Occupations
+                for site in range(self.system.cfg.lattice.size):
+                    data[f"occupation_site_lay1_{site}"].append(
+                        self.system.occupation(lay=1, site=site)
+                    )
+
             # TODO: handle this better - boundary should not be here!
             if ggpeps.PREFERRED_BACKEND == "jax":
                 for key, val in data.items():
@@ -197,6 +206,12 @@ class ExactEvaluator(Evaluator):
                 # Fredenhagen-Marcu (FM) parameter
                 dest[f"FM_{k}x{k}"] = dest[string_name] / np.sqrt(
                     np.abs(dest[f"wilson_loop_0-0_{k}x{k}"])
+                )
+
+            # Occupations
+            for site in range(self.system.cfg.lattice.size):
+                dest[f"occupation_site_lay1_{site}"] = self.compute_expval(
+                    data[f"occupation_site_lay1_{site}"], normvec
                 )
 
             # The norm that we turn in the end is the actual norm, not the lognorm!
