@@ -353,7 +353,7 @@ class System2DBase(ABC):
             None  # gradients of gamma_out for all symbols: first index is layer, second index uc_ind, third is symbol
         )
         self._grad_over_norm_dict: Optional[
-            dict[tuple[sympy.Symbol, int, int], float]
+            dict[tuple[int, int, sympy.Symbol], float]
         ] = {
             (lay, uc_ind, symb): None
             for lay, uc_ind, symb in it.product(
