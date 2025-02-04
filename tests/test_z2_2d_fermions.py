@@ -938,39 +938,45 @@ class TestTransVariance(unittest.TestCase):
                     block = mat_d[8 * ind1 : 8 * (ind1 + 2), 8 * ind2 : 8 * (ind2 + 2)]
                     self.assertTrue(np.allclose(block, 0))
 
-    def test_covmat_even(self):
-        # Set t = 0 on even sites
-        t_inds = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
-        paramvec = self.system_z2.cfg.paramvec
-        for lay in range(self.system_z2.cfg.nlayer):
-            uc_ind = 0  # index for even sites
-            for t_ind in t_inds:
-                paramvec[lay, uc_ind, t_ind] = 0.0
-        self.system_z2.cfg.paramvec = paramvec
-
-        config = np.array([0] * 7 + [np.pi] * 1)
-        self.system_z2.update_gauge_full_system(config)
+    def test_covmat(self):
 
         # Check the covmat for all fermionic layers
         for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
-            covmat = self.system_z2.compute_ferm_cov(lay)
-
-            target_even = np.array([[0, 1], [-1, 0]])
+            covmats = []
             for site in range(self.system_z2.cfg.lattice.size):
+
+                # Set the gauge configuration -
+                #   there must be some flux, since otherwise the mass will be zero,
+                #   so we choose to set the link to the right of the site under consideration to pi
+                x, y = self.system_z2.cfg.lattice.ind2coord(site)
+                config = np.array([0] * 7 + [0] * 1)
+                ind = self.system_z2.cfg.lattice.coord2ind_dir(
+                    (x, y), lattice.Direction.X
+                )
+                config[ind] = np.pi
+                self.system_z2.update_gauge_full_system(config)
+                covmat = self.system_z2.compute_ferm_cov(lay)
+
                 site_ind = 2 * site
                 mat = covmat[site_ind : site_ind + 2, site_ind : site_ind + 2]
+                covmats.append(mat)
 
+            # Check the covmats
+            covmat_even = covmats[0]
+            covmat_odd = covmats[1]
+            self.assertFalse(
+                np.allclose(covmat_even, covmat_odd)
+            )  # with high probability for random parameters
+            for site in range(self.system_z2.cfg.lattice.size):
+                x, y = self.system_z2.cfg.lattice.ind2coord(site)
+                mat = covmats[site]
                 x, y = self.system_z2.cfg.lattice.ind2coord(site)
                 if (x + y) % 2 == 0:
-                    # on even sites (where t was set to zero), covmat should be target
-                    self.assertTrue(np.allclose(mat, target_even))
+                    # on even sites covmats should be the same
+                    self.assertTrue(np.allclose(mat, covmat_even))
                 else:
-                    # on odd sites, covmat should not be target
-                    self.assertFalse(np.allclose(mat, target_even))
-
-                    # all the odd sites should still be the same as each other
-                    mat_site_1 = covmat[2:4, 2:4]
-                    self.assertTrue(np.allclose(mat, mat_site_1))
+                    # on odd sites covmat should be the same
+                    self.assertTrue(np.allclose(mat, covmat_odd))
 
     def test_mass(self):
         """Ensure mass is the same on all even sites, the same on all odd sites, and different between them."""
