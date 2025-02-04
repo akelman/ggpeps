@@ -973,33 +973,47 @@ class TestTransVariance(unittest.TestCase):
                     self.assertTrue(np.allclose(mat, mat_site_1))
 
     def test_mass(self):
-        """Ensure mass on even sites is zero when t = 0 for the even sites."""
-        # Set t = 0 on even sites
-        t_inds = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
-        paramvec = self.system_z2.cfg.paramvec
-        for lay in range(self.system_z2.cfg.nlayer):
-            uc_ind = 0  # index for even sites
-            for t_ind in t_inds:
-                paramvec[lay, uc_ind, t_ind] = 0.0
-        self.system_z2.cfg.paramvec = paramvec
-
-        config = np.array([0] * 7 + [np.pi] * 1)
-        self.system_z2.update_gauge_full_system(config)
+        """Ensure mass is the same on all even sites, the same on all odd sites, and different between them."""
 
         # Check the mass
+        mass_even = 0
         for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
-            covmat = self.system_z2.compute_ferm_cov(lay)
+
+            # Calculate the mass for each site
+            masses = []
             for site in range(self.system_z2.cfg.lattice.size):
+
+                # Set the gauge configuration -
+                #   there must be some flux, since otherwise the mass will be zero,
+                #   so we choose to set the link to the right of the site under consideration to pi
+                x, y = self.system_z2.cfg.lattice.ind2coord(site)
+                config = np.array([0] * 7 + [0] * 1)
+                ind = self.system_z2.cfg.lattice.coord2ind_dir(
+                    (x, y), lattice.Direction.X
+                )
+                config[ind] = np.pi
+                self.system_z2.update_gauge_full_system(config)
+                covmat = self.system_z2.compute_ferm_cov(lay)
+
                 site_ind = 2 * site  # index into covariance matrix
                 mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
+                masses.append(mass_site)
 
+            # Check the masses
+            mass_even = masses[0]
+            mass_odd = masses[1]
+            self.assertFalse(
+                np.allclose(mass_even, mass_odd)
+            )  # with high probability for random parameters
+            for site in range(self.system_z2.cfg.lattice.size):
                 x, y = self.system_z2.cfg.lattice.ind2coord(site)
+                mass_site = masses[site]
                 if (x + y) % 2 == 0:
                     # on even sites (where t was set to zero), mass should be zero
-                    self.assertTrue(np.allclose(mass_site, 0))
+                    self.assertTrue(np.allclose(mass_site, mass_even))
                 else:
                     # on odd sites, mass should not be zero
-                    self.assertFalse(np.allclose(mass_site, 0))
+                    self.assertTrue(np.allclose(mass_site, mass_odd))
 
     def test_swap_even_odd(self):
         """Swapping the parameters on the even and odd sites should:
