@@ -619,9 +619,8 @@ class Z2System2D(System2DBase):
                 site_ind = 2 * site  # index into covariance matrix
                 x, y = self.cfg.lattice.ind2coord(site)
                 site_factor = (-1) ** (x + y)  # even or odd sublattice
-                layer_chem_energy += (
-                    0.5 * site_factor * (1 + covmat[site_ind + 1, site_ind])
-                )
+                mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
+                layer_chem_energy += site_factor * mass_site
                 layer_chem_energy += 0.5  # constant offset which arises from particle-hole transformation
 
                 for uc_ind in range(self.cfg.unitcell_size):
