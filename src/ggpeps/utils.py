@@ -834,7 +834,7 @@ def compute_grad_err(op_datavec, op_grad_datavec, grad_norm_datavec):
     term2 = op_datavec * grad_norm_datavec
     term1_error = autocorr_rebin_eom(term1)[0]
     term2_error = autocorr_rebin_eom(term2)[0]
-    term3_error = product_error_propagation(term1, term2, term1_error, term2_error)
+    term3_error = product_error_propagation(op_datavec, grad_norm_datavec)
     return np.sqrt(term1_error**2 + term2_error**2 + term3_error**2)
 
 
