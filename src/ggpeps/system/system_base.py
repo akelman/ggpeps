@@ -296,6 +296,7 @@ class System2DBase(ABC):
         self.cfg: Config2DBase = cfg
 
         # All variables that contain _vec are arrays of length nlayer in the first dimension.
+        # Other types of vec are indicated by layervec, sitevec, etc.
 
         # Parameter based matrices
         self._tmat_layervec_unitcellvec: Optional[List[List[xnp.ndarray]]] = None
