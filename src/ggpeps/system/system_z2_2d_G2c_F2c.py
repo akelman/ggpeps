@@ -132,18 +132,22 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
                         mat = mat.at[coord].set(0)
                     zeroed_params.append(coord)
 
-        zero_for_fermionic_layer = [
-            3,
-            13,
-            1,
-            2,
-            4,
-            5,
-            11,
-            12,
-            14,
-            15,
-        ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
+        u1_symmetry = False  # set to True if you want to enforce U(1) symmetry in the fermionic layer
+        if u1_symmetry:
+            zero_for_fermionic_layer = [
+                3,
+                13,
+                1,
+                2,
+                4,
+                5,
+                11,
+                12,
+                14,
+                15,
+            ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
+        else:
+            zero_for_fermionic_layer = []
         for layer_ind in range(self.num_pg_layer, self.nlayer):
             for uc_ind in range(self.unitcell_size):
                 for ind in zero_for_fermionic_layer:
