@@ -803,7 +803,7 @@ def autocorr_rebin_data(arr):
             binsize = i
             break
     rebinned_array = rebin_array(arr, binsize)
-    return rebinned_array
+    return rebinned_array, binsize
 
 
 def jackknife_resampling(data):
@@ -813,7 +813,7 @@ def jackknife_resampling(data):
     resamples = np.zeros(n)
     for i in range(n):
         resamples[i] = np.mean(data[indices != i])
-    return np.mean(resamples)
+    return resamples
 
 
 def jacknife_gradient_error_propagation(op_datavec, op_grad_datavec, grad_norm_datavec):
@@ -857,9 +857,30 @@ def compute_grad_err(op_datavec, op_grad_datavec, grad_norm_datavec):
     Returns:
         float: Error of the gradient of the observable
     """
-    op_datavec_rebinned = autocorr_rebin_data(op_datavec)
-    op_grad_datavec_rebinned = autocorr_rebin_data(op_grad_datavec)
-    grad_norm_datavec_rebinned = autocorr_rebin_data(grad_norm_datavec)
+    op_datavec_rebinned, op_datavec_rebinned_binsize = autocorr_rebin_data(op_datavec)
+    op_grad_datavec_rebinned, op_grad_datavec_rebinned_binsize = autocorr_rebin_data(
+        op_grad_datavec
+    )
+    grad_norm_datavec_rebinned, grad_norm_datavec_rebinned_binsize = (
+        autocorr_rebin_data(grad_norm_datavec)
+    )
+    max_binsize = max(
+        op_datavec_rebinned_binsize,
+        op_grad_datavec_rebinned_binsize,
+        grad_norm_datavec_rebinned_binsize,
+    )
+
+    if (
+        max_binsize > op_datavec_rebinned_binsize
+    ):  # All arrays should be of the same size, so we pick the largest binsize
+        op_datavec_rebinned = rebin_array(op_datavec, max_binsize)
+    if max_binsize > op_grad_datavec_rebinned_binsize:
+        op_grad_datavec_rebinned = rebin_array(op_grad_datavec, max_binsize)
+    if max_binsize > grad_norm_datavec_rebinned_binsize:
+        grad_norm_datavec_rebinned = rebin_array(
+            grad_norm_datavec,
+            max_binsize,
+        )
     return jacknife_gradient_error_propagation(
         op_datavec_rebinned, op_grad_datavec_rebinned, grad_norm_datavec_rebinned
     )
