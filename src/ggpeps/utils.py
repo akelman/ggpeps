@@ -783,40 +783,68 @@ def autocorr_rebin_eom(arr):
             return eom, decay_time
 
 
-def product_error_propagation(datavec1, datavec2, error1=None, error2=None):
-    """Calculate the error propagation of the product of two measurements, i.e. the error of <x>*<y>.
+def autocorr_rebin_data(arr):
+    """
+    Rebin the data to remove autocorrelation.
+    The binsize is determined by the first two elements of the autocorrelation function that are below 1/100.
+
     Args:
-        datavec1 (np.ndarray): Timeseries of the first measurement
-        datavec2 (np.ndarray): Timeseries of the second measurement
-        error1 (float, optional): Error of the first measurement. If not provided, error will be calculated.
-        error2 (float, optional): Error of the second measurement. If not provided, error will be calculated.
+        arr (np.ndarray): Timeseries of a measurement
+    Returns:
+        np.ndarray: Rebinend data
+    """
+    N = len(arr)
+    autocorr_array = autocorr_fft(arr)
+    for i in range(len(autocorr_array)):  # find first two elements below 1/100
+        if i >= N / 10:  # limit the number of binsto a minimum of 10.
+            binsize = i
+            break
+        elif autocorr_array[i] <= 1 / 100 and autocorr_array[i + 1] <= 1 / 100:
+            binsize = i
+            break
+    rebinned_array = rebin_array(arr, binsize)
+    return rebinned_array
+
+
+def jackknife_resampling(data):
+    """Generate jackknife resamples of the data."""
+    n = len(data)
+    indices = np.arange(n)
+    resamples = np.zeros(n)
+    for i in range(n):
+        resamples[i] = np.mean(data[indices != i])
+    return np.mean(resamples)
+
+
+def jacknife_gradient_error_propagation(op_datavec, op_grad_datavec, grad_norm_datavec):
+    """Calculate the error propagation of the gradient of an observable using jackknife resampling.
+
+    Args:
+        op_datavec (np.ndarray): Timeseries of the observable - rebinned data, i.e., not autocorrelation
+        op_grad_datavec (np.ndarray): Timeseries of the gradient of the observable - rebinned data, i.e., not autocorrelation
+        grad_norm_datavec (np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm of the ansatz
+        - rebinned data, i.e., not autocorrelation
 
     Returns:
-        float: Error of the product of the data vectors
+        float: Error of the gradient of the observable
     """
-    if error1 is None:
-        error1 = autocorr_rebin_eom(datavec1)[0]
-    if error2 is None:
-        error2 = autocorr_rebin_eom(datavec2)[0]
+    op_datavec_resamples = jackknife_resampling(op_datavec)
+    op_grad_datavec_resamples = jackknife_resampling(op_grad_datavec)
+    grad_norm_datavec_resamples = jackknife_resampling(grad_norm_datavec)
+    op_times_grad_norm_resamples = jackknife_resampling(op_datavec * grad_norm_datavec)
+    mean_grad = np.mean(
+        op_grad_datavec_resamples
+        + op_times_grad_norm_resamples
+        - op_datavec_resamples * grad_norm_datavec_resamples
+    )
+    grad_jacknife = (
+        op_grad_datavec_resamples
+        + op_times_grad_norm_resamples
+        - op_datavec_resamples * grad_norm_datavec_resamples
+    )
+    n = len(grad_jacknife)
 
-    mean1 = np.mean(datavec1)
-    mean2 = np.mean(datavec2)
-
-    return np.sqrt((error1 * mean2) ** 2 + (error2 * mean1) ** 2)
-
-
-def sum_error_propagation(datavecs, errors=None):
-    """Calculate the error propagation of the sum of multiple measurements, i.e. the error of <x> + <y> + ... + <z>.
-    Args:
-        datavecs (np.ndarray): Timeseries of measurements
-        errors (list, optional): List of errors for each measurement. If not provided, errors will be calculated.
-
-    Returns:
-        float: Error of the sum of the data vectors
-    """
-    if errors is None:
-        errors = [autocorr_rebin_eom(datavec)[0] for datavec in datavecs]
-    return np.sqrt(sum(err**2 for err in errors))
+    return np.sqrt((n - 1) * np.mean((grad_jacknife - mean_grad) ** 2))
 
 
 def compute_grad_err(op_datavec, op_grad_datavec, grad_norm_datavec):
@@ -829,13 +857,12 @@ def compute_grad_err(op_datavec, op_grad_datavec, grad_norm_datavec):
     Returns:
         float: Error of the gradient of the observable
     """
-    # Terms contibuting to the gradient of the mean of the energy
-    term1 = op_grad_datavec
-    term2 = op_datavec * grad_norm_datavec
-    term1_error = autocorr_rebin_eom(term1)[0]
-    term2_error = autocorr_rebin_eom(term2)[0]
-    term3_error = product_error_propagation(op_datavec, grad_norm_datavec)
-    return np.sqrt(term1_error**2 + term2_error**2 + term3_error**2)
+    op_datavec_rebinned = autocorr_rebin_data(op_datavec)
+    op_grad_datavec_rebinned = autocorr_rebin_data(op_grad_datavec)
+    grad_norm_datavec_rebinned = autocorr_rebin_data(grad_norm_datavec)
+    return jacknife_gradient_error_propagation(
+        op_datavec_rebinned, op_grad_datavec_rebinned, grad_norm_datavec_rebinned
+    )
 
 
 def compute_grad_mean(op_datavec, op_grad_datavec, grad_norm_datavec):
