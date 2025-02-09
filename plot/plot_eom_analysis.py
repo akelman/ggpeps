@@ -135,9 +135,11 @@ def main(args, save_path=None):
             else:
                 dyn_mean, dyn_eom = compute_dynamic_eom_mean(obsvec, step_numbers)
 
-                axvec[0].plot(step_numbers, dyn_mean, "o", label=args.pkl_fname[i])
-                axvec[1].plot(step_numbers, dyn_eom, "o")
-                axvec[2].plot(time, dyn_eom, "o")
+                axvec[0].plot(
+                    step_numbers[1:], dyn_mean[1:], "o", label=args.pkl_fname[i]
+                )
+                axvec[1].plot(step_numbers[1:], dyn_eom[1:], "o")
+                axvec[2].plot(time[1:], dyn_eom[1:], "o")
         else:
             print(
                 f"Files '{args.pkl_fname[i]}' or '{args.log_fname[i]}' not found.",
