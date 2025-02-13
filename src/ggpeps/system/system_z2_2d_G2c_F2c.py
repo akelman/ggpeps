@@ -84,6 +84,11 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             # It should be impossible to reach here
             raise ValueError("Inconsistent unitcell_size.")
 
+        # U1 invariance
+        # set to True if you want to enforce U(1) symmetry in the fermionic layers
+        # (set to False to allow fermionic number to float between sectors)
+        self.u1_symmetry = True
+
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
         indices_layer_pg = [
@@ -132,8 +137,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
                         mat = mat.at[coord].set(0)
                     zeroed_params.append(coord)
 
-        u1_symmetry = False  # set to True if you want to enforce U(1) symmetry in the fermionic layer
-        if u1_symmetry:
+        if self.u1_symmetry:
             zero_for_fermionic_layer = [
                 3,
                 13,
