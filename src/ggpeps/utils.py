@@ -695,15 +695,19 @@ def rebin_array(a, R):
         # Shape (N): N samples of scalars
         dest = np.mean(a[:max_fit].reshape(-1, R), axis=1)
     elif a.ndim == 2:
-        # Shape (N,n,m): N samples of m-dim vecotrs
+        # Shape (N,m): N samples of m-dim vecotrs
         N, m = a.shape
         dest = np.mean(a[:max_fit].reshape(-1, m, R), axis=2)
     elif a.ndim == 3:
-        # Shape (N,n,m): N samples of n x m matrices
+        # Shape (N,m,n): N samples of m x n matrices
         N, m, n = a.shape
         dest = np.mean(a[:max_fit].reshape(-1, m, n, R), axis=3)
+    elif a.ndim == 4:
+        # Shape (N,p,m,n): N samples of p x m x n tensors
+        N, p, m, n = a.shape
+        dest = np.mean(a[:max_fit].reshape(-1, p, m, n, R), axis=4)
     else:
-        logger.error("rebin_array not implemented for dimensions greater than 3.")
+        logger.error("rebin_array not implemented for dimensions greater than 4.")
         return a
     return dest
 
@@ -856,7 +860,7 @@ def show_eigenvalues(mat):
 
 
 def get_couplings_from_foldername(fname):
-    couplings = ["g", "el", "mag", "int", "mass"]
+    couplings = ["g", "el", "mag", "int", "mass", "chem"]
     res = ""
     for arg in couplings:
         pattern = rf"(?<={arg}_)[\d]*.[\d]*"

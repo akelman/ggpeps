@@ -222,7 +222,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
         self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
 
-        # These values could be calculated in a post-processing step
+        # Most of these values could be calculated in a post-processing step
         self.obsdict["energy"].append(self.system.energy)
         self.obsdict["el_energy"].append(self.system.el_energy)
         self.obsdict["mag_energy"].append(self.system.mag_energy)
@@ -317,7 +317,28 @@ class MonteCarloEvaluator(Evaluator):
         # Add the constants back into the expression of the mass energy
         mass_energy_grad = self.system.cfg.g_mass * mass_energy_op_grad
 
-        return mag_energy_grad + el_energy_grad + int_energy_grad + mass_energy_grad
+        # Gradient of the chemical potential
+        meas_chem_energy = self.obsdict["chem_energy"]
+        meas_chem_energy_op_grad = self.obsdict["chem_energy_op_grad"]
+        for lay in range(self.system.cfg.nlayer):
+            # the gradients must be scaled by the chemical potential
+            meas_chem_energy_op_grad.datavec[lay] *= self.system.cfg.g_chem[lay]
+        prod_chem_energy_grad = meas_chem_energy * meas_grad_over_norm
+        chem_energy_grad = (
+            prod_chem_energy_grad.mean()
+            - meas_chem_energy.mean() * meas_grad_over_norm.mean()
+            + meas_chem_energy_op_grad.mean()
+        )
+
+        # Total gradient
+        grad = (
+            mag_energy_grad
+            + el_energy_grad
+            + int_energy_grad
+            + mass_energy_grad
+            + chem_energy_grad
+        )
+        return grad
 
     def warmup(self):
         """Warm up phase without measurement"""
