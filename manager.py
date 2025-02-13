@@ -404,7 +404,7 @@ def main(args):
         logger.info(f"Gauge fixing: False")
     else:
         logger.info(f"Gauge fixing: {args.gauge_fixing}")
-    logger.info(f"Unit cell size: {unitcell_size}")
+    logger.info(f"Unit cell size: {system_cfg.unitcell_size}")
     logger.info(f"g (lambda): {g}")
     logger.info(f"g_el: {g_el}")
     logger.info(f"g_mag: {g_mag}")
