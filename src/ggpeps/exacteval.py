@@ -81,6 +81,15 @@ class ExactEvaluator(Evaluator):
                 for k in range(1, max_string)
             ]
 
+            # Occupations
+            if self.system.cfg.num_fermionic_layer >= 1:
+                # for now, we'll save the occupations on just the first fermionic layer
+                # this is the index of the first fermionic layer:
+                target_lay = self.system.cfg.num_pg_layer
+            else:
+                # no need to save occupations
+                target_lay = False
+
             data = {
                 "energy": [],
                 "norm": [],
@@ -109,8 +118,9 @@ class ExactEvaluator(Evaluator):
             for k in range(1, max_string):
                 data[f"square_string_0-0_{k}x{k}"] = []
             # Occupations
-            for site in range(self.system.cfg.lattice.size):
-                data[f"occupation_site_lay1_{site}"] = []
+            if target_lay:
+                for site in range(self.system.cfg.lattice.size):
+                    data[f"occupation_site_lay{target_lay}_{site}"] = []
 
             for config in configvec:
                 self.system.update_gauge_full_system(config)
@@ -159,10 +169,11 @@ class ExactEvaluator(Evaluator):
                     )
 
                 # Occupations
-                for site in range(self.system.cfg.lattice.size):
-                    data[f"occupation_site_lay1_{site}"].append(
-                        self.system.occupation(lay=1, site=site)
-                    )
+                if target_lay:
+                    for site in range(self.system.cfg.lattice.size):
+                        data[f"occupation_site_lay{target_lay}_{site}"].append(
+                            self.system.occupation(lay=target_lay, site=site)
+                        )
 
             # TODO: handle this better - boundary should not be here!
             if ggpeps.PREFERRED_BACKEND == "jax":
@@ -209,10 +220,13 @@ class ExactEvaluator(Evaluator):
                 )
 
             # Occupations
-            for site in range(self.system.cfg.lattice.size):
-                dest[f"occupation_site_lay1_{site}"] = self.compute_expval(
-                    data[f"occupation_site_lay1_{site}"], normvec
-                )
+            if target_lay:
+                for site in range(self.system.cfg.lattice.size):
+                    dest[f"occupation_site_lay{target_lay}_{site}"] = (
+                        self.compute_expval(
+                            data[f"occupation_site_lay{target_lay}_{site}"], normvec
+                        )
+                    )
 
             # The norm that we turn in the end is the actual norm, not the lognorm!
             dest["norm"] = np.sum(normvec)
