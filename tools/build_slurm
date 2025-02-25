@@ -19,7 +19,7 @@ def folder2arg(foldername, arg):
             elif result.group(0) == "F":
                 return ""  # relies on the fact that the default value for gauge_fixing is False
             else:
-                return f"--{arg} {result.group(0)}"
+                return f"--gauge_fixing {result.group(0)}"
         else:
             return ""
 
