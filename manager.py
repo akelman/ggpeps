@@ -295,6 +295,7 @@ def main(args):
                 num_pg_layer=args.num_pg_layer,
                 num_fermionic_layer=args.num_fermionic_layer,
                 unitcell_size=unitcell_size,
+                enforce_u1_symmetry=not args.relax_u1,
             )
         elif args.ncopy == 4:
             # Z2 system with 6 copies of virtual fermions on the links (2 for the pure gauge case, 4 for interacting with physical fermions)
@@ -405,6 +406,7 @@ def main(args):
     else:
         logger.info(f"Gauge fixing: {args.gauge_fixing}")
     logger.info(f"Unit cell size: {system_cfg.unitcell_size}")
+    logger.info(f"Enforce U(1) number conservation: {not args.relax_u1}")
     logger.info(f"g (lambda): {g}")
     logger.info(f"g_el: {g_el}")
     logger.info(f"g_mag: {g_mag}")
@@ -689,6 +691,12 @@ if __name__ == "__main__":
         type=int,
         default=1,
         help="Specify the size of the largest unit cell in the system. This determines the degree of translation invariance.",
+    )
+    parser.add_argument(
+        "--relax_u1",
+        action="store_true",
+        default=False,
+        help="Allow the system to disobey the global U(1) (fermionic number) symmetry.",
     )
 
     # Evaluator settings

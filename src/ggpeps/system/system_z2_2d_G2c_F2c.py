@@ -48,6 +48,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         num_pg_layer=1,
         num_fermionic_layer=1,
         unitcell_size=1,
+        enforce_u1_symmetry=True,
     ):
         super().__init__(
             lattice,
@@ -87,7 +88,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         # U1 invariance
         # set to True if you want to enforce U(1) symmetry in the fermionic layers
         # (set to False to allow fermionic number to float between sectors)
-        self.u1_symmetry = True
+        self.u1_symmetry = enforce_u1_symmetry
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
