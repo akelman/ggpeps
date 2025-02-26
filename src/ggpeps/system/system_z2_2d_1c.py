@@ -20,7 +20,7 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class Z2System2DConfig(Config2DBase):
-    _nparams_per_layer = 6
+    _nparams = 6
     ncopy = 1
     nvirtmodes_vertex = (
         4  # We have one virtual mode per direction (1 mode x 4 directions)

@@ -23,7 +23,7 @@ class Z2System2D2CConfig(Config2DBase):
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
     """
 
-    _nparams_per_layer = 20
+    _nparams = 20
     ncopy = 2
     nvirtmodes_vertex = (
         8  # We have two virtual modes per direction (4 directions x 2 modes)

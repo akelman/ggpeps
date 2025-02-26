@@ -81,7 +81,7 @@ class Config2DBase(ABC):
 
     # Ansatz settings
     # This will be overwritten by the specifications of each ansatz
-    _nparams_per_layer: int = None
+    _nparams: int = None  # number of params per site per layer
     ncopy: int = None
 
     def __init__(
@@ -175,14 +175,14 @@ class Config2DBase(ABC):
 
     @property
     def nparams_per_layer(self):
-        return self._nparams_per_layer
+        return self._nparams * self.unitcell_size
 
     def nvarparams(self):
-        return self._nparams_per_layer * self.nlayer
+        return self._nparams * self.unitcell_size * self.nlayer
 
     def param_shape(self):
         """Return the shape required for valid parameters."""
-        shape = (self.nlayer, self.unitcell_size, self._nparams_per_layer)
+        shape = (self.nlayer, self.unitcell_size, self._nparams)
         return shape
 
     def parse_params(self, paramvec, layer, site):

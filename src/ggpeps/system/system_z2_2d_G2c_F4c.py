@@ -28,7 +28,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
     Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... and so on}.
     """
 
-    _nparams_per_layer = 52  # 36
+    _nparams = 52  # 36
     ncopy = 4
     nvirtmodes_vertex = 16
     nvirtmodes_link = 8
