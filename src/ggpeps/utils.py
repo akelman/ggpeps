@@ -5,6 +5,7 @@ import gzip
 import pickle
 import logging
 import subprocess  # Start process for git hash
+from typing import Optional
 
 import numba as nb
 from scipy.sparse import issparse
@@ -859,7 +860,7 @@ def show_eigenvalues(mat):
 # ========== Workflow & Tooling Functions ====================
 
 
-def get_couplings_from_foldername(fname):
+def get_couplings_from_foldername(fname: str) -> str:
     couplings = ["g", "el", "mag", "int", "mass"]
     res = ""
     for arg in couplings:
@@ -876,7 +877,7 @@ def get_couplings_from_foldername(fname):
     return res
 
 
-def extract_params_from_results_file(fname, dest_dir="") -> bool:
+def extract_params_from_results_file(fname: str, dest_dir: Optional[str] = "") -> bool:
     """Extract parameters from a results file and save to a new .npy file
 
     Args:
