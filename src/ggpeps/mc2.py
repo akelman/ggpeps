@@ -1,6 +1,4 @@
 import os
-import ray
-import copy
 import gzip
 import pickle
 import logging
@@ -20,7 +18,7 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 #################### Monte Carlo Estimator Config ###################
 
 
-class MonteCarloEvaluatorConfig:
+class MonteCarloEvaluatorConfig2:
     """Monte Carlo Configuration
 
     This class manages the parameters of the MC simulation.
@@ -33,7 +31,7 @@ class MonteCarloEvaluatorConfig:
         self._rng_state = None
         self.meas_steps = None
         self.binsize: int = 1
-        self.compute_grads: bool = False
+        self.minimizer_mode: bool = False
         self.update_size_per_step: int = (
             1  # this can be set anywhere from 1 to nlinks (inclusive)
         )
@@ -88,13 +86,13 @@ class MonteCarloEvaluatorConfig:
 ################################### Monte Carlo runner ###############
 
 
-class MonteCarloEvaluator(Evaluator):
+class MonteCarloEvaluator2(Evaluator):
     """Class to take care of the MC simulation on a single runner"""
 
-    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
+    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig2, system):
         self.cfg = evaluator_cfg
         self.system = system
-        self.evaluator_type = "mc"
+        self.evaluator_type = "mc2"
         self.obsdict: dict = {}
 
         self.step: int = 0
@@ -135,7 +133,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["norm"] = Measurement("Norm", binsize)
         self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
 
-        if self.cfg.compute_grads:
+        if self.cfg.minimizer_mode:
             self.obsdict["el_energy_op_grad"] = Measurement(
                 "Electric Energy Operator Gradient", binsize
             )
@@ -194,7 +192,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
         self.obsdict["number_per_site"].append(self.system.number_per_site)
 
-        if self.cfg.compute_grads:
+        if self.cfg.minimizer_mode:
             self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
             self.obsdict["int_energy_op_grad"].append(
                 self.system.int_energy_op_grad_vec
@@ -207,7 +205,6 @@ class MonteCarloEvaluator(Evaluator):
             )
             self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
 
-        # TODO: save sizes/loops/strings in a more efficient way, so that they are not recomputed each step
         # Wilson loops
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
         loops = self.system.cfg.lattice.generate_all_wilson_loops((0, 0), sizes)
@@ -296,17 +293,12 @@ class MonteCarloEvaluator(Evaluator):
         logger.debug("Starting MC measurement")
         while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
             if self.step % self.cfg.run_log_freq == 0:
-                acceptance_ratio = np.mean(
-                    self.obsdict["acceptance_prob"].datavec[-self.cfg.run_log_freq : :]
-                )
-                logger.debug(
-                    f"Run: {self.step}. Acceptance ratio of last {self.cfg.run_log_freq} steps is {acceptance_ratio}"
-                )
+                logger.debug(f"Run: {self.step}")
             self.update()
             self.measure()
             self.step += 1
 
-        if self.cfg.compute_grads:
+        if self.cfg.minimizer_mode:
             # Update gradients which depend on expectation values
             # For interface reasons, we insert meas_steps copies of this gradient
             total_grad = self.energy_gradient_mc()
@@ -315,21 +307,20 @@ class MonteCarloEvaluator(Evaluator):
             )
 
         logger.debug("Finished MC measurement")
-        return
 
     def update_single_site(self):
         """Update for the MC simulation.
         This updates randomly chooses a single site and updates it.
         The update is local. The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
 
-        TODO: test gauge fixing with this function
+        TODO: add gauge fixing here
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
         nlinks = lattice.nlinks
         link_ind = self.cfg.rng_state.choice(
             self.system.cfg.lattice.comp_tree, replace=False
-        )
+        )  # we choose a link from those that are not fixed by gauge fixing
         # Uniformly pick a gauge value
         theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
         # Store the old values

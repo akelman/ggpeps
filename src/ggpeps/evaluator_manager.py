@@ -9,10 +9,50 @@ import numpy as np
 import ggpeps
 from ggpeps import utils
 from ggpeps.exacteval import ExactEvaluator, ExactEvaluatorConfig
-from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig, run_mc
+from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig
+from ggpeps.mc2 import MonteCarloEvaluator2, MonteCarloEvaluatorConfig2
 from ggpeps.system import SystemType, SystemConfigType
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
+
+
+####################### Multiprocessing layer #######################
+
+
+@ray.remote
+def run_mc(
+    runner_id: int,
+    evaluator_class: Union[MonteCarloEvaluator, MonteCarloEvaluator2],
+    evaluator_cfg: Union[MonteCarloEvaluatorConfig, MonteCarloEvaluatorConfig2],
+    system_cls,
+    system_cfg,
+    logger_info: dict,
+):
+    """Worker for running part of a MC simulation.
+
+    Args:
+        runner_id (int): Runner ID
+        mc_cfg (MonteCarloEvaluatorConfig):
+        system_cls ():
+        system_cfg ():
+        logger_info (dict): configs for the logger (logger needs to be set up in each worker)
+
+    Returns:
+        MonteCarloEvaluator
+    """
+
+    # Setup logger
+    # TODO: this is probably not the best way to get the required logger configuration
+    logger_file = logger_info["filename"]
+    level = logger_info["logger_level"]
+    logger = logging.getLogger(ggpeps.LOGGER_NAME)
+    utils.setup_logger(logger, logger_file, level, runner_msg=f"Runner {runner_id}-")
+
+    system = system_cls(copy.deepcopy(system_cfg))
+    system.initialize()
+    mc = evaluator_class(evaluator_cfg, system)
+    mc.evaluate()
+    return mc
 
 
 class EvaluatorManager:
@@ -47,6 +87,8 @@ class EvaluatorManager:
             self.type = "exact"
         elif isinstance(self.cfg, MonteCarloEvaluatorConfig):
             self.type = "mc"
+        elif isinstance(self.cfg, MonteCarloEvaluatorConfig2):
+            self.type = "mc2"
         else:
             raise ValueError("Unrecognized type of evaluator config.")
 
@@ -57,12 +99,23 @@ class EvaluatorManager:
             self.evaluator = ExactEvaluator(self.cfg, system)
         elif self.type == "mc":
             self.evaluator = MonteCarloEvaluator(self.cfg, system)
+        elif self.type == "mc2":
+            self.evaluator = MonteCarloEvaluator2(self.cfg, system)
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
 
+    def get_evaluator_class(self):
+        if self.type == "exact":
+            evaluator_class = ExactEvaluator
+        elif self.type == "mc":
+            evaluator_class = MonteCarloEvaluator
+        elif self.type == "mc2":
+            evaluator_class = MonteCarloEvaluator2
+        return evaluator_class
+
     def simulate(self):
         if (
-            self.type == "mc" and self.nrunner > 0
+            "mc" in self.type and self.nrunner > 0
         ):  # The exacteval implementation currently only supports a single runner
             """Start the simulation of the runners.
             Currently only Monte Carlo is supported, and multiple runners cannot be resumed from where they left off.
@@ -100,12 +153,19 @@ class EvaluatorManager:
                 if ggpeps.GPU_AVAILABLE:
                     gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
 
+                evaluator_class = self.get_evaluator_class()
+
                 run_mc_modified = run_mc.options(
                     num_gpus=gpu_frac
                 )  # according to the ray documentation, we should also specify num_cpus
                 resultvec.append(
                     run_mc_modified.remote(
-                        i, cfg, self.system_cls, self.system_cfg, logger_info
+                        i,
+                        evaluator_class,
+                        cfg,
+                        self.system_cls,
+                        self.system_cfg,
+                        logger_info,
                     )
                 )
 
