@@ -9,3 +9,6 @@ from system_implementation import Z2System2D
 # U1
 from system_u1_2d import U1System2DConfig
 from system_u1_2d import U1System2D
+
+# Dn
+from system_D6_2d import D6System2D_Config
