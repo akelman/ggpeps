@@ -24,3 +24,7 @@ class ZNGauge:
 
     def get_increment(self) -> float:
         return 2.0 * np.pi / self.n
+
+
+class DnGauge:
+    pass  # TODO: define class

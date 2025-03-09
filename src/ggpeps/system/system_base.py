@@ -341,7 +341,7 @@ class System2DBase(ABC):
             self.cfg.lattice.nlinks
         )  # TODO: should this be np or xnp?
         self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(
-            2
+            2  # TODO: set to Dn gauge group - the systen should accept a group
         )  # needs to be changed for cases other than Z2
 
         # Weight

@@ -173,7 +173,9 @@ class Z2System2D(System2DBase):
         return rotmat
 
     # TODO: fix for JAX - DONE, except for stuff in utils
-    def update_gauge_ind(self, link_ind, theta):
+    def update_gauge_ind(
+        self, link_ind, theta
+    ):  # TODO: Modify this (and some more functions here), to handle matrix representations.
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
         and updates all incremental trackers of determinants and inverses.

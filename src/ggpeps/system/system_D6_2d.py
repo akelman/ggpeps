@@ -58,7 +58,7 @@ class D6System2D_Config(Config2DBase):
             num_fermionic_layer,
         )
 
-        # Constants used in the calculation of the electric energy
+        # Constants used in the calculation of the electric energy. TODO: Change this to the D6 case
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
         indices_layer_pg = [
             [(2, 4), (3, 5), (4, 5), (2, 3)],
@@ -77,7 +77,9 @@ class D6System2D_Config(Config2DBase):
             -1 / 16
         ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
-    def make_pure_gauge(self):
+    def make_pure_gauge(
+        self,
+    ):  # TODO: change to D6 and set to 0 the parametere coupling physical to virtual modes
         """Make the ansatz pure gauge by setting t-params to zero.
 
         This function is obsolete for this ansatz, and is kept for compatibility reasons.
