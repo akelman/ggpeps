@@ -77,7 +77,3 @@ class D2nGauge:
             [self.get_representaion(p, q) for q in range(2) for p in range(self.n)]
         )
         return dest
-
-
-D6 = D2nGauge(3)
-print(D6.get_possible_gauge_values())
