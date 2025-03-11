@@ -26,5 +26,58 @@ class ZNGauge:
         return 2.0 * np.pi / self.n
 
 
-class DnGauge:
-    pass  # TODO: define class
+class D2nGauge:
+    """Implements a D_2n gauge group, under a real 2D representation of rotation and reflection matrices.
+    The representaion for a group element of the form:
+        D(p,q=0)=        [
+                    [np.cos(2 * np.pi * p / self.n), -np.sin(2 * np.pi * p / self.n)],
+                    [np.sin(2 * np.pi * p / self.n), np.cos(2 * np.pi * p / self.n)],
+                ]
+        D(p,q=1)=                 [
+                    [np.cos(2 * np.pi * p / self.n), np.sin(2 * np.pi * p / self.n)],
+                    [np.sin(2 * np.pi * p / self.n), -np.cos(2 * np.pi * p / self.n)],
+                ]
+
+
+    """
+
+    def __init__(self, n: int):
+        self.n = n
+
+    def get_random_gauge_value(self, rng_state: np.random.RandomState) -> float:
+        p = rng_state.randint(0, self.n)
+        q = rng_state.randint(0, 2)
+        return self.get_representaion(p, q)
+
+    def get_representaion(self, p, q):
+        """Get a real 2D representaion of the group"""
+        prefactor = 2.0 * np.pi / self.n
+        prefactor_times_p = p * prefactor
+        if q % 2:  # we work in a convention of q=0 mod2
+            representaion = np.array(
+                [
+                    [np.cos(prefactor_times_p), -np.sin(prefactor_times_p)],
+                    [np.sin(prefactor_times_p), np.cos(prefactor_times_p)],
+                ]
+            )
+        else:  # if q=1 mod 2
+            representaion = np.array(
+                [
+                    [np.cos(prefactor_times_p), np.sin(prefactor_times_p)],
+                    [np.sin(prefactor_times_p), -np.cos(prefactor_times_p)],
+                ]
+            )
+        return representaion
+
+    def get_neutral_gauge_value(self) -> np.array:
+        return np.identity(2)
+
+    def get_possible_gauge_values(self) -> np.ndarray:
+        dest = np.array(
+            [self.get_representaion(p, q) for q in range(2) for p in range(self.n)]
+        )
+        return dest
+
+
+D6 = D2nGauge(3)
+print(D6.get_possible_gauge_values())
