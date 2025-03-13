@@ -18,25 +18,24 @@ from .system_base import get_pfaffian_arrays
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
-class D6System2D_Config(Config2DBase):
-    """Configuration of the D2n system in 2D with 4 copies of virtual fermions on the links per layer.
+class Z2System2D_G2C_F2C_Config(Config2DBase):
+    """Configuration of the D2n system in 2D with 2 copies of virtual fermions on the links per layer each copy has 2 colors.
     Each layer can either be pure-gauge (in which case the t-params are zeroed out),
     or fermionic (in which case the y,z-params are zeroed out).
-    We need two pure gauge layers, each for different color
 
     Some general notes about conventions:
 
-    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,t3r,y3r,z3r,t4r,y4r,z4r,a1r,b1r,c1r,d1r,a2r,b2r,c2r,d2r,a3r,b3r,c3r,d3r,a4r,b4r,c4r,d4r,a5r,b5r,c5r,d5r,a6r,b6r,c6r,d6r
-    t1i,y1i,z1i,t2i,y2i,z2i,t3i,y3i,z3i,t4i,y4i,z4i,a1i,b1i,c1i,d1i,a2i,b2i,c2i,d2i,a3i,b3i,c3i,d3i,a4i,b4i,c4i,d4i,a5i,b5i,c5i,d5i,a6i,b6i,c6i,d6i].
-    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
+    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di].
+    Mode order of tmat: The mode order is: Psi1, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, Psi2, l_3, r_3, d_3, u_3, l_4, r_4, d_4, u_4
+    Where the 1 and 2 virtual copies and the Psi are the m=0 and the 3 and 4 virtual copies and Psi2 are of the color m=1.
     Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
     Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
     """
 
-    _nparams_per_layer = 64  # 32 complex or 64 real TODO: think if I shoukd include here also couplings of physical fermions to virtual, if so it's 72
-    ncopy = 4
-    nvirtmodes_vertex = 16
-    nvirtmodes_link = 8
+    _nparams_per_layer = 20
+    ncopy = 2
+    nvirtmodes_vertex = 8
+    nvirtmodes_link = 4
 
     def __init__(
         self,
@@ -60,7 +59,7 @@ class D6System2D_Config(Config2DBase):
             num_fermionic_layer,
         )
 
-        # Constants used in the calculation of the electric energy. TODO: Change this to the D6 case
+        # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
         indices_layer_pg = [
             [(2, 4), (3, 5), (4, 5), (2, 3)],
@@ -79,26 +78,13 @@ class D6System2D_Config(Config2DBase):
             -1 / 16
         ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
-    def make_pure_gauge(
-        self,
-    ):  # TODO: Write unitest
+    def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.
 
         This function is obsolete for this ansatz, and is kept for compatibility reasons.
         """
-        t_indices = [
-            0,
-            3,
-            6,
-            9,
-            36,
-            39,
-            42,
-            45,
-        ]  # index of t parameters in symbolvec
-        for layer_ind in range(
-            self.nlayer
-        ):  # TODO: ask Ariel if it shouldn't go only over the pure gauge layers
+        t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
+        for layer_ind in range(self.nlayer):
             for uc_ind in range(self.max_unitcell_size):
                 for t_ind in t_indices:
                     coord = (layer_ind, uc_ind, t_ind)
@@ -107,7 +93,7 @@ class D6System2D_Config(Config2DBase):
     def enforce_parameter_conditions(self, mat):
         """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz."""
         # The order of the parameters (for each layer) is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
-        # TODO: make sure with Ariel that I don't need anything here for the pure gauge case
+
         zeroed_params = []  # we'll save the indices of the zeroed parameters
 
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
@@ -208,8 +194,8 @@ class D6System2D_Config(Config2DBase):
         This is one of two analytic inputs into the code.
         The other input is the structure and the parametrization of the projectors.
 
-        The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2
-
+        The mode order is: Psi1, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, Psi2, l_3, r_3, d_3, u_3, l_4, r_4, d_4, u_4
+        Where the 1 and 2 virtual copies and the Psi are the m=0 and the 3 and 4 virtual copies and Psi2 are of the color m=1
         The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
         The permutation matrices are prone to errors.
 
@@ -248,7 +234,7 @@ class D6System2D_Config(Config2DBase):
         b = br + 1.0j * bi
         c = cr + 1.0j * ci
         d = dr + 1.0j * di
-        tmat_symb = sympy.Matrix(
+        tmat_symb_block = sympy.Matrix(  # For a single color. Both colors have the same structure as well as parameters
             [
                 [0, -1.0j * t1, 1.0j * t1, t1, -t1, -1.0j * t2, 1.0j * t2, t2, -t2],
                 [
@@ -291,6 +277,12 @@ class D6System2D_Config(Config2DBase):
                 [t2, 1.0j * d, -1.0j * b, -c, a, -1.0j * z2, z2, y2, 0],
             ]
         )
+        # Define the 16x16 block diagonal matrix for the two different colors
+        tmat_symb = sympy.BlockDiagMatrix(tmat_symb_block, tmat_symb_block)
+
+        # Convert it to a regular Matrix
+        tmat_symb = sympy.Matrix(tmat_symb)
+
         return tmat_symb
 
     def generate_gamma_gauge_neutral_dict(self):
