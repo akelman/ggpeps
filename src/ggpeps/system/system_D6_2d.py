@@ -3,6 +3,7 @@ import logging
 from typing import List
 
 import numpy as np
+from scipy.linalg import block_diag
 from ggpeps import xnp as xnp
 from ggpeps import xscipy as xscipy
 
@@ -20,22 +21,24 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 class Z2System2D_G2C_F2C_Config(Config2DBase):
     """Configuration of the D2n system in 2D with 2 copies of virtual fermions on the links per layer each copy has 2 colors.
-    Each layer can either be pure-gauge (in which case the t-params are zeroed out),
-    or fermionic (in which case the y,z-params are zeroed out).
+        Each layer can either be pure-gauge (in which case the t-params are zeroed out),
+        or fermionic (in which case the y,z-params are zeroed out).
 
-    Some general notes about conventions:
+        Some general notes about conventions:
 
-    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di].
-    Mode order of tmat: The mode order is: Psi1, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, Psi2, l_3, r_3, d_3, u_3, l_4, r_4, d_4, u_4
-    Where the 1 and 2 virtual copies and the Psi are the m=0 and the 3 and 4 virtual copies and Psi2 are of the color m=1.
-    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
-    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
+        Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di].
+        Mode order of tmat: The mode order is: Psi1, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, Psi2, l_3, r_3, d_3, u_3, l_4, r_4, d_4, u_4
+        Where the 1 and 2 virtual copies and the Psi are the m=0 and the 3 and 4 virtual copies and Psi2 are of the color m=1.
+        Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
+        Mode order of gamma_maj: {p_1,p_2,l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2,l3_1, l3_2, r3_1, r3_2, l4_1, l4_2, r4_1, r4_2,
+                                  ,d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u3_2,d3_1, d3_2, u3_1, u3_2, d4_1, d4_2, u4_1, u4_2}.
+    }.
     """
 
     _nparams_per_layer = 20
-    ncopy = 2
-    nvirtmodes_vertex = 8
-    nvirtmodes_link = 4
+    ncopy = 4
+    nvirtmodes_vertex = 16
+    nvirtmodes_link = 8
 
     def __init__(
         self,
@@ -287,16 +290,19 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
     def generate_gamma_gauge_neutral_dict(self):
         """Generate the covariance matrix of the ungauged projectors.
-        The mode order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2}.
+        The mode order is
+        {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2,l3_1, l3_2, r3_1, r3_2, l4_1, l4_2, r4_1, r4_2}
+        /{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u3_2,d3_1, d3_2, u3_1, u3_2, d4_1, d4_2, u4_1, u4_2}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
+        Copies 1 and 2 are of color m=0, and 3 and 4 are of color m=1.
         We order first by link and then by copy.
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
-        This function returns two different covariance matrices for ungauged projectors:
-        In the first, modes of copy 1 are coupled to modes of copy 2.
-        In the second, the projectors don't mix copies.
-        The first option is used for the pure-gauge layer, the second for the fermionic layer.
+        This function returns the covariance matrices for ungauged projectors:
+        Unlike the Z2, copies are always coupled to themselves without mixing different copies.
+        In addition there is a minus sign relatice to the Z2 due to a change in the definition of the mode orders in the projectors -
+        here we work in the convention of w=exp(r^{\dagger}l^{\dagger}), where in Z2 w=exp(rl)
 
         This method overwrites an abstract method in System2DBase.
 
@@ -305,44 +311,37 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         """
 
         # 2 if for 2D lattice
-        dest_mixed = [0] * 2  # mixes copies
         dest_unmixed = [0] * 2  # does not mix copies
-
-        # We want to give the projectors for the pure gauge part, which mix copies
-        dest_mixed[Direction.X] = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix))
-        )
-        dest_mixed[Direction.Y] = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz))
-        )
-
-        # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
-        dest_unmixed[Direction.X] = np.array(
+        blockumixed_X = np.array(  # Block for a single color
             [
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
-            ]
-        )
-
-        dest_unmixed[Direction.Y] = np.array(
-            [
-                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, -1.0, 0.0, -0.0, 0.0, 0.0],
-                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, -1.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0],
                 [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
             ]
         )
+        dest_unmixed[Direction.X] = block_diag(blockumixed_X, blockumixed_X)
+        # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
+
+        blockumixed_Y = np.array(
+            [
+                [0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0, 0.0, -0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, 1.0],
+                [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0],
+            ]
+        )
+        dest_unmixed[Direction.Y] = block_diag(blockumixed_Y, blockumixed_Y)
 
         return np.array(
-            [dest_mixed] * self.num_pg_layer + [dest_unmixed] * self.num_fermionic_layer
+            [dest_unmixed] * self.num_pg_layer
+            + [dest_unmixed] * self.num_fermionic_layer
         )
