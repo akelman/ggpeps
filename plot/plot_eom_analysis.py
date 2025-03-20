@@ -1,7 +1,7 @@
 """
 As arguments this file receives the summary pkl file and the log file from a run in debug mode (only debug mode!).
 
-This file plots three plots analysing the eom (error of mean - computed with autocorrelation and rebinning) - 
+This file plots three plots analysing the eom (error of mean - computed with autocorrelation and rebinning) -
 Dynamical mean of observable as a function of step number, EOM as a funcion of step number and EOM as a function of time.
 """
 
@@ -123,7 +123,7 @@ def main(args, save_path=None):
                                 + str(grad_ind),
                             )
                             axvec[1].plot(step_numbers[1:], dyn_eom, "o")
-                            axvec[2].plot(time[1:], dyn_eom, "o")
+                            axvec[2].plot(step_numbers[1:], dyn_eom, "o")
 
                 else:
                     print(
@@ -154,8 +154,8 @@ def main(args, save_path=None):
     # axvec[1].set_yscale("log")
     # axvec[1].set_xscale("log")
     axvec[2].set_ylabel(f"EOM {args.obs}")
-    # axvec[2].set_yscale("log")
-    # axvec[2].set_xscale("log")
+    axvec[2].set_yscale("log")
+    axvec[2].set_xscale("log")
     axvec[2].set_xlabel(f"time [sec]")
 
     # f.tight_layout()
@@ -235,50 +235,35 @@ if __name__ == "__main__":
             self.obs = obs
             self.pkl_fname = pkl_fname
             self.log_fname = log_fname
-            self.obs = obs
             self.grad_ind = grad_ind
             self.layer_num = layer_num
 
-    base_dir_single = "G:/My Drive/Research/MC/trans_inv_mag_with_grad/single_plaquette"
-    base_dir_all = "G:/My Drive/Research/MC/trans_inv_mag_with_grad/all_plaquettes"
-    # obs_lst = [
-    #     "energy",
-    #     "mag_energy",
-    #     "el_energy",
-    #     "mass_energy",
-    #     "int_energy",
-    # ]
-    obs_lst = ["energy_grad"]
-    # Iterate over the folders named 'L_4_gf_F_update_size_1' to 'L_4_gf_F_update_size_15'
-    for L in range(2, 7, 2):
-        for g in [0.1, 1.0, 0.5, 2.5]:
-            gz_files = []
-            log_files = []
-            folder_name = f"L_{L}_g_{g}"
-            folder_path_single = os.path.join(base_dir_single, folder_name)
-            folder_path_all = os.path.join(base_dir_all, folder_name)
+    # Base directory for the new folder structure
+    base_dir = r"G:\My Drive\Research\MC\rows_gauge_test_with_grad"
 
-            # Find .gz and .log files in each folder
-            gz_files.append(glob.glob(os.path.join(folder_path_single, "*.gz"))[0])
-            log_files.append(glob.glob(os.path.join(folder_path_single, "*.log"))[0])
-            # gz_files.append(glob.glob(os.path.join(folder_path_all, "*.gz"))[0])
-            # log_files.append(glob.glob(os.path.join(folder_path_all, "*.log"))[0])
-            for obs in obs_lst:
-                args = Args(obs, gz_files, log_files)
-                args.layer_num = list(range(2))
-                args.grad_ind = list(range(20))
-                # for layer_num in range(2):
-                # args.layer_num = layer_num
-                # for grad_ind in range(20):
-                # args.grad_ind = grad_ind
-                main(
-                    args,
-                    gz_files[0][0 : len(base_dir_single) + 10]
-                    + "_"
-                    + obs  # + "_layer_num_"
-                    # + str(args.layer_num)
-                    # + "_grad_ind_"
-                    # + str(args.grad_ind)
-                    + "_eom_analysis.pdf",
-                )
-                # main(args)
+    # Observable list
+    obs_lst = ["energy_grad"]
+
+    # Iterate over folders of the form g*\L*
+    for g_folder in glob.glob(os.path.join(base_dir, "g*")):
+        for l_folder in glob.glob(os.path.join(g_folder, "L*")):
+            gz_files = glob.glob(os.path.join(l_folder, "*.gz"))
+            log_files = glob.glob(os.path.join(l_folder, "*.log"))
+            print(gz_files)
+
+            # Ensure both .gz and .log files exist
+            if gz_files and log_files:
+                for obs in obs_lst:
+                    args = Args(obs, gz_files, log_files)
+                    args.layer_num = list(range(2))  # Adjust as needed
+                    args.grad_ind = list(range(20))  # Adjust as needed
+
+                    # Call the main function
+                    print(os.path.basename(l_folder))
+                    main(
+                        args,
+                        os.path.join(
+                            l_folder,
+                            f"{os.path.basename(l_folder)}_{obs}_eom_analysis.pdf",
+                        ),
+                    )
