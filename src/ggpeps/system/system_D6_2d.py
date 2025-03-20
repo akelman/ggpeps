@@ -19,7 +19,7 @@ from .system_base import get_pfaffian_arrays
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
-class Z2System2D_G2C_F2C_Config(Config2DBase):
+class D6System2D_Config(Config2DBase):
     """Configuration of the D2n system in 2D with 2 copies of virtual fermions on the links per layer each copy has 2 colors.
         Each layer can either be pure-gauge (in which case the t-params are zeroed out),
         or fermionic (in which case the y,z-params are zeroed out).
