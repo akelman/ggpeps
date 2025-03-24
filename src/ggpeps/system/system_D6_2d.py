@@ -304,8 +304,7 @@ class D6System2D_Config(Config2DBase):
 
         This function returns the covariance matrices for ungauged projectors:
         Unlike the Z2, copies are always coupled to themselves without mixing different copies.
-        In addition there is a minus sign relatice to the Z2 due to a change in the definition of the mode orders in the projectors -
-        here we work in the convention of w=exp(r^{\dagger}l^{\dagger}), where in Z2 w=exp(rl)
+        here we work in the same convention as Z2 w=exp(rl)and not w=exp(r^{\dagger}l^{\dagger}) as in some papers.
 
         This method overwrites an abstract method in System2DBase.
 
@@ -317,14 +316,14 @@ class D6System2D_Config(Config2DBase):
         dest_unmixed = [0] * 2  # does not mix copies
         blockumixed_X = np.array(  # Block for a single color
             [
-                [0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
             ]
         )
         dest_unmixed[Direction.X] = block_diag(blockumixed_X, blockumixed_X)
@@ -332,14 +331,14 @@ class D6System2D_Config(Config2DBase):
 
         blockumixed_Y = np.array(
             [
-                [0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0, 0.0, -0.0, 0.0, 0.0],
-                [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, 1.0],
-                [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, -1.0, 0.0, -0.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, -1.0],
+                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
             ]
         )
         dest_unmixed[Direction.Y] = block_diag(blockumixed_Y, blockumixed_Y)
