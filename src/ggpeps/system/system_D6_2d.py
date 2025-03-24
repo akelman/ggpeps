@@ -11,6 +11,7 @@ import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.global_funcs import *
+from ggpeps import gauge
 
 from .system_base import Config2DBase
 from .system_base import get_pfaffian_arrays
@@ -80,6 +81,8 @@ class D6System2D_Config(Config2DBase):
         self.el_overall_factors = [
             -1 / 16
         ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+
+        self.gaugemgr: gauge.D2nGauge = gauge.D2nGauge(3)
 
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.

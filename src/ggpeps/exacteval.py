@@ -307,12 +307,12 @@ class ExactEvaluator(Evaluator):
 
     def generate_config_vec(self):
         """Generates gauge field configurations for all links, for the gauge fixed case."""
-        poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
+        poss_gauges = self.system.cfg.gaugemgr.get_possible_gauge_values()
         nlinks = self.system.cfg.lattice.nlinks
         non_fixed_links_ind = (
             self.system.cfg.lattice.comp_tree
         )  # All possible indices for the non-fixed positions
-        neutral_gauge = self.system.gaugemgr.get_neutral_gauge_value()
+        neutral_gauge = self.system.cfg.gaugemgr.get_neutral_gauge_value()
 
         # Generate all possible gauge field combinations
         combinations = it.product(poss_gauges, repeat=len(non_fixed_links_ind))
@@ -325,7 +325,7 @@ class ExactEvaluator(Evaluator):
             yield configvec
 
     def generate_config_vec_no_gf(self):
-        poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
+        poss_gauges = self.system.cfg.gaugemgr.get_possible_gauge_values()
         nlinks = self.system.cfg.lattice.nlinks
         configvec = it.product(
             poss_gauges, repeat=nlinks

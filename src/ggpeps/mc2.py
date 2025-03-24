@@ -322,7 +322,7 @@ class MonteCarloEvaluator2(Evaluator):
             self.system.cfg.lattice.comp_tree, replace=False
         )  # we choose a link from those that are not fixed by gauge fixing
         # Uniformly pick a gauge value
-        theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+        theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
         # Store the old values
         weight_old = self.system.weight
         weight_new = self.system.calculate_weight_attempt(link_ind, theta)
@@ -345,7 +345,7 @@ class MonteCarloEvaluator2(Evaluator):
         comp_tree = lattice.comp_tree  # non gauge fixed links
         for i in comp_tree:
             # Uniformly pick a gauge to replace
-            theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+            theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
             # Store the old values
             weight_old = self.system.weight
             weight_new = self.system.calculate_weight_attempt(i, theta)
@@ -371,7 +371,7 @@ class MonteCarloEvaluator2(Evaluator):
 
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
-            theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+            theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
             # Store the old values
             weight_old = self.system.weight
             weight_new = self.system.calculate_weight_attempt(link_ind, theta)

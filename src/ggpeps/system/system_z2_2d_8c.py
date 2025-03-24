@@ -6,7 +6,7 @@ import sympy
 from ggpeps import xnp as np
 from scipy.linalg import block_diag
 
-from ggpeps import utils
+from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
 from .system_base import Config2DBase, System2DBase
@@ -80,6 +80,7 @@ class Z2System2D_8C_Config(Config2DBase):
         self.el_overall_factors = [1 / 256**2] * (
             self.nlayer
         )  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2)
 
     def make_pure_gauge(self):
         raise NotImplementedError(
