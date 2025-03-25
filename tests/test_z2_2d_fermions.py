@@ -2,6 +2,7 @@ import unittest
 from unittest import skip
 
 import numpy as np
+import sympy as sp
 
 from ggpeps import lattice
 from ggpeps import system, exacteval
@@ -11,7 +12,9 @@ from ggpeps.modearray import generate_permutation_matrix
 # ======================= Z2 fermionic system (4 copies) =======================
 
 
-class TestZ2C4System(unittest.TestCase):
+class TestZ2System(unittest.TestCase):
+    """Class for testing ansatz with matter, and 2 virtual copies per layer"""
+
     def setUp(self):
 
         lat = lattice.Lattice2D(2, 2)
@@ -125,6 +128,48 @@ class TestZ2C4System(unittest.TestCase):
         dest_dict = ex_eval.evaluate()
         self.assertFalse(np.allclose(0, dest_dict["mass_energy"]))
         self.assertFalse(np.allclose(0, dest_dict["int_energy"]))
+
+    def test_Tmat_symmetries_analytic(self):
+        '''This only tests rotation invarince.'''
+
+        # rotation invariance
+        # mode order: lrdu
+        eta = sp.exp(1j*sp.pi/4)
+        R = eta * sp.Matrix([ [1,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0],
+                [0,0,0,0,1,0,0,0,0],
+                [0,0,1,0,0,0,0,0,0],
+                [0,1,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,1,0],
+                [0,0,0,0,0,0,0,0,1],
+                [0,0,0,0,0,0,1,0,0],
+                [0,0,0,0,0,1,0,0,0]])
+        tmat = self.system_z2.cfg.tmat_symb
+        res_rot = R.T @ tmat @ R - tmat
+        res = sp.simplify(sp.simplify(res_rot)) # for some reason, two passes are needed
+        self.assertFalse(any(res))
+
+    def test_Tmat_symmetries_numeric(self):
+        '''This only tests rotation invarince.'''
+
+        # rotation invariance
+        # mode order: lrdu
+        eta = np.exp(1j*np.pi/4)
+        R = eta * np.array([ [1,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0],
+                [0,0,0,0,1,0,0,0,0],
+                [0,0,1,0,0,0,0,0,0],
+                [0,1,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,1,0],
+                [0,0,0,0,0,0,0,0,1],
+                [0,0,0,0,0,0,1,0,0],
+                [0,0,0,0,0,1,0,0,0]])
+        tmats = self.system_z2.tmat_layervec_sitevec
+        for lay in range(self.system_z2.cfg.nlayer):
+            for site in range(self.system_z2.cfg.lattice.size):
+                res_rot = R.T @ tmats[lay][site] @ R - tmats[lay][site]
+                self.assertTrue(np.allclose(res_rot, 0))
+        
 
     def test_free_fermions_gs_energy(self):
         """Ensure gs energy for free fermion case matches the analytic result"""
