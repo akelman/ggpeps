@@ -118,6 +118,13 @@ class TestZ2System(unittest.TestCase):
         covmat_layer2 = self.system_z2.compute_ferm_cov(layer=1)
         self.assertTrue(utils.is_covmat(covmat_layer1))
         self.assertTrue(utils.is_covmat(covmat_layer2))
+    
+    def test_valid_gamma_in_sys(self):
+        """Ensure the gamma_sys matrix satisfies the conditions to be a covariance matrix.
+        """
+        for lay in range(self.system_z2.cfg.nlayer):
+            gamma_in_sys = self.system_z2.gamma_in_sys_vec[lay]
+            self.assertTrue(utils.is_covmat(gamma_in_sys))
 
     def test_t_zero(self):
         """Ensure mass and interaction energy are zero when t = 0"""
