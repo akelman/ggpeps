@@ -4,7 +4,7 @@ from unittest import skip
 import numpy as np
 import sympy as sp
 
-from ggpeps import lattice
+from ggpeps import lattice, utils
 from ggpeps import system, exacteval
 from ggpeps.modearray import generate_permutation_matrix
 
@@ -106,6 +106,18 @@ class TestZ2System(unittest.TestCase):
         )
         self.assertTrue(np.allclose(covmat_layer1, expected_covmat))
         self.assertFalse(np.allclose(covmat_layer2, expected_covmat))
+
+    def test_valid_covmat(self):
+        """Ensure the covariance matrix satisfies the conditions to be a covariance matrix.
+        This test is done with a gauge configuration that includes some flux.
+        """
+        config = np.array([0] * 7 + [np.pi] * 1)
+        self.system_z2.update_gauge_full_system(config)
+
+        covmat_layer1 = self.system_z2.compute_ferm_cov(layer=0)
+        covmat_layer2 = self.system_z2.compute_ferm_cov(layer=1)
+        self.assertTrue(utils.is_covmat(covmat_layer1))
+        self.assertTrue(utils.is_covmat(covmat_layer2))
 
     def test_t_zero(self):
         """Ensure mass and interaction energy are zero when t = 0"""
