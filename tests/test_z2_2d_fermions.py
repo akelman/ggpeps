@@ -149,7 +149,7 @@ class TestZ2System(unittest.TestCase):
         self.assertFalse(np.allclose(0, dest_dict["int_energy"]))
 
     def test_Tmat_symmetries_analytic(self):
-        '''This only tests rotation invarince.'''
+        '''This only tests rotation invariance and the antisymmetry properties.'''
 
         # rotation invariance
         # mode order: lrdu
@@ -168,8 +168,11 @@ class TestZ2System(unittest.TestCase):
         res = sp.simplify(sp.simplify(res_rot)) # for some reason, two passes are needed
         self.assertFalse(any(res))
 
+        res = sp.simplify(tmat + tmat.T)
+        self.assertFalse(any(res))
+
     def test_Tmat_symmetries_numeric(self):
-        '''This only tests rotation invarince.'''
+        '''This only tests rotation invariance and the antisymmetry properties.'''
 
         # rotation invariance
         # mode order: lrdu
@@ -186,8 +189,12 @@ class TestZ2System(unittest.TestCase):
         tmats = self.system_z2.tmat_layervec_sitevec
         for lay in range(self.system_z2.cfg.nlayer):
             for site in range(self.system_z2.cfg.lattice.size):
-                res_rot = R.T @ tmats[lay][site] @ R - tmats[lay][site]
+                tmat = tmats[lay][site]
+                res_rot = R.T @ tmat @ R - tmat
                 self.assertTrue(np.allclose(res_rot, 0))
+
+                res = tmat + tmat.T
+                self.assertTrue(np.allclose(res, 0))
         
 
     def test_free_fermions_gs_energy(self):
