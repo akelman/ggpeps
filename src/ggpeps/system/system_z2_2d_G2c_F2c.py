@@ -1,3 +1,4 @@
+import sys
 import sympy
 import logging
 from typing import List
@@ -31,7 +32,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
     Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
     """
 
-    _nparams_per_layer = 20
+    _nparams = 20
     ncopy = 2
     nvirtmodes_vertex = 8
     nvirtmodes_link = 4
@@ -46,6 +47,8 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=1,
+        unitcell_size=1,
+        enforce_u1_symmetry=True,
     ):
         super().__init__(
             lattice,
@@ -57,6 +60,35 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             num_pg_layer,
             num_fermionic_layer,
         )
+
+        # Translation invariance (or variance)
+        if unitcell_size not in [1, 2]:
+            logger.error(
+                "This ansatz only supports unitcell_size = 1 or 2. \
+                         This can be adapted by adding in a specification in the config to map sites to parameters."
+            )
+            sys.exit(1)
+        # map from site to index of independent parameters (default is unitcell_size = 1)
+        self.site_params_dict = {site: 0 for site in range(self.lattice.size)}
+
+        # For now, we use hard code the unitcell_size = 1 or 2 case
+        # More general ways to do so are supported - just change these lines
+        if unitcell_size == 2:
+            for site in range(self.lattice.size):
+                x, y = self.lattice.ind2coord(site)
+                uc_ind = 1 if (x + y) % 2 else 0  # 0 for even sublattice, 1 for odd
+                self.site_params_dict[site] = uc_ind
+        self.unitcell_size = len(
+            set(self.site_params_dict.values())
+        )  # number of different sets of parameters across sites (min: 1, max: num_sites)
+        if self.unitcell_size != unitcell_size:
+            # It should be impossible to reach here
+            raise ValueError("Inconsistent unitcell_size.")
+
+        # U1 invariance
+        # set to True if you want to enforce U(1) symmetry in the fermionic layers
+        # (set to False to allow fermionic number to float between sectors)
+        self.u1_symmetry = enforce_u1_symmetry
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
@@ -84,7 +116,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         """
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.nlayer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 for t_ind in t_indices:
                     coord = (layer_ind, uc_ind, t_ind)
                     self.paramvec[coord] = 0
@@ -97,7 +129,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.num_pg_layer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 for t_ind in t_indices:
                     coord = (layer_ind, uc_ind, t_ind)
                     if isinstance(mat, np.ndarray):  # TODO: handle jax better
@@ -106,20 +138,23 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
                         mat = mat.at[coord].set(0)
                     zeroed_params.append(coord)
 
-        zero_for_fermionic_layer = [
-            3,
-            13,
-            1,
-            2,
-            4,
-            5,
-            11,
-            12,
-            14,
-            15,
-        ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
+        if self.u1_symmetry:
+            zero_for_fermionic_layer = [
+                3,
+                13,
+                1,
+                2,
+                4,
+                5,
+                11,
+                12,
+                14,
+                15,
+            ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
+        else:
+            zero_for_fermionic_layer = []
         for layer_ind in range(self.num_pg_layer, self.nlayer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 for ind in zero_for_fermionic_layer:
                     coord = (layer_ind, uc_ind, ind)
                     if isinstance(mat, np.ndarray):

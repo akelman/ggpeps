@@ -28,7 +28,7 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class U1System2DConfig(Config2DBase):
-    _nparams_per_layer = 3
+    _nparams = 3
     ncopy = 1
     nvirtmodes_link = 8
     nvirtmodes_link = 4
@@ -43,6 +43,7 @@ class U1System2DConfig(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=0,
+        unitcell_size=1,
     ):
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         super().__init__(
@@ -56,10 +57,22 @@ class U1System2DConfig(Config2DBase):
             num_fermionic_layer,
         )
 
+        # Translation invariance
+        if unitcell_size not in [1]:
+            logger.error(
+                "This ansatz only supports unitcell_size = 1 or 2. \
+                This can be adapted by adding in a specification in the config to map sites to parameters."
+            )
+            raise ValueError("Invalid unitcell_size.")
+        self.site_params_dict = {
+            site: 0 for site in range(self.lattice.size)
+        }  # map from site to index of independent parameters
+        self.unitcell_size = 1
+
     def make_pure_gauge(self):
         # The order of the parameters is [t,y,z]
         for lay in range(self.nlayer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 self.paramvec[lay, uc_ind, 0] = 0
 
     def _create_symbolvec(self):

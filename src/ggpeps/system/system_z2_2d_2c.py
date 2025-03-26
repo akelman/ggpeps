@@ -23,7 +23,7 @@ class Z2System2D2CConfig(Config2DBase):
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
     """
 
-    _nparams_per_layer = 20
+    _nparams = 20
     ncopy = 2
     nvirtmodes_vertex = (
         8  # We have two virtual modes per direction (4 directions x 2 modes)
@@ -40,6 +40,7 @@ class Z2System2D2CConfig(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=0,
+        unitcell_size=1,
     ):
         # The parameters have the following order: [[t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i...],[..next layer..],....]
         if num_fermionic_layer != 0:
@@ -48,6 +49,18 @@ class Z2System2D2CConfig(Config2DBase):
                 "The Z2System2D2C ansatz does not support fermionic layers."
             )
         super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0)
+
+        # Translation invariance
+        if unitcell_size not in [1]:
+            logger.error(
+                "This ansatz only supports unitcell_size = 1 or 2. \
+                This can be adapted by adding in a specification in the config to map sites to parameters."
+            )
+            raise ValueError("Invalid unitcell_size.")
+        self.site_params_dict = {
+            site: 0 for site in range(self.lattice.size)
+        }  # map from site to index of independent parameters
+        self.unitcell_size = 1
 
         # This is for pure-gauge only atm
         self.num_pg_layer = self.nlayer
@@ -69,7 +82,7 @@ class Z2System2D2CConfig(Config2DBase):
         """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t."""
         # The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
         for lay in range(self.nlayer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 self.paramvec[lay, uc_ind, 0] = 0  # Set t1r to 0
                 self.paramvec[lay, uc_ind, 10] = 0  # Set t1i to 0
                 self.paramvec[lay, uc_ind, 3] = 0  # Set t2r to 0

@@ -28,7 +28,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
     Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... and so on}.
     """
 
-    _nparams_per_layer = 52  # 36
+    _nparams = 52  # 36
     ncopy = 4
     nvirtmodes_vertex = 16
     nvirtmodes_link = 8
@@ -43,6 +43,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=1,
+        unitcell_size=1,
     ):
         super().__init__(
             lattice,
@@ -54,6 +55,18 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
             num_pg_layer,
             num_fermionic_layer,
         )
+
+        # Translation invariance
+        if unitcell_size not in [1]:
+            logger.error(
+                "This ansatz only supports unitcell_size = 1 or 2. \
+                This can be adapted by adding in a specification in the config to map sites to parameters."
+            )
+            raise ValueError("Invalid unitcell_size.")
+        self.site_params_dict = {
+            site: 0 for site in range(self.lattice.size)
+        }  # map from site to index of independent parameters
+        self.unitcell_size = 1
 
         # Constants used in the calculation of the electric energy
         prefactors = [
@@ -103,7 +116,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
 
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.num_pg_layer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 for t_ind in t_indices:
                     coord = (layer_ind, uc_ind, t_ind)
                     mat[coord] = 0
@@ -128,7 +141,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
             31,
         ]  # indices of y's, z's in symbolvec
         for layer_ind in range(self.num_pg_layer, self.nlayer):
-            for uc_ind in range(self.max_unitcell_size):
+            for uc_ind in range(self.unitcell_size):
                 for ind in zero_for_fermionic_layer:
                     coord = (layer_ind, uc_ind, ind)
                     mat[coord] = 0

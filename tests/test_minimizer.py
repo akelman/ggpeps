@@ -26,15 +26,15 @@ class TestMinimizerZ2(unittest.TestCase):
         exact_ev = ExactEvaluator(exact_cfg, sys)
         res = exact_ev.evaluate()
 
-        site = 0
+        uc_ind = 0
 
         for ind in range(3):
             with self.subTest(ind=ind):
                 paramvec = system_cfg.paramvec
                 paramvec_left = np.copy(paramvec)
                 paramvec_right = np.copy(paramvec)
-                paramvec_left[0, site, ind] -= eps
-                paramvec_right[0, site, ind] += eps
+                paramvec_left[0, uc_ind, ind] -= eps
+                paramvec_right[0, uc_ind, ind] += eps
                 system_cfg_left = system.Z2System2DConfig(
                     lat_2x2,
                     1.0,
@@ -71,7 +71,7 @@ class TestMinimizerZ2(unittest.TestCase):
                 mag_energy_deriv_num = (
                     res_right["mag_energy"] - res_left["mag_energy"]
                 ) / (2 * eps)
-                mag_energy_deriv_ana = res["mag_energy_grad"][0, site, ind]
+                mag_energy_deriv_ana = res["mag_energy_grad"][0, uc_ind, ind]
                 self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
 
     def test_derivative_mag_energy_exact_2_layer(self):
@@ -88,7 +88,7 @@ class TestMinimizerZ2(unittest.TestCase):
         exact_ev = ExactEvaluator(exact_cfg, sys)
         res = exact_ev.evaluate()
 
-        site = 0
+        uc_ind = 0
 
         for layer in range(nlayer):
             for ind in range(3):
@@ -96,8 +96,8 @@ class TestMinimizerZ2(unittest.TestCase):
                     paramvec = system_cfg.paramvec
                     paramvec_left = np.copy(paramvec)
                     paramvec_right = np.copy(paramvec)
-                    paramvec_left[layer, site, ind] -= eps
-                    paramvec_right[layer, site, ind] += eps
+                    paramvec_left[layer, uc_ind, ind] -= eps
+                    paramvec_right[layer, uc_ind, ind] += eps
                     system_cfg_left = system.Z2System2DConfig(
                         lat_2x2,
                         1.0,
@@ -134,7 +134,7 @@ class TestMinimizerZ2(unittest.TestCase):
                     mag_energy_deriv_num = (
                         res_right["mag_energy"] - res_left["mag_energy"]
                     ) / (2 * eps)
-                    mag_energy_deriv_ana = res["mag_energy_grad"][layer, site, ind]
+                    mag_energy_deriv_ana = res["mag_energy_grad"][layer, uc_ind, ind]
 
                     self.assertAlmostEqual(mag_energy_deriv_num, mag_energy_deriv_ana)
 
@@ -149,7 +149,7 @@ class TestMinimizerZ2(unittest.TestCase):
         exact_ev = ExactEvaluator(exact_cfg, sys)
         res = exact_ev.evaluate()
 
-        site = 0
+        uc_ind = 0
 
         for ind in range(3):
             with self.subTest(ind=ind):
@@ -179,7 +179,7 @@ class TestMinimizerZ2(unittest.TestCase):
                 el_energy_deriv_num = (
                     res_right["el_energy"] - res_left["el_energy"]
                 ) / (2 * eps)
-                el_energy_deriv_ana = res["el_energy_grad"][0, site, ind]
+                el_energy_deriv_ana = res["el_energy_grad"][0, uc_ind, ind]
 
                 self.assertAlmostEqual(
                     el_energy_deriv_num, el_energy_deriv_ana, places=5
@@ -199,7 +199,7 @@ class TestMinimizerZ2(unittest.TestCase):
         exact_ev = ExactEvaluator(exact_cfg, sys)
         res = exact_ev.evaluate()
 
-        site = 0
+        uc_ind = 0
 
         for layerind in range(nlayer):
             for ind in range(3):
@@ -244,7 +244,7 @@ class TestMinimizerZ2(unittest.TestCase):
                     el_energy_deriv_num = (
                         res_right["el_energy"] - res_left["el_energy"]
                     ) / (2 * eps)
-                    el_energy_deriv_ana = res["el_energy_grad"][layerind, site, ind]
+                    el_energy_deriv_ana = res["el_energy_grad"][layerind, uc_ind, ind]
 
                     self.assertAlmostEqual(
                         el_energy_deriv_num, el_energy_deriv_ana, places=6

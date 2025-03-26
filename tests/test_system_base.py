@@ -386,10 +386,10 @@ class TestSystemBaseDimensions(unittest.TestCase):
         pg_layers = 1
         fermionic_layers = 1
         nlayers = pg_layers + fermionic_layers
-        unitcell_size = 1
+        unitcell_size = 2
         paramvec2C = np.random.rand(nlayers, unitcell_size, 20)
         cfg2C = system.Z2System2D_G2C_F2C_Config(
-            lat, 0, 0, 0, 0, None, pg_layers, fermionic_layers
+            lat, 0, 0, 0, 0, None, pg_layers, fermionic_layers, unitcell_size
         )
         cfg2C.paramvec = paramvec2C
         self.system_z2_2c = system.Z2System2D(cfg2C)
@@ -412,7 +412,7 @@ class TestSystemBaseDimensions(unittest.TestCase):
         num_dirac_modes = 1 + 2 * 4  # (1 physical + 2 copies * 4 links)
         target_shape = (
             self.system_z2_2c.cfg.nlayer,
-            self.system_z2_2c.cfg.max_unitcell_size,
+            self.system_z2_2c.cfg.unitcell_size,
             num_dirac_modes,
             num_dirac_modes,
         )
@@ -492,7 +492,7 @@ class TestSystemBaseDimensions(unittest.TestCase):
         num_modes = num_modes_per_site * self.system_z2_2c.cfg.lattice.size
         target_shape = (
             self.system_z2_2c.cfg.nlayer,
-            self.system_z2_2c.cfg.max_unitcell_size,
+            self.system_z2_2c.cfg.unitcell_size,
             num_modes,
             num_modes,
         )

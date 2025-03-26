@@ -300,7 +300,7 @@ class Z2System2D(System2DBase):
                     1 + covmat[site_ind + 1, site_ind]
                 )  # TODO: fix for JAX - NOT NEEDED
 
-                for uc_ind in range(self.cfg.max_unitcell_size):
+                for uc_ind in range(self.cfg.unitcell_size):
                     for symbol_ind, symbol in enumerate(self.symbolvec):
                         if (
                             layer_ind,
@@ -549,7 +549,7 @@ class Z2System2D(System2DBase):
                 layer_int_energy -= vert_link_energy * cos_factor_vert
 
                 # Calculate derivatives
-                for uc_ind in range(self.cfg.max_unitcell_size):
+                for uc_ind in range(self.cfg.unitcell_size):
                     for symbol_ind, symbol in enumerate(self.symbolvec):
                         if (
                             layer_ind,
@@ -612,15 +612,18 @@ class Z2System2D(System2DBase):
             layer_chem_energy = 0.0
 
             # Calculate chem term
-            # Since the system is translationally invariant, we could just calculate it for one site and multiply by nsites instead
-            for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
-                site_factor = (-1) ** (site_ind)  # even or odd sublattice
-                layer_chem_energy += (
-                    0.5 * site_factor * (1 + covmat[site_ind + 1, site_ind])
-                )
+            # Since we set the system to have different parameters on the even and odd sites when using a non-zero
+            # chemical potential (i.e. the system is translationally invariant by two sites),
+            # we could just calculate it for one even and one odd site and multiply by the size of the system
+            for site in range(self.cfg.lattice.size):
+                site_ind = 2 * site  # index into covariance matrix
+                x, y = self.cfg.lattice.ind2coord(site)
+                site_factor = (-1) ** (x + y)  # even or odd sublattice
+                mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
+                layer_chem_energy += site_factor * mass_site
                 layer_chem_energy += 0.5  # constant offset which arises from particle-hole transformation
 
-                for uc_ind in range(self.cfg.max_unitcell_size):
+                for uc_ind in range(self.cfg.unitcell_size):
                     for symbol_ind, symbol in enumerate(self.symbolvec):
                         if (
                             layer_ind,
@@ -702,3 +705,15 @@ class Z2System2D(System2DBase):
                 xnp.abs(layer_val)
             )  # Is the absolute value necessary? why?
         return xnp.array(meson_op_vec)
+
+    def occupation(self, lay: int, site: int) -> float:
+        """Compute the occupation number for the given layer and site.
+
+        Returns:
+            float: the occupation number for the given layer and site
+        """
+
+        covmat = self.compute_ferm_cov(lay)
+        site_ind = 2 * site  # index into covariance matrix
+        mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
+        return mass_site

@@ -81,7 +81,7 @@ class Config2DBase(ABC):
 
     # Ansatz settings
     # This will be overwritten by the specifications of each ansatz
-    _nparams_per_layer: int = None
+    _nparams: int = None  # number of params per site per layer
     ncopy: int = None
 
     def __init__(
@@ -125,14 +125,6 @@ class Config2DBase(ABC):
         self._symbolvec: Optional[List[sympy.Symbol]] = (
             None  # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
         )
-
-        # Translation invariance
-        self.site_params_dict = {
-            site: 0 for site in range(self.lattice.size)
-        }  # map from site to index of independent parameters
-        self.max_unitcell_size = len(
-            set(self.site_params_dict.values())
-        )  # number of different sets of parameters across sites (min: 1, max: num_sites)
 
         # Parameters of the Hamiltonian
         self.g_el = g_el
@@ -183,14 +175,14 @@ class Config2DBase(ABC):
 
     @property
     def nparams_per_layer(self):
-        return self._nparams_per_layer
+        return self._nparams * self.unitcell_size
 
     def nvarparams(self):
-        return self._nparams_per_layer * self.nlayer
+        return self._nparams * self.unitcell_size * self.nlayer
 
     def param_shape(self):
         """Return the shape required for valid parameters."""
-        shape = (self.nlayer, self.max_unitcell_size, self._nparams_per_layer)
+        shape = (self.nlayer, self.unitcell_size, self._nparams)
         return shape
 
     def parse_params(self, paramvec, layer, site):
@@ -229,7 +221,7 @@ class Config2DBase(ABC):
         Returns:
             bool: True is ansatz is translationally invariant, False otherwise.
         """
-        return self.max_unitcell_size == 1
+        return self.unitcell_size == 1
 
     @abstractmethod
     def make_pure_gauge(self):
@@ -304,6 +296,7 @@ class System2DBase(ABC):
         self.cfg: Config2DBase = cfg
 
         # All variables that contain _vec are arrays of length nlayer in the first dimension.
+        # Other types of vec are indicated by layervec, sitevec, etc.
 
         # Parameter based matrices
         self._tmat_layervec_unitcellvec: Optional[List[List[xnp.ndarray]]] = None
@@ -357,16 +350,16 @@ class System2DBase(ABC):
         self._mass_energy_op_grad_vec: Optional[xnp.ndarray] = None
         self._int_energy_op_grad_vec: Optional[xnp.ndarray] = None
         self._chem_energy_op_grad_vec = None
-        self._d_gamma_out_symbolvec: Optional[List[List[xnp.ndarray]]] = (
-            None  # gradients of gamma_out for all symbols: first index is layer, second index is symbol
+        self._d_gamma_out_symbolvec: Optional[List[List[List[xnp.ndarray]]]] = (
+            None  # gradients of gamma_out for all symbols: first index is layer, second index uc_ind, third is symbol
         )
         self._grad_over_norm_dict: Optional[
-            dict[tuple[sympy.Symbol, int, int], float]
+            dict[tuple[int, int, sympy.Symbol], float]
         ] = {
             (lay, uc_ind, symb): None
             for lay, uc_ind, symb in it.product(
                 range(self.cfg.nlayer),
-                range(self.cfg.max_unitcell_size),
+                range(self.cfg.unitcell_size),
                 self.symbolvec,
             )
         }
@@ -432,16 +425,14 @@ class System2DBase(ABC):
             (lay, uc_ind, symb): None
             for lay, uc_ind, symb in it.product(
                 range(self.cfg.nlayer),
-                range(self.cfg.max_unitcell_size),
+                range(self.cfg.unitcell_size),
                 self.symbolvec,
             )
         }
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
         return
 
-    def _exract_partial_covmatvec(
-        self, offset: int
-    ):  # TODO: fix spelling mistake in name
+    def _extract_partial_covmatvec(self, offset: int):
         # We are assuming one physical mode per site
 
         mat_a_vec = self.gamma_maj_sys_vec[:, :offset, :offset]
@@ -504,7 +495,7 @@ class System2DBase(ABC):
             for layer in range(self.cfg.nlayer):
                 tmats = [
                     self._eval_tmat_symb(self.cfg.paramvec[layer][ind])
-                    for ind in range(self.cfg.max_unitcell_size)
+                    for ind in range(self.cfg.unitcell_size)
                 ]
                 self._tmat_layervec_unitcellvec.append(tmats)
         return self._tmat_layervec_unitcellvec
@@ -645,7 +636,9 @@ class System2DBase(ABC):
         if self._d_gamma_out_symbolvec is None:
             self._d_gamma_out_symbolvec = [None] * self.cfg.nlayer
         if self._d_gamma_out_symbolvec[layer] is None:
-            self._d_gamma_out_symbolvec[layer] = []
+            self._d_gamma_out_symbolvec[layer] = [None] * self.cfg.unitcell_size
+        if self._d_gamma_out_symbolvec[layer][uc_ind] is None:
+            self._d_gamma_out_symbolvec[layer][uc_ind] = []
             offset = 2 * self.cfg.lattice.size
 
             for symbol in self.symbolvec:
@@ -667,9 +660,9 @@ class System2DBase(ABC):
                     @ diff_d_gamma_inv
                     @ xnp.transpose(mat_b)
                 )
-                self._d_gamma_out_symbolvec[layer].append(d_gamma_out)
+                self._d_gamma_out_symbolvec[layer][uc_ind].append(d_gamma_out)
 
-        return self._d_gamma_out_symbolvec[layer]
+        return self._d_gamma_out_symbolvec[layer][uc_ind]
 
     @property
     def gamma_maj_sys_vec(self):
@@ -703,7 +696,7 @@ class System2DBase(ABC):
         if self._mat_a_vec is None:
             offset = 2 * self.cfg.lattice.size
             self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = (
-                self._exract_partial_covmatvec(offset)
+                self._extract_partial_covmatvec(offset)
             )
         return self._mat_a_vec
 
@@ -719,7 +712,7 @@ class System2DBase(ABC):
         if self._mat_b_vec is None:
             offset = 2 * self.cfg.lattice.size
             self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = (
-                self._exract_partial_covmatvec(offset)
+                self._extract_partial_covmatvec(offset)
             )
         return self._mat_b_vec
 
@@ -735,7 +728,7 @@ class System2DBase(ABC):
         if self._mat_d_vec is None:
             offset = 2 * self.cfg.lattice.size
             self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = (
-                self._exract_partial_covmatvec(offset)
+                self._extract_partial_covmatvec(offset)
             )
         return self._mat_d_vec
 
@@ -782,7 +775,7 @@ class System2DBase(ABC):
         if self._mat_a_mod_vec is None:
             offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = (
-                self._exract_partial_covmatvec(offset)
+                self._extract_partial_covmatvec(offset)
             )
         return self._mat_a_mod_vec
 
@@ -799,7 +792,7 @@ class System2DBase(ABC):
         if self._mat_b_mod_vec is None:
             offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = (
-                self._exract_partial_covmatvec(offset)
+                self._extract_partial_covmatvec(offset)
             )
         return self._mat_b_mod_vec
 
@@ -816,7 +809,7 @@ class System2DBase(ABC):
         if self._mat_d_mod_vec is None:
             offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = (
-                self._exract_partial_covmatvec(offset)
+                self._extract_partial_covmatvec(offset)
             )
         return self._mat_d_mod_vec
 
@@ -1117,7 +1110,7 @@ class System2DBase(ABC):
             arr = []
             for lay in range(self.cfg.nlayer):
                 uc_vec = []
-                for uc_ind in range(self.cfg.max_unitcell_size):
+                for uc_ind in range(self.cfg.unitcell_size):
                     gamma_maj_deriv = self.compute_gamma_maj_deriv(symb, lay, uc_ind)
 
                     gamma_maj_derivs_sitevec = []
@@ -1169,7 +1162,7 @@ class System2DBase(ABC):
         dest = []
         for layerind in range(self.cfg.nlayer):
             layer_grad = []
-            for uc_ind in range(self.cfg.max_unitcell_size):
+            for uc_ind in range(self.cfg.unitcell_size):
                 layer_grad.append(self.compute_grad_norm(layerind, uc_ind))
             dest.append(layer_grad)
         dest = xnp.asarray(dest)
@@ -1792,6 +1785,16 @@ class System2DBase(ABC):
             float: the occupation number per site
         """
         return self.mass_energy_op / self.cfg.lattice.size
+
+    def occupation(self, lay: int, site: int) -> float:
+        """Compute the occupation number for the given layer and site.
+
+        Returns:
+            float: the occupation number for the given layer and site
+        """
+        raise NotImplementedError(
+            "This is an abstract method. Implement in child class please."
+        )
 
     def meson_string(self, path) -> float:
         """Calculate the value of a meson string given a path.
