@@ -117,7 +117,7 @@ def compute_el_grad_vec_numpy(system):
         lognorm_default = intermediate.lognorm_default_vec[layerind]
 
         ###################### Calculation of the derivative ########################
-        for uc_ind in range(system.cfg.max_unitcell_size):
+        for uc_ind in range(system.cfg.unitcell_size):
             for symbol_ind, symbol in enumerate(system.symbolvec):
                 if (layerind, uc_ind, symbol_ind) in system.cfg.zeroed_params:
                     # the derivative calculation is compuationally expensive
