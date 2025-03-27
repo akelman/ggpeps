@@ -228,42 +228,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # main(args)
-
-    class Args:
-        def __init__(self, obs, pkl_fname, log_fname, grad_ind=None, layer_num=None):
-            self.obs = obs
-            self.pkl_fname = pkl_fname
-            self.log_fname = log_fname
-            self.grad_ind = grad_ind
-            self.layer_num = layer_num
-
-    # Base directory for the new folder structure
-    base_dir = r"G:\My Drive\Research\MC\rows_gauge_test_with_grad"
-
-    # Observable list
-    obs_lst = ["energy_grad"]
-
-    # Iterate over folders of the form g*\L*
-    for g_folder in glob.glob(os.path.join(base_dir, "g*")):
-        for l_folder in glob.glob(os.path.join(g_folder, "L*")):
-            gz_files = glob.glob(os.path.join(l_folder, "*.gz"))
-            log_files = glob.glob(os.path.join(l_folder, "*.log"))
-            print(gz_files)
-
-            # Ensure both .gz and .log files exist
-            if gz_files and log_files:
-                for obs in obs_lst:
-                    args = Args(obs, gz_files, log_files)
-                    args.layer_num = list(range(2))  # Adjust as needed
-                    args.grad_ind = list(range(20))  # Adjust as needed
-
-                    # Call the main function
-                    print(os.path.basename(l_folder))
-                    main(
-                        args,
-                        os.path.join(
-                            l_folder,
-                            f"{os.path.basename(l_folder)}_{obs}_eom_analysis.pdf",
-                        ),
-                    )
+    main(args)
