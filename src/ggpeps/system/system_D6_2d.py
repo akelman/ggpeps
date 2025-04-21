@@ -334,9 +334,9 @@ class D6System2D_Config(Config2DBase):
     def generate_gamma_gauge_neutral_dict(self):
         """Generate the covariance matrix of the ungauged projectors.
         The mode order is #TODO: Fix order of the modes.
-        {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2,l3_1, l3_2, r3_1, r3_2, l4_1, l4_2, r4_1, r4_2}
-        /{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u3_2,d3_1, d3_2, u3_1, u3_2, d4_1, d4_2, u4_1, u4_2}.
-        The naming convention here is <mode letter><number of copy>_<majorana mode>.
+        {l1_1_1, l1_2_1, r1_1_1, r1_2_1,l1_1_2, l1_2_2, r1_1_2, r1_2_2, l2_1_1, l2_2_1, r2_1_1, r2_2_1, l2_1_2, l2_2_2, r2_1_2, r2_2_2}
+        /{d1_1_1, d1_2_1, u1_1_1, u1_2_1,d1_1_2, d1_2_2, u1_1_2, u1_2_2, d2_1_1, d2_2_1, u2_1_1, u2_2_1, d2_1_2, d2_2_2, u2_1_2, u2_2_2}.
+        The naming convention here is <mode letter><number of copy>_<majorana mode>_<color>.
         We order first by link and then by copy.
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
@@ -366,8 +366,13 @@ class D6System2D_Config(Config2DBase):
             ]
         )
         dest_unmixed[Direction.X] = block_diag(blockumixed_X, blockumixed_X)
-        # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
-
+        # Creating the matrix in th mode order of {l1_1_1, l1_2_1, r1_1_1, r1_2_1, l2_1_1, l2_2_1, r2_1_1, r2_2_1,l1_1_2, l1_2_2, r1_1_2, r1_2_2, l2_1_2, l2_2_2, r2_1_2, r2_2_2}
+        permutation_mat = modearray.generate_permutation_matrix(
+            list(range(1, 17)), [1, 2, 3, 4, 9, 10, 11, 12, 5, 6, 7, 8, 13, 14, 15, 16]
+        )
+        dest_unmixed[Direction.X] = (
+            permutation_mat.T @ dest_unmixed[Direction.X] @ permutation_mat
+        )  # Change to the right oreder of modes
         blockumixed_Y = np.array(
             [
                 [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -381,6 +386,10 @@ class D6System2D_Config(Config2DBase):
             ]
         )
         dest_unmixed[Direction.Y] = block_diag(blockumixed_Y, blockumixed_Y)
+
+        dest_unmixed[Direction.X] = (
+            permutation_mat.T @ dest_unmixed[Direction.X] @ permutation_mat
+        )  # Permute to the right oreder of modes
 
         return np.array(
             [dest_unmixed] * self.num_pg_layer
