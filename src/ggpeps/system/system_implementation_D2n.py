@@ -177,7 +177,7 @@ class D2nSystem2D(System2DBase):
                 ]
             )
         )  # This is thr rot_right for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
-        perm_mat = modearray.generate_permutation_matrix("1234", "1324")
+        perm_mat = modearray.generate_permutation_matrix([1, 2, 3, 4], [1, 3, 2, 4])
         perm_mat = xscipy.linalg.block_diag(
             perm_mat, perm_mat
         )  # Generate permutation matrix to change the modes's order
