@@ -337,7 +337,6 @@ class D6System2D_Config(Config2DBase):
         {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2,l3_1, l3_2, r3_1, r3_2, l4_1, l4_2, r4_1, r4_2}
         /{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u3_2,d3_1, d3_2, u3_1, u3_2, d4_1, d4_2, u4_1, u4_2}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
-        Copies 1 and 2 are of color m=1, and 3 and 4 are of color m=2.
         We order first by link and then by copy.
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
