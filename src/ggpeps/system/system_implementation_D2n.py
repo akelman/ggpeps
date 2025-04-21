@@ -10,6 +10,7 @@ import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.global_funcs import *
+from ggpeps import modearray
 
 from .system_base import System2DBase
 from .system_base import calculate_lognorm_inc
@@ -132,10 +133,10 @@ class D2nSystem2D(System2DBase):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
 
         The mode order is (as for gamma_in_neutral):
-            1 copy: {l_0_1, l_1_1, r_0_1, r_1_2}/{d_0_1, d_1_1, u_0_1, u_1_2},
-            2 copies: {l1_0_1, l1_1_1,l2_0_1, l2_1_1, r1_0_1, r1_1_2, r2_0_1, r2_1_2}/{d1_0_1, d1_1_1,d2_0_1, d2_1_1, u1_0_1, u1_1_2, u2_0_1, u2_1_2},
+            1 copy: {l_1_1, l_2_1,l_1_2,l_2_2, r_1_1, r_2_1,r_1_2,r_2_2}/{d_1_1, d_2_1,d_1_2,d_2_2, u_1_1, u_2_1,u_1_2,u_2_2},
+            2 copies: {l1_1_1, l1_2_1,l1_1_2,l1_2_2, r1_1_1, r1_2_1,r1_1_2,r1_2_2,l2_1_1, l2_2_1,l2_1_2,l2_2_2, r2_1_1, r2_2_1,r2_1_2,r2_2_2}/{d1_1_1, d1_2_1,d1_1_2,d1_2_2, u1_1_1, u1_2_1,u1_1_2,u1_2_2,d2_1_1, d2_2_1,d2_1_2,d2_2_2, u2_1_1, u2_2_1,u2_1_2,u2_2_2},
         depending on whether the link is vertical or horizontal.
-        The naming convention here is <mode letter><number of copy>_<color>_<majorana mode>.
+        The naming convention here is <mode letter><number of copy>_<majorana mode>_<color>.
         We order first by link and then by copy.
 
         For fermionic and pure gauge layers, the projectors don't mix copies to ensure the U(1) symmetry is obeyed.
@@ -167,7 +168,6 @@ class D2nSystem2D(System2DBase):
             g_conj = xnp.conj(g)
             sum_of_g_matrices = g + g_conj
             dif_of_g_matrices = g - g_conj
-
         rot_right = (
             0.5
             * xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511)
@@ -176,7 +176,12 @@ class D2nSystem2D(System2DBase):
                     [1j * dif_of_g_matrices, sum_of_g_matrices],
                 ]
             )
-        )
+        )  # This is thr rot_right for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
+        perm_mat = modearray.generate_permutation_matrix("1234", "1324")
+        perm_mat = xscipy.linalg.block_diag(
+            perm_mat, perm_mat
+        )  # Generate permutation matrix to change the modes's order
+        rot_right = xnp.transpose(perm_mat) @ rot_right @ perm_mat
 
         # We have dim(representaion) left mode => 2*dim(representation) Majorana modes
         dim_rep = len(g)  # dimension of the representation
