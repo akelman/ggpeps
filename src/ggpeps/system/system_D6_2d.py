@@ -13,6 +13,7 @@ from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.global_funcs import *
 from ggpeps import gauge
+from ggpeps import modearray
 
 from .system_base import Config2DBase
 from .system_base import get_pfaffian_arrays
@@ -29,7 +30,7 @@ class D6System2D_Config(Config2DBase):
         Some general notes about conventions:
 
         Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di].
-        Mode order of tmat: The mode order is: Psi_0,Psi_1, l1_0,l1_1, r1_0,r1_1,d1_0, d1_1, u1_0,u1_1, l2_0, l2_1, r2_0,r2_1, d2_0,d2_1, u2_0, u2_1
+        Mode order of tmat: The mode order is: Psi_1,Psi_2, l1_1,l1_2, r1_1,r1_2,d1_1, d1_2, u1_1,u1_2, l2_1, l2_2, r2_1,r2_2, d2_1,d2_2, u2_1, u2_2
         Where the modes are labelled by directin{copy}_{color}
         Where the 1 and 2 virtual copies and the Psi are the m=0 and the 3 and 4 virtual copies and Psi2 are of the color m=1.
         Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
@@ -232,7 +233,7 @@ class D6System2D_Config(Config2DBase):
         This is one of two analytic inputs into the code.
         The other input is the structure and the parametrization of the projectors.
 
-        The mode order is: Psi_0,Psi_1, l1_0,l1_1, r1_0,r1_1,d1_0, d1_1, u1_0,u1_1, l2_0, l2_1, r2_0,r2_1, d2_0,d2_1, u2_0, u2_1
+        The mode order is: Psi_1,Psi_2, l1_1, r1_1,d1_1,u1_1, l1_2, r1_2,d1_2,u1_2, l2_1, r2_1,d2_1,u2_1,l2_2, r2_2,d2_2,u2_2
         Where the modes are labelled by directin{copy}_{color}.
         The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
         The permutation matrices are prone to errors.
@@ -315,43 +316,19 @@ class D6System2D_Config(Config2DBase):
                 [t2, 1.0j * d, -1.0j * b, -c, a, -1.0j * z2, z2, y2, 0],
             ]
         )
-        # Define the 16x16 block diagonal matrix for the two different colors in the order of:
-        #  Psi1, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, Psi2, l_3, r_3, d_3, u_3, l_4, r_4, d_4, u_4, where 3 and 4 are the m=1 color
+        # Define the 16x16 block diagonal tmat matrix for the two different colors in the order of:
+        #  Psi1, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, Psi2, l_3, r_3, d_3, u_3, l_4, r_4, d_4, u_4, where 3 and 4 are the m=2 color
         tmat_symb = sympy.BlockDiagMatrix(tmat_symb_block, tmat_symb_block)
 
         # Convert it to a regular Matrix
         tmat_symb = sympy.Matrix(tmat_symb)  # this is the T matrix in
-        permutation_mat = sympy.Matrix(
-            18,
-            18,
-            lambda i, j: (
-                1
-                if (
-                    (i == 0 and j == 0)
-                    or (i == 1 and j == 9)
-                    or (i == 2 and j == 1)
-                    or (i == 3 and j == 10)
-                    or (i == 4 and j == 2)
-                    or (i == 5 and j == 11)
-                    or (i == 6 and j == 3)
-                    or (i == 7 and j == 12)
-                    or (i == 8 and j == 4)
-                    or (i == 9 and j == 13)
-                    or (i == 10 and j == 5)
-                    or (i == 11 and j == 14)
-                    or (i == 12 and j == 6)
-                    or (i == 13 and j == 15)
-                    or (i == 14 and j == 7)
-                    or (i == 15 and j == 16)
-                    or (i == 16 and j == 8)
-                    or (i == 17 and j == 17)
-                )
-                else 0
-            ),
+        permutation_mat = modearray.generate_permutation_matrix(
+            list(range(1, 19)),
+            [1, 10, 2, 3, 4, 5, 11, 12, 13, 14, 6, 7, 8, 9, 15, 16, 17, 18],
         )
         tmat_symb = (
             permutation_mat.T @ tmat_symb @ permutation_mat
-        )  # permute the matrix to get the right order  Psi_0,Psi_1, l1_0,l1_1, r1_0,r1_1,d1_0, d1_1, u1_0,u1_1, l2_0, l2_1, r2_0,r2_1, d2_0,d2_1, u2_0, u2_1
+        )  # permute the matrix to get the right order Psi_1,Psi_2, l1_1, r1_1,d1_1,u1_1, l1_2, r1_2,d1_2,u1_2, l2_1, r2_1,d2_1,u2_1,l2_2, r2_2,d2_2,u2_2
         return tmat_symb
 
     def generate_gamma_gauge_neutral_dict(self):
@@ -360,7 +337,7 @@ class D6System2D_Config(Config2DBase):
         {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2,l3_1, l3_2, r3_1, r3_2, l4_1, l4_2, r4_1, r4_2}
         /{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u3_2,d3_1, d3_2, u3_1, u3_2, d4_1, d4_2, u4_1, u4_2}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
-        Copies 1 and 2 are of color m=0, and 3 and 4 are of color m=1.
+        Copies 1 and 2 are of color m=1, and 3 and 4 are of color m=2.
         We order first by link and then by copy.
         The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
