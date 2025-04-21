@@ -17,6 +17,7 @@ from ggpeps.system.system_D6_2d import D6System2D_Config
 
 # System2D
 from ggpeps.system.system_implementation import Z2System2D
+from ggpeps.system.system_implementation_D2n import D2nSystem2D
 
 # there may be a better way to this after python 3.12
 from typing import Union  # TypeAlias
@@ -24,6 +25,7 @@ from typing import Union  # TypeAlias
 SystemType = Union[
     U1System2D,
     Z2System2D,
+    D2nSystem2D,
 ]
 SystemConfigType = Union[
     U1System2DConfig,
