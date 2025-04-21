@@ -20,7 +20,7 @@ from .system_base import calculate_lognorm_inc
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
-###################### Z2System2D ##########################
+###################### D2nSystem2D ##########################
 
 
 class D2nSystem2D(System2DBase):
