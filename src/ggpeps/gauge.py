@@ -13,7 +13,7 @@ class ZNGauge:
         return rng_state.randint(0, self.n) * 2 * np.pi / self.n
 
     def get_neutral_gauge_value(self) -> float:
-        return 0
+        return 0.0
 
     def get_possible_gauge_values(self) -> np.ndarray:
         prefactor = 2.0 * np.pi / self.n
