@@ -154,8 +154,6 @@ class D2nSystem2D(System2DBase):
         Returns:
             xnp.ndarray: Rotation matrix for gamma_in_neutral
         """
-        g_transpose = xnp.transpose(g)
-        g_dagger = xnp.conj(g_transpose)
 
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
@@ -177,10 +175,12 @@ class D2nSystem2D(System2DBase):
                 ]
             )
         )  # This is thr rot_right for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
-        perm_mat = modearray.generate_permutation_matrix([1, 2, 3, 4], [1, 3, 2, 4])
-        perm_mat = xscipy.linalg.block_diag(
-            perm_mat, perm_mat
+        perm_mat = xnp.array(
+            modearray.generate_permutation_matrix([1, 2, 3, 4], [1, 3, 2, 4])
         )  # Generate permutation matrix to change the modes's order
+        # perm_mat = xscipy.linalg.block_diag(
+        #     perm_mat, perm_mat
+        # )
         rot_right = xnp.transpose(perm_mat) @ rot_right @ perm_mat
 
         # We have dim(representaion) left mode => 2*dim(representation) Majorana modes

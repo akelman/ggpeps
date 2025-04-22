@@ -322,9 +322,11 @@ class D6System2D_Config(Config2DBase):
 
         # Convert it to a regular Matrix
         tmat_symb = sympy.Matrix(tmat_symb)  # this is the T matrix in
-        permutation_mat = modearray.generate_permutation_matrix(
-            list(range(1, 19)),
-            [1, 10, 2, 3, 4, 5, 11, 12, 13, 14, 6, 7, 8, 9, 15, 16, 17, 18],
+        permutation_mat = np.array(
+            modearray.generate_permutation_matrix(
+                list(range(1, 19)),
+                [1, 10, 2, 3, 4, 5, 11, 12, 13, 14, 6, 7, 8, 9, 15, 16, 17, 18],
+            )
         )
         tmat_symb = (
             permutation_mat.T @ tmat_symb @ permutation_mat
@@ -367,8 +369,11 @@ class D6System2D_Config(Config2DBase):
         )
         dest_unmixed[Direction.X] = block_diag(blockumixed_X, blockumixed_X)
         # Creating the matrix in th mode order of {l1_1_1, l1_2_1, r1_1_1, r1_2_1, l2_1_1, l2_2_1, r2_1_1, r2_2_1,l1_1_2, l1_2_2, r1_1_2, r1_2_2, l2_1_2, l2_2_2, r2_1_2, r2_2_2}
-        permutation_mat = modearray.generate_permutation_matrix(
-            list(range(1, 17)), [1, 2, 3, 4, 9, 10, 11, 12, 5, 6, 7, 8, 13, 14, 15, 16]
+        permutation_mat = np.array(
+            modearray.generate_permutation_matrix(
+                list(range(1, 17)),
+                [1, 2, 3, 4, 9, 10, 11, 12, 5, 6, 7, 8, 13, 14, 15, 16],
+            )
         )
         dest_unmixed[Direction.X] = (
             permutation_mat.T @ dest_unmixed[Direction.X] @ permutation_mat
@@ -387,8 +392,8 @@ class D6System2D_Config(Config2DBase):
         )
         dest_unmixed[Direction.Y] = block_diag(blockumixed_Y, blockumixed_Y)
 
-        dest_unmixed[Direction.X] = (
-            permutation_mat.T @ dest_unmixed[Direction.X] @ permutation_mat
+        dest_unmixed[Direction.Y] = (
+            permutation_mat.T @ dest_unmixed[Direction.Y] @ permutation_mat
         )  # Permute to the right oreder of modes
 
         return np.array(
