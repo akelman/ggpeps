@@ -40,7 +40,7 @@ class D6System2D_Config(Config2DBase):
     """
 
     _nparams = 20
-    ncopy = 4
+    ncopy = 2
     nvirtmodes_vertex = 16
     nvirtmodes_link = 8
 
