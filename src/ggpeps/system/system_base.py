@@ -330,12 +330,10 @@ class System2DBase(ABC):
         self._gamma_in_sys_vec: Optional[xnp.ndarray] = (
             None  # in cases when different layers use the same projectors, all elements will point to the same gamma_in_sys
         )
-        self._gaugefieldvec: xnp.ndarray = xnp.zeros(
-            self.cfg.lattice.nlinks
-        )  # TODO: should this be np or xnp?
-        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(
-            2  # TODO: set to Dn gauge group - the systen should accept a group
-        )  # needs to be changed for cases other than Z2
+        neutral_gauge = self.cfg.gaugemgr.get_neutral_gauge_value()
+        self._gaugefieldvec: xnp.ndarray = xnp.array(
+            [neutral_gauge] * self.cfg.lattice.nlinks
+        )
 
         # Weight
         self._weight: Optional[float] = None
