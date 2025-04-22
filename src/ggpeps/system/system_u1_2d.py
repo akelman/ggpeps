@@ -68,6 +68,7 @@ class U1System2DConfig(Config2DBase):
             site: 0 for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
         self.unitcell_size = 1
+        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(3)
 
     def make_pure_gauge(self):
         # The order of the parameters is [t,y,z]
