@@ -32,10 +32,10 @@ class TestZ2System(unittest.TestCase):
 
     def test_required_params_are_zero(self):
         """Ensure that the parameters that must vanish to guarantee ansatz symmetries do indeed vanish."""
-        mat = self.system_z2.cfg.paramvec
+        mat = self.system_D6.cfg.paramvec
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
-        for layer_ind in range(self.system_z2.cfg.num_pg_layer):
-            for uc_ind in range(self.system_z2.cfg.unitcell_size):
+        for layer_ind in range(self.system_D6.cfg.num_pg_layer):
+            for uc_ind in range(self.system_D6.cfg.unitcell_size):
                 for t_ind in t_indices:
                     with self.subTest(tind=t_ind, layerind=layer_ind):
                         coord = (layer_ind, uc_ind, t_ind)
@@ -54,9 +54,9 @@ class TestZ2System(unittest.TestCase):
             15,
         ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
         for layer_ind in range(
-            self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer
+            self.system_D6.cfg.num_pg_layer, self.system_D6.cfg.nlayer
         ):
-            for uc_ind in range(self.system_z2.cfg.unitcell_size):
+            for uc_ind in range(self.system_D6.cfg.unitcell_size):
                 for ind in zero_for_fermionic_layer:
                     with self.subTest(ind=ind, layerind=layer_ind):
                         coord = (layer_ind, uc_ind, ind)
