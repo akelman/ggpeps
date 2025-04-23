@@ -1891,35 +1891,38 @@ class System2DBase(ABC):
             self.cfg.ncopy
         )  # The ncopy property is defined the config of any child class of System2DBase
         mode_order = []
+        num_colors = self.cfg.gaugemgr.rep_dim
 
         # Horizontal first
         for link in range(lat.nx * lat.ny):
-            for c in range(num_copies):
-                copy = c + 1
-                mode1 = ("l1", copy, link)  # majorana mode l1
-                mode2 = ("l2", copy, link)  # majorana mode l2
-                mode3 = ("r1", copy, link)
-                mode4 = ("r2", copy, link)
-                mode_order += [mode1, mode2, mode3, mode4]
+            for copy in range(1, num_copies + 1):
+                for color in range(1, num_colors + 1):
+                    mode1 = ("l1", copy, color, link)  # majorana mode l1
+                    mode2 = ("l2", copy, color, link)  # majorana mode l2
+                    mode3 = ("r1", copy, color, link)
+                    mode4 = ("r2", copy, color, link)
+                    mode_order += [mode1, mode2, mode3, mode4]
 
         # Vertical
         for link in range(lat.nx * lat.ny):
             link_num = (
                 link + lat.nx * lat.ny
             )  # vertical link numbers start at the number of horizontal links that there are
-            for c in range(num_copies):
-                copy = c + 1
-                mode1 = ("d1", copy, link_num)  # majorana mode d1
-                mode2 = ("d2", copy, link_num)  # majorana mode d2
-                mode3 = ("u1", copy, link_num)
-                mode4 = ("u2", copy, link_num)
-                mode_order += [mode1, mode2, mode3, mode4]
+            for copy in range(1, num_copies + 1):
+                for color in range(1, num_colors + 1):
+                    mode1 = ("d1", copy, color, link_num)  # majorana mode d1
+                    mode2 = ("d2", copy, color, link_num)  # majorana mode d2
+                    mode3 = ("u1", copy, color, link_num)
+                    mode4 = ("u2", copy, color, link_num)
+                    mode_order += [mode1, mode2, mode3, mode4]
 
         # Convert to a list of strings
         # This was left as a tuple above in case there was ever any use for that format
         mode_order_str = []
         for mode in mode_order:
-            mode_str = mode[0] + "_" + str(mode[1]) + "_" + str(mode[2])
+            mode_str = (
+                mode[0] + "_" + str(mode[1]) + "_" + str(mode[2]) + "_" + str(mode[3])
+            )
             mode_order_str.append(mode_str)
 
         return mode_order_str
@@ -1953,31 +1956,63 @@ class System2DBase(ABC):
         num_copies = (
             self.cfg.ncopy
         )  # The ncopy property is defined the config of any child class of System2DBase
+        num_colors = self.cfg.gaugemgr.rep_dim
         mode_order = []
 
         for site in range(lat.nx * lat.ny):
-            for c in range(num_copies):
-                copy = c + 1
-                x, y = lat.ind2coord(site)  # coordinates of the site
+            for copy in range(1, num_copies + 1):
+                for color in range(1, num_colors + 1):
+                    x, y = lat.ind2coord(site)  # coordinates of the site
 
-                # Horizontal
-                mode1 = ("l1", copy, lat.coord2ind_dir((x - 1, y), Direction.X))
-                mode2 = ("l2", copy, lat.coord2ind_dir((x - 1, y), Direction.X))
-                mode3 = ("r1", copy, lat.coord2ind_dir((x, y), Direction.X))
-                mode4 = ("r2", copy, lat.coord2ind_dir((x, y), Direction.X))
+                    # Horizontal
+                    mode1 = (
+                        "l1",
+                        copy,
+                        color,
+                        lat.coord2ind_dir((x - 1, y), Direction.X),
+                    )
+                    mode2 = (
+                        "l2",
+                        copy,
+                        color,
+                        lat.coord2ind_dir((x - 1, y), Direction.X),
+                    )
+                    mode3 = ("r1", copy, color, lat.coord2ind_dir((x, y), Direction.X))
+                    mode4 = ("r2", copy, color, lat.coord2ind_dir((x, y), Direction.X))
 
-                # Vertical
-                mode5 = ("d1", copy, lat.coord2ind_dir((x, y - 1), Direction.Y))
-                mode6 = ("d2", copy, lat.coord2ind_dir((x, y - 1), Direction.Y))
-                mode7 = ("u1", copy, lat.coord2ind_dir((x, y), Direction.Y))
-                mode8 = ("u2", copy, lat.coord2ind_dir((x, y), Direction.Y))
+                    # Vertical
+                    mode5 = (
+                        "d1",
+                        copy,
+                        color,
+                        lat.coord2ind_dir((x, y - 1), Direction.Y),
+                    )
+                    mode6 = (
+                        "d2",
+                        copy,
+                        color,
+                        lat.coord2ind_dir((x, y - 1), Direction.Y),
+                    )
+                    mode7 = ("u1", copy, color, lat.coord2ind_dir((x, y), Direction.Y))
+                    mode8 = ("u2", copy, color, lat.coord2ind_dir((x, y), Direction.Y))
 
-                mode_order += [mode1, mode2, mode3, mode4, mode5, mode6, mode7, mode8]
+                    mode_order += [
+                        mode1,
+                        mode2,
+                        mode3,
+                        mode4,
+                        mode5,
+                        mode6,
+                        mode7,
+                        mode8,
+                    ]
 
         # Convert to a list of strings
         mode_order_str = []
         for mode in mode_order:
-            mode_str = mode[0] + "_" + str(mode[1]) + "_" + str(mode[2])
+            mode_str = (
+                mode[0] + "_" + str(mode[1]) + "_" + str(mode[2]) + "_" + str(mode[3])
+            )
             mode_order_str.append(mode_str)
 
         return mode_order_str

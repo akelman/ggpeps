@@ -8,6 +8,7 @@ class ZNGauge:
 
     def __init__(self, n: int):
         self.n = n
+        self.rep_dim = 1  # dimension of the representation
 
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> float:
         return rng_state.randint(0, self.n) * 2 * np.pi / self.n
@@ -43,6 +44,7 @@ class D2nGauge:
 
     def __init__(self, n: int):
         self.n = n
+        self.rep_dim = 2
 
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> float:
         p = rng_state.randint(0, self.n)
