@@ -11,7 +11,12 @@ class ZNGauge:
         self.rep_dim = 1  # dimension of the representation
 
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> float:
-        return rng_state.randint(0, self.n) * 2 * np.pi / self.n
+        theta = rng_state.randint(0, self.n) * 2 * np.pi / self.n
+        return self.get_representation(theta)
+
+    def get_representation(self, theta: float) -> np.ndarray:
+        """Get a representation of the group element"""
+        return np.array([[np.exp(1.0j * theta)]])
 
     def get_neutral_gauge_value(self) -> float:
         return 0.0
@@ -20,7 +25,7 @@ class ZNGauge:
         prefactor = 2.0 * np.pi / self.n
         dest = np.zeros(self.n)
         for i in range(self.n):
-            dest[i] = i * prefactor
+            dest[i] = self.get_representation(i * prefactor)
         return dest
 
     def get_increment(self) -> float:
