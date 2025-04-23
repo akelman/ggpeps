@@ -19,7 +19,7 @@ class ZNGauge:
         return np.array([[np.exp(1.0j * theta)]])
 
     def get_neutral_gauge_value(self) -> float:
-        return 0.0
+        return np.array([[1.0]])
 
     def get_possible_gauge_values(self) -> np.ndarray:
         prefactor = 2.0 * np.pi / self.n
