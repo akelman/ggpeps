@@ -25,7 +25,7 @@ class TestD2nSystem(unittest.TestCase):
         unitcell_size = 1
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
         cfg = system.D6System2D_Config(
-            lat, 1, 1, 0, 0, None, num_pg_layer, num_fermionic_layer=0
+            lat, 1, 1, 0, 0, None, num_pg_layer, num_fermionic_layer
         )
         cfg.paramvec = paramvec
         self.system_D6 = system.D2nSystem2D(cfg)
@@ -65,7 +65,6 @@ class TestD2nSystem(unittest.TestCase):
 
     def test_covmat_for_no_fermions(self):
         """Ensure the correct covariance matrix is generated when t = 0."""
-        # TODO: Fix this test for D2n with Ariel - offset problem
         self.system_D6.cfg.make_pure_gauge()
         covmat_layer1 = self.system_D6.compute_ferm_cov(layer=0)
         covmat_layer2 = self.system_D6.compute_ferm_cov(layer=1)
@@ -89,8 +88,10 @@ class TestD2nSystem(unittest.TestCase):
         """Ensure the covariance matrix is not the pure-gauge one when t != 0.
         This test must be done with a gauge configuration that includes some flux.
         Only the fermionic layer should have a covariance matrix different than the pure-gauge one.
-        """
-        config = np.array([0] * 7 + [np.pi] * 1)
+        """  # TODO: Fix after implementing physical fermionic layers.
+        identity = self.system_D6.cfg.gaugemgr.get_neutral_gauge_value()
+        other_gauge = self.system_D6.cfg.gaugemgr.get_representaion(0, 1)
+        config = np.array([identity] * 7 + [other_gauge] * 1)
         self.system_D6.update_gauge_full_system(config)
 
         covmat_layer1 = self.system_D6.compute_ferm_cov(layer=0)
@@ -107,13 +108,14 @@ class TestD2nSystem(unittest.TestCase):
                 [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0],
             ]
         )
+        expected_covmat = block_diag(expected_covmat, expected_covmat)
         self.assertTrue(np.allclose(covmat_layer1, expected_covmat))
         self.assertFalse(np.allclose(covmat_layer2, expected_covmat))
 
     def test_valid_covmat(self):
         """Ensure the covariance matrix satisfies the conditions to be a covariance matrix.
         This test is done with a gauge configuration that includes some flux.
-        """  # TODO: Check if this test passes after fixing the offset problem with Ariel.
+        """
         identity = self.system_D6.cfg.gaugemgr.get_neutral_gauge_value()
         other_gauge = self.system_D6.cfg.gaugemgr.get_representaion(0, 1)
         config = np.array([identity] * 7 + [other_gauge] * 1)
@@ -132,11 +134,11 @@ class TestD2nSystem(unittest.TestCase):
 
     def test_t_zero(self):
         """Ensure mass and interaction energy are zero when t = 0"""
-
+        # TODO: Fix after implementing physical fermionic layers.
         ec_config = exacteval.ExactEvaluatorConfig()
         ec_config.gauge_fixing = False
-        self.system_z2.cfg.make_pure_gauge()  # sets t params to zero
-        ex_eval = exacteval.ExactEvaluator(ec_config, self.system_z2)
+        self.system_D6.cfg.make_pure_gauge()  # sets t params to zero
+        ex_eval = exacteval.ExactEvaluator(ec_config, self.system_D6)
         dest_dict = ex_eval.evaluate()
         self.assertTrue(np.allclose(0, dest_dict["mass_energy"]))
         self.assertTrue(np.allclose(0, dest_dict["int_energy"]))
@@ -144,7 +146,7 @@ class TestD2nSystem(unittest.TestCase):
     def test_t_nonzero(self):
         """Ensure mass and interaction energy are zero when t != 0.
         This checks for random params, which we assume do not give t = 0"""
-
+        # TODO: Fix after implementing physical fermionic layers.
         ec_config = exacteval.ExactEvaluatorConfig()
         ec_config.gauge_fixing = False
         ex_eval = exacteval.ExactEvaluator(ec_config, self.system_z2)
@@ -171,7 +173,16 @@ class TestD2nSystem(unittest.TestCase):
                 [0, 0, 0, 0, 0, 1, 0, 0, 0],
             ]
         )
-        tmat = self.system_z2.cfg.tmat_symb
+        R = block_diag(R, R)  # block diagonal of 2 colors
+        permutation_mat = np.array(  # change to correct mode ordering of Psi_1,Psi_2, l1_1, r1_1,d1_1,u1_1, l1_2, r1_2,d1_2,u1_2, l2_1, r2_1,d2_1,u2_1,l2_2, r2_2,d2_2,u2_2
+            # Where the modes are labelled by directin{copy}_{color}.
+            generate_permutation_matrix(
+                list(range(1, 19)),
+                [1, 10, 2, 3, 4, 5, 11, 12, 13, 14, 6, 7, 8, 9, 15, 16, 17, 18],
+            )
+        )
+        R = np.transpose(permutation_mat) @ R @ permutation_mat
+        tmat = self.system_D6.cfg.tmat_symb
         res_rot = R.T @ tmat @ R - tmat
         res = sp.simplify(
             sp.simplify(res_rot)
@@ -200,9 +211,19 @@ class TestD2nSystem(unittest.TestCase):
                 [0, 0, 0, 0, 0, 1, 0, 0, 0],
             ]
         )
-        tmats = self.system_z2.tmat_layervec_sitevec
-        for lay in range(self.system_z2.cfg.nlayer):
-            for site in range(self.system_z2.cfg.lattice.size):
+        R = block_diag(R, R)  # block diagonal of 2 colors
+        permutation_mat = np.array(  # change to correct mode ordering of Psi_1,Psi_2, l1_1, r1_1,d1_1,u1_1, l1_2, r1_2,d1_2,u1_2, l2_1, r2_1,d2_1,u2_1,l2_2, r2_2,d2_2,u2_2
+            # Where the modes are labelled by directin{copy}_{color}.
+            generate_permutation_matrix(
+                list(range(1, 19)),
+                [1, 10, 2, 3, 4, 5, 11, 12, 13, 14, 6, 7, 8, 9, 15, 16, 17, 18],
+            )
+        )
+        R = np.transpose(permutation_mat) @ R @ permutation_mat
+
+        tmats = self.system_D6.tmat_layervec_sitevec
+        for lay in range(self.system_D6.cfg.nlayer):
+            for site in range(self.system_D6.cfg.lattice.size):
                 tmat = tmats[lay][site]
                 res_rot = R.T @ tmat @ R - tmat
                 self.assertTrue(np.allclose(res_rot, 0))
