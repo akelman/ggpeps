@@ -19,13 +19,13 @@ class TestD2nSystem(unittest.TestCase):
     def setUp(self):
 
         lat = lattice.Lattice2D(2, 2)
-        num_pg_layer = 1
+        num_pg_layer = 2
         num_fermionic_layer = 0
         nlayer = num_pg_layer + num_fermionic_layer
         unitcell_size = 1
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
         cfg = system.D6System2D_Config(
-            lat, 1, 1, 0, 0, None, num_pg_layer=1, num_fermionic_layer=0
+            lat, 1, 1, 0, 0, None, num_pg_layer, num_fermionic_layer=0
         )
         cfg.paramvec = paramvec
         self.system_D6 = system.D2nSystem2D(cfg)
