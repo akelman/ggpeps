@@ -1836,13 +1836,15 @@ class System2DBase(ABC):
             path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
             This is the case if the link is traversed from right to left or from top to bottom.
         """
-        theta_sum = 0.0
+        path_product = (
+            self.cfg.gaugemgr.get_neutral_gauge_value()
+        )  # The identity matrix
         for ind, conj in path:
             if conj:
-                theta_sum -= self.gaugefieldvec[ind]
+                path_product = path_product @ xnp.conjugate(self.gaugefieldvec[ind])
             else:
-                theta_sum += self.gaugefieldvec[ind]
-        return xnp.exp(1.0j * theta_sum)
+                path_product = path_product @ self.gaugefieldvec[ind]
+        return xnp.trace(path_product)
 
     ## MOVE TO GLOBAL
     def compute_ferm_cov(self, layer: int) -> xnp.ndarray:
