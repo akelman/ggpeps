@@ -32,6 +32,7 @@ class U1System2DConfig(Config2DBase):
     ncopy = 1
     nvirtmodes_link = 8
     nvirtmodes_link = 4
+    nphysmodes_site = 1  # number of physical modes per site
 
     def __init__(
         self,

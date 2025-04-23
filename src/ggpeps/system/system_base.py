@@ -637,7 +637,7 @@ class System2DBase(ABC):
             self._d_gamma_out_symbolvec[layer] = [None] * self.cfg.unitcell_size
         if self._d_gamma_out_symbolvec[layer][uc_ind] is None:
             self._d_gamma_out_symbolvec[layer][uc_ind] = []
-            offset = 2 * self.cfg.lattice.size
+            offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
 
             for symbol in self.symbolvec:
                 mat_b = self.mat_b_vec[layer]
@@ -692,7 +692,7 @@ class System2DBase(ABC):
             [xnp.ndarray]: Correlations of the physcial modes for the full system.
         """
         if self._mat_a_vec is None:
-            offset = 2 * self.cfg.lattice.size
+            offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
             self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = (
                 self._extract_partial_covmatvec(offset)
             )
@@ -708,7 +708,7 @@ class System2DBase(ABC):
             [xnp.ndarray]: Correlations of the physcial modes with the virtual modes for the full system.
         """
         if self._mat_b_vec is None:
-            offset = 2 * self.cfg.lattice.size
+            offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
             self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = (
                 self._extract_partial_covmatvec(offset)
             )
@@ -724,7 +724,7 @@ class System2DBase(ABC):
             [xnp.ndarray]: Correlations of the virtual modes for the full system.
         """
         if self._mat_d_vec is None:
-            offset = 2 * self.cfg.lattice.size
+            offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
             self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = (
                 self._extract_partial_covmatvec(offset)
             )
@@ -771,7 +771,12 @@ class System2DBase(ABC):
             [xnp.ndarray]: Correlations of the physcial modes for the full system.
         """
         if self._mat_a_mod_vec is None:
-            offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
+            offset = (
+                2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
+            )  # offset for physical modes
+            offset += (
+                2 * self.cfg.nvirtmodes_link
+            )  # offset for virtual modes of the link
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = (
                 self._extract_partial_covmatvec(offset)
             )
@@ -788,7 +793,12 @@ class System2DBase(ABC):
             [xnp.ndarray]: Correlations of the physcial modes with the virtual modes for the full system.
         """
         if self._mat_b_mod_vec is None:
-            offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
+            offset = (
+                2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
+            )  # offset for physical modes
+            offset += (
+                2 * self.cfg.nvirtmodes_link
+            )  # offset for virtual modes of the link
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = (
                 self._extract_partial_covmatvec(offset)
             )
@@ -805,7 +815,12 @@ class System2DBase(ABC):
             [xnp.ndarray]: Correlations of the virtual modes for the full system.
         """
         if self._mat_d_mod_vec is None:
-            offset = 2 * self.cfg.lattice.size + 2 * self.cfg.nvirtmodes_link
+            offset = (
+                2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
+            )  # offset for physical modes
+            offset += (
+                2 * self.cfg.nvirtmodes_link
+            )  # offset for virtual modes of the link
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = (
                 self._extract_partial_covmatvec(offset)
             )
@@ -1350,7 +1365,7 @@ class System2DBase(ABC):
         if self._grad_over_norm_dict[(layerind, uc_ind, var)] is None:
             diff = self.wi_gamma_in_vec[layerind].inv()
             # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
-            offset = 2 * self.cfg.lattice.size
+            offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
             # Extract only the part of the virtual-virtual correlations
             # deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:] # TODO: fix for JAX - DONE
             _, _, deriv_d = extract_partial_covmats(

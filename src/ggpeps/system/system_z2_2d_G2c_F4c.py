@@ -32,6 +32,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
     ncopy = 4
     nvirtmodes_vertex = 16
     nvirtmodes_link = 8
+    nphysmodes_site = 1  # number of physical modes per site
 
     def __init__(
         self,

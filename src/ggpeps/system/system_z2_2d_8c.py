@@ -28,6 +28,7 @@ class Z2System2D_8C_Config(Config2DBase):
     ncopy = 8
     nvirtmodes_vertex = 32
     nvirtmodes_link = 16
+    nphysmodes_site = 1  # number of physical modes per site
 
     def __init__(
         self,

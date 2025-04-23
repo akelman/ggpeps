@@ -116,7 +116,10 @@ def compute_el_grad_vec_jax(system):
             layerind
         ].inv()  # this does not actually do a computation, just a retrieval
         single_link_offset = 2 * system.cfg.nvirtmodes_link
-        offset = 2 * system.cfg.lattice.size + single_link_offset
+        offset = (
+            2 * system.cfg.lattice.size * system.cfg.nphysmodes_site
+            + single_link_offset
+        )
         idxarr = idxarrs[layerind]
         overall_factor = overall_factors[layerind]
         nlinks = system.cfg.lattice.nlinks

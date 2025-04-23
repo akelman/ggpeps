@@ -43,6 +43,7 @@ class D6System2D_Config(Config2DBase):
     ncopy = 2
     nvirtmodes_vertex = 16
     nvirtmodes_link = 8
+    nphysmodes_site = 2  # number of physical modes per site
 
     def __init__(
         self,
