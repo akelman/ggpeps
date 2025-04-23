@@ -598,7 +598,7 @@ class System2DBase(ABC):
             modes_site_order, modes_link_order
         )  # be careful with the convention of the permutation matrix vs its transpose; this way works with the code below.
         sites_perm = xnp.eye(
-            2 * self.cfg.lattice.nx * self.cfg.lattice.ny
+            2 * self.cfg.lattice.nx * self.cfg.lattice.ny * self.cfg.nphysmodes_site
         )  # total number of physical fermionic majorana modes on all the sites together
         mat_perm = block_diag(sites_perm, mat_perm_links)
 
@@ -608,10 +608,18 @@ class System2DBase(ABC):
             covmats = covmats_sitevec
 
             # Extract the parts of the covariance matrix
-            # assumes 1 fermion per site (two majorana modes)
-            amats = [covmats[site][:2, :2] for site in range(self.cfg.lattice.size)]
-            bmats = [covmats[site][:2, 2:] for site in range(self.cfg.lattice.size)]
-            dmats = [covmats[site][2:, 2:] for site in range(self.cfg.lattice.size)]
+            offset = (
+                2 * self.cfg.nphysmodes_site
+            )  # number of physical (majarona) modes per site
+            amats = [
+                covmats[site][:offset, :offset] for site in range(self.cfg.lattice.size)
+            ]
+            bmats = [
+                covmats[site][:offset, offset:] for site in range(self.cfg.lattice.size)
+            ]
+            dmats = [
+                covmats[site][offset:, offset:] for site in range(self.cfg.lattice.size)
+            ]
             # Expand them
             amat_sys = block_diag(*amats)
             bmat_sys = block_diag(*bmats)
