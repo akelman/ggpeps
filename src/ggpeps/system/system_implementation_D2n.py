@@ -168,7 +168,8 @@ class D2nSystem2D(System2DBase):
             dif_of_g_matrices = g - g_conj
         rot_right = (
             0.5
-            * xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511)
+            * xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
+                # TODO: Generalizze this to fermionic layers as well.
                 [
                     [sum_of_g_matrices, -1j * dif_of_g_matrices],
                     [1j * dif_of_g_matrices, sum_of_g_matrices],
@@ -178,9 +179,6 @@ class D2nSystem2D(System2DBase):
         perm_mat = xnp.array(
             modearray.generate_permutation_matrix([1, 2, 3, 4], [1, 3, 2, 4])
         )  # Generate permutation matrix to change the modes's order
-        # perm_mat = xscipy.linalg.block_diag(
-        #     perm_mat, perm_mat
-        # )
         rot_right = xnp.transpose(perm_mat) @ rot_right @ perm_mat
 
         # We have dim(representaion) left mode => 2*dim(representation) Majorana modes
