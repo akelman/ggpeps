@@ -128,7 +128,7 @@ class Z2System2D(System2DBase):
 
     # Gauging
 
-    def generate_rotmat(self, theta: float, coord: tuple, dir: Direction):
+    def generate_rotmat(self, g: xnp.array, coord: tuple, dir: Direction):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
 
         The mode order is (as for gamma_in_neutral):
@@ -147,13 +147,14 @@ class Z2System2D(System2DBase):
         This method overwrites an abstract method in System2DBase.
 
         Args:
-            theta (float): Angle of rotation
+            g (fxnp.array): representation of group element
             coord (tuple): (x,y) coordinate on the lattice
             dir (lattice.Direction): direction of the link
 
         Returns:
             xnp.ndarray: Rotation matrix for gamma_in_neutral
         """
+        theta = self.cfg.gaugemgr.get_angle(g)
         # Gauging might be different depending on sublattice or link direction, but for this system it is the same
         if dir == Direction.X and (-1) ** (coord[0] + coord[1]) == -1:
             # theta += xnp.pi
@@ -185,7 +186,7 @@ class Z2System2D(System2DBase):
 
         Args:
             link_ind (int): Link index to be updated
-            theta (float): New gauge field value
+            theta (xnp.array): New gauge field value
         """
         # Update the gaugefield
         if ggpeps.PREFERRED_BACKEND == "jax":
