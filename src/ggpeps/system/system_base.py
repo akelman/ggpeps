@@ -1841,7 +1841,7 @@ class System2DBase(ABC):
         )  # The identity matrix
         for ind, conj in path:
             if conj:
-                path_product = path_product @ xnp.conjugate(self.gaugefieldvec[ind])
+                path_product = path_product @ xnp.conjugate(xnp.transpose(self.gaugefieldvec[ind]))
             else:
                 path_product = path_product @ self.gaugefieldvec[ind]
         return xnp.trace(path_product)
