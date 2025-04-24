@@ -529,9 +529,10 @@ class Z2System2D(System2DBase):
                 neighborX_ind = 2 * self.cfg.lattice.coord2ind(
                     neighborX_coord
                 )  # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
-                gaugefield_hor = self.gaugefieldvec[ind_field_hor]
+                gaugefield_hor = self.gaugefieldvec[ind_field_hor] # gaugefield_hor is a matrix representation of a group element
+                theta_hor = self.cfg.gaugemgr.get_angle(gaugefield_hor) #convert it to an angle
                 cos_factor_hor = xnp.cos(
-                    gaugefield_hor
+                    theta_hor
                 )  # simple way to get U from gauge value
                 hor_link_energy = 0.5 * (
                     covmat[site_ind_cov, neighborX_ind]
@@ -544,7 +545,8 @@ class Z2System2D(System2DBase):
                 neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
                 neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
                 gaugefield_vert = self.gaugefieldvec[ind_field_vert]
-                cos_factor_vert = xnp.cos(gaugefield_vert)
+                theta_vert = self.cfg.gaugemgr.get_angle(gaugefield_vert) # gaugefield_hor is a matrix represntation of a group elemnt
+                cos_factor_vert = xnp.cos(theta_vert)
                 vert_link_energy = 0.5 * (
                     covmat[site_ind_cov, neighborY_ind + 1]
                     + covmat[site_ind_cov + 1, neighborY_ind]
