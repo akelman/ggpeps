@@ -332,7 +332,7 @@ class System2DBase(ABC):
         )
         neutral_gauge = self.cfg.gaugemgr.get_neutral_gauge_value()
         self._gaugefieldvec: xnp.ndarray = xnp.array(
-            [neutral_gauge] * self.cfg.lattice.nlinks
+            [neutral_gauge] * self.cfg.lattice.nlinks, dtype=xnp.complex64
         )
 
         # Weight
