@@ -1245,13 +1245,13 @@ class System2DBase(ABC):
         self._weight = val
 
     ## MOVE TO GLOBAL
-    def calculate_weight_attempt(self, link_ind: int, theta: float, all_factors=False):
+    def calculate_weight_attempt(self, link_ind: int, theta: xnp.array, all_factors=False):
         """Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
 
         Args:
             link_ind (int): Link index
-            theta (float): New gauge field value
+            theta (xnp.array): New gauge field value
             all_factors (bool, optional): Include all constant factors. Defaults to False.
 
         Returns:
@@ -1454,7 +1454,7 @@ class System2DBase(ABC):
         Args:
             coord (tuple): Coordinate of the vertex
             dir (Direction): Direction of the link
-            theta (float): New value for the gauge field
+            theta (xnp.array): New value for the gauge field
         """
         ind = self.cfg.lattice.coord2ind_dir(coord, dir)
         self.update_gauge_ind(ind, theta)
