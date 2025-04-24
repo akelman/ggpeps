@@ -129,7 +129,7 @@ class D2nSystem2D(System2DBase):
 
     # Gauging
 
-    def generate_rotmat(self, g: xnp.ndarray, coord: tuple, dir: Direction):
+    def generate_rotmat(self, group_element: xnp.ndarray, coord: tuple, dir: Direction):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
 
         The mode order is (as for gamma_in_neutral):
@@ -147,14 +147,14 @@ class D2nSystem2D(System2DBase):
         This method overwrites an abstract method in System2DBase.
 
         Args:
-            g (xnp.ndarray): Representation of group elemnt
+            group_element (xnp.ndarray): Representation of group elemnt
             coord (tuple): (x,y) coordinate on the lattice
             dir (lattice.Direction): direction of the link
 
         Returns:
             xnp.ndarray: Rotation matrix for gamma_in_neutral
         """
-
+        g = group_element
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
         if coord[0] + coord[1] == 0:  # gauging is different for different sublattices
