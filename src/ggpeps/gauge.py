@@ -31,6 +31,9 @@ class ZNGauge:
     def get_increment(self) -> float:
         return 2.0 * np.pi / self.n
 
+    def get_angle(self, g) -> float:
+        """Get the angle, theta, for a group elemnt g=[[exp(1j*theta)]]"""
+        return np.angle(g[0][0])
 
 class D2nGauge:
     """Implements a D_2n gauge group, under a real 2D representation of rotation and reflection matrices.
