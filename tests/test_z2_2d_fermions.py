@@ -1015,16 +1015,17 @@ class TestTransVariance(unittest.TestCase):
         for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
             covmats = []
             for site in range(self.system_z2.cfg.lattice.size):
-
+                neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+                flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)
                 # Set the gauge configuration -
                 #   there must be some flux, since otherwise the mass will be zero,
                 #   so we choose to set the link to the right of the site under consideration to pi
                 x, y = self.system_z2.cfg.lattice.ind2coord(site)
-                config = np.array([0] * 7 + [0] * 1)
+                config = np.array([neutral_gauge] * 7 + [neutral_gauge] * 1)
                 ind = self.system_z2.cfg.lattice.coord2ind_dir(
                     (x, y), lattice.Direction.X
                 )
-                config[ind] = np.pi
+                config[ind] = flux_gauge
                 self.system_z2.update_gauge_full_system(config)
                 covmat = self.system_z2.compute_ferm_cov(lay)
 
@@ -1051,6 +1052,8 @@ class TestTransVariance(unittest.TestCase):
 
     def test_mass(self):
         """Ensure mass is the same on all even sites, the same on all odd sites, and different between them."""
+        neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+        flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)
 
         # Check the mass
         mass_even = 0
@@ -1064,11 +1067,11 @@ class TestTransVariance(unittest.TestCase):
                 #   there must be some flux, since otherwise the mass will be zero,
                 #   so we choose to set the link to the right of the site under consideration to pi
                 x, y = self.system_z2.cfg.lattice.ind2coord(site)
-                config = np.array([0] * 7 + [0] * 1)
+                config = np.array([neutral_gauge] * 7 + [neutral_gauge] * 1)
                 ind = self.system_z2.cfg.lattice.coord2ind_dir(
                     (x, y), lattice.Direction.X
                 )
-                config[ind] = np.pi
+                config[ind] = flux_gauge
                 self.system_z2.update_gauge_full_system(config)
                 covmat = self.system_z2.compute_ferm_cov(lay)
 
@@ -1100,8 +1103,11 @@ class TestTransVariance(unittest.TestCase):
         """
 
         # Set the gauge configuration
-        config = np.zeros(8)
-        config[0] = np.pi
+        neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+        flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)
+
+        config = np.array(8*[neutral_gauge])
+        config[0] = flux_gauge
         self.system_z2.update_gauge_full_system(config)
 
         # Use the paramvec from setUp(), and extract various values for comparison
@@ -1119,8 +1125,8 @@ class TestTransVariance(unittest.TestCase):
         system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
 
         # Set the config for the new system - it must be shifted to account for the swapping of the even/odd sublattices
-        config = np.zeros(8)
-        config[1] = np.pi
+        config = np.array(8*[neutral_gauge])
+        config[1] = flux_gauge
         system_z2.update_gauge_full_system(config)
 
         # Extract the values from the new system for comparison
@@ -1153,7 +1159,9 @@ class TestTransVariance(unittest.TestCase):
         paramvec = self.system_z2.cfg.paramvec
         unitcell_size = self.system_z2.cfg.unitcell_size
 
-        config = np.array([0] * 7 + [np.pi] * 1)
+        neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+        flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)
+        config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         system_z2.update_gauge_full_system(config)
 
         deriv_ana = system_z2.mass_energy_op_grad_vec
@@ -1218,7 +1226,9 @@ class TestTransVariance(unittest.TestCase):
         paramvec = self.system_z2.cfg.paramvec
         unitcell_size = self.system_z2.cfg.unitcell_size
 
-        config = np.array([0] * 7 + [np.pi] * 1)
+        neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+        flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)
+        config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         system_z2.update_gauge_full_system(config)
 
         deriv_ana = system_z2.chem_energy_op_grad_vec
@@ -1282,8 +1292,10 @@ class TestTransVariance(unittest.TestCase):
         lat_2x2 = system_z2.cfg.lattice
         paramvec = self.system_z2.cfg.paramvec
         unitcell_size = self.system_z2.cfg.unitcell_size
-
-        config = np.array([0] * 7 + [np.pi] * 1)
+        
+        neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+        flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)
+        config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         system_z2.update_gauge_full_system(config)
 
         deriv_ana = system_z2.compute_grad_norm_vec()
