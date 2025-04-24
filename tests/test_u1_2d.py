@@ -91,7 +91,7 @@ class TestU1SystemMethods(unittest.TestCase):
     def test_norm_incremental_update(self):
         # Test that the incremental update is equivalent to the re-calculation of the norm
         ind = 0
-        theta = np.pi
+        theta = np.array([[-1.0]])
         weight_inc = self.system_u1_2_2.calculate_weight_attempt(
             ind, theta, all_factors=True
         )
