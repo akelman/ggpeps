@@ -27,6 +27,7 @@ from ggpeps.system import Z2System2D_G2C_F4C_Config
 from ggpeps.system import Z2System2D_8C_Config
 from ggpeps.system import D6System2D_Config
 from ggpeps.system import Z2System2D
+from ggpeps.system import D2nSystem2D
 
 from ggpeps import utils
 from ggpeps import lattice as lat
@@ -370,7 +371,7 @@ def main(args):
             num_pg_layer=args.num_pg_layer,
             num_fermionic_layer=args.num_fermionic_layer,
         )
-        system_type = Z2System2D  # TODO: Change to Dn system
+        system_type = D2nSystem2D
     else:
         logger.error("Not Implemented: Only the gauge groups Z2 and D6 are possible.")
         sys.exit(1)
