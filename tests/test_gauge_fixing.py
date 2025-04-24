@@ -38,10 +38,11 @@ class Testgaugefixing(unittest.TestCase):
 
         tuple_configvec2 = []
         for config in configvec2:
-            tuple_configvec2.append(tuple(config))
+            # Convert each numpy array in the config to a tuple
+            tuple_config = tuple(tuple(arr.flatten()) for arr in config)
+            tuple_configvec2.append(tuple_config)
             for link in lat2.fixed_tree:
                 self.assertEqual(config[link], neutral_gauge2)
-
         unique_configvec2 = set(tuple_configvec2)
         self.assertEqual(len(tuple_configvec2), len(unique_configvec2))
 
@@ -63,7 +64,8 @@ class Testgaugefixing(unittest.TestCase):
 
         tuple_configvec4 = []
         for config in configvec4:
-            tuple_configvec4.append(tuple(config))
+            tuple_config = tuple(tuple(arr.flatten()) for arr in config)
+            tuple_configvec4.append(tuple_config)
             for link in lat4.fixed_tree:
                 self.assertEqual(config[link], neutral_gauge4)
 
