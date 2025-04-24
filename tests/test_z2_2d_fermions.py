@@ -87,7 +87,9 @@ class TestZ2System(unittest.TestCase):
         This test must be done with a gauge configuration that includes some flux.
         Only the fermionic layer should have a covariance matrix different than the pure-gauge one.
         """
-        config = np.array([0] * 7 + [np.pi] * 1)
+        neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+        flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)        
+        config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         self.system_z2.update_gauge_full_system(config)
 
         covmat_layer1 = self.system_z2.compute_ferm_cov(layer=0)
@@ -111,7 +113,9 @@ class TestZ2System(unittest.TestCase):
         """Ensure the covariance matrix satisfies the conditions to be a covariance matrix.
         This test is done with a gauge configuration that includes some flux.
         """
-        config = np.array([0] * 7 + [np.pi] * 1)
+        neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+        flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)        
+        config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         self.system_z2.update_gauge_full_system(config)
 
         covmat_layer1 = self.system_z2.compute_ferm_cov(layer=0)
@@ -311,7 +315,9 @@ class TestZ2System(unittest.TestCase):
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
 
-        config = np.array([0] * 7 + [np.pi] * 1)
+        neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+        flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)
+        config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         system_z2_2_2.update_gauge_full_system(config)
 
         deriv_ana = system_z2_2_2.mass_energy_op_grad_vec
@@ -364,8 +370,10 @@ class TestZ2System(unittest.TestCase):
         )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
-
-        config = np.array([0] * 7 + [np.pi] * 1)
+        
+        neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+        flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)
+        config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         system_z2_2_2.update_gauge_full_system(config)
 
         deriv_ana = system_z2_2_2.mass_energy_op_grad_vec
@@ -432,7 +440,9 @@ class TestZ2System(unittest.TestCase):
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
 
-        config = np.array([0] * 7 + [np.pi] * 1)
+        neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+        flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)
+        config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         system_z2_2_2.update_gauge_full_system(config)
 
         deriv_ana = system_z2_2_2.mass_energy_op_grad_vec
@@ -502,7 +512,10 @@ class TestZ2System(unittest.TestCase):
 
         # the interaction energy vanishes for the default configuration (no flux on any link)
         # so we choose a configuration where we know the interaction energy is not negligible
-        config = np.array([0] * 7 + [np.pi] * 1)
+
+        neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+        flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)        
+        config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         system_z2_2_2.update_gauge_full_system(config)
 
         deriv_ana = system_z2_2_2.int_energy_op_grad_vec
@@ -573,7 +586,9 @@ class TestZ2System(unittest.TestCase):
 
         # the interaction energy vanishes for the default configuration (no flux on any link)
         # so we choose a configuration where we know the interaction energy is not negligible
-        config = np.array([0] * 7 + [np.pi] * 1)
+        neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+        flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)                
+        config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         system_z2_2_2.update_gauge_full_system(config)
 
         deriv_ana = system_z2_2_2.int_energy_op_grad_vec
@@ -648,8 +663,10 @@ class TestZ2System(unittest.TestCase):
         )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
-
-        config = np.array([0] * 7 + [np.pi] * 1)
+        
+        neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+        flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)                
+        config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         system_z2_2_2.update_gauge_full_system(config)
 
         uc_ind = 0
