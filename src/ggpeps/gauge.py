@@ -23,10 +23,10 @@ class ZNGauge:
 
     def get_possible_gauge_values(self) -> np.ndarray:
         prefactor = 2.0 * np.pi / self.n
-        dest = np.zeros(self.n)
+        dest = []
         for i in range(self.n):
-            dest[i] = self.get_representation(i * prefactor)
-        return dest
+            dest.append(self.get_representation(i * prefactor)) 
+        return np.array(dest)
 
     def get_increment(self) -> float:
         return 2.0 * np.pi / self.n
