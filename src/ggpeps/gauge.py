@@ -16,17 +16,17 @@ class ZNGauge:
 
     def get_representation(self, theta: float) -> np.ndarray:
         """Get a representation of the group element"""
-        return np.array([[np.exp(1.0j * theta)]])
+        return np.array([[np.exp(1.0j * theta)]], dtype=np.complex64)
 
     def get_neutral_gauge_value(self) -> float:
-        return np.array([[1.0]])
+        return np.array([[1.0]], dtype=np.complex64)
 
     def get_possible_gauge_values(self) -> np.ndarray:
         prefactor = 2.0 * np.pi / self.n
         dest = []
         for i in range(self.n):
-            dest.append(self.get_representation(i * prefactor)) 
-        return np.array(dest)
+            dest.append(self.get_representation(i * prefactor))
+        return np.array(dest, dtype=np.complex64)
 
     def get_increment(self) -> float:
         return 2.0 * np.pi / self.n
@@ -34,6 +34,7 @@ class ZNGauge:
     def get_angle(self, g) -> float:
         """Get the angle, theta, for a group elemnt g=[[exp(1j*theta)]]"""
         return np.angle(g[0][0])
+
 
 class D2nGauge:
     """Implements a D_2n gauge group, under a real 2D representation of rotation and reflection matrices.
@@ -57,33 +58,36 @@ class D2nGauge:
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> float:
         p = rng_state.randint(0, self.n)
         q = rng_state.randint(0, 2)
-        return self.get_representaion(p, q)
+        return self.get_representation(p, q)
 
-    def get_representaion(self, p, q):
+    def get_representation(self, p, q):
         """Get a real 2D representaion of the group"""
         prefactor = 2.0 * np.pi / self.n
         prefactor_times_p = p * prefactor
         if q % 2:  # we work in a convention of q=0 mod2
-            representaion = np.array(
+            representation = np.array(
                 [
                     [np.cos(prefactor_times_p), -np.sin(prefactor_times_p)],
                     [np.sin(prefactor_times_p), np.cos(prefactor_times_p)],
-                ]
+                ],
+                dtype=np.complex64,
             )
         else:  # if q=1 mod 2
-            representaion = np.array(
+            representation = np.array(
                 [
                     [np.cos(prefactor_times_p), np.sin(prefactor_times_p)],
                     [np.sin(prefactor_times_p), -np.cos(prefactor_times_p)],
-                ]
+                ],
+                dtype=np.complex64,
             )
-        return representaion
+        return representation
 
     def get_neutral_gauge_value(self) -> np.array:
-        return np.identity(2)
+        return np.identity(2, dtype=np.complex64)
 
     def get_possible_gauge_values(self) -> np.ndarray:
         dest = np.array(
-            [self.get_representaion(p, q) for q in range(2) for p in range(self.n)]
+            [self.get_representation(p, q) for q in range(2) for p in range(self.n)],
+            dtype=np.complex64,
         )
         return dest
