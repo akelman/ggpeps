@@ -64,7 +64,7 @@ class D2nGauge:
         """Get a real 2D representaion of the group"""
         prefactor = 2.0 * np.pi / self.n
         prefactor_times_p = p * prefactor
-        if q % 2:  # we work in a convention of q=0 mod2
+        if q % 2 == 0:  # we work in a convention of q=0 mod2
             representation = np.array(
                 [
                     [np.cos(prefactor_times_p), -np.sin(prefactor_times_p)],
