@@ -117,7 +117,7 @@ class TestD2nSystem(unittest.TestCase):
         This test is done with a gauge configuration that includes some flux.
         """
         identity = self.system_D6.cfg.gaugemgr.get_neutral_gauge_value()
-        other_gauge = self.system_D6.cfg.gaugemgr.get_representaion(0, 1)
+        other_gauge = self.system_D6.cfg.gaugemgr.get_representation(0, 1)
         config = np.array([identity] * 7 + [other_gauge] * 1)
         self.system_D6.update_gauge_full_system(config)
 
