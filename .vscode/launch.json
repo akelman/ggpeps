@@ -19,13 +19,14 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Eval MC L=2",
+            "name": "Z2 Eval MC L=2",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "console": "integratedTerminal",
             "args": [
                 "eval-mc",
+                "Z2",
                 "--L", "2",
                 "--level", "debug",
                 "--warmup_steps", "100",
@@ -44,13 +45,14 @@
             ]
         },
         {
-            "name": "Eval Exact L=2",
+            "name": "Z2 Eval Exact L=2",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "console": "integratedTerminal",
             "args": [
                 "eval-exact",
+                "Z2",
                 "--fermions",
                 "--L", "2",
                 "--ncopy", "2",
@@ -66,7 +68,7 @@
             ]
         },
         {
-            "name": "Min MC L=2, cp=2, nl=2",
+            "name": "Z2 Min MC L=2, cp=2, nl=2",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
@@ -74,6 +76,7 @@
             "justMyCode": true,
             "args": [
                 "min-mc",
+                "Z2",
                 "--L", "2",
                 "--fermions",
                 "--g_el", "0.5",
@@ -92,13 +95,14 @@
             ]
         },
         {
-            "name": "Minexact L=2, PG, cp=2, nl=2",
+            "name": "Z2 Minexact L=2, PG, cp=2, nl=2",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "console": "integratedTerminal",
             "args": [
                 "min-exact",
+                "Z2",
                 "--L", "2",
                 "--fermions",
                 "--g_el",
@@ -118,13 +122,14 @@
             ]
         },
         {
-            "name": "Minexact L=2, Fermions, cp=2, nl=2",
+            "name": "Z2 Minexact L=2, Fermions, cp=2, nl=2",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "console": "integratedTerminal",
             "args": [
                 "min-exact",
+                "Z2",
                 "--L", "2",
                 "--fermions",
                 "--g_el", "0.0",
@@ -140,13 +145,14 @@
             ]
         },
         {
-            "name": "Minimize (MC) L=2, cp=2, nl=2",
+            "name": "Z2 Minimize (MC) L=2, cp=2, nl=2",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "console": "integratedTerminal",
             "args": [
                 "min-mc",
+                "Z2",
                 "--L", "2",
                 "--fermions",
                 "--g_el", "0.5",
