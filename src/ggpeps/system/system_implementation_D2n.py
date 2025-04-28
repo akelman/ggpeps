@@ -122,7 +122,7 @@ class D2nSystem2D(System2DBase):
             )
 
         return (
-            xnp.array(gamma_in_sys_vec),
+            xnp.array(gamma_in_sys_vec, dtype=xnp.complex64),
             (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec),
             (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec),
         )
