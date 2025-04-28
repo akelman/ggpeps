@@ -157,25 +157,36 @@ class D2nSystem2D(System2DBase):
         g = group_element
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
-        if coord[0] + coord[1] == 0:  # gauging is different for different sublattices
-            g_transpose = xnp.transpose(g)
-            g_dagger = xnp.conj(g_transpose)
-            sum_of_g_matrices = g_transpose + g_dagger
-            dif_of_g_matrices = g_transpose - g_dagger
+        g_transpose = xnp.transpose(g)
+        g_dagger = xnp.conj(g_transpose)
+        sum_of_g_matrices = g_transpose + g_dagger
+        dif_of_g_matrices = g_transpose - g_dagger
+
+        if (
+            coord[0] + coord[1]
+        ) % 2 == 0:  # gauging is different for different sublattices
+            rot_right = (
+                0.5
+                * xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
+                    # TODO: Generalizze this to fermionic layers as well.
+                    [
+                        [sum_of_g_matrices, -1j * dif_of_g_matrices],
+                        [1j * dif_of_g_matrices, sum_of_g_matrices],
+                    ]
+                )
+            )  # This is the rot_right for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
         else:
-            g_conj = xnp.conj(g)
-            sum_of_g_matrices = g + g_conj
-            dif_of_g_matrices = g - g_conj
-        rot_right = (
-            0.5
-            * xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
-                # TODO: Generalizze this to fermionic layers as well.
-                [
-                    [sum_of_g_matrices, -1j * dif_of_g_matrices],
-                    [1j * dif_of_g_matrices, sum_of_g_matrices],
-                ]
-            )
-        )  # This is thr rot_right for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
+            rot_right = (
+                0.5
+                * xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
+                    # TODO: Generalizze this to fermionic layers as well.
+                    [
+                        [sum_of_g_matrices, 1j * dif_of_g_matrices],
+                        [-1j * dif_of_g_matrices, sum_of_g_matrices],
+                    ]
+                )
+            )  # This is the rot_right for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
+
         perm_mat = xnp.array(
             modearray.generate_permutation_matrix([1, 2, 3, 4], [1, 3, 2, 4])
         )  # Generate permutation matrix to change the modes's order
@@ -192,9 +203,7 @@ class D2nSystem2D(System2DBase):
         return rotmat
 
     # TODO: fix for JAX - DONE, except for stuff in utils
-    def update_gauge_ind(
-        self, link_ind, theta
-    ):  
+    def update_gauge_ind(self, link_ind, theta):
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
         and updates all incremental trackers of determinants and inverses.
