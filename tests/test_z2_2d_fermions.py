@@ -1009,7 +1009,17 @@ class TestTransVariance(unittest.TestCase):
                     block = mat_d[8 * ind1 : 8 * (ind1 + 2), 8 * ind2 : 8 * (ind2 + 2)]
                     self.assertTrue(np.allclose(block, 0))
 
-    def test_covmat(self):
+    def test_covmat_validity(self):
+        for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
+                
+            # Set the gauge configuration -
+            #   there must be some flux, since otherwise the mass will be zero
+            config = np.array([0] * 7 + [1] * 1)
+            self.system_z2.update_gauge_full_system(config)
+            covmat = self.system_z2.compute_ferm_cov(lay)
+            self.assertTrue(utils.is_covmat(covmat))
+
+    def test_covmat_site_dependence(self):
 
         # Check the covmat for all fermionic layers
         for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
@@ -1020,7 +1030,7 @@ class TestTransVariance(unittest.TestCase):
                 #   there must be some flux, since otherwise the mass will be zero,
                 #   so we choose to set the link to the right of the site under consideration to pi
                 x, y = self.system_z2.cfg.lattice.ind2coord(site)
-                config = np.array([0] * 7 + [0] * 1)
+                config = np.array([0] * 8)
                 ind = self.system_z2.cfg.lattice.coord2ind_dir(
                     (x, y), lattice.Direction.X
                 )
