@@ -168,11 +168,12 @@ class D2nSystem2D(System2DBase):
             rot_right = (
                 0.5
                 * xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
-                    # TODO: Generalizze this to fermionic layers as well.
+                    # TODO: Generalize this to fermionic layers as well.
                     [
                         [sum_of_g_matrices, -1j * dif_of_g_matrices],
                         [1j * dif_of_g_matrices, sum_of_g_matrices],
-                    ]
+                    ],
+                    dtype=xnp.complex64,
                 )
             )  # This is the rot_right for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
         else:
@@ -183,14 +184,10 @@ class D2nSystem2D(System2DBase):
                     [
                         [sum_of_g_matrices, 1j * dif_of_g_matrices],
                         [-1j * dif_of_g_matrices, sum_of_g_matrices],
-                    ]
+                    ],
+                    dtype=xnp.complex64,
                 )
-            )  # This is the rot_right for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
-
-        perm_mat = xnp.array(
-            modearray.generate_permutation_matrix([1, 2, 3, 4], [1, 3, 2, 4])
-        )  # Generate permutation matrix to change the modes's order
-        rot_right = xnp.transpose(perm_mat) @ rot_right @ perm_mat
+            )
 
         # We have dim(representaion) left mode => 2*dim(representation) Majorana modes
         dim_rep = len(g)  # dimension of the representation
@@ -198,7 +195,16 @@ class D2nSystem2D(System2DBase):
 
         # The mode order is lr (horizontally) or du (vertically).
         # We rotate the different copies in the SAME way.
-        dest = xscipy.linalg.block_diag(rot_left, rot_right)
+        dest = xscipy.linalg.block_diag(
+            rot_left, rot_right
+        )  # This is the rot for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
+        perm_mat = xnp.array(
+            modearray.generate_permutation_matrix(
+                [1, 2, 3, 4, 5, 6, 7, 8], [1, 3, 5, 7, 2, 4, 6, 8]
+            )
+        )  # Generate permutation matrix to change the modes's order
+        dest = xnp.transpose(perm_mat) @ dest @ perm_mat
+
         rotmat = xnp.kron(xnp.eye(self.cfg.ncopy), dest)
         return rotmat
 
