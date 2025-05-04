@@ -583,8 +583,8 @@ class System2DBase(ABC):
         This method is overwritten for the U1 system.
 
         Args:
-            covmats_layervec_sitevec (List[List[xnp.ndarray]]): list (per layer) of 2D covariance matrices of all sites
-
+            covmats_layervec_sitevec (List[List[xnp.ndarray]]): list (per layer) of 2D covariance matrices of all sites; total shape (nlayer, nsites, nmodes, nmodes)
+            
         Returns:
             xnp.ndarray: 2D covariance matrix of the full system
         """
@@ -1922,7 +1922,7 @@ class System2DBase(ABC):
             0 --"0"-- 1 --"1"--
 
         On each site, the mode order is l1, l2, r1, r2, d1, d2, u1, u2 for the first copy,
-        and then the same thing for the second copy (if there is one).
+        and then the same thing for the second/third/etc. copies (if they exist).
 
         Returns:
             list: List of strings of the form <mode_letter:majorana mode>_<copy>_<link_id>
