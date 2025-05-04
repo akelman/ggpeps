@@ -196,9 +196,10 @@ class D2nSystem2D(System2DBase):
         )  # This is the rot for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
         perm_mat = xnp.array(
             modearray.generate_permutation_matrix(
-                [1, 2, 3, 4, 5, 6, 7, 8], [1, 3, 5, 7, 2, 4, 6, 8]
+                [1, 2, 3, 4, 5, 6, 7, 8],
+                [1, 3, 5, 7, 2, 4, 6, 8],  # Here we assume a 2D representation
             )
-        )  # Generate permutation matrix to change the modes's order to
+        )  # Generate permutation matrix to change the modes's order to {l_1_1, l_2_1, r_1_1, r_2_1,l_1_2,l_2_2,r_1_2,r_2_2} - i.e., colors are treated similarly to copies.
         dest = xnp.transpose(perm_mat) @ dest @ perm_mat
 
         rotmat = xnp.kron(xnp.eye(self.cfg.ncopy), dest)
