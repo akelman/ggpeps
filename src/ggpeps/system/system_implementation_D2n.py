@@ -170,10 +170,9 @@ class D2nSystem2D(System2DBase):
                 * xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
                     # TODO: Generalize this to fermionic layers as well.
                     [
-                        [sum_of_g_matrices, -1j * dif_of_g_matrices],
-                        [1j * dif_of_g_matrices, sum_of_g_matrices],
+                        [sum_of_g_matrices, -1.0j * dif_of_g_matrices],
+                        [1.0j * dif_of_g_matrices, sum_of_g_matrices],
                     ],
-                    dtype=xnp.complex64,
                 )
             )  # This is the rot_right for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
         else:
@@ -182,10 +181,9 @@ class D2nSystem2D(System2DBase):
                 * xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
                     # TODO: Generalizze this to fermionic layers as well.
                     [
-                        [sum_of_g_matrices, 1j * dif_of_g_matrices],
-                        [-1j * dif_of_g_matrices, sum_of_g_matrices],
+                        [sum_of_g_matrices, 1.0j * dif_of_g_matrices],
+                        [-1.0j * dif_of_g_matrices, sum_of_g_matrices],
                     ],
-                    dtype=xnp.complex64,
                 )
             )
 
