@@ -162,9 +162,7 @@ class D2nSystem2D(System2DBase):
         sum_of_g_matrices = g_transpose + g_dagger
         dif_of_g_matrices = g_transpose - g_dagger
 
-        if (
-            coord[0] + coord[1]
-        ) % 2 == 0:  # gauging is different for different sublattices
+        if xnp.sum(coord) % 2 == 0:  # gauging is different for different sublattices
             rot_right = (
                 0.5
                 * xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
