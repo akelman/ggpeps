@@ -282,7 +282,7 @@ class U1System2D(System2DBase):
 
     ################## Local Gauge ######################
 
-    def _generate_rotmat_half(self,group_element):
+    def _generate_rotmat_half(self, group_element):
         theta = self.gaugemgr.get_angle(group_element)
         rot_right = np.array(
             [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
@@ -299,7 +299,7 @@ class U1System2D(System2DBase):
         else:
             gauge_field = np.transpose(np.conjugate(group_element))
         rot_plus = self._generate_rotmat_half(gauge_field)
-        rot_minus = self._generate_rotmat_half(-gauge_field)
+        rot_minus = self._generate_rotmat_half(np.transpose(np.conj(gauge_field)))
         return block_diag(rot_plus, rot_minus)
 
     def update_gauge_ind(self, link_ind, theta):
