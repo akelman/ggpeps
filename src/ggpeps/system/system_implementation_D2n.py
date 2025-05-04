@@ -133,8 +133,8 @@ class D2nSystem2D(System2DBase):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
 
         The mode order is (as for gamma_in_neutral):
-            1 copy: {l_1_1, l_2_1,l_1_2,l_2_2, r_1_1, r_2_1,r_1_2,r_2_2}/{d_1_1, d_2_1,d_1_2,d_2_2, u_1_1, u_2_1,u_1_2,u_2_2},
-            2 copies: {l1_1_1, l1_2_1,l1_1_2,l1_2_2, r1_1_1, r1_2_1,r1_1_2,r1_2_2,l2_1_1, l2_2_1,l2_1_2,l2_2_2, r2_1_1, r2_2_1,r2_1_2,r2_2_2}/{d1_1_1, d1_2_1,d1_1_2,d1_2_2, u1_1_1, u1_2_1,u1_1_2,u1_2_2,d2_1_1, d2_2_1,d2_1_2,d2_2_2, u2_1_1, u2_2_1,u2_1_2,u2_2_2},
+            1 copy: {l_1_1, l_2_1, r_1_1, r_2_1,l_1_2,l_2_2,r_1_2,r_2_2}/{d_1_1, d_2_1, u_1_1, u_2_1,d_1_2,d_2_2,u_1_2,u_2_2},
+            2 copies: {l1_1_1, l1_2_1, r1_1_1, r1_2_1,l1_1_2,l1_2_2,r1_1_2,r1_2_2,l2_1_1, l2_2_1, r2_1_1, r2_2_1,l2_1_2,l2_2_2,r2_1_2,r2_2_2}/{d1_1_1, d1_2_1, u1_1_1, u1_2_1,d1_1_2,d1_2_2,u1_1_2,u1_2_2,d2_1_1, d2_2_1, u2_1_1, u2_2_1,d2_1_2,d2_2_2,u2_1_2,u2_2_2},
         depending on whether the link is vertical or horizontal.
         The naming convention here is <mode letter><number of copy>_<majorana mode>_<color>.
         We order first by link and then by copy.
@@ -198,7 +198,7 @@ class D2nSystem2D(System2DBase):
             modearray.generate_permutation_matrix(
                 [1, 2, 3, 4, 5, 6, 7, 8], [1, 3, 5, 7, 2, 4, 6, 8]
             )
-        )  # Generate permutation matrix to change the modes's order
+        )  # Generate permutation matrix to change the modes's order to
         dest = xnp.transpose(perm_mat) @ dest @ perm_mat
 
         rotmat = xnp.kron(xnp.eye(self.cfg.ncopy), dest)
