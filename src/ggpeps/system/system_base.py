@@ -1424,8 +1424,11 @@ class System2DBase(ABC):
         Args:
             gaugeconfig (xnp.ndarray): Array of new values for the gauge field
         """
-        for ind, gauge in enumerate(gaugeconfig):
-            self.update_gauge_ind(ind, gauge)
+        for link_ind, gauge in enumerate(gaugeconfig):
+            theta = gaugeconfig[link_ind]
+            if self._gaugefieldvec[link_ind] != theta:
+                # only actually do the update if it's a different gauge field
+                self.update_gauge_ind(link_ind, gauge)
 
     def update_gauge_coord(self, coord, dir, theta):
         """Update a gauge field at a given coordinate and direction by a new value
