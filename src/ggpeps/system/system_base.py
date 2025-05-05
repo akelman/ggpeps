@@ -403,7 +403,9 @@ class System2DBase(ABC):
         return None
 
     def invalidate_gauge_update(self):
-        """Reset the values of computed quantitities to avoid spillover from previous computations."""
+        """Reset the values of computed quantitities to avoid spillover from previous computations.
+        We do not need to reset quantities that are not dependent on the gauge fields, such as _gamma_maj_sys_vec, _mat_a_vec, etc."""
+
         self._ferm_covmat_vec = None
         self._d_gamma_out_symbolvec = None
 
