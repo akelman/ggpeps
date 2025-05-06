@@ -192,17 +192,29 @@ def main(args):
 
     # Configure JAX
     import jax
-
     jax.config.update("jax_enable_x64", True)
 
-    # GPU or CPU
+    # GPU or CPU detection (compatible with ROCm GPUs)
     available_devices_ = jax.devices()  # available_gpus = jax.devices('gpu')
     PREFERRED_DEVICE = available_devices_[0]
     device_name = PREFERRED_DEVICE.device_kind.lower()
-    if "gpu" in device_name or "nvidia" in device_name:  # heuristic
+
+    print(f"[DIAG] Available JAX devices: {available_devices_}")
+    print(f"[DIAG] Selected device: {PREFERRED_DEVICE}")
+    print(f"[DIAG] Device kind: {device_name}")
+
+    # Updated GPU detection heuristic
+    if any(x in device_name for x in ["gpu", "nvidia", "amd", "rocm"]):
         ggpeps.GPU_AVAILABLE = True
+        print("[DIAG] GPU detected — ggpeps.GPU_AVAILABLE set to True")
     else:
         ggpeps.GPU_AVAILABLE = False
+        print("[DIAG] No compatible GPU found — using CPU")
+
+    # if "gpu" in device_name or "nvidia" in device_name:  # heuristic
+    #     ggpeps.GPU_AVAILABLE = True
+    # else:
+    #     ggpeps.GPU_AVAILABLE = False
 
     # Set up the simulation
     L = args.L
