@@ -206,6 +206,7 @@ def main(args):
     # Updated GPU detection heuristic
     if any(x in device_name for x in ["gpu", "nvidia", "amd", "rocm"]):
         ggpeps.GPU_AVAILABLE = True
+        ggpeps.PREFERRED_DEVICE = PREFERRED_DEVICE
         print("[DIAG] GPU detected — ggpeps.GPU_AVAILABLE set to True")
     else:
         ggpeps.GPU_AVAILABLE = False
