@@ -115,6 +115,7 @@ class Config2DBase(ABC):
         self.nlayer = self.num_pg_layer + self.num_fermionic_layer
 
         self._paramvec: Optional[np.ndarray] = None
+
         self.zeroed_params: List[int] = (
             []
         )  # will store a list of the parameters forced to be zero by the ansatz

@@ -171,3 +171,16 @@ class Measurement:
                 return dest
         else:
             return NotImplemented
+        
+    ### beg NEVMC ###
+    def __expDF__(self, DF):
+        dest = Measurement("exp_" + self.name + "-_DF", self.binsize)
+        dest.datavec = [np.exp(-(x-DF)) for x in self.datavec]
+        return dest
+    
+    def __const_mul__(self, g):
+        dest = Measurement("g*_" + self.name, self.binsize)
+        dest.datavec = [g*x for x in self.datavec]
+        return dest
+    
+    ### end NEVMC ###
