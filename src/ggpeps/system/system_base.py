@@ -548,7 +548,7 @@ class System2DBase(ABC):
 
     @property
     def gamma_maj_layervec_sitevec(self):
-        """Return the covariance matrix in Majorana modes.
+        r"""Return the covariance matrix in Majorana modes.
         The definition of Majorana modes used is
             \gamma_1 = c + c^\dagger
             \gamma_2 = i(c - c^\dagger)

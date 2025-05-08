@@ -417,7 +417,7 @@ def tmat_to_covariance_matrix(tmat: np.ndarray) -> np.ndarray:
 
 
 def generate_smat(n: int):
-    """Generate matrix to transform Dirac modes into Majorana modes.
+    r"""Generate matrix to transform Dirac modes into Majorana modes.
     The function assumes the modes order of [a_1, a_2,....., a_n, a_1^\dagger,.....,a_n^\dagger].
 
     Args:
