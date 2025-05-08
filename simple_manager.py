@@ -210,6 +210,9 @@ def main(args):
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize
     mc_config.gauge_fixing = args.gauge_fixing
+    ### beg NEVMC ###
+    mc_config.NEVMC = args.NEVMC
+    ### end NEVMC ###
     if args.use_systemsize_updates or args.update_size == "system":
         mc_config.update_size_per_step = 2 * L**2
     elif args.update_size == "halfsystem":
@@ -359,12 +362,21 @@ def main(args):
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
         min_cfg.min_grad = args.min_grad
+        ### beg NEVMC ###
+        min_cfg.NEVMC = args.NEVMC
+        min_cfg.method = "CUSTOM"
+        ### end NEVMC ###
 
         minimizer = Minimizer(min_cfg, mc_mgr)
         ggpeps.global_vars["minimizer"] = minimizer  # save for global access
 
         start = timer()
-        result = minimizer.minimize()
+        ### beg NEVMC ###
+        if args.NEVMC:
+            result = minimizer.minimize_NEVMC()
+        else:
+            result = minimizer.minimize()
+        ### end NEVMC ###
         stop = timer()
         logger.info(result)
         minimizer.save(output_dir=args.output)
@@ -494,6 +506,11 @@ if __name__ == "__main__":
         default=1e-5,
         help="Minimal gradient to use as a stopping criterion",
     )
+    ### beg NEVMC ###
+    parser.add_argument(
+        "--NEVMC", action="store_true", default=False, help="Use NEVMC instead of standard VMC"
+    )
+    ### end NEVMC ###
 
     # Output settings
     parser.add_argument("--level", default="info", help="logging level")
