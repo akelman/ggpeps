@@ -205,12 +205,47 @@ class D2nSystem2D(System2DBase):
         rotmat = xnp.kron(xnp.eye(self.cfg.ncopy), dest)
         return rotmat
 
-    # TODO: fix for JAX - DONE, except for stuff in utils
     def update_gauge_ind(self, link_ind, theta):
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
         and updates all incremental trackers of determinants and inverses.
         The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
+
+        Unlike the update_non_singular_gauge_ind method, this method checks whether the transition is singular
+        (i.e., the update matrix is singular and therfore can't be inverted)
+        if not, it calls the update_non_singular_gauge_ind method directly. Else, it computes a non singular
+        path and then calls the update_non_singular_gauge_ind method.
+
+        This method overwrites an abstract method in System2DBase.
+
+        Args:
+            link_ind (int): Link index to be updated
+            theta (xnp.array): New gauge field value
+        """
+        if (
+            set(self._gaugefieldvec[link_ind], theta)
+            in self.cfg.gaugemgr.forbidden_transitions
+        ):  # if the update matrix is singular
+            path = self.cfg.gaugemgr.get_nonsingular_path(
+                self._gaugefieldvec[link_ind], theta
+            )  # get a non singular path between the two gauge values
+            for g in path:
+                self.update_non_singular_gauge_ind(link_ind, g)
+            self.update_non_singular_gauge_ind(
+                link_ind, theta
+            )  # update the gauge field to the final value
+        else:  # the update matrix is not singular and we fan update the gauge straightforwardly
+            self.update_non_singular_gauge_ind(link_ind, theta)
+
+    # TODO: fix for JAX - DONE, except for stuff in utils
+    def update_non_singular_gauge_ind(self, link_ind, theta):
+        """Update method that is called upon changing a gauge field.
+        This method is central to the algorithm since it changes the gauged projectors
+        and updates all incremental trackers of determinants and inverses.
+        The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
+
+        This method assumes that the two gauge values don't yield a singular update matrix.
+        It is called by the update_gauge_ind method which takes care of not allowing singular updates.
 
         This method overwrites an abstract method in System2DBase.
 
