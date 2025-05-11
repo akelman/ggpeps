@@ -1009,6 +1009,21 @@ class TestTransVariance(unittest.TestCase):
                     block = mat_d[8 * ind1 : 8 * (ind1 + 2), 8 * ind2 : 8 * (ind2 + 2)]
                     self.assertTrue(np.allclose(block, 0))
 
+    def test_gamma_maj_validity(self):
+        for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
+            covmat = self.system_z2.gamma_maj_sys_vec[lay]
+            self.assertTrue(utils.is_covmat(covmat))
+    
+    def test_gamma_in_sys_validity(self):
+        for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
+            
+            # We want to check that it is a covariance matrix even when not in the neutral gauge config
+            config = np.array([1] * 6 + [0] * 2)
+            self.system_z2.update_gauge_full_system(config)
+
+            covmat = self.system_z2.gamma_in_sys_vec[lay]
+            self.assertTrue(utils.is_covmat(covmat))
+
     def test_covmat_validity(self):
         for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
                 
