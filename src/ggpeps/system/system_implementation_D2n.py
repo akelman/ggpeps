@@ -222,12 +222,23 @@ class D2nSystem2D(System2DBase):
             link_ind (int): Link index to be updated
             theta (xnp.array): New gauge field value
         """
-        if (
-            set(self._gaugefieldvec[link_ind], theta)
-            in self.cfg.gaugemgr.forbidden_transitions
-        ):  # if the update matrix is singular
+        old_theta = self._gaugefieldvec[link_ind]
+        singular = False
+        for (
+            g_tuple
+        ) in (
+            self.cfg.gaugemgr.forbidden_transitions
+        ):  # check if the update matrix is expected to be singular
+            g1, g2 = g_tuple
+            if (xnp.allclose(g1, old_theta) and xnp.allclose(g2, theta)) or (
+                xnp.allclose(g1, theta) and xnp.allclose(g2, old_theta)
+            ):
+                singular = True
+                break
+
+        if singular:  # if the update matrix is singular
             path = self.cfg.gaugemgr.get_nonsingular_path(
-                self._gaugefieldvec[link_ind], theta
+                old_theta, theta
             )  # get a non singular path between the two gauge values
             for g in path:
                 self.update_non_singular_gauge_ind(link_ind, g)
