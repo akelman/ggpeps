@@ -1251,11 +1251,14 @@ class System2DBase(ABC):
         self._weight = val
 
     ## MOVE TO GLOBAL
-    def calculate_weight_attempt(
+    def calculate_weight_attempt_non_singular(
         self, link_ind: int, theta: xnp.array, all_factors=False
     ):
         """Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
+
+        This method assumes that the two gauge values don't yield a singular update matrix.
+        It is called by the calculate_weight_attempt method which takes care of not allowing singular updates.
 
         Args:
             link_ind (int): Link index
@@ -1281,6 +1284,66 @@ class System2DBase(ABC):
             )
         ]
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
+
+    def calculate_weight_attempt(
+        self, link_ind: int, theta: xnp.array, all_factors=False
+    ):
+        """Compute the weight of an update attempt in which the link index link_ind is substituted for theta
+        The inclusion of all constant pre-factors can be switched on and off.
+
+        Unlike the calculate_weight_attempt_non_singular method, this method checks whether the transition is singular
+        (i.e., the update matrix is singular and therfore can't be inverted)
+        if not, it calls the calculate_weight_attempt_non_singular method directly. Else, it updates the gauge in a non singular
+        path and then calls the calculate_weight_attempt_non_singular method. After the caclulation of the weight, it updates the system
+        back to the original gauge field.
+
+
+        Args:
+            link_ind (int): Link index
+            theta (xnp.array): New gauge field value
+            all_factors (bool, optional): Include all constant factors. Defaults to False.
+
+        Returns:
+            float: Logarithm of the weight of the proposed configuration
+
+
+        """  # TODO: If we create a new state class object, avoiding singular transitions could be handled better
+        # (by keeping the previous state and then not having to update the current system back to the original gauge field)
+        current_theta = self._gaugefieldvec[link_ind]
+        singular = False
+        for (
+            g_tuple
+        ) in (
+            self.cfg.gaugemgr.forbidden_transitions
+        ):  # check if the update matrix is expected to be singular
+            g1, g2 = g_tuple
+            if (xnp.allclose(g1, current_theta) and xnp.allclose(g2, theta)) or (
+                xnp.allclose(g1, theta) and xnp.allclose(g2, current_theta)
+            ):
+                singular = True
+                break
+        if singular:
+            path = self.cfg.gaugemgr.get_nonsingular_path(
+                current_theta, theta
+            )  # get a non singular path between the two gauge values
+            for g in path:
+                self.update_gauge_ind(link_ind, g)
+            weight = self.calculate_weight_attempt_non_singular(
+                link_ind, theta, all_factors
+            )  # calculate the weight of the last gauge value
+
+            for g in path[-2::-1]:  # go back to the original gauge field
+                self.update_gauge_ind(link_ind, g)
+            self.update_gauge_ind(
+                link_ind, current_theta
+            )  # go back to the original gauge field
+
+        else:  # the update matrix is not singular and we fan update the gauge straightforwardly
+            weight = self.calculate_weight_attempt_non_singular(
+                link_ind, theta, all_factors
+            )
+
+        return weight
 
     def calculate_lognorm(self, all_factors=False):
         """Compute the logarithm of the norm
