@@ -9,6 +9,14 @@ class ZNGauge:
     def __init__(self, n: int):
         self.n = n
         self.rep_dim = 1  # dimension of the representation
+        self.forbidden_transitions = []  # no forbidden transitions in Z_N gauge group
+
+    def get_nonsingular_path(self, g_old, g_new):
+        """Get the non singular update gauge field path between two gauge values.
+        If the transition between the two gauge fields yields a singular update we
+        return a path containing middle steps, such that we don't run into singular update matrices.
+        """
+        return []  # no singular paths in Z_N gauge group
 
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> float:
         theta = rng_state.randint(0, self.n) * 2 * np.pi / self.n
@@ -54,13 +62,13 @@ class D2nGauge:
     def __init__(self, n: int):
         self.n = n
         self.rep_dim = 2
-        if self.n == 6:
+        if self.n == 3:
             self.forbidden_transitions = [  # we define it with set since order doesn't matter
-                set(self.get_representation(0, 0), self.get_representation(0, 1)),
-                set(self.get_representation(1, 0), self.get_representation(1, 1)),
-                set(self.get_representation(1, 0), self.get_representation(2, 1)),
-                set(self.get_representation(2, 0), self.get_representation(1, 1)),
-                set(self.get_representation(2, 0), self.get_representation(2, 1)),
+                (self.get_representation(0, 0), self.get_representation(0, 1)),
+                (self.get_representation(1, 0), self.get_representation(1, 1)),
+                (self.get_representation(1, 0), self.get_representation(2, 1)),
+                (self.get_representation(2, 0), self.get_representation(1, 1)),
+                (self.get_representation(2, 0), self.get_representation(2, 1)),
             ]  # Contains all the forbidden transitions for updating the gamma matrix, i.e., the update matrix of this transitions is singualr.
             # TODO: not sure if this should be here or in the system config, since it is not clear yet whether this list depends on number of copies or how we define the projectors.
 
@@ -74,11 +82,10 @@ class D2nGauge:
         p_0_q_0 = self.get_neutral_gauge_value()
         p_0_q_1 = self.get_representation(0, 1)
         p_1_q_0 = self.get_representation(1, 0)
-        if set(g_old, g_new) in self.forbidden:
-            if np.allclose(g_old, p_0_q_0) or np.allclose(g_old, p_0_q_1):
-                dest.append(p_1_q_0)
-            else:
-                dest.append(p_0_q_0)
+        if np.allclose(g_old, p_0_q_0) or np.allclose(g_old, p_0_q_1):
+            dest.append(p_1_q_0)
+        else:
+            dest.append(p_0_q_0)
         return dest
 
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> float:
