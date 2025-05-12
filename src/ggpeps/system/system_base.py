@@ -685,12 +685,6 @@ class System2DBase(ABC):
             self._gamma_maj_sys_vec = self._expand_gamma_maj_to_system(
                 self.gamma_maj_layervec_sitevec
             )
-            dtype_matrix = type(
-                self.cfg.gaugemgr.get_neutral_gauge_value()[0, 0]
-            )  # the dtype of the gauge field is the same as the dtype of the covariance matrix
-            self._gamma_maj_sys_vec = np.array(
-                self._gamma_maj_sys_vec, dtype=dtype_matrix
-            )
         return self._gamma_maj_sys_vec
 
     @property
