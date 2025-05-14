@@ -793,7 +793,6 @@ class TestTransVariance(unittest.TestCase):
         num_fermionic_layer = 2
         nlayer = num_pg_layer + num_fermionic_layer
         unitcell_size = 2
-        paramvec = np.random.rand(nlayer, unitcell_size, 20)
         cfg = system.Z2System2D_G2C_F2C_Config(
             lat,
             1,
@@ -805,6 +804,9 @@ class TestTransVariance(unittest.TestCase):
             num_fermionic_layer=num_fermionic_layer,
             unitcell_size=unitcell_size,
         )
+
+        paramvec = np.random.rand(nlayer, unitcell_size, 20)
+
         cfg.paramvec = paramvec
         self.system_z2 = system.Z2System2D(cfg)
         self.system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
@@ -908,7 +910,7 @@ class TestTransVariance(unittest.TestCase):
                 mat_site_0 = mat_a[0:2, 0:2]
                 self.assertTrue(np.allclose(mat, mat_site_0))
             else:
-                # on odd sites, mat_a should not be target
+                # on odd sites, mat_a should be target
                 self.assertTrue(np.allclose(mat, target_odd))
 
         # Check that the off-diagonal blocks are zero
