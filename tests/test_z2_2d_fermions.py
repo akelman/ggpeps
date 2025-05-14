@@ -793,16 +793,18 @@ class TestTransVariance(unittest.TestCase):
         num_fermionic_layer = 2
         nlayer = num_pg_layer + num_fermionic_layer
         unitcell_size = 2
+        self.u1_symmetry = False
         cfg = system.Z2System2D_G2C_F2C_Config(
             lat,
             1,
             1,
             1,
             1,
-            None,
+            [0, 1.0, 2.0],
             num_pg_layer=num_pg_layer,
             num_fermionic_layer=num_fermionic_layer,
             unitcell_size=unitcell_size,
+            enforce_u1_symmetry=self.u1_symmetry
         )
 
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
@@ -1207,6 +1209,7 @@ class TestTransVariance(unittest.TestCase):
                             num_pg_layer=self.system_z2.cfg.num_pg_layer,
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
+                            enforce_u1_symmetry=self.u1_symmetry
                         )
                         system_cfg_right = system.Z2System2D_G2C_F2C_Config(
                             lat_2x2,
@@ -1218,6 +1221,7 @@ class TestTransVariance(unittest.TestCase):
                             num_pg_layer=self.system_z2.cfg.num_pg_layer,
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
+                            enforce_u1_symmetry=self.u1_symmetry
                         )
 
                         system_cfg_left.paramvec = paramvec_left
@@ -1272,6 +1276,7 @@ class TestTransVariance(unittest.TestCase):
                             num_pg_layer=self.system_z2.cfg.num_pg_layer,
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
+                            enforce_u1_symmetry=self.u1_symmetry
                         )
                         system_cfg_right = system.Z2System2D_G2C_F2C_Config(
                             lat_2x2,
@@ -1283,6 +1288,7 @@ class TestTransVariance(unittest.TestCase):
                             num_pg_layer=self.system_z2.cfg.num_pg_layer,
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
+                            enforce_u1_symmetry=self.u1_symmetry
                         )
 
                         system_cfg_left.paramvec = paramvec_left
@@ -1337,6 +1343,7 @@ class TestTransVariance(unittest.TestCase):
                             num_pg_layer=self.system_z2.cfg.num_pg_layer,
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
+                            enforce_u1_symmetry=self.u1_symmetry
                         )
                         system_cfg_right = system.Z2System2D_G2C_F2C_Config(
                             lat_2x2,
@@ -1348,6 +1355,7 @@ class TestTransVariance(unittest.TestCase):
                             num_pg_layer=self.system_z2.cfg.num_pg_layer,
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
+                            enforce_u1_symmetry=self.u1_symmetry
                         )
 
                         system_cfg_left.paramvec = paramvec_left
