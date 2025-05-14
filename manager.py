@@ -273,12 +273,13 @@ def main(args):
     lattice = lat.Lattice2D(L, L, args.gauge_fixing)
 
     # Determine setting for translation invariance
-    if args.unitcell_size != 1:
-        unitcell_size = args.unitcell_size
-    elif np.any(g_chem):
-        unitcell_size = 2
-    else:
+    if args.unitcell_size is None:
+        # no command-line value was provided
         unitcell_size = 1
+        if np.any(g_chem):
+            unitcell_size = 2
+    else:
+        unitcell_size = args.unitcell_size
 
     # Depending on the parameters, we instantiate different systems
     # Since they all share the same interface, we do not care much about the details of the system after this point
@@ -689,7 +690,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--unitcell_size",
         type=int,
-        default=1,
         help="Specify the size of the largest unit cell in the system. This determines the degree of translation invariance.",
     )
     parser.add_argument(
