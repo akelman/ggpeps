@@ -29,7 +29,7 @@ def check_transition(system, g_old, g_new, site_coord, dir, layer=0):
     rot_mat = system.generate_rotmat(g_new, site_coord, dir)
     gamma_new = rot_mat @ gamma_nerutral @ np.transpose(rot_mat)
     update_mat = gamma_old - gamma_new
-    return np.isinf(np.linalg.slogdet(update_mat)[1])
+    return np.linalg.det(update_mat) < 1e-10
 
 
 if __name__ == "__main__":
