@@ -332,7 +332,7 @@ class System2DBase(ABC):
         )
         neutral_gauge = self.cfg.gaugemgr.get_neutral_gauge_value()
         self._gaugefieldvec: xnp.ndarray = xnp.array(
-            [neutral_gauge] * self.cfg.lattice.nlinks, dtype=xnp.complex64
+            [neutral_gauge] * self.cfg.lattice.nlinks
         )
 
         # Weight
@@ -1303,7 +1303,7 @@ class System2DBase(ABC):
 
         """  # TODO: If we create a new state class object, avoiding singular transitions could be handled better
         # (by keeping the previous state and then not having to update the current system back to the original gauge field)
-        current_theta = self._gaugefieldvec[link_ind]
+        current_theta = np.copy(self._gaugefieldvec[link_ind])
         singular = False
         for (
             g_tuple
