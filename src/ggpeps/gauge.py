@@ -24,17 +24,17 @@ class ZNGauge:
 
     def get_representation(self, theta: float) -> np.ndarray:
         """Get a representation of the group element"""
-        return np.array([[np.exp(1.0j * theta)]], dtype=np.complex64)
+        return np.array([[np.exp(1.0j * theta)]])
 
     def get_neutral_gauge_value(self) -> float:
-        return np.array([[1.0]], dtype=np.complex64)
+        return np.array([[1.0]])
 
     def get_possible_gauge_values(self) -> np.ndarray:
         prefactor = 2.0 * np.pi / self.n
         dest = []
         for i in range(self.n):
             dest.append(self.get_representation(i * prefactor))
-        return np.array(dest, dtype=np.complex64)
+        return np.array(dest)
 
     def get_increment(self) -> float:
         return 2.0 * np.pi / self.n
@@ -66,8 +66,6 @@ class D2nGauge:
             self.forbidden_transitions = [  # we define it with set since order doesn't matter
                 (self.get_representation(0, 0), self.get_representation(0, 1)),
                 (self.get_representation(1, 0), self.get_representation(1, 1)),
-                (self.get_representation(1, 0), self.get_representation(2, 1)),
-                (self.get_representation(2, 0), self.get_representation(1, 1)),
                 (self.get_representation(2, 0), self.get_representation(2, 1)),
             ]  # Contains all the forbidden transitions for updating the gamma matrix, i.e., the update matrix of this transitions is singualr.
             # TODO: not sure if this should be here or in the system config, since it is not clear yet whether this list depends on number of copies or how we define the projectors.
@@ -103,7 +101,6 @@ class D2nGauge:
                     [np.cos(prefactor_times_p), -np.sin(prefactor_times_p)],
                     [np.sin(prefactor_times_p), np.cos(prefactor_times_p)],
                 ],
-                dtype=np.complex64,
             )
         else:  # if q=1 mod 2
             representation = np.array(
@@ -111,16 +108,14 @@ class D2nGauge:
                     [np.cos(prefactor_times_p), np.sin(prefactor_times_p)],
                     [np.sin(prefactor_times_p), -np.cos(prefactor_times_p)],
                 ],
-                dtype=np.complex64,
             )
         return representation
 
     def get_neutral_gauge_value(self) -> np.array:
-        return np.identity(2, dtype=np.complex64)
+        return np.identity(2)
 
     def get_possible_gauge_values(self) -> np.ndarray:
         dest = np.array(
             [self.get_representation(p, q) for q in range(2) for p in range(self.n)],
-            dtype=np.complex64,
         )
         return dest
