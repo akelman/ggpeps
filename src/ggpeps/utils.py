@@ -483,8 +483,7 @@ class WoodburyInverter:
             # We cannot update with C being zero since this matrix has no inverse
             cinv = xnp.linalg.inv(c)
             self.ainv -= (
-                (self.ainv @ u)
-                @ xnp.linalg.inv(xnp.array(cinv + v @ self.ainv @ u, dtype=xnp.float32))
+                (self.ainv @ u) @ xnp.linalg.inv(cinv + v @ self.ainv @ u)
             ) @ (v @ self.ainv)
         return self.ainv
 
