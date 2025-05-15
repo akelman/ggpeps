@@ -122,7 +122,7 @@ class D2nSystem2D(System2DBase):
             )
 
         return (
-            xnp.array(gamma_in_sys_vec, dtype=xnp.complex64),
+            xnp.array(gamma_in_sys_vec),
             (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec),
             (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec),
         )
@@ -158,7 +158,7 @@ class D2nSystem2D(System2DBase):
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
         g_transpose = xnp.transpose(g)
-        g_dagger = xnp.conj(g_transpose)
+        g_dagger = g_transpose
         sum_of_g_matrices = g_transpose + g_dagger
         dif_of_g_matrices = g_transpose - g_dagger
 
@@ -168,8 +168,8 @@ class D2nSystem2D(System2DBase):
                 * xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
                     # TODO: Generalize this to fermionic layers as well.
                     [
-                        [sum_of_g_matrices, -1.0j * dif_of_g_matrices],
-                        [1.0j * dif_of_g_matrices, sum_of_g_matrices],
+                        [sum_of_g_matrices, dif_of_g_matrices],
+                        [dif_of_g_matrices, sum_of_g_matrices],
                     ],
                 )
             )  # This is the rot_right for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
@@ -179,8 +179,8 @@ class D2nSystem2D(System2DBase):
                 * xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
                     # TODO: Generalizze this to fermionic layers as well.
                     [
-                        [sum_of_g_matrices, 1.0j * dif_of_g_matrices],
-                        [-1.0j * dif_of_g_matrices, sum_of_g_matrices],
+                        [sum_of_g_matrices, dif_of_g_matrices],
+                        [dif_of_g_matrices, sum_of_g_matrices],
                     ],
                 )
             )
@@ -222,7 +222,7 @@ class D2nSystem2D(System2DBase):
             link_ind (int): Link index to be updated
             theta (xnp.array): New gauge field value
         """
-        old_theta = self._gaugefieldvec[link_ind]
+        old_theta = xnp.copy(self._gaugefieldvec[link_ind])
         singular = False
         for (
             g_tuple
@@ -245,7 +245,7 @@ class D2nSystem2D(System2DBase):
             self.update_non_singular_gauge_ind(
                 link_ind, theta
             )  # update the gauge field to the final value
-        else:  # the update matrix is not singular and we fan update the gauge straightforwardly
+        else:  # the update matrix is not singular and we can update the gauge straightforwardly
             self.update_non_singular_gauge_ind(link_ind, theta)
 
     # TODO: fix for JAX - DONE, except for stuff in utils
