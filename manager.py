@@ -1,5 +1,5 @@
 """
-Main script to control the simulation. 
+Main script to control the simulation.
 Further details about the usage of the script can be found in README.md.
 """
 
@@ -683,7 +683,7 @@ if __name__ == "__main__":
         const=-1,  # Value when argument is used without a value
         type=int,  # Convert the input to an integer if provided
         default=0,  # Default value when argument is not used
-        help="Gauge fixing: 0 if not provided (default), -1 if --gauge_fixing is used without a value - fix a maximal tree, or any integer if we fix a specific number of rows.",
+        help="Gauge fixing: 0 if not provided (default), -1 if --gauge_fixing is used without a value - fix a maximal tree, or -2 to gauge fix like a chess boars, or any integer if we fix a specific number of rows.",
     )
 
     # Monte Carlo settings
