@@ -21,6 +21,7 @@ The purpose of this README is to provide:
     4. [Tests](#tests)
     5. [Known Issues](#known-issues)
     6. [Ideas](#ideas)
+    7. [Contributing](#contributing)
 2. [Use](#use)
     1. [Data Generation](#data-generation)
     2. [Reproducibility](#reproducibility)
@@ -59,7 +60,7 @@ You can obtain the code by cloning the repo with:
     Note that you have to be a member of the project to clone it.
     Cloning via SSH works only if you have added a (public) SSH key to the repository.
 <br/>
-3. **Install the pacakge**
+3. **Install the package**
 For the next step, please navigate into the repo that you just downloaded and activate the empty environment that we created in step 1.
 (If you intend to be able to use GPUs, see the note below.)
 
@@ -91,8 +92,8 @@ Then load the appropriate modules for `python` and `cuda`.
 To see the available modules, run `module avail`, to load a module run `module load <module>`, and to see a list of loaded modules run `module list`.
 
 Once this is done, create and activate a virtual environment (as above).
-Before installing the requirements, run `pip install "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html`, which will install JAX and connect it to the appropriate version of CUDA.
-Then install the remaining requirements.
+Before installing the package, run `pip install "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html`, which will install JAX and connect it to the appropriate version of CUDA.
+Then install the package as usual.
 
 TODO: Add a build to `pyproject.toml` which works for JAX on systems with a GPU and CUDA.
 
@@ -124,7 +125,7 @@ Each implemented ansatz has it's own config class, each a subclass of Config2DBa
 - `system_z2_2d_G2c_F2c`: $\mathbb{Z}_2$, 2 copies of virtual modes per layer (PG and matter layers), includes matter.
 - `system_z2_2d_G2c_F4c`: *this is misnamed, and includes 4 copies per layer for both layers*. However the extra copies in the PG layer are set to zero, which makes it effectively 2 copies (though with matrix sizes, and computational cost, of 4 copies).
 
-The pure gauge ansatz's all techincally contain a parameter for coupling to matter, but (a) it is manually set to zero, (b) other parts of the ansatz (e.g. the Gamma_in) do not obey the symmetries required for including matter.
+The pure gauge ansatz's all techincally contain a parameter for coupling to matter, but (a) it is manually set to zero, (b) other parts of the ansatz (e.g. the $\Gamma_{\text{in}}$) do not obey the symmetries required for including matter.
 
 ### Code Formatting
 Code is formatted using `black` with the default configuration.
@@ -161,13 +162,18 @@ Individual sessions can be executed with `nox -s <name of session>`.
 ### Known Issues
 
 - Current implementation of U1 is not working properly
-- Bogoliubov transform yields wrong results if used with fermions (this is not used in any case)
+- Bogoliubov transform yields wrong results if used with fermions (this transform is not used in the current implementation)
 
 ### Ideas
 
 - Add U1 system properly
 - Add system in 3d
 - Add option for DMRG like cylinder compression to obtain transfer matrices
+
+### Contributing
+
+We would be very happy to hear ideas for improving our code.
+Pull requests would be appreciated for minor improvements; for  major updates we would appreciate hearing from any contributor as early as possible.
 
 
 ## Use
