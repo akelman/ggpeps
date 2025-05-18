@@ -140,6 +140,41 @@ class Testgaugefixing(unittest.TestCase):
         for key, val in eval_with_gf.items():
             self.assertTrue(np.allclose(val, eval_without_gf[key]))
 
+    def test_exacteval_chess(self):
+        """Ensure that exact evaluation gives the same results with gauge fixing like a chess board and without"""
+
+        lat2_with_gf = lattice.Lattice2D(2, 2, -2)  # With gauge fixing
+        lat2_without_gf = lattice.Lattice2D(2, 2)  # Without gauge fixing
+        paramvec = np.random.rand(2, 20)
+
+        # System with gauge fixing
+        cfg_with_gf = system.Z2System2D_G2C_F2C_Config(lat2_with_gf, 1, 1, 1, 1, [0, 0])
+        cfg_with_gf.paramvec = paramvec
+        system_with_gf = system.Z2System2D(cfg_with_gf)
+        system_with_gf.cfg.enforce_parameter_conditions(cfg_with_gf.paramvec)
+
+        # System without gauge fixing
+        cfg_without_gf = system.Z2System2D_G2C_F2C_Config(
+            lat2_without_gf, 1, 1, 1, 1, [0, 0]
+        )
+        cfg_without_gf.paramvec = paramvec
+        system_without_gf = system.Z2System2D(cfg_without_gf)
+        system_without_gf.cfg.enforce_parameter_conditions(cfg_without_gf.paramvec)
+
+        # Evaluation
+        evaluator_with_gf = exacteval.ExactEvaluator(
+            ExactEvaluatorConfig(), system_with_gf
+        )
+        evaluator_without_gf = exacteval.ExactEvaluator(
+            ExactEvaluatorConfig(), system_without_gf
+        )
+
+        eval_with_gf = evaluator_with_gf.evaluate()
+        eval_without_gf = evaluator_without_gf.evaluate()
+
+        for key, val in eval_with_gf.items():
+            self.assertTrue(np.allclose(val, eval_without_gf[key]))
+
     @skip("Too long")
     def test_mceval(self):
         """Ensure that MC evaluation gives the same results with and without gauge fixing"""
