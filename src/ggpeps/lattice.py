@@ -40,9 +40,12 @@ class Lattice2D:
         self.size = nx * ny  # number of sites
 
         # We trust the user not to modify these
-        if gf_num_of_rows == -1:  # If we gauge_fix over a maximal tree
-            gf_num_of_rows = None  # We fix a maximal tree
-        self.fixed_tree = self.generate_tree(gf_num_of_rows)
+        if gf_num_of_rows == -2:  # we fix a chess tree
+            self.fixed_tree = self.generate_chess_tree()
+        else:
+            if gf_num_of_rows == -1:  # If we gauge_fix over a maximal tree
+                gf_num_of_rows = None  # We fix a maximal tree
+            self.fixed_tree = self.generate_tree(gf_num_of_rows)
 
         self.comp_tree = self.generate_tree_complement()
 
@@ -404,6 +407,22 @@ class Lattice2D:
             for x in range(self.nx - 1)
         ]
 
+        return tree
+
+    def generate_chess_tree(self):
+        """Generate a chess tree on the lattice - all links in the x direction comming out of only even sites.
+        This allows all values on the tree to be fixed to the identity when gauge_fixing
+        (no integration is needed over links on the tree).
+        This method is built for a lattice with periodic boundary conditions.
+
+        Returns:
+            list: List of link-indices in the tree
+        """
+        tree = []
+        for y in range(self.ny):
+            for x in range(self.nx):
+                if (x + y) % 2 == 0:
+                    tree.append(self.coord2ind_dir((x, y), Direction(0)))
         return tree
 
     def generate_tree_complement(self):
