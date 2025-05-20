@@ -158,31 +158,23 @@ class D2nSystem2D(System2DBase):
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
         g_transpose = xnp.transpose(g)
-        g_dagger = g_transpose
-        sum_of_g_matrices = g_transpose + g_dagger
-        dif_of_g_matrices = g_transpose - g_dagger
-
+        real_g_transpose = xnp.real(g_transpose)
+        imag_g_transpose = xnp.imag(g_transpose)
         if xnp.sum(coord) % 2 == 0:  # gauging is different for different sublattices
-            rot_right = (
-                0.5
-                * xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
-                    # TODO: Generalize this to fermionic layers as well.
-                    [
-                        [sum_of_g_matrices, dif_of_g_matrices],
-                        [dif_of_g_matrices, sum_of_g_matrices],
-                    ],
-                )
+            rot_right = xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
+                # TODO: Generalize this to fermionic layers as well.
+                [
+                    [real_g_transpose, imag_g_transpose],
+                    [-imag_g_transpose, real_g_transpose],
+                ],
             )  # This is the rot_right for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
         else:
-            rot_right = (
-                0.5
-                * xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
-                    # TODO: Generalizze this to fermionic layers as well.
-                    [
-                        [sum_of_g_matrices, dif_of_g_matrices],
-                        [dif_of_g_matrices, sum_of_g_matrices],
-                    ],
-                )
+            rot_right = xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
+                # TODO: Generalizze this to fermionic layers as well.
+                [
+                    [real_g_transpose, -imag_g_transpose],
+                    [imag_g_transpose, real_g_transpose],
+                ],
             )
 
         # We have dim(representaion) left mode => 2*dim(representation) Majorana modes
@@ -283,7 +275,6 @@ class D2nSystem2D(System2DBase):
                     ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]
                 )
             )
-
             # Substitute in the array
             if ggpeps.PREFERRED_BACKEND == "jax":
                 # TODO: should not modify "private" variable - make a setter?
