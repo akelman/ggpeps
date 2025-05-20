@@ -46,9 +46,21 @@ if __name__ == "__main__":
     system_D6 = system.D2nSystem2D(cfg)
     system_D6.cfg.enforce_parameter_conditions(system_D6.cfg.paramvec)
     forbidden_pairs_x = forbidden_pairs(system_D6, (0, 0), 0)
+    print(len(forbidden_pairs_x))
+    doctionary = dict()
+    for p in range(3):
+        for q in range(2):
+            doctionary[(p, q)] = system_D6.cfg.gaugemgr.get_representation(p, q)
+    counter = 0
     for pair in forbidden_pairs_x:
-        print("The pairs x:", pair[0], pair[1])
-    forbidden_pairs_y = forbidden_pairs(system_D6, (0, 0), 1)
-    for pair in forbidden_pairs_y:
-        print("The pairs y:", pair[0], pair[1])
-    print(system_D6.cfg.gaugemgr.get_possible_gauge_values())
+        counter += 1
+        print(counter)
+        for key in doctionary:
+            if np.allclose(doctionary[key], pair[0]):
+                print("key", key, pair[0])
+            if np.allclose(doctionary[key], pair[1]):
+                print("key", key, pair[1])
+    # forbidden_pairs_y = forbidden_pairs(system_D6, (0, 0), 1)
+    # for pair in forbidden_pairs_y:
+    #     print("The pairs y:", pair[0], pair[1])
+    # print(system_D6.cfg.gaugemgr.get_possible_gauge_values())
