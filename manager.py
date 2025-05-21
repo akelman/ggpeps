@@ -30,6 +30,7 @@ from ggpeps.system import Z2System2D
 from ggpeps import utils
 from ggpeps import lattice as lat
 from ggpeps.measurement import Measurement
+from ggpeps.nevmc import NEVMC_EvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluatorConfig
 from ggpeps.exacteval import ExactEvaluatorConfig
 from ggpeps.evaluator_manager import EvaluatorManager
@@ -239,7 +240,10 @@ def main(args):
     utils.setup_logger(logger, log_filename, args.level)
 
     # Set up the MC Config
-    mc_config = MonteCarloEvaluatorConfig()
+    if 'nevmc' in args.mode:
+        mc_config = NEVMC_EvaluatorConfig()
+    else:
+        mc_config = MonteCarloEvaluatorConfig()
     mc_config.warmup_steps = args.warmup_steps
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize
@@ -424,6 +428,12 @@ def main(args):
         mc_config.run_log_freq = args.run_log_freq
     if "min" in args.mode:
         logger.info("====== MINIMIZER INFO ======")
+
+        # only the CUSTOM minimizer method is supported by NEVMC
+        if args.mode == "min-nevmc" and args.method != "CUSTOM":
+            logger.warning("Only the CUSTOM minimizer method is supported by NEVMC. Switching to CUSTOM method.")
+            args.method = "CUSTOM"
+
         logger.info(f"Method: {args.method.upper()}")
         logger.info(f"Max Iterations: {args.maxiter}")
         if args.method.upper() == "CUSTOM":
@@ -523,6 +533,30 @@ def main(args):
         stop = timer()
         logger.info(result)
         minimizer.save(output_dir=args.output)
+    elif args.mode == "min-nevmc":
+        # Find the minimal energy (the optimal parameter vector) while evaluating the state with NEVMC
+
+        mc_config.minimizer_mode = True
+        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+
+        # Set the parameters of the minimizer according to the command line
+        min_cfg = MinimizerConfig()
+        min_cfg.max_iter = args.maxiter
+        min_cfg.alpha = args.alpha
+        min_cfg.min_grad = args.min_grad
+        min_cfg.NEVMC = True
+
+        min_cfg.method = "CUSTOM" 
+
+        minimizer = Minimizer(min_cfg, mc_mgr)
+        ggpeps.global_vars["minimizer"] = minimizer  # save for global access
+
+        start = timer()
+        result = minimizer.minimize_NEVMC()
+        stop = timer()
+
+        logger.info(result)
+        minimizer.save(output_dir=args.output)
     elif args.mode == "minmult-mc":
         """This mode has not been used in a while and might not work anymore.
         The port variable is intended for use with ray, but this does not currently work with the EvaluatorManager.
@@ -596,7 +630,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "mode",
         type=str,
-        choices=["eval-mc", "eval-exact", "min-mc", "min-exact", "minmult-mc"],
+        choices=["eval-mc", "eval-exact", "min-mc", "min-exact", "min-nevmc", "minmult-mc"],
         help="Mode of the program",
     )
     parser.add_argument("L", type=int, help="Size of the square system (one side)")
