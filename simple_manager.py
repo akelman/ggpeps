@@ -26,7 +26,7 @@ from ggpeps.system import Z2System2D
 from ggpeps import utils
 from ggpeps import lattice as lat
 from ggpeps.measurement import Measurement
-from ggpeps.mc2 import MonteCarloEvaluatorConfig2
+from ggpeps.nevmc import NEVMC_EvaluatorConfig
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 
@@ -205,7 +205,7 @@ def main(args):
     utils.setup_logger(logger, log_filename, args.level)
 
     # Set up the MC Config
-    mc_config = MonteCarloEvaluatorConfig2()
+    mc_config = NEVMC_EvaluatorConfig()
     mc_config.warmup_steps = args.warmup_steps
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize
@@ -328,7 +328,7 @@ def main(args):
     ggpeps.global_vars["cache"] = cache
 
     # Call different functions depending on the mode specified via CLI
-    if args.mode == "eval-mc2":
+    if args.mode == "eval-nevmc":
         # Evaluate observables for a given set of parameters with Monte Carlo
 
         mc_config.minimizer_mode = args.compute_grads
@@ -350,7 +350,7 @@ def main(args):
             f"Acceptance probability: {mc_result.get_obs_mean('acceptance_prob')}"
         )
         logger.info("============================")
-    elif args.mode == "min-mc2":
+    elif args.mode == "min-nevmc":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
 
         mc_config.minimizer_mode = True
@@ -407,7 +407,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "mode",
         type=str,
-        choices=["eval-mc2", "min-mc2"],
+        choices=["eval-nevmc", "min-nevmc"],
         help="Mode of the program",
     )
     parser.add_argument("L", type=int, help="Size of the square system (one side)")

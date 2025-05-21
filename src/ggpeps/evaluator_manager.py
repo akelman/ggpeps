@@ -10,7 +10,7 @@ import ggpeps
 from ggpeps import utils
 from ggpeps.exacteval import ExactEvaluator, ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig
-from ggpeps.mc2 import MonteCarloEvaluator2, MonteCarloEvaluatorConfig2
+from ggpeps.nevmc import NEVMC_Evaluator, NEVMC_EvaluatorConfig
 from ggpeps.system import SystemType, SystemConfigType
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -22,8 +22,8 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 @ray.remote
 def run_mc(
     runner_id: int,
-    evaluator_class: Union[MonteCarloEvaluator, MonteCarloEvaluator2],
-    evaluator_cfg: Union[MonteCarloEvaluatorConfig, MonteCarloEvaluatorConfig2],
+    evaluator_class: Union[MonteCarloEvaluator, NEVMC_Evaluator],
+    evaluator_cfg: Union[MonteCarloEvaluatorConfig, NEVMC_EvaluatorConfig],
     system_cls,
     system_cfg,
     logger_info: dict,
@@ -87,8 +87,8 @@ class EvaluatorManager:
             self.type = "exact"
         elif isinstance(self.cfg, MonteCarloEvaluatorConfig):
             self.type = "mc"
-        elif isinstance(self.cfg, MonteCarloEvaluatorConfig2):
-            self.type = "mc2"
+        elif isinstance(self.cfg, NEVMC_EvaluatorConfig):
+            self.type = "nevmc"
         else:
             raise ValueError("Unrecognized type of evaluator config.")
 
@@ -100,8 +100,8 @@ class EvaluatorManager:
             self.evaluator = ExactEvaluator(self.cfg, system)
         elif self.type == "mc":
             self.evaluator = MonteCarloEvaluator(self.cfg, system)
-        elif self.type == "mc2":
-            self.evaluator = MonteCarloEvaluator2(self.cfg, system)
+        elif self.type == "nevmc":
+            self.evaluator = NEVMC_Evaluator(self.cfg, system)
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
 
@@ -110,8 +110,8 @@ class EvaluatorManager:
             evaluator_class = ExactEvaluator
         elif self.type == "mc":
             evaluator_class = MonteCarloEvaluator
-        elif self.type == "mc2":
-            evaluator_class = MonteCarloEvaluator2
+        elif self.type == "nevmc":
+            evaluator_class = NEVMC_Evaluator
         return evaluator_class
 
     def simulate(self):

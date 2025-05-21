@@ -16,13 +16,13 @@ from ggpeps.measurement import Measurement
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
-#################### Monte Carlo Estimator Config ###################
 
+########### Non-equilibrium variational Monte Carlo Estimator Config ###########
 
-class MonteCarloEvaluatorConfig2:
-    """Monte Carlo Configuration
+class NEVMC_EvaluatorConfig:
+    """Non-equilibrium variational Monte Carlo (NEVMC) Configuration
 
-    This class manages the parameters of the MC simulation.
+    This class manages the parameters of the NEVMC simulation.
     It is more convenient than passing an extensive number of parameters to the constructor.
     """
 
@@ -92,16 +92,16 @@ class MonteCarloEvaluatorConfig2:
         return dest
 
 
-################################### Monte Carlo runner ###############
+############### Non-equilibrium variational Monte Carlo runner ###############
 
 
-class MonteCarloEvaluator2(Evaluator):
-    """Class to take care of the MC simulation on a single runner"""
+class NEVMC_Evaluator(Evaluator):
+    """Class to take care of the NEVMC simulation on a single runner"""
 
-    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig2, system):
+    def __init__(self, evaluator_cfg: NEVMC_EvaluatorConfig, system):
         self.cfg = evaluator_cfg
         self.system = system
-        self.evaluator_type = "mc2"
+        self.evaluator_type = "nevmc"
         self.obsdict: dict = {}
 
         self.step: int = 0
