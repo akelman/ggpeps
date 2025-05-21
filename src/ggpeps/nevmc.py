@@ -37,7 +37,7 @@ class NEVMC_EvaluatorConfig:
             1  # this can be set anywhere from 1 to nlinks (inclusive)
         )
         ### beg NEVMC ###
-        self.NEVMC: bool = False
+        self.NEVMC: bool = True
         self.store_gauge = []
         self.store_weights = []
         self.store_first_cfgs = 0
