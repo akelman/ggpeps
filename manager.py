@@ -557,14 +557,14 @@ def main(args):
     elif args.mode == "min-nevmc":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with NEVMC
 
-        mc_config.minimizer_mode = True
+        mc_config.compute_grads = True
         mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
 
         # Set the parameters of the minimizer according to the command line
         min_cfg = MinimizerConfig()
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
-        min_cfg.min_grad = args.min_grad
+        min_cfg.tol = args.tol
         min_cfg.method = "NEVMC" 
 
         minimizer = Minimizer(min_cfg, mc_mgr)

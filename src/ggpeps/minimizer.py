@@ -384,10 +384,10 @@ class Minimizer:
                 ### TODO modify this function, it is not printing the reweighted results
                 NEVMC_print_callback(ind, self.last_result)
 
-                # Check if the maximum of the gradient is smaller than min_grad
-                if max_grad_paramvec < abs(self.cfg.min_grad):
+                # Check if the maximum of the gradient is smaller than tolerance
+                if max_grad_paramvec < abs(self.cfg.tol):
                     message = (
-                        f"Reached convergence: max grad paramvec < {self.cfg.min_grad}"
+                        f"Reached convergence: max grad paramvec < {self.cfg.tol}"
                     )
                     logger.info(message)
                     self.min_result = MinimizerResult(

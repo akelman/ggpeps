@@ -310,7 +310,7 @@ def main(args):
         if args.method.upper() == "CUSTOM":
             # these are only used by the custom (basic gradient descent) minimizer and are not passed to scipy
             logger.info(f"Learning rate: {args.alpha}")
-            logger.info(f"Min grad: {args.min_grad}")
+            logger.info(f"Min grad: {args.tol}")
         logger.info("============================")
 
     # Set up cache
@@ -331,7 +331,7 @@ def main(args):
     if args.mode == "eval-nevmc":
         # Evaluate observables for a given set of parameters with Monte Carlo
 
-        mc_config.minimizer_mode = args.compute_grads
+        mc_config.compute_grads = args.compute_grads
         if cache.load_obj_from_local_cache("evaluator_manager") is not None:
             mc_mgr = cache.load_obj_from_local_cache("evaluator_manager")
             logger.info(f"Loaded evaluator manager from cache.")
@@ -353,7 +353,7 @@ def main(args):
     elif args.mode == "min-nevmc":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
 
-        mc_config.minimizer_mode = True
+        mc_config.compute_grads = True
         mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
 
         # Set the parameters of the minimizer according to the command line
@@ -361,7 +361,7 @@ def main(args):
         min_cfg.method = args.method.upper()
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
-        min_cfg.min_grad = args.min_grad
+        min_cfg.tol = args.tol
         ### beg NEVMC ###
         min_cfg.method = "NEVMC"
         ### end NEVMC ###
@@ -375,7 +375,7 @@ def main(args):
         ### end NEVMC ###
         stop = timer()
         logger.info(result)
-        
+
         # Saving does not currently work with NEVMC, since last_result is overwritten
         #minimizer.save(output_dir=args.output)
     else:
@@ -408,7 +408,7 @@ if __name__ == "__main__":
         choices=["eval-nevmc", "min-nevmc"],
         help="Mode of the program",
     )
-    parser.add_argument("L", type=int, help="Size of the square system (one side)")
+    parser.add_argument("--L", type=int, help="Size of the square system (one side)")
 
     # Hamiltonian couplings
     parser.add_argument(
@@ -499,10 +499,10 @@ if __name__ == "__main__":
         "--alpha", "--lr", type=float, default=0.1, help="Learning rate"
     )
     parser.add_argument(
-        "--min-grad",
+        "--tol",
         type=float,
         default=1e-5,
-        help="Minimal gradient to use as a stopping criterion",
+        help="Tolerance for convergence condition (e.g. minimal gradient to use as a stopping criterion)",
     )
     ### beg NEVMC ###
     parser.add_argument(

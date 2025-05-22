@@ -32,7 +32,7 @@ class NEVMC_EvaluatorConfig:
         self._rng_state = None
         self.meas_steps = None
         self.binsize: int = 1
-        self.minimizer_mode: bool = False
+        self.compute_grads: bool = False
         self.update_size_per_step: int = (
             1  # this can be set anywhere from 1 to nlinks (inclusive)
         )
@@ -140,7 +140,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["norm"] = Measurement("Norm", binsize)
         self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
 
-        if self.cfg.minimizer_mode:
+        if self.cfg.compute_grads:
             ### beg NEVMC ###
             self.obsdict["work"] = Measurement("Work", binsize)
             ### end NEVMC ###
@@ -202,7 +202,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
         self.obsdict["number_per_site"].append(self.system.number_per_site)
 
-        if self.cfg.minimizer_mode:
+        if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
             self.obsdict["int_energy_op_grad"].append(
                 self.system.int_energy_op_grad_vec
