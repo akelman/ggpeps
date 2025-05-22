@@ -423,6 +423,7 @@ class Lattice2D:
             for x in range(self.nx):
                 if (x + y) % 2 == 0:
                     tree.append(self.coord2ind_dir((x, y), Direction(0)))
+                    tree.append(self.coord2ind_dir((x, y), Direction(1)))                    
         return tree
 
     def generate_tree_complement(self):
