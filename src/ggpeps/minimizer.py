@@ -57,7 +57,7 @@ class MinimizerConfig:
 class Minimizer:
     grad_methods = ["CG", "BFGS", "L-BFGS-B", "TNC", "CUSTOM"]
     no_grad_methods = ["POWELL", "NELDER-MEAD"]
-    supported_methods = grad_methods + no_grad_methods
+    supported_scipy_methods = grad_methods + no_grad_methods
 
     def __init__(self, cfg: MinimizerConfig, evaluator_manager: EvaluatorManager):
         self.cfg: MinimizerConfig = cfg
@@ -74,7 +74,7 @@ class Minimizer:
     def minimize(self):
         if self.cfg.method == "CUSTOM":
             return self.minimize_custom()
-        elif self.cfg.method in self.supported_methods:
+        elif self.cfg.method in self.supported_scipy_methods:
             return self.minimize_scipy()
         else:
             logger.error(f"Unkown minimization method '{self.cfg.method}'. Aborting...")
