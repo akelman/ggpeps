@@ -266,7 +266,7 @@ class Minimizer:
             
             if ind == 0:
                 # First run at equilibrium
-                result0 = self.evaluator_manager.simulate_NEVMC(first_warmup=True)
+                result0 = self.evaluator_manager.simulate(eval_args={"first_warmup": True})
                 
                 # Standard calculation energy and grads
                 energy = result0.get_obs_mean("energy")
@@ -292,7 +292,7 @@ class Minimizer:
                 self.evaluator_manager.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
 
                 # First reweighting: only scanning
-                result1 = self.evaluator_manager.simulate_NEVMC(scanning=True)
+                result1 = self.evaluator_manager.simulate(eval_args={"scanning": True})
 
                 # Compute DF
                 Wmean = result1.obsdict["work"].mean()
@@ -342,9 +342,9 @@ class Minimizer:
                 self.last_paramvec = np.copy(paramvec)
 
                 # Monte Carlo part of the optimizer
-                result0 = self.evaluator_manager.simulate_NEVMC()
+                result0 = self.evaluator_manager.simulate()
                 self.evaluator_manager.system_cfg.paramvec = copy.deepcopy(next_paramvec)
-                result1 = self.evaluator_manager.simulate_NEVMC(scanning=True)
+                result1 = self.evaluator_manager.simulate(eval_args = {"scanning": True})
                 
                 # Compute DF
                 Wmean = copy.deepcopy(result1.obsdict["work"].mean())

@@ -27,6 +27,7 @@ def run_mc(
     system_cls,
     system_cfg,
     logger_info: dict,
+    eval_args: dict = {},
 ):
     """Worker for running part of a MC simulation.
 
@@ -36,6 +37,7 @@ def run_mc(
         system_cls ():
         system_cfg ():
         logger_info (dict): configs for the logger (logger needs to be set up in each worker)
+        eval_args (dict): Arguments for the evaluator 
 
     Returns:
         MonteCarloEvaluator
@@ -51,7 +53,7 @@ def run_mc(
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
     mc = evaluator_class(evaluator_cfg, system)
-    mc.evaluate()
+    mc.evaluate(**eval_args)
     return mc
 
 
@@ -69,7 +71,7 @@ class EvaluatorManager:
         self,
         system_cls: SystemType,
         system_cfg: SystemConfigType,
-        cfg: Union[MonteCarloEvaluatorConfig, ExactEvaluatorConfig],
+        cfg: Union[MonteCarloEvaluatorConfig, ExactEvaluatorConfig, NEVMC_EvaluatorConfig],
         nrunner: int,
     ):
 
@@ -114,12 +116,17 @@ class EvaluatorManager:
             evaluator_class = NEVMC_Evaluator
         return evaluator_class
 
-    def simulate(self):
-        if (
-            "mc" in self.type and self.nrunner > 0
-        ):  # The exacteval implementation currently only supports a single runner
+    def simulate(self, eval_args:dict={}):
+        """Simulate
+        
+        Args:
+            eval_args (dict): Arguments for the evaluator (e.g. for NEVMC). 
+        """
+
+        if "mc" in self.type and self.nrunner > 0:  
             """Start the simulation of the runners.
-            Currently only Monte Carlo is supported, and multiple runners cannot be resumed from where they left off.
+            Currently only Monte Carlo is supported (the exacteval implementation currently only supports a single runner), 
+            and multiple runners cannot be resumed from where they left off.
             """
             resultvec = []
             # system_cfg_id = ray.put(self.system_cfg)
@@ -167,6 +174,7 @@ class EvaluatorManager:
                         self.system_cls,
                         self.system_cfg,
                         logger_info,
+                        eval_args=eval_args,
                     )
                 )
 
@@ -180,7 +188,7 @@ class EvaluatorManager:
             else:
                 self.reset_evaluator()
             self.simulation_in_progress = True
-            self.evaluator.evaluate()
+            self.evaluator.evaluate(**eval_args)
             self.simulation_in_progress = False
             return self.evaluator
 
@@ -203,67 +211,3 @@ class EvaluatorManager:
             dest = resultvec[0]
         return dest
     
-
-    ### beg NEVMC ###
-    def simulate_NEVMC(self, first_warmup:bool = False, scanning: bool = False):
-        
-        if (
-            "mc" in self.type and self.nrunner > 0
-        ): 
-            resultvec = []
-            reduced_meas_steps = self.cfg.meas_steps // self.nrunner
-            logger.info(
-                f"Starting {self.nrunner} ray runners with {reduced_meas_steps} measurement steps each (total: {self.nrunner * reduced_meas_steps})."
-            )
-
-            for i in range(self.nrunner):
-                cfg = copy.deepcopy(self.cfg)
-                cfg.seed = self.cfg.seed + i
-                cfg.meas_steps = reduced_meas_steps
-
-                logger_info = {
-                    "filename": ggpeps.logger_file,
-                    "logger_level": ggpeps.global_vars["args"].level,
-                }
-
-                cpu_frac = (
-                    1 / ggpeps.global_vars["args"].nrunner
-                )  
-                gpu_frac = 0.0
-                if ggpeps.GPU_AVAILABLE:
-                    gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
-
-                evaluator_class = self.get_evaluator_class()
-
-                run_mc_modified = run_mc.options(
-                    num_gpus=gpu_frac
-                )  
-                resultvec.append(
-                    run_mc_modified.remote(
-                        i,
-                        evaluator_class,
-                        cfg,
-                        self.system_cls,
-                        self.system_cfg,
-                        logger_info,
-                    )
-                )
-
-            resultvec = ray.get(resultvec)
-            return self.collect(resultvec)
-        else:
-            if (
-                self.type == "mc" and self.simulation_in_progress
-            ):  
-                self.evaluator.system.invalidate_gauge_update()
-            else:
-                #if first_warmup:
-                self.reset_evaluator()
-            # TODO multiple runners
-
-            self.simulation_in_progress = True
-
-            self.evaluator.evaluate(first_warmup = first_warmup, scanning = scanning)
-            self.simulation_in_progress = False
-            return self.evaluator
-    ### end NEVMC ###
