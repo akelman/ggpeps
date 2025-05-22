@@ -57,7 +57,7 @@ class Cache:
 
         obs_cache_len = len(obs_cache)
         if (
-            obs_cache_len > 1000 and obs_cache_len % 50
+            obs_cache_len >= 1000 and not obs_cache_len % 500
         ):  # 1000 is an arbitrary threshold
             logger.warning(f"Cache for obs {obs} is large: {obs_cache_len} items.")
 
@@ -84,7 +84,8 @@ class Cache:
                 == ggpeps.global_vars["minimizer"].evaluator_manager.nrunner
             ):
                 if np.allclose(
-                    eval_manager.system_cfg.paramvec, np.reshape(paramvec, (-1, 20))
+                    eval_manager.system_cfg.paramvec,
+                    np.reshape(paramvec, eval_manager.system_cfg.param_shape()),
                 ):
                     ggpeps.global_vars["minimizer"].evaluator_manager = eval_manager
         return None

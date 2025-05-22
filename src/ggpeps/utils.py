@@ -5,6 +5,7 @@ import gzip
 import pickle
 import logging
 import subprocess  # Start process for git hash
+from typing import Optional
 
 import numba as nb
 from scipy.sparse import issparse
@@ -416,7 +417,7 @@ def tmat_to_covariance_matrix(tmat: np.ndarray) -> np.ndarray:
 
 
 def generate_smat(n: int):
-    """Generate matrix to transform Dirac modes into Majorana modes.
+    r"""Generate matrix to transform Dirac modes into Majorana modes.
     The function assumes the modes order of [a_1, a_2,....., a_n, a_1^\dagger,.....,a_n^\dagger].
 
     Args:
@@ -695,15 +696,19 @@ def rebin_array(a, R):
         # Shape (N): N samples of scalars
         dest = np.mean(a[:max_fit].reshape(-1, R), axis=1)
     elif a.ndim == 2:
-        # Shape (N,n,m): N samples of m-dim vecotrs
+        # Shape (N,m): N samples of m-dim vecotrs
         N, m = a.shape
         dest = np.mean(a[:max_fit].reshape(-1, m, R), axis=2)
     elif a.ndim == 3:
-        # Shape (N,n,m): N samples of n x m matrices
+        # Shape (N,m,n): N samples of m x n matrices
         N, m, n = a.shape
         dest = np.mean(a[:max_fit].reshape(-1, m, n, R), axis=3)
+    elif a.ndim == 4:
+        # Shape (N,p,m,n): N samples of p x m x n tensors
+        N, p, m, n = a.shape
+        dest = np.mean(a[:max_fit].reshape(-1, p, m, n, R), axis=4)
     else:
-        logger.error("rebin_array not implemented for dimensions greater than 3.")
+        logger.error("rebin_array not implemented for dimensions greater than 4.")
         return a
     return dest
 
@@ -855,7 +860,7 @@ def show_eigenvalues(mat):
 # ========== Workflow & Tooling Functions ====================
 
 
-def get_couplings_from_foldername(fname):
+def get_couplings_from_foldername(fname: str) -> str:
     couplings = ["g", "el", "mag", "int", "mass"]
     res = ""
     for arg in couplings:
@@ -863,10 +868,16 @@ def get_couplings_from_foldername(fname):
         result = re.search(pattern, fname)
         if result is not None:
             res += f"{arg}_{result.group(0)}_"
+
+    # chem - we treat this differently because it is a vector for different flavors
+    pattern = r"chem_\[.*?\]"
+    result = re.search(pattern, fname)
+    if result is not None:
+        res += f"{arg}_{result.group(0)}_"
     return res
 
 
-def extract_params_from_results_file(fname, dest_dir="") -> bool:
+def extract_params_from_results_file(fname: str, dest_dir: Optional[str] = "") -> bool:
     """Extract parameters from a results file and save to a new .npy file
 
     Args:

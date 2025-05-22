@@ -37,12 +37,26 @@ class Z2System2DConfig(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=0,
+        unitcell_size=1,
     ):
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         if num_fermionic_layer != 0:
             # This ansatz does not support fermionic layers
             raise ValueError("The Z2System2D ansatz does not support fermionic layers.")
+
         super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0)
+
+        # Translation invariance
+        if unitcell_size not in [1]:
+            logger.error(
+                "This ansatz only supports unitcell_size = 1 or 2. \
+                This can be adapted by adding in a specification in the config to map sites to parameters."
+            )
+            raise ValueError("Invalid unitcell_size.")
+        self.site_params_dict = {
+            site: 0 for site in range(self.lattice.size)
+        }  # map from site to index of independent parameters
+        self.unitcell_size = 1
 
         # This is for pure-gauge only atm
         self.num_pg_layer = self.nlayer
@@ -59,11 +73,12 @@ class Z2System2DConfig(Config2DBase):
 
     def make_pure_gauge(self):
         # The order of the parameters is [tr,yr,zr,ti,yi,zi] ({r,i} referring to the real/imaginary components)
-        for ind in range(self.nlayer):
-            # t real
-            self.paramvec[ind, 0] = 0
-            # t imag
-            self.paramvec[ind, 3] = 0
+        for lay in range(self.nlayer):
+            for uc_ind in range(self.unitcell_size):
+                # t real
+                self.paramvec[lay, uc_ind, 0] = 0
+                # t imag
+                self.paramvec[lay, uc_ind, 3] = 0
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.

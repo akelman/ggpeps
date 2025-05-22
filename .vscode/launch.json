@@ -28,17 +28,19 @@
                 "eval-mc",
                 "--L", "2",
                 "--level", "debug",
-                "--warmup_steps", "1000",
-                "--meas_steps", "1000",
+                "--warmup_steps", "100",
+                "--meas_steps", "100",
                 "--seed", "15", 
                 "--ncopy", "2",
                 "--num_pg_layer", "1",
                 "--num_fermionic_layer", "1",
-                "--g_el", "0",
-                "--g_mag", "0", 
+                "--g_el", "1",
+                "--g_mag", "1", 
                 "--g_int", "1",
                 "--g_mass", "0",
-                "--ignore_cache"
+                "--ignore_cache",
+                "--compute-grads",
+                "--seed", "2"
             ]
         },
         {
@@ -49,6 +51,7 @@
             "console": "integratedTerminal",
             "args": [
                 "eval-exact",
+                "--fermions",
                 "--L", "2",
                 "--ncopy", "2",
                 "--num_pg_layer", "1",
@@ -57,7 +60,9 @@
                 "--g_mag", "0", 
                 "--g_int", "1",
                 "--g_mass", "0",
-                "--ignore_cache"
+                "--g_chem", "0", "1",
+                "--ignore_cache",
+                "--seed", "2"
             ]
         },
         {

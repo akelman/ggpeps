@@ -44,7 +44,7 @@ class MinimizerConfig:
 
     def __init__(self):
         self.max_iter: int = 100
-        self.min_grad: float = 1e-5
+        self.tol: float = 1e-5  # convergence tol (e.g. stop when grad falls below tol)
         self.alpha: float = 1e-2
         self._method: str = "CG"
 
@@ -58,7 +58,9 @@ class MinimizerConfig:
 
 
 class Minimizer:
-    supported_methods = ["CG", "BFGS", "L-BFGS-B", "POWELL", "NELDER-MEAD", "TNC"]
+    grad_methods = ["CG", "BFGS", "L-BFGS-B", "TNC", "CUSTOM"]
+    no_grad_methods = ["POWELL", "NELDER-MEAD"]
+    supported_scipy_methods = grad_methods + no_grad_methods
 
     def __init__(self, cfg: MinimizerConfig, evaluator_manager: EvaluatorManager):
         self.cfg: MinimizerConfig = cfg
@@ -77,7 +79,7 @@ class Minimizer:
             return self.minimize_custom()
         elif self.cfg.method == "NEVMC":
             return self.minimize_NEVMC()
-        elif self.cfg.method in self.supported_methods:
+        elif self.cfg.method in self.supported_scipy_methods:
             return self.minimize_scipy()
         else:
             logger.error(f"Unkown minimization method '{self.cfg.method}'. Aborting...")
@@ -115,11 +117,9 @@ class Minimizer:
             # Update logs
             print_callback(ind, self)
 
-            # Check if the maximum of the gradient is smaller than min_grad
-            if max_grad_paramvec < abs(self.cfg.min_grad):
-                message = (
-                    f"Reached convergence: max grad paramvec < {self.cfg.min_grad}"
-                )
+            # Check if the maximum of the gradient is smaller than convergence tolerance
+            if max_grad_paramvec < abs(self.cfg.tol):
+                message = f"Reached convergence: max grad paramvec < {self.cfg.tol}"
                 logger.info(message)
                 self.min_result = MinimizerResult(
                     paramvec, self.cfg.method, energy, grad_paramvec, True, message
@@ -156,7 +156,8 @@ class Minimizer:
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = flattened_paramvec
                 self.evaluator_manager.system_cfg.paramvec = np.reshape(
-                    flattened_paramvec, (-1, self.evaluator_manager.system_cfg._nparams)
+                    flattened_paramvec,
+                    self.evaluator_manager.system_cfg.param_shape(),
                 )
                 self.last_result = self.evaluator_manager.simulate()
 
@@ -166,10 +167,11 @@ class Minimizer:
             #   we can still use the cached values
             energy = self.last_result.get_obs_mean("energy")
             self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy)
-            parametergrad = self.last_result.get_obs_mean("energy_grad")
-            self.cache.add_obs_to_cache(
-                flattened_paramvec, "energy_grad", parametergrad
-            )
+            if self.evaluator_manager.cfg.compute_grads:
+                parametergrad = self.last_result.get_obs_mean("energy_grad")
+                self.cache.add_obs_to_cache(
+                    flattened_paramvec, "energy_grad", parametergrad
+                )
             logger.debug(f"Calculated energy: {energy}")
 
             return energy
@@ -198,9 +200,10 @@ class Minimizer:
             ):
                 # We only set the parametervec and start the simulation if the parametervec is new
                 self.last_paramvec = flattened_paramvec
-                # self.evaluator.mc_cfg.minimizer_mode = True # make sure to calculate derivatives
+                # self.evaluator.mc_cfg.compute_grads = True # make sure to calculate derivatives
                 self.evaluator_manager.system_cfg.paramvec = np.reshape(
-                    flattened_paramvec, (-1, self.evaluator_manager.system_cfg._nparams)
+                    flattened_paramvec,
+                    self.evaluator_manager.system_cfg.param_shape(),
                 )
                 self.last_result = self.evaluator_manager.simulate()
 
@@ -214,6 +217,12 @@ class Minimizer:
 
             return parametergrad.reshape((-1))
 
+        # Manage settings for different minimization algorithms
+        options_dict = {}
+        if self.cfg.method != "TNC":
+            # TNC does not support a maximum number of iterations
+            options_dict["maxiter"] = self.cfg.max_iter
+
         # Use the random initialization from the system.initialize as first guess.
         # We might want to change this later.
         flattened_paramvec = np.reshape(
@@ -224,14 +233,21 @@ class Minimizer:
             flattened_paramvec,
             method=self.cfg.method,
             jac=gradient_wrapper,
+            tol=self.cfg.tol,
             callback=lambda x: print_callback(x, self),
-            options={"maxiter": self.cfg.max_iter},
+            options=options_dict,
         )
         flattened_paramvec = min_result.x
-        flattened_energygrad = min_result.jac
+        if self.cfg.method in self.no_grad_methods:
+            # these methods do not use the gradient
+            flattened_energygrad = None
+            num_jac_evals = 0
+        else:
+            flattened_energygrad = min_result.jac
+            num_jac_evals = min_result.njev
         energy = min_result.fun
         converged = min_result.success
-        message = f"{min_result.message} Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {min_result.njev}"
+        message = f"{min_result.message} Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {num_jac_evals}"
 
         dest = MinimizerResult(
             flattened_paramvec,
@@ -248,9 +264,10 @@ class Minimizer:
         if self.min_result is not None:
             sys_cfg = self.evaluator_manager.system_cfg
 
-            # FIXME: Adapt the filenames here
-            fname_mc_summary = f"summary_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_gel_{sys_cfg.g_el:.4f}_gmag_{sys_cfg.g_mag:.4f}_gint_{sys_cfg.g_int:.4f}_gmass_{sys_cfg.g_mass:.4f}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
-            fname_result_min = f"result_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_gel_{sys_cfg.g_el:.4f}_gmag_{sys_cfg.g_mag:.4f}_gint_{sys_cfg.g_int:.4f}_gmass_{sys_cfg.g_mass:.4f}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
+            couplings_str = f"gel_{sys_cfg.g_el}_gmag_{sys_cfg.g_mag}_gint_{sys_cfg.g_int}_gmass_{sys_cfg.g_mass}_gchem_{np.array2string(sys_cfg.g_chem, separator=',')}"
+
+            fname_mc_summary = f"summary_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
+            fname_result_min = f"result_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
 
             self.last_result.save_summary(os.path.join(output_dir, fname_mc_summary))
             with open(os.path.join(output_dir, fname_result_min), "wb") as outfile:
@@ -409,7 +426,12 @@ def print_callback(x, minimizer):
 
     energy = res.get_obs_mean("energy")
     number_per_site = res.get_obs_mean("number_per_site")
-    grad_paramvec = res.get_obs_mean("energy_grad")
+    if minimizer.evaluator_manager.cfg.compute_grads:
+        grad_paramvec = res.get_obs_mean("energy_grad")
+        max_grad_paramvec = np.max(np.abs(grad_paramvec))
+    else:
+        grad_paramvec = None
+        max_grad_paramvec = np.nan
 
     mass_energy = res.get_obs_mean("mass_energy")
     int_energy = res.get_obs_mean("int_energy")
@@ -418,7 +440,6 @@ def print_callback(x, minimizer):
     chem_energy = res.get_obs_mean("chem_energy")
 
     plaquette = res.get_obs_mean("wilson_loop_0-0_1x1")
-    max_grad_paramvec = np.max(np.abs(grad_paramvec))
 
     message = f"Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
     if minimizer.cfg.method == "CUSTOM":

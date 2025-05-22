@@ -43,6 +43,7 @@ class U1System2DConfig(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=0,
+        unitcell_size=1,
     ):
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         super().__init__(
@@ -56,10 +57,23 @@ class U1System2DConfig(Config2DBase):
             num_fermionic_layer,
         )
 
+        # Translation invariance
+        if unitcell_size not in [1]:
+            logger.error(
+                "This ansatz only supports unitcell_size = 1 or 2. \
+                This can be adapted by adding in a specification in the config to map sites to parameters."
+            )
+            raise ValueError("Invalid unitcell_size.")
+        self.site_params_dict = {
+            site: 0 for site in range(self.lattice.size)
+        }  # map from site to index of independent parameters
+        self.unitcell_size = 1
+
     def make_pure_gauge(self):
         # The order of the parameters is [t,y,z]
-        for ind in range(self.nlayer):
-            self.paramvec[ind, 0] = 0
+        for lay in range(self.nlayer):
+            for uc_ind in range(self.unitcell_size):
+                self.paramvec[lay, uc_ind, 0] = 0
 
     def _create_symbolvec(self):
         t = sympy.Symbol("t", real=True)
@@ -141,23 +155,39 @@ class U1System2D(System2DBase):
         return dest
 
     @property
-    def gamma_dirac_vec(self):
+    def gamma_dirac_layervec_sitevec(self):
         """Return the vector of covariance matrices in dirac modes.
 
         Returns:
             [np.array]: Vector of covariance matrices in Dirac modes
         """
-        if self._gamma_dirac_vec is None:
-            perm = self.permutation_dirac()
-            self._gamma_dirac_vec = np.asarray(
-                [
-                    perm @ utils.tmat_to_covariance_matrix(tmat) @ np.transpose(perm)
-                    for tmat in self.tmat_vec
-                ]
-            )
-        return self._gamma_dirac_vec
+        if self._gamma_dirac_layervec_sitevec is None:
 
-    def _expand_gamma_maj_to_system(self, covmats):
+            perm = self.permutation_dirac()
+            self._gamma_dirac_layervec_sitevec = []
+            for lay in range(self.cfg.nlayer):
+                gamma_dirac_lay = [
+                    perm
+                    @ xnp.array(utils.tmat_to_covariance_matrix(tmat))
+                    @ np.transpose(perm)
+                    for tmat in self.tmat_layervec_sitevec[lay]
+                ]
+                self._gamma_dirac_layervec_sitevec.append(gamma_dirac_lay)
+
+            self._gamma_dirac_layervec_sitevec = xnp.array(
+                self._gamma_dirac_layervec_sitevec
+            )
+        return self._gamma_dirac_layervec_sitevec
+
+    def _expand_gamma_maj_to_system(self, covmats_layervec_sitevec):
+        # To support non translationally-invariant systems, it would be necessary to use
+        # covmats_layervec_sitevec to handle different values on different sites.
+        # The U1 ansatz does not support this at the moment, so we just use the first site
+        site = 0
+        covmats = [
+            covmats_layervec_sitevec[lay][site] for lay in range(self.cfg.nlayer)
+        ]
+
         vec = []
         for covmat in covmats:
             permbuilder = lat.PermutationBuilderGMS2DU1(

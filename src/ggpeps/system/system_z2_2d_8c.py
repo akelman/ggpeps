@@ -3,6 +3,7 @@ import logging
 import sympy
 
 # import numpy as np
+import ggpeps
 from ggpeps import xnp as np
 from scipy.linalg import block_diag
 
@@ -11,6 +12,8 @@ from ggpeps.lattice import Direction
 
 from .system_base import Config2DBase, System2DBase
 from .system_base import get_pfaffian_arrays
+
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 ###################### Z2System2D ##########################
@@ -36,6 +39,7 @@ class Z2System2D_8C_Config(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=1,
+        unitcell_size=1,
     ):
         super().__init__(
             lattice,
@@ -47,6 +51,18 @@ class Z2System2D_8C_Config(Config2DBase):
             num_pg_layer,
             num_fermionic_layer,
         )
+
+        # Translation invariance
+        if unitcell_size not in [1]:
+            logger.error(
+                "This ansatz only supports unitcell_size = 1 or 2. \
+                This can be adapted by adding in a specification in the config to map sites to parameters."
+            )
+            raise ValueError("Invalid unitcell_size.")
+        self.site_params_dict = {
+            site: 0 for site in range(self.lattice.size)
+        }  # map from site to index of independent parameters
+        self.unitcell_size = 1
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j]] * 8
@@ -93,30 +109,32 @@ class Z2System2D_8C_Config(Config2DBase):
 
         # pure gauge layers
         for layer in range(self.num_pg_layer):
-            ind = 0
-            copies = [1, 3, 5, 7]  # copies which couple to physical modes
-            for cop in copies:
-                for com in ["r", "i"]:  # real or imaginary
-                    mat[layer, ind] = 0
-                    ind += 1
-                    zeroed_params.append((layer, ind))
+            for uc_ind in range(self.unitcell_size):
+                ind = 0
+                copies = [1, 3, 5, 7]  # copies which couple to physical modes
+                for cop in copies:
+                    for com in ["r", "i"]:  # real or imaginary
+                        mat[layer, uc_ind, ind] = 0
+                        ind += 1
+                        zeroed_params.append((layer, uc_ind, ind))
 
         # fermionic layers
         for layer_ind in range(self.num_pg_layer, self.nlayer):
-            ind = 0
-            copies = [1, 3, 5, 7]  # copies which couple to physical modes
-            for cop in copies:
-                for com in ["r", "i"]:
-                    ind += 1  # don't zero out t params
-                    zeroed_params.append((layer, ind))
-
-            copies = [1, 2, 3, 4]  # copies which couple to themselves
-            for cop in copies:
-                for l in ["z", "y"]:
+            for uc_ind in range(self.unitcell_size):
+                ind = 0
+                copies = [1, 3, 5, 7]  # copies which couple to physical modes
+                for cop in copies:
                     for com in ["r", "i"]:
-                        mat[layer_ind, ind] = 0
-                        ind += 1
-                        zeroed_params.append((layer, ind))
+                        ind += 1  # don't zero out t params
+                        zeroed_params.append((layer, uc_ind, ind))
+
+                copies = [1, 2, 3, 4]  # copies which couple to themselves
+                for cop in copies:
+                    for l in ["z", "y"]:
+                        for com in ["r", "i"]:
+                            mat[layer_ind, uc_ind, ind] = 0
+                            ind += 1
+                            zeroed_params.append((layer, uc_ind, ind))
 
         # save zeroed params
         self.zeroed_params = zeroed_params

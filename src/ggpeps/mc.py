@@ -33,7 +33,7 @@ class MonteCarloEvaluatorConfig:
         self._rng_state = None
         self.meas_steps = None
         self.binsize: int = 1
-        self.minimizer_mode: bool = False
+        self.compute_grads: bool = False
         self.update_size_per_step: int = (
             1  # this can be set anywhere from 1 to nlinks (inclusive)
         )
@@ -135,7 +135,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["norm"] = Measurement("Norm", binsize)
         self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
 
-        if self.cfg.minimizer_mode:
+        if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"] = Measurement(
                 "Electric Energy Operator Gradient", binsize
             )
@@ -184,7 +184,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
         self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
 
-        # These values could be calculated in a post-processing step
+        # Most of these values could be calculated in a post-processing step
         self.obsdict["energy"].append(self.system.energy)
         self.obsdict["el_energy"].append(self.system.el_energy)
         self.obsdict["mag_energy"].append(self.system.mag_energy)
@@ -194,7 +194,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
         self.obsdict["number_per_site"].append(self.system.number_per_site)
 
-        if self.cfg.minimizer_mode:
+        if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
             self.obsdict["int_energy_op_grad"].append(
                 self.system.int_energy_op_grad_vec
@@ -279,7 +279,28 @@ class MonteCarloEvaluator(Evaluator):
         # Add the constants back into the expression of the mass energy
         mass_energy_grad = self.system.cfg.g_mass * mass_energy_op_grad
 
-        return mag_energy_grad + el_energy_grad + int_energy_grad + mass_energy_grad
+        # Gradient of the chemical potential
+        meas_chem_energy = self.obsdict["chem_energy"]
+        meas_chem_energy_op_grad = self.obsdict["chem_energy_op_grad"]
+        for lay in range(self.system.cfg.nlayer):
+            # the gradients must be scaled by the chemical potential
+            meas_chem_energy_op_grad.datavec[lay] *= self.system.cfg.g_chem[lay]
+        prod_chem_energy_grad = meas_chem_energy * meas_grad_over_norm
+        chem_energy_grad = (
+            prod_chem_energy_grad.mean()
+            - meas_chem_energy.mean() * meas_grad_over_norm.mean()
+            + meas_chem_energy_op_grad.mean()
+        )
+
+        # Total gradient
+        grad = (
+            mag_energy_grad
+            + el_energy_grad
+            + int_energy_grad
+            + mass_energy_grad
+            + chem_energy_grad
+        )
+        return grad
 
     def warmup(self):
         """Warm up phase without measurement"""
@@ -306,7 +327,7 @@ class MonteCarloEvaluator(Evaluator):
             self.measure()
             self.step += 1
 
-        if self.cfg.minimizer_mode:
+        if self.cfg.compute_grads:
             # Update gradients which depend on expectation values
             # For interface reasons, we insert meas_steps copies of this gradient
             total_grad = self.energy_gradient_mc()
@@ -479,8 +500,10 @@ class MonteCarloEvaluator(Evaluator):
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
 
-        fname_full = f"data_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl.gz"
-        fname_summary = f"summary_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl"
+        couplings_str = f"gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_gmass_{syscfg.g_mass:.3f}_gchem_{np.array2string(syscfg.g_chem, separator=',')}"
+
+        fname_full = f"data_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_{couplings_str}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl.gz"
+        fname_summary = f"summary_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_{couplings_str}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl"
 
         self.save_full(os.path.join(output_dir, fname_full))
         self.save_summary(os.path.join(output_dir, fname_summary))

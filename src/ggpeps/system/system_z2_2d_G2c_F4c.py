@@ -43,6 +43,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=1,
+        unitcell_size=1,
     ):
         super().__init__(
             lattice,
@@ -54,6 +55,18 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
             num_pg_layer,
             num_fermionic_layer,
         )
+
+        # Translation invariance
+        if unitcell_size not in [1]:
+            logger.error(
+                "This ansatz only supports unitcell_size = 1 or 2. \
+                This can be adapted by adding in a specification in the config to map sites to parameters."
+            )
+            raise ValueError("Invalid unitcell_size.")
+        self.site_params_dict = {
+            site: 0 for site in range(self.lattice.size)
+        }  # map from site to index of independent parameters
+        self.unitcell_size = 1
 
         # Constants used in the calculation of the electric energy
         prefactors = [
@@ -103,10 +116,11 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
 
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.num_pg_layer):
-            for t_ind in t_indices:
-                coord = (layer_ind, t_ind)
-                mat[coord] = 0
-                zeroed_params.append(coord)
+            for uc_ind in range(self.unitcell_size):
+                for t_ind in t_indices:
+                    coord = (layer_ind, uc_ind, t_ind)
+                    mat[coord] = 0
+                    zeroed_params.append(coord)
 
         zero_for_fermionic_layer = [
             1,
@@ -127,10 +141,11 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
             31,
         ]  # indices of y's, z's in symbolvec
         for layer_ind in range(self.num_pg_layer, self.nlayer):
-            for ind in zero_for_fermionic_layer:
-                coord = (layer_ind, ind)
-                mat[coord] = 0
-                zeroed_params.append(coord)
+            for uc_ind in range(self.unitcell_size):
+                for ind in zero_for_fermionic_layer:
+                    coord = (layer_ind, uc_ind, ind)
+                    mat[coord] = 0
+                    zeroed_params.append(coord)
 
         # It is also possible to test the 2 copy ansatz within this one, by zeroing all the extra parameters
         # (a2, b2, c2, d2, and all the p,q,r,s params)

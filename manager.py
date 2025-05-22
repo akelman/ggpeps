@@ -111,8 +111,7 @@ def translate_parameters(
     Returns:
         np.array: Array of parameters that are suited for the simulation according to the command line parameters
     """
-    nparams = system_cfg._nparams
-    nlayer = system_cfg.nlayer
+    shape = system_cfg.param_shape()
     if (
         params is not None
         and len(params) == 1
@@ -121,23 +120,23 @@ def translate_parameters(
     ):
         # The parameters are stored in a file and we can load them
         dest = np.load(params[0])
-        dest = np.reshape(dest, (nlayer, -1))
+        dest = np.reshape(dest, shape)
         source = "command-line provided file"
     elif params is None or params == "rand":
         # No parameters are given and we randomize
-        dest = rng_state.rand(nlayer, nparams)
+        dest = rng_state.rand(*shape)
         source = "random state"
     else:
         # The parameters are listed explicitly in the command line
         dest = np.asarray(params, dtype=float)
         try:
-            dest = dest.reshape((nlayer, nparams))
+            dest = dest.reshape(shape)
             source = "command-line provided parameters"
         except:
             logger.warning(
                 "Reshape of provided parameters impossible. Starting with random parameters."
             )
-            dest = rng_state.rand(nlayer, nparams)
+            dest = rng_state.rand(shape)
             source = "random state"
     return dest, source
 
@@ -277,6 +276,14 @@ def main(args):
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L, args.gauge_fixing)
 
+    # Determine setting for translation invariance
+    if args.unitcell_size != 1:
+        unitcell_size = args.unitcell_size
+    elif np.any(g_chem):
+        unitcell_size = 2
+    else:
+        unitcell_size = 1
+
     # Depending on the parameters, we instantiate different systems
     # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.fermions:
@@ -291,6 +298,8 @@ def main(args):
                 g_chem,
                 num_pg_layer=args.num_pg_layer,
                 num_fermionic_layer=args.num_fermionic_layer,
+                unitcell_size=unitcell_size,
+                enforce_u1_symmetry=not args.relax_u1,
             )
         elif args.ncopy == 4:
             # Z2 system with 6 copies of virtual fermions on the links (2 for the pure gauge case, 4 for interacting with physical fermions)
@@ -404,6 +413,8 @@ def main(args):
         logger.info(f"Gauge fixing: False")
     else:
         logger.info(f"Gauge fixing: {args.gauge_fixing}")
+    logger.info(f"Unit cell size: {system_cfg.unitcell_size}")
+    logger.info(f"Enforce U(1) number conservation: {not args.relax_u1}")
     logger.info(f"g (lambda): {g}")
     logger.info(f"g_el: {g_el}")
     logger.info(f"g_mag: {g_mag}")
@@ -434,10 +445,10 @@ def main(args):
         logger.info("====== MINIMIZER INFO ======")
         logger.info(f"Method: {args.method.upper()}")
         logger.info(f"Max Iterations: {args.maxiter}")
+        logger.info(f"Convergence tolerance: {args.tol}")
         if args.method.upper() == "CUSTOM":
-            # these are only used by the custom (basic gradient descent) minimizer and are not passed to scipy
+            # this is only used by the custom (basic gradient descent) minimizer and is not passed to scipy
             logger.info(f"Learning rate: {args.alpha}")
-            logger.info(f"Min grad: {args.min_grad}")
         logger.info("============================")
 
     # Set up cache
@@ -458,7 +469,7 @@ def main(args):
     if args.mode == "eval-mc":
         # Evaluate observables for a given set of parameters with Monte Carlo
 
-        mc_config.minimizer_mode = args.compute_grads
+        mc_config.compute_grads = args.compute_grads
         if cache.load_obj_from_local_cache("evaluator_manager") is not None:
             mc_mgr = cache.load_obj_from_local_cache("evaluator_manager")
             logger.info(f"Loaded evaluator manager from cache.")
@@ -480,15 +491,20 @@ def main(args):
     elif args.mode == "min-mc":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
 
-        mc_config.minimizer_mode = True
-        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
-
-        # Set the parameters of the minimizer according to the command line
+        # Set the parameters of the minimizer
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
-        min_cfg.min_grad = args.min_grad
+        min_cfg.tol = args.tol
+
+        # Set up the evaluator
+        if min_cfg.method in Minimizer.grad_methods or args.compute_grads:
+            mc_config.compute_grads = True
+        else:
+            # no need to compute grads if not using a gradient-based method
+            mc_config.compute_grads = False
+        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
 
         minimizer = Minimizer(min_cfg, mc_mgr)
         ggpeps.global_vars["minimizer"] = minimizer  # save for global access
@@ -500,6 +516,8 @@ def main(args):
         minimizer.save(output_dir=args.output)
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
+
+        ec_config.compute_grads = args.compute_grads
         ex_eval = EvaluatorManager(system_type, system_cfg, ec_config, args.nrunner)
         ggpeps.global_vars["eval_manager"] = ex_eval
 
@@ -514,14 +532,19 @@ def main(args):
     elif args.mode == "min-exact":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
 
-        start = timer()
-        ex_mgr = EvaluatorManager(system_type, system_cfg, ec_config, args.nrunner)
-
         min_cfg = MinimizerConfig()
         min_cfg.method = args.method.upper()
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
-        min_cfg.min_grad = args.min_grad
+        min_cfg.tol = args.tol
+
+        if min_cfg.method in Minimizer.grad_methods or args.compute_grads:
+            ec_config.compute_grads = True
+        else:
+            # no need to compute grads if not using a gradient-based method
+            ec_config.compute_grads = False
+
+        ex_mgr = EvaluatorManager(system_type, system_cfg, ec_config, args.nrunner)
 
         minimizer = Minimizer(min_cfg, ex_mgr)
         ggpeps.global_vars["minimizer"] = minimizer
@@ -560,7 +583,6 @@ def main(args):
         The port variable is intended for use with ray, but this does not currently work with the EvaluatorManager.
         It's possible the the port workaround is unneeded with current versions of ray.
         """
-
         # Optimize the parameters with multiple runs (useful if BFGS has problems with the Hessian)
 
         # Set the parameters of the minimizer according to the command line
@@ -572,7 +594,7 @@ def main(args):
 
         start = timer()
         resultvec = []
-        mc_config.minimizer_mode = True
+        mc_config.compute_grads = True
         for i in range(args.minmult_iter):
             logger.info(f"Minimization iteration: {i:02d}")
             mc = EvaluatorManager(
@@ -590,7 +612,7 @@ def main(args):
         # TODO: We can merge the resultvec to get a full result
         minimizer.save(output_dir=args.output)
         # We run a final iteration of the MC simulation with all observables
-        mc_config.minimizer_mode = False
+        mc_config.compute_grads = False
         mc_mgr = EvaluatorManager(
             mc_config,
             system_type,
@@ -631,7 +653,7 @@ if __name__ == "__main__":
         choices=["eval-mc", "eval-exact", "min-mc", "min-exact", "min-nevmc", "minmult-mc"],
         help="Mode of the program",
     )
-    parser.add_argument("L", type=int, help="Size of the square system (one side)")
+    parser.add_argument("--L", type=int, help="Size of the square system (one side)")
 
     # Hamiltonian couplings
     parser.add_argument(
@@ -696,6 +718,18 @@ if __name__ == "__main__":
         default=False,
         help="Use an ansatz that allows for the inclusion of fermions",
     )  # TODO: improve handling of pure-gauge and fermions arguments
+    parser.add_argument(
+        "--unitcell_size",
+        type=int,
+        default=1,
+        help="Specify the size of the largest unit cell in the system. This determines the degree of translation invariance.",
+    )
+    parser.add_argument(
+        "--relax_u1",
+        action="store_true",
+        default=False,
+        help="Allow the system to disobey the global U(1) (fermionic number) symmetry.",
+    )
 
     # Evaluator settings
     parser.add_argument(
@@ -761,10 +795,10 @@ if __name__ == "__main__":
         "--alpha", "--lr", type=float, default=0.1, help="Learning rate"
     )
     parser.add_argument(
-        "--min-grad",
+        "--tol",
         type=float,
         default=1e-5,
-        help="Minimal gradient to use as a stopping criterion",
+        help="Tolerance for convergence condition (e.g. minimal gradient to use as a stopping criterion)",
     )
 
     # Output settings
