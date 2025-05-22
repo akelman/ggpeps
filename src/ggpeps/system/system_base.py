@@ -284,7 +284,6 @@ class Config2DBase(ABC):
 
 ################## System2DBase ######################
 
-
 class System2DBase(ABC):
     """Base class for two dimensional systems.
 
@@ -467,9 +466,10 @@ class System2DBase(ABC):
             xnp.ndarray: Array of symbols
         """
         tmat_symb = self.cfg.tmat_symb
-        return xnp.asarray(
+        tmat_deriv = xnp.asarray(
             np.asarray(sympy.diff(tmat_symb, symb)).astype(complex)
         )  # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
+        return tmat_deriv
 
     def _eval_tmat_symb(self, paramvec):
         """Compute the numerical representation of the T matrix
@@ -520,7 +520,6 @@ class System2DBase(ABC):
                     for site in range(self.cfg.lattice.size)
                 ]
                 self._tmat_layervec_sitevec.append(tmat_lay)
-            # self._tmat_layervec_sitevec = xnp.array(self._tmat_layervec_sitevec)
         return self._tmat_layervec_sitevec
 
     @property
@@ -626,7 +625,6 @@ class System2DBase(ABC):
             gamma_maj_sys_vec.append(dest)
         return xnp.array(gamma_maj_sys_vec)
 
-    ## MOVE TO GLOBAL
     def d_gamma_out_symbolvec(self, layer: int, uc_ind: int):
         """Return a vector containing the derivatives of gamma_out (for the given layer) for each symbol.
 
@@ -1223,7 +1221,6 @@ class System2DBase(ABC):
         """Setter of the weight"""
         self._weight = val
 
-    ## MOVE TO GLOBAL
     def calculate_weight_attempt(self, link_ind: int, theta: float, all_factors=False):
         """Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
@@ -1335,7 +1332,6 @@ class System2DBase(ABC):
             cumval += 0.5 * detval
         return cumval
 
-    ## MOVE TO GLOBAL
     def compute_grad_over_norm(
         self, var: sympy.Symbol, layerind: int, uc_ind: int
     ) -> float:
@@ -1361,7 +1357,7 @@ class System2DBase(ABC):
             mat_d_inv = self.mat_d_inv_vec[layerind]
 
             # TODO: We might save one matrix-matrix multiplication here
-            # The derivd and mat_d_inv are constant
+            # The deriv_d and mat_d_inv are constant
             self._grad_over_norm_dict[(layerind, uc_ind, var)] = compute_grad_over_norm(
                 self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv
             )
@@ -1823,7 +1819,6 @@ class System2DBase(ABC):
                 theta_sum += self.gaugefieldvec[ind]
         return xnp.exp(1.0j * theta_sum)
 
-    ## MOVE TO GLOBAL
     def compute_ferm_cov(self, layer: int) -> xnp.ndarray:
         """Compute the covariance matrix of the fermions in the system for the given layer.
         We do not calculate it for all layers automatically, since it is not needed for pure-gauge layers.
@@ -1841,7 +1836,7 @@ class System2DBase(ABC):
             )
         return self._ferm_covmat_vec[layer]
 
-    ################## Mode Permutations ######################
+    ################## Mode Permutations ##################
 
     def get_link_based_mode_order(self) -> list:
         """Generate the link-based majorana mode order.
@@ -1931,7 +1926,7 @@ class System2DBase(ABC):
         lat = self.cfg.lattice
         num_copies = (
             self.cfg.ncopy
-        )  # The ncopy property is defined the config of any child class of System2DBase
+        )  # The ncopy property is defined in the config of any child class of System2DBase
         mode_order = []
 
         for site in range(lat.nx * lat.ny):

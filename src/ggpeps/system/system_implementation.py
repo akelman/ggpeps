@@ -21,7 +21,6 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 ###################### Z2System2D ##########################
 
-
 class Z2System2D(System2DBase):
     """2D Z2 system GGPEPS ansatz with physical fermions.
 
@@ -126,7 +125,7 @@ class Z2System2D(System2DBase):
             (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec),
         )
 
-    # Gauging
+    ################## Gauging ##################
 
     def generate_rotmat(self, theta: float, coord: tuple, dir: Direction):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
@@ -172,7 +171,6 @@ class Z2System2D(System2DBase):
         rotmat = xnp.kron(xnp.eye(self.cfg.ncopy), dest)
         return rotmat
 
-    # TODO: fix for JAX - DONE, except for stuff in utils
     def update_gauge_ind(self, link_ind, theta):
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
@@ -267,10 +265,8 @@ class Z2System2D(System2DBase):
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
 
-    # def update_gauge_ind(self, link_ind, theta):
-    #    update_gauge_ind(self, link_ind, theta)
+    ################## Observables ##################
 
-    # Observables
     def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv: bool = True):
         """Compute the mass term of the Hamiltonian for a single site.
 
@@ -420,9 +416,7 @@ class Z2System2D(System2DBase):
             pfvals = []  # without the prefactor
             for prefactor, ind in idxarr:
                 ind = xnp.asarray(ind)
-                pfaval = pf.pfaffian(
-                    covmat_out_virt[xnp.ix_(ind, ind)]
-                )  # TODO: fix for JAX - NOT NEEDED, jxnp.ix_ should work
+                pfaval = pf.pfaffian(covmat_out_virt[xnp.ix_(ind, ind)])
                 pfarr.append(prefactor * pfaval)
                 pfvals.append(pfaval)
             el_energy_full = overall_factor * xnp.sum(xnp.array(pfarr))
@@ -533,7 +527,7 @@ class Z2System2D(System2DBase):
                 hor_link_energy = 0.5 * (
                     covmat[site_ind_cov, neighborX_ind]
                     - covmat[site_ind_cov + 1, neighborX_ind + 1]
-                )  # TODO: fix for JAX - NOT NEEDED
+                )
                 layer_int_energy += hor_link_energy * cos_factor_hor
 
                 # Vertical link

@@ -212,11 +212,6 @@ def main(args):
         ggpeps.GPU_AVAILABLE = False
         print("[DIAG] No compatible GPU found — using CPU")
 
-    # if "gpu" in device_name or "nvidia" in device_name:  # heuristic
-    #     ggpeps.GPU_AVAILABLE = True
-    # else:
-    #     ggpeps.GPU_AVAILABLE = False
-
     # Set up the simulation
     L = args.L
     g = args.g
