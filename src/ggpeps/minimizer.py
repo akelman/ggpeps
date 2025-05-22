@@ -47,9 +47,6 @@ class MinimizerConfig:
         self.min_grad: float = 1e-5
         self.alpha: float = 1e-2
         self._method: str = "CG"
-        ### beg NEVMC ###
-        self.NEVMC: bool = False
-        ### end NEVMC ### 
 
     @property
     def method(self) -> str:
@@ -78,6 +75,8 @@ class Minimizer:
     def minimize(self):
         if self.cfg.method == "CUSTOM":
             return self.minimize_custom()
+        elif self.cfg.method == "NEVMC":
+            return self.minimize_NEVMC()
         elif self.cfg.method in self.supported_methods:
             return self.minimize_scipy()
         else:

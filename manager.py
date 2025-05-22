@@ -372,6 +372,10 @@ def main(args):
     # Switch to control the binning analysis on EOM (Error of mean)
     if args.no_bin_eom:
         Measurement.use_rebinning = False
+    
+    # The NEVMC approach does not use the standard minimizer methods
+    if args.mode == "min-nevmc":
+        args.method = "NEVMC"
 
     # Device selection: Checks if GPUs are available. If yes it uses the first available GPU;
     # if not, defaults to using the CPU.
@@ -428,12 +432,6 @@ def main(args):
         mc_config.run_log_freq = args.run_log_freq
     if "min" in args.mode:
         logger.info("====== MINIMIZER INFO ======")
-
-        # only the CUSTOM minimizer method is supported by NEVMC
-        if args.mode == "min-nevmc" and args.method != "CUSTOM":
-            logger.warning("Only the CUSTOM minimizer method is supported by NEVMC. Switching to CUSTOM method.")
-            args.method = "CUSTOM"
-
         logger.info(f"Method: {args.method.upper()}")
         logger.info(f"Max Iterations: {args.maxiter}")
         if args.method.upper() == "CUSTOM":
@@ -544,9 +542,7 @@ def main(args):
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
         min_cfg.min_grad = args.min_grad
-        min_cfg.NEVMC = True
-
-        min_cfg.method = "CUSTOM" 
+        min_cfg.method = "NEVMC" 
 
         minimizer = Minimizer(min_cfg, mc_mgr)
         ggpeps.global_vars["minimizer"] = minimizer  # save for global access

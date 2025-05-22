@@ -266,6 +266,9 @@ def main(args):
     if args.no_bin_eom:
         Measurement.use_rebinning = False
 
+    if args.mode == "min-nevmc":
+        args.method = "NEVMC"
+
     # Update Log
     logger.info("======= SYSTEM INFO ========")
     logger.info(f"L: {L}")
@@ -360,8 +363,7 @@ def main(args):
         min_cfg.alpha = args.alpha
         min_cfg.min_grad = args.min_grad
         ### beg NEVMC ###
-        min_cfg.NEVMC = args.NEVMC
-        min_cfg.method = "CUSTOM"
+        min_cfg.method = "NEVMC"
         ### end NEVMC ###
 
         minimizer = Minimizer(min_cfg, mc_mgr)
@@ -369,10 +371,7 @@ def main(args):
 
         start = timer()
         ### beg NEVMC ###
-        if args.NEVMC:
-            result = minimizer.minimize_NEVMC()
-        else:
-            result = minimizer.minimize()
+        result = minimizer.minimize_NEVMC()
         ### end NEVMC ###
         stop = timer()
         logger.info(result)
