@@ -552,7 +552,9 @@ def main(args):
         stop = timer()
 
         logger.info(result)
-        minimizer.save(output_dir=args.output)
+
+        # Saving does not currently work with NEVMC, since last_result is overwritten
+        # minimizer.save(output_dir=args.output)
     elif args.mode == "minmult-mc":
         """This mode has not been used in a while and might not work anymore.
         The port variable is intended for use with ray, but this does not currently work with the EvaluatorManager.

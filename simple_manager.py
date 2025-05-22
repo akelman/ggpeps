@@ -375,7 +375,9 @@ def main(args):
         ### end NEVMC ###
         stop = timer()
         logger.info(result)
-        minimizer.save(output_dir=args.output)
+        
+        # Saving does not currently work with NEVMC, since last_result is overwritten
+        #minimizer.save(output_dir=args.output)
     else:
         logger.error(f"Mode '{args.mode}' unknown.")
 
