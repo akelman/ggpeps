@@ -263,7 +263,7 @@ class EvaluatorManager:
 
             self.simulation_in_progress = True
 
-            self.evaluator.evaluate_NEVMC(first_warmup = first_warmup, scanning = scanning)
+            self.evaluator.evaluate(first_warmup = first_warmup, scanning = scanning)
             self.simulation_in_progress = False
             return self.evaluator
     ### end NEVMC ###

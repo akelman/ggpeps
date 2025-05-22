@@ -36,8 +36,8 @@ class NEVMC_EvaluatorConfig:
         self.update_size_per_step: int = (
             1  # this can be set anywhere from 1 to nlinks (inclusive)
         )
+
         ### beg NEVMC ###
-        self.NEVMC: bool = True
         self.store_gauge = []
         self.store_weights = []
         self.store_first_cfgs = 0
@@ -108,18 +108,9 @@ class NEVMC_Evaluator(Evaluator):
         self.init_measurements()
 
         ### beg NEVMC ###
-        if self.cfg.NEVMC:
-            self.NEVMC_update = self.NEVMC_update_N_sites
-            self.update = self.update_N_sites
+        self.NEVMC_update = self.NEVMC_update_N_sites
+        self.update = self.update_N_sites
         ### end NEVMC ###
-        else:
-            # Choose how to update in each MC step
-            # (This might change in the future if we implement different updates)
-            if evaluator_cfg.update_size_per_step == self.system.cfg.lattice.nlinks:
-                self.update = self.update_all_sites_single_site
-            else:
-                # self.update = self.update_single_site
-                self.update = self.update_N_sites
 
     def init_measurements(self):
         """Add empty measurement vectors to the measurement dictionary"""
@@ -299,41 +290,20 @@ class NEVMC_Evaluator(Evaluator):
 
     def warmup(self):
         """Warm up phase without measurement"""
-        logger.debug("Starting MC warmup")
+        logger.debug("Starting NEVMC warmup")
         while self.step < self.cfg.warmup_steps:
             if self.step % self.cfg.warmup_log_freq == 0:
                 logger.debug(f"Warmup: {self.step}")
             self.update()
             self.step += 1
-        logger.debug("Finished MC warmup")
-
-    def run(self):
-        """Meaurement phase"""
-        logger.debug("Starting MC measurement")
-        while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
-            if self.step % self.cfg.run_log_freq == 0:
-                logger.debug(f"Run: {self.step}")
-            self.update()
-
-            self.measure()
-            self.step += 1
-
-        if self.cfg.minimizer_mode:
-            # Update gradients which depend on expectation values
-            # For interface reasons, we insert meas_steps copies of this gradient
-            total_grad = self.energy_gradient_mc()
-            self.obsdict["energy_grad"].extend(
-                [total_grad] * len(self.obsdict["energy"])
-            )
-
-        logger.debug("Finished MC measurement")
+        logger.debug("Finished NEVMC warmup")
 
 #################################################################################################################
     ### beg NEVMC ###
 
-    def NEVMC_run(self, warmsteps: int = 0):
+    def run(self, warmsteps: int = 0):
         """Meaurement phase"""
-        logger.debug("Starting MC measurement")
+        logger.debug("Starting NEVMC measurement")
         while self.step < warmsteps + self.cfg.meas_steps:
             if self.step % self.cfg.run_log_freq == 0:
                 logger.debug(f"Run: {self.step}")
@@ -351,7 +321,7 @@ class NEVMC_Evaluator(Evaluator):
                 [total_grad] * len(self.obsdict["energy"])
             )
 
-        logger.debug("Finished MC measurement")
+        logger.debug("Finished NEVMC measurement")
     
 
     def NEVMC_update_N_sites(self):
@@ -395,15 +365,15 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["work"].append(-new_weight + weight + self.cfg.last_work)
         self.measure_grad()
         
-    
-    def evaluate_NEVMC(self, first_warmup: bool = False, scanning:bool = False):
+
+    def evaluate(self, first_warmup: bool = False, scanning:bool = False):
         
         if first_warmup:
             self.warmup()
             # warmup uses the standard update function
             self.cfg.store_first_cfgs = copy.deepcopy(self.system._gaugefieldvec)
             self.cfg.store_first_weight = copy.deepcopy(self.system.weight)
-            self.NEVMC_run(warmsteps=self.cfg.warmup_steps)
+            self.run(warmsteps=self.cfg.warmup_steps)
         
         else:
             if scanning:
@@ -424,7 +394,7 @@ class NEVMC_Evaluator(Evaluator):
             else:
                 self.cfg.store_first_cfgs = copy.deepcopy(self.system._gaugefieldvec)
                 self.cfg.store_first_weight = copy.deepcopy(self.system.weight)
-                self.NEVMC_run()
+                self.run()
 
 
     def NEVMC_energy_gradient_mc(self, expW):
@@ -667,12 +637,6 @@ class NEVMC_Evaluator(Evaluator):
             else:
                 # Reject
                 self.obsdict["acceptance_prob"].append(0)
-
-
-    def evaluate(self):
-        """Main routine to start a Monte Carlo simulation."""
-        self.warmup()
-        self.run()
 
 
     #### Data management functions ####

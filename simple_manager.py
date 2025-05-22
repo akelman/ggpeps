@@ -210,9 +210,6 @@ def main(args):
     mc_config.meas_steps = args.meas_steps
     mc_config.binsize = args.binsize
     mc_config.gauge_fixing = args.gauge_fixing
-    ### beg NEVMC ###
-    mc_config.NEVMC = args.NEVMC
-    ### end NEVMC ###
     if args.use_systemsize_updates or args.update_size == "system":
         mc_config.update_size_per_step = 2 * L**2
     elif args.update_size == "halfsystem":
