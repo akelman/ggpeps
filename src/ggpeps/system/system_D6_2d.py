@@ -44,6 +44,8 @@ class D6System2D_Config(Config2DBase):
     nvirtmodes_vertex = 16
     nvirtmodes_link = 8
     nphysmodes_site = 2  # number of physical modes per site
+    ncolors = 2  # number of colors
+    nvirtmodes_link_per_color = 4  # number of virtual modes per link per color
 
     def __init__(
         self,
