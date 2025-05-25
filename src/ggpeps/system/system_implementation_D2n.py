@@ -251,9 +251,11 @@ class D2nSystem2D(System2DBase):
                 previous_g = xnp.copy(g)
         color_to_update = None  # we update both colors
         if (
-            xnp.allclose(previous_g, g_transition_1) and xnp.allclose(g, g_transition_2)
+            xnp.allclose(previous_g, g_transition_1)
+            and xnp.allclose(theta, g_transition_2)
         ) or (
-            xnp.allclose(previous_g, g_transition_2) and xnp.allclose(g, g_transition_1)
+            xnp.allclose(previous_g, g_transition_2)
+            and xnp.allclose(theta, g_transition_1)
         ):  # in this case we update only the color m=1 (second color)
             color_to_update = 1
         self.update_non_singular_gauge_ind(
@@ -285,6 +287,8 @@ class D2nSystem2D(System2DBase):
         else:
             self._gaugefieldvec[link_ind] = theta
         # There are two directions per vertex
+        coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
+        rotmat = self.generate_rotmat(theta, coord, dir)
         if color_to_update is None:  # if we update both colors.
             ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         else:
@@ -292,22 +296,28 @@ class D2nSystem2D(System2DBase):
                 2 * self.cfg.nvirtmodes_link * link_ind
                 + 2 * color_to_update * self.cfg.nvirtmodes_link_per_color
             )
-        coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord, dir)
+            rotmat = slice_matrix(  # In this case we slice rotmat to only contain the relevant color
+                # We assume a specific ordering of the modes: (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
+                rotmat,
+                2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
+                2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1),
+                2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
+                2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1),
+            )
 
         update_vec = []
         for layer in range(self.cfg.nlayer):
             gamma_neutral_gauge = self.gamma_gauge_neutral_vec[layer][dir]
-            gamma_in_subst = rotmat @ gamma_neutral_gauge @ xnp.transpose(rotmat)
             if color_to_update is not None:
-                gamma_in_subst = slice_matrix(  # In this case we slice gamma_in_subst to only contain the relevant color
+                gamma_neutral_gauge = slice_matrix(  # In this case we slice gamma_neutral_gauge to only contain the relevant color
                     # We assume a specific ordering of the modes: (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
-                    gamma_in_subst,
+                    xnp.copy(gamma_neutral_gauge),
                     2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
                     2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1),
                     2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
                     2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1),
                 )
+            gamma_in_subst = rotmat @ gamma_neutral_gauge @ xnp.transpose(rotmat)
             update_vec.append(
                 self.calculate_update_gamma_in(
                     ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]
