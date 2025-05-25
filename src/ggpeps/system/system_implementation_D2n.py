@@ -270,6 +270,8 @@ class D2nSystem2D(System2DBase):
         This method assumes that the two gauge values don't yield a singular update matrix.
         It is called by the update_gauge_ind method which takes care of not allowing singular updates.
 
+        For updatting just one color we assume a specific ordering of the modes: (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2}).
+
         This method overwrites an abstract method in System2DBase.
 
         Args:
@@ -299,6 +301,7 @@ class D2nSystem2D(System2DBase):
             gamma_in_subst = rotmat @ gamma_neutral_gauge @ xnp.transpose(rotmat)
             if color_to_update is not None:
                 gamma_in_subst = slice_matrix(  # In this case we slice gamma_in_subst to only contain the relevant color
+                    # We assume a specific ordering of the modes: (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
                     gamma_in_subst,
                     2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
                     2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1),
