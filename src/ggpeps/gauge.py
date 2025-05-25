@@ -62,9 +62,18 @@ class D2nGauge:
     def __init__(self, n: int):
         self.n = n
         self.rep_dim = 2
-        self.forbidden_transitions = [(self.get_representation(p0, 0), self.get_representation(p1, 1)) for p0 in range(self.n) for p1 in range(self.n) if not (p0 == 0 and p1 == 0)]        
+        self.forbidden_transitions = [
+            (self.get_representation(p0, 0), self.get_representation(p1, 1))
+            for p0 in range(self.n)
+            for p1 in range(self.n)
+            if not (p0 == 0 and p1 == 0)
+        ]
+        self.transition_pair = (
+            self.get_representation(0, 0),
+            self.get_representation(0, 1),
+        )  # (0,0) -> (0,1) is not singular, but we treat it as a special case in the update_gauge_ind method.
         # Contains all the forbidden transitions for updating the gamma matrix, i.e., the update matrix of this transitions is singualr. These are pairs that change under reflection.
-        #Note that we don't include here the transition (0,0) -> (0,1) since we turn it into a non singular transition in the update_gauge_ind method.
+        # Note that we don't include here the transition (0,0) -> (0,1) since we turn it into a non singular transition in the update_gauge_ind method.
 
     def get_nonsingular_path(self, g_old, g_new):
         """Get the non singular update gauge field path between two gauge values.
@@ -78,17 +87,17 @@ class D2nGauge:
         if q_old == 0 and q_new == 1:
             # we need to go through the representation (0,1)
             dest = [p_0_q_1]
-            if not np.allclose(g_old, p_0_q_0): # we need to first go to (0,0)
+            if not np.allclose(g_old, p_0_q_0):  # we need to first go to (0,0)
                 dest = [p_0_q_0] + dest
         elif q_old == 1 and q_new == 0:
             # we need to go through the representation (0,0)
             dest = [p_0_q_0]
-            if not np.allclose(g_old, p_0_q_1): #we need to first go to (0,1)
+            if not np.allclose(g_old, p_0_q_1):  # we need to first go to (0,1)
                 dest = [p_0_q_1] + dest
-        else: #this is not a forbidden transition
+        else:  # this is not a forbidden transition
             # we can go directly from g_old to g_new
             dest = []
-  
+
         return dest
         dest = []
         p_0_q_0 = self.get_neutral_gauge_value()
@@ -99,11 +108,11 @@ class D2nGauge:
         else:
             dest.append(p_0_q_0)
         return dest
-    
-    def get_reflection_index(self,g):
+
+    def get_reflection_index(self, g):
         """Get the reflection index of a gauge value"""
         det = np.linalg.det(g)
-        if np.isclose(det, 1.0): #rotation - not reflection
+        if np.isclose(det, 1.0):  # rotation - not reflection
             return 0
         elif np.isclose(det, -1):
             return 1
