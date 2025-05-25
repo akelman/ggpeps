@@ -216,6 +216,9 @@ class D2nSystem2D(System2DBase):
         """
         old_theta = xnp.copy(self._gaugefieldvec[link_ind])
         singular = False
+        g_transition_1, g_transition_2 = (
+            self.cfg.gaugemgr.transition_pair
+        )  # The transition that connects the two unconnected subgtoups of elements that are connected by singular paths
         for (
             g_tuple
         ) in (
@@ -227,21 +230,38 @@ class D2nSystem2D(System2DBase):
             ):
                 singular = True
                 break
-
+        previous_g = xnp.copy(old_theta)
         if singular:  # if the update matrix is singular
             path = self.cfg.gaugemgr.get_nonsingular_path(
                 old_theta, theta
             )  # get a non singular path between the two gauge values
             for g in path:
-                self.update_non_singular_gauge_ind(link_ind, g)
-            self.update_non_singular_gauge_ind(
-                link_ind, theta
-            )  # update the gauge field to the final value
-        else:  # the update matrix is not singular and we can update the gauge straightforwardly
-            self.update_non_singular_gauge_ind(link_ind, theta)
+                color_to_update = None  # we update both colors
+                if (
+                    xnp.allclose(previous_g, g_transition_1)
+                    and xnp.allclose(g, g_transition_2)
+                ) or (
+                    xnp.allclose(previous_g, g_transition_2)
+                    and xnp.allclose(g, g_transition_1)
+                ):  # in this case we update only the color m=1 (second color)
+                    color_to_update = 1
+                self.update_non_singular_gauge_ind(
+                    link_ind, g, color_to_update=color_to_update
+                )
+                previous_g = xnp.copy(g)
+        color_to_update = None  # we update both colors
+        if (
+            xnp.allclose(previous_g, g_transition_1) and xnp.allclose(g, g_transition_2)
+        ) or (
+            xnp.allclose(previous_g, g_transition_2) and xnp.allclose(g, g_transition_1)
+        ):  # in this case we update only the color m=1 (second color)
+            color_to_update = 1
+        self.update_non_singular_gauge_ind(
+            link_ind, theta, color_to_update=color_to_update
+        )  # in case it was originally a singular, we update the gauge field to the final value. In the other case we can update the gauge straightforwardly
 
     # TODO: fix for JAX - DONE, except for stuff in utils
-    def update_non_singular_gauge_ind(self, link_ind, theta):
+    def update_non_singular_gauge_ind(self, link_ind, theta, color_to_update=None):
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
         and updates all incremental trackers of determinants and inverses.
@@ -255,6 +275,7 @@ class D2nSystem2D(System2DBase):
         Args:
             link_ind (int): Link index to be updated
             theta (xnp.array): New gauge field value
+            color_to_update (int, optional): Color to update. If None, both colors are updated. Defaults to None.
         """
         # Update the gaugefield
         if ggpeps.PREFERRED_BACKEND == "jax":
@@ -262,7 +283,13 @@ class D2nSystem2D(System2DBase):
         else:
             self._gaugefieldvec[link_ind] = theta
         # There are two directions per vertex
-        ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
+        if color_to_update is None:  # if we update both colors.
+            ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
+        else:
+            ind_mat = (
+                2 * self.cfg.nvirtmodes_link * link_ind
+                + 2 * color_to_update * self.cfg.nvirtmodes_link_per_color
+            )
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord, dir)
 
@@ -270,6 +297,14 @@ class D2nSystem2D(System2DBase):
         for layer in range(self.cfg.nlayer):
             gamma_neutral_gauge = self.gamma_gauge_neutral_vec[layer][dir]
             gamma_in_subst = rotmat @ gamma_neutral_gauge @ xnp.transpose(rotmat)
+            if color_to_update is not None:
+                gamma_in_subst = slice_matrix(  # In this case we slice gamma_in_subst to only contain the relevant color
+                    gamma_in_subst,
+                    2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
+                    2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1),
+                    2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
+                    2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1),
+                )
             update_vec.append(
                 self.calculate_update_gamma_in(
                     ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]
