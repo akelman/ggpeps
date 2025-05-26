@@ -1590,7 +1590,9 @@ class System2DBase(ABC):
             float: magnetic energy
         """
         nplaq = self.cfg.lattice.nplaquettes
-        mag_energy = self.cfg.g_mag * 2 * (nplaq - self.mag_energy_op)
+        mag_energy = (
+            self.cfg.g_mag * 2 * (-self.mag_energy_op)
+        )  # The 2 is for the hermitian conjugate
         return mag_energy
 
     @property
