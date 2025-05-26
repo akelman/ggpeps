@@ -2030,8 +2030,8 @@ class System2DBase(ABC):
 
         # Horizontal first
         for link in range(lat.nx * lat.ny):
-            for copy in range(1, num_copies + 1):
-                for color in range(1, num_colors + 1):
+            for color in range(1, num_colors + 1):
+                for copy in range(1, num_copies + 1):
                     mode1 = ("l1", copy, color, link)  # majorana mode l1
                     mode2 = ("l2", copy, color, link)  # majorana mode l2
                     mode3 = ("r1", copy, color, link)
@@ -2043,8 +2043,8 @@ class System2DBase(ABC):
             link_num = (
                 link + lat.nx * lat.ny
             )  # vertical link numbers start at the number of horizontal links that there are
-            for copy in range(1, num_copies + 1):
-                for color in range(1, num_colors + 1):
+            for color in range(1, num_colors + 1):
+                for copy in range(1, num_copies + 1):
                     mode1 = ("d1", copy, color, link_num)  # majorana mode d1
                     mode2 = ("d2", copy, color, link_num)  # majorana mode d2
                     mode3 = ("u1", copy, color, link_num)
@@ -2091,12 +2091,12 @@ class System2DBase(ABC):
         num_copies = (
             self.cfg.ncopy
         )  # The ncopy property is defined the config of any child class of System2DBase
-        num_colors = self.cfg.ncolors
+        num_colors = self.cfg.gaugemgr.rep_dim
         mode_order = []
 
         for site in range(lat.nx * lat.ny):
-            for copy in range(1, num_copies + 1):
-                for color in range(1, num_colors + 1):
+            for color in range(1, num_colors + 1):
+                for copy in range(1, num_copies + 1):
                     x, y = lat.ind2coord(site)  # coordinates of the site
 
                     # Horizontal
