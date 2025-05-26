@@ -199,7 +199,7 @@ class D2nSystem2D(System2DBase):
                 correct_order_first_color_then_copy,
             )
         )  # Generate permutation matrix to change the modes's order to {l_1_1, l_2_1, r_1_1, r_2_1,l_1_2,l_2_2,r_1_2,r_2_2} - i.e., colors are treated similarly to copies.
-        dest = xnp.transpose(perm_mat) @ dest @ perm_mat
+        rotmat = xnp.transpose(perm_mat) @ rotmat @ perm_mat
 
         return rotmat
 
