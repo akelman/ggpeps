@@ -377,6 +377,7 @@ class ExactEvaluator(Evaluator):
             "g_mag": [],
             "g_int": [],
             "g_mass": [],
+            "g_chem": [],
             "mean": [],
         }
         for key in self.obsdict.keys():
@@ -387,6 +388,7 @@ class ExactEvaluator(Evaluator):
             dest["g_mag"].append(self.system.cfg.g_mag)
             dest["g_int"].append(self.system.cfg.g_int)
             dest["g_mass"].append(self.system.cfg.g_mass)
+            dest["g_chem"].append(self.system.cfg.g_chem)
             dest["paramvec"].append(self.system.cfg.paramvec)
             dest["ncopy"].append(self.system.cfg.ncopy)
             dest["nlayer"].append(self.system.cfg.nlayer)
