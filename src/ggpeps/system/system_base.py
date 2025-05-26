@@ -2041,7 +2041,7 @@ class System2DBase(ABC):
         num_copies = (
             self.cfg.ncopy
         )  # The ncopy property is defined the config of any child class of System2DBase
-        num_colors = self.cfg.gaugemgr.rep_dim
+        num_colors = self.cfg.ncolors
         mode_order = []
 
         for site in range(lat.nx * lat.ny):
@@ -2098,6 +2098,69 @@ class System2DBase(ABC):
             mode_str = (
                 mode[0] + "_" + str(mode[1]) + "_" + str(mode[2]) + "_" + str(mode[3])
             )
+            mode_order_str.append(mode_str)
+
+        return mode_order_str
+
+    def get_single_link_majorana_mode_order(self) -> list:
+        """Generate the link-based majorana mode order for a single link. Where we first order by color and then by copy.
+            This is the actual order we use in system implementaion.
+
+        Returns:
+            list: List of strings of the form <mode_letter:majorana mode>_<copy>_<color>
+        """
+
+        num_copies = (
+            self.cfg.ncopy
+        )  # The ncopy property is defined the config of any child class of System2DBase
+        mode_order = []
+        num_colors = self.cfg.gaugemgr.rep_dim
+        # We demonstrate the order for a single horizontal link -
+        for color in range(1, num_colors + 1):
+            for copy in range(1, num_copies + 1):
+                mode1 = ("l1", copy, color)  # majorana mode l1
+                mode2 = ("l2", copy, color)  # majorana mode l2
+                mode3 = ("r1", copy, color)
+                mode4 = ("r2", copy, color)
+                mode_order += [mode1, mode2, mode3, mode4]
+
+        # Convert to a list of strings
+        # This was left as a tuple above in case there was ever any use for that format
+        mode_order_str = []
+        for mode in mode_order:
+            mode_str = mode[0] + "_" + str(mode[1]) + "_" + str(mode[2])
+            mode_order_str.append(mode_str)
+
+        return mode_order_str
+
+    def get_wrong_single_link_majorana_mode_order_by_copy_then_color(self) -> list:
+        """Generate the link-based majorana mode order for a single link. Where we first order by copy and then by color.
+            This is not the order we use in the code. This is just to change the generate_rotmat ordeing
+        Returns:
+            list: List of strings of the form <mode_letter:majorana mode>_<copy>_<color>
+        """
+
+        num_copies = (
+            self.cfg.ncopy
+        )  # The ncopy property is defined the config of any child class of System2DBase
+        mode_order = []
+        num_colors = self.cfg.gaugemgr.rep_dim
+        # We demonstrate the order for a single horizontal link -
+        for copy in range(1, num_copies + 1):
+            for color in range(1, num_colors + 1):
+                mode1 = ("l1", copy, color)  # majorana mode l1
+                mode2 = ("l2", copy, color)  # majorana mode l2
+                mode_order += [mode1, mode2]
+            for color in range(1, num_colors + 1):
+                mode1 = ("r1", copy, color)
+                mode2 = ("r2", copy, color)
+                mode_order += [mode1, mode2]
+
+        # Convert to a list of strings
+        # This was left as a tuple above in case there was ever any use for that format
+        mode_order_str = []
+        for mode in mode_order:
+            mode_str = mode[0] + "_" + str(mode[1])
             mode_order_str.append(mode_str)
 
         return mode_order_str
