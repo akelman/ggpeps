@@ -1246,7 +1246,7 @@ class System2DBase(ABC):
 
     ## MOVE TO GLOBAL
     def calculate_weight_attempt_non_singular(
-        self, link_ind: int, theta: xnp.array, all_factors=False
+        self, link_ind: int, theta: xnp.array, all_factors=False, color_to_check=None
     ):
         """Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
@@ -1263,14 +1263,40 @@ class System2DBase(ABC):
             float: Logarithm of the weight of the proposed configuration
         """
         # There are two directions per vertex and two Majoranas per link
-        ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord, dir)
         gamma_neutral_gauge_vec = self.gamma_gauge_neutral_vec
-        gamma_in_subst_layers = [
-            rotmat @ gamma_neutral_gauge[dir] @ xnp.transpose(rotmat)
-            for gamma_neutral_gauge in gamma_neutral_gauge_vec
-        ]
+        if color_to_check is not None:
+            ind_mat = (
+                2 * self.cfg.nvirtmodes_link * link_ind
+                + 2 * color_to_check * self.cfg.nvirtmodes_link_per_color
+            )
+            rotmat = slice_matrix(
+                rotmat,
+                2 * self.cfg.nvirtmodes_link_per_color * color_to_check,
+                2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1),
+                2 * self.cfg.nvirtmodes_link_per_color * color_to_check,
+                2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1),
+            )
+            gamma_in_subst_layers = []
+            for gamma_neutral_gauge in gamma_neutral_gauge_vec:
+                gamma_neutral_gauge_sliced = slice_matrix(
+                    gamma_neutral_gauge[dir],
+                    2 * self.cfg.nvirtmodes_link_per_color * color_to_check,
+                    2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1),
+                    2 * self.cfg.nvirtmodes_link_per_color * color_to_check,
+                    2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1),
+                )
+                gamma_in_subst_layers.append(
+                    rotmat @ gamma_neutral_gauge_sliced @ xnp.transpose(rotmat)
+                )
+        else:
+            ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
+            gamma_in_subst_layers = [
+                rotmat @ gamma_neutral_gauge[dir] @ xnp.transpose(rotmat)
+                for gamma_neutral_gauge in gamma_neutral_gauge_vec
+            ]
+
         updates = [
             self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys)
             for gamma_in_subst, gamma_in_sys in zip(
@@ -1303,8 +1329,12 @@ class System2DBase(ABC):
 
         """  # TODO: If we create a new state class object, avoiding singular transitions could be handled better
         # (by keeping the previous state and then not having to update the current system back to the original gauge field)
-        current_theta = np.copy(self._gaugefieldvec[link_ind])
+        current_theta = xnp.copy(self._gaugefieldvec[link_ind])
         singular = False
+        color_to_check = None
+        g_transition_1, g_transition_2 = (
+            self.cfg.gaugemgr.transition_pair
+        )  # The transition that connects the two unconnected subgtoups of elements that are connected by singular paths
         for (
             g_tuple
         ) in (
@@ -1322,8 +1352,18 @@ class System2DBase(ABC):
             )  # get a non singular path between the two gauge values
             for g in path:
                 self.update_gauge_ind(link_ind, g)
+            current_theta = xnp.copy(path[-1])
+            if (
+                xnp.allclose(current_theta, g_transition_1)
+                and xnp.allclose(theta, g_transition_2)
+            ) or (
+                xnp.allclose(current_theta, g_transition_2)
+                and xnp.allclose(theta, g_transition_1)
+            ):
+
+                color_to_check = 0
             weight = self.calculate_weight_attempt_non_singular(
-                link_ind, theta, all_factors
+                link_ind, theta, all_factors, color_to_check=color_to_check
             )  # calculate the weight of the last gauge value
 
             for g in path[-2::-1]:  # go back to the original gauge field
@@ -1332,9 +1372,19 @@ class System2DBase(ABC):
                 link_ind, current_theta
             )  # go back to the original gauge field
 
-        else:  # the update matrix is not singular and we fan update the gauge straightforwardly
+        else:  # the update matrix is not singular and we can update the gauge straightforwardly
+            if (
+                xnp.allclose(current_theta, g_transition_1)
+                and xnp.allclose(theta, g_transition_2)
+            ) or (
+                xnp.allclose(current_theta, g_transition_2)
+                and xnp.allclose(theta, g_transition_1)
+            ):
+
+                color_to_check = 0
+
             weight = self.calculate_weight_attempt_non_singular(
-                link_ind, theta, all_factors
+                link_ind, theta, all_factors, color_to_check=color_to_check
             )
 
         return weight
