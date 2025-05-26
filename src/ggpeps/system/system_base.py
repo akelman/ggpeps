@@ -2149,18 +2149,22 @@ class System2DBase(ABC):
         for copy in range(1, num_copies + 1):
             for color in range(1, num_colors + 1):
                 mode1 = ("l1", copy, color)  # majorana mode l1
+                mode_order += [mode1]
+            for color in range(1, num_colors + 1):
                 mode2 = ("l2", copy, color)  # majorana mode l2
-                mode_order += [mode1, mode2]
+                mode_order += [mode2]
             for color in range(1, num_colors + 1):
                 mode1 = ("r1", copy, color)
+                mode_order += [mode1]
+            for color in range(1, num_colors + 1):
                 mode2 = ("r2", copy, color)
-                mode_order += [mode1, mode2]
+                mode_order += [mode2]
 
         # Convert to a list of strings
         # This was left as a tuple above in case there was ever any use for that format
         mode_order_str = []
         for mode in mode_order:
-            mode_str = mode[0] + "_" + str(mode[1])
+            mode_str = mode[0] + "_" + str(mode[1]) + "_" + str(mode[2])
             mode_order_str.append(mode_str)
 
         return mode_order_str
