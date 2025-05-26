@@ -134,7 +134,7 @@ class D2nSystem2D(System2DBase):
 
         The mode order is (as for gamma_in_neutral):
             1 copy: {l_1_1, l_2_1, r_1_1, r_2_1,l_1_2,l_2_2,r_1_2,r_2_2}/{d_1_1, d_2_1, u_1_1, u_2_1,d_1_2,d_2_2,u_1_2,u_2_2},
-            2 copies: {l1_1_1, l1_2_1, r1_1_1, r1_2_1,l1_1_2,l1_2_2,r1_1_2,r1_2_2,l2_1_1, l2_2_1, r2_1_1, r2_2_1,l2_1_2,l2_2_2,r2_1_2,r2_2_2}/{d1_1_1, d1_2_1, u1_1_1, u1_2_1,d1_1_2,d1_2_2,u1_1_2,u1_2_2,d2_1_1, d2_2_1, u2_1_1, u2_2_1,d2_1_2,d2_2_2,u2_1_2,u2_2_2},
+            2 copies: {l1_1_1, l1_2_1, r1_1_1, r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2, l1_2_2, r1_1_2, r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}/{d1_1_1, d1_2_1, u1_1_1, u1_2_1,d2_1_1,d2_2_1,u2_1_1,u2_2_1,d1_1_2, d1_2_2, u1_1_2, u1_2_2,d2_1_2,d2_2_2,u2_1_2,u2_2_2},
         depending on whether the link is vertical or horizontal.
         The naming convention here is <mode letter><number of copy>_<majorana mode>_<color>.
         We order first by link and then by copy.
@@ -167,7 +167,7 @@ class D2nSystem2D(System2DBase):
                     [real_g_transpose, imag_g_transpose],
                     [-imag_g_transpose, real_g_transpose],
                 ],
-            )  # This is the rot_right for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
+            )  # This is the rot_right for the mode order of {r_1_1, r_1_2,r_2_1,r_2_2}
         else:
             rot_right = xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
                 # TODO: Generalizze this to fermionic layers as well.
@@ -198,7 +198,7 @@ class D2nSystem2D(System2DBase):
                 wrong_order,
                 correct_order_first_color_then_copy,
             )
-        )  # Generate permutation matrix to change the modes's order to {l_1_1, l_2_1, r_1_1, r_2_1,l_1_2,l_2_2,r_1_2,r_2_2} - i.e., colors are treated similarly to copies.
+        )  # Generate permutation matrix to change the modes's order to {l1_1_1, l1_2_1, r1_1_1, r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2, l1_2_2, r1_1_2, r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}.
         rotmat = xnp.transpose(perm_mat) @ rotmat @ perm_mat
 
         return rotmat
