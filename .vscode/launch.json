@@ -209,6 +209,9 @@
                 "--g_mass", "0.0",
                 "--ignore_cache",
                 "--seed", "2",
+                "--warmup_steps", "100",
+                "--meas_steps", "100",
+                "--level","debug",
             ]
         },
 
