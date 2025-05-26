@@ -1,5 +1,5 @@
 """
-Main script to control the simulation. 
+Main script to control the simulation.
 Further details about the usage of the script can be found in README.md.
 """
 
@@ -224,6 +224,14 @@ def main(args):
         g_chem = np.zeros(args.num_pg_layer + args.num_fermionic_layer)
     else:
         g_chem = np.array(args.g_chem)
+    if len(g_chem) == args.num_pg_layer + args.num_fermionic_layer:
+        if not np.allclose(g_chem[: args.num_pg_layer], 0.0):
+            raise ValueError(
+                "A chemical potential for a pure gauge layer is not zero, which is invalid."
+            )
+    elif len(g_chem) == args.num_fermionic_layer:
+        # The chemical potential must be zero for the pure gauge layers
+        g_chem = np.concatenate((np.zeros(args.num_pg_layer), g_chem))
     couplings = {
         "g_el": g_el,
         "g_mag": g_mag,
