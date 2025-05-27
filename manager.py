@@ -280,15 +280,6 @@ def main(args):
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L, args.gauge_fixing)
 
-    # Determine setting for translation invariance
-    if args.unitcell_size is None:
-        # no command-line value was provided
-        unitcell_size = 1
-        if np.any(g_chem):
-            unitcell_size = 2
-    else:
-        unitcell_size = args.unitcell_size
-
     # Depending on the parameters, we instantiate different systems
     # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.fermions:
@@ -303,7 +294,7 @@ def main(args):
                 g_chem,
                 num_pg_layer=args.num_pg_layer,
                 num_fermionic_layer=args.num_fermionic_layer,
-                unitcell_size=unitcell_size,
+                unitcell_size=args.unitcell_size,
                 enforce_u1_symmetry=not args.relax_u1,
             )
         elif args.ncopy == 4:
@@ -451,6 +442,17 @@ def main(args):
             # this is only used by the custom (basic gradient descent) minimizer and is not passed to scipy
             logger.info(f"Learning rate: {args.alpha}")
         logger.info("============================")
+
+    # Warn about potential/likely unintended choice of settings
+    if not np.allclose(g_chem, 0):
+        if not args.unitcell_size > 1:
+            logger.warning(
+                "There is a non-zero chemical potential, but 1-site translation invariance. This may be unintended."
+            )
+        if not args.relax_u1:
+            logger.warning(
+                "There is a non-zero chemical potential, but U1 invariance. This may be unintended."
+            )
 
     # Set up cache
     # and save the command line arguments to ggpeps global variable so that they are available everywhere
@@ -698,6 +700,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--unitcell_size",
         type=int,
+        default=1,
         help="Specify the size of the largest unit cell in the system. This determines the degree of translation invariance.",
     )
     parser.add_argument(
