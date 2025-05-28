@@ -134,6 +134,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
         self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
+        self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
 
         if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"] = Measurement(
@@ -193,6 +194,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["chem_energy"].append(self.system.chem_energy)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
         self.obsdict["number_per_site"].append(self.system.number_per_site)
+        self.obsdict["average_occupation"].append(self.system.average_occupation())
 
         if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)

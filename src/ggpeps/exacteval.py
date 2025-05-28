@@ -33,19 +33,15 @@ class ExactEvaluator(Evaluator):
         """Compute the expectation value of an observable.
 
         Args:
-            obs (np.ndarray): Measurement values of an observables for different gauge field configurations
-            normvec (np.ndarray): Values of the norm of <Psi(G)|Psi(G)> for different gauge field configurations
+            obs (np.ndarray): Measurement values of an observables for different gauge field configurations. The last dimension be the gauge field configurations.
+            normvec (np.ndarray): Values of the norm of <Psi(G)|Psi(G)> for different gauge field configurations.
 
         Returns:
             _type_: _description_
         """
         normalization = np.sum(normvec)
-        if len(obs.shape) > 1:
-            # We have to treat the gradients differently as they are multi-dimensional observables
-            prod = obs * normvec
-            expval = np.sum(prod, axis=3)
-        else:
-            expval = np.sum(obs * normvec)
+        # sum over the last dimension (the gauge field configurations)
+        expval = np.sum(obs * normvec, axis=obs.ndim - 1)
         return expval / normalization
 
     def get_obs_mean(self, obs: str):
@@ -81,15 +77,6 @@ class ExactEvaluator(Evaluator):
                 for k in range(1, max_string)
             ]
 
-            # Occupations
-            if self.system.cfg.num_fermionic_layer >= 1:
-                # for now, we'll save the occupations on just the first fermionic layer
-                # this is the index of the first fermionic layer:
-                target_lay = self.system.cfg.num_pg_layer
-            else:
-                # no need to save occupations
-                target_lay = False
-
             data = {
                 "energy": [],
                 "norm": [],
@@ -102,6 +89,7 @@ class ExactEvaluator(Evaluator):
                 "el_energy_op": [],
                 "mass_energy_op": [],
                 "int_energy_op": [],
+                "average_occupation": [],
                 "el_energy_op_grad": [],
                 "mass_energy_op_grad": [],
                 "int_energy_op_grad": [],
@@ -117,10 +105,6 @@ class ExactEvaluator(Evaluator):
             # Meson strings - for now, we compute only "square" meson strings
             for k in range(1, max_string):
                 data[f"square_string_0-0_{k}x{k}"] = []
-            # Occupations
-            if target_lay:
-                for site in range(self.system.cfg.lattice.size):
-                    data[f"occupation_site_lay{target_lay}_{site}"] = []
 
             for config in configvec:
                 self.system.update_gauge_full_system(config)
@@ -136,6 +120,7 @@ class ExactEvaluator(Evaluator):
                 data["el_energy_op"].append(self.system.el_energy_op)
                 data["mass_energy_op"].append(self.system.mass_energy_op)
                 data["int_energy_op"].append(self.system.int_energy_op)
+                data["average_occupation"].append(self.system.average_occupation())
 
                 if self.cfg.compute_grads:
                     data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
@@ -168,13 +153,6 @@ class ExactEvaluator(Evaluator):
                         self.system.meson_string(strings[k - 1])
                     )
 
-                # Occupations
-                if target_lay:
-                    for site in range(self.system.cfg.lattice.size):
-                        data[f"occupation_site_lay{target_lay}_{site}"].append(
-                            self.system.occupation(lay=target_lay, site=site)
-                        )
-
             # TODO: handle this better - boundary should not be here!
             if ggpeps.PREFERRED_BACKEND == "jax":
                 for key, val in data.items():
@@ -195,6 +173,9 @@ class ExactEvaluator(Evaluator):
             dest["int_energy"] = self.compute_expval(data["int_energy"], normvec)
             dest["chem_energy"] = self.compute_expval(data["chem_energy"], normvec)
             dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
+            dest["average_occupation"] = self.compute_expval(
+                np.transpose(data["average_occupation"], [1, 0]), normvec
+            )
             dest["number_per_site"] = self.compute_expval(
                 data["number_per_site"], normvec
             )
@@ -218,15 +199,6 @@ class ExactEvaluator(Evaluator):
                 dest[f"FM_{k}x{k}"] = dest[string_name] / np.sqrt(
                     np.abs(dest[f"wilson_loop_0-0_{k}x{k}"])
                 )
-
-            # Occupations
-            if target_lay:
-                for site in range(self.system.cfg.lattice.size):
-                    dest[f"occupation_site_lay{target_lay}_{site}"] = (
-                        self.compute_expval(
-                            data[f"occupation_site_lay{target_lay}_{site}"], normvec
-                        )
-                    )
 
             # The norm that we turn in the end is the actual norm, not the lognorm!
             dest["norm"] = np.sum(normvec)
