@@ -330,7 +330,7 @@ def is_permutation(mat):
         return square and id and sum_rows and sum_cols
 
 
-def is_antisymmetric(mat, rtol:float=1e-5, atol:float=1e-8):
+def is_antisymmetric(mat, rtol: float = 1e-5, atol: float = 1e-8):
     """Returns true if the matrix mat is anti-symmetric."""
     if issparse(mat):
         return xnp.allclose(mat.todense(), -mat.T.todense(), rtol=rtol, atol=atol)
@@ -338,7 +338,7 @@ def is_antisymmetric(mat, rtol:float=1e-5, atol:float=1e-8):
         return xnp.allclose(-xnp.transpose(mat), mat, rtol=rtol, atol=atol)
 
 
-def is_covmat(mat: np.ndarray, rtol:float=1e-5, atol:float=1e-8) -> bool:
+def is_covmat(mat: np.ndarray, rtol: float = 1e-5, atol: float = 1e-8) -> bool:
     """Returns true if the given matrix satisfies all the conditions to be a covariance matrix."""
     m, n = mat.shape
     if (

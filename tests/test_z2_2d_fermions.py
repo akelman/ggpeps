@@ -118,10 +118,9 @@ class TestZ2System(unittest.TestCase):
         covmat_layer2 = self.system_z2.compute_ferm_cov(layer=1)
         self.assertTrue(utils.is_covmat(covmat_layer1))
         self.assertTrue(utils.is_covmat(covmat_layer2))
-    
+
     def test_valid_gamma_in_sys(self):
-        """Ensure the gamma_sys matrix satisfies the conditions to be a covariance matrix.
-        """
+        """Ensure the gamma_sys matrix satisfies the conditions to be a covariance matrix."""
         for lay in range(self.system_z2.cfg.nlayer):
             gamma_in_sys = self.system_z2.gamma_in_sys_vec[lay]
             self.assertTrue(utils.is_covmat(gamma_in_sys))
@@ -149,43 +148,53 @@ class TestZ2System(unittest.TestCase):
         self.assertFalse(np.allclose(0, dest_dict["int_energy"]))
 
     def test_Tmat_symmetries_analytic(self):
-        '''This only tests rotation invariance and the antisymmetry properties.'''
+        """This only tests rotation invariance and the antisymmetry properties."""
 
         # rotation invariance
         # mode order: lrdu
-        eta = sp.exp(1j*sp.pi/4)
-        R = eta * sp.Matrix([ [1,0,0,0,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,0],
-                [0,0,0,0,1,0,0,0,0],
-                [0,0,1,0,0,0,0,0,0],
-                [0,1,0,0,0,0,0,0,0],
-                [0,0,0,0,0,0,0,1,0],
-                [0,0,0,0,0,0,0,0,1],
-                [0,0,0,0,0,0,1,0,0],
-                [0,0,0,0,0,1,0,0,0]])
+        eta = sp.exp(1j * sp.pi / 4)
+        R = eta * sp.Matrix(
+            [
+                [1, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [0, 0, 0, 0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 0, 0, 0],
+            ]
+        )
         tmat = self.system_z2.cfg.tmat_symb
         res_rot = R.T @ tmat @ R - tmat
-        res = sp.simplify(sp.simplify(res_rot)) # for some reason, two passes are needed
+        res = sp.simplify(
+            sp.simplify(res_rot)
+        )  # for some reason, two passes are needed
         self.assertFalse(any(res))
 
         res = sp.simplify(tmat + tmat.T)
         self.assertFalse(any(res))
 
     def test_Tmat_symmetries_numeric(self):
-        '''This only tests rotation invariance and the antisymmetry properties.'''
+        """This only tests rotation invariance and the antisymmetry properties."""
 
         # rotation invariance
         # mode order: lrdu
-        eta = np.exp(1j*np.pi/4)
-        R = eta * np.array([ [1,0,0,0,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,0],
-                [0,0,0,0,1,0,0,0,0],
-                [0,0,1,0,0,0,0,0,0],
-                [0,1,0,0,0,0,0,0,0],
-                [0,0,0,0,0,0,0,1,0],
-                [0,0,0,0,0,0,0,0,1],
-                [0,0,0,0,0,0,1,0,0],
-                [0,0,0,0,0,1,0,0,0]])
+        eta = np.exp(1j * np.pi / 4)
+        R = eta * np.array(
+            [
+                [1, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [0, 0, 0, 0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 0, 0, 0],
+            ]
+        )
         tmats = self.system_z2.tmat_layervec_sitevec
         for lay in range(self.system_z2.cfg.nlayer):
             for site in range(self.system_z2.cfg.lattice.size):
@@ -195,7 +204,6 @@ class TestZ2System(unittest.TestCase):
 
                 res = tmat + tmat.T
                 self.assertTrue(np.allclose(res, 0))
-        
 
     def test_free_fermions_gs_energy(self):
         """Ensure gs energy for free fermion case matches the analytic result"""
@@ -804,7 +812,7 @@ class TestTransVariance(unittest.TestCase):
             num_pg_layer=num_pg_layer,
             num_fermionic_layer=num_fermionic_layer,
             unitcell_size=unitcell_size,
-            enforce_u1_symmetry=self.u1_symmetry
+            enforce_u1_symmetry=self.u1_symmetry,
         )
 
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
@@ -1017,10 +1025,10 @@ class TestTransVariance(unittest.TestCase):
         for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
             covmat = self.system_z2.gamma_maj_sys_vec[lay]
             self.assertTrue(utils.is_covmat(covmat))
-    
+
     def test_gamma_in_sys_validity(self):
         for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
-            
+
             # We want to check that it is a covariance matrix even when not in the neutral gauge config
             config = np.array([1] * 6 + [0] * 2)
             self.system_z2.update_gauge_full_system(config)
@@ -1030,7 +1038,7 @@ class TestTransVariance(unittest.TestCase):
 
     def test_covmat_validity(self):
         for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
-                
+
             # Set the gauge configuration -
             #   there must be some flux, since otherwise the mass will be zero
             config = np.array([0] * 7 + [1] * 1)
@@ -1209,7 +1217,7 @@ class TestTransVariance(unittest.TestCase):
                             num_pg_layer=self.system_z2.cfg.num_pg_layer,
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
-                            enforce_u1_symmetry=self.u1_symmetry
+                            enforce_u1_symmetry=self.u1_symmetry,
                         )
                         system_cfg_right = system.Z2System2D_G2C_F2C_Config(
                             lat_2x2,
@@ -1221,7 +1229,7 @@ class TestTransVariance(unittest.TestCase):
                             num_pg_layer=self.system_z2.cfg.num_pg_layer,
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
-                            enforce_u1_symmetry=self.u1_symmetry
+                            enforce_u1_symmetry=self.u1_symmetry,
                         )
 
                         system_cfg_left.paramvec = paramvec_left
@@ -1276,7 +1284,7 @@ class TestTransVariance(unittest.TestCase):
                             num_pg_layer=self.system_z2.cfg.num_pg_layer,
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
-                            enforce_u1_symmetry=self.u1_symmetry
+                            enforce_u1_symmetry=self.u1_symmetry,
                         )
                         system_cfg_right = system.Z2System2D_G2C_F2C_Config(
                             lat_2x2,
@@ -1288,7 +1296,7 @@ class TestTransVariance(unittest.TestCase):
                             num_pg_layer=self.system_z2.cfg.num_pg_layer,
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
-                            enforce_u1_symmetry=self.u1_symmetry
+                            enforce_u1_symmetry=self.u1_symmetry,
                         )
 
                         system_cfg_left.paramvec = paramvec_left
@@ -1343,7 +1351,7 @@ class TestTransVariance(unittest.TestCase):
                             num_pg_layer=self.system_z2.cfg.num_pg_layer,
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
-                            enforce_u1_symmetry=self.u1_symmetry
+                            enforce_u1_symmetry=self.u1_symmetry,
                         )
                         system_cfg_right = system.Z2System2D_G2C_F2C_Config(
                             lat_2x2,
@@ -1355,7 +1363,7 @@ class TestTransVariance(unittest.TestCase):
                             num_pg_layer=self.system_z2.cfg.num_pg_layer,
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
-                            enforce_u1_symmetry=self.u1_symmetry
+                            enforce_u1_symmetry=self.u1_symmetry,
                         )
 
                         system_cfg_left.paramvec = paramvec_left
