@@ -267,7 +267,7 @@ def print_callback(x, minimizer):
         return
 
     energy = res.get_obs_mean("energy")
-    number_per_site = res.get_obs_mean("number_per_site")
+    avg_occupation = res.get_obs_mean("average_occupation")
     if minimizer.evaluator_manager.cfg.compute_grads:
         grad_paramvec = res.get_obs_mean("energy_grad")
         max_grad_paramvec = np.max(np.abs(grad_paramvec))
@@ -280,10 +280,10 @@ def print_callback(x, minimizer):
     el_energy = res.get_obs_mean("el_energy")
     mag_energy = res.get_obs_mean("mag_energy")
     chem_energy = res.get_obs_mean("chem_energy")
-
     plaquette = res.get_obs_mean("wilson_loop_0-0_1x1")
+    occ = ", ".join([f"{val:.4f}" for val in avg_occupation])
 
-    message = f"Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
+    message = f"Energy: {energy:.9f}, Occupation: {occ}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
     if minimizer.cfg.method == "CUSTOM":
         # We only have access to the iteration number if we are handling the minimization (via the CUSTOM method)
         message = f"Iter: {x:03d}, {message}"
