@@ -96,7 +96,6 @@ class ExactEvaluator(Evaluator):
                 "chem_energy_op_grad": [],
                 "grad_norm": [],
                 "polyakov_00_x": [],
-                "number_per_site": [],
             }
             # Wilson loops
             for k in range(len(sizes)):
@@ -140,8 +139,6 @@ class ExactEvaluator(Evaluator):
                     np.real(self.system.compute_path(polyakov_loop))
                 )
 
-                data["number_per_site"].append(np.real(self.system.number_per_site))
-
                 # Wilson loops
                 for k in range(len(sizes)):
                     loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
@@ -176,9 +173,7 @@ class ExactEvaluator(Evaluator):
             dest["average_occupation"] = self.compute_expval(
                 np.transpose(data["average_occupation"], [1, 0]), normvec
             )
-            dest["number_per_site"] = self.compute_expval(
-                data["number_per_site"], normvec
-            )
+
             if self.cfg.compute_grads:
                 # Transpose to enable broadcasting
                 grad_norm_transposed = np.transpose(data["grad_norm"], [1, 2, 3, 0])

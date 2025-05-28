@@ -1778,17 +1778,6 @@ class System2DBase(ABC):
 
     ##################  ######################
 
-    @property
-    def number_per_site(self):
-        """Compute the occupation number per site.
-        Since we assume translation invariance, this can be simply calculated from the mass energy op.
-        We don't store the occupation number per site, since it is cheap to calculate (just one division).
-
-        Returns:
-            float: the occupation number per site
-        """
-        return self.mass_energy_op / self.cfg.lattice.size
-
     def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
         """Compute the occupation number for the given layer and site.
 
