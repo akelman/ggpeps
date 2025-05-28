@@ -745,6 +745,6 @@ class Z2System2D(System2DBase):
         for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             layer_val = 0.0
             for site in range(self.cfg.lattice.size):
-                layer_val += self.occupation(lay, site)
+                layer_val += self.occupation(lay, site, after_ph=after_ph)
             total_occ.append(layer_val / self.cfg.lattice.size)
         return xnp.array(total_occ)
