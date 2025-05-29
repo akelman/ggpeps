@@ -1,5 +1,5 @@
 """
-Main script to control the simulation. 
+Main script to control the simulation.
 Further details about the usage of the script can be found in README.md.
 """
 
@@ -239,7 +239,7 @@ def main(args):
     utils.setup_logger(logger, log_filename, args.level)
 
     # Set up the MC Config
-    if 'nevmc' in args.mode:
+    if "nevmc" in args.mode:
         mc_config = NEVMC_EvaluatorConfig()
     else:
         mc_config = MonteCarloEvaluatorConfig()
@@ -381,7 +381,7 @@ def main(args):
     # Switch to control the binning analysis on EOM (Error of mean)
     if args.no_bin_eom:
         Measurement.use_rebinning = False
-    
+
     # The NEVMC approach does not use the standard minimizer methods
     if args.mode == "min-nevmc":
         args.method = "NEVMC"
@@ -446,8 +446,8 @@ def main(args):
         logger.info(f"Method: {args.method.upper()}")
         logger.info(f"Max Iterations: {args.maxiter}")
         logger.info(f"Convergence tolerance: {args.tol}")
-        if args.method.upper() == "CUSTOM":
-            # this is only used by the custom (basic gradient descent) minimizer and is not passed to scipy
+        if args.method.upper() == "CUSTOM" or args.method.upper() == "NEVMC":
+            # this is not used by the scipy minimizer, but by the custom and NEVMC minimizer
             logger.info(f"Learning rate: {args.alpha}")
         logger.info("============================")
 
@@ -565,7 +565,7 @@ def main(args):
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
         min_cfg.tol = args.tol
-        min_cfg.method = "NEVMC" 
+        min_cfg.method = "NEVMC"
 
         minimizer = Minimizer(min_cfg, mc_mgr)
         ggpeps.global_vars["minimizer"] = minimizer  # save for global access
@@ -650,7 +650,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "mode",
         type=str,
-        choices=["eval-mc", "eval-exact", "min-mc", "min-exact", "min-nevmc", "minmult-mc"],
+        choices=[
+            "eval-mc",
+            "eval-exact",
+            "min-mc",
+            "min-exact",
+            "min-nevmc",
+            "minmult-mc",
+        ],
         help="Mode of the program",
     )
     parser.add_argument("--L", type=int, help="Size of the square system (one side)")

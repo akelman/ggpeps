@@ -58,9 +58,9 @@ class MinimizerConfig:
 
 
 class Minimizer:
-    grad_methods = ["CG", "BFGS", "L-BFGS-B", "TNC", "CUSTOM"]
+    grad_methods = ["CG", "BFGS", "L-BFGS-B", "TNC", "CUSTOM", "NEVMC"]
     no_grad_methods = ["POWELL", "NELDER-MEAD"]
-    supported_scipy_methods = grad_methods + no_grad_methods
+    supported_scipy_methods = grad_methods[:-2] + no_grad_methods
 
     def __init__(self, cfg: MinimizerConfig, evaluator_manager: EvaluatorManager):
         self.cfg: MinimizerConfig = cfg
