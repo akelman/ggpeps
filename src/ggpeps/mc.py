@@ -500,7 +500,8 @@ class MonteCarloEvaluator(Evaluator):
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
 
-        couplings_str = f"gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_gmass_{syscfg.g_mass:.3f}_gchem_{np.array2string(syscfg.g_chem, separator=',')}"
+        chem_str = ",".join([f"{val:.3f}" for val in syscfg.g_chem])
+        couplings_str = f"gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_gmass_{syscfg.g_mass:.3f}_gchem_{chem_str}"
 
         fname_full = f"data_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_{couplings_str}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl.gz"
         fname_summary = f"summary_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_{couplings_str}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl"

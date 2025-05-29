@@ -89,7 +89,8 @@ def args2logname(args, couplings: dict) -> str:
     Returns:
         str: Filename of the log file
     """
-    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_gchem_{np.array2string(couplings['g_chem'], separator=',')}"
+    chem_str = ",".join([f"{val:.3f}" for val in couplings["g_chem"]])
+    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_gchem_{chem_str}"
 
     if "exact" in args.mode:
         fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}.log"
@@ -420,7 +421,8 @@ def main(args):
     logger.info(f"g_mag: {g_mag}")
     logger.info(f"g_int: {g_int}")
     logger.info(f"g_mass: {g_mass}")
-    logger.info(f"g_chem: {np.array2string(g_chem, separator=', ', precision=2)}")
+    chem_str = ", ".join([f"{val:.3f}" for val in g_chem])
+    logger.info(f"g_chem: {chem_str}")
     logger.info(f"Rebinning EOM: {Measurement.use_rebinning}")
     logger.info(f"Loaded parameters from: {param_source}")
     logger.info(f"Starting parameters: {paramvec}")
