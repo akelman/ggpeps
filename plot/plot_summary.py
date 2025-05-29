@@ -129,61 +129,51 @@ def main(args):
                 df_diff_filtered = df_diff[df_diff["name"] == obs]
                 df_diff_filtered.reset_index(drop=True, inplace=True)
 
-            if args.diff:
+            for name, group in df_filtered.groupby(["type", "L", "nlayer", "ncopy"]):
+
+                type_, L, nlayer, ncopy = name
+
+                # Handle case where chosen values are an array
+                if isinstance(group[args.xaxis][0], np.ndarray):
+                    xaxis_values = group[args.xaxis].apply(lambda x: x[args.xaxis_ind])
+                else:
+                    xaxis_values = group[args.xaxis]
+
+                if isinstance(group["mean"][0], np.ndarray):
+                    yaxis_values = group["mean"].apply(lambda x: x[args.obs_ind])
+                else:
+                    yaxis_values = group["mean"]
+
                 # show errors for MC
-                for name, group in df_diff_filtered.groupby(
-                    ["type", "L", "nlayer", "ncopy"]
-                ):
-                    _type, L, nlayer, ncopy = name
-                    if _type == "MC":
-                        error = group["err"]
-                    else:
-                        error = None
+                if type_ == "MC":
+                    error = group["err"]
+                else:
+                    error = None
+
+                if args.diff:
                     ax.errorbar(
-                        group[args.xaxis],
+                        xaxis_values,
                         group["diff"],
                         fmt="o",
                         yerr=error,
-                        label=f"{_type}, obs={obs}, L={L}",
+                        label=f"{type_}, obs={obs}, L={L}",
                     )
-            else:
-                for name, group in df_filtered.groupby(
-                    ["type", "L", "nlayer", "ncopy"]
-                ):
-                    _type, L, nlayer, ncopy = name
+                elif type_ == "ED":
+                    ax.plot(
+                        xaxis_values,
+                        group["mean"],
+                        label=f"ED, obs={obs}, L={L}",
+                    )
+                else:
+                    ax.errorbar(
+                        xaxis_values,
+                        yaxis_values,
+                        fmt="o",
+                        yerr=error,
+                        label=f"{type_}, obs={obs}, L={L}",
+                    )
 
-                    # Handle case where chosen values are an array
-                    if isinstance(group[args.xaxis][0], np.ndarray):
-                        xaxis_values = group[args.xaxis].apply(
-                            lambda x: x[args.xaxis_ind]
-                        )
-                    else:
-                        xaxis_values = group[args.xaxis]
-
-                    if isinstance(group["mean"][0], np.ndarray):
-                        yaxis_values = group["mean"].apply(lambda x: x[args.obs_ind])
-                    else:
-                        yaxis_values = group["mean"]
-
-                    if _type == "ED":
-                        ax.plot(
-                            xaxis_values,
-                            group["mean"],
-                            label=f"ED, obs={obs}, L={L}",
-                        )
-                    else:
-                        if _type == "MC":
-                            error = group["err"]
-                        else:
-                            error = None
-                        ax.errorbar(
-                            xaxis_values,
-                            yaxis_values,
-                            fmt="o",
-                            yerr=error,
-                            label=f"{_type}, obs={obs}, L={L}",
-                        )
-
+    # Set axis properties
     if args.logx:
         ax.set_xscale("log")
     if args.logy:
@@ -195,6 +185,7 @@ def main(args):
         ax.set_ylabel("Value", fontsize=10)
     ax.legend(fontsize=8)
     f.tight_layout()
+
     if not args.no_save:
         if args.diff:
             f.savefig(f"summary_diff_{'-'.join(args.obs)}.pdf")
@@ -202,6 +193,8 @@ def main(args):
             f.savefig(f"summary_{'-'.join(args.obs)}.pdf")
     if args.show:
         plt.show()
+
+    return
 
 
 if __name__ == "__main__":
