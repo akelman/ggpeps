@@ -138,7 +138,6 @@ class NEVMC_Evaluator(Evaluator):
         )
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
-        self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
 
         if self.cfg.compute_grads:
             ### beg NEVMC ###
@@ -200,7 +199,6 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["mass_energy"].append(self.system.mass_energy)
         self.obsdict["chem_energy"].append(self.system.chem_energy)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
-        self.obsdict["number_per_site"].append(self.system.number_per_site)
 
         if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)

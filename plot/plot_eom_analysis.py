@@ -1,7 +1,7 @@
 """
 As arguments this file receives the summary pkl file and the log file from a run in debug mode (only debug mode!).
 
-This file plots three plots analysing the eom (error of mean - computed with autocorrelation and rebinning) - 
+This file plots three plots analysing the eom (error of mean - computed with autocorrelation and rebinning) -
 Dynamical mean of observable as a function of step number, EOM as a funcion of step number and EOM as a function of time.
 """
 

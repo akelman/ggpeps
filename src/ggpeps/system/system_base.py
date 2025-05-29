@@ -404,7 +404,10 @@ class System2DBase(ABC):
         return None
 
     def invalidate_gauge_update(self):
-        """Reset the values of computed quantitities to avoid spillover from previous computations."""
+        """Reset the values of computed quantitities to avoid spillover from previous computations.
+        We do not need to reset quantities that are not dependent on the gauge fields, such as _gamma_maj_sys_vec, _mat_a_vec, etc.
+        """
+
         self._ferm_covmat_vec = None
         self._d_gamma_out_symbolvec = None
 
@@ -584,7 +587,7 @@ class System2DBase(ABC):
         This method is overwritten for the U1 system.
 
         Args:
-            covmats_layervec_sitevec (List[List[xnp.ndarray]]): list (per layer) of 2D covariance matrices of all sites
+            covmats_layervec_sitevec (List[List[xnp.ndarray]]): list (per layer) of 2D covariance matrices of all sites; total shape (nlayer, nsites, nmodes, nmodes)
 
         Returns:
             xnp.ndarray: 2D covariance matrix of the full system
@@ -1779,22 +1782,21 @@ class System2DBase(ABC):
 
     ##################  ######################
 
-    @property
-    def number_per_site(self):
-        """Compute the occupation number per site.
-        Since we assume translation invariance, this can be simply calculated from the mass energy op.
-        We don't store the occupation number per site, since it is cheap to calculate (just one division).
-
-        Returns:
-            float: the occupation number per site
-        """
-        return self.mass_energy_op / self.cfg.lattice.size
-
-    def occupation(self, lay: int, site: int) -> float:
+    def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
         """Compute the occupation number for the given layer and site.
 
         Returns:
             float: the occupation number for the given layer and site
+        """
+        raise NotImplementedError(
+            "This is an abstract method. Implement in child class please."
+        )
+
+    def average_occupation(self, after_ph: bool = False) -> xnp.ndarray:
+        """Compute the average occupation number for the system across all sites.
+
+        Returns:
+            array: the average occupation number across all sites, as a vector across layers
         """
         raise NotImplementedError(
             "This is an abstract method. Implement in child class please."
@@ -1926,7 +1928,7 @@ class System2DBase(ABC):
             0 --"0"-- 1 --"1"--
 
         On each site, the mode order is l1, l2, r1, r2, d1, d2, u1, u2 for the first copy,
-        and then the same thing for the second copy (if there is one).
+        and then the same thing for the second/third/etc. copies (if they exist).
 
         Returns:
             list: List of strings of the form <mode_letter:majorana mode>_<copy>_<link_id>

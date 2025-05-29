@@ -52,6 +52,7 @@ def main(args):
     if "g_mag" not in df_mc_ec.columns:
         df_mc_ec["g_mag"] = 1 / (df_tmp.g_el * 4)
 
+    # Get exact data
     if args.exact is not None and os.path.isfile(args.exact):
         df_exact = pd.read_pickle(args.exact)
         df_exact["L"] = (
@@ -117,6 +118,7 @@ def main(args):
         else:
             print(f"File {args.exact} not found. Skipping.")
 
+    # Plot
     f, ax = plt.subplots(1, 1)
     for obs in args.obs:
         if obs in obsnamevec:
@@ -132,8 +134,8 @@ def main(args):
                 for name, group in df_diff_filtered.groupby(
                     ["type", "L", "nlayer", "ncopy"]
                 ):
-                    type, L, nlayer, ncopy = name
-                    if type == "MC":
+                    _type, L, nlayer, ncopy = name
+                    if _type == "MC":
                         error = group["err"]
                     else:
                         error = None
@@ -142,30 +144,38 @@ def main(args):
                         group["diff"],
                         fmt="o",
                         yerr=error,
-                        label=f"{type}, obs={obs}, L={L}",
+                        label=f"{_type}, obs={obs}, L={L}",
                     )
             else:
                 for name, group in df_filtered.groupby(
                     ["type", "L", "nlayer", "ncopy"]
                 ):
-                    type, L, nlayer, ncopy = name
-                    if type == "ED":
+                    _type, L, nlayer, ncopy = name
+
+                    # Handle case where chosen xaxis is an array
+                    # TODO: improve this
+                    if isinstance(group[args.xaxis][0], np.ndarray):
+                        xaxis_values = group[args.xaxis].apply(lambda x: x[1])
+                    else:
+                        xaxis_values = group[args.xaxis]
+
+                    if _type == "ED":
                         ax.plot(
-                            group[args.xaxis],
+                            xaxis_values,
                             group["mean"],
                             label=f"ED, obs={obs}, L={L}",
                         )
                     else:
-                        if type == "MC":
+                        if _type == "MC":
                             error = group["err"]
                         else:
                             error = None
                         ax.errorbar(
-                            group[args.xaxis],
+                            xaxis_values,
                             group["mean"],
                             fmt="o",
                             yerr=error,
-                            label=f"{type}, obs={obs}, L={L}",
+                            label=f"{_type}, obs={obs}, L={L}",
                         )
 
     if args.logx:

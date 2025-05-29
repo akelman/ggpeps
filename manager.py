@@ -89,7 +89,8 @@ def args2logname(args, couplings: dict) -> str:
     Returns:
         str: Filename of the log file
     """
-    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_gchem_{np.array2string(couplings['g_chem'], separator=',')}"
+    chem_str = ",".join([f"{val:.3f}" for val in couplings["g_chem"]])
+    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_gchem_{chem_str}"
 
     if "exact" in args.mode:
         fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}.log"
@@ -225,6 +226,14 @@ def main(args):
         g_chem = np.zeros(args.num_pg_layer + args.num_fermionic_layer)
     else:
         g_chem = np.array(args.g_chem)
+    if len(g_chem) == args.num_pg_layer + args.num_fermionic_layer:
+        if not np.allclose(g_chem[: args.num_pg_layer], 0.0):
+            raise ValueError(
+                "A chemical potential for a pure gauge layer is not zero, which is invalid."
+            )
+    elif len(g_chem) == args.num_fermionic_layer:
+        # The chemical potential must be zero for the pure gauge layers
+        g_chem = np.concatenate((np.zeros(args.num_pg_layer), g_chem))
     couplings = {
         "g_el": g_el,
         "g_mag": g_mag,
@@ -276,14 +285,6 @@ def main(args):
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L, args.gauge_fixing)
 
-    # Determine setting for translation invariance
-    if args.unitcell_size != 1:
-        unitcell_size = args.unitcell_size
-    elif np.any(g_chem):
-        unitcell_size = 2
-    else:
-        unitcell_size = 1
-
     # Depending on the parameters, we instantiate different systems
     # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.fermions:
@@ -298,7 +299,7 @@ def main(args):
                 g_chem,
                 num_pg_layer=args.num_pg_layer,
                 num_fermionic_layer=args.num_fermionic_layer,
-                unitcell_size=unitcell_size,
+                unitcell_size=args.unitcell_size,
                 enforce_u1_symmetry=not args.relax_u1,
             )
         elif args.ncopy == 4:
@@ -420,7 +421,8 @@ def main(args):
     logger.info(f"g_mag: {g_mag}")
     logger.info(f"g_int: {g_int}")
     logger.info(f"g_mass: {g_mass}")
-    logger.info(f"g_chem: {np.array2string(g_chem, separator=', ', precision=2)}")
+    chem_str = ", ".join([f"{val:.3f}" for val in g_chem])
+    logger.info(f"g_chem: {chem_str}")
     logger.info(f"Rebinning EOM: {Measurement.use_rebinning}")
     logger.info(f"Loaded parameters from: {param_source}")
     logger.info(f"Starting parameters: {paramvec}")
@@ -450,6 +452,17 @@ def main(args):
             # this is not used by the scipy minimizer, but by the custom and NEVMC minimizer
             logger.info(f"Learning rate: {args.alpha}")
         logger.info("============================")
+
+    # Warn about potential/likely unintended choice of settings
+    if not np.allclose(g_chem, 0):
+        if not args.unitcell_size > 1:
+            logger.warning(
+                "There is a non-zero chemical potential, but 1-site translation invariance. This may be unintended."
+            )
+        if not args.relax_u1:
+            logger.warning(
+                "There is a non-zero chemical potential, but U1 invariance. This may be unintended."
+            )
 
     # Set up cache
     # and save the command line arguments to ggpeps global variable so that they are available everywhere
