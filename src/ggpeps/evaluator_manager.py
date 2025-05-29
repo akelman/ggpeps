@@ -10,7 +10,7 @@ import ggpeps
 from ggpeps import utils
 from ggpeps.exacteval import ExactEvaluator, ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig
-from ggpeps.mc2 import MonteCarloEvaluator2, MonteCarloEvaluatorConfig2
+from ggpeps.nevmc import NEVMC_Evaluator, NEVMC_EvaluatorConfig
 from ggpeps.system import SystemType, SystemConfigType
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -22,11 +22,12 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 @ray.remote
 def run_mc(
     runner_id: int,
-    evaluator_class: Union[MonteCarloEvaluator, MonteCarloEvaluator2],
-    evaluator_cfg: Union[MonteCarloEvaluatorConfig, MonteCarloEvaluatorConfig2],
+    evaluator_class: Union[MonteCarloEvaluator, NEVMC_Evaluator],
+    evaluator_cfg: Union[MonteCarloEvaluatorConfig, NEVMC_EvaluatorConfig],
     system_cls,
     system_cfg,
     logger_info: dict,
+    eval_args: dict = {},
 ):
     """Worker for running part of a MC simulation.
 
@@ -36,6 +37,7 @@ def run_mc(
         system_cls ():
         system_cfg ():
         logger_info (dict): configs for the logger (logger needs to be set up in each worker)
+        eval_args (dict): Arguments for the evaluator 
 
     Returns:
         MonteCarloEvaluator
@@ -51,7 +53,7 @@ def run_mc(
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
     mc = evaluator_class(evaluator_cfg, system)
-    mc.evaluate()
+    mc.evaluate(**eval_args)
     return mc
 
 
@@ -69,7 +71,7 @@ class EvaluatorManager:
         self,
         system_cls: SystemType,
         system_cfg: SystemConfigType,
-        cfg: Union[MonteCarloEvaluatorConfig, ExactEvaluatorConfig],
+        cfg: Union[MonteCarloEvaluatorConfig, ExactEvaluatorConfig, NEVMC_EvaluatorConfig],
         nrunner: int,
     ):
 
@@ -87,20 +89,21 @@ class EvaluatorManager:
             self.type = "exact"
         elif isinstance(self.cfg, MonteCarloEvaluatorConfig):
             self.type = "mc"
-        elif isinstance(self.cfg, MonteCarloEvaluatorConfig2):
-            self.type = "mc2"
+        elif isinstance(self.cfg, NEVMC_EvaluatorConfig):
+            self.type = "nevmc"
         else:
             raise ValueError("Unrecognized type of evaluator config.")
 
     def reset_evaluator(self):
         system = self.system_cls(self.system_cfg)
+        
         system.initialize()
         if self.type == "exact":
             self.evaluator = ExactEvaluator(self.cfg, system)
         elif self.type == "mc":
             self.evaluator = MonteCarloEvaluator(self.cfg, system)
-        elif self.type == "mc2":
-            self.evaluator = MonteCarloEvaluator2(self.cfg, system)
+        elif self.type == "nevmc":
+            self.evaluator = NEVMC_Evaluator(self.cfg, system)
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
 
@@ -109,16 +112,21 @@ class EvaluatorManager:
             evaluator_class = ExactEvaluator
         elif self.type == "mc":
             evaluator_class = MonteCarloEvaluator
-        elif self.type == "mc2":
-            evaluator_class = MonteCarloEvaluator2
+        elif self.type == "nevmc":
+            evaluator_class = NEVMC_Evaluator
         return evaluator_class
 
-    def simulate(self):
-        if (
-            "mc" in self.type and self.nrunner > 0
-        ):  # The exacteval implementation currently only supports a single runner
+    def simulate(self, eval_args:dict={}):
+        """Simulate
+        
+        Args:
+            eval_args (dict): Arguments for the evaluator (e.g. for NEVMC). 
+        """
+
+        if "mc" in self.type and self.nrunner > 0:  
             """Start the simulation of the runners.
-            Currently only Monte Carlo is supported, and multiple runners cannot be resumed from where they left off.
+            Currently only Monte Carlo is supported (the exacteval implementation currently only supports a single runner), 
+            and multiple runners cannot be resumed from where they left off.
             """
             resultvec = []
             # system_cfg_id = ray.put(self.system_cfg)
@@ -166,6 +174,7 @@ class EvaluatorManager:
                         self.system_cls,
                         self.system_cfg,
                         logger_info,
+                        eval_args=eval_args,
                     )
                 )
 
@@ -179,7 +188,7 @@ class EvaluatorManager:
             else:
                 self.reset_evaluator()
             self.simulation_in_progress = True
-            self.evaluator.evaluate()
+            self.evaluator.evaluate(**eval_args)
             self.simulation_in_progress = False
             return self.evaluator
 
@@ -201,3 +210,4 @@ class EvaluatorManager:
         else:
             dest = resultvec[0]
         return dest
+    

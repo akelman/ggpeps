@@ -115,6 +115,7 @@ class Config2DBase(ABC):
         self.nlayer = self.num_pg_layer + self.num_fermionic_layer
 
         self._paramvec: Optional[np.ndarray] = None
+
         self.zeroed_params: List[int] = (
             []
         )  # will store a list of the parameters forced to be zero by the ansatz
@@ -551,7 +552,7 @@ class System2DBase(ABC):
 
     @property
     def gamma_maj_layervec_sitevec(self):
-        """Return the covariance matrix in Majorana modes.
+        r"""Return the covariance matrix in Majorana modes.
         The definition of Majorana modes used is
             \gamma_1 = c + c^\dagger
             \gamma_2 = i(c - c^\dagger)
@@ -1427,8 +1428,11 @@ class System2DBase(ABC):
         Args:
             gaugeconfig (xnp.ndarray): Array of new values for the gauge field
         """
-        for ind, gauge in enumerate(gaugeconfig):
-            self.update_gauge_ind(ind, gauge)
+        for link_ind, gauge in enumerate(gaugeconfig):
+            theta = gaugeconfig[link_ind]
+            if self._gaugefieldvec[link_ind] != theta:
+                # only actually do the update if it's a different gauge field
+                self.update_gauge_ind(link_ind, gauge)
 
     def update_gauge_coord(self, coord, dir, theta):
         """Update a gauge field at a given coordinate and direction by a new value

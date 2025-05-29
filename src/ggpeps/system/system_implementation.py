@@ -663,7 +663,7 @@ class Z2System2D(System2DBase):
         return chem_energy_op, gradients
 
     def _meson_string_vec(self, path):
-        """Compute a layer resolved meson string for the given path.
+        r"""Compute a layer resolved meson string for the given path.
         This is \psi^dagger (start) * String * \psi(end) before particle-hole, and assumes that start and end are on the same sublattice.
 
         Args:
