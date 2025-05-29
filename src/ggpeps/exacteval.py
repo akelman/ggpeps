@@ -37,7 +37,7 @@ class ExactEvaluator(Evaluator):
             normvec (np.ndarray): Values of the norm of <Psi(G)|Psi(G)> for different gauge field configurations
 
         Returns:
-            _type_: _description_
+            float or array: the expectation value of the observable
         """
         normalization = np.sum(normvec)
         if len(obs.shape) > 1:
