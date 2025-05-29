@@ -136,10 +136,10 @@ def main(args, save_path=None):
                 dyn_mean, dyn_eom = compute_dynamic_eom_mean(obsvec, step_numbers)
 
                 axvec[0].plot(
-                    step_numbers[1:], dyn_mean[1:], "o", label=args.pkl_fname[i]
+                    step_numbers[1:], dyn_mean[1:],"o", label=args.pkl_fname[i],
                 )
-                axvec[1].plot(step_numbers[1:], dyn_eom[1:], "o")
-                axvec[2].plot(step_numbers[1:], dyn_eom[1:], "o")
+                axvec[1].plot(step_numbers[1:], dyn_eom[1:])
+                axvec[2].plot(step_numbers[1:], dyn_eom[1:])
         else:
             print(
                 f"Files '{args.pkl_fname[i]}' or '{args.log_fname[i]}' not found.",
@@ -229,9 +229,9 @@ if __name__ == "__main__":
     # args = parser.parse_args()
 
     # main(args)
-    base_dir = r"G:\My Drive\Research\MC\gauge_fixing_chess\g_0.5_el_0.2500_mag_1.0000_int_1.0_mass_1.0\c2"
+    base_dir = r"G:\My Drive\Research\MC\gauge_fixing_chess\g_0.5_el_0.2500_mag_1.0000_int_1.0_mass_1.0\comp_with_rows"
     L_vals = [2, 4, 6]
-    c_vals = ["c2", "c", "F", "T"]
+    c_vals = ["1","2","3","4","5","6", "c", "F", "T"]
 
     for L in L_vals:
         pkl_files = []

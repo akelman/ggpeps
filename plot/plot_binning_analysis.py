@@ -68,9 +68,9 @@ if __name__ == "__main__":
     # args = parser.parse_args()
 
     # main(args)
-    base_dir = r"G:\My Drive\Research\MC\gauge_fixing_chess\g_2.5_el_1.2500_mag_0.2000_int_1.0_mass_1.0\c2"
+    base_dir = r"G:\My Drive\Research\MC\gauge_fixing_chess\g_2.5_el_1.2500_mag_0.2000_int_1.0_mass_1.0\comp_with_rows"
     L_vals = [2, 4, 6]
-    c_vals = ["c2", "c", "F", "T"]
+    c_vals = ["1","2","3","4","5","6", "c", "F", "T"]
 
     for L in L_vals:
         fnames = []
