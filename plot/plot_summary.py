@@ -152,12 +152,18 @@ def main(args):
                 ):
                     _type, L, nlayer, ncopy = name
 
-                    # Handle case where chosen xaxis is an array
-                    # TODO: improve this
+                    # Handle case where chosen values are an array
                     if isinstance(group[args.xaxis][0], np.ndarray):
-                        xaxis_values = group[args.xaxis].apply(lambda x: x[1])
+                        xaxis_values = group[args.xaxis].apply(
+                            lambda x: x[args.xaxis_ind]
+                        )
                     else:
                         xaxis_values = group[args.xaxis]
+
+                    if isinstance(group["mean"][0], np.ndarray):
+                        yaxis_values = group["mean"].apply(lambda x: x[args.obs_ind])
+                    else:
+                        yaxis_values = group["mean"]
 
                     if _type == "ED":
                         ax.plot(
@@ -172,7 +178,7 @@ def main(args):
                             error = None
                         ax.errorbar(
                             xaxis_values,
-                            group["mean"],
+                            yaxis_values,
                             fmt="o",
                             yerr=error,
                             label=f"{_type}, obs={obs}, L={L}",
@@ -234,7 +240,19 @@ if __name__ == "__main__":
         "--xaxis", type=str, default="g_el", help="Quantity to be plotted on the x axis"
     )
     parser.add_argument(
+        "--xaxis_ind",
+        type=int,
+        default="0",
+        help="If --xaxis quantity is an array, use this index",
+    )
+    parser.add_argument(
         "--obs", type=str, nargs="+", default=["energy"], help="Observables to plot"
+    )
+    parser.add_argument(
+        "--obs_ind",
+        type=int,
+        default=0,
+        help="If observables is an array, plot this index",
     )
 
     args = parser.parse_args()
