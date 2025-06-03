@@ -454,10 +454,12 @@ def print_callback(x, minimizer):
     el_energy = res.get_obs_mean("el_energy")
     mag_energy = res.get_obs_mean("mag_energy")
     chem_energy = res.get_obs_mean("chem_energy")
+
     plaquette = res.get_obs_mean("wilson_loop_0-0_1x1")
+    mass_energy_op = res.get_obs_mean("mass_energy_op")
     occ = ", ".join([f"{val:.4f}" for val in avg_occupation])
 
-    message = f"Energy: {energy:.9f}, Occupation: {occ}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
+    message = f"Energy: {energy:.9f}, Total Mass: {mass_energy_op}, Occupation: {occ}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
     if minimizer.cfg.method == "CUSTOM":
         # We only have access to the iteration number if we are handling the minimization (via the CUSTOM method)
         message = f"Iter: {x:03d}, {message}"
