@@ -1,4 +1,4 @@
-"""Print a summary of a data file. It can be a summary_*.pkl or a data_*.pkl.gz file """
+"""Print a summary of a data file. It can be a summary_*.pkl or a data_*.pkl.gz file"""
 
 import os
 import sys

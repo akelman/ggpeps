@@ -1,5 +1,4 @@
-"""This script plots the timeseries of given observable.
-"""
+"""This script plots the timeseries of given observable."""
 
 import os
 import sys

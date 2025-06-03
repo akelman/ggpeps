@@ -133,7 +133,7 @@ class MonteCarloEvaluator(Evaluator):
         )
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
-        self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
+        self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
 
         if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"] = Measurement(
@@ -192,7 +192,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["mass_energy"].append(self.system.mass_energy)
         self.obsdict["chem_energy"].append(self.system.chem_energy)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
-        self.obsdict["number_per_site"].append(self.system.number_per_site)
+        self.obsdict["average_occupation"].append(self.system.average_occupation())
 
         if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
@@ -500,7 +500,8 @@ class MonteCarloEvaluator(Evaluator):
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
 
-        couplings_str = f"gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_gmass_{syscfg.g_mass:.3f}_gchem_{np.array2string(syscfg.g_chem, separator=',')}"
+        chem_str = ",".join([f"{val:.3f}" for val in syscfg.g_chem])
+        couplings_str = f"gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_gmass_{syscfg.g_mass:.3f}_gchem_{chem_str}"
 
         fname_full = f"data_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_{couplings_str}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl.gz"
         fname_summary = f"summary_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_{couplings_str}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl"
@@ -534,6 +535,7 @@ class MonteCarloEvaluator(Evaluator):
             "g_mag": [],
             "g_int": [],
             "g_mass": [],
+            "g_chem": [],
             "mean": [],
             "warmup_steps": [],
             "meas_steps": [],
@@ -549,6 +551,7 @@ class MonteCarloEvaluator(Evaluator):
             dest["g_int"].append(self.system.cfg.g_int)
             dest["g_mag"].append(self.system.cfg.g_mag)
             dest["g_mass"].append(self.system.cfg.g_mass)
+            dest["g_chem"].append(self.system.cfg.g_chem)
             dest["paramvec"].append(self.system.cfg.paramvec)
             dest["ncopy"].append(self.system.cfg.ncopy)
             dest["nlayer"].append(self.system.cfg.nlayer)

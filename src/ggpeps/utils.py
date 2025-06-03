@@ -330,22 +330,22 @@ def is_permutation(mat):
         return square and id and sum_rows and sum_cols
 
 
-def is_antisymmetric(mat):
-    """Returns true if the matrix is symmetric."""
+def is_antisymmetric(mat, rtol: float = 1e-5, atol: float = 1e-8):
+    """Returns true if the matrix mat is anti-symmetric."""
     if issparse(mat):
-        return xnp.allclose(mat.todense(), -mat.T.todense())
+        return xnp.allclose(mat.todense(), -mat.T.todense(), rtol=rtol, atol=atol)
     else:
-        return xnp.allclose(-xnp.transpose(mat), mat)
+        return xnp.allclose(-xnp.transpose(mat), mat, rtol=rtol, atol=atol)
 
 
-def is_covmat(mat: np.ndarray) -> bool:
+def is_covmat(mat: np.ndarray, rtol: float = 1e-5, atol: float = 1e-8) -> bool:
     """Returns true if the given matrix satisfies all the conditions to be a covariance matrix."""
     m, n = mat.shape
     if (
         m == n
-        and is_antisymmetric(mat)
-        and xnp.allclose(mat @ mat, -xnp.eye(m))
-        and xnp.allclose(mat @ xnp.transpose(mat), xnp.eye(m))
+        and is_antisymmetric(mat, rtol=rtol, atol=atol)
+        and xnp.allclose(mat @ mat, -xnp.eye(m), rtol=rtol, atol=atol)
+        and xnp.allclose(mat @ xnp.transpose(mat), xnp.eye(m), rtol=rtol, atol=atol)
     ):
         # note that the last check should be mat @ mat^dagger = 1, but transpose gets the same information for a matrix with real elements
         return True
@@ -417,7 +417,7 @@ def tmat_to_covariance_matrix(tmat: np.ndarray) -> np.ndarray:
 
 
 def generate_smat(n: int):
-    """Generate matrix to transform Dirac modes into Majorana modes.
+    r"""Generate matrix to transform Dirac modes into Majorana modes.
     The function assumes the modes order of [a_1, a_2,....., a_n, a_1^\dagger,.....,a_n^\dagger].
 
     Args:
