@@ -40,7 +40,7 @@ def compute_grad_over_norm_numpy(
     deriv_d: np.ndarray,
     mat_d_inv: np.ndarray,
 ) -> float:
-    """Compute the gradient of the norm divided by the norm.
+    r"""Compute the gradient of the norm divided by the norm.
     The expression of deriv_d given to this function decides which derivative is computed
 
     The gradient of the norm divided by the norm is given by

@@ -5,6 +5,7 @@ import logging
 
 import pandas as pd
 import numpy as np
+import copy
 
 import ggpeps
 import ggpeps.utils as utils
@@ -15,13 +16,13 @@ from ggpeps.measurement import Measurement
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
-#################### Monte Carlo Estimator Config ###################
 
+########### Non-equilibrium variational Monte Carlo Estimator Config ###########
 
-class MonteCarloEvaluatorConfig2:
-    """Monte Carlo Configuration
+class NEVMC_EvaluatorConfig:
+    """Non-equilibrium variational Monte Carlo (NEVMC) Configuration
 
-    This class manages the parameters of the MC simulation.
+    This class manages the parameters of the NEVMC simulation.
     It is more convenient than passing an extensive number of parameters to the constructor.
     """
 
@@ -31,10 +32,18 @@ class MonteCarloEvaluatorConfig2:
         self._rng_state = None
         self.meas_steps = None
         self.binsize: int = 1
-        self.minimizer_mode: bool = False
+        self.compute_grads: bool = False
         self.update_size_per_step: int = (
             1  # this can be set anywhere from 1 to nlinks (inclusive)
         )
+
+        ### beg NEVMC ###
+        self.store_gauge = []
+        self.store_weights = []
+        self.store_first_cfgs = 0
+        self.store_first_weight = 0
+        self.last_work = 0
+        ### end NEVMC ###
 
         # Logging frequency
         self.warmup_log_freq: int = 5000  # log every X steps
@@ -83,34 +92,32 @@ class MonteCarloEvaluatorConfig2:
         return dest
 
 
-################################### Monte Carlo runner ###############
+############### Non-equilibrium variational Monte Carlo runner ###############
 
 
-class MonteCarloEvaluator2(Evaluator):
-    """Class to take care of the MC simulation on a single runner"""
+class NEVMC_Evaluator(Evaluator):
+    """Class to take care of the NEVMC simulation on a single runner"""
 
-    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig2, system):
+    def __init__(self, evaluator_cfg: NEVMC_EvaluatorConfig, system):
         self.cfg = evaluator_cfg
         self.system = system
-        self.evaluator_type = "mc2"
+        self.evaluator_type = "nevmc"
         self.obsdict: dict = {}
 
         self.step: int = 0
         self.init_measurements()
 
-        # Choose how to update in each MC step
-        # (This might change in the future if we implement different updates)
-        if evaluator_cfg.update_size_per_step == self.system.cfg.lattice.nlinks:
-            self.update = self.update_all_sites_single_site
-        else:
-            # self.update = self.update_single_site
-            self.update = self.update_N_sites
+        ### beg NEVMC ###
+        self.NEVMC_update = self.NEVMC_update_N_sites
+        self.update = self.update_N_sites
+        ### end NEVMC ###
 
     def init_measurements(self):
         """Add empty measurement vectors to the measurement dictionary"""
         binsize = self.cfg.binsize
 
         self.obsdict["acceptance_prob"] = Measurement("Acceptance Probablity", binsize)
+
         self.obsdict["energy"] = Measurement("Energy", binsize)
         self.obsdict["mag_energy"] = Measurement("Magnetic Energy", binsize)
         self.obsdict["el_energy"] = Measurement("Electric Energy", binsize)
@@ -131,9 +138,11 @@ class MonteCarloEvaluator2(Evaluator):
         )
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
-        self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
 
-        if self.cfg.minimizer_mode:
+        if self.cfg.compute_grads:
+            ### beg NEVMC ###
+            self.obsdict["work"] = Measurement("Work", binsize)
+            ### end NEVMC ###
             self.obsdict["el_energy_op_grad"] = Measurement(
                 "Electric Energy Operator Gradient", binsize
             )
@@ -190,9 +199,8 @@ class MonteCarloEvaluator2(Evaluator):
         self.obsdict["mass_energy"].append(self.system.mass_energy)
         self.obsdict["chem_energy"].append(self.system.chem_energy)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
-        self.obsdict["number_per_site"].append(self.system.number_per_site)
 
-        if self.cfg.minimizer_mode:
+        if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
             self.obsdict["int_energy_op_grad"].append(
                 self.system.int_energy_op_grad_vec
@@ -280,33 +288,274 @@ class MonteCarloEvaluator2(Evaluator):
 
     def warmup(self):
         """Warm up phase without measurement"""
-        logger.debug("Starting MC warmup")
+        logger.debug("Starting NEVMC warmup")
         while self.step < self.cfg.warmup_steps:
             if self.step % self.cfg.warmup_log_freq == 0:
                 logger.debug(f"Warmup: {self.step}")
             self.update()
             self.step += 1
-        logger.debug("Finished MC warmup")
+        logger.debug("Finished NEVMC warmup")
 
-    def run(self):
+#################################################################################################################
+    ### beg NEVMC ###
+
+    def run(self, warmsteps: int = 0):
         """Meaurement phase"""
-        logger.debug("Starting MC measurement")
-        while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
+        logger.debug("Starting NEVMC measurement")
+        while self.step < warmsteps + self.cfg.meas_steps:
             if self.step % self.cfg.run_log_freq == 0:
                 logger.debug(f"Run: {self.step}")
-            self.update()
-            self.measure()
+            self.NEVMC_update()
+
+            if warmsteps > 0:
+                self.measure()
+            else:
+                self.measure_nograd()
             self.step += 1
 
-        if self.cfg.minimizer_mode:
-            # Update gradients which depend on expectation values
-            # For interface reasons, we insert meas_steps copies of this gradient
+        if warmsteps > 0:
             total_grad = self.energy_gradient_mc()
             self.obsdict["energy_grad"].extend(
                 [total_grad] * len(self.obsdict["energy"])
             )
 
-        logger.debug("Finished MC measurement")
+        logger.debug("Finished NEVMC measurement")
+    
+
+    def NEVMC_update_N_sites(self):
+        links_inds = self.cfg.rng_state.choice(
+            self.system.cfg.lattice.comp_tree,
+            self.cfg.update_size_per_step,
+            replace=False,
+        )
+
+        for link_ind in links_inds:
+            # Uniformly pick a gauge to replace
+            theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+            # Store the old values
+
+            weight_old = self.system.weight
+            weight_new = self.system.calculate_weight_attempt(link_ind, theta)
+
+            if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
+                # Accept
+                self.obsdict["acceptance_prob"].append(1)
+                self.system.update_gauge_ind(link_ind, theta)
+
+                self.cfg.store_weights.append(weight_new)
+                self.cfg.store_gauge.append((link_ind,theta))
+
+            else:
+                # Reject
+                self.obsdict["acceptance_prob"].append(0)
+
+                self.cfg.store_weights.append(weight_old)
+                self.cfg.store_gauge.append((link_ind,copy.deepcopy(self.system._gaugefieldvec[link_ind])))
+            
+
+    def scan_cfgs(self, idx):
+        link, theta = self.cfg.store_gauge[idx]
+        weight = self.cfg.store_weights[idx]
+
+        self.system.update_gauge_ind(link, theta)
+        new_weight = self.system.weight
+
+        self.obsdict["work"].append(-new_weight + weight + self.cfg.last_work)
+        self.measure_grad()
+        
+
+    def evaluate(self, first_warmup: bool = False, scanning:bool = False):
+        
+        if first_warmup:
+            self.warmup()
+            # warmup uses the standard update function
+            self.cfg.store_first_cfgs = copy.deepcopy(self.system._gaugefieldvec)
+            self.cfg.store_first_weight = copy.deepcopy(self.system.weight)
+            self.run(warmsteps=self.cfg.warmup_steps)
+        
+        else:
+            if scanning:
+                for i in range(len(self.cfg.store_first_cfgs)):
+                    self.system.update_gauge_ind(i, self.cfg.store_first_cfgs[i])
+                    tmp = self.system.weight
+                
+                for i in range(len(self.cfg.store_weights)):
+                    self.scan_cfgs(i)
+
+                self.cfg.store_weights = []
+                self.cfg.store_gauge = []
+                self.cfg.store_first_cfgs = 0
+                self.cfg.store_first_weight = 0
+                
+                self.cfg.last_work = self.obsdict["work"].datavec[-1]
+            
+            else:
+                self.cfg.store_first_cfgs = copy.deepcopy(self.system._gaugefieldvec)
+                self.cfg.store_first_weight = copy.deepcopy(self.system.weight)
+                self.run()
+
+
+    def NEVMC_energy_gradient_mc(self, expW):
+        # Compute the energy gradient from the MC results
+        meas_grad_over_norm = self.obsdict["grad_norm"]
+        expW_grad_over_norm = meas_grad_over_norm * expW
+
+        # Gradient of the magnetic energy
+        meas_mag_energy_op = self.obsdict["mag_energy_op"]
+        prod_mag_energy_grad = meas_mag_energy_op * meas_grad_over_norm
+        
+        # Reweighted
+        prod_mag_energy_grad = prod_mag_energy_grad * expW
+        meas_mag_energy_op = meas_mag_energy_op * expW
+
+        mag_energy_op_grad = (
+            prod_mag_energy_grad.mean()
+            - meas_mag_energy_op.mean() * expW_grad_over_norm.mean()
+        )
+        # Add the constants back into the expression of the magnetic energy
+        mag_energy_grad = -2 * self.system.cfg.g_mag * mag_energy_op_grad
+
+        # Gradient of the electric energy
+        meas_el_energy_op = self.obsdict["el_energy_op"]
+        meas_el_energy_op_grad = self.obsdict["el_energy_op_grad"]
+        prod_el_energy_grad = meas_el_energy_op * meas_grad_over_norm
+
+        # Reweighted
+        prod_el_energy_grad = prod_el_energy_grad * expW
+        meas_el_energy_op = meas_el_energy_op * expW
+        meas_el_energy_op_grad = meas_el_energy_op_grad * expW
+
+        el_energy_op_grad = (
+            prod_el_energy_grad.mean()
+            - meas_el_energy_op.mean() * expW_grad_over_norm.mean()
+            + meas_el_energy_op_grad.mean()
+        )
+        # Add the constants back into the expression of the electric energy
+        el_energy_grad = -2 * self.system.cfg.g_el * el_energy_op_grad
+
+        # Gradient of the interaction energy
+        meas_int_energy_op = self.obsdict["int_energy_op"]
+        meas_int_energy_op_grad = self.obsdict["int_energy_op_grad"]
+        prod_int_energy_grad = meas_int_energy_op * meas_grad_over_norm
+        
+        # Reweighted
+        prod_int_energy_grad = prod_int_energy_grad * expW
+        meas_int_energy_op = meas_int_energy_op * expW
+        meas_int_energy_op_grad = meas_int_energy_op_grad * expW
+
+        int_energy_op_grad = (
+            prod_int_energy_grad.mean()
+            - meas_int_energy_op.mean() * expW_grad_over_norm.mean()
+            + meas_int_energy_op_grad.mean()
+        )
+        # Add the constants back into the expression of the interaction energy
+        int_energy_grad = self.system.cfg.g_int * int_energy_op_grad
+
+        # Gradient of the mass energy
+        meas_mass_energy_op = self.obsdict["mass_energy_op"]
+        meas_mass_energy_op_grad = self.obsdict["mass_energy_op_grad"]
+        prod_mass_energy_grad = meas_mass_energy_op * meas_grad_over_norm
+
+        # Reweighted
+        prod_mass_energy_grad = prod_mass_energy_grad * expW
+        meas_mass_energy_op = meas_mass_energy_op * expW
+        meas_mass_energy_op_grad = meas_mass_energy_op_grad * expW
+
+        mass_energy_op_grad = (
+            prod_mass_energy_grad.mean()
+            - meas_mass_energy_op.mean() * expW_grad_over_norm.mean()
+            + meas_mass_energy_op_grad.mean()
+        )
+        # Add the constants back into the expression of the mass energy
+        mass_energy_grad = self.system.cfg.g_mass * mass_energy_op_grad
+
+        return mag_energy_grad + el_energy_grad + int_energy_grad + mass_energy_grad
+    
+
+    def measure_nograd(self):
+        """Measure the corresponding observables in the dictionary"""
+        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
+            (0, 0), lattice.Direction.X
+        )
+
+        self.obsdict["polyakov_00_x"].append(
+            np.real(self.system.compute_path(polyakov_loop))
+        )
+        # self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
+        self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
+        self.obsdict["el_energy_op"].append(self.system.el_energy_op)
+        self.obsdict["int_energy_op"].append(self.system.int_energy_op)
+        self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
+
+        # These values could be calculated in a post-processing step
+        self.obsdict["energy"].append(self.system.energy)
+        self.obsdict["el_energy"].append(self.system.el_energy)
+        self.obsdict["mag_energy"].append(self.system.mag_energy)
+        self.obsdict["int_energy"].append(self.system.int_energy)
+        self.obsdict["mass_energy"].append(self.system.mass_energy)
+        self.obsdict["chem_energy"].append(self.system.chem_energy)
+        self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
+        self.obsdict["number_per_site"].append(self.system.number_per_site)
+
+        # Wilson loops
+        sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
+        loops = self.system.cfg.lattice.generate_all_wilson_loops((0, 0), sizes)
+        for k in range(len(sizes)):
+            loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
+            self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
+
+        # Meson strings
+        max_string = (
+            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
+        )
+        strings = [
+            self.system.cfg.lattice.generate_L_string((0, 0), (k, k))
+            for k in range(1, max_string)
+        ]
+        for k in range(1, max_string):
+            string_name = f"square_string_0-0_{k}x{k}"
+            self.obsdict[string_name].append(self.system.meson_string(strings[k - 1]))
+
+        return
+    
+    def measure_grad(self):
+        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
+            (0, 0), lattice.Direction.X
+        )
+
+        self.obsdict["polyakov_00_x"].append(
+            np.real(self.system.compute_path(polyakov_loop))
+        )
+        self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
+        self.obsdict["el_energy_op"].append(self.system.el_energy_op)
+        self.obsdict["int_energy_op"].append(self.system.int_energy_op)
+        self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
+
+        # These values could be calculated in a post-processing step
+        self.obsdict["energy"].append(self.system.energy)
+        self.obsdict["el_energy"].append(self.system.el_energy)
+        self.obsdict["mag_energy"].append(self.system.mag_energy)
+        self.obsdict["int_energy"].append(self.system.int_energy)
+        self.obsdict["mass_energy"].append(self.system.mass_energy)
+        self.obsdict["chem_energy"].append(self.system.chem_energy)
+        self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
+        self.obsdict["number_per_site"].append(self.system.number_per_site)
+        #############################
+        self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
+        self.obsdict["int_energy_op_grad"].append(
+            self.system.int_energy_op_grad_vec
+        )
+        self.obsdict["mass_energy_op_grad"].append(
+            self.system.mass_energy_op_grad_vec
+        )
+        self.obsdict["chem_energy_op_grad"].append(
+            self.system.chem_energy_op_grad_vec
+        )
+        self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
+        return
+
+    ### end NEVMC ###
+#################################################################################################################
 
     def update_single_site(self):
         """Update for the MC simulation.
@@ -324,6 +573,7 @@ class MonteCarloEvaluator2(Evaluator):
         # Uniformly pick a gauge value
         theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
         # Store the old values
+
         weight_old = self.system.weight
         weight_new = self.system.calculate_weight_attempt(link_ind, theta)
         if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
@@ -347,6 +597,7 @@ class MonteCarloEvaluator2(Evaluator):
             # Uniformly pick a gauge to replace
             theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
             # Store the old values
+            
             weight_old = self.system.weight
             weight_new = self.system.calculate_weight_attempt(i, theta)
             if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
@@ -373,8 +624,10 @@ class MonteCarloEvaluator2(Evaluator):
             # Uniformly pick a gauge to replace
             theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
             # Store the old values
+
             weight_old = self.system.weight
             weight_new = self.system.calculate_weight_attempt(link_ind, theta)
+
             if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
                 # Accept
                 self.obsdict["acceptance_prob"].append(1)
@@ -383,10 +636,6 @@ class MonteCarloEvaluator2(Evaluator):
                 # Reject
                 self.obsdict["acceptance_prob"].append(0)
 
-    def evaluate(self):
-        """Main routine to start a Monte Carlo simulation."""
-        self.warmup()
-        self.run()
 
     #### Data management functions ####
 

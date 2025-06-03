@@ -668,7 +668,7 @@ class Z2System2D(System2DBase):
         return chem_energy_op, gradients
 
     def _meson_string_vec(self, path):
-        """Compute a layer resolved meson string for the given path.
+        r"""Compute a layer resolved meson string for the given path.
         This is \psi^dagger (start) * String * \psi(end) before particle-hole, and assumes that start and end are on the same sublattice.
 
         Args:
@@ -711,8 +711,13 @@ class Z2System2D(System2DBase):
             )  # Is the absolute value necessary? why?
         return xnp.array(meson_op_vec)
 
-    def occupation(self, lay: int, site: int) -> float:
+    def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
         """Compute the occupation number for the given layer and site.
+
+        Args:
+            lay (int): Layer index
+            site (int): Site index
+            after_ph (bool, optional): If True, compute the occupation number using the operators defined after the particle-hole transformation. Defaults to False.
 
         Returns:
             float: the occupation number for the given layer and site
@@ -720,5 +725,31 @@ class Z2System2D(System2DBase):
 
         covmat = self.compute_ferm_cov(lay)
         site_ind = 2 * site  # index into covariance matrix
-        mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
+
+        x, y = self.cfg.lattice.ind2coord(site)
+        site_factor = (-1) ** (x + y)  # even or odd sublattice
+        site_even = True if site_factor == 1 else False
+
+        if site_even or after_ph:
+            mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
+        else:
+            mass_site = 0.5 * (1 - covmat[site_ind + 1, site_ind])
+
         return mass_site
+
+    def average_occupation(self, after_ph: bool = False) -> xnp.ndarray:
+        """Compute the average occupation number for the system across all sites.
+
+        Args:
+            after_ph (bool, optional): If True, compute the occupation number using the operators defined after the particle-hole transformation. Defaults to False.
+
+        Returns:
+            array: the average occupation number for the system across all sites, as a vector across layers.
+        """
+        total_occ = []
+        for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            layer_val = 0.0
+            for site in range(self.cfg.lattice.size):
+                layer_val += self.occupation(lay, site, after_ph=after_ph)
+            total_occ.append(layer_val / self.cfg.lattice.size)
+        return xnp.array(total_occ)

@@ -171,6 +171,23 @@
             ]
         },
         {
+            "name": "Minimize NEVMC",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
+            "args": [
+                "min-nevmc",
+                "2",
+                "--g", "2.0",
+                "--warmup_steps", "50",
+                "--meas_steps", "50",
+                "--alpha", "0.01",
+                "--seed", "2",
+                "--ignore_cache"
+            ]
+        },
+        {
             "name": "D6 Eval Exact L=2",
             "type": "debugpy",
             "request": "launch",
