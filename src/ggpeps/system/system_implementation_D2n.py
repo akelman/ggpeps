@@ -240,12 +240,12 @@ class D2nSystem2D(System2DBase):
             )  # get a non singular path between the two gauge values
             for g in path:
                 self.update_gauge_ind(link_ind, g)
-            current_theta = xnp.copy(path[-1])
+            current_g = xnp.copy(path[-1])
             if (
-                xnp.allclose(current_theta, g_transition_1)
+                xnp.allclose(current_g, g_transition_1)
                 and xnp.allclose(theta, g_transition_2)
             ) or (
-                xnp.allclose(current_theta, g_transition_2)
+                xnp.allclose(current_g, g_transition_2)
                 and xnp.allclose(theta, g_transition_1)
             ):
 
