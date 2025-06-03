@@ -980,8 +980,13 @@ class D2nSystem2D(System2DBase):
             )  # Is the absolute value necessary? why?
         return xnp.array(meson_op_vec)
 
-    def occupation(self, lay: int, site: int) -> float:
+    def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
         """Compute the occupation number for the given layer and site.
+
+        Args:
+            lay (int): Layer index
+            site (int): Site index
+            after_ph (bool, optional): If True, compute the occupation number using the operators defined after the particle-hole transformation. Defaults to False.
 
         Returns:
             float: the occupation number for the given layer and site
@@ -989,5 +994,14 @@ class D2nSystem2D(System2DBase):
 
         covmat = self.compute_ferm_cov(lay)
         site_ind = 2 * site  # index into covariance matrix
-        mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
+
+        x, y = self.cfg.lattice.ind2coord(site)
+        site_factor = (-1) ** (x + y)  # even or odd sublattice
+        site_even = True if site_factor == 1 else False
+
+        if site_even or after_ph:
+            mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
+        else:
+            mass_site = 0.5 * (1 - covmat[site_ind + 1, site_ind])
+
         return mass_site

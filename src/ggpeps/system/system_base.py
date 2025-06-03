@@ -1454,7 +1454,7 @@ class System2DBase(ABC):
         """
         for link_ind, gauge in enumerate(gaugeconfig):
             theta = gaugeconfig[link_ind]
-            if self._gaugefieldvec[link_ind] != theta:
+            if not xnp.allclose(self._gaugefieldvec[link_ind], theta):
                 # only actually do the update if it's a different gauge field
                 self.update_gauge_ind(link_ind, gauge)
 
@@ -1837,12 +1837,19 @@ class System2DBase(ABC):
     def average_occupation(self, after_ph: bool = False) -> xnp.ndarray:
         """Compute the average occupation number for the system across all sites.
 
+        Args:
+            after_ph (bool, optional): If True, compute the occupation number using the operators defined after the particle-hole transformation. Defaults to False.
+
         Returns:
-            array: the average occupation number across all sites, as a vector across layers
+            array: the average occupation number for the system across all sites, as a vector across layers.
         """
-        raise NotImplementedError(
-            "This is an abstract method. Implement in child class please."
-        )
+        total_occ = []
+        for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            layer_val = 0.0
+            for site in range(self.cfg.lattice.size):
+                layer_val += self.occupation(lay, site, after_ph=after_ph)
+            total_occ.append(layer_val / self.cfg.lattice.size)
+        return xnp.array(total_occ)
 
     def meson_string(self, path) -> float:
         """Calculate the value of a meson string given a path.
