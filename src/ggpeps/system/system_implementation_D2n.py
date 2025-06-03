@@ -249,7 +249,7 @@ class D2nSystem2D(System2DBase):
                 and xnp.allclose(theta, g_transition_1)
             ):
 
-                color_to_check = 0
+                color_to_check = 1
             weight = self.calculate_weight_attempt_non_singular(
                 link_ind, theta, all_factors, color_to_check=color_to_check
             )  # calculate the weight of the last gauge value
@@ -269,7 +269,7 @@ class D2nSystem2D(System2DBase):
                 and xnp.allclose(theta, g_transition_1)
             ):
 
-                color_to_check = 0
+                color_to_check = 1
 
             weight = self.calculate_weight_attempt_non_singular(
                 link_ind, theta, all_factors, color_to_check=color_to_check
