@@ -1045,9 +1045,10 @@ class TestTransVariance(unittest.TestCase):
 
     def test_gamma_in_sys_validity(self):
         for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
-
+            neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+            flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)
             # We want to check that it is a covariance matrix even when not in the neutral gauge config
-            config = np.array([1] * 6 + [0] * 2)
+            config = np.array([flux_gauge] * 6 + [neutral_gauge] * 2)
             self.system_z2.update_gauge_full_system(config)
 
             covmat = self.system_z2.gamma_in_sys_vec[lay]
@@ -1058,7 +1059,9 @@ class TestTransVariance(unittest.TestCase):
 
             # Set the gauge configuration -
             #   there must be some flux, since otherwise the mass will be zero
-            config = np.array([0] * 7 + [1] * 1)
+            neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+            flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)
+            config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
             self.system_z2.update_gauge_full_system(config)
             covmat = self.system_z2.compute_ferm_cov(lay)
             self.assertTrue(utils.is_covmat(covmat))
