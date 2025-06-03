@@ -134,6 +134,9 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
         self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
+        self.obsdict["variance_occupation"] = Measurement(
+            "Variance Occupation", binsize
+        )
 
         if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"] = Measurement(
@@ -327,6 +330,14 @@ class MonteCarloEvaluator(Evaluator):
             self.measure()
             self.step += 1
 
+        # Update observables which depend on expectation values
+        self.obsdict["variance_occupation"].extend(
+            (
+                self.obsdict["average_occupation"].datavec
+                - self.obsdict["average_occupation"].mean()
+            )
+            ** 2
+        )
         if self.cfg.compute_grads:
             # Update gradients which depend on expectation values
             # For interface reasons, we insert meas_steps copies of this gradient

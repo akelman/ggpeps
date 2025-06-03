@@ -177,6 +177,15 @@ class ExactEvaluator(Evaluator):
                 np.transpose(data["average_occupation"], [1, 0]), normvec
             )
 
+            dest["variance_occupation"] = self.compute_expval(
+                (
+                    np.transpose(data["average_occupation"], [1, 0])
+                    - dest["average_occupation"][:, np.newaxis]
+                )
+                ** 2,
+                normvec,
+            )
+
             if self.cfg.compute_grads:
                 # Transpose to enable broadcasting
                 grad_norm_transposed = np.transpose(data["grad_norm"], [1, 2, 3, 0])
