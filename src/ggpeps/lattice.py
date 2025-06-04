@@ -419,11 +419,10 @@ class Lattice2D:
             list: List of link-indices in the tree
         """
         tree = []
-        for y in range(self.ny- 1):
-            for x in range(self.nx-1):
+        for y in range(self.ny):
+            for x in range(self.nx):
                 if (x + y) % 2 == 0:
                     tree.append(self.coord2ind_dir((x, y), Direction(0)))
-                    tree.append(self.coord2ind_dir((x, y), Direction(1)))                    
         return tree
 
     def generate_tree_complement(self):
