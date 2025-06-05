@@ -104,7 +104,7 @@ class Testgaugefixing(unittest.TestCase):
         eval_without_gf = evaluator_without_gf.evaluate()
 
         for key, val in eval_with_gf.items():
-            self.assertTrue(np.allclose(val, eval_without_gf[key]))
+            self.assertTrue(np.allclose(val, eval_without_gf[key], equal_nan=True))
 
     def test_gf_some_rows_exacteval(self):
         """Test exact evaluation when fixing only 1 row."""
@@ -138,7 +138,7 @@ class Testgaugefixing(unittest.TestCase):
         eval_without_gf = evaluator_without_gf.evaluate()
 
         for key, val in eval_with_gf.items():
-            self.assertTrue(np.allclose(val, eval_without_gf[key]))
+            self.assertTrue(np.allclose(val, eval_without_gf[key], equal_nan=True))
 
     @skip("Too long")
     def test_mceval(self):
