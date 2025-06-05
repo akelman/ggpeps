@@ -169,9 +169,21 @@ class ExactEvaluator(Evaluator):
             dest["mass_energy"] = self.compute_expval(data["mass_energy"], normvec)
             dest["int_energy"] = self.compute_expval(data["int_energy"], normvec)
             dest["chem_energy"] = self.compute_expval(data["chem_energy"], normvec)
+            dest["mass_energy_op"] = self.compute_expval(
+                data["mass_energy_op"], normvec
+            )
             dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
             dest["average_occupation"] = self.compute_expval(
                 np.transpose(data["average_occupation"], [1, 0]), normvec
+            )
+
+            dest["variance_occupation"] = self.compute_expval(
+                (
+                    np.transpose(data["average_occupation"], [1, 0])
+                    - dest["average_occupation"][:, np.newaxis]
+                )
+                ** 2,
+                normvec,
             )
 
             if self.cfg.compute_grads:

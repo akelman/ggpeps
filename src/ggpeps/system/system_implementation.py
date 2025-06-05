@@ -735,7 +735,7 @@ class Z2System2D(System2DBase):
         Returns:
             array: the average occupation number for the system across all sites, as a vector across layers.
         """
-        total_occ = []
+        total_occ = [np.nan] * self.cfg.num_pg_layer
         for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             layer_val = 0.0
             for site in range(self.cfg.lattice.size):
