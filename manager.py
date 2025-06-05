@@ -89,7 +89,7 @@ def args2logname(args, couplings: dict) -> str:
     Returns:
         str: Filename of the log file
     """
-    chem_str = ",".join([f"{val:.3f}" for val in couplings["g_chem"]])
+    chem_str = "_".join([f"{val:.3f}" for val in couplings["g_chem"]])
     couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_gchem_{chem_str}"
 
     if "exact" in args.mode:
