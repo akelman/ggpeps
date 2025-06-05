@@ -6,6 +6,7 @@ import sympy as sp
 
 from ggpeps import lattice, utils
 from ggpeps import system, exacteval
+from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.modearray import generate_permutation_matrix
 
 
@@ -1384,4 +1385,123 @@ class TestTransVariance(unittest.TestCase):
 
                         self.assertAlmostEqual(
                             deriv_ana[layerind, uc_ind, ind], deriv_num, places=3
+                        )
+
+
+class TestFullGrads(unittest.TestCase):
+    """Test chem gradient of the full expectation value, including the terms depending on the norm and its gradient."""
+
+    def setUp(self):
+        pass
+
+    def test_full_grad_chem(self):
+
+        num_pg_layer = 1
+        num_fermionic_layer = 2
+        nlayer = num_pg_layer + num_fermionic_layer
+        unitcell_size = 2
+        gauge_fixing = -1  # maximal tree; simply to speed up test
+        u1_symmetry = False
+
+        lat_2x2 = lattice.Lattice2D(2, 2, gf_num_of_rows=gauge_fixing)
+
+        el = 1.0
+        mag = 1.0
+        mass = 1.0
+        g_int = 1.0
+        g_chem = [0, 2.0, 3.0]
+
+        cfg = system.Z2System2D_G2C_F2C_Config(
+            lat_2x2,
+            g_el=el,
+            g_mag=mag,
+            g_mass=mass,
+            g_int=g_int,
+            g_chem=g_chem,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
+            unitcell_size=unitcell_size,
+            enforce_u1_symmetry=u1_symmetry,
+        )
+
+        paramvec = np.random.rand(nlayer, unitcell_size, 20)
+
+        cfg.paramvec = paramvec
+        system_type = system.Z2System2D
+
+        ec_config = exacteval.ExactEvaluatorConfig()
+        ec_config.compute_grads = True
+        ex_eval = EvaluatorManager(system_type, cfg, ec_config, 0)
+
+        dest = ex_eval.simulate()
+
+        obs = "chem_energy"
+        obs_grad = "chem_energy_grad"
+        dest_dict = dest.obsdict
+        deriv_ana = dest_dict[obs_grad]
+
+        eps = 1e-5
+        symbolvec = ex_eval.evaluator.system.symbolvec
+        for layerind in range(ex_eval.evaluator.system.cfg.nlayer):
+            # we could skip the pure gauge layers, since they do not contribute
+            for uc_ind in range(unitcell_size):
+                for ind in range(len(symbolvec)):
+                    with self.subTest(
+                        symbol=symbolvec[ind], layerind=layerind, uc_ind=uc_ind
+                    ):
+                        paramvec_left = np.copy(paramvec)
+                        paramvec_right = np.copy(paramvec)
+                        paramvec_left[layerind, uc_ind, ind] -= eps
+                        paramvec_right[layerind, uc_ind, ind] += eps
+                        system_cfg_left = system.Z2System2D_G2C_F2C_Config(
+                            lat_2x2,
+                            g_el=el,
+                            g_mag=mag,
+                            g_mass=mass,
+                            g_int=g_int,
+                            g_chem=g_chem,
+                            num_pg_layer=num_pg_layer,
+                            num_fermionic_layer=num_fermionic_layer,
+                            unitcell_size=unitcell_size,
+                            enforce_u1_symmetry=u1_symmetry,
+                        )
+                        system_cfg_right = system.Z2System2D_G2C_F2C_Config(
+                            lat_2x2,
+                            g_el=el,
+                            g_mag=mag,
+                            g_mass=mass,
+                            g_int=g_int,
+                            g_chem=g_chem,
+                            num_pg_layer=num_pg_layer,
+                            num_fermionic_layer=num_fermionic_layer,
+                            unitcell_size=unitcell_size,
+                            enforce_u1_symmetry=u1_symmetry,
+                        )
+
+                        system_cfg_left.paramvec = paramvec_left
+                        system_cfg_right.paramvec = paramvec_right
+
+                        ec_config_num = exacteval.ExactEvaluatorConfig()
+                        ec_config_num.compute_grads = False
+                        ex_eval_right = EvaluatorManager(
+                            system_type, system_cfg_right, ec_config_num, 0
+                        )
+                        ex_eval_left = EvaluatorManager(
+                            system_type, system_cfg_left, ec_config_num, 0
+                        )
+
+                        dest_right = ex_eval_right.simulate()
+                        dest_left = ex_eval_left.simulate()
+
+                        val_right = dest_right.obsdict[obs]
+                        val_left = dest_left.obsdict[obs]
+
+                        deriv_num = (val_right - val_left) / (2 * eps)
+                        print(
+                            f"Layer: {layerind}, uc_ind: {uc_ind}, ind: {ind}, deriv_num: {deriv_num}"
+                        )
+                        self.assertAlmostEqual(
+                            deriv_ana[layerind, uc_ind, ind],
+                            deriv_num,
+                            places=5,
                         )
