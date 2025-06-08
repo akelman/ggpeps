@@ -2,7 +2,7 @@ import os
 import nox
 
 # Define the minimal nox version required to run
-nox.options.needs_version = ">= 2024.3.2"
+nox.needs_version = ">= 2024.3.2"
 
 
 @nox.session
@@ -34,41 +34,17 @@ def build_and_check_dists(session):
 
 @nox.session(python=["3"])
 def tests_jax(session):
-    build_and_check_dists(session)
-
-    generated_files = os.listdir("dist/")
-    generated_sdist = os.path.join("dist/", generated_files[1])
-
-    session.install(generated_sdist)
+    session.install("-e", ".")
 
     session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "jax"})
 
 
 @nox.session(python=["3"])
 def tests_numpy(session):
-    build_and_check_dists(session)
 
-    generated_files = os.listdir("dist/")
-    generated_sdist = os.path.join("dist/", generated_files[1])
-
-    session.install(generated_sdist)
+    session.install("-e", ".")
 
     session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "numpy"})
-
-
-@nox.session(python=["3"])
-def tests(session):
-    build_and_check_dists(session)
-
-    generated_files = os.listdir("dist/")
-    generated_sdist = os.path.join("dist/", generated_files[1])
-
-    session.install(generated_sdist)
-
-    session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "numpy"})
-
-    session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "jax"})
-    session.notify("coverage")
 
 
 @nox.session
