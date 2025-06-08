@@ -1,5 +1,6 @@
 import copy
 import numpy as np
+import jax.numpy as jnp
 import ggpeps.utils as utils
 
 
@@ -81,7 +82,9 @@ class Measurement:
             return 0
 
         if use_binning:
-            if isinstance(self.datavec[0], np.ndarray):
+            if isinstance(self.datavec[0], np.ndarray) or isinstance(
+                self.datavec[0], jnp.ndarray
+            ):
                 # self.datavec is an array of higher dimension
                 # we do not yet support finding the autocorrelation for such observables (TODO)
                 return utils.rebin_eom(self.datavec)
@@ -172,16 +175,16 @@ class Measurement:
                 return dest
         else:
             return NotImplemented
-        
+
     ### beg NEVMC ###
     def __expDF__(self, DF):
         dest = Measurement("exp_" + self.name + "-_DF", self.binsize)
-        dest.datavec = [np.exp(-(x-DF)) for x in self.datavec]
+        dest.datavec = [np.exp(-(x - DF)) for x in self.datavec]
         return dest
-    
+
     def __const_mul__(self, g):
         dest = Measurement("g*_" + self.name, self.binsize)
-        dest.datavec = [g*x for x in self.datavec]
+        dest.datavec = [g * x for x in self.datavec]
         return dest
-    
+
     ### end NEVMC ###
