@@ -1497,9 +1497,9 @@ class TestFullGrads(unittest.TestCase):
                         val_left = dest_left.obsdict[obs]
 
                         deriv_num = (val_right - val_left) / (2 * eps)
-                        print(
-                            f"Layer: {layerind}, uc_ind: {uc_ind}, ind: {ind}, deriv_num: {deriv_num}"
-                        )
+
+                        # print(f"Layer: {layerind}, uc_ind: {uc_ind}, ind: {ind}, deriv_num: {deriv_num}")
+
                         self.assertAlmostEqual(
                             deriv_ana[layerind, uc_ind, ind],
                             deriv_num,
