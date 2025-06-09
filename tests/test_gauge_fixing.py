@@ -10,9 +10,6 @@ from ggpeps.exacteval import ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluatorConfig, MonteCarloEvaluator
 
 
-# ======================= Z2 fermionic system (4 copies) =========================================
-
-
 class Testgaugefixing(unittest.TestCase):
 
     def setUp(self):
@@ -72,7 +69,8 @@ class Testgaugefixing(unittest.TestCase):
         self.assertEqual(len(tuple_configvec4), len(unique_configvec4))
 
     def test_exacteval(self):
-        """Ensure that exact evaluation gives the same results with and without gauge fixing"""
+        """Ensure that exact evaluation gives the same results with and without
+        gauge fixing"""
 
         lat2_with_gf = lattice.Lattice2D(2, 2, -1)  # With gauge fixing
         lat2_without_gf = lattice.Lattice2D(2, 2)  # Without gauge fixing
@@ -142,7 +140,9 @@ class Testgaugefixing(unittest.TestCase):
 
     @skip("Too long")
     def test_mceval(self):
-        """Ensure that MC evaluation gives the same results with and without gauge fixing"""
+        """Ensure that MC evaluation gives the same results with and without
+        gauge fixing"""
+
         # MC config
         lat2_with_gf = lattice.Lattice2D(2, 2, -1)  # With gauge fixing
         lat2_without_gf = lattice.Lattice2D(2, 2)  # Without gauge fixing

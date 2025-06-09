@@ -1104,7 +1104,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         # This is comparison of the analytic derivative against the numeric derivative
         # There is no sampling involved here. The gauge field is 0.
         eps = 1e-5
-        lat = lattice.Lattice2D(2, 2)
+
         # These numbers are arbitrary
         tr = 0.2
         yr = 0.3
@@ -1165,7 +1165,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         self.assertAlmostEqual(logdet_inc, logdet)
 
     def test_norm_incremental(self):
-        # Test that the incremental update is equivalent to the re-calculation of the norm
+        # Test that the incremental update is equivalent to re-calculation of the norm
         # This update is a nullop since we initialize the gauge-field with 0
         zeroarr = np.zeros((1, 1))
         weight_inc = self.system_z2_2_2_real.update_lognorm_inc(
@@ -1175,7 +1175,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
     def test_norm_incremental_update(self):
-        # Test that the incremental update is equivalent to the re-calculation of the norm
+        # Test that the incremental update is equivalent to re-calculation of the norm
         ind = 0
         theta = np.pi
         weight_inc = self.system_z2_2_2_real.calculate_weight_attempt(
@@ -1210,7 +1210,8 @@ class TestZ2SystemMethods(unittest.TestCase):
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
         # We are using here that the gradient of the d/dx log(f(x)) is [d/dx f(x)]/f(x).
-        # Thus, the d/dx log(norm(x))= [d/dx norm(x)]/ norm(x) which is exactly the function grad_over_norm
+        # Thus, the d/dx log(norm(x)) = [d/dx norm(x)]/ norm(x) which is
+        # exactly the function grad_over_norm.
         # The second symbol is y
         lay = 0
         uc_ind = 0

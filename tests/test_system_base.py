@@ -24,7 +24,8 @@ class TestSystemBase(unittest.TestCase):
 
         modes_calc = self.system_z2_1c.get_link_based_mode_order()
 
-        # The following explicit mode ordering was found using pen and paper (well, metaphorically)
+        # The following explicit mode ordering was found using pen and paper
+        # (well, metaphorically)
         # <mode_letter:maj mode>_<copy>_<link_id>
         modes_manual = [
             "l1_1_0",
@@ -254,7 +255,7 @@ class TestSystemBase(unittest.TestCase):
 
         modes_calc = self.system_z2_2c.get_site_based_mode_order()
 
-        # Every site is 4 lines, first two are the first copy, second two (indented ones) are the second copy
+        # Every site is 4 lines, first two are the first copy, second two are the second copy
         # <mode_letter:maj mode>_<copy>_<link_id>
         modes_manual = [
             "l1_1_1",

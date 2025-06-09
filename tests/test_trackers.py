@@ -101,7 +101,7 @@ class TestIncDeterminant(unittest.TestCase):
         self.assertAlmostEqual(detval, detval_direct)
 
 
-# ======================= IncLogAbsDeterminant Test =========================================
+# ======================= IncLogAbsDeterminant Test =======================
 
 
 def generate_pos_def_matrix(n):

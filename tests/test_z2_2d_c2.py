@@ -1,5 +1,4 @@
 import unittest
-from unittest import skip
 
 import numpy as np
 
@@ -7,7 +6,7 @@ from ggpeps import utils
 from ggpeps import system
 from ggpeps import lattice
 
-# ======================= Z2 fermionic system (2 copies) =========================================
+# ======================= Z2 fermionic system (2 copies) =======================
 
 
 class TestZ2C2SystemMethods(unittest.TestCase):
@@ -197,7 +196,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         self.assertAlmostEqual(logdet_inc, logdet)
 
     def test_norm_incremental(self):
-        # Test that the incremental update is equivalent to the re-calculation of the norm
+        # Test that the incremental update is equivalent to re-calculation of the norm
         # This update is a nullop since we initialize the gauge-field with 0
         zeroarr = np.zeros((1, 1))
         weight_inc = self.system_z2_2_2_real.update_lognorm_inc(
@@ -207,7 +206,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
     def test_norm_incremental_update(self):
-        # Test that the incremental update is equivalent to the re-calculation of the norm
+        # Test that the incremental update is equivalent to re-calculation of the norm
         ind = 0
         theta = np.pi
         weight_inc = self.system_z2_2_2_real.calculate_weight_attempt(

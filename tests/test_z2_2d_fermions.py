@@ -32,7 +32,9 @@ class TestZ2System(unittest.TestCase):
         self.system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
 
     def test_required_params_are_zero(self):
-        """Ensure that the parameters that must vanish to guarantee ansatz symmetries do indeed vanish."""
+        """Ensure that the parameters that must vanish to guarantee ansatz symmetries
+        do indeed vanish."""
+
         mat = self.system_z2.cfg.paramvec
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.system_z2.cfg.num_pg_layer):
@@ -86,7 +88,8 @@ class TestZ2System(unittest.TestCase):
     def test_covmat_with_fermions(self):
         """Ensure the covariance matrix is not the pure-gauge one when t != 0.
         This test must be done with a gauge configuration that includes some flux.
-        Only the fermionic layer should have a covariance matrix different than the pure-gauge one.
+        Only the fermionic layer should have a covariance matrix different than the
+        pure-gauge one.
         """
         config = np.array([0] * 7 + [np.pi] * 1)
         self.system_z2.update_gauge_full_system(config)
@@ -109,8 +112,8 @@ class TestZ2System(unittest.TestCase):
         self.assertFalse(np.allclose(covmat_layer2, expected_covmat))
 
     def test_valid_covmat(self):
-        """Ensure the covariance matrix satisfies the conditions to be a covariance matrix.
-        This test is done with a gauge configuration that includes some flux.
+        """Ensure the covariance matrix satisfies the conditions to be a covariance
+        matrix. This test is done with a gauge configuration that includes some flux.
         """
         config = np.array([0] * 7 + [np.pi] * 1)
         self.system_z2.update_gauge_full_system(config)
@@ -121,7 +124,8 @@ class TestZ2System(unittest.TestCase):
         self.assertTrue(utils.is_covmat(covmat_layer2))
 
     def test_valid_gamma_in_sys(self):
-        """Ensure the gamma_sys matrix satisfies the conditions to be a covariance matrix."""
+        """Ensure the gamma_sys matrix satisfies the conditions to be a covariance
+        matrix."""
         for lay in range(self.system_z2.cfg.nlayer):
             gamma_in_sys = self.system_z2.gamma_in_sys_vec[lay]
             self.assertTrue(utils.is_covmat(gamma_in_sys))
@@ -221,7 +225,7 @@ class TestZ2System(unittest.TestCase):
 
     # random parameters comparison with ED
 
-    ###### Test Energy Gradients ######
+    # =========== Test Energy Gradients ===========
 
     def test_grad_el_energy_2C(self):
         # This is comparison of the analytic derivative against the numeric derivative
@@ -261,8 +265,6 @@ class TestZ2System(unittest.TestCase):
                     val_right = system_z2_2_2_right.el_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    # print(f"left: {val_left}, right: {val_right}")
-                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
                         deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
                     )
@@ -329,8 +331,8 @@ class TestZ2System(unittest.TestCase):
         uc_ind = 0
 
         for layerind in range(2):
-            # we could skip the first layer, since the first layer does not contribute to the
-            # mass energy
+            # we could skip the first layer, since the first layer does not contribute
+            # to the mass energy
             for ind in range(len(symbolvec)):
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
@@ -356,8 +358,6 @@ class TestZ2System(unittest.TestCase):
                     val_right = system_z2_2_2_right.mass_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    # print(f"left: {val_left}, right: {val_right}")
-                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
                         deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
                     )
@@ -383,8 +383,8 @@ class TestZ2System(unittest.TestCase):
         uc_ind = 0
 
         for layerind in range(3):
-            # we could skip the first layer, since the first layer does not contribute to the
-            # mass energy
+            # we could skip the first layer, since the first layer does not contribute
+            # to the mass energy
             for ind in range(len(symbolvec)):
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
@@ -424,8 +424,6 @@ class TestZ2System(unittest.TestCase):
                     val_right = system_z2_2_2_right.mass_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    # print(f"left: {val_left}, right: {val_right}")
-                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
                         deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
                     )
@@ -491,8 +489,6 @@ class TestZ2System(unittest.TestCase):
                     val_right = system_z2_2_2_right.mass_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    # print(f"left: {val_left}, right: {val_right}")
-                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
                         deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
                     )
@@ -509,8 +505,8 @@ class TestZ2System(unittest.TestCase):
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
 
-        # the interaction energy vanishes for the default configuration (no flux on any link)
-        # so we choose a configuration where we know the interaction energy is not negligible
+        # the int energy vanishes for the default configuration (no flux on any link)
+        # so we choose a configuration where we know the int energy is not negligible
         config = np.array([0] * 7 + [np.pi] * 1)
         system_z2_2_2.update_gauge_full_system(config)
 
@@ -520,8 +516,8 @@ class TestZ2System(unittest.TestCase):
         uc_ind = 0
 
         for layerind in range(2):
-            # we could skip the first layer, since the first layer does not contribute to the
-            # interaction energy
+            # we could skip the first layer, since the first layer does not contribute
+            # to the interaction energy
             for ind in range(len(symbolvec)):
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
@@ -561,8 +557,6 @@ class TestZ2System(unittest.TestCase):
                     val_right = system_z2_2_2_right.int_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    # print(f"left: {val_left}, right: {val_right}")
-                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
                         deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
                     )
@@ -580,8 +574,8 @@ class TestZ2System(unittest.TestCase):
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
 
-        # the interaction energy vanishes for the default configuration (no flux on any link)
-        # so we choose a configuration where we know the interaction energy is not negligible
+        # the int energy vanishes for the default configuration (no flux on any link)
+        # so we choose a configuration where we know the int energy is not negligible
         config = np.array([0] * 7 + [np.pi] * 1)
         system_z2_2_2.update_gauge_full_system(config)
 
@@ -632,8 +626,6 @@ class TestZ2System(unittest.TestCase):
                     val_right = system_z2_2_2_right.int_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    # print(f"left: {val_left}, right: {val_right}")
-                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(
                         deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
                     )
@@ -835,7 +827,8 @@ class TestTransVariance(unittest.TestCase):
                     # even sublattice - all even sites should have the same tmat
                     self.assertTrue(np.allclose(tm, tmats[0]))
 
-            # The tmat for even and odd sites should be different (with high probability for random parameters)
+            # The tmat for even and odd sites should be different
+            # (with high probability for random parameters)
             self.assertFalse(np.allclose(tmats[0], tmats[1]))
 
     def test_gamma_maj_layervec_sitevec(self):
@@ -851,11 +844,12 @@ class TestTransVariance(unittest.TestCase):
                     # even sublattice - all even sites should have the same gamma_maj
                     self.assertTrue(np.allclose(gamma, gammas[0]))
 
-            # The gamma_maj for even and odd sites should be different (with high probability for random parameters)
+            # The gamma_maj for even and odd sites should be different
+            # (with high probability for random parameters)
             self.assertFalse(np.allclose(gammas[0], gammas[1]))
 
     def test_mat_a_even(self):
-        """If t=0 on a given site, then mat_a should be [[0, 1], [-1, 0]] on that site."""
+        """If t=0 on a given site, then mat_a should be [[0,1],[-1,0]] on that site."""
         # Set t = 0 on even sites
         t_inds = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         paramvec = self.system_z2.cfg.paramvec
@@ -982,8 +976,8 @@ class TestTransVariance(unittest.TestCase):
                     self.assertTrue(np.allclose(block, 0))
 
     def test_mat_d(self):
-        """Test that the D matrix is the same on all even sites, and the same on all odd sites,
-        and zero where sites are mixed."""
+        """Test that the D matrix is the same on all even sites,
+        the same on all odd sites, and zero where sites are mixed."""
 
         mat_d = self.system_z2.mat_d_vec[0]  # we only have one layer in this test
 
@@ -1030,7 +1024,8 @@ class TestTransVariance(unittest.TestCase):
     def test_gamma_in_sys_validity(self):
         for lay in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
 
-            # We want to check that it is a covariance matrix even when not in the neutral gauge config
+            # We want to check that it is a covariance matrix even when not in the
+            # neutral gauge config
             config = np.array([1] * 6 + [0] * 2)
             self.system_z2.update_gauge_full_system(config)
 
@@ -1055,8 +1050,8 @@ class TestTransVariance(unittest.TestCase):
             for site in range(self.system_z2.cfg.lattice.size):
 
                 # Set the gauge configuration -
-                #   there must be some flux, since otherwise the mass will be zero,
-                #   so we choose to set the link to the right of the site under consideration to pi
+                #  there must be some flux, since otherwise the mass will be zero,
+                #  so we set the link to the right of the site under consideration to pi
                 x, y = self.system_z2.cfg.lattice.ind2coord(site)
                 config = np.array([0] * 8)
                 ind = self.system_z2.cfg.lattice.coord2ind_dir(
@@ -1088,7 +1083,8 @@ class TestTransVariance(unittest.TestCase):
                     self.assertTrue(np.allclose(mat, covmat_odd))
 
     def test_mass(self):
-        """Ensure mass is the same on all even sites, the same on all odd sites, and different between them."""
+        """Ensure mass is the same on all even sites, the same on all odd sites,
+        and different between them."""
 
         # Check the mass
         mass_even = 0
@@ -1099,8 +1095,8 @@ class TestTransVariance(unittest.TestCase):
             for site in range(self.system_z2.cfg.lattice.size):
 
                 # Set the gauge configuration -
-                #   there must be some flux, since otherwise the mass will be zero,
-                #   so we choose to set the link to the right of the site under consideration to pi
+                #  there must be some flux, since otherwise the mass will be zero,
+                #  so we set the link to the right of the site under consideration to pi
                 x, y = self.system_z2.cfg.lattice.ind2coord(site)
                 config = np.array([0] * 7 + [0] * 1)
                 ind = self.system_z2.cfg.lattice.coord2ind_dir(
@@ -1156,7 +1152,8 @@ class TestTransVariance(unittest.TestCase):
         system_z2 = system.Z2System2D(cfg)
         system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
 
-        # Set the config for the new system - it must be shifted to account for the swapping of the even/odd sublattices
+        # Set the config for the new system - it must be shifted to account for the
+        # swapping of the even/odd sublattices
         config = np.zeros(8)
         config[1] = np.pi
         system_z2.update_gauge_full_system(config)
@@ -1389,7 +1386,8 @@ class TestTransVariance(unittest.TestCase):
 
 
 class TestFullGrads(unittest.TestCase):
-    """Test chem gradient of the full expectation value, including the terms depending on the norm and its gradient."""
+    """Test chem gradient of the full expectation value, including the terms depending
+    on the norm and its gradient."""
 
     def setUp(self):
         pass
@@ -1497,8 +1495,6 @@ class TestFullGrads(unittest.TestCase):
                         val_left = dest_left.obsdict[obs]
 
                         deriv_num = (val_right - val_left) / (2 * eps)
-
-                        # print(f"Layer: {layerind}, uc_ind: {uc_ind}, ind: {ind}, deriv_num: {deriv_num}")
 
                         self.assertAlmostEqual(
                             deriv_ana[layerind, uc_ind, ind],

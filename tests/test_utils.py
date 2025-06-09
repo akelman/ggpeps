@@ -164,7 +164,7 @@ class TestBGBTransform(unittest.TestCase):
         mat_full = np.block([[mat_zero, mat], [-np.transpose(mat), mat_zero]])
         # We have different input conventions for the two functions
         # BgbTransform takes only the single matrix and doubles it for positive and negative modes
-        # uitls.tmat_to_covariance_matrix takes the full T matrix
+        # utils.tmat_to_covariance_matrix takes the full T matrix
         covmat_direct = utils.tmat_to_covariance_matrix(mat_full)
         covmat_bgb = utils.BgbTransform(mat, pure_gauge=True).mat_out
         self.assertTrue(np.allclose(covmat_direct, covmat_bgb))
