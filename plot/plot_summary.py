@@ -134,12 +134,12 @@ def main(args):
                 type_, L, nlayer, ncopy = name
 
                 # Handle case where chosen values are an array
-                if isinstance(group[args.xaxis][0], np.ndarray):
+                if isinstance(group[args.xaxis].iloc[0], np.ndarray):
                     xaxis_values = group[args.xaxis].apply(lambda x: x[args.xaxis_ind])
                 else:
                     xaxis_values = group[args.xaxis]
 
-                if isinstance(group["mean"][0], np.ndarray):
+                if isinstance(group["mean"].iloc[0], np.ndarray):
                     yaxis_values = group["mean"].apply(lambda x: x[args.obs_ind])
                 else:
                     yaxis_values = group["mean"]
