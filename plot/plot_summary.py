@@ -3,6 +3,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 from ggpeps import utils
@@ -118,6 +119,9 @@ def main(args):
         else:
             print(f"File {args.exact} not found. Skipping.")
 
+    palette = sns.color_palette("viridis", n_colors=len(args.obs))
+    observable_colors = dict(zip(args.obs, palette))
+
     # Plot
     f, ax = plt.subplots(1, 1)
     for obs in args.obs:
@@ -163,6 +167,7 @@ def main(args):
                         xaxis_values,
                         yaxis_values,
                         label=f"ED, obs={obs}, L={L}",
+                        c=observable_colors[obs],
                     )
                 else:
                     ax.errorbar(
@@ -171,6 +176,7 @@ def main(args):
                         fmt="o",
                         yerr=error,
                         label=f"{type_}, obs={obs}, L={L}",
+                        c=observable_colors[obs],
                     )
 
     # Set axis properties
