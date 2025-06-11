@@ -161,7 +161,7 @@ def main(args):
                 elif type_ == "ED":
                     ax.plot(
                         xaxis_values,
-                        group["mean"],
+                        yaxis_values,
                         label=f"ED, obs={obs}, L={L}",
                     )
                 else:
