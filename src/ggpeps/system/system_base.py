@@ -285,6 +285,7 @@ class Config2DBase(ABC):
 
 ################## System2DBase ######################
 
+
 class System2DBase(ABC):
     """Base class for two dimensional systems.
 
@@ -1700,7 +1701,6 @@ class System2DBase(ABC):
             list: Layer-resolved interaction energy w/o shift
         """
         if self._int_energy_op_vec is None:
-            # This vector is the interaction energy on a single site.
             self._int_energy_op_vec, self._int_energy_op_grad_vec = (
                 self._compute_int_energy_op_vec_and_grad()
             )
