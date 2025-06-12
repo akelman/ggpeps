@@ -270,7 +270,11 @@ class Minimizer:
             fname_mc_summary = f"summary_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
             fname_result_min = f"result_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
 
-            self.last_result.save_summary(os.path.join(output_dir, fname_mc_summary))
+            if self.last_result is not None:
+                # last_result may be None if caching is on and the last result was not computed
+                self.last_result.save_summary(
+                    os.path.join(output_dir, fname_mc_summary)
+                )
             with open(os.path.join(output_dir, fname_result_min), "wb") as outfile:
                 pickle.dump(self.min_result, outfile)
 

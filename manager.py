@@ -48,19 +48,12 @@ def save_state_on_exit():
     args = ggpeps.global_vars["args"]
     cache = ggpeps.global_vars["cache"]
 
-    if not args.ignore_cache_eval:
-        if "min" in args.mode:
-            minimizer = ggpeps.global_vars["minimizer"]
-            cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
-            logger.info(f"Added evaluator manager to cache.")
-        elif "eval" in args.mode:
-            eval_manager = ggpeps.global_vars["eval_manager"]
-            cache.add_obj_to_cache("evaluator_manager", eval_manager)
-            logger.info(f"Added evaluator manager to cache.")
-
-    cache_file = ggpeps.global_vars["args"].cache_file
-    cache.save_cache_file(cache_file)
-    logger.info(f"Saved cache file to {os.path.basename(cache_file)} in output folder.")
+    cache_file = ggpeps.global_vars["args"].save_cache_dest
+    if cache_file is not None and not cache.disable_cache:
+        cache.save_cache_file(cache_file)
+        logger.info(
+            f"Saved cache file to {os.path.basename(cache_file)} in output folder."
+        )
     return
 
 
@@ -194,6 +187,7 @@ def main(args):
 
     # Configure JAX
     import jax
+
     jax.config.update("jax_enable_x64", True)
 
     # GPU or CPU detection (compatible with ROCm GPUs)
@@ -474,15 +468,20 @@ def main(args):
 
     # Set up cache
     # and save the command line arguments to ggpeps global variable so that they are available everywhere
-    cache = Cache(args.mode)
-    if not args.ignore_cache:
-        cache.load_cache_file(args.cache_file)
-        if args.ignore_cache_eval:
-            cache.add_obj_to_cache("evaluator_manager", None)
-    if not os.path.isabs(args.cache_file):
-        # Save the cache filename as an absolute path (so that it can be used throughout the code,
-        # without needing to track the destination).
-        args.cache_file = os.path.join(args.output, os.path.basename(args.cache_file))
+    cache = Cache(disable_cache=args.ignore_cache)
+    if args.load_cache is not None and not cache.disable_cache:
+        if os.path.isfile(args.load_cache):
+            cache.load_cache_file(args.load_cache)
+        else:
+            logger.error(f"Unable to find cache file {args.load_cache}.")
+    if args.save_cache_dest is not None and not cache.disable_cache:
+        if not os.path.isabs(args.save_cache_dest):
+            # Save the cache filename as an absolute path (so that it can be used throughout the code,
+            # without needing to track the destination).
+            args.save_cache_dest = os.path.join(
+                args.output, os.path.basename(args.save_cache_dest)
+            )
+        cache.save_cache_dest = args.save_cache_dest
     ggpeps.global_vars["args"] = args
     ggpeps.global_vars["cache"] = cache
 
@@ -847,22 +846,26 @@ if __name__ == "__main__":
 
     # Cache settings
     parser.add_argument(
+        "--load_cache",
+        nargs="?",  # Optional value
+        const="cache.pkl",  # Value when argument is used without a value
+        default=None,  # Default value when argument is not used
+        type=str,
+        help="Load cache from the specified file. If no file provided, but the flag is present, the cache will be loaded from the default cache file (cache.pkl) if available.",
+    )
+    parser.add_argument(
+        "--save_cache_dest",
+        nargs="?",  # Optional value
+        const="cache.pkl",  # Value when argument is used without a value
+        default=None,  # Default value when argument is not used
+        type=str,
+        help="Save cache to the specified file. This will overwrite the old one if it exists.",
+    )
+    parser.add_argument(
         "--ignore_cache",
         action="store_true",
         default=False,
-        help="Ignore the cache and start from scratch. A new cache will be saved (and overwrite the old one if it exists).",
-    )
-    parser.add_argument(
-        "--ignore_cache_eval",
-        action="store_true",
-        default=False,
-        help="Ignore the cache eval manager.",
-    )
-    parser.add_argument(
-        "--cache_file",
-        type=str,
-        default="cache.pkl",
-        help="Filename of the cache.",
+        help="Ignore the cache and do not load or save it. Overrides other cache settings.",
     )
 
     # Arguments for ray
