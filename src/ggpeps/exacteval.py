@@ -89,6 +89,7 @@ class ExactEvaluator(Evaluator):
                 "el_energy_op": [],
                 "mass_energy_op": [],
                 "int_energy_op": [],
+                "occupations": [],
                 "average_occupation": [],
                 "el_energy_op_grad": [],
                 "mass_energy_op_grad": [],
@@ -150,6 +151,20 @@ class ExactEvaluator(Evaluator):
                         self.system.meson_string(strings[k - 1])
                     )
 
+                # Occupations
+                occs = np.array(
+                    [
+                        [
+                            self.system.occupation(lay, site)
+                            for site in range(self.system.cfg.lattice.size)
+                        ]
+                        for lay in range(
+                            self.system.cfg.num_pg_layer, self.system.cfg.nlayer
+                        )
+                    ]
+                )
+                data["occupations"].append(occs)
+
             # TODO: handle this better - boundary should not be here!
             if ggpeps.PREFERRED_BACKEND == "jax":
                 for key, val in data.items():
@@ -184,6 +199,9 @@ class ExactEvaluator(Evaluator):
                 )
                 ** 2,
                 normvec,
+            )
+            dest["occupations"] = self.compute_expval(
+                np.transpose(data["occupations"], [1, 2, 0]), normvec
             )
 
             if self.cfg.compute_grads:
