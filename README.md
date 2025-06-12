@@ -70,6 +70,11 @@ For the next step, please navigate into the repo that you just downloaded and ac
     ```
     This command installs the package as an editable package, i.e. all changes in the source code will be directly reflected in the installed package.
 
+    If you wish to install the optional depencies, instead run
+    ```
+    pip install  -e .[dev,test]
+    ```
+
     If you do not intend to edit the code, you can install with
     ```
     pip install .
