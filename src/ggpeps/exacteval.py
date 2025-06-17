@@ -295,9 +295,10 @@ class ExactEvaluator(Evaluator):
                 scaled_chem_grad = np.transpose(
                     data["chem_energy_op_grad"], [1, 2, 3, 0]
                 )
-                for lay in range(self.system.cfg.nlayer):
+                for lay in range(self.system.cfg.num_pg_layer, self.system.cfg.nlayer):
                     # the gradients must be scaled by the chemical potential
-                    scaled_chem_grad[lay, :, :, :] *= self.system.cfg.g_chem[lay]
+                    ind = lay - self.system.cfg.num_pg_layer
+                    scaled_chem_grad[lay, :, :, :] *= self.system.cfg.g_chem[ind]
                 chem_energy_grad = (
                     expval_prod_chem
                     - prod_expval_chem

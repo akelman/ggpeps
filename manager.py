@@ -194,6 +194,7 @@ def main(args):
 
     # Configure JAX
     import jax
+
     jax.config.update("jax_enable_x64", True)
 
     # GPU or CPU detection (compatible with ROCm GPUs)
@@ -231,17 +232,13 @@ def main(args):
     g_int = args.g_int
     g_mass = args.g_mass
     if args.g_chem is None:
-        g_chem = np.zeros(args.num_pg_layer + args.num_fermionic_layer)
+        g_chem = np.zeros(args.num_fermionic_layer)
     else:
         g_chem = np.array(args.g_chem)
-    if len(g_chem) == args.num_pg_layer + args.num_fermionic_layer:
-        if not np.allclose(g_chem[: args.num_pg_layer], 0.0):
-            raise ValueError(
-                "A chemical potential for a pure gauge layer is not zero, which is invalid."
-            )
-    elif len(g_chem) == args.num_fermionic_layer:
-        # The chemical potential must be zero for the pure gauge layers
-        g_chem = np.concatenate((np.zeros(args.num_pg_layer), g_chem))
+    if len(g_chem) != args.num_fermionic_layer:
+        raise ValueError(
+            "The number of chemical potentials must match the number of fermionic layers."
+        )
     couplings = {
         "g_el": g_el,
         "g_mag": g_mag,

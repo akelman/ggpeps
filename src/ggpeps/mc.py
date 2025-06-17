@@ -289,9 +289,10 @@ class MonteCarloEvaluator(Evaluator):
         # Gradient of the chemical potential
         meas_chem_energy = self.obsdict["chem_energy"]
         meas_chem_energy_op_grad = self.obsdict["chem_energy_op_grad"]
-        for lay in range(self.system.cfg.nlayer):
+        for lay in range(self.system.cfg.num_pg_layer, self.system.cfg.nlayer):
             # the gradients must be scaled by the chemical potential
-            meas_chem_energy_op_grad.datavec[lay] *= self.system.cfg.g_chem[lay]
+            ind = lay - self.system.cfg.num_pg_layer
+            meas_chem_energy_op_grad.datavec[lay] *= self.system.cfg.g_chem[ind]
         prod_chem_energy_grad = meas_chem_energy * meas_grad_over_norm
         chem_energy_grad = (
             prod_chem_energy_grad.mean()

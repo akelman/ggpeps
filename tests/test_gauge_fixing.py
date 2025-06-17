@@ -22,7 +22,7 @@ class Testgaugefixing(unittest.TestCase):
         """
         lat2 = lattice.Lattice2D(2, 2, -1)  # With gauge fixing
         paramvec = np.random.rand(2, 20)
-        cfg2 = system.Z2System2D_G2C_F2C_Config(lat2, 1, 1, 1, 1, [0, 0])
+        cfg2 = system.Z2System2D_G2C_F2C_Config(lat2, 1, 1, 1, 1, None)
         cfg2.paramvec = paramvec
         system_z2_2 = system.Z2System2D(cfg2)
         system_z2_2.cfg.enforce_parameter_conditions(system_z2_2.cfg.paramvec)
@@ -47,7 +47,7 @@ class Testgaugefixing(unittest.TestCase):
 
         lat4 = lattice.Lattice2D(4, 4, -1)  # Without gauge fixing
         paramvec = np.random.rand(2, 20)
-        cfg4 = system.Z2System2D_G2C_F2C_Config(lat4, 1, 1, 1, 1, [0, 0])
+        cfg4 = system.Z2System2D_G2C_F2C_Config(lat4, 1, 1, 1, 1, None)
         cfg4.paramvec = paramvec
         system_z2_4 = system.Z2System2D(cfg4)
         system_z2_4.cfg.enforce_parameter_conditions(system_z2_4.cfg.paramvec)
@@ -77,14 +77,14 @@ class Testgaugefixing(unittest.TestCase):
         paramvec = np.random.rand(2, 20)
 
         # System with gauge fixing
-        cfg_with_gf = system.Z2System2D_G2C_F2C_Config(lat2_with_gf, 1, 1, 1, 1, [0, 0])
+        cfg_with_gf = system.Z2System2D_G2C_F2C_Config(lat2_with_gf, 1, 1, 1, 1, None)
         cfg_with_gf.paramvec = paramvec
         system_with_gf = system.Z2System2D(cfg_with_gf)
         system_with_gf.cfg.enforce_parameter_conditions(cfg_with_gf.paramvec)
 
         # System without gauge fixing
         cfg_without_gf = system.Z2System2D_G2C_F2C_Config(
-            lat2_without_gf, 1, 1, 1, 1, [0, 0]
+            lat2_without_gf, 1, 1, 1, 1, None
         )
         cfg_without_gf.paramvec = paramvec
         system_without_gf = system.Z2System2D(cfg_without_gf)
@@ -111,14 +111,14 @@ class Testgaugefixing(unittest.TestCase):
         paramvec = np.random.rand(2, 20)
 
         # System with gauge fixing
-        cfg_with_gf = system.Z2System2D_G2C_F2C_Config(lat2_with_gf, 1, 1, 1, 1, [0, 0])
+        cfg_with_gf = system.Z2System2D_G2C_F2C_Config(lat2_with_gf, 1, 1, 1, 1, None)
         cfg_with_gf.paramvec = paramvec
         system_with_gf = system.Z2System2D(cfg_with_gf)
         system_with_gf.cfg.enforce_parameter_conditions(cfg_with_gf.paramvec)
 
         # System without gauge fixing
         cfg_without_gf = system.Z2System2D_G2C_F2C_Config(
-            lat2_without_gf, 1, 1, 1, 1, [0, 0]
+            lat2_without_gf, 1, 1, 1, 1, None
         )
         cfg_without_gf.paramvec = paramvec
         system_without_gf = system.Z2System2D(cfg_without_gf)

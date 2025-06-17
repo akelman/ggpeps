@@ -134,10 +134,10 @@ class Config2DBase(ABC):
         self.g_mass = g_mass
         self.g_chem = g_chem
         if self.g_chem is None:
-            self.g_chem = np.zeros(self.nlayer)
-        elif len(self.g_chem) != self.nlayer:
+            self.g_chem = np.zeros(self.num_fermionic_layer)
+        elif len(self.g_chem) != self.num_fermionic_layer:
             raise ValueError(
-                "The number of chemical potentials must match the number of layers."
+                "The number of chemical potentials must match the number of fermionic layers."
             )
 
     def __str__(self):
@@ -1613,8 +1613,9 @@ class System2DBase(ABC):
             float: chemical potential energy
         """
         chem_energy = 0.0
-        for layer in range(self.cfg.nlayer):
-            chem_energy += self.cfg.g_chem[layer] * self.chem_energy_op_vec[layer]
+        for layer in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            ind = layer - self.cfg.num_pg_layer
+            chem_energy += self.cfg.g_chem[ind] * self.chem_energy_op_vec[layer]
         return chem_energy
 
     # Functions that return the energy for the operator part of a term in the Hamiltonian, including the energy for the entire lattice, but not any shifts or prefactors.

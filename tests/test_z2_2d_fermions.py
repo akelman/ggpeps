@@ -634,7 +634,7 @@ class TestZ2System(unittest.TestCase):
         # This is comparison of the analytic derivative against the numeric derivative
         # for the 2 copy fermionic ansatz with 2 physical flavors
         eps = 1e-5
-        g_chem = [0, -0.4, 2]
+        g_chem = [-0.4, 2]
         paramvec = np.random.rand(3, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D_G2C_F2C_Config(
@@ -657,8 +657,9 @@ class TestZ2System(unittest.TestCase):
 
         deriv_ana = system_z2_2_2.chem_energy_op_grad_vec
         # Scale the gradients by the appropriate chemical potential
-        for lay in range(3):
-            deriv_ana[lay, :, :] *= g_chem[lay]
+        for lay in range(1, 3):
+            offset = system_cfg.num_pg_layer
+            deriv_ana[lay, :, :] *= g_chem[lay - offset]
         symbolvec = system_z2_2_2.symbolvec
         for layerind in range(3):
             # we could skip the pure gauge layers, since they do not contribute
@@ -768,7 +769,7 @@ class TestZ2System(unittest.TestCase):
             1 / (2 * g0),
             g_int0,
             0,
-            [0, 0],
+            None,
             num_pg_layer=1,
             num_fermionic_layer=1,
         )
@@ -801,7 +802,7 @@ class TestTransVariance(unittest.TestCase):
             1,
             1,
             1,
-            [0, 1.0, 2.0],
+            [1.0, 2.0],
             num_pg_layer=num_pg_layer,
             num_fermionic_layer=num_fermionic_layer,
             unitcell_size=unitcell_size,
@@ -1407,7 +1408,7 @@ class TestFullGrads(unittest.TestCase):
         mag = 1.0
         mass = 1.0
         g_int = 1.0
-        g_chem = [0, 2.0, 3.0]
+        g_chem = [2.0, 3.0]
 
         cfg = system.Z2System2D_G2C_F2C_Config(
             lat_2x2,
