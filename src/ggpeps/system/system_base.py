@@ -142,8 +142,15 @@ class Config2DBase(ABC):
 
     def __str__(self):
         # define a string method that can be used, e.g., in filenaming
-        # note that this string doesn't include the number of copies
-        return f"L_{self.lattice.nx:02d}x{self.lattice.ny:02d}_gel_{self.g_el}_gmag_{self.g_mag}_gint_{self.g_int}_gmass_{self.g_mass}_nlayer_{self.nlayer}"
+        # this string doesn't include enough information to reconstruct the config
+        chem_str = "_".join([f"{val:.3f}" for val in self.g_chem])
+        val = (
+            f"L_{self.lattice.nx:02d}x{self.lattice.ny:02d}"
+            + f"_ncopy_{self.ncopy}_nlayer_{self.nlayer}"
+            + f"_gel_{self.g_el}_gmag_{self.g_mag}_gint_{self.g_int}"
+            f"_gmass_{self.g_mass}_gchem_{chem_str}"
+        )
+        return val
 
     @property
     def paramvec(self) -> np.ndarray:
