@@ -152,18 +152,7 @@ class ExactEvaluator(Evaluator):
                     )
 
                 # Occupations
-                occs = np.array(
-                    [
-                        [
-                            self.system.occupation(lay, site)
-                            for site in range(self.system.cfg.lattice.size)
-                        ]
-                        for lay in range(
-                            self.system.cfg.num_pg_layer, self.system.cfg.nlayer
-                        )
-                    ]
-                )
-                data["occupations"].append(occs)
+                data["occupations"].append(self.system.all_occupations)
 
             # TODO: handle this better - boundary should not be here!
             if ggpeps.PREFERRED_BACKEND == "jax":
