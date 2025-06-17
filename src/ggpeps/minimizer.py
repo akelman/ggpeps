@@ -472,7 +472,7 @@ def print_callback(x, minimizer):
     occupations = res.get_obs_mean("occupations")
     occ_str = ""
     for lay in range(len(occupations)):
-        occ_str += ", ".join([f"{val:.4f}" for val in occupations[lay]])
+        occ_str += ", ".join([f"{val:.10f}" for val in occupations[lay]])
         occ_str += " | "  # layer separator
     logger.debug(f"Occupations: {occ_str}")
 
