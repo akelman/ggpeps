@@ -119,7 +119,7 @@ def main(args):
         else:
             print(f"File {args.exact} not found. Skipping.")
 
-    palette = sns.color_palette("viridis", n_colors=len(args.obs))
+    palette = sns.color_palette("husl", n_colors=len(args.obs))
     observable_colors = dict(zip(args.obs, palette))
 
     # Plot
