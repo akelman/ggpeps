@@ -1180,6 +1180,31 @@ class TestTransVariance(unittest.TestCase):
         self.assertAlmostEqual(int_op, new_int_op)
         self.assertAlmostEqual(chem_val, -new_chem_val)
 
+    def test_occupations(self):
+        """Check that the occupations (post PH) are consistent with the mass a chem energy"""
+
+        # Set the gauge configuration
+        config = np.zeros(8)
+        config[0] = np.pi
+        self.system_z2.update_gauge_full_system(config)
+
+        # Use the paramvec from setUp(), and extract various values for comparison
+        mass_op = self.system_z2.mass_energy_op
+        chem_op = np.sum(self.system_z2.chem_energy_op_vec)
+        all_occupations = self.system_z2.all_occupations
+
+        mass_offset = (
+            0.5
+            * self.system_z2.cfg.lattice.size
+            * self.system_z2.cfg.num_fermionic_layer
+        )
+        mass = mass_offset
+        mass += np.sum(all_occupations[:, [0, 3]])  # even sites
+        mass -= np.sum(all_occupations[:, [1, 2]])  # odd sites
+        self.assertAlmostEqual(mass_op, mass)
+
+        self.assertAlmostEqual(chem_op, np.sum(all_occupations))
+
     def test_grad_mass_energy(self):
         # This is comparison of the analytic derivative against the numeric derivative
         # for the 2 copy fermionic ansatz with 2 physical flavors
