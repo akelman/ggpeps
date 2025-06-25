@@ -318,6 +318,8 @@ def main(args):
                 g_chem,
                 num_pg_layer=args.num_pg_layer,
                 num_fermionic_layer=args.num_fermionic_layer,
+                unitcell_size=args.unitcell_size,
+                enforce_u1_symmetry=not args.relax_u1,
             )
         elif args.ncopy == 8:
             system_cfg = Z2System2D_8C_Config(

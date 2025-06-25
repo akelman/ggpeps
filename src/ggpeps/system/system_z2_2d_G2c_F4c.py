@@ -28,7 +28,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
     Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... and so on}.
     """
 
-    _nparams = 52  # 36
+    _nparams = 2 * (4 + 2 * 4 + 4 * 3 * 2)
     ncopy = 4
     nvirtmodes_vertex = 16
     nvirtmodes_link = 8
@@ -44,6 +44,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
         num_pg_layer=1,
         num_fermionic_layer=1,
         unitcell_size=1,
+        enforce_u1_symmetry=True,
     ):
         super().__init__(
             lattice,
@@ -59,7 +60,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
         # Translation invariance
         if unitcell_size not in [1]:
             logger.error(
-                "This ansatz only supports unitcell_size = 1 or 2. \
+                "This ansatz only supports unitcell_size = 1. \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             raise ValueError("Invalid unitcell_size.")
@@ -67,6 +68,8 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
             site: 0 for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
         self.unitcell_size = 1
+
+        self.u1_symmetry = enforce_u1_symmetry
 
         # Constants used in the calculation of the electric energy
         prefactors = [
@@ -104,51 +107,48 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
         )
 
     def enforce_parameter_conditions(self, mat):
-        """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz."""
-        # The order of the parameters is [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i,
-        #    z1i, t2i, y2i, z2i, ai, bi, ci, di,
-        #    z3r, z4r, y3r, y4r, a2r, b2r, c2r, d2r,
-        #    z3i, z4i, y3i, y4i, a2i, b2i, c2i, d2i,
-        #    p14r, q14r, r14r, s14r, p14i, q14i, r14i, s14i,
-        #    p23r, q23r, r23r, s23r, p23i, q23i, r23i, s23i]
+        """Enforce conditions on parameters on each layer to get the required behaviour
+        for the ansatz."""
 
+        offset = self._nparams // 2  # offset to get index of imaginary part
         zeroed_params = []  # we'll save the indices of the zeroed parameters
 
-        t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
+        # Zero out the parameters which are not used in the pure gauge layers
         for layer_ind in range(self.num_pg_layer):
             for uc_ind in range(self.unitcell_size):
-                for t_ind in t_indices:
-                    coord = (layer_ind, uc_ind, t_ind)
-                    mat[coord] = 0
-                    zeroed_params.append(coord)
+                for t_ind in range(self.ncopy):
+                    real_coord = (layer_ind, uc_ind, t_ind)
+                    imag_coord = (layer_ind, uc_ind, t_ind + offset)
+                    mat[real_coord] = 0
+                    mat[imag_coord] = 0
+                    zeroed_params.append(real_coord)
+                    zeroed_params.append(imag_coord)
 
-        zero_for_fermionic_layer = [
-            1,
-            2,
-            4,
-            5,
-            11,
-            12,
-            14,
-            15,
-            20,
-            21,
-            22,
-            23,
-            28,
-            29,
-            30,
-            31,
-        ]  # indices of y's, z's in symbolvec
-        for layer_ind in range(self.num_pg_layer, self.nlayer):
-            for uc_ind in range(self.unitcell_size):
-                for ind in zero_for_fermionic_layer:
-                    coord = (layer_ind, uc_ind, ind)
-                    mat[coord] = 0
-                    zeroed_params.append(coord)
+        # Zero out the parameters which are not used in the fermionic layers
+        y_inds = [ind for ind in range(self.ncopy, 2 * self.ncopy)]
+        z_inds = [ind for ind in range(2 * self.ncopy, 3 * self.ncopy)]
+        mixed_copy_inds = []
+        countdown = list(range(self.ncopy - 1, 0, -1))
+        for cop1 in range(self.ncopy):
+            for cop2 in range(cop1 + 1, self.ncopy):
+                if (cop1 % 2) == (cop2 % 2):
+                    start = (
+                        3 * self.ncopy + (sum(countdown[:cop1]) + cop2 - cop1 - 1) * 4
+                    )
+                    inds = [ind for ind in range(start, start + 4)]  # a,b,c,d
+                    mixed_copy_inds += inds
 
-        # It is also possible to test the 2 copy ansatz within this one, by zeroing all the extra parameters
-        # (a2, b2, c2, d2, and all the p,q,r,s params)
+        zero_for_fermionic_layer = y_inds + z_inds + mixed_copy_inds
+        if self.u1_symmetry:
+            for layer_ind in range(self.num_pg_layer, self.nlayer):
+                for uc_ind in range(self.unitcell_size):
+                    for ind in zero_for_fermionic_layer:
+                        real_coord = (layer_ind, uc_ind, ind)
+                        imag_coord = (layer_ind, uc_ind, ind + offset)
+                        mat[real_coord] = 0
+                        mat[imag_coord] = 0
+                        zeroed_params.append(real_coord)
+                        zeroed_params.append(imag_coord)
 
         # save zeroed params
         self.zeroed_params = zeroed_params
@@ -156,129 +156,64 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
-        We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
+        We will use the analytic expression of the T matrix to calculate the derivative
+        of the covariance matrices analytically.
+
+        The order of the symbols is:
+        1) params which couple the physical and virtual modes
+        2) params which couple a set of virtual modes to themselves
+        3) params which couple between two sets of virtual modes
+        All real parts, then all imaginary parts.
+        Copy numbering starts at 1 (no zero-indexing).
+
+        TODO: this function is general enough to be used in other systems;
+        it can probably be moved to the base class.
 
         Returns:
             list: List of all analytic symbols
         """
-        t1r = sympy.Symbol("t1r", real=True)
-        y1r = sympy.Symbol("y1r", real=True)
-        z1r = sympy.Symbol("z1r", real=True)
-        t2r = sympy.Symbol("t2r", real=True)
-        y2r = sympy.Symbol("y2r", real=True)
-        z2r = sympy.Symbol("z2r", real=True)
-        ar = sympy.Symbol("ar", real=True)
-        br = sympy.Symbol("br", real=True)
-        cr = sympy.Symbol("cr", real=True)
-        dr = sympy.Symbol("dr", real=True)
 
-        t1i = sympy.Symbol("t1i", real=True)
-        y1i = sympy.Symbol("y1i", real=True)
-        z1i = sympy.Symbol("z1i", real=True)
-        t2i = sympy.Symbol("t2i", real=True)
-        y2i = sympy.Symbol("y2i", real=True)
-        z2i = sympy.Symbol("z2i", real=True)
-        ai = sympy.Symbol("ai", real=True)
-        bi = sympy.Symbol("bi", real=True)
-        ci = sympy.Symbol("ci", real=True)
-        di = sympy.Symbol("di", real=True)
+        # t params: couple physical to virtual modes
+        t_params = []
+        for cop in range(1, self.ncopy + 1):
+            for com in ["r", "i"]:  # real or imaginary
+                symbol = sympy.Symbol(f"t{cop}{com}", real=True)
+                t_params.append(symbol)
 
-        # symbols for third and fourth copy for fermionic layer
-        z3r = sympy.Symbol("z3r", real=True)
-        z4r = sympy.Symbol("z4r", real=True)
-        y3r = sympy.Symbol("y3r", real=True)
-        y4r = sympy.Symbol("y4r", real=True)
-        a2r = sympy.Symbol("a2r", real=True)
-        b2r = sympy.Symbol("b2r", real=True)
-        c2r = sympy.Symbol("c2r", real=True)
-        d2r = sympy.Symbol("d2r", real=True)
-        z3i = sympy.Symbol("z3i", real=True)
-        z4i = sympy.Symbol("z4i", real=True)
-        y3i = sympy.Symbol("y3i", real=True)
-        y4i = sympy.Symbol("y4i", real=True)
-        a2i = sympy.Symbol("a2i", real=True)
-        b2i = sympy.Symbol("b2i", real=True)
-        c2i = sympy.Symbol("c2i", real=True)
-        d2i = sympy.Symbol("d2i", real=True)
+        # y,z params: couple a virtual copy to itself
+        y_params = []
+        z_params = []
+        for cop in range(1, self.ncopy + 1):
+            for com in ["r", "i"]:  # real or imaginary
+                symbol = sympy.Symbol(f"y{cop}{com}", real=True)
+                y_params.append(symbol)
 
-        # symbols to couple the third and fourth copy with the first and second, for the fermions
-        p14r = sympy.Symbol("p14r", real=True)  # couple copy 1 with 4, real part
-        q14r = sympy.Symbol("q14r", real=True)
-        r14r = sympy.Symbol("r14r", real=True)
-        s14r = sympy.Symbol("s14r", real=True)
-        p14i = sympy.Symbol("p14i", real=True)
-        q14i = sympy.Symbol("q14i", real=True)
-        r14i = sympy.Symbol("r14i", real=True)
-        s14i = sympy.Symbol("s14i", real=True)
-        p23r = sympy.Symbol("p23r", real=True)  # couple copy 2 with 3, real part
-        q23r = sympy.Symbol("q23r", real=True)
-        r23r = sympy.Symbol("r23r", real=True)
-        s23r = sympy.Symbol("s23r", real=True)
-        p23i = sympy.Symbol("p23i", real=True)
-        q23i = sympy.Symbol("q23i", real=True)
-        r23i = sympy.Symbol("r23i", real=True)
-        s23i = sympy.Symbol("s23i", real=True)
+                symbol = sympy.Symbol(f"z{cop}{com}", real=True)
+                z_params.append(symbol)
 
-        return [
-            t1r,
-            y1r,
-            z1r,
-            t2r,
-            y2r,
-            z2r,
-            ar,
-            br,
-            cr,
-            dr,
-            t1i,
-            y1i,
-            z1i,
-            t2i,
-            y2i,
-            z2i,
-            ai,
-            bi,
-            ci,
-            di,
-            z3r,
-            z4r,
-            y3r,
-            y4r,
-            a2r,
-            b2r,
-            c2r,
-            d2r,
-            z3i,
-            z4i,
-            y3i,
-            y4i,
-            a2i,
-            b2i,
-            c2i,
-            d2i,
-            p14r,
-            q14r,
-            r14r,
-            s14r,
-            p14i,
-            q14i,
-            r14i,
-            s14i,
-            p23r,
-            q23r,
-            r23r,
-            s23r,
-            p23i,
-            q23i,
-            r23i,
-            s23i,
-        ]
+        # a,b,c,d params: couple a virtual copy to another virtual copy
+        mixed_params = []
+        for cop1 in range(1, self.ncopy + 1):
+            for cop2 in range(cop1 + 1, self.ncopy + 1):
+                for param in ["a", "b", "c", "d"]:
+                    for com in ["r", "i"]:  # real or imaginary
+                        symbol = sympy.Symbol(f"{param}{cop1}{cop2}{com}", real=True)
+                        mixed_params.append(symbol)
+
+        # Package all parameters, and ensure correct order
+        all_params = t_params + y_params + z_params + mixed_params
+        real_params = all_params[::2]
+        imag_params = all_params[1::2]
+
+        return real_params + imag_params
 
     @property
     def tmat_symb(self):
         """Definition of the symbolic T matrix.
-        The definition of T here is a result of an analytic consideration of global symmetries like rotational invariance, charge conjugation invarance, etc.
-        The T matrix is given in terms of symbols to compute the derivative of the covariance matrices analytically via sympy.
+        The definition of T here is a result of an analytic consideration of global
+        symmetries like rotational invariance, charge conjugation invarance, etc.
+        The T matrix is given in terms of symbols to compute the derivative of the
+        covariance matrices analytically via sympy.
         We do not have to type them explicitly anymore into the code.
 
         This is one of two analytic inputs into the code.
@@ -286,186 +221,125 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
 
         The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, l_3, r_3...
 
-        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
+        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations)
+        because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
         The permutation matrices are prone to errors.
 
         Returns:
             sympy.Matrix: Analytic T matrix of the fiducial state
         """
-        [
-            t1r,
-            y1r,
-            z1r,
-            t2r,
-            y2r,
-            z2r,
-            ar,
-            br,
-            cr,
-            dr,
-            t1i,
-            y1i,
-            z1i,
-            t2i,
-            y2i,
-            z2i,
-            ai,
-            bi,
-            ci,
-            di,
-            z3r,
-            z4r,
-            y3r,
-            y4r,
-            a2r,
-            b2r,
-            c2r,
-            d2r,
-            z3i,
-            z4i,
-            y3i,
-            y4i,
-            a2i,
-            b2i,
-            c2i,
-            d2i,
-            p14r,
-            q14r,
-            r14r,
-            s14r,
-            p14i,
-            q14i,
-            r14i,
-            s14i,
-            p23r,
-            q23r,
-            r23r,
-            s23r,
-            p23i,
-            q23i,
-            r23i,
-            s23i,
-        ] = self.symbolvec
-        t1 = t1r + 1.0j * t1i
-        y1 = y1r + 1.0j * y1i
-        z1 = z1r + 1.0j * z1i
-        t2 = t2r + 1.0j * t2i
-        y2 = y2r + 1.0j * y2i
-        z2 = z2r + 1.0j * z2i
-        a = ar + 1.0j * ai
-        b = br + 1.0j * bi
-        c = cr + 1.0j * ci
-        d = dr + 1.0j * di
-
-        z3 = z3r + 1.0j * z3i
-        z4 = z4r + 1.0j * z4i
-        y3 = y3r + 1.0j * y3i
-        y4 = y4r + 1.0j * y4i
-        a2 = a2r + 1.0j * a2i
-        b2 = b2r + 1.0j * b2i
-        c2 = c2r + 1.0j * c2i
-        d2 = d2r + 1.0j * d2i
-
-        p14 = p14r + 1.0j * p14i
-        q14 = q14r + 1.0j * q14i
-        r14 = r14r + 1.0j * r14i
-        s14 = s14r + 1.0j * s14i
-        p23 = p23r + 1.0j * p23i
-        q23 = q23r + 1.0j * q23i
-        r23 = r23r + 1.0j * r23i
-        s23 = s23r + 1.0j * s23i
-
-        zeros_8 = sympy.zeros(8)
-        Block_1 = sympy.Matrix(
-            [-1.0j * t1, 1.0j * t1, t1, -t1, 0, 0, 0, 0]
-        )  # this is a column matrix
-        Block_2a = sympy.Matrix(
-            [
-                [0, 1.0j * y1, z1, 1.0j * z1],
-                [-1.0j * y1, 0, -1.0j * z1, -z1],
-                [-z1, 1.0j * z1, 0, -y1],
-                [-1.0j * z1, z1, y1, 0],
-            ]
-        )
-        Block_2b = sympy.Matrix(
-            [
-                [-1.0j * a, -1.0j * c, -1.0j * b, -1.0j * d],
-                [1.0j * c, 1.0j * a, 1.0j * d, 1.0j * b],
-                [d, b, a, c],
-                [-b, -d, -c, -a],
-            ]
-        )
-        Block_2 = sympy.Matrix(
-            [
-                [
-                    0,
-                    1.0j * y1,
-                    z1,
-                    1.0j * z1,
-                    -1.0j * a,
-                    -1.0j * c,
-                    -1.0j * b,
-                    -1.0j * d,
-                ],
-                [
-                    -1.0j * y1,
-                    0,
-                    -1.0j * z1,
-                    -z1,
-                    1.0j * c,
-                    1.0j * a,
-                    1.0j * d,
-                    1.0j * b,
-                ],
-                [-z1, 1.0j * z1, 0, -y1, d, b, a, c],
-                [-1.0j * z1, z1, y1, 0, -b, -d, -c, -a],
-                [1.0j * a, -1.0j * c, -d, b, 0, 1.0j * y2, z2, 1.0j * z2],
-                [1.0j * c, -1.0j * a, -b, d, -1.0j * y2, 0, -1.0j * z2, -z2],
-                [1.0j * b, -1.0j * d, -a, c, -z2, 1.0j * z2, 0, -y2],
-                [1.0j * d, -1.0j * b, -c, a, -1.0j * z2, z2, y2, 0],
-            ]
-        )
-        Block_2 = sympy.Matrix(
-            sympy.BlockMatrix(
-                [
-                    [Block_2a, Block_2b],
-                    [-Block_2b.T, -Block_2a.subs([(z1, z2), (y1, y2)]).T],
-                ]
-            )
-        )
-
-        substitutionsB = [
-            (z1, z3),
-            (z2, z4),
-            (y1, y3),
-            (y2, y4),
-            (a, a2),
-            (b, b2),
-            (c, c2),
-            (d, d2),
+        # Create a dictionary of parameters
+        offset = self._nparams // 2  # offset to get index of imaginary part
+        keys = [str(symb)[:-1] for symb in self.symbolvec[:offset]]
+        vals = [
+            self.symbolvec[i] + 1j * self.symbolvec[i + offset] for i in range(offset)
         ]
-        Block_2B = Block_2.subs(substitutionsB)
+        params = {key: val for key, val in zip(keys, vals)}
 
-        # To be used for coupling between 1-2 and 3-4 layers
-        zeros_4 = sympy.zeros(4)
-        Block_2C = sympy.Matrix(
-            sympy.BlockMatrix(
-                [
-                    [zeros_4, Block_2b.subs([(a, p14), (b, q14), (c, r14), (d, s14)])],
-                    [Block_2b.subs([(a, p23), (b, q23), (c, r23), (d, s23)]), zeros_4],
-                ]
-            )
+        # Define the form blocks of the T matrix -
+        # physical-virtual, virtual-virtual within the same copy, and virtual-virtual between copies
+        Block_1 = sympy.Matrix(
+            [-1.0j * params["t1"], 1.0j * params["t1"], params["t1"], -params["t1"]]
+        ).T  # this is a row matrix (because of the transpose)
+
+        Block_2 = sympy.Matrix(
+            [
+                [0, 1.0j * params["y1"], params["z1"], 1.0j * params["z1"]],
+                [-1.0j * params["y1"], 0, -1.0j * params["z1"], -params["z1"]],
+                [-params["z1"], 1.0j * params["z1"], 0, -params["y1"]],
+                [-1.0j * params["z1"], params["z1"], params["y1"], 0],
+            ]
         )
 
-        tmat_symb = sympy.Matrix(
-            sympy.BlockMatrix(
+        Block_3 = sympy.Matrix(
+            [
                 [
-                    [sympy.zeros(1), -Block_1.T, -Block_1.subs(t1, t2).T],
-                    [Block_1, Block_2, Block_2C],
-                    [Block_1.subs(t1, t2), -Block_2C.T, Block_2B],
-                ]
-            )
+                    -1.0j * params["a12"],
+                    -1.0j * params["c12"],
+                    -1.0j * params["b12"],
+                    -1.0j * params["d12"],
+                ],
+                [
+                    1.0j * params["c12"],
+                    1.0j * params["a12"],
+                    1.0j * params["d12"],
+                    1.0j * params["b12"],
+                ],
+                [params["d12"], params["b12"], params["a12"], params["c12"]],
+                [-params["b12"], -params["d12"], -params["c12"], -params["a12"]],
+            ]
         )
+
+        # Generate all the blocks for all copies
+        t_blocks = [
+            Block_1.subs(params["t1"], params[f"t{i}"])
+            for i in range(1, self.ncopy + 1)
+        ]
+
+        yz_blocks = [
+            Block_2.subs(
+                [(params["y1"], params[f"y{i}"]), (params["z1"], params[f"z{i}"])]
+            )
+            for i in range(1, self.ncopy + 1)
+        ]
+
+        abcd_blocks = []
+        for cop1 in range(1, self.ncopy + 1):
+            for cop2 in range(cop1 + 1, self.ncopy + 1):
+                # a12, b12, c12, d12
+                a_sub = (params["a12"], params[f"a{cop1}{cop2}"])
+                b_sub = (params["b12"], params[f"b{cop1}{cop2}"])
+                c_sub = (params["c12"], params[f"c{cop1}{cop2}"])
+                d_sub = (params["d12"], params[f"d{cop1}{cop2}"])
+                subs = [a_sub, b_sub, c_sub, d_sub]
+                block = Block_3.subs(subs)
+                abcd_blocks.append(block)
+
+        # We will constuct the T matrix row by row.
+        # Each row will be a physical mode, or a virtual copy (4 virtual modes)
+
+        # row corresponding to the physical mode
+        data = [sympy.zeros(1)] + [t_block for t_block in t_blocks]
+        first_row = sympy.Matrix.hstack(*data)
+
+        # rows corresponding to the virtual modes
+        rows = []
+        countdown = list(range(self.ncopy - 1, 0, -1))
+        for cop in range(self.ncopy):
+
+            # mix copies - below diagonal blocks
+            # TODO: this should be generalized to any number of copies
+            off_diag1 = []
+            if cop == 0:
+                off_diag1 = []
+            elif cop == 1:
+                off_diag1 = [-abcd_blocks[0].T]
+            elif cop == 2:
+                off_diag1 = [
+                    -abcd_blocks[1].T,
+                    -abcd_blocks[3].T,
+                ]
+            elif cop == 3:
+                off_diag1 = [
+                    -abcd_blocks[2].T,
+                    -abcd_blocks[4].T,
+                    -abcd_blocks[5].T,
+                ]
+            else:
+                raise ValueError("Invalid copy index in Z2System2D_G2C_F4C_Config.")
+
+            # mix copies - above diagonal blocks
+            start = sum(countdown[:cop])
+            end = sum(countdown[: cop + 1])
+            off_diag2 = abcd_blocks[start:end]
+
+            # construct full row
+            row = [-t_blocks[cop].T] + off_diag1 + [yz_blocks[cop]] + off_diag2
+            rows.append(sympy.Matrix.hstack(*row))
+
+        # Stack all rows together
+        all_rows = [first_row] + rows
+        tmat_symb = sympy.Matrix.vstack(*all_rows)
 
         return tmat_symb
 
