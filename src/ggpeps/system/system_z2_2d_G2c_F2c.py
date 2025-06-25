@@ -65,7 +65,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         if unitcell_size not in [1, 2]:
             logger.error(
                 "This ansatz only supports unitcell_size = 1 or 2. \
-                         This can be adapted by adding in a specification in the config to map sites to parameters."
+                This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             sys.exit(1)
         # map from site to index of independent parameters (default is unitcell_size = 1)

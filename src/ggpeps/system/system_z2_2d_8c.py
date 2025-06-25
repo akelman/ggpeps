@@ -55,7 +55,7 @@ class Z2System2D_8C_Config(Config2DBase):
         # Translation invariance
         if unitcell_size not in [1]:
             logger.error(
-                "This ansatz only supports unitcell_size = 1 or 2. \
+                "This ansatz only supports unitcell_size = 1. \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             raise ValueError("Invalid unitcell_size.")
@@ -103,7 +103,8 @@ class Z2System2D_8C_Config(Config2DBase):
         )
 
     def enforce_parameter_conditions(self, mat):
-        """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz."""
+        """Enforce conditions on parameters on each layer to get the required behaviour
+        for the ansatz."""
 
         zeroed_params = []  # we'll save the indices of the zeroed parameters
 
@@ -126,7 +127,6 @@ class Z2System2D_8C_Config(Config2DBase):
                 for cop in copies:
                     for com in ["r", "i"]:
                         ind += 1  # don't zero out t params
-                        zeroed_params.append((layer, uc_ind, ind))
 
                 copies = [1, 2, 3, 4]  # copies which couple to themselves
                 for cop in copies:
