@@ -218,9 +218,11 @@ class Config2DBase(ABC):
         Args:
             symbolvec (list): List of the symbolvecs
         """
-        for ind in range(self.nlayer):
-            for symb, val in zip(symbolvec, self._paramvec[ind]):
-                print(str(symb), val)
+        for lay in range(self.nlayer):
+            for uc_ind in range(self.unitcell_size):
+                for ind, symb in enumerate(self.symbolvec):
+                    val = self._paramvec[lay][uc_ind][ind]
+                    print(f"Layer {lay}, uc_ind {uc_ind}, symbol {symb}: {val}")
 
     @property
     def trans_inv(self) -> bool:
@@ -266,6 +268,7 @@ class Config2DBase(ABC):
         """
         if self._symbolvec is None:
             self._symbolvec = self._create_symbolvec()
+            assert len(self._symbolvec) == self._nparams
         return self._symbolvec
 
     @property
