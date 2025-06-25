@@ -1,4 +1,3 @@
-import sys
 import sympy
 import logging
 from typing import List
@@ -67,7 +66,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
                 "This ansatz only supports unitcell_size = 1 or 2. \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
-            sys.exit(1)
+            raise ValueError("Invalid unitcell_size.")
         # map from site to index of independent parameters (default is unitcell_size = 1)
         self.site_params_dict = {site: 0 for site in range(self.lattice.size)}
 
