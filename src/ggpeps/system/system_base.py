@@ -116,11 +116,9 @@ class Config2DBase(ABC):
 
         self._paramvec: Optional[np.ndarray] = None
 
-        self.zeroed_params: List[int] = (
-            []
-        )  # will store a list of the parameters forced to be zero by the ansatz
+        # We store a list of the parameters forced to be zero by the ansatz
         # currently this is set in self.enforce_parameter_conditions
-        # (this only happens for the fermionic ansatz's)
+        self.zeroed_params: List[int] = []
 
         # Symbolvec
         self._symbolvec: Optional[List[sympy.Symbol]] = (

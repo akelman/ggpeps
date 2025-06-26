@@ -318,6 +318,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
         rows = []
         countdown = list(range(self.ncopy - 1, 0, -1))
         for cop in range(self.ncopy):
+            # We construct the row (really, 4 rows, since each copy has 4 modes, 1 for each link connected to a site)
 
             # mix copies - below diagonal blocks
             # TODO: this should be generalized to any number of copies
