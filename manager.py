@@ -462,7 +462,7 @@ def main(args):
 
     # Warn about potential/likely unintended choice of settings
     if not np.allclose(g_chem, 0):
-        if not args.unitcell_size > 1:
+        if args.unitcell_size == 1:
             logger.warning(
                 "There is a non-zero chemical potential, but 1-site translation invariance. This may be unintended."
             )
