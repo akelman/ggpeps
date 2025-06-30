@@ -37,7 +37,7 @@ def run_mc(
         system_cls ():
         system_cfg ():
         logger_info (dict): configs for the logger (logger needs to be set up in each worker)
-        eval_args (dict): Arguments for the evaluator 
+        eval_args (dict): Arguments for the evaluator
 
     Returns:
         MonteCarloEvaluator
@@ -71,7 +71,9 @@ class EvaluatorManager:
         self,
         system_cls: SystemType,
         system_cfg: SystemConfigType,
-        cfg: Union[MonteCarloEvaluatorConfig, ExactEvaluatorConfig, NEVMC_EvaluatorConfig],
+        cfg: Union[
+            MonteCarloEvaluatorConfig, ExactEvaluatorConfig, NEVMC_EvaluatorConfig
+        ],
         nrunner: int,
     ):
 
@@ -81,9 +83,6 @@ class EvaluatorManager:
         self.nrunner = nrunner
 
         self.evaluator = None
-        self.simulation_in_progress: bool = (
-            False  # Flag to indicate whether a simulation should be resumed
-        )
 
         if isinstance(self.cfg, ExactEvaluatorConfig):
             self.type = "exact"
@@ -96,7 +95,7 @@ class EvaluatorManager:
 
     def reset_evaluator(self):
         system = self.system_cls(self.system_cfg)
-        
+
         system.initialize()
         if self.type == "exact":
             self.evaluator = ExactEvaluator(self.cfg, system)
@@ -116,16 +115,16 @@ class EvaluatorManager:
             evaluator_class = NEVMC_Evaluator
         return evaluator_class
 
-    def simulate(self, eval_args:dict={}):
+    def simulate(self, eval_args: dict = {}):
         """Simulate
-        
+
         Args:
-            eval_args (dict): Arguments for the evaluator (e.g. for NEVMC). 
+            eval_args (dict): Arguments for the evaluator (e.g. for NEVMC).
         """
 
-        if "mc" in self.type and self.nrunner > 0:  
+        if "mc" in self.type and self.nrunner > 0:
             """Start the simulation of the runners.
-            Currently only Monte Carlo is supported (the exacteval implementation currently only supports a single runner), 
+            Currently only Monte Carlo is supported (the exacteval implementation currently only supports a single runner),
             and multiple runners cannot be resumed from where they left off.
             """
             resultvec = []
@@ -181,15 +180,8 @@ class EvaluatorManager:
             resultvec = ray.get(resultvec)
             return self.collect(resultvec)
         else:
-            if (
-                self.type == "mc" and self.simulation_in_progress
-            ):  # exacteval does not support resuming an evaluation
-                self.evaluator.system.invalidate_gauge_update()
-            else:
-                self.reset_evaluator()
-            self.simulation_in_progress = True
+            self.reset_evaluator()
             self.evaluator.evaluate(**eval_args)
-            self.simulation_in_progress = False
             return self.evaluator
 
     def collect(self, resultvec):
@@ -210,4 +202,3 @@ class EvaluatorManager:
         else:
             dest = resultvec[0]
         return dest
-    

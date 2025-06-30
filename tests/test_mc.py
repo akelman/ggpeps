@@ -1,12 +1,6 @@
 import unittest
-from unittest import skip
-
-import numpy as np
 
 from ggpeps import system, lattice
-from ggpeps.minimizer import Minimizer, MinimizerConfig
-from ggpeps.evaluator_manager import EvaluatorManager
-from ggpeps.exacteval import ExactEvaluator, ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig
 
 
@@ -16,7 +10,7 @@ class TestMC(unittest.TestCase):
         paramvec = [[0.0, 0.5, 0.5, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2DConfig(
-            lat_2x2, 1.0, 0.0, 0.0, 0.0, [0], num_pg_layer=1, num_fermionic_layer=0
+            lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=0
         )
         system_cfg.paramvec = paramvec
         self.sys = system.Z2System2D(system_cfg)
@@ -41,7 +35,8 @@ class TestMC(unittest.TestCase):
                 self.assertEqual(len(datavec), mc_cfg.meas_steps)
 
     def test_mc_observable_length_binsize5(self):
-        """Ensure that the length of the observables is correct with binning during measurement"""
+        """Ensure that the length of the observables is correct with binning during
+        measurement"""
 
         binsize = 5
         mc_cfg = MonteCarloEvaluatorConfig()

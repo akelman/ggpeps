@@ -19,8 +19,8 @@ class TestGauge(unittest.TestCase):
     def test_random_values(self):
         seed = np.random.randint(np.iinfo(np.int32).max)
         rng_state = np.random.RandomState(seed)
-        for gauge in [self.gaugeZ3, self.gaugeZ8]:
-            poss_gauges = gauge.get_possible_gauge_values()
+        for gauge_obj in [self.gaugeZ3, self.gaugeZ8]:
+            poss_gauges = gauge_obj.get_possible_gauge_values()
             for _ in range(100):
-                val = gauge.get_random_gauge_value(rng_state)
+                val = gauge_obj.get_random_gauge_value(rng_state)
                 self.assertTrue(np.any(np.isclose(val, poss_gauges)))

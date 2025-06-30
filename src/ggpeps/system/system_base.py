@@ -116,11 +116,9 @@ class Config2DBase(ABC):
 
         self._paramvec: Optional[np.ndarray] = None
 
-        self.zeroed_params: List[int] = (
-            []
-        )  # will store a list of the parameters forced to be zero by the ansatz
+        # We store a list of the parameters forced to be zero by the ansatz
         # currently this is set in self.enforce_parameter_conditions
-        # (this only happens for the fermionic ansatz's)
+        self.zeroed_params: List[int] = []
 
         # Symbolvec
         self._symbolvec: Optional[List[sympy.Symbol]] = (
@@ -134,16 +132,23 @@ class Config2DBase(ABC):
         self.g_mass = g_mass
         self.g_chem = g_chem
         if self.g_chem is None:
-            self.g_chem = np.zeros(self.nlayer)
-        elif len(self.g_chem) != self.nlayer:
+            self.g_chem = np.zeros(self.num_fermionic_layer)
+        elif len(self.g_chem) != self.num_fermionic_layer:
             raise ValueError(
-                "The number of chemical potentials must match the number of layers."
+                "The number of chemical potentials must match the number of fermionic layers."
             )
 
     def __str__(self):
         # define a string method that can be used, e.g., in filenaming
-        # note that this string doesn't include the number of copies
-        return f"L_{self.lattice.nx:02d}x{self.lattice.ny:02d}_gel_{self.g_el}_gmag_{self.g_mag}_gint_{self.g_int}_gmass_{self.g_mass}_nlayer_{self.nlayer}"
+        # this string doesn't include enough information to reconstruct the config
+        chem_str = "_".join([f"{val:.3f}" for val in self.g_chem])
+        val = (
+            f"L_{self.lattice.nx:02d}x{self.lattice.ny:02d}"
+            + f"_ncopy_{self.ncopy}_nlayer_{self.nlayer}"
+            + f"_gel_{self.g_el}_gmag_{self.g_mag}_gint_{self.g_int}"
+            f"_gmass_{self.g_mass}_gchem_{chem_str}"
+        )
+        return val
 
     @property
     def paramvec(self) -> np.ndarray:
@@ -211,9 +216,11 @@ class Config2DBase(ABC):
         Args:
             symbolvec (list): List of the symbolvecs
         """
-        for ind in range(self.nlayer):
-            for symb, val in zip(symbolvec, self._paramvec[ind]):
-                print(str(symb), val)
+        for lay in range(self.nlayer):
+            for uc_ind in range(self.unitcell_size):
+                for ind, symb in enumerate(self.symbolvec):
+                    val = self._paramvec[lay][uc_ind][ind]
+                    print(f"Layer {lay}, uc_ind {uc_ind}, symbol {symb}: {val}")
 
     @property
     def trans_inv(self) -> bool:
@@ -259,6 +266,7 @@ class Config2DBase(ABC):
         """
         if self._symbolvec is None:
             self._symbolvec = self._create_symbolvec()
+            assert len(self._symbolvec) == self._nparams
         return self._symbolvec
 
     @property
@@ -373,6 +381,7 @@ class System2DBase(ABC):
         self._int_energy_op: Optional[float] = None
         self._int_energy_op_vec: Optional[List[float]] = None
         self._chem_energy_op_vec = None
+        self._all_occupations: Optional[xnp.ndarray] = None
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in_vec: Optional[List[utils.WoodburyInverter]] = (
@@ -418,6 +427,7 @@ class System2DBase(ABC):
         self._int_energy_op = None
         self._int_energy_op_vec = None
         self._chem_energy_op_vec = None
+        self._all_occupations = None
 
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad_vec = None
@@ -469,9 +479,10 @@ class System2DBase(ABC):
             xnp.ndarray: Array of symbols
         """
         tmat_symb = self.cfg.tmat_symb
-        return xnp.asarray(
+        tmat_deriv = xnp.asarray(
             np.asarray(sympy.diff(tmat_symb, symb)).astype(complex)
         )  # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
+        return tmat_deriv
 
     def _eval_tmat_symb(self, paramvec):
         """Compute the numerical representation of the T matrix
@@ -522,7 +533,6 @@ class System2DBase(ABC):
                     for site in range(self.cfg.lattice.size)
                 ]
                 self._tmat_layervec_sitevec.append(tmat_lay)
-            # self._tmat_layervec_sitevec = xnp.array(self._tmat_layervec_sitevec)
         return self._tmat_layervec_sitevec
 
     @property
@@ -636,7 +646,6 @@ class System2DBase(ABC):
             gamma_maj_sys_vec.append(dest)
         return xnp.array(gamma_maj_sys_vec)
 
-    ## MOVE TO GLOBAL
     def d_gamma_out_symbolvec(self, layer: int, uc_ind: int):
         """Return a vector containing the derivatives of gamma_out (for the given layer) for each symbol.
 
@@ -1248,7 +1257,6 @@ class System2DBase(ABC):
         """Setter of the weight"""
         self._weight = val
 
-    ## MOVE TO GLOBAL
     def calculate_weight_attempt(self, link_ind: int, theta: float, all_factors=False):
         """
         For D2n gauge groups, we overwrite this function in system implementation.
@@ -1363,7 +1371,6 @@ class System2DBase(ABC):
             cumval += 0.5 * detval
         return cumval
 
-    ## MOVE TO GLOBAL
     def compute_grad_over_norm(
         self, var: sympy.Symbol, layerind: int, uc_ind: int
     ) -> float:
@@ -1389,7 +1396,7 @@ class System2DBase(ABC):
             mat_d_inv = self.mat_d_inv_vec[layerind]
 
             # TODO: We might save one matrix-matrix multiplication here
-            # The derivd and mat_d_inv are constant
+            # The deriv_d and mat_d_inv are constant
             self._grad_over_norm_dict[(layerind, uc_ind, var)] = compute_grad_over_norm(
                 self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv
             )
@@ -1633,8 +1640,9 @@ class System2DBase(ABC):
             float: chemical potential energy
         """
         chem_energy = 0.0
-        for layer in range(self.cfg.nlayer):
-            chem_energy += self.cfg.g_chem[layer] * self.chem_energy_op_vec[layer]
+        for layer in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            ind = layer - self.cfg.num_pg_layer
+            chem_energy += self.cfg.g_chem[ind] * self.chem_energy_op_vec[layer]
         return chem_energy
 
     # Functions that return the energy for the operator part of a term in the Hamiltonian, including the energy for the entire lattice, but not any shifts or prefactors.
@@ -1730,7 +1738,6 @@ class System2DBase(ABC):
             list: Layer-resolved interaction energy w/o shift
         """
         if self._int_energy_op_vec is None:
-            # This vector is the interaction energy on a single site.
             self._int_energy_op_vec, self._int_energy_op_grad_vec = (
                 self._compute_int_energy_op_vec_and_grad()
             )
@@ -1835,6 +1842,30 @@ class System2DBase(ABC):
             total_occ.append(layer_val / self.cfg.lattice.size)
         return xnp.array(total_occ)
 
+    @property
+    def all_occupations(self) -> xnp.ndarray:
+        """Compute the occupation number for all layers and sites in the system.
+
+        Returns:
+            array: the occupation number for all layers and sites, as a 2D array
+        """
+        if self._all_occupations is None:
+
+            # Initialize shape
+            # this ensures that is has the proper shape even when there are no fermionic layers
+            # (which is needed for transposes, etc. higher up in the stack)
+            self._all_occupations = np.zeros(
+                (self.cfg.num_fermionic_layer, self.cfg.lattice.size)
+            )
+
+            after_ph = False
+            for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+                for site in range(self.cfg.lattice.size):
+                    self._all_occupations[lay - self.cfg.num_pg_layer, site] = (
+                        self.occupation(lay, site, after_ph=after_ph)
+                    )
+        return self._all_occupations
+
     def meson_string(self, path) -> float:
         """Calculate the value of a meson string given a path.
 
@@ -1866,7 +1897,6 @@ class System2DBase(ABC):
                 path_product = path_product @ self.gaugefieldvec[ind]
         return xnp.trace(path_product)
 
-    ## MOVE TO GLOBAL
     def compute_ferm_cov(self, layer: int) -> xnp.ndarray:
         """Compute the covariance matrix of the fermions in the system for the given layer.
         We do not calculate it for all layers automatically, since it is not needed for pure-gauge layers.
@@ -1884,7 +1914,7 @@ class System2DBase(ABC):
             )
         return self._ferm_covmat_vec[layer]
 
-    ################## Mode Permutations ######################
+    ################## Mode Permutations ##################
 
     def get_link_based_mode_order(self) -> list:
         """Generate the link-based majorana mode order.

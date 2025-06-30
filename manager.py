@@ -51,19 +51,12 @@ def save_state_on_exit():
     args = ggpeps.global_vars["args"]
     cache = ggpeps.global_vars["cache"]
 
-    if not args.ignore_cache_eval:
-        if "min" in args.mode:
-            minimizer = ggpeps.global_vars["minimizer"]
-            cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
-            logger.info(f"Added evaluator manager to cache.")
-        elif "eval" in args.mode:
-            eval_manager = ggpeps.global_vars["eval_manager"]
-            cache.add_obj_to_cache("evaluator_manager", eval_manager)
-            logger.info(f"Added evaluator manager to cache.")
-
-    cache_file = ggpeps.global_vars["args"].cache_file
-    cache.save_cache_file(cache_file)
-    logger.info(f"Saved cache file to {os.path.basename(cache_file)} in output folder.")
+    cache_file = ggpeps.global_vars["args"].save_cache_dest
+    if cache_file is not None and not cache.disable_cache:
+        cache.save_cache_file(cache_file)
+        logger.info(
+            f"Saved cache file to {os.path.basename(cache_file)} in output folder."
+        )
     return
 
 
@@ -92,7 +85,7 @@ def args2logname(args, couplings: dict) -> str:
     Returns:
         str: Filename of the log file
     """
-    chem_str = ",".join([f"{val:.3f}" for val in couplings["g_chem"]])
+    chem_str = "_".join([f"{val:.3f}" for val in couplings["g_chem"]])
     couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_gchem_{chem_str}"
 
     if "exact" in args.mode:
@@ -200,14 +193,23 @@ def main(args):
 
     jax.config.update("jax_enable_x64", True)
 
-    # GPU or CPU
+    # GPU or CPU detection (compatible with ROCm GPUs)
     available_devices_ = jax.devices()  # available_gpus = jax.devices('gpu')
     PREFERRED_DEVICE = available_devices_[0]
     device_name = PREFERRED_DEVICE.device_kind.lower()
-    if "gpu" in device_name or "nvidia" in device_name:  # heuristic
+
+    print(f"[DIAG] Available JAX devices: {available_devices_}")
+    print(f"[DIAG] Selected device: {PREFERRED_DEVICE}")
+    print(f"[DIAG] Device kind: {device_name}")
+
+    # Updated GPU detection heuristic
+    if any(x in device_name for x in ["gpu", "nvidia", "amd", "rocm"]):
         ggpeps.GPU_AVAILABLE = True
+        ggpeps.PREFERRED_DEVICE = PREFERRED_DEVICE
+        print("[DIAG] GPU detected — ggpeps.GPU_AVAILABLE set to True")
     else:
         ggpeps.GPU_AVAILABLE = False
+        print("[DIAG] No compatible GPU found — using CPU")
 
     # Set up the simulation
     L = args.L
@@ -226,17 +228,13 @@ def main(args):
     g_int = args.g_int
     g_mass = args.g_mass
     if args.g_chem is None:
-        g_chem = np.zeros(args.num_pg_layer + args.num_fermionic_layer)
+        g_chem = np.zeros(args.num_fermionic_layer)
     else:
         g_chem = np.array(args.g_chem)
-    if len(g_chem) == args.num_pg_layer + args.num_fermionic_layer:
-        if not np.allclose(g_chem[: args.num_pg_layer], 0.0):
-            raise ValueError(
-                "A chemical potential for a pure gauge layer is not zero, which is invalid."
-            )
-    elif len(g_chem) == args.num_fermionic_layer:
-        # The chemical potential must be zero for the pure gauge layers
-        g_chem = np.concatenate((np.zeros(args.num_pg_layer), g_chem))
+    if len(g_chem) != args.num_fermionic_layer:
+        raise ValueError(
+            "The number of chemical potentials must match the number of fermionic layers."
+        )
     couplings = {
         "g_el": g_el,
         "g_mag": g_mag,
@@ -317,6 +315,8 @@ def main(args):
                     g_chem,
                     num_pg_layer=args.num_pg_layer,
                     num_fermionic_layer=args.num_fermionic_layer,
+                    unitcell_size=args.unitcell_size,
+                    enforce_u1_symmetry=not args.relax_u1,
                 )
             elif args.ncopy == 8:
                 system_cfg = Z2System2D_8C_Config(
@@ -475,7 +475,7 @@ def main(args):
 
     # Warn about potential/likely unintended choice of settings
     if not np.allclose(g_chem, 0):
-        if not args.unitcell_size > 1:
+        if args.unitcell_size == 1:
             logger.warning(
                 "There is a non-zero chemical potential, but 1-site translation invariance. This may be unintended."
             )
@@ -486,15 +486,20 @@ def main(args):
 
     # Set up cache
     # and save the command line arguments to ggpeps global variable so that they are available everywhere
-    cache = Cache(args.mode)
-    if not args.ignore_cache:
-        cache.load_cache_file(args.cache_file)
-        if args.ignore_cache_eval:
-            cache.add_obj_to_cache("evaluator_manager", None)
-    if not os.path.isabs(args.cache_file):
-        # Save the cache filename as an absolute path (so that it can be used throughout the code,
-        # without needing to track the destination).
-        args.cache_file = os.path.join(args.output, os.path.basename(args.cache_file))
+    cache = Cache(disable_cache=args.ignore_cache)
+    if args.load_cache is not None and not cache.disable_cache:
+        if os.path.isfile(args.load_cache):
+            cache.load_cache_file(args.load_cache)
+        else:
+            logger.error(f"Unable to find cache file {args.load_cache}.")
+    if args.save_cache_dest is not None and not cache.disable_cache:
+        if not os.path.isabs(args.save_cache_dest):
+            # Save the cache filename as an absolute path (so that it can be used throughout the code,
+            # without needing to track the destination).
+            args.save_cache_dest = os.path.join(
+                args.output, os.path.basename(args.save_cache_dest)
+            )
+        cache.save_cache_dest = args.save_cache_dest
     ggpeps.global_vars["args"] = args
     ggpeps.global_vars["cache"] = cache
 
@@ -798,13 +803,13 @@ if __name__ == "__main__":
         "--binsize", default=1, type=int, help="Binsize used in the MC computation"
     )
     parser.add_argument(
-        "--no-bin-eom",
+        "--no_bin_eom",
         default=False,
         action="store_true",
         help="Use the standard EOM instead of a rebinning analysis",
     )
     parser.add_argument(
-        "--use-systemsize-updates",
+        "--use_systemsize_updates",
         action="store_true",
         default=False,
         help="Update every spin of the system between each update step. This option is kept for backwards compatibility",
@@ -816,7 +821,7 @@ if __name__ == "__main__":
         help="The number of spins to update in each step (can be an integer, or one of: system, halfsystem)",
     )
     parser.add_argument(
-        "--compute-grads",
+        "--compute_grads",
         action="store_true",
         default=False,
         help="Compute grads even if in eval mode",
@@ -860,22 +865,26 @@ if __name__ == "__main__":
 
     # Cache settings
     parser.add_argument(
+        "--load_cache",
+        nargs="?",  # Optional value
+        const="cache.pkl",  # Value when argument is used without a value
+        default=None,  # Default value when argument is not used
+        type=str,
+        help="Load cache from the specified file. If no file provided, but the flag is present, the cache will be loaded from the default cache file (cache.pkl) if available.",
+    )
+    parser.add_argument(
+        "--save_cache_dest",
+        nargs="?",  # Optional value
+        const="cache.pkl",  # Value when argument is used without a value
+        default=None,  # Default value when argument is not used
+        type=str,
+        help="Save cache to the specified file. This will overwrite the old one if it exists.",
+    )
+    parser.add_argument(
         "--ignore_cache",
         action="store_true",
         default=False,
-        help="Ignore the cache and start from scratch. A new cache will be saved (and overwrite the old one if it exists).",
-    )
-    parser.add_argument(
-        "--ignore_cache_eval",
-        action="store_true",
-        default=False,
-        help="Ignore the cache eval manager.",
-    )
-    parser.add_argument(
-        "--cache_file",
-        type=str,
-        default="cache.pkl",
-        help="Filename of the cache.",
+        help="Ignore the cache and do not load or save it. Overrides other cache settings.",
     )
 
     # Arguments for ray

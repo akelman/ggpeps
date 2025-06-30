@@ -1,6 +1,5 @@
 import logging
 from pfapack import pfaffian as pf
-from typing import List
 
 import numpy as np
 from ggpeps import xnp as xnp
@@ -14,8 +13,6 @@ from ggpeps.system.global_funcs import *
 from .system_base import System2DBase
 from .system_base import calculate_lognorm_inc
 
-# from ggpeps.system.global_funcs import update_gauge_ind
-
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
@@ -28,7 +25,7 @@ class Z2System2D(System2DBase):
     Some general notes about conventions:
 
     Order of the paramvec: see the functions that create the symbolvec in the configs.
-        We split the real and the imaginary part of the parameters into independent variables.
+    We split the real and the imaginary part of the parameters into independent variables.
     Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3... and so on}.
     Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3... and so on}.
     Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... and so on}.
@@ -126,7 +123,7 @@ class Z2System2D(System2DBase):
             (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec),
         )
 
-    # Gauging
+    ################## Gauging ##################
 
     def generate_rotmat(self, group_element: xnp.array, coord: tuple, dir: Direction):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
@@ -180,7 +177,8 @@ class Z2System2D(System2DBase):
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
         and updates all incremental trackers of determinants and inverses.
-        The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
+        The re-calculation of determinants and inverses for the norm would be
+        prohibitively expensive.
 
         This method overwrites an abstract method in System2DBase.
 
@@ -270,10 +268,8 @@ class Z2System2D(System2DBase):
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
 
-    # def update_gauge_ind(self, link_ind, theta):
-    #    update_gauge_ind(self, link_ind, theta)
+    ################## Observables ##################
 
-    # Observables
     def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv: bool = True):
         """Compute the mass term of the Hamiltonian for a single site.
 
@@ -423,9 +419,7 @@ class Z2System2D(System2DBase):
             pfvals = []  # without the prefactor
             for prefactor, ind in idxarr:
                 ind = xnp.asarray(ind)
-                pfaval = pf.pfaffian(
-                    covmat_out_virt[xnp.ix_(ind, ind)]
-                )  # TODO: fix for JAX - NOT NEEDED, jxnp.ix_ should work
+                pfaval = pf.pfaffian(covmat_out_virt[xnp.ix_(ind, ind)])
                 pfarr.append(prefactor * pfaval)
                 pfvals.append(pfaval)
             el_energy_full = overall_factor * xnp.sum(xnp.array(pfarr))
@@ -472,7 +466,8 @@ class Z2System2D(System2DBase):
 
     def _compute_mag_energy_op(self, use_trans_inv: bool = True):
         """Computation of the magnetic energy operator (w/o shift).
-        This operator is diagonal in the gauge field (group element) basis and can thus be computed easily.
+        This operator is diagonal in the gauge field (group element) basis and can thus
+        be computed easily.
 
         This method overwrites an abstract method in System2DBase.
 
@@ -499,8 +494,10 @@ class Z2System2D(System2DBase):
         return mag_energy_bare
 
     def _compute_int_energy_op_vec_and_grad(self):
-        """Calculate the energy and energy gradient due to the interaction of the physical fermions with the gauge fields.
-        Note: this function assumes that U = U^dagger, which is valid only for Z2. For other groups, the calculation will not be as simple.
+        """Calculate the energy and energy gradient due to the interaction of the
+        physical fermions with the gauge fields.
+        Note: this function assumes that U = U^dagger, which is valid only for Z2.
+        For other groups, the calculation will not be as simple.
 
         Returns:
             tuple: Tuple of (interaction energy for a single link, gradients)
@@ -529,15 +526,19 @@ class Z2System2D(System2DBase):
                 neighborX_ind = 2 * self.cfg.lattice.coord2ind(
                     neighborX_coord
                 )  # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
-                gaugefield_hor = self.gaugefieldvec[ind_field_hor] # gaugefield_hor is a matrix representation of a group element
-                theta_hor = self.cfg.gaugemgr.get_angle(gaugefield_hor) #convert it to an angle
+                gaugefield_hor = self.gaugefieldvec[
+                    ind_field_hor
+                ]  # gaugefield_hor is a matrix representation of a group element
+                theta_hor = self.cfg.gaugemgr.get_angle(
+                    gaugefield_hor
+                )  # convert it to an angle
                 cos_factor_hor = xnp.cos(
                     theta_hor
                 )  # simple way to get U from gauge value
                 hor_link_energy = 0.5 * (
                     covmat[site_ind_cov, neighborX_ind]
                     - covmat[site_ind_cov + 1, neighborX_ind + 1]
-                )  # TODO: fix for JAX - NOT NEEDED
+                )
                 layer_int_energy += hor_link_energy * cos_factor_hor
 
                 # Vertical link
@@ -545,7 +546,9 @@ class Z2System2D(System2DBase):
                 neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
                 neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
                 gaugefield_vert = self.gaugefieldvec[ind_field_vert]
-                theta_vert = self.cfg.gaugemgr.get_angle(gaugefield_vert) # gaugefield_hor is a matrix represntation of a group elemnt
+                theta_vert = self.cfg.gaugemgr.get_angle(
+                    gaugefield_vert
+                )  # gaugefield_hor is a matrix represntation of a group elemnt
                 cos_factor_vert = xnp.cos(theta_vert)
                 vert_link_energy = 0.5 * (
                     covmat[site_ind_cov, neighborY_ind + 1]

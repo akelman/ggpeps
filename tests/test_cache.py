@@ -7,7 +7,7 @@ from ggpeps.minimizer import Cache
 class TestCache(unittest.TestCase):
 
     def setUp(self):
-        self.cache = Cache("eval-mc")
+        self.cache = Cache()
 
     def test_keygen(self):
         paramvec = np.array(
@@ -19,10 +19,9 @@ class TestCache(unittest.TestCase):
 
     def test_cache_keys(self):
         # Test that all cached variables are present
-        self.assertEqual(self.cache.cache_data["cache_version"], 0.1)
+        self.assertEqual(self.cache.cache_data["cache_version"], 0.2)
         self.assertTrue("ggpeps_version" in self.cache.cache_data.keys())
 
-        self.assertEqual(self.cache.cache_data["mode"], "eval-mc")
         self.assertEqual(self.cache.cache_data["evaluator_manager"], None)
         self.assertEqual(self.cache.cache_data["energy"], {})
         self.assertEqual(self.cache.cache_data["energy_grad"], {})

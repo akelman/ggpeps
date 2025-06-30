@@ -870,10 +870,11 @@ def get_couplings_from_foldername(fname: str) -> str:
             res += f"{arg}_{result.group(0)}_"
 
     # chem - we treat this differently because it is a vector for different flavors
-    pattern = r"chem_\[.*?\]"
+    pattern = rf"(?<=chem_)(-?\d+\.\d+)_(-?\d+\.\d+)"
     result = re.search(pattern, fname)
     if result is not None:
-        res += f"{arg}_{result.group(0)}_"
+        vals = f"_".join(result.groups())
+        res += f"chem_{vals}_"
     return res
 
 

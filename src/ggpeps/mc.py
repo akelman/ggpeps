@@ -133,7 +133,13 @@ class MonteCarloEvaluator(Evaluator):
         )
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
+        self.obsdict["all_occuations"] = Measurement(
+            "All Occupations (after PH)", binsize
+        )
         self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
+        self.obsdict["variance_occupation"] = Measurement(
+            "Variance Occupation", binsize
+        )
 
         if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"] = Measurement(
@@ -183,6 +189,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
         self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
+        self.obsdict["all_occuations"].append(self.system.all_occupations)
 
         # Most of these values could be calculated in a post-processing step
         self.obsdict["energy"].append(self.system.energy)
@@ -282,9 +289,10 @@ class MonteCarloEvaluator(Evaluator):
         # Gradient of the chemical potential
         meas_chem_energy = self.obsdict["chem_energy"]
         meas_chem_energy_op_grad = self.obsdict["chem_energy_op_grad"]
-        for lay in range(self.system.cfg.nlayer):
+        for lay in range(self.system.cfg.num_pg_layer, self.system.cfg.nlayer):
             # the gradients must be scaled by the chemical potential
-            meas_chem_energy_op_grad.datavec[lay] *= self.system.cfg.g_chem[lay]
+            ind = lay - self.system.cfg.num_pg_layer
+            meas_chem_energy_op_grad.datavec[lay] *= self.system.cfg.g_chem[ind]
         prod_chem_energy_grad = meas_chem_energy * meas_grad_over_norm
         chem_energy_grad = (
             prod_chem_energy_grad.mean()
@@ -327,6 +335,14 @@ class MonteCarloEvaluator(Evaluator):
             self.measure()
             self.step += 1
 
+        # Update observables which depend on expectation values
+        self.obsdict["variance_occupation"].extend(
+            (
+                self.obsdict["average_occupation"].datavec
+                - self.obsdict["average_occupation"].mean()
+            )
+            ** 2
+        )
         if self.cfg.compute_grads:
             # Update gradients which depend on expectation values
             # For interface reasons, we insert meas_steps copies of this gradient

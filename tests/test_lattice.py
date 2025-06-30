@@ -84,7 +84,8 @@ class TestLattice(unittest.TestCase):
 
     def test_wilson_loop_generation_4x4_lattice(self):
         """Test that all expected wilson loops are generated for a 4x4 lattice.
-        Note that the order of the loops is set to match the expected output from Lattice2D.generate_all_wilson_loops()
+        Note that the order of the loops is set to match the expected output from
+        Lattice2D.generate_all_wilson_loops()
         """
         lat = lattice.Lattice2D(4, 4)
         refs = [
@@ -118,7 +119,8 @@ class TestLattice(unittest.TestCase):
 
     def test_wilson_loop_generation_5x5_lattice(self):
         """Test that all expected wilson loops are generated for a 5x5 lattice.
-        Note that the order of the loops is set to match the expected output from Lattice2D.generate_all_wilson_loops()
+        Note that the order of the loops is set to match the expected output from
+        Lattice2D.generate_all_wilson_loops()
         """
         lat = lattice.Lattice2D(5, 5)
         refs = [
@@ -233,7 +235,8 @@ class TestLattice(unittest.TestCase):
         self.assertEqual(tree4_expected, set(lat_4x4.fixed_tree))
 
     def test_complementary_maximal_tree_generation(self):
-        """Ensure that complement of the maximal tree (all the links which are not in the tree) is generated correctly."""
+        """Ensure that complement of the maximal tree (all the links which are not
+        in the tree) is generated correctly."""
         lat_2x2 = lattice.Lattice2D(2, 2, -1)
         lat_4x4 = lattice.Lattice2D(4, 4, -1)
         comp_tree2_expected = {1, 3, 5, 6, 7}

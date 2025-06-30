@@ -89,6 +89,7 @@ class ExactEvaluator(Evaluator):
                 "el_energy_op": [],
                 "mass_energy_op": [],
                 "int_energy_op": [],
+                "occupations": [],
                 "average_occupation": [],
                 "el_energy_op_grad": [],
                 "mass_energy_op_grad": [],
@@ -150,6 +151,9 @@ class ExactEvaluator(Evaluator):
                         self.system.meson_string(strings[k - 1])
                     )
 
+                # Occupations
+                data["occupations"].append(self.system.all_occupations)
+
             # TODO: handle this better - boundary should not be here!
             if ggpeps.PREFERRED_BACKEND == "jax":
                 for key, val in data.items():
@@ -169,9 +173,24 @@ class ExactEvaluator(Evaluator):
             dest["mass_energy"] = self.compute_expval(data["mass_energy"], normvec)
             dest["int_energy"] = self.compute_expval(data["int_energy"], normvec)
             dest["chem_energy"] = self.compute_expval(data["chem_energy"], normvec)
+            dest["mass_energy_op"] = self.compute_expval(
+                data["mass_energy_op"], normvec
+            )
             dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
             dest["average_occupation"] = self.compute_expval(
                 np.transpose(data["average_occupation"], [1, 0]), normvec
+            )
+
+            dest["variance_occupation"] = self.compute_expval(
+                (
+                    np.transpose(data["average_occupation"], [1, 0])
+                    - dest["average_occupation"][:, np.newaxis]
+                )
+                ** 2,
+                normvec,
+            )
+            dest["occupations"] = self.compute_expval(
+                np.transpose(data["occupations"], [1, 2, 0]), normvec
             )
 
             if self.cfg.compute_grads:
@@ -276,9 +295,10 @@ class ExactEvaluator(Evaluator):
                 scaled_chem_grad = np.transpose(
                     data["chem_energy_op_grad"], [1, 2, 3, 0]
                 )
-                for lay in range(self.system.cfg.nlayer):
+                for lay in range(self.system.cfg.num_pg_layer, self.system.cfg.nlayer):
                     # the gradients must be scaled by the chemical potential
-                    scaled_chem_grad[lay, :, :, :] *= self.system.cfg.g_chem[lay]
+                    ind = lay - self.system.cfg.num_pg_layer
+                    scaled_chem_grad[lay, :, :, :] *= self.system.cfg.g_chem[ind]
                 chem_energy_grad = (
                     expval_prod_chem
                     - prod_expval_chem

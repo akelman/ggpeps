@@ -3,6 +3,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 from ggpeps import utils
@@ -118,6 +119,9 @@ def main(args):
         else:
             print(f"File {args.exact} not found. Skipping.")
 
+    palette = sns.color_palette("husl", n_colors=len(args.obs))
+    observable_colors = dict(zip(args.obs, palette))
+
     # Plot
     f, ax = plt.subplots(1, 1)
     for obs in args.obs:
@@ -129,55 +133,53 @@ def main(args):
                 df_diff_filtered = df_diff[df_diff["name"] == obs]
                 df_diff_filtered.reset_index(drop=True, inplace=True)
 
-            if args.diff:
+            for name, group in df_filtered.groupby(["type", "L", "nlayer", "ncopy"]):
+
+                type_, L, nlayer, ncopy = name
+
+                # Handle case where chosen values are an array
+                if isinstance(group[args.xaxis].iloc[0], np.ndarray):
+                    xaxis_values = group[args.xaxis].apply(lambda x: x[args.xaxis_ind])
+                else:
+                    xaxis_values = group[args.xaxis]
+
+                if isinstance(group["mean"].iloc[0], np.ndarray):
+                    yaxis_values = group["mean"].apply(lambda x: x[args.obs_ind])
+                else:
+                    yaxis_values = group["mean"]
+
                 # show errors for MC
-                for name, group in df_diff_filtered.groupby(
-                    ["type", "L", "nlayer", "ncopy"]
-                ):
-                    _type, L, nlayer, ncopy = name
-                    if _type == "MC":
-                        error = group["err"]
-                    else:
-                        error = None
+                if type_ == "MC":
+                    error = group["err"]
+                else:
+                    error = None
+
+                if args.diff:
                     ax.errorbar(
-                        group[args.xaxis],
+                        xaxis_values,
                         group["diff"],
                         fmt="o",
                         yerr=error,
-                        label=f"{_type}, obs={obs}, L={L}",
+                        label=f"{type_}, obs={obs}, L={L}",
                     )
-            else:
-                for name, group in df_filtered.groupby(
-                    ["type", "L", "nlayer", "ncopy"]
-                ):
-                    _type, L, nlayer, ncopy = name
+                elif type_ == "ED":
+                    ax.plot(
+                        xaxis_values,
+                        yaxis_values,
+                        label=f"ED, obs={obs}, L={L}",
+                        c=observable_colors[obs],
+                    )
+                else:
+                    ax.errorbar(
+                        xaxis_values,
+                        yaxis_values,
+                        fmt="o",
+                        yerr=error,
+                        label=f"{type_}, obs={obs}, L={L}",
+                        c=observable_colors[obs],
+                    )
 
-                    # Handle case where chosen xaxis is an array
-                    # TODO: improve this
-                    if isinstance(group[args.xaxis][0], np.ndarray):
-                        xaxis_values = group[args.xaxis].apply(lambda x: x[1])
-                    else:
-                        xaxis_values = group[args.xaxis]
-
-                    if _type == "ED":
-                        ax.plot(
-                            xaxis_values,
-                            group["mean"],
-                            label=f"ED, obs={obs}, L={L}",
-                        )
-                    else:
-                        if _type == "MC":
-                            error = group["err"]
-                        else:
-                            error = None
-                        ax.errorbar(
-                            xaxis_values,
-                            group["mean"],
-                            fmt="o",
-                            yerr=error,
-                            label=f"{_type}, obs={obs}, L={L}",
-                        )
-
+    # Set axis properties
     if args.logx:
         ax.set_xscale("log")
     if args.logy:
@@ -189,6 +191,7 @@ def main(args):
         ax.set_ylabel("Value", fontsize=10)
     ax.legend(fontsize=8)
     f.tight_layout()
+
     if not args.no_save:
         if args.diff:
             f.savefig(f"summary_diff_{'-'.join(args.obs)}.pdf")
@@ -196,6 +199,8 @@ def main(args):
             f.savefig(f"summary_{'-'.join(args.obs)}.pdf")
     if args.show:
         plt.show()
+
+    return
 
 
 if __name__ == "__main__":
@@ -234,7 +239,19 @@ if __name__ == "__main__":
         "--xaxis", type=str, default="g_el", help="Quantity to be plotted on the x axis"
     )
     parser.add_argument(
+        "--xaxis_ind",
+        type=int,
+        default="0",
+        help="If --xaxis quantity is an array, use this index",
+    )
+    parser.add_argument(
         "--obs", type=str, nargs="+", default=["energy"], help="Observables to plot"
+    )
+    parser.add_argument(
+        "--obs_ind",
+        type=int,
+        default=0,
+        help="If observables is an array, plot this index",
     )
 
     args = parser.parse_args()

@@ -147,7 +147,7 @@ class Minimizer:
             # Check if value is stored in cache (e.g. from previous minimization)
             energy = self.cache.load_obs_from_local_cache(flattened_paramvec, "energy")
             if energy is not None:
-                logger.debug(f"Found cached value for energy: {energy}")
+                # logger.debug(f"Found cached value for energy: {energy}")
                 return energy
 
             if self.last_paramvec is None or not np.allclose(
@@ -172,7 +172,7 @@ class Minimizer:
                 self.cache.add_obs_to_cache(
                     flattened_paramvec, "energy_grad", parametergrad
                 )
-            logger.debug(f"Calculated energy: {energy}")
+            # logger.debug(f"Calculated energy: {energy}")
 
             return energy
 
@@ -264,13 +264,17 @@ class Minimizer:
         if self.min_result is not None:
             sys_cfg = self.evaluator_manager.system_cfg
 
-            chem_str = ",".join([f"{val:.3f}" for val in sys_cfg.g_chem])
+            chem_str = "_".join([f"{val:.3f}" for val in sys_cfg.g_chem])
             couplings_str = f"gel_{sys_cfg.g_el}_gmag_{sys_cfg.g_mag}_gint_{sys_cfg.g_int}_gmass_{sys_cfg.g_mass}_gchem_{chem_str}"
 
             fname_mc_summary = f"summary_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
             fname_result_min = f"result_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
 
-            self.last_result.save_summary(os.path.join(output_dir, fname_mc_summary))
+            if self.last_result is not None:
+                # last_result may be None if caching is on and the last result was not computed
+                self.last_result.save_summary(
+                    os.path.join(output_dir, fname_mc_summary)
+                )
             with open(os.path.join(output_dir, fname_result_min), "wb") as outfile:
                 pickle.dump(self.min_result, outfile)
 
@@ -454,10 +458,12 @@ def print_callback(x, minimizer):
     el_energy = res.get_obs_mean("el_energy")
     mag_energy = res.get_obs_mean("mag_energy")
     chem_energy = res.get_obs_mean("chem_energy")
-    plaquette = res.get_obs_mean("wilson_loop_0-0_1x1")
-    occ = ", ".join([f"{val:.4f}" for val in avg_occupation])
 
-    message = f"Energy: {energy:.9f}, Occupation: {occ}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
+    plaquette = res.get_obs_mean("wilson_loop_0-0_1x1")
+    mass_energy_op = res.get_obs_mean("mass_energy_op")
+    avg_occ = ", ".join([f"{val:.4f}" for val in avg_occupation])
+
+    message = f"Energy: {energy:.9f}, Total Mass: {mass_energy_op}, Occupation: {avg_occ}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
     if minimizer.cfg.method == "CUSTOM":
         # We only have access to the iteration number if we are handling the minimization (via the CUSTOM method)
         message = f"Iter: {x:03d}, {message}"
@@ -467,10 +473,17 @@ def print_callback(x, minimizer):
         message += f", acceptance prob: {acceptance_prob:.6f}"
     logger.info(message)
 
-    logger.debug(
-        f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}, chem: {chem_energy:.6f}"
-    )
-    logger.debug(f"Parametervec: {paramvec}")
+    occupations = res.get_obs_mean("occupations")
+    occ_str = ""
+    for lay in range(len(occupations)):
+        occ_str += ", ".join([f"{val:.10f}" for val in occupations[lay]])
+        occ_str += " | "  # layer separator
+    logger.debug(f"Occupations: {occ_str}")
+
+    # logger.debug(
+    #    f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}, chem: {chem_energy:.6f}"
+    # )
+    # logger.debug(f"Parametervec: {paramvec}")
 
     # If we're at the lowest energy seen so far, log the parameters
     # if current_iter == 0 or energy < lowest_energy:

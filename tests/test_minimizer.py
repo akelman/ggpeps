@@ -18,7 +18,7 @@ class TestMinimizerZ2(unittest.TestCase):
         paramvec = [[0.0, 0.5, 0.5, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2DConfig(
-            lat_2x2, 1.0, 0.0, 0.0, 0.0, [0], num_pg_layer=1, num_fermionic_layer=0
+            lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=0
         )
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
@@ -41,7 +41,7 @@ class TestMinimizerZ2(unittest.TestCase):
                     0.0,
                     0.0,
                     0.0,
-                    [0],
+                    None,
                     num_pg_layer=1,
                     num_fermionic_layer=0,
                 )
@@ -51,7 +51,7 @@ class TestMinimizerZ2(unittest.TestCase):
                     0.0,
                     0.0,
                     0.0,
-                    [0],
+                    None,
                     num_pg_layer=1,
                     num_fermionic_layer=0,
                 )
@@ -80,7 +80,7 @@ class TestMinimizerZ2(unittest.TestCase):
         paramvec = [[0.0, 0.5, 0.5, 0.0, 0.0, 0.0], [0.0, 0.3, 0.8, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2DConfig(
-            lat_2x2, 1.0, 0.0, 0.0, 0.0, [0, 0], num_pg_layer=2, num_fermionic_layer=0
+            lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=2, num_fermionic_layer=0
         )
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
@@ -104,7 +104,7 @@ class TestMinimizerZ2(unittest.TestCase):
                         0.0,
                         0.0,
                         0.0,
-                        [0, 0],
+                        None,
                         num_pg_layer=2,
                         num_fermionic_layer=0,
                     )
@@ -114,7 +114,7 @@ class TestMinimizerZ2(unittest.TestCase):
                         0.0,
                         0.0,
                         0.0,
-                        [0, 0],
+                        None,
                         num_pg_layer=2,
                         num_fermionic_layer=0,
                     )
@@ -142,7 +142,7 @@ class TestMinimizerZ2(unittest.TestCase):
         eps = 1e-5
         paramvec = [[0.2, 0.5, 0.5, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, [0])
+        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
         exact_cfg = ExactEvaluatorConfig()
@@ -158,10 +158,10 @@ class TestMinimizerZ2(unittest.TestCase):
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
                 system_cfg_left = system.Z2System2DConfig(
-                    lat_2x2, 1.0, 0.0, 0.0, 0.0, [0]
+                    lat_2x2, 1.0, 0.0, 0.0, 0.0, None
                 )
                 system_cfg_right = system.Z2System2DConfig(
-                    lat_2x2, 1.0, 0.0, 0.0, 0.0, [0]
+                    lat_2x2, 1.0, 0.0, 0.0, 0.0, None
                 )
 
                 system_cfg_left.paramvec = paramvec_left
@@ -191,7 +191,7 @@ class TestMinimizerZ2(unittest.TestCase):
         paramvec = [[0.2, 0.5, 0.5, 0.0, 0.0, 0.0], [0.1, 0.4, 0.2, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2DConfig(
-            lat_2x2, 1.0, 0.0, 0.0, 0.0, [0, 0], num_pg_layer=2, num_fermionic_layer=0
+            lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=2, num_fermionic_layer=0
         )
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
@@ -214,7 +214,7 @@ class TestMinimizerZ2(unittest.TestCase):
                         0.0,
                         0.0,
                         0.0,
-                        [0, 0],
+                        None,
                         num_pg_layer=2,
                         num_fermionic_layer=0,
                     )
@@ -224,7 +224,7 @@ class TestMinimizerZ2(unittest.TestCase):
                         0.0,
                         0.0,
                         0.0,
-                        [0, 0],
+                        None,
                         num_pg_layer=2,
                         num_fermionic_layer=0,
                     )

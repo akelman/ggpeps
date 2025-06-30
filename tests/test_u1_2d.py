@@ -81,7 +81,7 @@ class TestU1SystemMethods(unittest.TestCase):
         self.assertAlmostEqual(logdet_inc, logdet)
 
     def test_norm_incremental(self):
-        # Test that the incremental update is equivalent to the re-calculation of the norm
+        # Test that the incremental update is equivalent to re-calculation of the norm
         # This update is a nullop since we initialize the gauge-field with 0
         zeroarr = np.zeros((1, 1))
         weight_inc = self.system_u1_2_2.update_lognorm_inc(0, zeroarr, all_factors=True)
@@ -89,7 +89,7 @@ class TestU1SystemMethods(unittest.TestCase):
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
     def test_norm_incremental_update(self):
-        # Test that the incremental update is equivalent to the re-calculation of the norm
+        # Test that the incremental update is equivalent to re-calculation of the norm
         ind = 0
         theta = np.array([[-1.0]])
         weight_inc = self.system_u1_2_2.calculate_weight_attempt(
@@ -152,7 +152,8 @@ class TestU1SystemMethods(unittest.TestCase):
         self.assertTrue(np.allclose(gamma_maj, gamma_maj_cpp))
 
     @skip(
-        "This method cannot work correctly since the electric energy is not computed correctly. The pre-factor is different for the U1 case in contrast to the Z2 case."
+        "This method cannot work correctly since the electric energy is not computed "
+        "correctly. The pre-factor is different for the U1 case vs. the Z2 case."
     )
     def test_electric_energy_L_2_empty(self):
         # Calculate the electric energy of an empty system.
@@ -170,7 +171,8 @@ class TestU1SystemMethods(unittest.TestCase):
         self.assertAlmostEqual(el_energy_link, el_energy_pf)
 
     @skip(
-        "This method cannot work correctly since the electric energy is not computed correctly. The pre-factor is different for the U1 case in contrast to the Z2 case."
+        "This method cannot work correctly since the electric energy is not computed "
+        "correctly. The pre-factor is different for the U1 case vs. the Z2 case."
     )
     def test_electric_energy_L_4_empty(self):
         paramvec = np.zeros((1, 3))

@@ -10,9 +10,6 @@ from ggpeps.exacteval import ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluatorConfig, MonteCarloEvaluator
 
 
-# ======================= Z2 fermionic system (4 copies) =========================================
-
-
 class Testgaugefixing(unittest.TestCase):
 
     def setUp(self):
@@ -25,7 +22,7 @@ class Testgaugefixing(unittest.TestCase):
         """
         lat2 = lattice.Lattice2D(2, 2, -1)  # With gauge fixing
         paramvec = np.random.rand(2, 20)
-        cfg2 = system.Z2System2D_G2C_F2C_Config(lat2, 1, 1, 1, 1, [0, 0])
+        cfg2 = system.Z2System2D_G2C_F2C_Config(lat2, 1, 1, 1, 1, None)
         cfg2.paramvec = paramvec
         system_z2_2 = system.Z2System2D(cfg2)
         system_z2_2.cfg.enforce_parameter_conditions(system_z2_2.cfg.paramvec)
@@ -51,7 +48,7 @@ class Testgaugefixing(unittest.TestCase):
 
         lat4 = lattice.Lattice2D(4, 4, -1)  # Without gauge fixing
         paramvec = np.random.rand(2, 20)
-        cfg4 = system.Z2System2D_G2C_F2C_Config(lat4, 1, 1, 1, 1, [0, 0])
+        cfg4 = system.Z2System2D_G2C_F2C_Config(lat4, 1, 1, 1, 1, None)
         cfg4.paramvec = paramvec
         system_z2_4 = system.Z2System2D(cfg4)
         system_z2_4.cfg.enforce_parameter_conditions(system_z2_4.cfg.paramvec)
@@ -74,21 +71,22 @@ class Testgaugefixing(unittest.TestCase):
         self.assertEqual(len(tuple_configvec4), len(unique_configvec4))
 
     def test_exacteval(self):
-        """Ensure that exact evaluation gives the same results with and without gauge fixing"""
+        """Ensure that exact evaluation gives the same results with and without
+        gauge fixing"""
 
         lat2_with_gf = lattice.Lattice2D(2, 2, -1)  # With gauge fixing
         lat2_without_gf = lattice.Lattice2D(2, 2)  # Without gauge fixing
         paramvec = np.random.rand(2, 20)
 
         # System with gauge fixing
-        cfg_with_gf = system.Z2System2D_G2C_F2C_Config(lat2_with_gf, 1, 1, 1, 1, [0, 0])
+        cfg_with_gf = system.Z2System2D_G2C_F2C_Config(lat2_with_gf, 1, 1, 1, 1, None)
         cfg_with_gf.paramvec = paramvec
         system_with_gf = system.Z2System2D(cfg_with_gf)
         system_with_gf.cfg.enforce_parameter_conditions(cfg_with_gf.paramvec)
 
         # System without gauge fixing
         cfg_without_gf = system.Z2System2D_G2C_F2C_Config(
-            lat2_without_gf, 1, 1, 1, 1, [0, 0]
+            lat2_without_gf, 1, 1, 1, 1, None
         )
         cfg_without_gf.paramvec = paramvec
         system_without_gf = system.Z2System2D(cfg_without_gf)
@@ -106,7 +104,7 @@ class Testgaugefixing(unittest.TestCase):
         eval_without_gf = evaluator_without_gf.evaluate()
 
         for key, val in eval_with_gf.items():
-            self.assertTrue(np.allclose(val, eval_without_gf[key]))
+            self.assertTrue(np.allclose(val, eval_without_gf[key], equal_nan=True))
 
     def test_gf_some_rows_exacteval(self):
         """Test exact evaluation when fixing only 1 row."""
@@ -115,14 +113,14 @@ class Testgaugefixing(unittest.TestCase):
         paramvec = np.random.rand(2, 20)
 
         # System with gauge fixing
-        cfg_with_gf = system.Z2System2D_G2C_F2C_Config(lat2_with_gf, 1, 1, 1, 1, [0, 0])
+        cfg_with_gf = system.Z2System2D_G2C_F2C_Config(lat2_with_gf, 1, 1, 1, 1, None)
         cfg_with_gf.paramvec = paramvec
         system_with_gf = system.Z2System2D(cfg_with_gf)
         system_with_gf.cfg.enforce_parameter_conditions(cfg_with_gf.paramvec)
 
         # System without gauge fixing
         cfg_without_gf = system.Z2System2D_G2C_F2C_Config(
-            lat2_without_gf, 1, 1, 1, 1, [0, 0]
+            lat2_without_gf, 1, 1, 1, 1, None
         )
         cfg_without_gf.paramvec = paramvec
         system_without_gf = system.Z2System2D(cfg_without_gf)
@@ -140,11 +138,13 @@ class Testgaugefixing(unittest.TestCase):
         eval_without_gf = evaluator_without_gf.evaluate()
 
         for key, val in eval_with_gf.items():
-            self.assertTrue(np.allclose(val, eval_without_gf[key]))
+            self.assertTrue(np.allclose(val, eval_without_gf[key], equal_nan=True))
 
     @skip("Too long")
     def test_mceval(self):
-        """Ensure that MC evaluation gives the same results with and without gauge fixing"""
+        """Ensure that MC evaluation gives the same results with and without
+        gauge fixing"""
+
         # MC config
         lat2_with_gf = lattice.Lattice2D(2, 2, -1)  # With gauge fixing
         lat2_without_gf = lattice.Lattice2D(2, 2)  # Without gauge fixing
