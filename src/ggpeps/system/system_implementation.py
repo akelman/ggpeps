@@ -739,20 +739,3 @@ class Z2System2D(System2DBase):
             mass_site = 0.5 * (1 - covmat[site_ind + 1, site_ind])
 
         return mass_site
-
-    def average_occupation(self, after_ph: bool = False) -> xnp.ndarray:
-        """Compute the average occupation number for the system across all sites.
-
-        Args:
-            after_ph (bool, optional): If True, compute the occupation number using the operators defined after the particle-hole transformation. Defaults to False.
-
-        Returns:
-            array: the average occupation number for the system across all sites, as a vector across layers.
-        """
-        total_occ = []
-        for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
-            layer_val = 0.0
-            for site in range(self.cfg.lattice.size):
-                layer_val += self.occupation(lay, site, after_ph=after_ph)
-            total_occ.append(layer_val / self.cfg.lattice.size)
-        return xnp.array(total_occ)

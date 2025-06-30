@@ -1829,7 +1829,9 @@ class System2DBase(ABC):
         """Compute the average occupation number for the system across all sites.
 
         Args:
-            after_ph (bool, optional): If True, compute the occupation number using the operators defined after the particle-hole transformation. Defaults to False.
+            after_ph (bool, optional): If True, compute the occupation number using the
+                operators as defined after the particle-hole transformation.
+                Defaults to False.
 
         Returns:
             array: the average occupation number for the system across all sites, as a vector across layers.
