@@ -1207,8 +1207,10 @@ class TestTransVariance(unittest.TestCase):
         """Check that the occupations (post PH) are consistent with the mass a chem energy"""
 
         # Set the gauge configuration
-        config = np.zeros(8)
-        config[0] = np.pi
+        flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)
+        neutral_gauge = self.system_z2.cfg.gaugemgr.get_neutral_gauge_value()
+        config = np.array(8 * [neutral_gauge])
+        config[0] = flux_gauge
         self.system_z2.update_gauge_full_system(config)
 
         # Use the paramvec from setUp(), and extract various values for comparison
