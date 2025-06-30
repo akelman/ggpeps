@@ -1715,9 +1715,7 @@ class System2DBase(ABC):
         Returns:
             list: Layer-resolved mass energy w/o shift
         """
-        if self.cfg.g_mass == 0:
-            self._mass_energy_op_vec = xnp.zeros(self.cfg.nlayer)
-        elif self._mass_energy_op_vec is None:
+        if self._mass_energy_op_vec is None:
             self._mass_energy_op_vec, self._mass_energy_op_grad_vec = (
                 self._compute_mass_energy_op_vec_and_grad()
             )
@@ -1731,9 +1729,7 @@ class System2DBase(ABC):
         Returns:
             list: Layer-resolved interaction energy w/o shift
         """
-        if self.cfg.g_int == 0:
-            self._int_energy_op_vec = xnp.zeros(self.cfg.nlayer)
-        elif self._int_energy_op_vec is None:
+        if self._int_energy_op_vec is None:
             # This vector is the interaction energy on a single site.
             self._int_energy_op_vec, self._int_energy_op_grad_vec = (
                 self._compute_int_energy_op_vec_and_grad()
@@ -1748,10 +1744,7 @@ class System2DBase(ABC):
         Returns:
             list: Layer-resolved interaction energy w/o shift
         """
-        if xnp.allclose(self.cfg.g_chem, 0):
-            self._chem_energy_op_vec = xnp.zeros(self.cfg.nlayer)
-
-        elif self._chem_energy_op_vec is None:
+        if self._chem_energy_op_vec is None:
             self._chem_energy_op_vec, self._chem_energy_op_grad_vec = (
                 self._compute_chem_energy_op_vec_and_grad()
             )
@@ -1777,9 +1770,6 @@ class System2DBase(ABC):
         Returns:
             float: gradient of the mass energy operator (w/o shift) for the whole system
         """
-        if self.cfg.g_mass == 0:
-            self._mass_energy_op_grad_vec = xnp.zeros(self.cfg.param_shape())
-
         if self._mass_energy_op_grad_vec is None:
             self._mass_energy_op_vec, self._mass_energy_op_grad_vec = (
                 self._compute_mass_energy_op_vec_and_grad()
@@ -1795,10 +1785,7 @@ class System2DBase(ABC):
         Returns:
             float: Gradient of the interaction energy operator (w/o shift) for the whole system
         """
-        if self.cfg.g_int == 0:
-            self._int_energy_op_grad_vec = xnp.zeros(self.cfg.param_shape())
-
-        elif self._int_energy_op_grad_vec is None:
+        if self._int_energy_op_grad_vec is None:
             self._int_energy_op_vec, self._int_energy_op_grad_vec = (
                 self._compute_int_energy_op_vec_and_grad()
             )
@@ -1813,10 +1800,7 @@ class System2DBase(ABC):
         Returns:
             float: Gradient of the chemical potential energy operator (w/o shift) for the whole system
         """
-        if xnp.allclose(self.cfg.g_chem, 0):
-            self._chem_energy_op_grad_vec = xnp.zeros(self.cfg.param_shape())
-
-        elif self._chem_energy_op_grad_vec is None:
+        if self._chem_energy_op_grad_vec is None:
             self._chem_energy_op_vec, self._chem_energy_op_grad_vec = (
                 self._compute_chem_energy_op_vec_and_grad()
             )
