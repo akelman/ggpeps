@@ -60,7 +60,7 @@
                 "--g_mag", "0", 
                 "--g_int", "1",
                 "--g_mass", "0",
-                "--g_chem", "0", "1",
+                "--g_chem", "1",
                 "--ignore_cache",
                 "--seed", "2"
             ]

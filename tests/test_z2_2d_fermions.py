@@ -634,7 +634,7 @@ class TestZ2System(unittest.TestCase):
         # This is comparison of the analytic derivative against the numeric derivative
         # for the 2 copy fermionic ansatz with 2 physical flavors
         eps = 1e-5
-        g_chem = [0, -0.4, 2]
+        g_chem = [-0.4, 2]
         paramvec = np.random.rand(3, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D_G2C_F2C_Config(
@@ -657,8 +657,9 @@ class TestZ2System(unittest.TestCase):
 
         deriv_ana = system_z2_2_2.chem_energy_op_grad_vec
         # Scale the gradients by the appropriate chemical potential
-        for lay in range(3):
-            deriv_ana[lay, :, :] *= g_chem[lay]
+        for lay in range(1, 3):
+            offset = system_cfg.num_pg_layer
+            deriv_ana[lay, :, :] *= g_chem[lay - offset]
         symbolvec = system_z2_2_2.symbolvec
         for layerind in range(3):
             # we could skip the pure gauge layers, since they do not contribute
@@ -768,7 +769,7 @@ class TestZ2System(unittest.TestCase):
             1 / (2 * g0),
             g_int0,
             0,
-            [0, 0],
+            None,
             num_pg_layer=1,
             num_fermionic_layer=1,
         )
@@ -801,7 +802,7 @@ class TestTransVariance(unittest.TestCase):
             1,
             1,
             1,
-            [0, 1.0, 2.0],
+            [1.0, 2.0],
             num_pg_layer=num_pg_layer,
             num_fermionic_layer=num_fermionic_layer,
             unitcell_size=unitcell_size,
@@ -1179,6 +1180,31 @@ class TestTransVariance(unittest.TestCase):
         self.assertAlmostEqual(int_op, new_int_op)
         self.assertAlmostEqual(chem_val, -new_chem_val)
 
+    def test_occupations(self):
+        """Check that the occupations (post PH) are consistent with the mass a chem energy"""
+
+        # Set the gauge configuration
+        config = np.zeros(8)
+        config[0] = np.pi
+        self.system_z2.update_gauge_full_system(config)
+
+        # Use the paramvec from setUp(), and extract various values for comparison
+        mass_op = self.system_z2.mass_energy_op
+        chem_op = np.sum(self.system_z2.chem_energy_op_vec)
+        all_occupations = self.system_z2.all_occupations
+
+        mass_offset = (
+            0.5
+            * self.system_z2.cfg.lattice.size
+            * self.system_z2.cfg.num_fermionic_layer
+        )
+        mass = mass_offset
+        mass += np.sum(all_occupations[:, [0, 3]])  # even sites
+        mass -= np.sum(all_occupations[:, [1, 2]])  # odd sites
+        self.assertAlmostEqual(mass_op, mass)
+
+        self.assertAlmostEqual(chem_op, np.sum(all_occupations))
+
     def test_grad_mass_energy(self):
         # This is comparison of the analytic derivative against the numeric derivative
         # for the 2 copy fermionic ansatz with 2 physical flavors
@@ -1407,7 +1433,7 @@ class TestFullGrads(unittest.TestCase):
         mag = 1.0
         mass = 1.0
         g_int = 1.0
-        g_chem = [0, 2.0, 3.0]
+        g_chem = [2.0, 3.0]
 
         cfg = system.Z2System2D_G2C_F2C_Config(
             lat_2x2,

@@ -225,17 +225,13 @@ def main(args):
     g_int = args.g_int
     g_mass = args.g_mass
     if args.g_chem is None:
-        g_chem = np.zeros(args.num_pg_layer + args.num_fermionic_layer)
+        g_chem = np.zeros(args.num_fermionic_layer)
     else:
         g_chem = np.array(args.g_chem)
-    if len(g_chem) == args.num_pg_layer + args.num_fermionic_layer:
-        if not np.allclose(g_chem[: args.num_pg_layer], 0.0):
-            raise ValueError(
-                "A chemical potential for a pure gauge layer is not zero, which is invalid."
-            )
-    elif len(g_chem) == args.num_fermionic_layer:
-        # The chemical potential must be zero for the pure gauge layers
-        g_chem = np.concatenate((np.zeros(args.num_pg_layer), g_chem))
+    if len(g_chem) != args.num_fermionic_layer:
+        raise ValueError(
+            "The number of chemical potentials must match the number of fermionic layers."
+        )
     couplings = {
         "g_el": g_el,
         "g_mag": g_mag,
@@ -315,6 +311,8 @@ def main(args):
                 g_chem,
                 num_pg_layer=args.num_pg_layer,
                 num_fermionic_layer=args.num_fermionic_layer,
+                unitcell_size=args.unitcell_size,
+                enforce_u1_symmetry=not args.relax_u1,
             )
         elif args.ncopy == 8:
             system_cfg = Z2System2D_8C_Config(
@@ -457,7 +455,7 @@ def main(args):
 
     # Warn about potential/likely unintended choice of settings
     if not np.allclose(g_chem, 0):
-        if not args.unitcell_size > 1:
+        if args.unitcell_size == 1:
             logger.warning(
                 "There is a non-zero chemical potential, but 1-site translation invariance. This may be unintended."
             )

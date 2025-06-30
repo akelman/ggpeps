@@ -3,6 +3,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 from ggpeps import utils
@@ -118,6 +119,9 @@ def main(args):
         else:
             print(f"File {args.exact} not found. Skipping.")
 
+    palette = sns.color_palette("husl", n_colors=len(args.obs))
+    observable_colors = dict(zip(args.obs, palette))
+
     # Plot
     f, ax = plt.subplots(1, 1)
     for obs in args.obs:
@@ -134,12 +138,12 @@ def main(args):
                 type_, L, nlayer, ncopy = name
 
                 # Handle case where chosen values are an array
-                if isinstance(group[args.xaxis][0], np.ndarray):
+                if isinstance(group[args.xaxis].iloc[0], np.ndarray):
                     xaxis_values = group[args.xaxis].apply(lambda x: x[args.xaxis_ind])
                 else:
                     xaxis_values = group[args.xaxis]
 
-                if isinstance(group["mean"][0], np.ndarray):
+                if isinstance(group["mean"].iloc[0], np.ndarray):
                     yaxis_values = group["mean"].apply(lambda x: x[args.obs_ind])
                 else:
                     yaxis_values = group["mean"]
@@ -161,8 +165,9 @@ def main(args):
                 elif type_ == "ED":
                     ax.plot(
                         xaxis_values,
-                        group["mean"],
+                        yaxis_values,
                         label=f"ED, obs={obs}, L={L}",
+                        c=observable_colors[obs],
                     )
                 else:
                     ax.errorbar(
@@ -171,6 +176,7 @@ def main(args):
                         fmt="o",
                         yerr=error,
                         label=f"{type_}, obs={obs}, L={L}",
+                        c=observable_colors[obs],
                     )
 
     # Set axis properties
