@@ -291,7 +291,7 @@ def main(args):
     if args.gauge_group == "Z2":
         if args.fermions:
             if args.ncopy == 2:
-                # Z2 system with 4 copies of virtual fermions on the links (2 for the pure gauge case, 2 for interacting with physical fermions)
+                # Z2 system with 2 copies of virtual fermions per layer
                 system_cfg = Z2System2D_G2C_F2C_Config(
                     lattice,
                     g_el,
@@ -305,7 +305,7 @@ def main(args):
                     enforce_u1_symmetry=not args.relax_u1,
                 )
             elif args.ncopy == 4:
-                # Z2 system with 6 copies of virtual fermions on the links (2 for the pure gauge case, 4 for interacting with physical fermions)
+                # Z2 system with 4 copies of virtual fermions per layer
                 system_cfg = Z2System2D_G2C_F4C_Config(
                     lattice,
                     g_el,
