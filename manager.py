@@ -782,13 +782,13 @@ if __name__ == "__main__":
         "--binsize", default=1, type=int, help="Binsize used in the MC computation"
     )
     parser.add_argument(
-        "--no-bin-eom",
+        "--no_bin_eom",
         default=False,
         action="store_true",
         help="Use the standard EOM instead of a rebinning analysis",
     )
     parser.add_argument(
-        "--use-systemsize-updates",
+        "--use_systemsize_updates",
         action="store_true",
         default=False,
         help="Update every spin of the system between each update step. This option is kept for backwards compatibility",
@@ -800,7 +800,7 @@ if __name__ == "__main__":
         help="The number of spins to update in each step (can be an integer, or one of: system, halfsystem)",
     )
     parser.add_argument(
-        "--compute-grads",
+        "--compute_grads",
         action="store_true",
         default=False,
         help="Compute grads even if in eval mode",
