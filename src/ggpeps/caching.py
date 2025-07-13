@@ -27,14 +27,19 @@ class Cache:
         }
 
     def paramvec2key(self, paramvec: np.ndarray):
+        """Convert paramvect to bytes for use as a key in the cache."""
         return paramvec.data.tobytes()
 
-    def key2paramvec(self, key: bytes):
+    def key2paramvec(self, key: bytes) -> np.ndarray:
+        """Convert bytes key to paramvec."""
         return np.frombuffer(key)
 
     def save_cache_file(self, dest_filepath: str):
+        """Save the current cache to file."""
+
         if self.disable_cache:
             return
+
         if self.save_cache_dest is not None:
             # if os.path.exists(dest_filepath):
             #    logger.warning(f"Overwriting cache file {dest_filepath}")
@@ -42,7 +47,7 @@ class Cache:
                 pickle.dump(self.cache_data, outfile)
         return
 
-    def add_obj_to_cache(self, obj_name: str, obj_val):
+    def add_obj_to_cache(self, obj_name: str, obj_val) -> None:
         if self.disable_cache:
             return
         if obj_name not in self.cache_data.keys():
@@ -56,9 +61,10 @@ class Cache:
 
     def add_obs_to_cache(
         self, paramvec: np.ndarray, obs: str, val: float, save_to_file: bool = False
-    ):
+    ) -> None:
         if self.disable_cache:
             return
+
         key = self.paramvec2key(paramvec)
         obs_cache = self.cache_data[obs]
         obs_cache[key] = val
@@ -111,7 +117,7 @@ class Cache:
         return success
 
 
-def remove_eval_manager_from_cache(cache_files):
+def remove_eval_manager_from_cache(cache_files: list[str]) -> None:
     """Remove the evaluator_manager from the cache files.
 
     Args:
