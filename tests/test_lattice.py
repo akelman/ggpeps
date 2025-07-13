@@ -267,3 +267,12 @@ class TestLattice(unittest.TestCase):
         self.assertTrue(
             set(self.lat2d.fixed_tree).isdisjoint(set(self.lat2d.comp_tree))
         )
+    
+    def test_rows_tree(self):
+        """Check that the rows tree is generated correctly for 4x4 and 2x2 lattices."""
+        lat2x2 = lattice.Lattice2D(2, 2, 1)
+        lat4x4 = lattice.Lattice2D(4, 4, 3)
+        expected_rows_tree_4by4 = {0, 1, 2, 4, 5, 6, 8, 9,10}
+        expected_rows_tree_2by2 = {0}
+        self.assertEqual(expected_rows_tree_4by4, set(lat4x4.fixed_tree))
+        self.assertEqual(expected_rows_tree_2by2, set(lat2x2.fixed_tree))

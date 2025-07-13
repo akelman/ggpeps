@@ -57,6 +57,7 @@ def main(args):
 if __name__ == "__main__":
 
     import argparse
+    import glob
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--fname", nargs="+", help="MC pickle or txt file")
