@@ -59,48 +59,12 @@ if __name__ == "__main__":
     import argparse
     import glob
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--fname", nargs="+", help="MC pickle or txt file")
-    # parser.add_argument("--obs", type=str, default="energy", help="Observable")
-    # parser.add_argument("--show", type=bool, default=False, help="Display graph")
-    # parser.add_argument("--dest", type=str, default=None, help="Destination filepath")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--fname", nargs="+", help="MC pickle or txt file")
+    parser.add_argument("--obs", type=str, default="energy", help="Observable")
+    parser.add_argument("--show", type=bool, default=False, help="Display graph")
+    parser.add_argument("--dest", type=str, default=None, help="Destination filepath")
 
-    # args = parser.parse_args()
+    args = parser.parse_args()
 
-    # main(args)
-    base_dir = r"G:\My Drive\Research\MC\gauge_fixing_chess\g_2.5_el_1.2500_mag_0.2000_int_1.0_mass_1.0\comp_with_rows"
-    L_vals = [2, 4, 6]
-    c_vals = ["1","2","3","4","5","6", "c", "F", "T"]
-
-    for L in L_vals:
-        fnames = []
-        for c in c_vals:
-            folder = os.path.join(base_dir, f"L_{L}_gf_{c}")
-            if not os.path.isdir(folder):
-                continue
-            fnames += glob.glob(os.path.join(folder, "*.pkl.gz*"))
-        if not fnames:
-            print(f"No files found for L={L}")
-            continue
-
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--fname", nargs="+", help="MC pickle or txt file")
-        parser.add_argument("--obs", type=str, default="energy", help="Observable")
-        parser.add_argument("--show", type=bool, default=False, help="Display graph")
-        parser.add_argument(
-            "--dest", type=str, default=None, help="Destination filepath"
-        )
-
-        args = parser.parse_args(
-            args=[
-                "--fname",
-                *fnames,
-                "--obs",
-                "energy",
-                "--dest",
-                os.path.join(base_dir, f"binning_plot_L_{L}.pdf"),
-            ]
-        )
-
-        print(f"Running main for L={L}, saving to {args.dest}")
-        main(args)
+    main(args)

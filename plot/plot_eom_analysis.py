@@ -136,7 +136,10 @@ def main(args, save_path=None):
                 dyn_mean, dyn_eom = compute_dynamic_eom_mean(obsvec, step_numbers)
 
                 axvec[0].plot(
-                    step_numbers[1:], dyn_mean[1:],"o", label=args.pkl_fname[i],
+                    step_numbers[1:],
+                    dyn_mean[1:],
+                    "o",
+                    label=args.pkl_fname[i],
                 )
                 axvec[1].plot(step_numbers[1:], dyn_eom[1:])
                 axvec[2].plot(step_numbers[1:], dyn_eom[1:])
@@ -207,61 +210,25 @@ if __name__ == "__main__":
     import os
     import argparse
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--pkl_fname", nargs="+", help="MC pickle file")
-    # parser.add_argument("--obs", type=str, default="energy", help="Observable")
-    # parser.add_argument(
-    #     "--grad_ind",
-    #     nargs="+",
-    #     type=int,
-    #     default=None,
-    #     help="Gradient indices (default: None)",
-    # )
-    # parser.add_argument(
-    #     "--layer_num",
-    #     nargs="+",
-    #     type=int,
-    #     default=None,
-    #     help="Layer number - when calculating gradient",
-    # )
-    # parser.add_argument("--log_fname", nargs="+", help="MC log file - on debug mode")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pkl_fname", nargs="+", help="MC pickle file")
+    parser.add_argument("--obs", type=str, default="energy", help="Observable")
+    parser.add_argument(
+        "--grad_ind",
+        nargs="+",
+        type=int,
+        default=None,
+        help="Gradient indices (default: None)",
+    )
+    parser.add_argument(
+        "--layer_num",
+        nargs="+",
+        type=int,
+        default=None,
+        help="Layer number - when calculating gradient",
+    )
+    parser.add_argument("--log_fname", nargs="+", help="MC log file - on debug mode")
 
-    # args = parser.parse_args()
+    args = parser.parse_args()
 
-    # main(args)
-    base_dir = r"G:\My Drive\Research\MC\gauge_fixing_chess\g_0.5_el_0.2500_mag_1.0000_int_1.0_mass_1.0\comp_with_rows"
-    L_vals = [2, 4, 6]
-    c_vals = ["1","2","3","4","5","6", "c", "F", "T"]
-
-    for L in L_vals:
-        pkl_files = []
-        log_files = []
-        for c in c_vals:
-            folder = os.path.join(base_dir, f"L_{L}_gf_{c}")
-            if not os.path.isdir(folder):
-                continue
-            pkl_files += glob.glob(os.path.join(folder, "*.pkl.gz*"))
-            log_files += glob.glob(os.path.join(folder, "*.log"))
-        if not pkl_files or not log_files:
-            print(f"No pkl or log files found for L={L}")
-            continue
-
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--pkl_fname", nargs="+")
-        parser.add_argument("--obs", type=str, default="energy")
-        parser.add_argument("--grad_ind", nargs="+", type=int, default=None)
-        parser.add_argument("--layer_num", nargs="+", type=int, default=None)
-        parser.add_argument("--log_fname", nargs="+")
-        args = parser.parse_args(
-            args=[
-                "--pkl_fname",
-                *pkl_files,
-                "--log_fname",
-                *log_files,
-                "--obs",
-                "energy",
-            ]
-        )
-        save_path = os.path.join(base_dir, f"_eom_plot_L_{L}.pdf")
-        print(f"Running main for L={L}, saving to {save_path}")
-        main(args, save_path=save_path)
+    main(args)
