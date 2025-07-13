@@ -178,11 +178,14 @@ class EvaluatorManager:
                 )
 
             resultvec = ray.get(resultvec)
-            return self.collect(resultvec)
+            combined_evaluator = self.collect(resultvec)
+            result_df = combined_evaluator.summary()
         else:
             self.reset_evaluator()
             self.evaluator.evaluate(**eval_args)
-            return self.evaluator
+            result_df = self.evaluator.summary()
+
+        return result_df
 
     def collect(self, resultvec):
         """Unify the results of multiple runners
@@ -191,7 +194,7 @@ class EvaluatorManager:
             resultvec (list): List of Estimators from the different runners
 
         Returns:
-            Estimator: estimator with information from all runners
+            Evaluator: evaluator with information from all runners
         """
         system = self.system_cls(self.system_cfg)
         dest = MonteCarloEvaluator(self.cfg, system)
