@@ -17,7 +17,7 @@ import numpy as np
 from ggpeps import xnp as xnp
 
 import ggpeps
-from ggpeps import gauge, utils
+from ggpeps import utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
 from ggpeps.system.global_funcs import *
 from ggpeps.modearray import generate_permutation_matrix

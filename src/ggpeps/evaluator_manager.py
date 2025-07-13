@@ -1,10 +1,8 @@
 from typing import Union
-from abc import ABC, abstractmethod
 
 import ray
 import copy
 import logging
-import numpy as np
 
 import ggpeps
 from ggpeps import utils

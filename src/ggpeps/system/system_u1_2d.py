@@ -16,8 +16,6 @@ from ggpeps.lattice import Direction
 from .system_base import (
     Config2DBase,
     System2DBase,
-    calculate_lognorm,
-    calculate_lognormvec_inc,
     extract_partial_covmats,
     calculate_lognorm_inc,
 )

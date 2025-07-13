@@ -1,14 +1,13 @@
 from typing import Optional
 
 import os
+import copy
 import pickle
 import logging
 
 import numpy as np
 from scipy.optimize import minimize
-
 from scipy.special import logsumexp
-import copy
 
 import ggpeps
 from ggpeps.caching import Cache

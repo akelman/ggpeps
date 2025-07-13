@@ -4,13 +4,12 @@ import sympy
 
 import numpy as np
 from ggpeps import xnp as xnp
-from scipy.linalg import block_diag
 
 import ggpeps
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction
 
-from .system_base import Config2DBase, System2DBase
+from .system_base import Config2DBase
 from .system_base import get_pfaffian_arrays
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)

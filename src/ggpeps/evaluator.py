@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
 
-import numpy as np
-
 
 class Evaluator(ABC):
     """Base class for the different evaluators (ExactEvaluator and MonteCarloEvaluator)."""
