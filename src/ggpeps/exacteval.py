@@ -1,5 +1,7 @@
 import os
 import itertools as it
+from typing import Union
+from collections.abc import Iterator
 
 import numpy as np
 import pandas as pd
@@ -21,19 +23,23 @@ class ExactEvaluatorConfig:
 
 
 class ExactEvaluator(Evaluator):
-    """An ExactEvaluator exactly evaluates the expectation value of an observable by iterating over all possible states of the gauge field."""
+    """An ExactEvaluator exactly evaluates the expectation value of an observable by
+    iterating over all possible states of the gauge field."""
 
     def __init__(self, evaluator_cfg, system) -> None:
         self.cfg = evaluator_cfg
         self.system = system
         self.obsdict: dict = None
-        self.evaluator_type = "exact"
+        self.evaluator_type: str = "exact"
 
-    def compute_expval(self, obs: np.ndarray, normvec: np.ndarray):
+    def compute_expval(
+        self, obs: np.ndarray, normvec: np.ndarray
+    ) -> Union[float, np.ndarray]:
         """Compute the expectation value of an observable.
 
         Args:
-            obs (np.ndarray): Measurement values of an observables for different gauge field configurations. The last dimension be the gauge field configurations.
+            obs (np.ndarray): Measurement values of an observables for different gauge
+                              field configurations. The last dimension is the gauge field configurations.
             normvec (np.ndarray): Values of the norm of <Psi(G)|Psi(G)> for different gauge field configurations.
 
         Returns:
@@ -44,27 +50,26 @@ class ExactEvaluator(Evaluator):
         expval = np.sum(obs * normvec, axis=obs.ndim - 1)
         return expval / normalization
 
-    def get_obs_mean(self, obs: str):
+    def get_obs_mean(self, obs: str) -> Union[float, np.ndarray]:
         """Return expectation value of an observable.
         Use this function to match the interface of the MonteCarloEvaluator."""
         return self.obsdict[obs]
 
-    def evaluate(self):
+    def evaluate(self) -> dict:
         """Main evaluation function of ExactEvaluator.
-        This function computes the exact expectation values <Psi|O|Psi>/<Psi|Psi> for a range of observables defined in the function.
+        This function computes the exact expectation values <Psi|O|Psi>/<Psi|Psi> for
+        a range of observables defined in the function.
 
         Returns:
             dict: Dictionary of the results
         """
         if self.obsdict is None:
-            configvec = (
-                self.generate_config_vec()
-            )  # an iterable object with all possible field configurations for all the links we go over.
+            # Build an iterable object with all field configurations for all the links
+            configvec = self.generate_config_vec()
 
             polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
                 (0, 0), lattice.Direction.X
             )
-            wilson_loop = self.system.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
 
             # Wilson loop & meson string preliminaries
             sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
@@ -98,6 +103,7 @@ class ExactEvaluator(Evaluator):
                 "grad_norm": [],
                 "polyakov_00_x": [],
             }
+
             # Wilson loops
             for k in range(len(sizes)):
                 loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
@@ -122,19 +128,6 @@ class ExactEvaluator(Evaluator):
                 data["int_energy_op"].append(self.system.int_energy_op)
                 data["average_occupation"].append(self.system.average_occupation())
 
-                if self.cfg.compute_grads:
-                    data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
-                    data["mass_energy_op_grad"].append(
-                        self.system.mass_energy_op_grad_vec
-                    )
-                    data["int_energy_op_grad"].append(
-                        self.system.int_energy_op_grad_vec
-                    )
-                    data["chem_energy_op_grad"].append(
-                        self.system.chem_energy_op_grad_vec
-                    )
-                    data["grad_norm"].append(self.system.compute_grad_norm_vec())
-
                 data["norm"].append(self.system.calculate_lognorm(all_factors=True))
                 data["polyakov_00_x"].append(
                     np.real(self.system.compute_path(polyakov_loop))
@@ -153,6 +146,19 @@ class ExactEvaluator(Evaluator):
 
                 # Occupations
                 data["occupations"].append(self.system.all_occupations)
+
+                if self.cfg.compute_grads:
+                    data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
+                    data["mass_energy_op_grad"].append(
+                        self.system.mass_energy_op_grad_vec
+                    )
+                    data["int_energy_op_grad"].append(
+                        self.system.int_energy_op_grad_vec
+                    )
+                    data["chem_energy_op_grad"].append(
+                        self.system.chem_energy_op_grad_vec
+                    )
+                    data["grad_norm"].append(self.system.compute_grad_norm_vec())
 
             # TODO: handle this better - boundary should not be here!
             if ggpeps.PREFERRED_BACKEND == "jax":
@@ -193,12 +199,6 @@ class ExactEvaluator(Evaluator):
                 np.transpose(data["occupations"], [1, 2, 0]), normvec
             )
 
-            if self.cfg.compute_grads:
-                # Transpose to enable broadcasting
-                grad_norm_transposed = np.transpose(data["grad_norm"], [1, 2, 3, 0])
-
-                dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)
-
             # Wilson loops
             for k in range(len(sizes)):
                 loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
@@ -219,6 +219,11 @@ class ExactEvaluator(Evaluator):
 
             # Compute the gradients
             if self.cfg.compute_grads:
+                # Transpose to enable broadcasting
+                grad_norm_transposed = np.transpose(data["grad_norm"], [1, 2, 3, 0])
+
+                dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)
+
                 # Magnetic gradient
                 prod_mag_op_norm = data["mag_energy_op"] * grad_norm_transposed
                 expval_prod_mag = self.compute_expval(prod_mag_op_norm, normvec)
@@ -320,8 +325,9 @@ class ExactEvaluator(Evaluator):
             self.obsdict = dest
         return self.obsdict
 
-    def generate_config_vec(self):
-        """Generates gauge field configurations for all links, for the gauge fixed case."""
+    def generate_config_vec(self) -> Iterator[list[np.ndarray]]:
+        """Generate gauge field configurations for all links."""
+
         poss_gauges = self.system.cfg.gaugemgr.get_possible_gauge_values()
         nlinks = self.system.cfg.lattice.nlinks
         non_fixed_links_ind = (
@@ -333,13 +339,17 @@ class ExactEvaluator(Evaluator):
         combinations = it.product(poss_gauges, repeat=len(non_fixed_links_ind))
 
         for combo in combinations:
-            # Initialize configvec as a list filled with neutral_gauge
+            # Initialize configvec as a list filled with the neutral gauge value
             configvec = [neutral_gauge] * nlinks
             for i, pos in enumerate(non_fixed_links_ind):
                 configvec[pos] = combo[i]
             yield configvec
 
-    def generate_config_vec_no_gf(self):
+    def generate_config_vec_no_gf(self) -> Iterator:
+        """Generate gauge field configurations for all links when there is no gauge fixing.
+        The function above, generate_config_vec(), is fully general, but this one may be more
+        efficient when there is no gauge fixing."""
+
         poss_gauges = self.system.cfg.gaugemgr.get_possible_gauge_values()
         nlinks = self.system.cfg.lattice.nlinks
         configvec = it.product(
@@ -347,7 +357,7 @@ class ExactEvaluator(Evaluator):
         )  # an iterable object with all possible field configurations for the entire lattice.
         return configvec
 
-    def summary(self):
+    def summary(self) -> pd.DataFrame:
         """Summarize the results of the exact contraction in a dataframe.
 
         Returns:
@@ -383,7 +393,7 @@ class ExactEvaluator(Evaluator):
         df = pd.DataFrame(dest)
         return df
 
-    def save(self, output_dir="."):
+    def save(self, output_dir: str = ".") -> None:
         """Convenience function to generate a filename and save the summary in one step"""
         syscfg = self.system.cfg
 

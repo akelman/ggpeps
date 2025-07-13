@@ -1,15 +1,6 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 
 import numpy as np
-
-
-# Currently not used
-@dataclass
-class EvaluatorResult:
-    obsdict: dict  # = {}
-    params: np.ndarray  # = None
-    # TODO: what else needs to be here? system info?
 
 
 class Evaluator(ABC):
@@ -22,7 +13,7 @@ class Evaluator(ABC):
         self.evaluator_type: str | None = None  # exact or mc
 
     @abstractmethod
-    def evaluate(self):  # -> dict
+    def evaluate(self):
         """Simulate the system and return the results as a dictionary of observables
 
         Raises:
@@ -45,13 +36,14 @@ class Evaluator(ABC):
             obs (str): Name of the observable
 
         Returns:
-            float: Mean value of the observable
+            float or array: Mean value of the observable.
+                            If the observable is an array, the returned value is also an array.
         """
         raise NotImplementedError(
             "This is an abstract method. Implement in child class please."
         )
 
-    def save_summary(self, fname_summary: str):
+    def save_summary(self, fname_summary: str) -> None:
         """Save the summary of the computation to a given filename
 
         Args:
