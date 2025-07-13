@@ -361,10 +361,14 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
 
     def generate_gamma_gauge_neutral_dict(self):
         """Generate the covariance matrix of the ungauged projectors.
-        The mode order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2, l3_1...}/{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2, d3_1...}.
+        The mode order is
+            {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2, l3_1...}
+            or (for vertical links)
+            {d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2, d3_1...}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
         We order first by link and then by copy.
-        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The sites are picked such that the left mode is right of the right modes,
+        i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
         This function returns two different covariance matrices for ungauged projectors:
@@ -394,7 +398,8 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
         dest_mixed[Direction.X] = np.block([[mixed_X, zeros_8], [zeros_8, mixed_X]])
         dest_mixed[Direction.Y] = np.block([[mixed_Y, zeros_8], [zeros_8, mixed_Y]])
 
-        # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
+        # We want to give the projectors for the fermionic part which don't mix copies
+        # (so as to preserve global U(1) symmetry)
         unmixed_X = np.array(
             [
                 [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],

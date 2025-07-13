@@ -125,7 +125,8 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
     def enforce_parameter_conditions(self, mat):
         """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz."""
-        # The order of the parameters (for each layer) is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
+        # The order of the parameters (for each layer) is:
+        # [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
 
         zeroed_params = []  # we'll save the indices of the zeroed parameters
 
@@ -171,7 +172,8 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
     def _create_symbolvec(self) -> List[sympy.Symbol]:
         """Define all symbols of the T matrix as symbols.
-        We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
+        We will use the analytic expression of the T matrix to calculate the derivative
+        of the covariance matrices analytically.
 
         Returns:
             list: List of all analytic symbols
@@ -223,8 +225,10 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
     @property
     def tmat_symb(self):
         """Definition of the symbolic T matrix.
-        The definition of T here is a result of an analytic consideration of global symmetries like rotational invariance, charge conjugation invarance, etc.
-        The T matrix is given in terms of symbols to compute the derivative of the covariance matrices analytically via sympy.
+        The definition of T here is a result of an analytic consideration of global
+        symmetries like rotational invariance, charge conjugation invarance, etc.
+        The T matrix is given in terms of symbols to compute the derivative of the
+        covariance matrices analytically via sympy.
         We do not have to type them explicitly anymore into the code.
 
         This is one of two analytic inputs into the code.
@@ -232,7 +236,8 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
         The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2
 
-        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
+        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations)
+        because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
         The permutation matrices are prone to errors.
 
         Returns:
@@ -317,10 +322,14 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
     def generate_gamma_gauge_neutral_dict(self):
         """Generate the covariance matrix of the ungauged projectors.
-        The mode order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2}.
+        The mode order is
+            {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}
+            or (for vertical links)
+            {d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
         We order first by link and then by copy.
-        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The sites are picked such that the left mode is right of the right modes,
+        i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
         This function returns two different covariance matrices for ungauged projectors:
@@ -346,7 +355,8 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz))
         )
 
-        # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
+        # We want to give the projectors for the fermionic part which don't mix copies
+        # (so as to preserve global U(1) symmetry)
         dest_unmixed[Direction.X] = np.array(
             [
                 [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],

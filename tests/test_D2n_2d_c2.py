@@ -183,7 +183,9 @@ class TestD2nSystem(unittest.TestCase):
             ]
         )
         R = block_diag(R, R)  # block diagonal of 2 colors
-        permutation_mat = np.array(  # change to correct mode ordering of Psi_1,Psi_2, l1_1, r1_1,d1_1,u1_1, l1_2, r1_2,d1_2,u1_2, l2_1, r2_1,d2_1,u2_1,l2_2, r2_2,d2_2,u2_2
+        permutation_mat = np.array(
+            # change to correct mode ordering of:
+            # Psi_1,Psi_2, l1_1, r1_1,d1_1,u1_1, l1_2, r1_2,d1_2,u1_2, l2_1, r2_1,d2_1,u2_1,l2_2, r2_2,d2_2,u2_2
             # Where the modes are labelled by directin{copy}_{color}.
             generate_permutation_matrix(
                 list(range(1, 19)),
@@ -221,8 +223,10 @@ class TestD2nSystem(unittest.TestCase):
             ]
         )
         R = block_diag(R, R)  # block diagonal of 2 colors
-        permutation_mat = np.array(  # change to correct mode ordering of Psi_1,Psi_2, l1_1, r1_1,d1_1,u1_1, l1_2, r1_2,d1_2,u1_2, l2_1, r2_1,d2_1,u2_1,l2_2, r2_2,d2_2,u2_2
-            # Where the modes are labelled by directin{copy}_{color}.
+        permutation_mat = np.array(
+            # change to correct mode ordering of:
+            # Psi_1,Psi_2, l1_1, r1_1,d1_1,u1_1, l1_2, r1_2,d1_2,u1_2, l2_1, r2_1,d2_1,u2_1,l2_2, r2_2,d2_2,u2_2
+            # Where the modes are labelled by direction{copy}_{color}.
             generate_permutation_matrix(
                 list(range(1, 19)),
                 [1, 10, 2, 3, 4, 5, 11, 12, 13, 14, 6, 7, 8, 9, 15, 16, 17, 18],
@@ -1176,7 +1180,8 @@ class TestD2nSystem(unittest.TestCase):
 #         system_z2 = system.Z2System2D(cfg)
 #         system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
 
-#         # Set the config for the new system - it must be shifted to account for the swapping of the even/odd sublattices
+#         # Set the config for the new system - it must be shifted to account for the
+#         # swapping of the even/odd sublattices
 #         config = np.zeros(8)
 #         config[1] = np.pi
 #         system_z2.update_gauge_full_system(config)

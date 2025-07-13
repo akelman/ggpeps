@@ -347,7 +347,8 @@ def is_covmat(mat: np.ndarray, rtol: float = 1e-5, atol: float = 1e-8) -> bool:
         and xnp.allclose(mat @ mat, -xnp.eye(m), rtol=rtol, atol=atol)
         and xnp.allclose(mat @ xnp.transpose(mat), xnp.eye(m), rtol=rtol, atol=atol)
     ):
-        # note that the last check should be mat @ mat^dagger = 1, but transpose gets the same information for a matrix with real elements
+        # note that the last check should be mat @ mat^dagger = 1, but transpose gets
+        # the same information for a matrix with real elements
         return True
     return False
 
@@ -741,7 +742,8 @@ def rebin_error(arr):
 def rebin_eom(arr, num_of_bins=20):
     """Calculate the error on the mean (EOM) by rebinning.
     As a heuristic for the EOM we use that the biggest bin will give the best estimate.
-    We do not rebin to the maximal extent, but use the heuristic of taking the largest binsize of the form 2^i that can fit N/20.
+    We do not rebin to the maximal extent, but use the heuristic of taking the largest
+    binsize of the form 2^i that can fit N/20.
 
     Args:
         arr (np.ndarray): Timeseries of a measurement
@@ -763,7 +765,8 @@ def rebin_eom(arr, num_of_bins=20):
 
 
 def autocorr_rebin_eom(arr):
-    """Calculate the autocorrelation, and finds the corrrelation decay time (when the auto-correlation decays below 1/100)
+    """Calculate the autocorrelation, find the corrrelation decay time
+    (when the auto-correlation decays below 1/100),
     and calculate the error using bins with the correlation time size
 
     Args:
@@ -883,7 +886,8 @@ def extract_params_from_results_file(fname: str, dest_dir: Optional[str] = "") -
 
     Args:
         fname (str): results file path
-        dest_dir (str, optional): destination directory for param file. If none is given, defaults to current directory.
+        dest_dir (str, optional): destination directory for param file.
+                                  If none is given, defaults to current directory.
 
     Returns:
         bool: True if succesful, false otherwise.
@@ -914,7 +918,8 @@ def extract_params_from_results_file(fname: str, dest_dir: Optional[str] = "") -
 
 
 def extract_params_from_run(source_dir, dest_dir):
-    """Extracts all the parameters from the results files of a run (with varying couplings), and stores them as .npy files.
+    """Extracts all the parameters from the results files of a run (with varying
+    couplings), and stores them as .npy files.
 
     Args:
         source_dir (str): a source directory containing directories, each of which is the result of a run.

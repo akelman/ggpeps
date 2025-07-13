@@ -1177,7 +1177,8 @@ class TestTransVariance(unittest.TestCase):
         system_z2 = system.Z2System2D(cfg)
         system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
 
-        # Set the config for the new system - it must be shifted to account for the swapping of the even/odd sublattices
+        # Set the config for the new system - it must be shifted to account for the
+        # swapping of the even/odd sublattices
         config = np.array(8 * [neutral_gauge])
         config[1] = flux_gauge
         system_z2.update_gauge_full_system(config)
