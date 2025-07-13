@@ -195,16 +195,15 @@ class D2nSystem2D(System2DBase):
         """
         This method overwrites an abstract method in System2DBase. For now, we need it only for the D2n systems.
 
-
         Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
 
         Unlike the calculate_weight_attempt_non_singular method, this method checks whether the transition is singular
-        (i.e., the update matrix is singular and therfore can't be inverted)
-        if not, it calls the calculate_weight_attempt_non_singular method directly. Else, it updates the gauge in a non singular
-        path and then calls the calculate_weight_attempt_non_singular method. After the caclulation of the weight, it updates the system
-        back to the original gauge field.
-
+        (i.e., the update matrix is singular and therfore can't be inverted).
+        If not, it calls the calculate_weight_attempt_non_singular method directly.
+        Else, it updates the gauge in along a non singular path and then calls the
+        calculate_weight_attempt_non_singular method.
+        After the caclulation of the weight, it updates the system back to the original gauge field.
 
         Args:
             link_ind (int): Link index
@@ -213,9 +212,8 @@ class D2nSystem2D(System2DBase):
 
         Returns:
             float: Logarithm of the weight of the proposed configuration
-
-
-        """  # TODO: If we create a new state class object, avoiding singular transitions could be handled better
+        """
+        # TODO: If we create a new state class object, avoiding singular transitions could be handled better
         # (by keeping the previous state and then not having to update the current system back to the original gauge field)
         current_theta = xnp.copy(self._gaugefieldvec[link_ind])
         singular = False
@@ -283,15 +281,22 @@ class D2nSystem2D(System2DBase):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
 
         The mode order is (as for gamma_in_neutral):
-            1 copy: {l_1_1, l_2_1, r_1_1, r_2_1,l_1_2,l_2_2,r_1_2,r_2_2}/{d_1_1, d_2_1, u_1_1, u_2_1,d_1_2,d_2_2,u_1_2,u_2_2},
-            2 copies: {l1_1_1, l1_2_1, r1_1_1, r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2, l1_2_2, r1_1_2, r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}/{d1_1_1, d1_2_1, u1_1_1, u1_2_1,d2_1_1,d2_2_1,u2_1_1,u2_2_1,d1_1_2, d1_2_2, u1_1_2, u1_2_2,d2_1_2,d2_2_2,u2_1_2,u2_2_2},
-        depending on whether the link is vertical or horizontal.
+            1 copy:
+                {l_1_1, l_2_1, r_1_1, r_2_1,l_1_2,l_2_2,r_1_2,r_2_2}
+                or (for vertical links)
+                {d_1_1, d_2_1, u_1_1, u_2_1,d_1_2,d_2_2,u_1_2,u_2_2},
+            2 copies:
+                {l1_1_1, l1_2_1, r1_1_1, r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2,l1_2_2,r1_1_2,r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}
+                or (for vertical links)
+                {d1_1_1, d1_2_1, u1_1_1, u1_2_1,d2_1_1,d2_2_1,u2_1_1,u2_2_1,d1_1_2,d1_2_2,u1_1_2,u1_2_2,d2_1_2,d2_2_2,u2_1_2,u2_2_2},
+
         The naming convention here is <mode letter><number of copy>_<majorana mode>_<color>.
         We order first by link and then by copy.
 
         For fermionic and pure gauge layers, the projectors don't mix copies to ensure the U(1) symmetry is obeyed.
 
-        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The sites are picked such that the left mode is right of the right modes,
+        i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
         This method overwrites an abstract method in System2DBase.
@@ -560,8 +565,8 @@ class D2nSystem2D(System2DBase):
 
     def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
         """Computation of the electric energy.
-        Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
-        These are saved at the end of the function.
+        Since several operations needed for the computation of the gradient and the energy are similar,
+        we can reuse many intermediate steps. These are saved at the end of the function.
 
         This method overwrites an abstract method in System2DBase.
 
@@ -577,7 +582,8 @@ class D2nSystem2D(System2DBase):
     def _compute_el_grad_vec(self, use_trans_inv: bool = True):
         """Computation of the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
-        Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
+        Since several operations needed for the computation of the gradient and the energy are similar,
+        we can reuse many intermediate steps.
 
         This method overwrites an abstract method in System2DBase.
 
@@ -629,8 +635,11 @@ class D2nSystem2D(System2DBase):
         return mag_energy_bare
 
     def _compute_int_energy_op_vec_and_grad(self):
-        """Calculate the energy and energy gradient due to the interaction of the physical fermions with the gauge fields.
-        Note: this function assumes that U = U^dagger, which is valid only for Z2. For other groups, the calculation will not be as simple.
+        """Calculate the energy and energy gradient due to the interaction of the
+        physical fermions with the gauge fields.
+
+        Note: this function assumes that U = U^dagger, which is valid only for Z2.
+        For other groups, the calculation will not be as simple.
 
         Returns:
             tuple: Tuple of (interaction energy for a single link, gradients)
@@ -648,7 +657,8 @@ class D2nSystem2D(System2DBase):
 
     def _meson_string_vec(self, path):
         """Compute a layer resolved meson string for the given path.
-        This is \psi^dagger (start) * String * \psi(end) before particle-hole, and assumes that start and end are on the same sublattice.
+        This is \psi^dagger (start) * String * \psi(end) before particle-hole,
+        and assumes that start and end are on the same sublattice.
 
         Args:
             path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
@@ -665,7 +675,8 @@ class D2nSystem2D(System2DBase):
         Args:
             lay (int): Layer index
             site (int): Site index
-            after_ph (bool, optional): If True, compute the occupation number using the operators defined after the particle-hole transformation. Defaults to False.
+            after_ph (bool, optional): If True, compute the occupation number using the operators defined after the
+                                       particle-hole transformation. Defaults to False.
 
         Returns:
             float: the occupation number for the given layer and site

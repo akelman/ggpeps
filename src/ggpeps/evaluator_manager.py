@@ -60,7 +60,7 @@ def run_mc(
 class EvaluatorManager:
     """The EvaluatorManager is a wrapper around the different evaluators (ExactEvaluator and MonteCarloEvaluator).
     It allows the execution of a simulation with multiple cores.
-    The parallelization is performed with ray; currently this is only supported for Monte Carlo (not Exact Contraction).
+    The parallelization is handled with ray; currently this is only supported for Monte Carlo (not Exact Contraction).
 
     If an MC simulation is distributed across N runners, each runner performs the full
     warm-up but only 1/N of the total measurement steps.
@@ -131,7 +131,7 @@ class EvaluatorManager:
 
         if "mc" in self.type and self.nrunner > 0:
             """Start the simulation of the runners.
-            Currently only Monte Carlo is supported (the exacteval implementation currently only supports a single runner),
+            Currently only Monte Carlo is supported (the exacteval implementation currently only supports one runner),
             and multiple runners cannot be resumed from where they left off.
             """
             resultvec = []

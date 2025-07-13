@@ -992,7 +992,8 @@ class System2DBase(ABC):
 
     @property
     def gamma_in_sys_mod(self):
-        """Get function to return the gauged gamma_in_sys with a single link modification (to compute the electric energy),
+        """Get function to return the gauged gamma_in_sys with a single link modification
+        (to compute the electric energy),
         the covariance matrix of the links for the whole system.
 
         Returns:
@@ -1004,7 +1005,8 @@ class System2DBase(ABC):
 
     @property
     def gamma_in_sys_mod_vec(self):
-        """Get function to return the gauged gamma_in_sys_vec with a single link modification (to compute the electric energy),
+        """Get function to return the gauged gamma_in_sys_vec with a single link modification
+        (to compute the electric energy),
         the covariance matrix of the links for the whole system.
 
         Returns:
@@ -1316,7 +1318,8 @@ class System2DBase(ABC):
         )
 
     def calculate_lognormvec_inc(self, all_factors=False):
-        """Compute the logarithm of the norm for all layers by incrementally updating the previous value (using IncDet and Woodbury)
+        """Compute the logarithm of the norm for all layers by incrementally updating the previous value
+        (using IncDet and Woodbury)
 
         Args:
             all_factors (bool, optional): Include all pre-factors in the computation. Defaults to False.
@@ -1432,7 +1435,8 @@ class System2DBase(ABC):
     def _generate_gamma_gauge_neutral_dict(self):
         """Define the ungauged covariance matrix of a single link.
         The substitution method must ensure a consistent order of the modes.
-        The direction parameter controls which covariance matrix is retrieved, since these can differ between directions.
+        The direction parameter controls which covariance matrix is retrieved,
+        since these can differ between directions.
         """
         gamma_gauge_neutral_vec_dirs = self.cfg.generate_gamma_gauge_neutral_dict()
         return xnp.array(gamma_gauge_neutral_vec_dirs)
@@ -1482,7 +1486,8 @@ class System2DBase(ABC):
         Args:
             offset (int): Offset in the matrix
             update_mat (xnp.ndarray): Array to replace the current content of gamma_in at offset
-            gamma_in_sys (xnp.ndarray): gamma_in_sys. This is given as an argument so that different gamma_in_sys can be passed in when gamma_in_sys differs between layers.
+            gamma_in_sys (xnp.ndarray): gamma_in_sys. This is given as an argument so that different gamma_in_sys
+            can be passed in when gamma_in_sys differs between layers.
 
         Returns:
             xnp.ndarray: Additional update to reach update_mat at gamma_in[offset:,offset:]
@@ -1582,7 +1587,8 @@ class System2DBase(ABC):
                 self._energy += self.chem_energy
         return self._energy
 
-    # Functions that return a term of the energy in the Hamiltonian, including all prefactors and energy from the entire lattice.
+    # Functions that return a term of the energy in the Hamiltonian, including all
+    # prefactors and energy from the entire lattice.
     @property
     def el_energy(self) -> float:
         """Compute electric energy with shift for the whole system
@@ -1645,7 +1651,8 @@ class System2DBase(ABC):
             chem_energy += self.cfg.g_chem[ind] * self.chem_energy_op_vec[layer]
         return chem_energy
 
-    # Functions that return the energy for the operator part of a term in the Hamiltonian, including the energy for the entire lattice, but not any shifts or prefactors.
+    # Functions that return the energy for the operator part of a term in the Hamiltonian,
+    # including the energy for the entire lattice, but not any shifts or prefactors.
     @property
     def el_energy_op(self) -> float:
         """Compute electric energy (w/o shift) for the whole system.
@@ -1681,10 +1688,9 @@ class System2DBase(ABC):
             float: Mass energy operator (w/o shift) for the whole system
         """
         if self._mass_energy_op is None:
-            nsites = self.cfg.lattice.size
-            self._mass_energy_op = xnp.sum(
-                self.mass_energy_op_vec
-            )  # don't multiply by the number of sites; for the mass term this is assumed to happen lower down in the stack.
+            self._mass_energy_op = xnp.sum(self.mass_energy_op_vec)
+            # don't multiply by the number of sites;
+            # for the mass term this is assumed to happen lower down in the stack.
         return self._mass_energy_op
 
     @property
@@ -1710,8 +1716,8 @@ class System2DBase(ABC):
             list: Layer-resolved electric energy w/o shift
         """
         if self._el_energy_op_vec is None:
-            # This vector is the electric energy on a single link.
-            # Otherwise, we get a power of nlinks in the product and the electric energy term (with prefactors) gets negative
+            # This vector is the electric energy on a single link. Otherwise, we get a
+            # power of nlinks in the product and the electric energy term (with prefactors) gets negative
             self._el_energy_op_vec = self._compute_el_energy_op_vec()
         return self._el_energy_op_vec
 
@@ -2072,8 +2078,8 @@ class System2DBase(ABC):
         return mode_order_str
 
     def get_single_link_majorana_mode_order(self) -> list:
-        """Generate the link-based majorana mode order for a single link. Where we first order by color and then by copy.
-            This is the actual order we use in system implementaion.
+        """Generate the link-based majorana mode order for a single link. We first order by color and then by copy.
+        This is the actual order we use in system implementaion.
 
         Returns:
             list: List of strings of the form <mode_letter:majorana mode>_<copy>_<color>
@@ -2103,8 +2109,9 @@ class System2DBase(ABC):
         return mode_order_str
 
     def get_wrong_single_link_majorana_mode_order_by_copy_then_color(self) -> list:
-        """Generate the link-based majorana mode order for a single link. Where we first order by copy and then by color.
-            This is not the order we use in the code. This is just to change the generate_rotmat ordeing
+        """Generate the link-based majorana mode order for a single link. We first order by copy and then by color.
+        This is not the order we use in the code. This is just to change the generate_rotmat ordering.
+
         Returns:
             list: List of strings of the form <mode_letter:majorana mode>_<copy>_<color>
         """

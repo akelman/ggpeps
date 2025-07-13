@@ -356,7 +356,8 @@ class MonteCarloEvaluator(Evaluator):
     def update_single_site(self) -> None:
         """Update for the MC simulation.
         This updates randomly chooses a single site and updates it.
-        The update is local. The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The update is local. The new gauge field value is drawn uniformly from the
+        distribution of possible gauge fields (according to the gauge group).
 
         TODO: test gauge fixing with this function
         """
@@ -383,7 +384,8 @@ class MonteCarloEvaluator(Evaluator):
         """Update for the MC simulation.
         This updates iterates over all lattice sites and updates every site once.
         The update is local.
-        The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The new gauge field value is drawn uniformly from the distribution of possible gauge fields
+        (according to the gauge group).
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
@@ -406,7 +408,8 @@ class MonteCarloEvaluator(Evaluator):
         """Update for the MC simulation.
         This updates iterates over N lattice sites and updates every site once.
         The update is local.
-        The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The new gauge field value is drawn uniformly from the distribution of possible gauge fields
+        (according to the gauge group).
         """
         links_inds = self.cfg.rng_state.choice(
             self.system.cfg.lattice.comp_tree,
