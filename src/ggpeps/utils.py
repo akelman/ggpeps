@@ -13,6 +13,7 @@ from scipy.linalg import svd, block_diag
 
 import numpy as np
 from ggpeps import xnp as xnp
+import pandas as pd
 
 from pfapack import pfaffian as pf
 
@@ -287,6 +288,26 @@ def derivative_pfaffian(mat, d_mat, pfaval=None):
     else:
         return 0.0
 
+def get_obs_mean_df(df: pd.DataFrame, obs: str)-> float:
+    """Get the mean of an observable from the summary dataframe.
+
+    Args:
+        obs (str): Name of the observable.
+        df (pd.DataFrame): Summary dataframe.
+
+    Returns:
+        float: Mean value of the observable.
+    """
+    return df.loc[df["name"] == obs, "mean"].values[0]
+
+def save_summary_df(df, fname_summary: str):
+    """Save the evaluation summary to a given filename
+
+    Args:
+        df (pd.DataFrame): Dataframe containing the summary
+        fname_summary (str): Output filename for the summary
+    """
+    df.to_pickle(fname_summary)
 
 # =========== Matrix Evaluation Functions ====================
 
