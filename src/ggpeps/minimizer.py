@@ -14,6 +14,7 @@ import ggpeps
 from ggpeps.caching import Cache
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.evaluator import Evaluator
+from ggpeps import utils
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -98,8 +99,8 @@ class Minimizer:
                 # Monte Carlo part of the optimizer
                 result = self.evaluator_manager.simulate()
 
-            energy = result.get_obs_mean("energy")
-            grad_paramvec = result.get_obs_mean("energy_grad")
+            energy = utils.get_obs_mean_df(result, "energy")
+            grad_paramvec = utils.get_obs_mean_df(result, "energy_grad")
 
             # DEBUG #######################################################################################################
             # print("Paramvec: ", self.evaluator_manager.system_cfg.paramvec)
@@ -165,10 +166,10 @@ class Minimizer:
             #   it is important to save energy and gradients (even though the last_paramvec stores both)
             #   so that if the computation is interrupted (which loses the last_paramvec),
             #   we can still use the cached values
-            energy = self.last_result.get_obs_mean("energy")
+            energy = utils.get_obs_mean_df(self.last_result, "energy")
             self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy)
             if self.evaluator_manager.cfg.compute_grads:
-                parametergrad = self.last_result.get_obs_mean("energy_grad")
+                parametergrad = utils.get_obs_mean_df(self.last_result, "energy_grad")
                 self.cache.add_obs_to_cache(
                     flattened_paramvec, "energy_grad", parametergrad
                 )
@@ -292,8 +293,8 @@ class Minimizer:
                 )
 
                 # Standard calculation energy and grads
-                energy = result0.get_obs_mean("energy")
-                grad_paramvec = result0.get_obs_mean("energy_grad")
+                energy = utils.get_obs_mean_df(result0, "energy")
+                grad_paramvec = utils.get_obs_mean_df(result0, "energy_grad")
 
                 # DEBUG #################################################################################################################
                 # print("Paramvec: ", self.evaluator_manager.system_cfg.paramvec)
