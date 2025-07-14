@@ -156,10 +156,6 @@ def validate_inputs(args) -> bool:
     return True
 
 
-def get_config(gauge_group: str, ncopy: int):
-    return
-
-
 def main(args):
     raw_command = " ".join(sys.argv)
     ind = raw_command.index("manager.py")
