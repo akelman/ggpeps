@@ -193,22 +193,18 @@ def main(args):
     jax.config.update("jax_enable_x64", True)
 
     # GPU or CPU detection (compatible with ROCm GPUs)
+    # If GPUs are available, use the first available GPU;
+    # if not, default to using the CPU.
     available_devices_ = jax.devices()  # available_gpus = jax.devices('gpu')
     PREFERRED_DEVICE = available_devices_[0]
     device_name = PREFERRED_DEVICE.device_kind.lower()
-
-    print(f"[DIAG] Available JAX devices: {available_devices_}")
-    print(f"[DIAG] Selected device: {PREFERRED_DEVICE}")
-    print(f"[DIAG] Device kind: {device_name}")
 
     # Updated GPU detection heuristic
     if any(x in device_name for x in ["gpu", "nvidia", "amd", "rocm"]):
         ggpeps.GPU_AVAILABLE = True
         ggpeps.PREFERRED_DEVICE = PREFERRED_DEVICE
-        print("[DIAG] GPU detected — ggpeps.GPU_AVAILABLE set to True")
     else:
         ggpeps.GPU_AVAILABLE = False
-        print("[DIAG] No compatible GPU found — using CPU")
 
     # Set up the simulation
     L = args.L
@@ -406,11 +402,12 @@ def main(args):
     if args.mode == "min-nevmc":
         args.method = "NEVMC"
 
-    # Device selection: Checks if GPUs are available. If yes it uses the first available GPU;
-    # if not, defaults to using the CPU.
+    # Update Log
+    # Log backend info - GPU/CPU, JAX/NUMPY, precision, etc.
     logger.info("======= BACKEND INFO =======")
     if ggpeps.GPU_AVAILABLE:
-        logger.info(f"Found GPU, using {ggpeps.PREFERRED_DEVICE}.")
+        # logger.info(f"Available JAX devices: {available_devices_}")
+        logger.info(f"Found GPU, using device: {ggpeps.PREFERRED_DEVICE}.")
         # TODO: add basic GPU info
         # logger.info(f"GPU info: {ggpeps.PREFERRED_DEVICE.device_kind}"
     else:
@@ -420,7 +417,7 @@ def main(args):
     logger.info(f"Precision: {arr.dtype}")
     logger.info("============================")
 
-    # Update Log
+    # System info
     logger.info("======= SYSTEM INFO ========")
     logger.info(f"L: {L}")
     logger.info(f"# of PG layers: {system_cfg.num_pg_layer}")
@@ -449,6 +446,7 @@ def main(args):
     logger.info(f"Starting parameters: {paramvec}")
     logger.info("============================")
 
+    # Mode info
     if "mc" in args.mode:
         logger.info("========= MC INFO ==========")
         logger.info(f"Seed: {mc_config.seed}")
