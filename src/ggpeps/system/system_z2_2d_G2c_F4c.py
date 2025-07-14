@@ -1,6 +1,7 @@
 import sympy
 import logging
 import numpy as np
+import jax.numpy as jnp
 
 import ggpeps
 from ggpeps import utils, gauge
@@ -133,8 +134,6 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
                 for t_ind in range(self.ncopy):
                     real_coord = (layer_ind, uc_ind, t_ind)
                     imag_coord = (layer_ind, uc_ind, t_ind + offset)
-                    mat[real_coord] = 0
-                    mat[imag_coord] = 0
                     zeroed_params.append(real_coord)
                     zeroed_params.append(imag_coord)
 
@@ -159,10 +158,20 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
                     for ind in zero_for_fermionic_layer:
                         real_coord = (layer_ind, uc_ind, ind)
                         imag_coord = (layer_ind, uc_ind, ind + offset)
-                        mat[real_coord] = 0
-                        mat[imag_coord] = 0
                         zeroed_params.append(real_coord)
                         zeroed_params.append(imag_coord)
+
+        # actually set to zero
+        for coord in zeroed_params:
+            if isinstance(mat, np.ndarray):  # TODO: handle jax better
+                mat[coord] = 0
+            elif isinstance(mat, jnp.ndarray):
+                mat = mat.at[coord].set(0)
+            else:
+                raise TypeError(
+                    "Unsupported type for mat in enforce_parameter_conditions: "
+                    f"{type(mat)}. Expected np.ndarray or jnp.ndarray."
+                )
 
         # save zeroed params
         self.zeroed_params = zeroed_params
