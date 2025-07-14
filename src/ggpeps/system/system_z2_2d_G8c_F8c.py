@@ -18,7 +18,7 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 ###################### Z2System2D ##########################
 
 
-class Z2System2D_8C_Config(Config2DBase):
+class Z2System2D_G8C_F8C_Config(Config2DBase):
     """Configuration of the Z2 system in 2D with 8 copies of virtual fermions on the links.
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
     """
@@ -67,7 +67,7 @@ class Z2System2D_8C_Config(Config2DBase):
 
         if not enforce_u1_symmetry:
             logger.error(
-                "The Z2System2D_8C ansatz does not support the relaxation of U(1) symmetry."
+                "This ansatz does not support the relaxation of U(1) symmetry."
             )
             raise ValueError("Invalid enforce_u1_symmetry.")
 

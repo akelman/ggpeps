@@ -16,7 +16,7 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 ###################### Z2System2D ##########################
 
 
-class Z2System2D_G2C_F4C_Config(Config2DBase):
+class Z2System2D_G4C_F4C_Config(Config2DBase):
     """Configuration of the Z2 system in 2D with 4 copies of virtual fermions on the links.
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
 
@@ -350,7 +350,7 @@ class Z2System2D_G2C_F4C_Config(Config2DBase):
                     -abcd_blocks[5].T,
                 ]
             else:
-                raise ValueError("Invalid copy index in Z2System2D_G2C_F4C_Config.")
+                raise ValueError("Invalid copy index.")
 
             # mix copies - above diagonal blocks
             start = sum(countdown[:cop])

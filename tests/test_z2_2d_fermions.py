@@ -280,7 +280,7 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 52)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G2C_F4C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+        system_cfg = system.Z2System2D_G4C_F4C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
@@ -295,10 +295,10 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F4C_Config(
+                    system_cfg_left = system.Z2System2D_G4C_F4C_Config(
                         lat_2x2, 1.0, 0.0, 0.0, 0.0, None
                     )
-                    system_cfg_right = system.Z2System2D_G2C_F4C_Config(
+                    system_cfg_right = system.Z2System2D_G4C_F4C_Config(
                         lat_2x2, 1.0, 0.0, 0.0, 0.0, None
                     )
 
@@ -443,7 +443,7 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 52)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G2C_F4C_Config(lat_2x2, 0.0, 0.0, 0.0, 1.0, None)
+        system_cfg = system.Z2System2D_G4C_F4C_Config(lat_2x2, 0.0, 0.0, 0.0, 1.0, None)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
 
@@ -466,7 +466,7 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F4C_Config(
+                    system_cfg_left = system.Z2System2D_G4C_F4C_Config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -476,7 +476,7 @@ class TestZ2System(unittest.TestCase):
                         num_pg_layer=1,
                         num_fermionic_layer=1,
                     )
-                    system_cfg_right = system.Z2System2D_G2C_F4C_Config(
+                    system_cfg_right = system.Z2System2D_G4C_F4C_Config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -581,7 +581,7 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 52)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G2C_F4C_Config(
+        system_cfg = system.Z2System2D_G4C_F4C_Config(
             lat_2x2, 0.0, 0.0, 1.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=1
         )
         system_cfg.paramvec = paramvec
@@ -608,7 +608,7 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F4C_Config(
+                    system_cfg_left = system.Z2System2D_G4C_F4C_Config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -618,7 +618,7 @@ class TestZ2System(unittest.TestCase):
                         num_pg_layer=1,
                         num_fermionic_layer=1,
                     )
-                    system_cfg_right = system.Z2System2D_G2C_F4C_Config(
+                    system_cfg_right = system.Z2System2D_G4C_F4C_Config(
                         lat_2x2,
                         0.0,
                         0.0,
