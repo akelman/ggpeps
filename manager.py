@@ -10,7 +10,7 @@ import logging
 import platform
 from timeit import default_timer as timer
 
-# Ensure that logs are not deduplicated, i.e. the same log message can be printed from different workers
+# Ensure that logs are not deduplicated, i.e. allow the same log message to be printed from different workers
 os.environ["RAY_DEDUP_LOGS"] = "0"
 import ray
 
