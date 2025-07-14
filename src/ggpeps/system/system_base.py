@@ -107,7 +107,6 @@ class Config2DBase(ABC):
             num_pg_layer (int, optional): number of pure gauge layers. Defaults to 1.
             num_fermionic_layer (int, optional): number of fermionic layers. Defaults to 0.
         """
-        # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
 
         self.lattice = lattice
         self.num_pg_layer = num_pg_layer
@@ -118,12 +117,11 @@ class Config2DBase(ABC):
 
         # We store a list of the parameters forced to be zero by the ansatz
         # currently this is set in self.enforce_parameter_conditions
-        self.zeroed_params: List[int] = []
+        self.zeroed_params: list[tuple[int, int, int]] = []
 
-        # Symbolvec
-        self._symbolvec: Optional[List[sympy.Symbol]] = (
-            None  # the list is just all the symbols, which are the same for each layer (even if for some layers some are forced to zero)
-        )
+        # Symbolvec - list of all the symbols, which are the same for each layer
+        # (even if for some layers some are forced to zero)
+        self._symbolvec: Optional[list[sympy.Symbol]] = None
 
         # Parameters of the Hamiltonian
         self.g_el = g_el
@@ -138,9 +136,10 @@ class Config2DBase(ABC):
                 "The number of chemical potentials must match the number of fermionic layers."
             )
 
-    def __str__(self):
-        # define a string method that can be used, e.g., in filenaming
-        # this string doesn't include enough information to reconstruct the config
+    def __str__(self) -> str:
+        """Define a string method that can be used, e.g., in filenaming.
+        This string doesn't include enough information to reconstruct the config"""
+
         chem_str = "_".join([f"{val:.3f}" for val in self.g_chem])
         val = (
             f"L_{self.lattice.nx:02d}x{self.lattice.ny:02d}"
@@ -180,18 +179,18 @@ class Config2DBase(ABC):
         return shape == target_shape
 
     @property
-    def nparams_per_layer(self):
+    def nparams_per_layer(self) -> int:
         return self._nparams * self.unitcell_size
 
-    def nvarparams(self):
+    def nvarparams(self) -> int:
         return self._nparams * self.unitcell_size * self.nlayer
 
-    def param_shape(self):
+    def param_shape(self) -> tuple[int, int, int]:
         """Return the shape required for valid parameters."""
         shape = (self.nlayer, self.unitcell_size, self._nparams)
         return shape
 
-    def parse_params(self, paramvec, layer, site):
+    def parse_params(self, paramvec: np.ndarray, layer: int, site: int) -> np.ndarray:
         """Process the parameters and return the parameters for the given layer and site.
 
         Args:
@@ -200,7 +199,7 @@ class Config2DBase(ABC):
             site (int): the site for which the parameters are needed
 
         Returns:
-            array: parameters for the given site and layer (this will be a subarray of paramvec)
+            array: parameters for the given layer and site (this will be a subarray of paramvec)
         """
         shape = self.param_shape()
         if len(shape) == 2:
@@ -210,29 +209,25 @@ class Config2DBase(ABC):
             res = paramvec[layer][ind]
         return res
 
-    def print_parametervec(self, symbolvec):
-        """Printing of the parametervec
-
-        Args:
-            symbolvec (list): List of the symbolvecs
-        """
+    def print_parametervec(self) -> None:
+        """Printing of the parametervec, labelled by layer, unitcell index, and symbol."""
         for lay in range(self.nlayer):
             for uc_ind in range(self.unitcell_size):
                 for ind, symb in enumerate(self.symbolvec):
                     val = self._paramvec[lay][uc_ind][ind]
-                    print(f"Layer {lay}, uc_ind {uc_ind}, symbol {symb}: {val}")
+                    print(f"Layer {lay}, uc_ind {uc_ind}, symbol {ind} ({symb}): {val}")
 
     @property
     def trans_inv(self) -> bool:
         """Flag to indicate whether the system is translationally invariant.
 
         Returns:
-            bool: True is ansatz is translationally invariant, False otherwise.
+            bool: True if ansatz is translationally invariant, False otherwise.
         """
         return self.unitcell_size == 1
 
     @abstractmethod
-    def make_pure_gauge(self):
+    def make_pure_gauge(self) -> None:
         """Ensure that the system is pure gauge, i.e. no physical fermions.
         This abstract method must be overwritten by a subclass.
         """
@@ -240,12 +235,12 @@ class Config2DBase(ABC):
             "This is an abstract method. Implement in child class please."
         )
 
-    def enforce_parameter_conditions(self, mat):
+    def enforce_parameter_conditions(self, mat: np.ndarray) -> None:
         """In some cases, there are extra conditions we wish to impose on the parameters."""
         return
 
     @abstractmethod
-    def _create_symbolvec(self) -> List[sympy.Symbol]:
+    def _create_symbolvec(self) -> list[sympy.Symbol]:
         """
         Function to define the list of parameters as sympy variables.
         We need these symbols to analytically derive T automatically.
@@ -256,7 +251,7 @@ class Config2DBase(ABC):
         )
 
     @property
-    def symbolvec(self) -> List[sympy.Symbol]:
+    def symbolvec(self) -> list[sympy.Symbol]:
         """Return the symbolvec.
         This is a get function. It computes the symbolvec only if it does not exist yet.
         If it exists, then it will be returned directly. If not, it will be created and then stored in _symbolvec.
@@ -271,7 +266,7 @@ class Config2DBase(ABC):
 
     @property
     @abstractmethod
-    def tmat_symb(self):
+    def tmat_symb(self) -> sympy.Matrix:
         """Create the symbolic version of the T matrix.
         This is an abstract function that has to be overwritten by the child class.
         """
@@ -280,7 +275,7 @@ class Config2DBase(ABC):
         )
 
     @abstractmethod
-    def generate_gamma_gauge_neutral_dict(self):
+    def generate_gamma_gauge_neutral_dict(self) -> np.ndarray:
         """Abstract method to define the ungauged covariance matrix of a single link.
         The substitution method must ensure a consistent order of the modes.
         The direction parameter controls which covariance matrix is retrieved, since these can differ between directions.
