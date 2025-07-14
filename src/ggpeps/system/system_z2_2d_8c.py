@@ -40,6 +40,7 @@ class Z2System2D_8C_Config(Config2DBase):
         num_pg_layer=1,
         num_fermionic_layer=1,
         unitcell_size=1,
+        enforce_u1_symmetry=True,
     ):
         super().__init__(
             lattice,
@@ -63,6 +64,12 @@ class Z2System2D_8C_Config(Config2DBase):
             site: 0 for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
         self.unitcell_size = 1
+
+        if not enforce_u1_symmetry:
+            logger.error(
+                "The Z2System2D_8C ansatz does not support the relaxation of U(1) symmetry."
+            )
+            raise ValueError("Invalid enforce_u1_symmetry.")
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j]] * 8

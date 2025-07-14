@@ -38,6 +38,7 @@ class Z2System2DConfig(Config2DBase):
         num_pg_layer=1,
         num_fermionic_layer=0,
         unitcell_size=1,
+        enforce_u1_symmetry=True,
     ):
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         if num_fermionic_layer != 0:
@@ -57,6 +58,12 @@ class Z2System2DConfig(Config2DBase):
             site: 0 for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
         self.unitcell_size = 1
+
+        if not enforce_u1_symmetry:
+            logger.error(
+                "This ansatz does not support the relaxation of U(1) symmetry."
+            )
+            raise ValueError("Invalid enforce_u1_symmetry.")
 
         # This is for pure-gauge only atm
         self.num_pg_layer = self.nlayer

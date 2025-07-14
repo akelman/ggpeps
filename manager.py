@@ -156,6 +156,10 @@ def validate_inputs(args) -> bool:
     return True
 
 
+def get_config(gauge_group: str, ncopy: int):
+    return
+
+
 def main(args):
     raw_command = " ".join(sys.argv)
     ind = raw_command.index("manager.py")
@@ -281,101 +285,67 @@ def main(args):
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L, args.gauge_fixing)
 
-    # Depending on the parameters, we instantiate different systems
+    # Depending on the parameters, we instantiate different systems/system_configs
     # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.gauge_group == "Z2":
+        system_type = Z2System2D
+
         if args.fermions:
             if args.ncopy == 2:
-                # Z2 system with 2 copies of virtual fermions per layer
-                system_cfg = Z2System2D_G2C_F2C_Config(
-                    lattice,
-                    g_el,
-                    g_mag,
-                    g_int,
-                    g_mass,
-                    g_chem,
-                    num_pg_layer=args.num_pg_layer,
-                    num_fermionic_layer=args.num_fermionic_layer,
-                    unitcell_size=args.unitcell_size,
-                    enforce_u1_symmetry=not args.relax_u1,
-                )
+                cfg_class = Z2System2D_G2C_F2C_Config
             elif args.ncopy == 4:
-                # Z2 system with 4 copies of virtual fermions per layer
-                system_cfg = Z2System2D_G2C_F4C_Config(
-                    lattice,
-                    g_el,
-                    g_mag,
-                    g_int,
-                    g_mass,
-                    g_chem,
-                    num_pg_layer=args.num_pg_layer,
-                    num_fermionic_layer=args.num_fermionic_layer,
-                    unitcell_size=args.unitcell_size,
-                    enforce_u1_symmetry=not args.relax_u1,
-                )
+                cfg_class = Z2System2D_G2C_F4C_Config
             elif args.ncopy == 8:
-                system_cfg = Z2System2D_8C_Config(
-                    lattice,
-                    g_el,
-                    g_mag,
-                    g_int,
-                    g_mass,
-                    g_chem,
-                    num_pg_layer=args.num_pg_layer,
-                    num_fermionic_layer=args.num_fermionic_layer,
-                )
+                cfg_class = Z2System2D_8C_Config
             else:
                 logger.error(
                     "Not Implemented: Only 2, 4, or 8 copies are possible with fermions."
                 )
                 sys.exit(1)
         else:
+            if args.num_fermionic_layer != 0:
+                logger.error(
+                    "Not Implemented: args.fermions is False, but there are fermionic layers."
+                )
+                sys.exit(1)
+
+            args.g_chem = None  # no chemical potential for this ansatz, which does not include matter
             if args.ncopy == 1:
                 # Z2 system with one copy of virtual fermions on the links
-                system_cfg = Z2System2DConfig(
-                    lattice,
-                    g_el,
-                    g_mag,
-                    g_int,
-                    g_mass,
-                    None,  # no chemical potential for this ansatz, which does not include matter
-                    num_pg_layer=args.num_pg_layer,
-                    num_fermionic_layer=0,
-                )
+                cfg_class = Z2System2DConfig
             elif args.ncopy == 2:
                 # Z2 system with two copies of virtual fermions on the links
-                system_cfg = Z2System2D2CConfig(
-                    lattice,
-                    g_el,
-                    g_mag,
-                    g_int,
-                    g_mass,
-                    None,  # no chemical potential for this ansatz, which does not include matter
-                    num_pg_layer=args.num_pg_layer,
-                    num_fermionic_layer=0,
-                )
+                cfg_class = Z2System2D2CConfig
             else:
                 logger.error(
                     "Not Implemented: Only 1 or 2 copies are possible without fermions."
                 )
                 sys.exit(1)
-
-        system_type = Z2System2D
     elif args.gauge_group == "D6":
-        system_cfg = D6System2D_Config(
-            lattice,
-            g_el,
-            g_mag,
-            g_int,
-            g_mass,
-            g_chem,
-            num_pg_layer=args.num_pg_layer,
-            num_fermionic_layer=args.num_fermionic_layer,
-        )
         system_type = D2nSystem2D
-    else:
-        logger.error("Not Implemented: Only the gauge groups Z2 and D6 are possible.")
+        cfg_class = D6System2D_Config
+    elif args.gauge_group == "U1":
+        logger.error("Not Implemented: The U1 gauge group is not currently working.")
         sys.exit(1)
+    else:
+        logger.error(
+            "Not Implemented: Only the gauge groups Z2 and D6 are implemented and working."
+        )
+        sys.exit(1)
+
+    # Create the system configuration of the appropriate type
+    system_cfg = cfg_class(
+        lattice,
+        g_el,
+        g_mag,
+        g_int,
+        g_mass,
+        g_chem,
+        num_pg_layer=args.num_pg_layer,
+        num_fermionic_layer=args.num_fermionic_layer,
+        unitcell_size=args.unitcell_size,
+        enforce_u1_symmetry=not args.relax_u1,
+    )
 
     # We use a local random number generator instead of the global numpy one to assure
     # reproducibility across different runs, even when using mulitple processes
