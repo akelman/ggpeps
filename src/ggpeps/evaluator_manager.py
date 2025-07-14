@@ -115,6 +115,14 @@ class EvaluatorManager:
             evaluator_class = NEVMC_Evaluator
         return evaluator_class
 
+    def get_evaluator(self):
+        """Get the evaluator instance.
+
+        Returns:
+            Evaluator: The current evaluator instance.
+        """
+        return self.evaluator
+
     def simulate(self, eval_args: dict = {}):
         """Simulate
 
@@ -178,8 +186,8 @@ class EvaluatorManager:
                 )
 
             resultvec = ray.get(resultvec)
-            combined_evaluator = self.collect(resultvec)
-            result_df = combined_evaluator.summary()
+            self.evaluator = self.collect(resultvec)
+            result_df = self.evaluator.summary()
         else:
             self.reset_evaluator()
             self.evaluator.evaluate(**eval_args)
