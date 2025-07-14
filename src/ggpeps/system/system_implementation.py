@@ -26,9 +26,12 @@ class Z2System2D(System2DBase):
 
     Order of the paramvec: see the functions that create the symbolvec in the configs.
     We split the real and the imaginary part of the parameters into independent variables.
-    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3... and so on}.
-    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3... and so on}.
-    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... and so on}.
+    Mode order of tmat:
+        {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3... and so on}
+    Mode order of gamma_dirac:
+        {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3...and so on}
+    Mode order of gamma_maj:
+        {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2...and so on}
     """
 
     def __init__(self, cfg):
@@ -138,7 +141,8 @@ class Z2System2D(System2DBase):
         For pure gauge layers, modes of copy one are coupled to modes of copy 2. The projectors mix copies.
         For fermionic layers, the projectors don't mix copies to ensure the U(1) symmetry is obeyed.
 
-        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The sites are picked such that the left mode is right of the right modes,
+        i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
         This method overwrites an abstract method in System2DBase.
@@ -154,7 +158,6 @@ class Z2System2D(System2DBase):
         theta = self.cfg.gaugemgr.get_angle(group_element)
         # Gauging might be different depending on sublattice or link direction, but for this system it is the same
         if dir == Direction.X and (-1) ** (coord[0] + coord[1]) == -1:
-            # theta += xnp.pi
             pass
 
         # We are only rotating the right modes.
@@ -170,10 +173,7 @@ class Z2System2D(System2DBase):
         rotmat = xnp.kron(xnp.eye(self.cfg.ncopy), dest)
         return rotmat
 
-    # TODO: fix for JAX - DONE, except for stuff in utils
-    def update_gauge_ind(
-        self, link_ind, theta
-    ):  # TODO: Modify this (and some more functions here), to handle matrix representations.
+    def update_gauge_ind(self, link_ind, theta):
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
         and updates all incremental trackers of determinants and inverses.
@@ -293,21 +293,21 @@ class Z2System2D(System2DBase):
             layer_mass_energy = 0.0
 
             # Calculate mass term
-            # Since the system is translationally invariant, we could just calculate it for one site and multiply by nsites instead
+            # Since the system is translationally invariant, we could just calculate it
+            # for one site and multiply by nsites instead
             for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
-                layer_mass_energy += 0.5 * (
-                    1 + covmat[site_ind + 1, site_ind]
-                )  # TODO: fix for JAX - NOT NEEDED
+                layer_mass_energy += 0.5 * (1 + covmat[site_ind + 1, site_ind])
 
                 for uc_ind in range(self.cfg.unitcell_size):
                     for symbol_ind, symbol in enumerate(self.symbolvec):
+                        # the derivative calculation is relatively compuationally expensive
+                        # (though less than for electric energy)
+                        # we can skip it for parameters that are forced by the ansatz to be zero
                         if (
                             layer_ind,
                             uc_ind,
                             symbol_ind,
                         ) not in self.cfg.zeroed_params:
-                            # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
-                            # we can skip it for parameters that are forced by the ansatz to be zero
 
                             d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[
                                 symbol_ind
@@ -330,16 +330,18 @@ class Z2System2D(System2DBase):
 
         self.cfg.enforce_parameter_conditions(gradients)
 
-        # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
-        # They act as a prefactor in the derivative.
-        # However, here, because the mass term only acts on the fermionic layers, we simply multiply the mass_energy and grads by the norm of the first layer
+        # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy
+        # operator expectation of the other layers. They act as a prefactor in the derivative.
+        # However, here, because the mass term only acts on the fermionic layers, we simply multiply the mass_energy
+        # and grads by the norm of the first layer
         # (this is handled higher up in the computation stack).
 
         return mass_energy_op, xnp.array(gradients)
 
     def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
         """Computation of the electric energy.
-        Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
+        Since several operations needed for the computation of the gradient and the energy are similar,
+        we can reuse many intermediate steps.
         These are saved at the end of the function.
 
         This method overwrites an abstract method in System2DBase.
@@ -398,7 +400,6 @@ class Z2System2D(System2DBase):
                 size - single_link_offset,
                 size,
             )
-            # covmat_out[-single_link_offset:, -single_link_offset:] # TODO: fix for JAX - DONE
 
             # The library pfapack is rather picky about the anti-symmetrization (to 1e-14)
             covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
@@ -413,7 +414,8 @@ class Z2System2D(System2DBase):
             # The matrix elements yield only the real part of <P>
             # If we use the log formulation, we can calculate the log of single terms.
 
-            # Instead of writing down all the terms explicitly, we build tuples of the prefactors and the indices of the covariance matrix.
+            # Instead of writing down all the terms explicitly, we build tuples of the prefactors
+            # and the indices of the covariance matrix.
             # Then, we compute all terms in a list comprehension.
             pfarr = []
             pfvals = []  # without the prefactor
@@ -441,7 +443,8 @@ class Z2System2D(System2DBase):
     def _compute_el_grad_vec(self, use_trans_inv: bool = True):
         """Computation of the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
-        Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
+        Since several operations needed for the computation of the gradient and the energy are similar,
+        we can reuse many intermediate steps.
 
         This method overwrites an abstract method in System2DBase.
 
@@ -512,9 +515,10 @@ class Z2System2D(System2DBase):
 
             for site_ind in range(self.cfg.lattice.size):
                 coord = self.cfg.lattice.ind2coord(site_ind)
-                site_ind_cov = (
-                    2 * site_ind
-                )  # this is the index to use when accessing elements of the covariance matrix, which has 2 Majorana modes per site
+
+                # this is the index to use when accessing elements of the covariance matrix,
+                # which has 2 Majorana modes per site
+                site_ind_cov = 2 * site_ind
 
                 # Horizontal link
                 ind_field_hor = self.cfg.lattice.coord2ind_dir(
@@ -548,7 +552,7 @@ class Z2System2D(System2DBase):
                 gaugefield_vert = self.gaugefieldvec[ind_field_vert]
                 theta_vert = self.cfg.gaugemgr.get_angle(
                     gaugefield_vert
-                )  # gaugefield_hor is a matrix represntation of a group elemnt
+                )  # gaugefield_vert is a matrix represntation of a group elemnt
                 cos_factor_vert = xnp.cos(theta_vert)
                 vert_link_energy = 0.5 * (
                     covmat[site_ind_cov, neighborY_ind + 1]
@@ -559,13 +563,14 @@ class Z2System2D(System2DBase):
                 # Calculate derivatives
                 for uc_ind in range(self.cfg.unitcell_size):
                     for symbol_ind, symbol in enumerate(self.symbolvec):
+                        # the derivative calculation is relatively compuationally expensive
+                        # (though less than for electric energy)
+                        # we can skip it for parameters that are forced by the ansatz to be zero
                         if (
                             layer_ind,
                             uc_ind,
                             symbol_ind,
                         ) not in self.cfg.zeroed_params:
-                            # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
-                            # we can skip it for parameters that are forced by the ansatz to be zero
 
                             d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[
                                 symbol_ind
@@ -599,9 +604,10 @@ class Z2System2D(System2DBase):
 
         self.cfg.enforce_parameter_conditions(gradients)
 
-        # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy operator expectation of the other layers.
-        # They act as a prefactor in the derivative.
-        # However, here (just as in the mass case), because the interaction term only acts on the fermionic layers, we simply multiply the int_energy and grads by the norm of the first layer
+        # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy
+        # operator expectation of the other layers. They act as a prefactor in the derivative.
+        # However, here (just as in the mass case), because the interaction term only acts on the fermionic layers,
+        # we simply multiply the int_energy and grads by the norm of the first layer
         # (this is handled higher up in the computation stack).
 
         return int_energy_op, xnp.array(gradients)
@@ -633,13 +639,14 @@ class Z2System2D(System2DBase):
 
                 for uc_ind in range(self.cfg.unitcell_size):
                     for symbol_ind, symbol in enumerate(self.symbolvec):
+                        # the derivative calculation is relatively compuationally expensive
+                        # (though less than for electric energy)
+                        # we can skip it for parameters that are forced by the ansatz to be zero
                         if (
                             layer_ind,
                             uc_ind,
                             symbol_ind,
                         ) not in self.cfg.zeroed_params:
-                            # the derivative calculation is relatively compuationally expensive (though less than for electric energy)
-                            # we can skip it for parameters that are forced by the ansatz to be zero
 
                             d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[
                                 symbol_ind
@@ -672,7 +679,8 @@ class Z2System2D(System2DBase):
 
     def _meson_string_vec(self, path):
         r"""Compute a layer resolved meson string for the given path.
-        This is \psi^dagger (start) * String * \psi(end) before particle-hole, and assumes that start and end are on the same sublattice.
+        This is \psi^dagger (start) * String * \psi(end) before particle-hole,
+        and assumes that start and end are on the same sublattice.
 
         Args:
             path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
@@ -720,7 +728,8 @@ class Z2System2D(System2DBase):
         Args:
             lay (int): Layer index
             site (int): Site index
-            after_ph (bool, optional): If True, compute the occupation number using the operators defined after the particle-hole transformation. Defaults to False.
+            after_ph (bool, optional): If True, compute the occupation number using the operators
+                                       defined after the particle-hole transformation. Defaults to False.
 
         Returns:
             float: the occupation number for the given layer and site
