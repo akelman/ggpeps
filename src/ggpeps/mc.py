@@ -359,7 +359,6 @@ class MonteCarloEvaluator(Evaluator):
         The update is local. The new gauge field value is drawn uniformly from the
         distribution of possible gauge fields (according to the gauge group).
 
-        TODO: test gauge fixing with this function
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
