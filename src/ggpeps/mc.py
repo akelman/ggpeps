@@ -63,9 +63,8 @@ class MonteCarloEvaluatorConfig:
     def rng_state(self, state: np.random.RandomState) -> None:
         logger.error(
             "MonteCarloEstimatorConfig: Do not set the state directly. Use a seed instead."
+            "Request to set the state directly was ignored."
         )
-        self.rng_state = None
-        self.seed = None
 
     def get_rng_state_internal_repr(self):
         return self._rng_state.get_state()
@@ -537,7 +536,7 @@ class MonteCarloEvaluator(Evaluator):
                 logger.info(f"<{key}>: {self.obsdict[key].mean()}")
 
     def summary(self) -> pd.DataFrame:
-        dest = {
+        dest: dict = {
             "name": [],
             "nx": [],
             "ny": [],
