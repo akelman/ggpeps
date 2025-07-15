@@ -1,10 +1,8 @@
 from typing import Union
-from abc import ABC, abstractmethod
 
 import ray
 import copy
 import logging
-import numpy as np
 
 import ggpeps
 from ggpeps import utils
@@ -24,8 +22,8 @@ def run_mc(
     runner_id: int,
     evaluator_class: Union[MonteCarloEvaluator, NEVMC_Evaluator],
     evaluator_cfg: Union[MonteCarloEvaluatorConfig, NEVMC_EvaluatorConfig],
-    system_cls,
-    system_cfg,
+    system_cls: SystemType,
+    system_cfg: SystemConfigType,
     logger_info: dict,
     eval_args: dict = {},
 ):
@@ -40,11 +38,10 @@ def run_mc(
         eval_args (dict): Arguments for the evaluator
 
     Returns:
-        MonteCarloEvaluator
+        MonteCarloEvaluator after running the simulation.
     """
 
-    # Setup logger
-    # TODO: this is probably not the best way to get the required logger configuration
+    # Setup logger for each worker
     logger_file = logger_info["filename"]
     level = logger_info["logger_level"]
     logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -60,9 +57,10 @@ def run_mc(
 class EvaluatorManager:
     """The EvaluatorManager is a wrapper around the different evaluators (ExactEvaluator and MonteCarloEvaluator).
     It allows the execution of a simulation with multiple cores.
-    The parallelization is performed with ray; currently this is only supported for Monte Carlo (not Exact Contraction).
+    The parallelization is handled with ray; currently this is only supported for Monte Carlo (not Exact Contraction).
 
-    If an MC simulation is distributed across N runners, each runner performs the full warm-up but only 1/N of the total measurement steps.
+    If an MC simulation is distributed across N runners, each runner performs the full
+    warm-up but only 1/N of the total measurement steps.
 
     This is the general interface for simulations that is used in the manager and minimizer.
     """
@@ -93,7 +91,9 @@ class EvaluatorManager:
         else:
             raise ValueError("Unrecognized type of evaluator config.")
 
-    def reset_evaluator(self):
+    def reset_evaluator(self) -> None:
+        """Reset the evaluator to a new instance with the current configuration."""
+
         system = self.system_cls(self.system_cfg)
 
         system.initialize()
@@ -107,12 +107,16 @@ class EvaluatorManager:
             raise ValueError(f"Unknown evaluator type {self.type}")
 
     def get_evaluator_class(self):
+        """Get the evaluator class based on the type of evaluator."""
+
         if self.type == "exact":
             evaluator_class = ExactEvaluator
         elif self.type == "mc":
             evaluator_class = MonteCarloEvaluator
         elif self.type == "nevmc":
             evaluator_class = NEVMC_Evaluator
+        else:
+            raise ValueError(f"Unknown evaluator type {self.type}")
         return evaluator_class
 
     def get_evaluator(self):
@@ -132,7 +136,7 @@ class EvaluatorManager:
 
         if "mc" in self.type and self.nrunner > 0:
             """Start the simulation of the runners.
-            Currently only Monte Carlo is supported (the exacteval implementation currently only supports a single runner),
+            Currently only Monte Carlo is supported (the exacteval implementation currently only supports one runner),
             and multiple runners cannot be resumed from where they left off.
             """
             resultvec = []

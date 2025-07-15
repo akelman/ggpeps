@@ -70,7 +70,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["check-manifest", "seaborn"]
-test = ["coverage"]
+test = ["coverage", "nox"]
 
 [tool.setuptools_scm]
 version_file = "src/ggpeps/_version.py"

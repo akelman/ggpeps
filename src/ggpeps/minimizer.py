@@ -1,14 +1,13 @@
 from typing import Optional
 
 import os
+import copy
 import pickle
 import logging
 
 import numpy as np
 from scipy.optimize import minimize
-
 from scipy.special import logsumexp
-import copy
 
 import ggpeps
 from ggpeps.caching import Cache
@@ -465,10 +464,10 @@ def print_callback(x, minimizer):
         message += f", acceptance prob: {acceptance_prob:.6f}"
     logger.info(message)
 
-    occupations = utils.get_obs_mean_df(res, "occupations")
+    all_occupations = utils.get_obs_mean_df(res, "all_occupations")
     occ_str = ""
-    for lay in range(len(occupations)):
-        occ_str += ", ".join([f"{val:.10f}" for val in occupations[lay]])
+    for lay in range(len(all_occupations)):
+        occ_str += ", ".join([f"{val:.10f}" for val in all_occupations[lay]])
         occ_str += " | "  # layer separator
     logger.debug(f"Occupations: {occ_str}")
 

@@ -27,7 +27,8 @@ class Lattice2D:
     Args:
         nx (int): Extend of the lattice in x direction (given in number of vertices)
         ny (int): Extend of the lattice in y direction (given in number of vertices)
-        gf_num_of_rows (int): Number of rows on which we fix the gauge when gauge fixing. If -1: we fix a maximal tree. It generates a tree in which the links are fixed accordingly.
+        gf_num_of_rows (int): Number of rows on which we fix the gauge when gauge fixing.
+                              If -1: we fix a maximal tree. It generates a tree in which the links are fixed accordingly.
     """
 
     dim = 2
@@ -379,7 +380,8 @@ class Lattice2D:
         (no integration is needed over links on the tree).
         This method is built for a lattice with periodic boundary conditions.
 
-        The particular tree returned by this function includes all the horizontal links in the first num_of_rows rows but the last one on each row.
+        The particular tree returned by this function includes all the horizontal links
+        in the first num_of_rows rows but the last one on each row.
 
         If num_of_rows is not given then a maximal tree containing all the rows but the last link
         and all the vertical links but the last one on the first column.

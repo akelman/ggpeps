@@ -173,7 +173,8 @@
             "console": "integratedTerminal",
             "args": [
                 "min-nevmc",
-                "2",
+                "Z2",
+                "--L", "2",
                 "--g", "2.0",
                 "--warmup_steps", "50",
                 "--meas_steps", "50",

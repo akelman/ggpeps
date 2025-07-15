@@ -1,6 +1,4 @@
 import os
-import ray
-import copy
 import gzip
 import pickle
 import logging
@@ -43,26 +41,26 @@ class MonteCarloEvaluatorConfig:
         self.run_log_freq: int = 20000
 
     @property
-    def seed(self):
+    def seed(self) -> int:
         if self._seed is None:
             self._seed = np.random.randint(np.iinfo(np.int32).max)
             self._rng_state = np.random.RandomState(self._seed)
         return self._seed
 
     @seed.setter
-    def seed(self, seedval):
+    def seed(self, seedval: int) -> None:
         self._seed = seedval
         self._rng_state = np.random.RandomState(seedval)
 
     @property
-    def rng_state(self):
+    def rng_state(self) -> np.random.RandomState:
         if self._rng_state is None:
             self._seed = np.random.randint(np.iinfo(np.int32).max)
             self._rng_state = np.random.RandomState(self._seed)
         return self._rng_state
 
     @rng_state.setter
-    def rng_state(self, state):
+    def rng_state(self, state: np.random.RandomState) -> None:
         logger.error(
             "MonteCarloEstimatorConfig: Do not set the state directly. Use a seed instead."
         )
@@ -76,26 +74,24 @@ class MonteCarloEvaluatorConfig:
         self._rng_state.set_state(state_repr)
         return
 
-    def __str__(self):
-        dest = ""
-        dest += f"Seed: {self.seed}\n"
+    def __str__(self) -> str:
+        dest = f"Seed: {self.seed}\n"
         dest += f"Warmup steps: {self.warmup_steps}\n"
         dest += f"Measurement steps: {self.meas_steps}\n"
         dest += f"Update size: {self.update_size_per_step}\n"
         return dest
 
 
-################################### Monte Carlo runner ###############
+############### Monte Carlo runner ###############
 
 
 class MonteCarloEvaluator(Evaluator):
     """Class to take care of the MC simulation on a single runner"""
 
+    evaluator_type = "mc"
+
     def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
-        self.cfg = evaluator_cfg
-        self.system = system
-        self.evaluator_type = "mc"
-        self.obsdict: dict = {}
+        super().__init__(evaluator_cfg, system)
 
         self.step: int = 0
         self.init_measurements()
@@ -108,7 +104,7 @@ class MonteCarloEvaluator(Evaluator):
             # self.update = self.update_single_site
             self.update = self.update_N_sites
 
-    def init_measurements(self):
+    def init_measurements(self) -> None:
         """Add empty measurement vectors to the measurement dictionary"""
         binsize = self.cfg.binsize
 
@@ -133,7 +129,7 @@ class MonteCarloEvaluator(Evaluator):
         )
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
-        self.obsdict["all_occuations"] = Measurement(
+        self.obsdict["all_occupations"] = Measurement(
             "All Occupations (after PH)", binsize
         )
         self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
@@ -141,6 +137,22 @@ class MonteCarloEvaluator(Evaluator):
             "Variance Occupation", binsize
         )
 
+        # Wilson loops (of various sizes)
+        sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
+        for size in sizes:
+            loop_name = f"wilson_loop_0-0_{size[0]}x{size[1]}"
+            self.obsdict[loop_name] = Measurement(loop_name, binsize)
+
+        # Meson strings
+        max_string = (
+            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
+        )
+        for k in range(1, max_string):
+            self.obsdict[f"square_string_0-0_{k}x{k}"] = Measurement(
+                f"square_string_0-0_{k}x{k}", binsize
+            )
+
+        # Gradients
         if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"] = Measurement(
                 "Electric Energy Operator Gradient", binsize
@@ -158,24 +170,8 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict["energy_grad"] = Measurement(
                 "Gradient of Total Energy", binsize
             )
-        # self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
 
-        # Wilson loops (of various sizes)
-        sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
-        for size in sizes:
-            loop_name = f"wilson_loop_0-0_{size[0]}x{size[1]}"
-            self.obsdict[loop_name] = Measurement(loop_name, binsize)
-
-        # Meson strings
-        max_string = (
-            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
-        )
-        for k in range(1, max_string):
-            self.obsdict[f"square_string_0-0_{k}x{k}"] = Measurement(
-                f"square_string_0-0_{k}x{k}", binsize
-            )
-
-    def measure(self):
+    def measure(self) -> None:
         """Measure the corresponding observables in the dictionary"""
         polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
             (0, 0), lattice.Direction.X
@@ -189,7 +185,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
         self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
-        self.obsdict["all_occuations"].append(self.system.all_occupations)
+        self.obsdict["all_occupations"].append(self.system.all_occupations)
 
         # Most of these values could be calculated in a post-processing step
         self.obsdict["energy"].append(self.system.energy)
@@ -201,21 +197,8 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
         self.obsdict["average_occupation"].append(self.system.average_occupation())
 
-        if self.cfg.compute_grads:
-            self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
-            self.obsdict["int_energy_op_grad"].append(
-                self.system.int_energy_op_grad_vec
-            )
-            self.obsdict["mass_energy_op_grad"].append(
-                self.system.mass_energy_op_grad_vec
-            )
-            self.obsdict["chem_energy_op_grad"].append(
-                self.system.chem_energy_op_grad_vec
-            )
-            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
-
-        # TODO: save sizes/loops/strings in a more efficient way, so that they are not recomputed each step
         # Wilson loops
+        # TODO: save sizes/loops/strings in a more efficient way, so that they are not recomputed each step
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
         loops = self.system.cfg.lattice.generate_all_wilson_loops((0, 0), sizes)
         for k in range(len(sizes)):
@@ -233,6 +216,19 @@ class MonteCarloEvaluator(Evaluator):
         for k in range(1, max_string):
             string_name = f"square_string_0-0_{k}x{k}"
             self.obsdict[string_name].append(self.system.meson_string(strings[k - 1]))
+
+        if self.cfg.compute_grads:
+            self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
+            self.obsdict["int_energy_op_grad"].append(
+                self.system.int_energy_op_grad_vec
+            )
+            self.obsdict["mass_energy_op_grad"].append(
+                self.system.mass_energy_op_grad_vec
+            )
+            self.obsdict["chem_energy_op_grad"].append(
+                self.system.chem_energy_op_grad_vec
+            )
+            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
 
         return
 
@@ -310,8 +306,9 @@ class MonteCarloEvaluator(Evaluator):
         )
         return grad
 
-    def warmup(self):
+    def warmup(self) -> None:
         """Warm up phase without measurement"""
+
         logger.debug("Starting MC warmup")
         while self.step < self.cfg.warmup_steps:
             if self.step % self.cfg.warmup_log_freq == 0:
@@ -320,8 +317,9 @@ class MonteCarloEvaluator(Evaluator):
             self.step += 1
         logger.debug("Finished MC warmup")
 
-    def run(self):
+    def run(self) -> None:
         """Meaurement phase"""
+
         logger.debug("Starting MC measurement")
         while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
             if self.step % self.cfg.run_log_freq == 0:
@@ -354,12 +352,12 @@ class MonteCarloEvaluator(Evaluator):
         logger.debug("Finished MC measurement")
         return
 
-    def update_single_site(self):
+    def update_single_site(self) -> None:
         """Update for the MC simulation.
         This updates randomly chooses a single site and updates it.
-        The update is local. The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The update is local. The new gauge field value is drawn uniformly from the
+        distribution of possible gauge fields (according to the gauge group).
 
-        TODO: test gauge fixing with this function
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
@@ -380,11 +378,12 @@ class MonteCarloEvaluator(Evaluator):
             # Reject
             self.obsdict["acceptance_prob"].append(0)
 
-    def update_all_sites_single_site(self):
+    def update_all_sites_single_site(self) -> None:
         """Update for the MC simulation.
         This updates iterates over all lattice sites and updates every site once.
         The update is local.
-        The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The new gauge field value is drawn uniformly from the distribution of possible gauge fields
+        (according to the gauge group).
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
@@ -403,11 +402,12 @@ class MonteCarloEvaluator(Evaluator):
                 # Reject
                 self.obsdict["acceptance_prob"].append(0)
 
-    def update_N_sites(self):
+    def update_N_sites(self) -> None:
         """Update for the MC simulation.
         This updates iterates over N lattice sites and updates every site once.
         The update is local.
-        The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The new gauge field value is drawn uniformly from the distribution of possible gauge fields
+        (according to the gauge group).
         """
         links_inds = self.cfg.rng_state.choice(
             self.system.cfg.lattice.comp_tree,
@@ -429,8 +429,8 @@ class MonteCarloEvaluator(Evaluator):
                 # Reject
                 self.obsdict["acceptance_prob"].append(0)
 
-    def evaluate(self):
-        """Main routine to start a Monte Carlo simulation."""
+    def evaluate(self) -> None:
+        """Main routine to run a Monte Carlo simulation."""
         self.warmup()
         self.run()
 
@@ -496,7 +496,7 @@ class MonteCarloEvaluator(Evaluator):
                 return meas.var()
         return None
 
-    def save_full(self, fname_full: str):
+    def save_full(self, fname_full: str) -> None:
         """Save the full MonteCarloEstimator
 
         Args:
@@ -510,8 +510,10 @@ class MonteCarloEvaluator(Evaluator):
         with gzip.open(fname_full, "wb") as outfile:
             pickle.dump(data_full, outfile)
 
-    def save(self, output_dir="."):
-        """Convenience function to combine saving the MonteCarloEstimator and the summary of the observables"""
+    def save(self, output_dir: str = ".") -> None:
+        """Convenience function to combine saving the MonteCarloEstimator and the
+        summary of the observables"""
+
         syscfg = self.system.cfg
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
@@ -527,19 +529,14 @@ class MonteCarloEvaluator(Evaluator):
 
     #### Output (plots or on the commandline) ####
 
-    def print_stats(self):
+    def print_stats(self) -> None:
         """Print a quick summary of the observables"""
         for key in self.obsdict.keys():
             val = self.obsdict[key]
             if val is not None and len(val) > 0:
                 logger.info(f"<{key}>: {self.obsdict[key].mean()}")
 
-    def summary(self):
-        """Generate a summary of the simulation in the form of a pandas dataframe
-
-        Returns:
-            pd.DataFrame: Pandas dataframe with a summary of all results
-        """
+    def summary(self) -> pd.DataFrame:
         dest = {
             "name": [],
             "nx": [],

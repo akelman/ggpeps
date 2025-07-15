@@ -1,6 +1,5 @@
 ############## JAX VERSIONS ##############
 
-from typing import List
 from functools import partial
 
 import jax
