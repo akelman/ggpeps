@@ -138,6 +138,25 @@ class NEVMC_Evaluator(Evaluator):
         )
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
+        self.obsdict["all_occupations"] = Measurement(
+            "All Occupations (after PH)", binsize
+        )
+        self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
+
+        # Wilson loops (of various sizes)
+        sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
+        for size in sizes:
+            loop_name = f"wilson_loop_0-0_{size[0]}x{size[1]}"
+            self.obsdict[loop_name] = Measurement(loop_name, binsize)
+
+        # Meson strings
+        max_string = (
+            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
+        )
+        for k in range(1, max_string):
+            self.obsdict[f"square_string_0-0_{k}x{k}"] = Measurement(
+                f"square_string_0-0_{k}x{k}", binsize
+            )
 
         if self.cfg.compute_grads:
             ### beg NEVMC ###
@@ -159,22 +178,6 @@ class NEVMC_Evaluator(Evaluator):
             self.obsdict["energy_grad"] = Measurement(
                 "Gradient of Total Energy", binsize
             )
-        # self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
-
-        # Wilson loops (of various sizes)
-        sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
-        for size in sizes:
-            loop_name = f"wilson_loop_0-0_{size[0]}x{size[1]}"
-            self.obsdict[loop_name] = Measurement(loop_name, binsize)
-
-        # Meson strings
-        max_string = (
-            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
-        )
-        for k in range(1, max_string):
-            self.obsdict[f"square_string_0-0_{k}x{k}"] = Measurement(
-                f"square_string_0-0_{k}x{k}", binsize
-            )
 
     def measure(self):
         """Measure the corresponding observables in the dictionary"""
@@ -190,6 +193,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
         self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
+        self.obsdict["all_occupations"].append(self.system.all_occupations)
 
         # These values could be calculated in a post-processing step
         self.obsdict["energy"].append(self.system.energy)
@@ -199,19 +203,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["mass_energy"].append(self.system.mass_energy)
         self.obsdict["chem_energy"].append(self.system.chem_energy)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
-
-        if self.cfg.compute_grads:
-            self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
-            self.obsdict["int_energy_op_grad"].append(
-                self.system.int_energy_op_grad_vec
-            )
-            self.obsdict["mass_energy_op_grad"].append(
-                self.system.mass_energy_op_grad_vec
-            )
-            self.obsdict["chem_energy_op_grad"].append(
-                self.system.chem_energy_op_grad_vec
-            )
-            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
+        self.obsdict["average_occupation"].append(self.system.average_occupation())
 
         # Wilson loops
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
@@ -231,6 +223,19 @@ class NEVMC_Evaluator(Evaluator):
         for k in range(1, max_string):
             string_name = f"square_string_0-0_{k}x{k}"
             self.obsdict[string_name].append(self.system.meson_string(strings[k - 1]))
+
+        if self.cfg.compute_grads:
+            self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
+            self.obsdict["int_energy_op_grad"].append(
+                self.system.int_energy_op_grad_vec
+            )
+            self.obsdict["mass_energy_op_grad"].append(
+                self.system.mass_energy_op_grad_vec
+            )
+            self.obsdict["chem_energy_op_grad"].append(
+                self.system.chem_energy_op_grad_vec
+            )
+            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
 
         return
 
@@ -330,7 +335,7 @@ class NEVMC_Evaluator(Evaluator):
 
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
-            theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+            theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
             # Store the old values
 
             weight_old = self.system.weight
@@ -483,6 +488,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
         self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
+        self.obsdict["all_occupations"].append(self.system.all_occupations)
 
         # These values could be calculated in a post-processing step
         self.obsdict["energy"].append(self.system.energy)
@@ -492,7 +498,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["mass_energy"].append(self.system.mass_energy)
         self.obsdict["chem_energy"].append(self.system.chem_energy)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
-        self.obsdict["number_per_site"].append(self.system.number_per_site)
+        self.obsdict["average_occupation"].append(self.system.average_occupation())
 
         # Wilson loops
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
@@ -527,6 +533,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
         self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
+        self.obsdict["all_occupations"].append(self.system.all_occupations)
 
         # These values could be calculated in a post-processing step
         self.obsdict["energy"].append(self.system.energy)
@@ -536,7 +543,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["mass_energy"].append(self.system.mass_energy)
         self.obsdict["chem_energy"].append(self.system.chem_energy)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
-        self.obsdict["number_per_site"].append(self.system.number_per_site)
+        self.obsdict["average_occupation"].append(self.system.average_occupation())
         #############################
         self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
         self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
