@@ -27,9 +27,7 @@ class ExactEvaluator(Evaluator):
     iterating over all possible states of the gauge field."""
 
     def __init__(self, evaluator_cfg, system) -> None:
-        self.cfg = evaluator_cfg
-        self.system = system
-        self.obsdict: dict = None
+        super().__init__(evaluator_cfg, system)
         self.evaluator_type: str = "exact"
 
     def compute_expval(
@@ -63,7 +61,7 @@ class ExactEvaluator(Evaluator):
         Returns:
             dict: Dictionary of the results
         """
-        if self.obsdict is None:
+        if not self.obsdict:  # obsdict is empty
             # Build an iterable object with all field configurations for all the links
             configvec = self.generate_config_vec()
 

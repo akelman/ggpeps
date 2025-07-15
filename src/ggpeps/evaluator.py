@@ -6,7 +6,7 @@ class Evaluator(ABC):
 
     def __init__(self, evaluator_cfg, system):
         self.system = system
-        self.obsdict: dict = None
+        self.obsdict: dict = {}
         self.cfg = evaluator_cfg
         self.evaluator_type: str | None = None  # exact or mc
 

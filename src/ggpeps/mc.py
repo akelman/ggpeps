@@ -82,17 +82,15 @@ class MonteCarloEvaluatorConfig:
         return dest
 
 
-################################### Monte Carlo runner ###############
+############### Monte Carlo runner ###############
 
 
 class MonteCarloEvaluator(Evaluator):
     """Class to take care of the MC simulation on a single runner"""
 
     def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
-        self.cfg = evaluator_cfg
-        self.system = system
+        super().__init__(evaluator_cfg, system)
         self.evaluator_type = "mc"
-        self.obsdict: dict = {}
 
         self.step: int = 0
         self.init_measurements()
