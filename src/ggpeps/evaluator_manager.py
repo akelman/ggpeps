@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 
 import ray
 import copy
@@ -6,39 +6,39 @@ import logging
 
 import ggpeps
 from ggpeps import utils
+from ggpeps.evaluator import Evaluator
+from ggpeps.system.system_base import System2DBase, Config2DBase
 from ggpeps.exacteval import ExactEvaluator, ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig
 from ggpeps.nevmc import NEVMC_Evaluator, NEVMC_EvaluatorConfig
-from ggpeps.system import SystemType, SystemConfigType
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 ####################### Multiprocessing layer #######################
-
-
 @ray.remote
 def run_mc(
     runner_id: int,
-    evaluator_class: Union[MonteCarloEvaluator, NEVMC_Evaluator],
+    evaluator_class: type[Evaluator],
     evaluator_cfg: Union[MonteCarloEvaluatorConfig, NEVMC_EvaluatorConfig],
-    system_cls: SystemType,
-    system_cfg: SystemConfigType,
+    system_cls: type[System2DBase],
+    system_cfg: Config2DBase,
     logger_info: dict,
     eval_args: dict = {},
-):
+) -> Evaluator:
     """Worker for running part of a MC simulation.
 
     Args:
         runner_id (int): Runner ID
-        mc_cfg (MonteCarloEvaluatorConfig):
-        system_cls ():
-        system_cfg ():
+        evaluator_class: (type[Evaluator]): MonteCarloEvaluator or NEVMC_Evaluator class type
+        mc_cfg (MonteCarloEvaluatorConfig): the evaluator config
+        system_cls (type[System2DBase]): a system class type (must inherit from System2DBase)
+        system_cfg (Config2DBase): the system config
         logger_info (dict): configs for the logger (logger needs to be set up in each worker)
         eval_args (dict): Arguments for the evaluator
 
     Returns:
-        MonteCarloEvaluator after running the simulation.
+        Evaluator after running the simulation.
     """
 
     # Setup logger for each worker
@@ -54,6 +54,7 @@ def run_mc(
     return mc
 
 
+####################### Evaluator Manager #######################
 class EvaluatorManager:
     """The EvaluatorManager is a wrapper around the different evaluators (ExactEvaluator and MonteCarloEvaluator).
     It allows the execution of a simulation with multiple cores.
@@ -67,8 +68,8 @@ class EvaluatorManager:
 
     def __init__(
         self,
-        system_cls: SystemType,
-        system_cfg: SystemConfigType,
+        system_cls: type[System2DBase],
+        system_cfg: Config2DBase,
         cfg: Union[
             MonteCarloEvaluatorConfig, ExactEvaluatorConfig, NEVMC_EvaluatorConfig
         ],
@@ -80,7 +81,8 @@ class EvaluatorManager:
         self.cfg = cfg
         self.nrunner = nrunner
 
-        self.evaluator = None
+        # Set the evaluator
+        self.evaluator: Evaluator = self.reset_evaluator()
 
         if isinstance(self.cfg, ExactEvaluatorConfig):
             self.type = "exact"
@@ -91,33 +93,36 @@ class EvaluatorManager:
         else:
             raise ValueError("Unrecognized type of evaluator config.")
 
-    def reset_evaluator(self) -> None:
+    def reset_evaluator(self) -> Evaluator:
         """Reset the evaluator to a new instance with the current configuration."""
 
         system = self.system_cls(self.system_cfg)
-
         system.initialize()
+
         if self.type == "exact":
+            assert isinstance(self.cfg, ExactEvaluatorConfig)
             self.evaluator = ExactEvaluator(self.cfg, system)
         elif self.type == "mc":
+            assert isinstance(self.cfg, MonteCarloEvaluatorConfig)
             self.evaluator = MonteCarloEvaluator(self.cfg, system)
         elif self.type == "nevmc":
+            assert isinstance(self.cfg, NEVMC_EvaluatorConfig)
             self.evaluator = NEVMC_Evaluator(self.cfg, system)
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
+        return self.evaluator
 
-    def get_evaluator_class(self):
+    def get_evaluator_class(self) -> type[Evaluator]:
         """Get the evaluator class based on the type of evaluator."""
 
         if self.type == "exact":
-            evaluator_class = ExactEvaluator
+            return ExactEvaluator
         elif self.type == "mc":
-            evaluator_class = MonteCarloEvaluator
+            return MonteCarloEvaluator
         elif self.type == "nevmc":
-            evaluator_class = NEVMC_Evaluator
+            return NEVMC_Evaluator
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
-        return evaluator_class
 
     def simulate(self, eval_args: dict = {}):
         """Simulate
@@ -131,6 +136,10 @@ class EvaluatorManager:
             Currently only Monte Carlo is supported (the exacteval implementation currently only supports one runner),
             and multiple runners cannot be resumed from where they left off.
             """
+            assert isinstance(self.cfg, MonteCarloEvaluatorConfig) or isinstance(
+                self.cfg, NEVMC_EvaluatorConfig
+            )
+
             resultvec = []
             # system_cfg_id = ray.put(self.system_cfg)
             reduced_meas_steps = self.cfg.meas_steps // self.nrunner

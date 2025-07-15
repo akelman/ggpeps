@@ -33,6 +33,8 @@ def typing(session):
         "--install-types",  # install missing types for third-party packages
         "--non-interactive",  # don't ask user for confirmation before installing missing types
         "src/ggpeps/caching.py",
+        "src/ggpeps/evaluator_manager.py",
+        "src/ggpeps/evaluator.py",
         "src/ggpeps/exacteval.py",
     )
     # TODO: Add passing files (eventually should be entire repo)
