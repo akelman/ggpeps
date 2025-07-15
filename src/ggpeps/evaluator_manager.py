@@ -6,7 +6,6 @@ import logging
 
 import ggpeps
 from ggpeps import utils
-from ggpeps.evaluator import Evaluator
 from ggpeps.exacteval import ExactEvaluator, ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig
 from ggpeps.nevmc import NEVMC_Evaluator, NEVMC_EvaluatorConfig

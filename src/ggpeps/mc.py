@@ -88,9 +88,10 @@ class MonteCarloEvaluatorConfig:
 class MonteCarloEvaluator(Evaluator):
     """Class to take care of the MC simulation on a single runner"""
 
+    evaluator_type = "mc"
+
     def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
         super().__init__(evaluator_cfg, system)
-        self.evaluator_type = "mc"
 
         self.step: int = 0
         self.init_measurements()

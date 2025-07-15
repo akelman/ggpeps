@@ -26,9 +26,10 @@ class ExactEvaluator(Evaluator):
     """An ExactEvaluator exactly evaluates the expectation value of an observable by
     iterating over all possible states of the gauge field."""
 
+    evaluator_type: str = "exact"
+
     def __init__(self, evaluator_cfg, system) -> None:
         super().__init__(evaluator_cfg, system)
-        self.evaluator_type: str = "exact"
 
     def compute_expval(
         self, obs: np.ndarray, normvec: np.ndarray
