@@ -163,7 +163,6 @@ class Config2DBase(ABC):
             val = np.expand_dims(val, axis=1)
         if self.check_params(val):
             self._paramvec = val
-            self.nlayer = len(val)
         else:
             logger.error("The set of parameters is not consistent.")
             sys.exit(1)
