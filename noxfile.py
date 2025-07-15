@@ -23,6 +23,16 @@ def lint(session):
 
 
 @nox.session
+def typing(session):
+    """Perform static type checking."""
+
+    session.install(".")
+    session.install("mypy")
+    session.run("mypy", "src/ggpeps/caching.py")
+    # TODO: Add passing files (eventually should be entire repo)
+
+
+@nox.session
 def build_and_check_dists(session):
     session.install("build", "check-manifest >= 0.42", "twine")
 
