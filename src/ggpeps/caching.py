@@ -12,7 +12,7 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class Cache:
-    def __init__(self, disable_cache: bool = False):
+    def __init__(self, disable_cache: bool = False) -> None:
         self.cache_version = 0.2
         self.disable_cache: bool = disable_cache
 

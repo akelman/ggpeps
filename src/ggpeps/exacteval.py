@@ -18,7 +18,7 @@ class ExactEvaluatorConfig:
     It is more convenient than passing an extensive number of parameters to the constructor.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.compute_grads: bool = True
 
 
@@ -81,7 +81,7 @@ class ExactEvaluator(Evaluator):
                 for k in range(1, max_string)
             ]
 
-            data = {
+            data: dict = {
                 "energy": [],
                 "norm": [],
                 "mag_energy": [],
@@ -164,14 +164,14 @@ class ExactEvaluator(Evaluator):
                 for key, val in data.items():
                     data[key] = np.asarray(val)
 
-            # Expectation values
-            dest = {}
             # Convert all lists to arrays
             data = {key: np.asarray(data[key]) for key in data}
 
             # We need to change from log values to regular values here
             normvec = np.exp(data["norm"])
 
+            # Expectation values
+            dest: dict[str, Union[float, np.ndarray]] = {}
             dest["energy"] = self.compute_expval(data["energy"], normvec)
             dest["mag_energy"] = self.compute_expval(data["mag_energy"], normvec)
             dest["el_energy"] = self.compute_expval(data["el_energy"], normvec)
@@ -186,12 +186,9 @@ class ExactEvaluator(Evaluator):
                 np.transpose(data["average_occupation"], [1, 0]), normvec
             )
 
+            avg_occ = np.asarray(dest["average_occupation"])[:, np.newaxis]
             dest["variance_occupation"] = self.compute_expval(
-                (
-                    np.transpose(data["average_occupation"], [1, 0])
-                    - dest["average_occupation"][:, np.newaxis]
-                )
-                ** 2,
+                (np.transpose(data["average_occupation"], [1, 0]) - avg_occ) ** 2,
                 normvec,
             )
             dest["all_occupations"] = self.compute_expval(
@@ -357,7 +354,7 @@ class ExactEvaluator(Evaluator):
         return configvec
 
     def summary(self) -> pd.DataFrame:
-        dest = {
+        dest: dict = {
             "name": [],
             "nx": [],
             "ny": [],

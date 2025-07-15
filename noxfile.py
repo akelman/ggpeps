@@ -28,7 +28,13 @@ def typing(session):
 
     session.install(".")
     session.install("mypy")
-    session.run("mypy", "src/ggpeps/caching.py")
+    session.run(
+        "mypy",
+        "--install-types",  # install missing types for third-party packages
+        "--non-interactive",  # don't ask user for confirmation before installing missing types
+        "src/ggpeps/caching.py",
+        "src/ggpeps/exacteval.py",
+    )
     # TODO: Add passing files (eventually should be entire repo)
 
 
