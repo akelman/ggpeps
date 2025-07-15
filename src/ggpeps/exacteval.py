@@ -93,7 +93,7 @@ class ExactEvaluator(Evaluator):
                 "el_energy_op": [],
                 "mass_energy_op": [],
                 "int_energy_op": [],
-                "occupations": [],
+                "all_occupations": [],
                 "average_occupation": [],
                 "el_energy_op_grad": [],
                 "mass_energy_op_grad": [],
@@ -144,7 +144,7 @@ class ExactEvaluator(Evaluator):
                     )
 
                 # Occupations
-                data["occupations"].append(self.system.all_occupations)
+                data["all_occupations"].append(self.system.all_occupations)
 
                 if self.cfg.compute_grads:
                     data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
@@ -194,8 +194,8 @@ class ExactEvaluator(Evaluator):
                 ** 2,
                 normvec,
             )
-            dest["occupations"] = self.compute_expval(
-                np.transpose(data["occupations"], [1, 2, 0]), normvec
+            dest["all_occupations"] = self.compute_expval(
+                np.transpose(data["all_occupations"], [1, 2, 0]), normvec
             )
 
             # Wilson loops

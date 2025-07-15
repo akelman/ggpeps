@@ -472,10 +472,10 @@ def print_callback(x, minimizer):
         message += f", acceptance prob: {acceptance_prob:.6f}"
     logger.info(message)
 
-    occupations = res.get_obs_mean("occupations")
+    all_occupations = res.get_obs_mean("all_occupations")
     occ_str = ""
-    for lay in range(len(occupations)):
-        occ_str += ", ".join([f"{val:.10f}" for val in occupations[lay]])
+    for lay in range(len(all_occupations)):
+        occ_str += ", ".join([f"{val:.10f}" for val in all_occupations[lay]])
         occ_str += " | "  # layer separator
     logger.debug(f"Occupations: {occ_str}")
 

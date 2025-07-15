@@ -129,7 +129,7 @@ class MonteCarloEvaluator(Evaluator):
         )
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
-        self.obsdict["all_occuations"] = Measurement(
+        self.obsdict["all_occupations"] = Measurement(
             "All Occupations (after PH)", binsize
         )
         self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
@@ -185,7 +185,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
         self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
-        self.obsdict["all_occuations"].append(self.system.all_occupations)
+        self.obsdict["all_occupations"].append(self.system.all_occupations)
 
         # Most of these values could be calculated in a post-processing step
         self.obsdict["energy"].append(self.system.energy)
