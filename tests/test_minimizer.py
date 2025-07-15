@@ -280,7 +280,8 @@ class TestMinimizerZ2(unittest.TestCase):
         mc_left = MonteCarloEvaluator(mc_config, sys_left)
         mc_right = MonteCarloEvaluator(mc_config, sys_right)
 
-        minimizer.last_result = minimizer.evaluator_manager.simulate()
+        minimizer.evaluator_manager.simulate()
+        minimizer.last_result = minimizer.evaluator_manager.get_evaluator()
         mc_left.evaluate()
         mc_right.evaluate()
 
