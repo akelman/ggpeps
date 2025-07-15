@@ -209,9 +209,9 @@ class Minimizer:
                 self.last_result = self.evaluator_manager.simulate()
 
             # Save to cache
-            energy = self.last_result.get_obs_mean("energy")
+            energy = utils.get_obs_mean_df(self.last_result, "energy")
             self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy)
-            parametergrad = self.last_result.get_obs_mean("energy_grad")
+            parametergrad = utils.get_obs_mean_df(self.last_result, "energy_grad")
             self.cache.add_obs_to_cache(
                 flattened_paramvec, "energy_grad", parametergrad
             )
@@ -281,149 +281,140 @@ class Minimizer:
 
     ### beg NEVMC ###
 
-    def minimize_NEVMC(self):
-        paramvec = self.evaluator_manager.system_cfg.paramvec
 
-        for ind in range(self.cfg.max_iter):
+def minimize_NEVMC(self):
+    paramvec = self.evaluator_manager.system_cfg.paramvec
 
-            if ind == 0:
-                # First run at equilibrium
-                result0 = self.evaluator_manager.simulate(
-                    eval_args={"first_warmup": True}
+    for ind in range(self.cfg.max_iter):
+
+        if ind == 0:
+            # First run at equilibrium
+            self.evaluator_manager.simulate(eval_args={"first_warmup": True})
+            result0 = self.evaluator_manager.get_evaluator()
+
+            # Standard calculation energy and grads
+            energy = result0.get_obs_mean("energy")
+            grad_paramvec = result0.get_obs_mean("energy_grad")
+
+            # DEBUG #################################################################################################################
+            # print("Paramvec: ", self.evaluator_manager.system_cfg.paramvec)
+            # print("First energy: ", energy)
+            # print("First grad_paramvec: ", grad_paramvec)
+            # print("El energy: ", result0.get_obs_mean("el_energy"))
+            # print("Mag energy: ", result0.get_obs_mean("mag_energy"))
+            # print("Mass energy: ", result0.get_obs_mean("mass_energy"))
+            # print("Int energy: ", result0.get_obs_mean("int_energy"))
+            # print("Chem energy: ", result0.get_obs_mean("chem_energy"))
+            ####################################################################################################################
+
+            max_grad_paramvec = np.max(np.abs(grad_paramvec))
+            self.last_result = result0
+
+            # Update logs
+            print_callback(ind, self)
+            # Standard minimization
+            self.evaluator_manager.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
+
+            # First reweighting: only scanning
+            self.evaluator_manager.simulate(eval_args={"scanning": True})
+            result1 = self.evaluator_manager.get_evaluator()
+
+            # Compute DF
+            Wmean = result1.obsdict["work"].mean()
+            free_energy = -np.asarray(copy.deepcopy(result1.obsdict["work"].datavec))
+            free_energy = -logsumexp(free_energy) + np.log(
+                len(result1.obsdict["work"].datavec)
+            )
+
+            # Compute exp(-Wd)
+            expW = result1.obsdict["work"].__expDF__(free_energy)
+
+            # Reweight energy
+            EnergyExpW = result1.obsdict["energy"].__mul__(expW)
+            energy = EnergyExpW.mean()
+
+            # Compute reweighted gradients
+            grad_paramvec = result1.NEVMC_energy_gradient_mc(expW)
+
+            max_grad_paramvec = np.max(np.abs(grad_paramvec))
+            self.last_result = [energy, max_grad_paramvec, Wmean, free_energy]
+
+            # DEBUG ####################################################################################################################
+            # print("Paramvec: ", self.evaluator_manager.system_cfg.paramvec)
+            # print("Second energy: ", energy)
+            # print("Second grad_paramvec: ", grad_paramvec)
+            # print("El energy: ", result1.get_obs_mean("el_energy"))
+            # print("Mag energy: ", result1.get_obs_mean("mag_energy"))
+            # print("Mass energy: ", result1.get_obs_mean("mass_energy"))
+            # print("Int energy: ", result1.get_obs_mean("int_energy"))
+            # print("Chem energy: ", result1.get_obs_mean("chem_energy"))
+            # exit()
+            ####################################################################################################################
+
+            # Update logs
+            NEVMC_print_callback(ind, self.last_result)
+
+            ### TODO modify this function, it is not printing the reweighted results
+            next_paramvec = copy.deepcopy(self.evaluator_manager.system_cfg.paramvec)
+            next_paramvec -= self.cfg.alpha * grad_paramvec
+
+        else:
+            # if self.last_paramvec is None or not np.allclose(
+            #    self.last_paramvec, next_paramvec
+            # ):
+
+            # We copy here to get a new set of variables. We will change paramvec below and do not want to change last_paramvec
+            self.last_paramvec = np.copy(paramvec)
+
+            # Monte Carlo part of the optimizer
+            self.evaluator_manager.simulate()
+            result0 = self.evaluator_manager.get_evaluator()
+            self.evaluator_manager.system_cfg.paramvec = copy.deepcopy(next_paramvec)
+            self.evaluator_manager.simulate(eval_args={"scanning": True})
+            result1 = self.evaluator_manager.get_evaluator()
+
+            # Compute DF
+            Wmean = copy.deepcopy(result1.obsdict["work"].mean())
+            free_energy = -np.asarray(copy.deepcopy(result1.obsdict["work"].datavec))
+            free_energy = -logsumexp(free_energy) + np.log(
+                len(result1.obsdict["work"].datavec)
+            )
+
+            # Compute exp(-Wd)
+            expW = result1.obsdict["work"].__expDF__(free_energy)
+
+            # Reweight energy
+            EnergyExpW = result0.obsdict["energy"].__mul__(expW)
+            energy = EnergyExpW.mean()
+
+            # Compute reweighted gradients
+            grad_paramvec = result1.NEVMC_energy_gradient_mc(expW)
+
+            max_grad_paramvec = np.max(np.abs(grad_paramvec))
+            self.last_result = [energy, max_grad_paramvec, Wmean, free_energy]
+
+            # Update logs
+            ### TODO modify this function, it is not printing the reweighted results
+            NEVMC_print_callback(ind, self.last_result)
+
+            # Check if the maximum of the gradient is smaller than tolerance
+            if max_grad_paramvec < abs(self.cfg.tol):
+                message = f"Reached convergence: max grad paramvec < {self.cfg.tol}"
+                logger.info(message)
+                self.min_result = MinimizerResult(
+                    paramvec, self.cfg.method, energy, grad_paramvec, True, message
                 )
+                return self.min_result
 
-                # Standard calculation energy and grads
-                energy = utils.get_obs_mean_df(result0, "energy")
-                grad_paramvec = utils.get_obs_mean_df(result0, "energy_grad")
+            next_paramvec = copy.deepcopy(self.evaluator_manager.system_cfg.paramvec)
+            next_paramvec -= self.cfg.alpha * grad_paramvec
 
-                # DEBUG #################################################################################################################
-                # print("Paramvec: ", self.evaluator_manager.system_cfg.paramvec)
-                # print("First energy: ", energy)
-                # print("First grad_paramvec: ", grad_paramvec)
-                # print("El energy: ", result0.get_obs_mean("el_energy"))
-                # print("Mag energy: ", result0.get_obs_mean("mag_energy"))
-                # print("Mass energy: ", result0.get_obs_mean("mass_energy"))
-                # print("Int energy: ", result0.get_obs_mean("int_energy"))
-                # print("Chem energy: ", result0.get_obs_mean("chem_energy"))
-                ####################################################################################################################
-
-                max_grad_paramvec = np.max(np.abs(grad_paramvec))
-                self.last_result = result0
-
-                # Update logs
-                print_callback(ind, self)
-                # Standard minimization
-                self.evaluator_manager.system_cfg.paramvec -= (
-                    self.cfg.alpha * grad_paramvec
-                )
-
-                # First reweighting: only scanning
-                result1 = self.evaluator_manager.simulate(eval_args={"scanning": True})
-
-                # Compute DF
-                Wmean = result1.obsdict["work"].mean()
-                free_energy = -np.asarray(
-                    copy.deepcopy(result1.obsdict["work"].datavec)
-                )
-                free_energy = -logsumexp(free_energy) + np.log(
-                    len(result1.obsdict["work"].datavec)
-                )
-
-                # Compute exp(-Wd)
-                expW = result1.obsdict["work"].__expDF__(free_energy)
-
-                # Reweight energy
-                EnergyExpW = result1.obsdict["energy"].__mul__(expW)
-                energy = EnergyExpW.mean()
-
-                # Compute reweighted gradients
-                grad_paramvec = result1.NEVMC_energy_gradient_mc(expW)
-
-                max_grad_paramvec = np.max(np.abs(grad_paramvec))
-                self.last_result = [energy, max_grad_paramvec, Wmean, free_energy]
-
-                # DEBUG ####################################################################################################################
-                # print("Paramvec: ", self.evaluator_manager.system_cfg.paramvec)
-                # print("Second energy: ", energy)
-                # print("Second grad_paramvec: ", grad_paramvec)
-                # print("El energy: ", result1.get_obs_mean("el_energy"))
-                # print("Mag energy: ", result1.get_obs_mean("mag_energy"))
-                # print("Mass energy: ", result1.get_obs_mean("mass_energy"))
-                # print("Int energy: ", result1.get_obs_mean("int_energy"))
-                # print("Chem energy: ", result1.get_obs_mean("chem_energy"))
-                # exit()
-                ####################################################################################################################
-
-                # Update logs
-                NEVMC_print_callback(ind, self.last_result)
-
-                ### TODO modify this function, it is not printing the reweighted results
-                next_paramvec = copy.deepcopy(
-                    self.evaluator_manager.system_cfg.paramvec
-                )
-                next_paramvec -= self.cfg.alpha * grad_paramvec
-
-            else:
-                # if self.last_paramvec is None or not np.allclose(
-                #    self.last_paramvec, next_paramvec
-                # ):
-
-                # We copy here to get a new set of variables. We will change paramvec below and do not want to change last_paramvec
-                self.last_paramvec = np.copy(paramvec)
-
-                # Monte Carlo part of the optimizer
-                result0 = self.evaluator_manager.simulate()
-                self.evaluator_manager.system_cfg.paramvec = copy.deepcopy(
-                    next_paramvec
-                )
-                result1 = self.evaluator_manager.simulate(eval_args={"scanning": True})
-
-                # Compute DF
-                Wmean = copy.deepcopy(result1.obsdict["work"].mean())
-                free_energy = -np.asarray(
-                    copy.deepcopy(result1.obsdict["work"].datavec)
-                )
-                free_energy = -logsumexp(free_energy) + np.log(
-                    len(result1.obsdict["work"].datavec)
-                )
-
-                # Compute exp(-Wd)
-                expW = result1.obsdict["work"].__expDF__(free_energy)
-
-                # Reweight energy
-                EnergyExpW = result0.obsdict["energy"].__mul__(expW)
-                energy = EnergyExpW.mean()
-
-                # Compute reweighted gradients
-                grad_paramvec = result1.NEVMC_energy_gradient_mc(expW)
-
-                max_grad_paramvec = np.max(np.abs(grad_paramvec))
-                self.last_result = [energy, max_grad_paramvec, Wmean, free_energy]
-
-                # Update logs
-                ### TODO modify this function, it is not printing the reweighted results
-                NEVMC_print_callback(ind, self.last_result)
-
-                # Check if the maximum of the gradient is smaller than tolerance
-                if max_grad_paramvec < abs(self.cfg.tol):
-                    message = f"Reached convergence: max grad paramvec < {self.cfg.tol}"
-                    logger.info(message)
-                    self.min_result = MinimizerResult(
-                        paramvec, self.cfg.method, energy, grad_paramvec, True, message
-                    )
-                    return self.min_result
-
-                next_paramvec = copy.deepcopy(
-                    self.evaluator_manager.system_cfg.paramvec
-                )
-                next_paramvec -= self.cfg.alpha * grad_paramvec
-
-        message = "Reached maximum number of iterations without convergence."
-        logger.warning(message)
-        self.min_result = MinimizerResult(
-            paramvec, self.cfg.method, energy, grad_paramvec, False, message
-        )
-        return self.min_result
+    message = "Reached maximum number of iterations without convergence."
+    logger.warning(message)
+    self.min_result = MinimizerResult(
+        paramvec, self.cfg.method, energy, grad_paramvec, False, message
+    )
+    return self.min_result
 
 
 def NEVMC_print_callback(x, res):
@@ -445,23 +436,23 @@ def print_callback(x, minimizer):
         logger.info("Callback message due to caching. The last_result is None.")
         return
 
-    energy = res.get_obs_mean("energy")
-    avg_occupation = res.get_obs_mean("average_occupation")
+    energy = utils.get_obs_mean_df(res, "energy")
+    avg_occupation = utils.get_obs_mean_df(res, "average_occupation")
     if minimizer.evaluator_manager.cfg.compute_grads:
-        grad_paramvec = res.get_obs_mean("energy_grad")
+        grad_paramvec = utils.get_obs_mean_df(res, "energy_grad")
         max_grad_paramvec = np.max(np.abs(grad_paramvec))
     else:
         grad_paramvec = None
         max_grad_paramvec = np.nan
 
-    mass_energy = res.get_obs_mean("mass_energy")
-    int_energy = res.get_obs_mean("int_energy")
-    el_energy = res.get_obs_mean("el_energy")
-    mag_energy = res.get_obs_mean("mag_energy")
-    chem_energy = res.get_obs_mean("chem_energy")
+    mass_energy = utils.get_obs_mean_df(res, "mass_energy")
+    int_energy = utils.get_obs_mean_df(res, "int_energy")
+    el_energy = utils.get_obs_mean_df(res, "el_energy")
+    mag_energy = utils.get_obs_mean_df(res, "mag_energy")
+    chem_energy = utils.get_obs_mean_df(res, "chem_energy")
 
-    plaquette = res.get_obs_mean("wilson_loop_0-0_1x1")
-    mass_energy_op = res.get_obs_mean("mass_energy_op")
+    plaquette = utils.get_obs_mean_df(res, "wilson_loop_0-0_1x1")
+    mass_energy_op = utils.get_obs_mean_df(res, "mass_energy_op")
     avg_occ = ", ".join([f"{val:.4f}" for val in avg_occupation])
 
     message = f"Energy: {energy:.9f}, Total Mass: {mass_energy_op}, Occupation: {avg_occ}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
@@ -470,11 +461,11 @@ def print_callback(x, minimizer):
         message = f"Iter: {x:03d}, {message}"
     if "mc" in minimizer.evaluator_manager.type:
         # Acceptance probability is only defined for MC
-        acceptance_prob = res.get_obs_mean("acceptance_prob")
+        acceptance_prob = utils.get_obs_mean_df(res, "acceptance_prob")
         message += f", acceptance prob: {acceptance_prob:.6f}"
     logger.info(message)
 
-    occupations = res.get_obs_mean("occupations")
+    occupations = utils.get_obs_mean_df(res, "occupations")
     occ_str = ""
     for lay in range(len(occupations)):
         occ_str += ", ".join([f"{val:.10f}" for val in occupations[lay]])
