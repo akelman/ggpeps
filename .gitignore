@@ -51,6 +51,8 @@ job.*
 .DS_Store
 # Ignore text files by default
 *.txt
+# Nox temporary files
+.nox*
 
 run
 build
