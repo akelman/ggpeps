@@ -770,6 +770,12 @@ class NEVMC_Evaluator(Evaluator):
             dest["warmup_steps"].append(self.cfg.warmup_steps)
             dest["meas_steps"].append(self.cfg.meas_steps)
             dest["update_size"].append(self.cfg.update_size_per_step)
+            if "occupation" in key:
+                if any(a.size == 0 for a in self.obsdict[key].datavec):
+                    # If there is no occupation (where there are no fermionic layers), we cannot compute the mean or error
+                    dest["mean"].append(None)
+                    dest["err"].append(None)
+                    continue
             dest["mean"].append(self.get_obs_mean(key))
             dest["err"].append(self.get_obs_mean_err(key))
         df = pd.DataFrame(dest)

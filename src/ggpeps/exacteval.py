@@ -383,6 +383,11 @@ class ExactEvaluator(Evaluator):
             dest["paramvec"].append(self.system.cfg.paramvec)
             dest["ncopy"].append(self.system.cfg.ncopy)
             dest["nlayer"].append(self.system.cfg.nlayer)
+            if "occupation" in key:
+                if any(a.size == 0 for a in self.obsdict[key]):
+                    # If there is no occupation (where there are no fermionic layers), we cannot compute the mean or error
+                    dest["mean"].append(None)
+                    continue
             dest["mean"].append(self.obsdict[key])
         df = pd.DataFrame(dest)
         return df
