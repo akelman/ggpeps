@@ -14,7 +14,6 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 class Cache:
     def __init__(self, disable_cache: bool = False):
         self.cache_version = 0.2
-        self.save_cache_dest: str = None
         self.disable_cache: bool = disable_cache
 
         self.cache_data: dict = {
@@ -33,17 +32,16 @@ class Cache:
         """Convert bytes key to paramvec."""
         return np.frombuffer(key)
 
-    def save_cache_file(self, dest_filepath: str):
+    def save_cache_file(self, dest_filepath: str) -> None:
         """Save the current cache to file."""
 
         if self.disable_cache:
             return
 
-        if self.save_cache_dest is not None:
-            # if os.path.exists(dest_filepath):
-            #    logger.warning(f"Overwriting cache file {dest_filepath}")
-            with open(dest_filepath, "wb") as outfile:
-                pickle.dump(self.cache_data, outfile)
+        # if os.path.exists(dest_filepath):
+        #    logger.warning(f"Overwriting cache file {dest_filepath}")
+        with open(dest_filepath, "wb") as outfile:
+            pickle.dump(self.cache_data, outfile)
         return
 
     def add_obj_to_cache(self, obj_name: str, obj_val) -> None:

@@ -48,7 +48,7 @@ INTERRUPT_EXIT_CODE = 10
 
 def save_state_on_exit():
     args = ggpeps.global_vars["args"]
-    cache = ggpeps.global_vars["cache"]
+    cache: Cache = ggpeps.global_vars["cache"]
 
     cache_file = ggpeps.global_vars["args"].save_cache_dest
     if cache_file is not None and not cache.disable_cache:
@@ -418,6 +418,15 @@ def main(args):
     logger.info(f"Numerical backend: {ggpeps.PREFERRED_BACKEND}")
     arr = ggpeps.xnp.array([1.2, 1.3])
     logger.info(f"Precision: {arr.dtype}")
+    logger.info("============================")
+
+    # Caching info
+    logger.info("======= CACHE INFO ========")
+    if args.ignore_cache:
+        logger.info("Cache is disabled.")
+    else:
+        logger.info(f"Loaded cache from: {args.load_cache}")
+        logger.info(f"Will save cache to: {args.save_cache_dest}")
     logger.info("============================")
 
     # Update Log
