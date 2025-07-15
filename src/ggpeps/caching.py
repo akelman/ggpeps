@@ -122,7 +122,7 @@ def remove_eval_manager_from_cache(cache_files: list[str]) -> None:
     """
     for cache_file in cache_files:
         if os.path.exists(cache_file):
-            cache = Cache("")
+            cache = Cache()
             cache.load_cache_file(cache_file)
             if "evaluator_manager" in cache.cache_data.keys():
                 cache.cache_data["evaluator_manager"] = None
