@@ -536,11 +536,6 @@ class MonteCarloEvaluator(Evaluator):
                 logger.info(f"<{key}>: {self.obsdict[key].mean()}")
 
     def summary(self) -> pd.DataFrame:
-        """Generate a summary of the simulation in the form of a pandas dataframe
-
-        Returns:
-            pd.DataFrame: Pandas dataframe with a summary of all results
-        """
         dest = {
             "name": [],
             "nx": [],

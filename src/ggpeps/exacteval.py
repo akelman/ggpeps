@@ -356,11 +356,6 @@ class ExactEvaluator(Evaluator):
         return configvec
 
     def summary(self) -> pd.DataFrame:
-        """Summarize the results of the exact contraction in a dataframe.
-
-        Returns:
-            pd.DataFrame: Result of the contraction
-        """
         dest = {
             "name": [],
             "nx": [],
