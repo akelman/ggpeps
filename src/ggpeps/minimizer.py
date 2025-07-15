@@ -272,14 +272,13 @@ class Minimizer:
 
             if self.last_result is not None:
                 # last_result may be None if caching is on and the last result was not computed
-                self.last_result.save_summary(
-                    os.path.join(output_dir, fname_mc_summary)
+                utils.save_summary_df(
+                    self.last_result, os.path.join(output_dir, fname_mc_summary)
                 )
             with open(os.path.join(output_dir, fname_result_min), "wb") as outfile:
                 pickle.dump(self.min_result, outfile)
 
     ### beg NEVMC ###
-
 
     def minimize_NEVMC(self):
         paramvec = self.evaluator_manager.system_cfg.paramvec
@@ -288,7 +287,9 @@ class Minimizer:
 
             if ind == 0:
                 # First run at equilibrium
-                result0_df = self.evaluator_manager.simulate(eval_args={"first_warmup": True})
+                result0_df = self.evaluator_manager.simulate(
+                    eval_args={"first_warmup": True}
+                )
                 result0 = self.evaluator_manager.get_evaluator()
 
                 # Standard calculation energy and grads
@@ -311,7 +312,9 @@ class Minimizer:
                 # Update logs
                 print_callback(ind, self)
                 # Standard minimization
-                self.evaluator_manager.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
+                self.evaluator_manager.system_cfg.paramvec -= (
+                    self.cfg.alpha * grad_paramvec
+                )
 
                 # First reweighting: only scanning
                 self.evaluator_manager.simulate(eval_args={"scanning": True})
@@ -319,7 +322,9 @@ class Minimizer:
 
                 # Compute DF
                 Wmean = result1.obsdict["work"].mean()
-                free_energy = -np.asarray(copy.deepcopy(result1.obsdict["work"].datavec))
+                free_energy = -np.asarray(
+                    copy.deepcopy(result1.obsdict["work"].datavec)
+                )
                 free_energy = -logsumexp(free_energy) + np.log(
                     len(result1.obsdict["work"].datavec)
                 )
@@ -353,7 +358,9 @@ class Minimizer:
                 NEVMC_print_callback(ind, self.last_result)
 
                 ### TODO modify this function, it is not printing the reweighted results
-                next_paramvec = copy.deepcopy(self.evaluator_manager.system_cfg.paramvec)
+                next_paramvec = copy.deepcopy(
+                    self.evaluator_manager.system_cfg.paramvec
+                )
                 next_paramvec -= self.cfg.alpha * grad_paramvec
 
             else:
@@ -367,13 +374,17 @@ class Minimizer:
                 # Monte Carlo part of the optimizer
                 self.evaluator_manager.simulate()
                 result0 = self.evaluator_manager.get_evaluator()
-                self.evaluator_manager.system_cfg.paramvec = copy.deepcopy(next_paramvec)
+                self.evaluator_manager.system_cfg.paramvec = copy.deepcopy(
+                    next_paramvec
+                )
                 self.evaluator_manager.simulate(eval_args={"scanning": True})
                 result1 = self.evaluator_manager.get_evaluator()
 
                 # Compute DF
                 Wmean = copy.deepcopy(result1.obsdict["work"].mean())
-                free_energy = -np.asarray(copy.deepcopy(result1.obsdict["work"].datavec))
+                free_energy = -np.asarray(
+                    copy.deepcopy(result1.obsdict["work"].datavec)
+                )
                 free_energy = -logsumexp(free_energy) + np.log(
                     len(result1.obsdict["work"].datavec)
                 )
@@ -404,7 +415,9 @@ class Minimizer:
                     )
                     return self.min_result
 
-                next_paramvec = copy.deepcopy(self.evaluator_manager.system_cfg.paramvec)
+                next_paramvec = copy.deepcopy(
+                    self.evaluator_manager.system_cfg.paramvec
+                )
                 next_paramvec -= self.cfg.alpha * grad_paramvec
 
         message = "Reached maximum number of iterations without convergence."
@@ -451,7 +464,10 @@ def print_callback(x, minimizer):
 
     plaquette = utils.get_obs_mean_df(res, "wilson_loop_0-0_1x1")
     mass_energy_op = utils.get_obs_mean_df(res, "mass_energy_op")
-    avg_occ = ", ".join([f"{val:.4f}" for val in avg_occupation])
+    if avg_occupation is not None:
+        avg_occ = ", ".join([f"{val:.4f}" for val in avg_occupation])
+    else:
+        avg_occ = "None"
 
     message = f"Energy: {energy:.9f}, Total Mass: {mass_energy_op}, Occupation: {avg_occ}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
     if minimizer.cfg.method == "CUSTOM":
@@ -465,9 +481,12 @@ def print_callback(x, minimizer):
 
     all_occupations = utils.get_obs_mean_df(res, "all_occupations")
     occ_str = ""
-    for lay in range(len(all_occupations)):
-        occ_str += ", ".join([f"{val:.10f}" for val in all_occupations[lay]])
-        occ_str += " | "  # layer separator
+    if all_occupations is not None:
+        for lay in range(len(all_occupations)):
+            occ_str += ", ".join([f"{val:.10f}" for val in all_occupations[lay]])
+            occ_str += " | "  # layer separator
+    else:
+        occ_str = "None"
     logger.debug(f"Occupations: {occ_str}")
 
     # logger.debug(
