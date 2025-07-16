@@ -63,9 +63,8 @@ class MonteCarloEvaluatorConfig:
     def rng_state(self, state: np.random.RandomState) -> None:
         logger.error(
             "MonteCarloEstimatorConfig: Do not set the state directly. Use a seed instead."
+            "Request to set the state directly was ignored."
         )
-        self.rng_state = None
-        self.seed = None
 
     def get_rng_state_internal_repr(self):
         return self._rng_state.get_state()
@@ -82,17 +81,16 @@ class MonteCarloEvaluatorConfig:
         return dest
 
 
-################################### Monte Carlo runner ###############
+############### Monte Carlo runner ###############
 
 
 class MonteCarloEvaluator(Evaluator):
     """Class to take care of the MC simulation on a single runner"""
 
+    evaluator_type = "mc"
+
     def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
-        self.cfg = evaluator_cfg
-        self.system = system
-        self.evaluator_type = "mc"
-        self.obsdict: dict = {}
+        super().__init__(evaluator_cfg, system)
 
         self.step: int = 0
         self.init_measurements()
@@ -130,7 +128,7 @@ class MonteCarloEvaluator(Evaluator):
         )
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
-        self.obsdict["all_occuations"] = Measurement(
+        self.obsdict["all_occupations"] = Measurement(
             "All Occupations (after PH)", binsize
         )
         self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
@@ -186,7 +184,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
         self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
-        self.obsdict["all_occuations"].append(self.system.all_occupations)
+        self.obsdict["all_occupations"].append(self.system.all_occupations)
 
         # Most of these values could be calculated in a post-processing step
         self.obsdict["energy"].append(self.system.energy)
@@ -359,7 +357,6 @@ class MonteCarloEvaluator(Evaluator):
         The update is local. The new gauge field value is drawn uniformly from the
         distribution of possible gauge fields (according to the gauge group).
 
-        TODO: test gauge fixing with this function
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
@@ -539,12 +536,7 @@ class MonteCarloEvaluator(Evaluator):
                 logger.info(f"<{key}>: {self.obsdict[key].mean()}")
 
     def summary(self) -> pd.DataFrame:
-        """Generate a summary of the simulation in the form of a pandas dataframe
-
-        Returns:
-            pd.DataFrame: Pandas dataframe with a summary of all results
-        """
-        dest = {
+        dest: dict = {
             "name": [],
             "nx": [],
             "ny": [],

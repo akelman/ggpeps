@@ -18,7 +18,7 @@ class ExactEvaluatorConfig:
     It is more convenient than passing an extensive number of parameters to the constructor.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.compute_grads: bool = True
 
 
@@ -26,11 +26,10 @@ class ExactEvaluator(Evaluator):
     """An ExactEvaluator exactly evaluates the expectation value of an observable by
     iterating over all possible states of the gauge field."""
 
+    evaluator_type: str = "exact"
+
     def __init__(self, evaluator_cfg, system) -> None:
-        self.cfg = evaluator_cfg
-        self.system = system
-        self.obsdict: dict = None
-        self.evaluator_type: str = "exact"
+        super().__init__(evaluator_cfg, system)
 
     def compute_expval(
         self, obs: np.ndarray, normvec: np.ndarray
@@ -63,7 +62,7 @@ class ExactEvaluator(Evaluator):
         Returns:
             dict: Dictionary of the results
         """
-        if self.obsdict is None:
+        if not self.obsdict:  # obsdict is empty
             # Build an iterable object with all field configurations for all the links
             configvec = self.generate_config_vec()
 
@@ -82,7 +81,7 @@ class ExactEvaluator(Evaluator):
                 for k in range(1, max_string)
             ]
 
-            data = {
+            data: dict = {
                 "energy": [],
                 "norm": [],
                 "mag_energy": [],
@@ -94,7 +93,7 @@ class ExactEvaluator(Evaluator):
                 "el_energy_op": [],
                 "mass_energy_op": [],
                 "int_energy_op": [],
-                "occupations": [],
+                "all_occupations": [],
                 "average_occupation": [],
                 "el_energy_op_grad": [],
                 "mass_energy_op_grad": [],
@@ -145,7 +144,7 @@ class ExactEvaluator(Evaluator):
                     )
 
                 # Occupations
-                data["occupations"].append(self.system.all_occupations)
+                data["all_occupations"].append(self.system.all_occupations)
 
                 if self.cfg.compute_grads:
                     data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
@@ -165,14 +164,14 @@ class ExactEvaluator(Evaluator):
                 for key, val in data.items():
                     data[key] = np.asarray(val)
 
-            # Expectation values
-            dest = {}
             # Convert all lists to arrays
             data = {key: np.asarray(data[key]) for key in data}
 
             # We need to change from log values to regular values here
             normvec = np.exp(data["norm"])
 
+            # Expectation values
+            dest: dict[str, Union[float, np.ndarray]] = {}
             dest["energy"] = self.compute_expval(data["energy"], normvec)
             dest["mag_energy"] = self.compute_expval(data["mag_energy"], normvec)
             dest["el_energy"] = self.compute_expval(data["el_energy"], normvec)
@@ -187,16 +186,13 @@ class ExactEvaluator(Evaluator):
                 np.transpose(data["average_occupation"], [1, 0]), normvec
             )
 
+            avg_occ = np.asarray(dest["average_occupation"])[:, np.newaxis]
             dest["variance_occupation"] = self.compute_expval(
-                (
-                    np.transpose(data["average_occupation"], [1, 0])
-                    - dest["average_occupation"][:, np.newaxis]
-                )
-                ** 2,
+                (np.transpose(data["average_occupation"], [1, 0]) - avg_occ) ** 2,
                 normvec,
             )
-            dest["occupations"] = self.compute_expval(
-                np.transpose(data["occupations"], [1, 2, 0]), normvec
+            dest["all_occupations"] = self.compute_expval(
+                np.transpose(data["all_occupations"], [1, 2, 0]), normvec
             )
 
             # Wilson loops
@@ -358,12 +354,7 @@ class ExactEvaluator(Evaluator):
         return configvec
 
     def summary(self) -> pd.DataFrame:
-        """Summarize the results of the exact contraction in a dataframe.
-
-        Returns:
-            pd.DataFrame: Result of the contraction
-        """
-        dest = {
+        dest: dict = {
             "name": [],
             "nx": [],
             "ny": [],

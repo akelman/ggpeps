@@ -1,14 +1,15 @@
 from abc import ABC, abstractmethod
 
+import pandas as pd
+
 
 class Evaluator(ABC):
     """Base class for the different evaluators (ExactEvaluator and MonteCarloEvaluator)."""
 
     def __init__(self, evaluator_cfg, system):
         self.system = system
-        self.obsdict: dict = None
+        self.obsdict: dict = {}
         self.cfg = evaluator_cfg
-        self.evaluator_type: str | None = None  # exact or mc
 
     @abstractmethod
     def evaluate(self):
@@ -36,6 +37,17 @@ class Evaluator(ABC):
         Returns:
             float or array: Mean value of the observable.
                             If the observable is an array, the returned value is also an array.
+        """
+        raise NotImplementedError(
+            "This is an abstract method. Implement in child class please."
+        )
+
+    @abstractmethod
+    def summary(self) -> pd.DataFrame:
+        """Generate a summary of the simulation in the form of a pandas dataframe
+
+        Returns:
+            pd.DataFrame: Pandas dataframe with a summary of all results
         """
         raise NotImplementedError(
             "This is an abstract method. Implement in child class please."

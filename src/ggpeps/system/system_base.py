@@ -162,7 +162,6 @@ class Config2DBase(ABC):
             val = np.expand_dims(val, axis=1)
         if self.check_params(val):
             self._paramvec = val
-            self.nlayer = len(val)
         else:
             logger.error("The set of parameters is not consistent.")
             sys.exit(1)
@@ -292,12 +291,20 @@ class Config2DBase(ABC):
 class System2DBase(ABC):
     """Base class for two dimensional systems.
 
-    This class inherits from the abstract base class to enable abstract methods that must be overwritten in a child class.
+    This class inherits from the abstract base class to enable abstract methods that
+    must be overwritten in a child class.
+
     This class cannot be instantiated directly.
     """
 
-    def __init__(self, cfg: Config2DBase):
+    def __init__(self, cfg: Config2DBase) -> None:
         self.cfg: Config2DBase = cfg
+        self.initialize()
+
+    def initialize(self):
+        """Initialization function. This function also resets the system.
+        If necessary, this would also be a good spot to copy data from the configuration.
+        """
 
         # All variables that contain _vec are arrays of length nlayer in the first dimension.
         # Other types of vec are indicated by layervec, sitevec, etc.
@@ -399,11 +406,7 @@ class System2DBase(ABC):
             None  # Tracks det(Dmod^-1 - gammain)
         )
 
-    def initialize(self):
-        """Initialization function.
-        This is a good spot to copy essential data from the configuration.
-        """
-        return None
+        return
 
     def invalidate_gauge_update(self):
         """Reset the values of computed quantitities to avoid spillover from previous computations.
