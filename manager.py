@@ -286,37 +286,30 @@ def main(args):
     if args.gauge_group == "Z2":
         system_type = Z2System2D
 
-        if args.fermions:
-            if args.ncopy == 2:
-                cfg_class = Z2System2D_G2C_F2C_Config
-            elif args.ncopy == 4:
-                cfg_class = Z2System2D_G4C_F4C_Config
-            elif args.ncopy == 8:
-                cfg_class = Z2System2D_G8C_F8C_Config
-            else:
+        if args.ncopy == 1:
+            # Z2 system with one copy of virtual fermions on the links and no support for fermions
+            if (
+                args.num_fermionic_layer != 0
+                or not np.allclose(g_mass, 0.0)
+                or not np.allclose(g_int, 0.0)
+                or not np.allclose(g_chem, 0.0)
+            ):
                 logger.error(
-                    "Not Implemented: Only 2, 4, or 8 copies are possible with fermions."
+                    "Not Implemented: The 1 copy case does not support fermionic matter."
                 )
                 sys.exit(1)
+            cfg_class = Z2System2DConfig
+        elif args.ncopy == 2:
+            cfg_class = Z2System2D_G2C_F2C_Config
+        elif args.ncopy == 4:
+            cfg_class = Z2System2D_G4C_F4C_Config
+        elif args.ncopy == 8:
+            cfg_class = Z2System2D_G8C_F8C_Config
         else:
-            if args.num_fermionic_layer != 0:
-                logger.error(
-                    "Not Implemented: args.fermions is False, but there are fermionic layers."
-                )
-                sys.exit(1)
-
-            args.g_chem = None  # no chemical potential for this ansatz, which does not include matter
-            if args.ncopy == 1:
-                # Z2 system with one copy of virtual fermions on the links
-                cfg_class = Z2System2DConfig
-            elif args.ncopy == 2:
-                # Z2 system with two copies of virtual fermions on the links
-                cfg_class = Z2System2D2CConfig
-            else:
-                logger.error(
-                    "Not Implemented: Only 1 or 2 copies are possible without fermions."
-                )
-                sys.exit(1)
+            logger.error(
+                "Not Implemented: Only 1, 2, 4, or 8 copies are currently supported for Z2."
+            )
+            sys.exit(1)
     elif args.gauge_group == "D6":
         system_type = D2nSystem2D
         cfg_class = D6System2D_Config
@@ -715,7 +708,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--num_fermionic_layer",
-        default=1,
+        default=0,
         type=int,
         help="Number of matter PEPS layers for the variational state",
     )
