@@ -481,9 +481,10 @@ class System2DBase(ABC):
             xnp.ndarray: Array of symbols
         """
         tmat_symb = self.cfg.tmat_symb
+        # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
         tmat_deriv = xnp.asarray(
             np.asarray(sympy.diff(tmat_symb, symb)).astype(complex)
-        )  # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
+        )
         return tmat_deriv
 
     def _eval_tmat_symb(self, paramvec):
@@ -498,9 +499,8 @@ class System2DBase(ABC):
         tmat_eval = self.cfg.tmat_symb.evalf(
             subs={self.symbolvec[i]: paramvec[i] for i in range(len(paramvec))}
         )
-        return xnp.asarray(
-            np.asarray(tmat_eval).astype(complex)
-        )  # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
+        # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
+        return xnp.asarray(np.asarray(tmat_eval).astype(complex))
 
     @property
     def tmat_layervec_unitcellvec(self) -> List[List[xnp.ndarray]]:
@@ -989,7 +989,8 @@ class System2DBase(ABC):
 
     @property
     def gamma_in_sys_vec(self):
-        """Get function to return the gauged gamma_in_sys_vec, the covariance matrices of the links for the whole system for each layer.
+        """Get function to return the gauged gamma_in_sys_vec, the covariance matrices
+        of the links for the whole system for each layer.
         This function is required to allow for gamma_in to vary between layers.
 
         Returns:
