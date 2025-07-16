@@ -314,7 +314,7 @@ class U1System2D(System2DBase):
             rotmat @ self.gamma_gauge_neutral_vec[0][dir] @ np.transpose(rotmat)
         )  # just use the first gamma_gauge_neutral, since they're shared by all layers
         update = self.calculate_update_gamma_in(
-            ind_mat, gamma_in_subst, self.gamma_in_sys
+            ind_mat, gamma_in_subst, self.gamma_in_sys_vec[0]
         )
         # Update the determinant
         mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
@@ -353,7 +353,7 @@ class U1System2D(System2DBase):
                 for wi_gamma_out_mod in self.wi_gamma_out_mod_vec
             ]
         # Substitute in the array
-        self.gamma_in_sys[
+        self.gamma_in_sys_vec[0][
             ind_mat : ind_mat + rotmat.shape[0], ind_mat : ind_mat + rotmat.shape[1]
         ] = gamma_in_subst
         # Invalidate gauge dependent quantities
@@ -486,7 +486,7 @@ class U1System2D(System2DBase):
         link_ind = self.cfg.lattice.coord2ind_dir(coord, dir)
         current_phase = self.gaugefieldvec[link_ind]
         increment = -self.gaugemgr.get_increment()
-        dest = self.gamma_in_sys.astype(complex).copy()
+        dest = self.gamma_in_sys_vec[0].astype(complex).copy()
         adapted_no_gauge = self.generate_electric_full(increment)
         rotmat = self.generate_rotmat(current_phase, coord, dir)
         adapted = rotmat @ adapted_no_gauge @ rotmat.transpose()

@@ -962,26 +962,9 @@ class System2DBase(ABC):
         )
 
     @property
-    def gamma_in_sys(self):
-        """Get function to return the gauged gamma_in_sys, the covariance matrix of the links for the whole system.
-        This is required to maintain compatibility with early development, in which gamma_in did not vary between layers.
-        Possibly the code should be modified to use gamma_in_sys_vec everywhere; this can be done without significant memory cost.
-
-        This is a legacy function, which has been superseded by gamma_in_sys_vec,
-        in order to allow gamma_in_sys to vary between layers.
-        Only the U1 system and some tests use this function. The U1 system does not support a
-        gamma_in_sys that varies between layers, while the tests have not yet been updated.
-
-        Returns:
-            xnp.ndarray: Gauged covariance matrix of the system for the first layer
-        """
-        return self.gamma_in_sys_vec[0]
-
-    @property
     def gamma_in_sys_vec(self):
         """Get function to return the gauged gamma_in_sys_vec, the covariance matrices
         of the links for the whole system for each layer.
-        This function is required to allow for gamma_in to vary between layers.
 
         Returns:
             xnp.ndarray: vector of gauged covariance matrices of the system
