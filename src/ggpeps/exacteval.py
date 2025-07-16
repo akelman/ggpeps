@@ -80,28 +80,48 @@ class ExactEvaluator(Evaluator):
                 self.system.cfg.lattice.generate_L_string((0, 0), (k, k))
                 for k in range(1, max_string)
             ]
-
-            data = {
-                "energy": [],
-                "norm": [],
-                "mag_energy": [],
-                "el_energy": [],
-                "mass_energy": [],
-                "int_energy": [],
-                "chem_energy": [],
-                "mag_energy_op": [],
-                "el_energy_op": [],
-                "mass_energy_op": [],
-                "int_energy_op": [],
-                "all_occupations": [],
-                "average_occupation": [],
-                "el_energy_op_grad": [],
-                "mass_energy_op_grad": [],
-                "int_energy_op_grad": [],
-                "chem_energy_op_grad": [],
-                "grad_norm": [],
-                "polyakov_00_x": [],
-            }
+            if self.system.cfg.num_fermionic_layer > 0:
+                data = {
+                    "energy": [],
+                    "norm": [],
+                    "mag_energy": [],
+                    "el_energy": [],
+                    "mass_energy": [],
+                    "int_energy": [],
+                    "chem_energy": [],
+                    "mag_energy_op": [],
+                    "el_energy_op": [],
+                    "mass_energy_op": [],
+                    "int_energy_op": [],
+                    "all_occupations": [],
+                    "average_occupation": [],
+                    "el_energy_op_grad": [],
+                    "mass_energy_op_grad": [],
+                    "int_energy_op_grad": [],
+                    "chem_energy_op_grad": [],
+                    "grad_norm": [],
+                    "polyakov_00_x": [],
+                }
+            else: #If there are no fermionic layers, we do not compute occupations
+                data = {
+                    "energy": [],
+                    "norm": [],
+                    "mag_energy": [],
+                    "el_energy": [],
+                    "mass_energy": [],
+                    "int_energy": [],
+                    "chem_energy": [],
+                    "mag_energy_op": [],
+                    "el_energy_op": [],
+                    "mass_energy_op": [],
+                    "int_energy_op": [],
+                    "el_energy_op_grad": [],
+                    "mass_energy_op_grad": [],
+                    "int_energy_op_grad": [],
+                    "chem_energy_op_grad": [],
+                    "grad_norm": [],
+                    "polyakov_00_x": [],
+                }
 
             # Wilson loops
             for k in range(len(sizes)):
@@ -125,7 +145,6 @@ class ExactEvaluator(Evaluator):
                 data["el_energy_op"].append(self.system.el_energy_op)
                 data["mass_energy_op"].append(self.system.mass_energy_op)
                 data["int_energy_op"].append(self.system.int_energy_op)
-                data["average_occupation"].append(self.system.average_occupation())
 
                 data["norm"].append(self.system.calculate_lognorm(all_factors=True))
                 data["polyakov_00_x"].append(
@@ -144,7 +163,9 @@ class ExactEvaluator(Evaluator):
                     )
 
                 # Occupations
-                data["all_occupations"].append(self.system.all_occupations)
+                if self.system.cfg.num_fermionic_layer > 0: #If there are fermionic layers
+                    data["average_occupation"].append(self.system.average_occupation())
+                    data["all_occupations"].append(self.system.all_occupations)
 
                 if self.cfg.compute_grads:
                     data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
@@ -182,21 +203,22 @@ class ExactEvaluator(Evaluator):
                 data["mass_energy_op"], normvec
             )
             dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
-            dest["average_occupation"] = self.compute_expval(
-                np.transpose(data["average_occupation"], [1, 0]), normvec
-            )
-
-            dest["variance_occupation"] = self.compute_expval(
-                (
-                    np.transpose(data["average_occupation"], [1, 0])
-                    - dest["average_occupation"][:, np.newaxis]
+            if self.system.cfg.num_fermionic_layer > 0:  # If there are fermionic layers
+                dest["average_occupation"] = self.compute_expval(
+                    np.transpose(data["average_occupation"], [1, 0]), normvec
                 )
-                ** 2,
-                normvec,
-            )
-            dest["all_occupations"] = self.compute_expval(
-                np.transpose(data["all_occupations"], [1, 2, 0]), normvec
-            )
+
+                dest["variance_occupation"] = self.compute_expval(
+                    (
+                        np.transpose(data["average_occupation"], [1, 0])
+                        - dest["average_occupation"][:, np.newaxis]
+                    )
+                    ** 2,
+                    normvec,
+                )
+                dest["all_occupations"] = self.compute_expval(
+                    np.transpose(data["all_occupations"], [1, 2, 0]), normvec
+                )
 
             # Wilson loops
             for k in range(len(sizes)):
@@ -383,11 +405,6 @@ class ExactEvaluator(Evaluator):
             dest["paramvec"].append(self.system.cfg.paramvec)
             dest["ncopy"].append(self.system.cfg.ncopy)
             dest["nlayer"].append(self.system.cfg.nlayer)
-            if "occupation" in key:
-                if any(a.size == 0 for a in self.obsdict[key]):
-                    # If there is no occupation (where there are no fermionic layers), we cannot compute the mean or error
-                    dest["mean"].append(None)
-                    continue
             dest["mean"].append(self.obsdict[key])
         df = pd.DataFrame(dest)
         return df
