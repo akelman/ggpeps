@@ -81,9 +81,6 @@ class EvaluatorManager:
         self.cfg = cfg
         self.nrunner = nrunner
 
-        # Set the evaluator
-        self.evaluator: Evaluator = self.reset_evaluator()
-
         if isinstance(self.cfg, ExactEvaluatorConfig):
             self.type = "exact"
         elif isinstance(self.cfg, MonteCarloEvaluatorConfig):
@@ -92,6 +89,9 @@ class EvaluatorManager:
             self.type = "nevmc"
         else:
             raise ValueError("Unrecognized type of evaluator config.")
+
+        # Set the evaluator
+        self.evaluator: Evaluator = self.reset_evaluator()
 
     def reset_evaluator(self) -> Evaluator:
         """Reset the evaluator to a new instance with the current configuration."""
