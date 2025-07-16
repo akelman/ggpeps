@@ -129,13 +129,14 @@ class MonteCarloEvaluator(Evaluator):
         )
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
-        self.obsdict["all_occupations"] = Measurement(
-            "All Occupations (after PH)", binsize
-        )
-        self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
-        self.obsdict["variance_occupation"] = Measurement(
-            "Variance Occupation", binsize
-        )
+        if self.system.cfg.num_fermionic_layer > 0:
+            self.obsdict["all_occupations"] = Measurement(
+                "All Occupations (after PH)", binsize
+            )
+            self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
+            self.obsdict["variance_occupation"] = Measurement(
+                "Variance Occupation", binsize
+            )
 
         # Wilson loops (of various sizes)
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
@@ -185,7 +186,6 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
         self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
-        self.obsdict["all_occupations"].append(self.system.all_occupations)
 
         # Most of these values could be calculated in a post-processing step
         self.obsdict["energy"].append(self.system.energy)
@@ -195,7 +195,9 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["mass_energy"].append(self.system.mass_energy)
         self.obsdict["chem_energy"].append(self.system.chem_energy)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
-        self.obsdict["average_occupation"].append(self.system.average_occupation())
+        if self.system.cfg.num_fermionic_layer > 0: #We only compute occupations if there are fermionic layers
+            self.obsdict["all_occupations"].append(self.system.all_occupations)
+            self.obsdict["average_occupation"].append(self.system.average_occupation())
 
         # Wilson loops
         # TODO: save sizes/loops/strings in a more efficient way, so that they are not recomputed each step
@@ -334,13 +336,14 @@ class MonteCarloEvaluator(Evaluator):
             self.step += 1
 
         # Update observables which depend on expectation values
-        self.obsdict["variance_occupation"].extend(
-            (
-                self.obsdict["average_occupation"].datavec
-                - self.obsdict["average_occupation"].mean()
+        if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
+            self.obsdict["variance_occupation"].extend(
+                (
+                    self.obsdict["average_occupation"].datavec
+                    - self.obsdict["average_occupation"].mean()
+                )
+                ** 2
             )
-            ** 2
-        )
         if self.cfg.compute_grads:
             # Update gradients which depend on expectation values
             # For interface reasons, we insert meas_steps copies of this gradient
@@ -572,12 +575,6 @@ class MonteCarloEvaluator(Evaluator):
             dest["warmup_steps"].append(self.cfg.warmup_steps)
             dest["meas_steps"].append(self.cfg.meas_steps)
             dest["update_size"].append(self.cfg.update_size_per_step)
-            if "occupation" in key:
-                if any(a.size == 0 for a in self.obsdict[key].datavec):
-                    # If there is no occupation (where there are no fermionic layers), we cannot compute the mean or error
-                    dest["mean"].append(None)
-                    dest["err"].append(None)
-                    continue
             dest["mean"].append(self.get_obs_mean(key))
             dest["err"].append(self.get_obs_mean_err(key))
         df = pd.DataFrame(dest)
