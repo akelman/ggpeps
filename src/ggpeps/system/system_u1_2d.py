@@ -563,6 +563,22 @@ class U1System2D(System2DBase):
         else:
             return self._compute_el_energy_op_and_grad_gaussian()
 
+    def _compute_el_energy_op_vec(self):
+        """This function is just for compatibility with the base class.
+        The electric energy and grads should be refactored for this class."""
+        if self.use_pfaffian:
+            return self._compute_el_energy_op_and_grad_pfaffian()[0]
+        else:
+            return self._compute_el_energy_op_and_grad_gaussian()[0]
+
+    def _compute_el_grad_vec(self):
+        """This function is just for compatibility with the base class.
+        The electric energy and grads should be refactored for this class."""
+        if self.use_pfaffian:
+            return self._compute_el_energy_op_and_grad_pfaffian()[1]
+        else:
+            return self._compute_el_energy_op_and_grad_gaussian()[1]
+
     def _compute_int_energy_op_vec_and_grad(self):
         # This function is not implemented yet!
         raise NotImplementedError(
@@ -574,3 +590,17 @@ class U1System2D(System2DBase):
         raise NotImplementedError(
             "The chemical potential energy is not implemented yet for U(1)."
         )
+
+    def _meson_string_vec(self, path):
+        """Compute a layer resolved meson string for the given path.
+        This is \psi^dagger (start) * String * \psi(end) before particle-hole,
+        and assumes that start and end are on the same sublattice.
+
+        Args:
+            path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
+
+        Returns:
+            array: meson_str_vec
+        """
+        meson_op_vec = xnp.zeros(self.cfg.nlayer)
+        return xnp.array(meson_op_vec)

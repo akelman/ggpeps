@@ -1617,6 +1617,7 @@ class System2DBase(ABC):
             "This is an abstract method. Implement in child class please."
         )
 
+    @abstractmethod
     def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
         """Compute the electric energy.
         This is an abstract method and has to be overwritten in a subclass.
@@ -1625,6 +1626,7 @@ class System2DBase(ABC):
             "This is an abstract method. Implement in child class please."
         )
 
+    @abstractmethod
     def _compute_el_grad_vec(self, use_trans_inv: bool = True):
         """Compute the electric energy gradients.
         This is an abstract method and has to be overwritten in a subclass.
@@ -1633,6 +1635,7 @@ class System2DBase(ABC):
             "This is an abstract method. Implement in child class please."
         )
 
+    @abstractmethod
     def _meson_string_vec(self, path):
         """Compute a meson string.
         This is an abstract method and has to be overwritten in a subclass.
