@@ -448,7 +448,6 @@ def print_callback(x, minimizer):
         return
 
     energy = utils.get_obs_mean_df(res, "energy")
-    avg_occupation = utils.get_obs_mean_df(res, "average_occupation")
     if minimizer.evaluator_manager.cfg.compute_grads:
         grad_paramvec = utils.get_obs_mean_df(res, "energy_grad")
         max_grad_paramvec = np.max(np.abs(grad_paramvec))
@@ -464,7 +463,9 @@ def print_callback(x, minimizer):
 
     plaquette = utils.get_obs_mean_df(res, "wilson_loop_0-0_1x1")
     mass_energy_op = utils.get_obs_mean_df(res, "mass_energy_op")
-    if avg_occupation is not None:
+    if minimizer.evaluator_manager.system_cfg.num_fermionic_layer > 0:
+        # If we have fermionic layers, we can compute the average occupation
+        avg_occupation = utils.get_obs_mean_df(res, "average_occupation")
         avg_occ = ", ".join([f"{val:.4f}" for val in avg_occupation])
     else:
         avg_occ = "None"
@@ -479,9 +480,9 @@ def print_callback(x, minimizer):
         message += f", acceptance prob: {acceptance_prob:.6f}"
     logger.info(message)
 
-    all_occupations = utils.get_obs_mean_df(res, "all_occupations")
-    occ_str = ""
-    if all_occupations is not None:
+    if minimizer.evaluator_manager.system_cfg.num_fermionic_layer > 0:
+        all_occupations = utils.get_obs_mean_df(res, "all_occupations")
+        occ_str = ""
         for lay in range(len(all_occupations)):
             occ_str += ", ".join([f"{val:.10f}" for val in all_occupations[lay]])
             occ_str += " | "  # layer separator
