@@ -628,7 +628,7 @@ class Z2System2D(System2DBase):
 
             meson_op_vec.append(
                 xnp.abs(layer_val)
-            )  # Is the absolute value necessary? why?
+            )  # TODO: is the absolute value necessary? why?
         return xnp.array(meson_op_vec)
 
     def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:

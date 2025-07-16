@@ -449,8 +449,6 @@ class System2DBase(ABC):
         return
 
     def _extract_partial_covmatvec(self, offset: int):
-        # We are assuming one physical mode per site
-
         mat_a_vec = self.gamma_maj_sys_vec[:, :offset, :offset]
         mat_b_vec = self.gamma_maj_sys_vec[:, :offset, offset:]
         mat_d_vec = self.gamma_maj_sys_vec[:, offset:, offset:]
