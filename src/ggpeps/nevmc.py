@@ -37,13 +37,6 @@ class NEVMC_EvaluatorConfig:
             1  # this can be set anywhere from 1 to nlinks (inclusive)
         )
 
-        ### beg NEVMC ###
-        self.store_gauge = []
-        self.store_weights = []
-        self.store_first_cfgs = 0
-        self.store_first_weight = 0
-        self.last_work = 0
-        ### end NEVMC ###
 
         # Logging frequency
         self.warmup_log_freq: int = 5000  # log every X steps
@@ -94,23 +87,24 @@ class NEVMC_EvaluatorConfig:
 
 ############### Non-equilibrium variational Monte Carlo runner ###############
 
-
 class NEVMC_Evaluator(Evaluator):
     """Class to take care of the NEVMC simulation on a single runner"""
 
-    def __init__(self, evaluator_cfg: NEVMC_EvaluatorConfig, system):
+    def __init__(self, evaluator_cfg: NEVMC_EvaluatorConfig, system, store_gauge,
+                 store_weights, store_work):
         self.cfg = evaluator_cfg
         self.system = system
         self.evaluator_type = "nevmc"
         self.obsdict: dict = {}
+        self.store_gauge = store_gauge
+        self.store_weights = store_weights
+        self.store_work = store_work
 
         self.step: int = 0
         self.init_measurements()
 
-        ### beg NEVMC ###
         self.NEVMC_update = self.NEVMC_update_N_sites
         self.update = self.update_N_sites
-        ### end NEVMC ###
 
     def init_measurements(self):
         """Add empty measurement vectors to the measurement dictionary"""
@@ -301,101 +295,116 @@ class NEVMC_Evaluator(Evaluator):
 #################################################################################################################
     ### beg NEVMC ###
 
-    def run(self, warmsteps: int = 0):
-        """Meaurement phase"""
-        logger.debug("Starting NEVMC measurement")
+    def evaluate(self, first_warmup: bool = False, scanning: bool = False):
+
+        if first_warmup:
+            self.warmup()
+            # warmup uses the standard update function
+            self.run0(self.cfg.warmup_steps)
+            self.store_work = [0] * len(self.store_weights)
+        
+        else:
+            if scanning:
+                for i in range(len(self.store_weights)):
+                    self.scan_cfgs(i)
+            else:
+                self.run()
+
+    def run0(self, warmsteps):
+        logger.debug("Starting first NEVMC measurement")
         while self.step < warmsteps + self.cfg.meas_steps:
             if self.step % self.cfg.run_log_freq == 0:
                 logger.debug(f"Run: {self.step}")
             self.NEVMC_update()
 
-            if warmsteps > 0:
-                self.measure()
-            else:
-                self.measure_nograd()
+            self.measure()
             self.step += 1
 
-        if warmsteps > 0:
-            total_grad = self.energy_gradient_mc()
-            self.obsdict["energy_grad"].extend(
-                [total_grad] * len(self.obsdict["energy"])
-            )
+        total_grad = self.energy_gradient_mc()
+        self.obsdict["energy_grad"].extend(
+            [total_grad] * len(self.obsdict["energy"])
+        )
+
+        logger.debug("Finished first NEVMC measurement")
+
+    def run(self):
+        """Meaurement phase"""
+        logger.debug("Starting NEVMC measurement")
+        idx = 0
+        while self.step < self.cfg.meas_steps:
+            if self.step % self.cfg.run_log_freq == 0:
+                logger.debug(f"Run: {self.step}")
+            self.NEVMC_update(idx = idx, NEQ = True)
+
+            self.measure_nograd()
+            self.step += 1
+            idx += 1
 
         logger.debug("Finished NEVMC measurement")
     
 
-    def NEVMC_update_N_sites(self):
+    def NEVMC_update_N_sites(self, idx = 0, NEQ = False):
         links_inds = self.cfg.rng_state.choice(
             self.system.cfg.lattice.comp_tree,
             self.cfg.update_size_per_step,
             replace=False,
         )
 
+        if NEQ:
+            curr_gauge = self.store_gauge[idx]
+
+            for i in range(len(curr_gauge)):
+                self.system.update_gauge_ind(i, curr_gauge[i])
+                tmp = self.system.weight
+
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
             theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
             # Store the old values
-
-            weight_old = self.system.weight
+            if NEQ:
+                weight_old = tmp
+            else:
+                weight_old = self.system.weight
             weight_new = self.system.calculate_weight_attempt(link_ind, theta)
 
             if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
                 # Accept
                 self.obsdict["acceptance_prob"].append(1)
                 self.system.update_gauge_ind(link_ind, theta)
-
-                self.cfg.store_weights.append(weight_new)
-                self.cfg.store_gauge.append((link_ind,theta))
+                
+                if NEQ:
+                    self.store_weights[idx] = weight_new
+                    self.store_gauge[idx] = copy.deepcopy(self.system._gaugefieldvec)
+                else:
+                    self.store_weights.append(weight_new)
+                    self.store_gauge.append(copy.deepcopy(self.system._gaugefieldvec))
 
             else:
                 # Reject
                 self.obsdict["acceptance_prob"].append(0)
+                
+                if NEQ:
+                    self.store_weights[idx] = weight_old
+                else:
+                    self.store_weights.append(weight_old)
+                    self.store_gauge.append(copy.deepcopy(self.system._gaugefieldvec))
 
-                self.cfg.store_weights.append(weight_old)
-                self.cfg.store_gauge.append((link_ind,copy.deepcopy(self.system._gaugefieldvec[link_ind])))
-            
 
     def scan_cfgs(self, idx):
-        link, theta = self.cfg.store_gauge[idx]
-        weight = self.cfg.store_weights[idx]
+        curr_gauge = self.store_gauge[idx]
+        weight = self.store_weights[idx]
 
-        self.system.update_gauge_ind(link, theta)
-        new_weight = self.system.weight
+        for i in range(len(curr_gauge)):
+            self.system.update_gauge_ind(i, curr_gauge[i])
+            tmp = copy.deepcopy(self.system.weight)
 
-        self.obsdict["work"].append(-new_weight + weight + self.cfg.last_work)
+        #self.system.update_gauge_ind(link, theta)
+        new_weight = tmp #self.system.weight
+        self.store_work[idx] += -new_weight + weight
+
+        self.obsdict["work"].append(self.store_work[idx])
         self.measure_grad()
         
-
-    def evaluate(self, first_warmup: bool = False, scanning:bool = False):
-        
-        if first_warmup:
-            self.warmup()
-            # warmup uses the standard update function
-            self.cfg.store_first_cfgs = copy.deepcopy(self.system._gaugefieldvec)
-            self.cfg.store_first_weight = copy.deepcopy(self.system.weight)
-            self.run(warmsteps=self.cfg.warmup_steps)
-        
-        else:
-            if scanning:
-                for i in range(len(self.cfg.store_first_cfgs)):
-                    self.system.update_gauge_ind(i, self.cfg.store_first_cfgs[i])
-                    tmp = self.system.weight
-                
-                for i in range(len(self.cfg.store_weights)):
-                    self.scan_cfgs(i)
-
-                self.cfg.store_weights = []
-                self.cfg.store_gauge = []
-                self.cfg.store_first_cfgs = 0
-                self.cfg.store_first_weight = 0
-                
-                self.cfg.last_work = self.obsdict["work"].datavec[-1]
-            
-            else:
-                self.cfg.store_first_cfgs = copy.deepcopy(self.system._gaugefieldvec)
-                self.cfg.store_first_weight = copy.deepcopy(self.system.weight)
-                self.run()
-
 
     def NEVMC_energy_gradient_mc(self, expW):
         # Compute the energy gradient from the MC results

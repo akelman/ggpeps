@@ -57,6 +57,49 @@ def run_mc(
     return mc
 
 
+@ray.remote
+def run_nevmc(
+    runner_id: int,
+    evaluator_class: Union[MonteCarloEvaluator, NEVMC_Evaluator],
+    evaluator_cfg: Union[MonteCarloEvaluatorConfig, NEVMC_EvaluatorConfig],
+    system_cls,
+    system_cfg,
+    store_gauge,
+    store_weights,
+    store_work,
+    logger_info: dict,
+    eval_args: dict = {},
+    
+):
+    """Worker for running part of a MC simulation.
+
+    Args:
+        runner_id (int): Runner ID
+        mc_cfg (MonteCarloEvaluatorConfig):
+        system_cls ():
+        system_cfg ():
+        logger_info (dict): configs for the logger (logger needs to be set up in each worker)
+        eval_args (dict): Arguments for the evaluator 
+
+    Returns:
+        MonteCarloEvaluator
+    """
+
+    # Setup logger
+    # TODO: this is probably not the best way to get the required logger configuration
+    logger_file = logger_info["filename"]
+    level = logger_info["logger_level"]
+    logger = logging.getLogger(ggpeps.LOGGER_NAME)
+    utils.setup_logger(logger, logger_file, level, runner_msg=f"Runner {runner_id}-")
+
+    system = system_cls(copy.deepcopy(system_cfg))
+    system.initialize()
+    mc = evaluator_class(evaluator_cfg, system, store_gauge,
+                         store_weights, store_work)
+    mc.evaluate(**eval_args)
+    return mc
+
+
 class EvaluatorManager:
     """The EvaluatorManager is a wrapper around the different evaluators (ExactEvaluator and MonteCarloEvaluator).
     It allows the execution of a simulation with multiple cores.
@@ -85,6 +128,12 @@ class EvaluatorManager:
             False  # Flag to indicate whether a simulation should be resumed
         )
 
+        ### beg NEVMC ###
+        self.store_gauge = []
+        self.store_weights = []
+        self.store_work = []
+        ### end NEVMC ###
+
         if isinstance(self.cfg, ExactEvaluatorConfig):
             self.type = "exact"
         elif isinstance(self.cfg, MonteCarloEvaluatorConfig):
@@ -103,7 +152,8 @@ class EvaluatorManager:
         elif self.type == "mc":
             self.evaluator = MonteCarloEvaluator(self.cfg, system)
         elif self.type == "nevmc":
-            self.evaluator = NEVMC_Evaluator(self.cfg, system)
+            self.evaluator = NEVMC_Evaluator(self.cfg, system, self.store_gauge,
+                                             self.store_weights, self.store_work)
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
 
@@ -123,7 +173,59 @@ class EvaluatorManager:
             eval_args (dict): Arguments for the evaluator (e.g. for NEVMC). 
         """
 
-        if "mc" in self.type and self.nrunner > 0:  
+        if self.type == "nevmc" and self.nrunner > 0:
+
+            resultvec = []
+            reduced_meas_steps = self.cfg.meas_steps // self.nrunner
+            logger.info(
+                f"Starting {self.nrunner} ray runners with {reduced_meas_steps} measurement steps each (total: {self.nrunner * reduced_meas_steps})."
+            )
+
+            for i in range(self.nrunner):
+                cfg = copy.deepcopy(self.cfg)
+                cfg.seed = self.cfg.seed + i
+                cfg.meas_steps = reduced_meas_steps
+
+                logger_info = {
+                    "filename": ggpeps.logger_file,
+                    "logger_level": ggpeps.global_vars["args"].level,
+                }
+
+                cpu_frac = (
+                    1 / ggpeps.global_vars["args"].nrunner
+                )  # multiplied by the number of available cpus?
+                gpu_frac = 0.0
+                if ggpeps.GPU_AVAILABLE:
+                    gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
+                evaluator_class = self.get_evaluator_class()
+
+                local_gauge = self.store_gauge[i * reduced_meas_steps : (i+1) * reduced_meas_steps]
+                local_weights = self.store_weights[i * reduced_meas_steps : (i+1) * reduced_meas_steps]
+                local_work = self.store_work[i * reduced_meas_steps : (i+1) * reduced_meas_steps]
+
+
+                run_mc_modified = run_nevmc.options(
+                    num_gpus=gpu_frac
+                )  # according to the ray documentation, we should also specify num_cpus
+                resultvec.append(
+                    run_mc_modified.remote(
+                        i,
+                        evaluator_class,
+                        cfg,
+                        self.system_cls,
+                        self.system_cfg,
+                        local_gauge,
+                        local_weights,
+                        local_work,
+                        logger_info,
+                        eval_args=eval_args,
+                    )
+                )
+
+            resultvec = ray.get(resultvec)
+            return self.collect_NEVMC(resultvec)
+
+        elif "mc" in self.type and self.nrunner > 0:  
             """Start the simulation of the runners.
             Currently only Monte Carlo is supported (the exacteval implementation currently only supports a single runner), 
             and multiple runners cannot be resumed from where they left off.
@@ -160,7 +262,6 @@ class EvaluatorManager:
                 gpu_frac = 0.0
                 if ggpeps.GPU_AVAILABLE:
                     gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
-
                 evaluator_class = self.get_evaluator_class()
 
                 run_mc_modified = run_mc.options(
@@ -177,7 +278,6 @@ class EvaluatorManager:
                         eval_args=eval_args,
                     )
                 )
-
             resultvec = ray.get(resultvec)
             return self.collect(resultvec)
         else:
@@ -185,11 +285,20 @@ class EvaluatorManager:
                 self.type == "mc" and self.simulation_in_progress
             ):  # exacteval does not support resuming an evaluation
                 self.evaluator.system.invalidate_gauge_update()
+            elif(
+                self.type == "nevmc" and self.simulation_in_progress
+            ):  # exacteval does not support resuming an evaluation
+                self.evaluator.system.invalidate_gauge_update()
             else:
                 self.reset_evaluator()
             self.simulation_in_progress = True
             self.evaluator.evaluate(**eval_args)
             self.simulation_in_progress = False
+
+            self.store_gauge = self.evaluator.store_gauge
+            self.store_weights = self.evaluator.store_weights
+            self.store_work = self.evaluator.store_work
+
             return self.evaluator
 
     def collect(self, resultvec):
@@ -209,5 +318,41 @@ class EvaluatorManager:
                 dest.obsdict = utils.mergeDict(dest.obsdict, mc_runner.obsdict)
         else:
             dest = resultvec[0]
+        return dest
+    
+
+    def collect_NEVMC(self, resultvec):
+        """Unify the results of multiple runners
+
+        Args:
+            resultvec (list): List of Estimators from the different runners
+
+        Returns:
+            Estimator: estimator with information from all runners
+        """
+        system = self.system_cls(self.system_cfg)
+        dest = NEVMC_Evaluator(self.cfg, system, [], [], [])
+        if len(resultvec) > 1:
+            dest.obsdict = utils.mergeDict(resultvec[0].obsdict, resultvec[1].obsdict)
+            dest.store_gauge = resultvec[0].store_gauge + resultvec[1].store_gauge
+            dest.store_weights = resultvec[0].store_weights + resultvec[1].store_weights
+            dest.store_work = resultvec[0].store_work + resultvec[1].store_work
+
+            for mc_runner in resultvec[2:]:
+                dest.obsdict = utils.mergeDict(dest.obsdict, mc_runner.obsdict)
+                dest.store_gauge += mc_runner.store_gauge
+                dest.store_weights += mc_runner.store_weights
+                dest.store_work += mc_runner.store_work
+
+        else:
+            dest = resultvec[0]
+            dest.store_gauge = resultvec[0].store_gauge
+            dest.store_weights = resultvec[0].store_weights
+            dest.store_work = resultvec[0].store_work
+
+        self.store_gauge = dest.store_gauge
+        self.store_weights = dest.store_weights
+        self.store_work = dest.store_work
+
         return dest
     
