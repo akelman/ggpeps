@@ -969,23 +969,13 @@ class System2DBase(ABC):
 
         This is a legacy function, which has been superseded by gamma_in_sys_vec,
         in order to allow gamma_in_sys to vary between layers.
-        Only the U1 system uses this function, since the U1 system does not support a
-        gamma_in_sys that varies between layers.
+        Only the U1 system and some tests use this function. The U1 system does not support a
+        gamma_in_sys that varies between layers, while the tests have not yet been updated.
 
         Returns:
-            xnp.ndarray: Gauged covariance matrix of the system
+            xnp.ndarray: Gauged covariance matrix of the system for the first layer
         """
-        if self._gamma_in_sys_vec is None:
-            self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_and_trackers()
-            )
-            self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
-            (
-                self._wi_gamma_in_mod_vec,
-                self._wi_gamma_out_mod_vec,
-                self._incdet_mod_vec,
-            ) = mod_tuple
-        return self._gamma_in_sys_vec[0]
+        return self.gamma_in_sys_vec[0]
 
     @property
     def gamma_in_sys_vec(self):
@@ -1070,24 +1060,6 @@ class System2DBase(ABC):
                 self._incdet_mod_vec,
             ) = mod_tuple
         return self._wi_gamma_out_vec
-
-    @property
-    def gamma_in_sys_mod(self):
-        """Get function to return the gauged gamma_in_sys with a single link modification
-        (to compute the electric energy),
-        the covariance matrix of the links for the whole system.
-
-        This is a legacy function, which has been superseded by gamma_in_sys_mod_vec,
-        in order to allow gamma_in_sys_mod to vary between layers.
-        Only the U1 system uses this function, since the U1 system does not support a
-        gamma_in_sys_mod that varies between layers.
-
-        Returns:
-            xnp.ndarray: Gauged, modified covariance matrix of the system
-        """
-        single_link_offset = 2 * self.cfg.nvirtmodes_link
-        # return self.gamma_in_sys[single_link_offset:, single_link_offset:] # TODO: fix for JAX - DONE
-        return gamma_in_sys_mod(self.gamma_in_sys, single_link_offset)
 
     @property
     def gamma_in_sys_mod_vec(self):
