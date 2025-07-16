@@ -497,7 +497,7 @@ class TestZ2SystemMethods(unittest.TestCase):
             self.assertTrue(np.allclose(gamma @ np.transpose(gamma), np.eye(m)))
 
     def test_gamma_in_sys_covariance(self):
-        gamma_in = self.system_z2_2_2_real.gamma_in_sys
+        gamma_in = self.system_z2_2_2_real.gamma_in_sys_vec[0]
         m, n = gamma_in.shape
         self.assertEqual(m, n)
         self.assertTrue(utils.is_antisymmetric(gamma_in))
@@ -1158,7 +1158,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         # logdet_inc = self.system_z2_2_2.incdet.det()
         diff = (
             self.system_z2_2_2_real.mat_d_inv_vec[0]
-            - self.system_z2_2_2_real.gamma_in_sys
+            - self.system_z2_2_2_real.gamma_in_sys_vec[0]
         )
         sign, logdet = np.linalg.slogdet(diff)
         self.assertGreater(sign, 0)

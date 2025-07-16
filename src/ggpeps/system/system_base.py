@@ -15,6 +15,7 @@ from scipy.linalg import block_diag
 
 import numpy as np
 from ggpeps import xnp as xnp
+from ggpeps import xscipy as xscipy
 
 import ggpeps
 from ggpeps import utils
@@ -443,8 +444,6 @@ class System2DBase(ABC):
         return
 
     def _extract_partial_covmatvec(self, offset: int):
-        # We are assuming one physical mode per site
-
         mat_a_vec = self.gamma_maj_sys_vec[:, :offset, :offset]
         mat_b_vec = self.gamma_maj_sys_vec[:, :offset, offset:]
         mat_d_vec = self.gamma_maj_sys_vec[:, offset:, offset:]
@@ -477,9 +476,10 @@ class System2DBase(ABC):
             xnp.ndarray: Array of symbols
         """
         tmat_symb = self.cfg.tmat_symb
+        # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
         tmat_deriv = xnp.asarray(
             np.asarray(sympy.diff(tmat_symb, symb)).astype(complex)
-        )  # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
+        )
         return tmat_deriv
 
     def _eval_tmat_symb(self, paramvec):
@@ -494,9 +494,8 @@ class System2DBase(ABC):
         tmat_eval = self.cfg.tmat_symb.evalf(
             subs={self.symbolvec[i]: paramvec[i] for i in range(len(paramvec))}
         )
-        return xnp.asarray(
-            np.asarray(tmat_eval).astype(complex)
-        )  # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
+        # convert to numpy array, then to xnp (jax cannot convert from sympy directly)
+        return xnp.asarray(np.asarray(tmat_eval).astype(complex))
 
     @property
     def tmat_layervec_unitcellvec(self) -> List[List[xnp.ndarray]]:
@@ -872,50 +871,102 @@ class System2DBase(ABC):
             self._mat_d_mod_inv_vec = xnp.linalg.inv(self.mat_d_mod_vec)
         return self._mat_d_mod_inv_vec
 
-    @abstractmethod
-    def initialize_gamma_in_sys(self):
-        """Abstract function to initialize gamma_in (the covariance matrix of the projectors) in a child class;
-        this function has to be overwritten in a child class.
+    def initialize_gamma_in_and_trackers(self):
+        """Initialize gamma_in (the covariance matrix of the projectors),
+        as well as the trackers (Woodbury inverters and incremental determinants), which depend on gamma_in.
 
-        This function returns gamma_in_sys_vec even for cases where gamma_in_sys does not vary between layers.
-        In that case, each element of gamma_in_sys_vec points to the same gamma_in_sys.
+        The mode-order in gamma_in_sys is dictated by the numbering of the links on the lattice.
+        The numbering guarantees that we split the vertical from the horizontal links for easier gauging.
+
+            |         |
+            "5"       "7"
+            |         |
+            2 --"2"-- 3 --"3"--
+            |         |
+            "4"       "6"
+            |         |
+            0 --"0"-- 1 --"1"--
+
+        The vertex indices are written as <number>, the link indices are written as "<number>".
+
+        For a 2x2 system with 1 copy (one virtual fermions per site per link), gamma_in has the order
+        {l_1, r_0, l_0, r_1, l_3, r_2, l_2, r_3, d_2, u_0, d_0, u_2, d_3, u_1, d_1, d_3}.
+
+        For a 2x2 system with 2 copies (two virtual fermions per site per link), gamma_in has the order
+        { l1_1, r2_0, l1_1, r2_0, l1_0, r2_1, l1_0, r2_1,
+          l1_3, r2_2, l1_3, r2_2, l1_2, r2_3, l1_2, r2_3,
+          d1_2, u2_0, d1_2, u2_0, d1_0, u2_2, d1_0, u2_2,
+          d1_3, u2_1, d1_3, u2_1, d1_1, d2_3, d1_1, d2_3 }.
+
+        The naming convention here is <mode letter><number of copy>_<vertex index>.
+        (<number of copy> is ommitted for the 1 copy case).
+        Each constituent in the lists above refers to two Majorana modes.
+
+        This method overwrites an abstract method in System2DBase.
         """
-        raise NotImplementedError(
-            "This is an abstract method. Implement in child class please."
+
+        # Initialize empty lists
+        gamma_in_sys_vec = []
+        wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec = [], [], []
+        wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec = [], [], []
+
+        # Initialize gamma_in_sys for the full system (and trackers)
+        size = self.cfg.lattice.size  # number of sites
+        id = xnp.eye(size)
+
+        # TODO: vectorize!
+        for layer in range(self.cfg.nlayer):
+            neutral_gauge_X = xnp.kron(
+                id, self.gamma_gauge_neutral_vec[layer][Direction.X]
+            )
+            neutral_gauge_Y = xnp.kron(
+                id, self.gamma_gauge_neutral_vec[layer][Direction.Y]
+            )
+            gamma_in_sys = xscipy.linalg.block_diag(neutral_gauge_X, neutral_gauge_Y)
+            gamma_in_sys_vec.append(gamma_in_sys)
+
+            wi_gamma_in_vec.append(
+                utils.WoodburyInverter(self.mat_d_inv_vec[layer] - gamma_in_sys)
+            )
+            wi_gamma_out_vec.append(
+                utils.WoodburyInverter(self.mat_d_vec[layer] - gamma_in_sys)
+            )
+            incdet_vec.append(
+                utils.IncLogAbsDeterminant(self.mat_d_inv_vec[layer] - gamma_in_sys)
+            )
+
+            # Initialize the modified gamma_in_sys for the full system (and trackers)
+            single_link_offset = 2 * self.cfg.nvirtmodes_link
+            gamma_in_sys_mod = gamma_in_sys[single_link_offset:, single_link_offset:]
+            wi_gamma_in_mod_vec.append(
+                utils.WoodburyInverter(self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod)
+            )
+            wi_gamma_out_mod_vec.append(
+                utils.WoodburyInverter(self.mat_d_mod_vec[layer] - gamma_in_sys_mod)
+            )
+            incdet_mod_vec.append(
+                utils.IncLogAbsDeterminant(
+                    self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod
+                )
+            )
+
+        return (
+            xnp.array(gamma_in_sys_vec),
+            (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec),
+            (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec),
         )
 
     @property
-    def gamma_in_sys(self):
-        """Get function to return the gauged gamma_in_sys, the covariance matrix of the links for the whole system.
-        This is required to maintain compatibility with early development, in which gamma_in did not vary between layers.
-        Possibly the code should be modified to use gamma_in_sys_vec everywhere; this can be done without significant memory cost.
-
-        Returns:
-            xnp.ndarray: Gauged covariance matrix of the system
-        """
-        if self._gamma_in_sys_vec is None:
-            self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
-            )
-            self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
-            (
-                self._wi_gamma_in_mod_vec,
-                self._wi_gamma_out_mod_vec,
-                self._incdet_mod_vec,
-            ) = mod_tuple
-        return self._gamma_in_sys_vec[0]
-
-    @property
     def gamma_in_sys_vec(self):
-        """Get function to return the gauged gamma_in_sys_vec, the covariance matrices of the links for the whole system for each layer.
-        This function is required to allow for gamma_in to vary between layers.
+        """Get function to return the gauged gamma_in_sys_vec, the covariance matrices
+        of the links for the whole system for each layer.
 
         Returns:
             xnp.ndarray: vector of gauged covariance matrices of the system
         """
         if self._gamma_in_sys_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
@@ -936,7 +987,7 @@ class System2DBase(ABC):
         """
         if self._incdet_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
@@ -957,7 +1008,7 @@ class System2DBase(ABC):
         """
         if self._wi_gamma_in_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
@@ -978,7 +1029,7 @@ class System2DBase(ABC):
         """
         if self._wi_gamma_out_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
@@ -987,19 +1038,6 @@ class System2DBase(ABC):
                 self._incdet_mod_vec,
             ) = mod_tuple
         return self._wi_gamma_out_vec
-
-    @property
-    def gamma_in_sys_mod(self):
-        """Get function to return the gauged gamma_in_sys with a single link modification
-        (to compute the electric energy),
-        the covariance matrix of the links for the whole system.
-
-        Returns:
-            xnp.ndarray: Gauged, modified covariance matrix of the system
-        """
-        single_link_offset = 2 * self.cfg.nvirtmodes_link
-        # return self.gamma_in_sys[single_link_offset:, single_link_offset:] # TODO: fix for JAX - DONE
-        return gamma_in_sys_mod(self.gamma_in_sys, single_link_offset)
 
     @property
     def gamma_in_sys_mod_vec(self):
@@ -1031,7 +1069,7 @@ class System2DBase(ABC):
         """
         if self._incdet_mod_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
@@ -1052,7 +1090,7 @@ class System2DBase(ABC):
         """
         if self._wi_gamma_in_mod_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
@@ -1073,7 +1111,7 @@ class System2DBase(ABC):
         """
         if self._wi_gamma_out_mod_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
@@ -1328,7 +1366,7 @@ class System2DBase(ABC):
         return calculate_lognormvec_inc(
             self.incdet_vec,
             self.det_mat_d_vec,
-            self.gamma_in_sys.shape[0],
+            self.gamma_in_sys_vec[0].shape[0],
             all_factors=all_factors,
         )
 
@@ -1365,7 +1403,7 @@ class System2DBase(ABC):
                 store=False,
             )
             if all_factors:
-                detval -= self.gamma_in_sys.shape[0] * xnp.log(2)
+                detval -= self.gamma_in_sys_vec[0].shape[0] * xnp.log(2)
                 detval += xnp.linalg.slogdet(self.mat_d_vec[ind])[1]
             # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
             # The addition of the cumval is the multiplication of the indpendent PEPS
@@ -1478,7 +1516,7 @@ class System2DBase(ABC):
         ind = self.cfg.lattice.coord2ind_dir(coord, dir)
         self.update_gauge_ind(ind, theta)
 
-    def calculate_update_gamma_in(self, offset, update_mat, gamma_in_sys=None):
+    def calculate_update_gamma_in(self, offset, update_mat, gamma_in_sys):
         """Compute an update between the current gamma_in and the new gamma_in
 
         Args:
@@ -1490,10 +1528,6 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Additional update to reach update_mat at gamma_in[offset:,offset:]
         """
-        if gamma_in_sys is None:
-            gamma_in_sys = (
-                self.gamma_in_sys
-            )  # take the first element, which is shared between all the layers
         m_up, n_up = update_mat.shape
         gamma_in_old = slice_matrix(
             gamma_in_sys, offset, offset + m_up, offset, offset + n_up
@@ -1538,6 +1572,7 @@ class System2DBase(ABC):
             "This is an abstract method. Implement in child class please."
         )
 
+    @abstractmethod
     def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
         """Compute the electric energy.
         This is an abstract method and has to be overwritten in a subclass.
@@ -1546,6 +1581,7 @@ class System2DBase(ABC):
             "This is an abstract method. Implement in child class please."
         )
 
+    @abstractmethod
     def _compute_el_grad_vec(self, use_trans_inv: bool = True):
         """Compute the electric energy gradients.
         This is an abstract method and has to be overwritten in a subclass.
@@ -1554,6 +1590,7 @@ class System2DBase(ABC):
             "This is an abstract method. Implement in child class please."
         )
 
+    @abstractmethod
     def _meson_string_vec(self, path):
         """Compute a meson string.
         This is an abstract method and has to be overwritten in a subclass.

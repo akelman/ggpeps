@@ -1,4 +1,3 @@
-import sys
 import sympy
 import logging
 
@@ -16,9 +15,9 @@ from ggpeps.lattice import Direction
 from .system_base import (
     Config2DBase,
     System2DBase,
-    extract_partial_covmats,
     calculate_lognorm_inc,
 )
+from ggpeps.system.global_funcs import compute_grad_over_norm, extract_partial_covmats
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -213,7 +212,7 @@ class U1System2D(System2DBase):
             vec.append(dest)
         return np.array(vec)
 
-    def initialize_gamma_in_sys(self):
+    def initialize_gamma_in_and_trackers(self):
         """
         The mode-order in gamma_in_sys is dictated by the numbering of the links on the lattice.
         The numbering guarantees that we split the vertical from the horizontal links for easier gauging.
@@ -231,8 +230,9 @@ class U1System2D(System2DBase):
 
         For a 2x2 system, gamma_in has the order {l_1, r_0, l_0, r_1, l_3, r_2, l_2, r_3, d_2, u_0, d_0, u_2, d_3, u_1, d_1, d_3}.
         The modes are named as <mode letter>_<vertex site>. Each constitent in the list above labels two Majorana modes.
+
+        TODO: This function could probably be replaced by the general one in System2DBase, but this has not been tested.
         """
-        # TODO: Fix description
 
         size = self.cfg.lattice.size  # number of sites
 
@@ -313,7 +313,9 @@ class U1System2D(System2DBase):
         gamma_in_subst = (
             rotmat @ self.gamma_gauge_neutral_vec[0][dir] @ np.transpose(rotmat)
         )  # just use the first gamma_gauge_neutral, since they're shared by all layers
-        update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
+        update = self.calculate_update_gamma_in(
+            ind_mat, gamma_in_subst, self.gamma_in_sys_vec[0]
+        )
         # Update the determinant
         mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
         detval_vec = [
@@ -351,7 +353,7 @@ class U1System2D(System2DBase):
                 for wi_gamma_out_mod in self.wi_gamma_out_mod_vec
             ]
         # Substitute in the array
-        self.gamma_in_sys[
+        self.gamma_in_sys_vec[0][
             ind_mat : ind_mat + rotmat.shape[0], ind_mat : ind_mat + rotmat.shape[1]
         ] = gamma_in_subst
         # Invalidate gauge dependent quantities
@@ -385,7 +387,7 @@ class U1System2D(System2DBase):
             single_link_offset = 2 * self.cfg.nvirtmodes_link
             offset = 2 * self.cfg.lattice.size + single_link_offset
             # We have to cut one link from gamma_in_sys as well
-            gamma_in_sys_mod = self.gamma_in_sys_mod
+            gamma_in_sys_mod = self.gamma_in_sys_mod_vec[0]
             nlinks = self.cfg.lattice.nlinks
             dest = []
             dest_grad = []
@@ -484,7 +486,7 @@ class U1System2D(System2DBase):
         link_ind = self.cfg.lattice.coord2ind_dir(coord, dir)
         current_phase = self.gaugefieldvec[link_ind]
         increment = -self.gaugemgr.get_increment()
-        dest = self.gamma_in_sys.astype(complex).copy()
+        dest = self.gamma_in_sys_vec[0].astype(complex).copy()
         adapted_no_gauge = self.generate_electric_full(increment)
         rotmat = self.generate_rotmat(current_phase, coord, dir)
         adapted = rotmat @ adapted_no_gauge @ rotmat.transpose()
@@ -562,6 +564,22 @@ class U1System2D(System2DBase):
         else:
             return self._compute_el_energy_op_and_grad_gaussian()
 
+    def _compute_el_energy_op_vec(self):
+        """This function is just for compatibility with the base class.
+        The electric energy and grads should be refactored for this class."""
+        if self.use_pfaffian:
+            return self._compute_el_energy_op_and_grad_pfaffian()[0]
+        else:
+            return self._compute_el_energy_op_and_grad_gaussian()[0]
+
+    def _compute_el_grad_vec(self):
+        """This function is just for compatibility with the base class.
+        The electric energy and grads should be refactored for this class."""
+        if self.use_pfaffian:
+            return self._compute_el_energy_op_and_grad_pfaffian()[1]
+        else:
+            return self._compute_el_energy_op_and_grad_gaussian()[1]
+
     def _compute_int_energy_op_vec_and_grad(self):
         # This function is not implemented yet!
         raise NotImplementedError(
@@ -573,3 +591,17 @@ class U1System2D(System2DBase):
         raise NotImplementedError(
             "The chemical potential energy is not implemented yet for U(1)."
         )
+
+    def _meson_string_vec(self, path):
+        """Compute a layer resolved meson string for the given path.
+        This is \psi^dagger (start) * String * \psi(end) before particle-hole,
+        and assumes that start and end are on the same sublattice.
+
+        Args:
+            path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
+
+        Returns:
+            array: meson_str_vec
+        """
+        meson_op_vec = xnp.zeros(self.cfg.nlayer)
+        return xnp.array(meson_op_vec)
