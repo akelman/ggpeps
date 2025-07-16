@@ -15,6 +15,7 @@ from scipy.linalg import block_diag
 
 import numpy as np
 from ggpeps import xnp as xnp
+from ggpeps import xscipy as xscipy
 
 import ggpeps
 from ggpeps import utils
@@ -877,16 +878,89 @@ class System2DBase(ABC):
             self._mat_d_mod_inv_vec = xnp.linalg.inv(self.mat_d_mod_vec)
         return self._mat_d_mod_inv_vec
 
-    @abstractmethod
-    def initialize_gamma_in_sys(self):
-        """Abstract function to initialize gamma_in (the covariance matrix of the projectors) in a child class;
-        this function has to be overwritten in a child class.
+    def initialize_gamma_in_and_trackers(self):
+        """Initialize gamma_in (the covariance matrix of the projectors),
+        as well as the trackers (Woodbury inverters and incremental determinants), which depend on gamma_in.
 
-        This function returns gamma_in_sys_vec even for cases where gamma_in_sys does not vary between layers.
-        In that case, each element of gamma_in_sys_vec points to the same gamma_in_sys.
+        The mode-order in gamma_in_sys is dictated by the numbering of the links on the lattice.
+        The numbering guarantees that we split the vertical from the horizontal links for easier gauging.
+
+            |         |
+            "5"       "7"
+            |         |
+            2 --"2"-- 3 --"3"--
+            |         |
+            "4"       "6"
+            |         |
+            0 --"0"-- 1 --"1"--
+
+        The vertex indices are written as <number>, the link indices are written as "<number>".
+
+        For a 2x2 system with 1 copy (one virtual fermions per site per link), gamma_in has the order
+        {l_1, r_0, l_0, r_1, l_3, r_2, l_2, r_3, d_2, u_0, d_0, u_2, d_3, u_1, d_1, d_3}.
+
+        For a 2x2 system with 2 copies (two virtual fermions per site per link), gamma_in has the order
+        { l1_1, r2_0, l1_1, r2_0, l1_0, r2_1, l1_0, r2_1,
+          l1_3, r2_2, l1_3, r2_2, l1_2, r2_3, l1_2, r2_3,
+          d1_2, u2_0, d1_2, u2_0, d1_0, u2_2, d1_0, u2_2,
+          d1_3, u2_1, d1_3, u2_1, d1_1, d2_3, d1_1, d2_3 }.
+
+        The naming convention here is <mode letter><number of copy>_<vertex index>.
+        (<number of copy> is ommitted for the 1 copy case).
+        Each constituent in the lists above refers to two Majorana modes.
+
+        This method overwrites an abstract method in System2DBase.
         """
-        raise NotImplementedError(
-            "This is an abstract method. Implement in child class please."
+
+        # Initialize empty lists
+        gamma_in_sys_vec = []
+        wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec = [], [], []
+        wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec = [], [], []
+
+        # Initialize gamma_in_sys for the full system (and trackers)
+        size = self.cfg.lattice.size  # number of sites
+        id = xnp.eye(size)
+
+        # TODO: vectorize!
+        for layer in range(self.cfg.nlayer):
+            neutral_gauge_X = xnp.kron(
+                id, self.gamma_gauge_neutral_vec[layer][Direction.X]
+            )
+            neutral_gauge_Y = xnp.kron(
+                id, self.gamma_gauge_neutral_vec[layer][Direction.Y]
+            )
+            gamma_in_sys = xscipy.linalg.block_diag(neutral_gauge_X, neutral_gauge_Y)
+            gamma_in_sys_vec.append(gamma_in_sys)
+
+            wi_gamma_in_vec.append(
+                utils.WoodburyInverter(self.mat_d_inv_vec[layer] - gamma_in_sys)
+            )
+            wi_gamma_out_vec.append(
+                utils.WoodburyInverter(self.mat_d_vec[layer] - gamma_in_sys)
+            )
+            incdet_vec.append(
+                utils.IncLogAbsDeterminant(self.mat_d_inv_vec[layer] - gamma_in_sys)
+            )
+
+            # Initialize the modified gamma_in_sys for the full system (and trackers)
+            single_link_offset = 2 * self.cfg.nvirtmodes_link
+            gamma_in_sys_mod = gamma_in_sys[single_link_offset:, single_link_offset:]
+            wi_gamma_in_mod_vec.append(
+                utils.WoodburyInverter(self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod)
+            )
+            wi_gamma_out_mod_vec.append(
+                utils.WoodburyInverter(self.mat_d_mod_vec[layer] - gamma_in_sys_mod)
+            )
+            incdet_mod_vec.append(
+                utils.IncLogAbsDeterminant(
+                    self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod
+                )
+            )
+
+        return (
+            xnp.array(gamma_in_sys_vec),
+            (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec),
+            (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec),
         )
 
     @property
@@ -900,7 +974,7 @@ class System2DBase(ABC):
         """
         if self._gamma_in_sys_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
@@ -920,7 +994,7 @@ class System2DBase(ABC):
         """
         if self._gamma_in_sys_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
@@ -941,7 +1015,7 @@ class System2DBase(ABC):
         """
         if self._incdet_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
@@ -962,7 +1036,7 @@ class System2DBase(ABC):
         """
         if self._wi_gamma_in_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
@@ -983,7 +1057,7 @@ class System2DBase(ABC):
         """
         if self._wi_gamma_out_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
@@ -1036,7 +1110,7 @@ class System2DBase(ABC):
         """
         if self._incdet_mod_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
@@ -1057,7 +1131,7 @@ class System2DBase(ABC):
         """
         if self._wi_gamma_in_mod_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
@@ -1078,7 +1152,7 @@ class System2DBase(ABC):
         """
         if self._wi_gamma_out_mod_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = (
-                self.initialize_gamma_in_sys()
+                self.initialize_gamma_in_and_trackers()
             )
             self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (

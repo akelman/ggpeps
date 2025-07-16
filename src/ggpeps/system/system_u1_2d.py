@@ -213,7 +213,7 @@ class U1System2D(System2DBase):
             vec.append(dest)
         return np.array(vec)
 
-    def initialize_gamma_in_sys(self):
+    def initialize_gamma_in_and_trackers(self):
         """
         The mode-order in gamma_in_sys is dictated by the numbering of the links on the lattice.
         The numbering guarantees that we split the vertical from the horizontal links for easier gauging.
@@ -231,8 +231,9 @@ class U1System2D(System2DBase):
 
         For a 2x2 system, gamma_in has the order {l_1, r_0, l_0, r_1, l_3, r_2, l_2, r_3, d_2, u_0, d_0, u_2, d_3, u_1, d_1, d_3}.
         The modes are named as <mode letter>_<vertex site>. Each constitent in the list above labels two Majorana modes.
+
+        TODO: This function could probably be replaced by the general one in System2DBase, but this has not been tested.
         """
-        # TODO: Fix description
 
         size = self.cfg.lattice.size  # number of sites
 
