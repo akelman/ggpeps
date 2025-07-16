@@ -313,7 +313,9 @@ class U1System2D(System2DBase):
         gamma_in_subst = (
             rotmat @ self.gamma_gauge_neutral_vec[0][dir] @ np.transpose(rotmat)
         )  # just use the first gamma_gauge_neutral, since they're shared by all layers
-        update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
+        update = self.calculate_update_gamma_in(
+            ind_mat, gamma_in_subst, self.gamma_in_sys
+        )
         # Update the determinant
         mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
         detval_vec = [

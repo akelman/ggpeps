@@ -967,6 +967,11 @@ class System2DBase(ABC):
         This is required to maintain compatibility with early development, in which gamma_in did not vary between layers.
         Possibly the code should be modified to use gamma_in_sys_vec everywhere; this can be done without significant memory cost.
 
+        This is a legacy function, which has been superseded by gamma_in_sys_vec,
+        in order to allow gamma_in_sys to vary between layers.
+        Only the U1 system uses this function, since the U1 system does not support a
+        gamma_in_sys that varies between layers.
+
         Returns:
             xnp.ndarray: Gauged covariance matrix of the system
         """
@@ -1070,6 +1075,11 @@ class System2DBase(ABC):
         """Get function to return the gauged gamma_in_sys with a single link modification
         (to compute the electric energy),
         the covariance matrix of the links for the whole system.
+
+        This is a legacy function, which has been superseded by gamma_in_sys_mod_vec,
+        in order to allow gamma_in_sys_mod to vary between layers.
+        Only the U1 system uses this function, since the U1 system does not support a
+        gamma_in_sys_mod that varies between layers.
 
         Returns:
             xnp.ndarray: Gauged, modified covariance matrix of the system
@@ -1405,7 +1415,7 @@ class System2DBase(ABC):
         return calculate_lognormvec_inc(
             self.incdet_vec,
             self.det_mat_d_vec,
-            self.gamma_in_sys.shape[0],
+            self.gamma_in_sys_vec[0].shape[0],
             all_factors=all_factors,
         )
 
@@ -1442,7 +1452,7 @@ class System2DBase(ABC):
                 store=False,
             )
             if all_factors:
-                detval -= self.gamma_in_sys.shape[0] * xnp.log(2)
+                detval -= self.gamma_in_sys_vec[0].shape[0] * xnp.log(2)
                 detval += xnp.linalg.slogdet(self.mat_d_vec[ind])[1]
             # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
             # The addition of the cumval is the multiplication of the indpendent PEPS
@@ -1555,7 +1565,7 @@ class System2DBase(ABC):
         ind = self.cfg.lattice.coord2ind_dir(coord, dir)
         self.update_gauge_ind(ind, theta)
 
-    def calculate_update_gamma_in(self, offset, update_mat, gamma_in_sys=None):
+    def calculate_update_gamma_in(self, offset, update_mat, gamma_in_sys):
         """Compute an update between the current gamma_in and the new gamma_in
 
         Args:
@@ -1567,10 +1577,6 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Additional update to reach update_mat at gamma_in[offset:,offset:]
         """
-        if gamma_in_sys is None:
-            gamma_in_sys = (
-                self.gamma_in_sys
-            )  # take the first element, which is shared between all the layers
         m_up, n_up = update_mat.shape
         gamma_in_old = slice_matrix(
             gamma_in_sys, offset, offset + m_up, offset, offset + n_up
