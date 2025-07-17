@@ -91,24 +91,16 @@ class Minimizer:
             if self.last_paramvec is None or not np.allclose(
                 self.last_paramvec, paramvec
             ):
-                # We copy here to get a new set of variables. We will change paramvec below and do not want to change last_paramvec
+                # We copy here to get a new set of variables.
+                # We will change paramvec below and do not want to change last_paramvec
                 self.last_paramvec = np.copy(paramvec)
 
                 # Monte Carlo part of the optimizer
                 result = self.evaluator_manager.simulate()
 
+            # Energy and gradient
             energy = result.get_obs_mean("energy")
             grad_paramvec = result.get_obs_mean("energy_grad")
-
-            # DEBUG #######################################################################################################
-            # print("Paramvec: ", self.evaluator_manager.system_cfg.paramvec)
-            # print("Energy: ", energy)
-            # print("grad_paramvec: ", grad_paramvec)
-            # if ind == 1:
-            #    exit()
-            ####################################################################################################################
-
-            # Energy and rewieghted gradient
 
             max_grad_paramvec = np.max(np.abs(grad_paramvec))
             self.last_result = result

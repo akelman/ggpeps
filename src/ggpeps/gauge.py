@@ -6,10 +6,12 @@ class ZNGauge:
     and given in multiples of 2pi/N.
     """
 
-    def __init__(self, n: int):
+    def __init__(self, n: int) -> None:
         self.n = n
         self.rep_dim = 1  # dimension of the representation
-        self.forbidden_transitions = []  # no forbidden transitions in Z_N gauge group
+
+        # list of forbidden transitions - empty for Z_N gauge group
+        self.forbidden_transitions: list = []
 
     def get_nonsingular_path(self, g_old, g_new):
         """Get the non singular update gauge field path between two gauge values.
@@ -18,15 +20,17 @@ class ZNGauge:
         """
         return []  # no singular paths in Z_N gauge group
 
-    def get_random_gauge_value(self, rng_state: np.random.RandomState) -> float:
+    def get_random_gauge_value(self, rng_state: np.random.RandomState) -> np.ndarray:
         theta = rng_state.randint(0, self.n) * 2 * np.pi / self.n
         return self.get_representation(theta)
 
     def get_representation(self, theta: float) -> np.ndarray:
-        """Get a representation of the group element"""
+        """Get a representation of the group element.
+        We return an array (rather than a float) to be consistent with other gauge groups of larger dimension
+        (non-Abelian groups)."""
         return np.array([[np.exp(1.0j * theta)]])
 
-    def get_neutral_gauge_value(self) -> float:
+    def get_neutral_gauge_value(self) -> np.ndarray:
         return np.array([[1.0 + 0.0j]])
 
     def get_possible_gauge_values(self) -> np.ndarray:
@@ -128,7 +132,7 @@ class D2nGauge:
         """Get a real 2D representaion of the group"""
         prefactor = 2.0 * np.pi / self.n
         prefactor_times_p = p * prefactor
-        if q % 2 == 0:  # we work in a convention of q=0 mod2
+        if q % 2 == 0:  # we work in a convention of q=0 mod 2
             representation = np.array(
                 [
                     [np.cos(prefactor_times_p), -np.sin(prefactor_times_p)],
@@ -144,7 +148,7 @@ class D2nGauge:
             )
         return representation
 
-    def get_neutral_gauge_value(self) -> np.array:
+    def get_neutral_gauge_value(self) -> np.ndarray:
         return np.identity(2)
 
     def get_possible_gauge_values(self) -> np.ndarray:

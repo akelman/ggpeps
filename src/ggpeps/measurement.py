@@ -24,7 +24,8 @@ class Measurement:
 
     def append(self, data):
         """Append data to the measurement.
-        The data is first added to an acquisition array and when this array reaches binsize, the mean of the data is copied to the actual datavec.
+        The data is first added to an acquisition array and when this array reaches binsize,
+        the mean of the data is copied to the actual datavec.
 
         Args:
             data: Data to be added
@@ -71,7 +72,8 @@ class Measurement:
         """Computation of the error on the mean
 
         Args:
-            use_binning (bool, optional): Switch to decide whether to use rebinning to de-correlate the datapoints during error estimation. Defaults to True.
+            use_binning (bool, optional): Switch to decide whether to use rebinning to de-correlate the datapoints
+                                          during error estimation. Defaults to True.
 
         Returns:
             float: Error on the mean
@@ -124,7 +126,8 @@ class Measurement:
     def __mul__(self, other):
         """Multiplication specialization for two Measurements.
         The datavecs are multiplied.
-        If the binsize is not 1, the result of binning and then multiplying will be different from first multiplying and then binning the result.
+        If the binsize is not 1, the result of binning and then multiplying will be different
+        than first multiplying and then binning the result.
 
         Args:
             other (Measurement): Second argument of multiplication
