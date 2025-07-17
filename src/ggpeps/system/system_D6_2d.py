@@ -126,7 +126,7 @@ class D6System2D_Config(Config2DBase):
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.
 
-        This function is obsolete for this ansatz, and is kept for compatibility reasons.
+        This function is obsolete for this ansatz, and is kept for some tests.
         """
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.nlayer):
