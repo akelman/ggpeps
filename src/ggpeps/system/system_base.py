@@ -116,10 +116,6 @@ class Config2DBase(ABC):
 
         self._paramvec: Optional[np.ndarray] = None
 
-        # We store a list of the parameters forced to be zero by the ansatz
-        # currently this is set in self.enforce_parameter_conditions
-        self.zeroed_params: list[tuple[int, int, int]] = []
-
         # Symbolvec - list of all the symbols, which are the same for each layer
         # (even if for some layers some are forced to zero)
         self._symbolvec: Optional[list[sympy.Symbol]] = None
@@ -227,16 +223,50 @@ class Config2DBase(ABC):
         return self.unitcell_size == 1
 
     @abstractmethod
-    def make_pure_gauge(self) -> None:
-        """Ensure that the system is pure gauge, i.e. no physical fermions.
+    def get_zeroed_params(self) -> list[tuple[int, int, int]]:
+        """Create and return the list of parameters that are forced to zero by the ansatz.
+
         This abstract method must be overwritten by a subclass.
+
+        Returns:
+            list: is a list of tuples (layer, unitcell index, symbol index).
         """
         raise NotImplementedError(
             "This is an abstract method. Implement in child class please."
         )
 
-    def enforce_parameter_conditions(self, mat: np.ndarray) -> None:
-        """In some cases, there are extra conditions we wish to impose on the parameters."""
+    def enforce_parameter_conditions(self, mat: xnp.ndarray) -> None:
+        """Enforce conditions on the parameters according to the requirements of the ansatz.
+        Examples:
+            1. make the system pure gauge, i.e. no physical fermions;
+            2. enforce a symmetry that is not enforced by ansatz automatically
+               (this may not be enforced at the level of the t-mat in order to allow the symmmetry to be relaxed)
+
+        It acts on arrays with the same shape as the paramvec.
+        This function acts on the provided array in-place.
+
+        Args:
+            mat (array): array of parameters to which the conditions are applied.
+        """
+        if mat.shape != self.param_shape():
+            raise ValueError(
+                f"Invalid shape for mat in enforce_parameter_conditions: {mat.shape}. "
+                f"Expected {self.param_shape()}."
+            )
+
+        if self.zeroed_params is None:
+            self.zeroed_params = self.get_zeroed_params()
+
+        for coord in self.zeroed_params:
+            if isinstance(mat, np.ndarray):  # TODO: handle jax better
+                mat[coord] = 0
+            elif isinstance(mat, jnp.ndarray):
+                mat = mat.at[coord].set(0)
+            else:
+                raise TypeError(
+                    "Unsupported type for mat in enforce_parameter_conditions: "
+                    f"{type(mat)}. Expected np.ndarray or jnp.ndarray."
+                )
         return
 
     @abstractmethod

@@ -85,6 +85,10 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
 
         self.u1_symmetry = enforce_u1_symmetry
 
+        # We store a list of the parameters forced to be zero by the ansatz
+        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
+        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
+
         # Constants used in the calculation of the electric energy
         prefactors = [
             [1, -1, 1.0j, 1.0j],
@@ -116,15 +120,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         )  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
         self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2)
 
-    def make_pure_gauge(self):
-        raise NotImplementedError(
-            "Haven't implemented parameter conditions for pure gauge for this ansatz."
-        )
-
-    def enforce_parameter_conditions(self, mat):
-        """Enforce conditions on parameters on each layer to get the required behaviour
-        for the ansatz."""
-
+    def get_zeroed_params(self) -> list[tuple[int, int, int]]:
         offset = self._nparams // 2  # offset to get index of imaginary part
         zeroed_params = []  # we'll save the indices of the zeroed parameters
 
@@ -161,21 +157,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
                         zeroed_params.append(real_coord)
                         zeroed_params.append(imag_coord)
 
-        # actually set to zero
-        for coord in zeroed_params:
-            if isinstance(mat, np.ndarray):  # TODO: handle jax better
-                mat[coord] = 0
-            elif isinstance(mat, jnp.ndarray):
-                mat = mat.at[coord].set(0)
-            else:
-                raise TypeError(
-                    "Unsupported type for mat in enforce_parameter_conditions: "
-                    f"{type(mat)}. Expected np.ndarray or jnp.ndarray."
-                )
-
-        # save zeroed params
-        self.zeroed_params = zeroed_params
-        return
+        return zeroed_params
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.

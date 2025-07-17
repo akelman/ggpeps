@@ -98,6 +98,10 @@ class D6System2D_Config(Config2DBase):
         # (set to False to allow fermionic number to float between sectors)
         self.u1_symmetry = enforce_u1_symmetry
 
+        # We store a list of the parameters forced to be zero by the ansatz
+        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
+        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
+
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
         indices_layer_pg = [
@@ -131,8 +135,7 @@ class D6System2D_Config(Config2DBase):
                     coord = (layer_ind, uc_ind, t_ind)
                     self.paramvec[coord] = 0
 
-    def enforce_parameter_conditions(self, mat):
-        """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz."""
+    def get_zeroed_params(self):
         # The order of the parameters (for each layer) is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
 
         zeroed_params = []  # we'll save the indices of the zeroed parameters
@@ -142,10 +145,6 @@ class D6System2D_Config(Config2DBase):
             for uc_ind in range(self.unitcell_size):
                 for t_ind in t_indices:
                     coord = (layer_ind, uc_ind, t_ind)
-                    if isinstance(mat, np.ndarray):  # TODO: handle jax better
-                        mat[coord] = 0
-                    else:
-                        mat = mat.at[coord].set(0)
                     zeroed_params.append(coord)
 
         zero_for_fermionic_layer = [
@@ -164,15 +163,9 @@ class D6System2D_Config(Config2DBase):
             for uc_ind in range(self.unitcell_size):
                 for ind in zero_for_fermionic_layer:
                     coord = (layer_ind, uc_ind, ind)
-                    if isinstance(mat, np.ndarray):
-                        mat[coord] = 0
-                    else:
-                        mat = mat.at[coord].set(0)
                     zeroed_params.append(coord)
 
-        # save zeroed params
-        self.zeroed_params = zeroed_params
-        return
+        return zeroed_params
 
     def _create_symbolvec(self) -> List[sympy.Symbol]:
         """Define all symbols of the T matrix as symbols.

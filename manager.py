@@ -20,6 +20,7 @@ np.set_printoptions(linewidth=200)
 
 import ggpeps
 from ggpeps.caching import Cache
+from ggpeps.system import U1System2DConfig
 from ggpeps.system import Z2System2DConfig
 from ggpeps.system import Z2System2D2CConfig
 from ggpeps.system import Z2System2D_G2C_F2C_Config
@@ -345,12 +346,14 @@ def main(args):
     paramvec, param_source = translate_parameters(system_cfg, args.params, rngstate)
     system_cfg.paramvec = paramvec
 
-    # Ensure pure gauge (setting t parameter(s) to zero) if enabled
-    if not args.fermions:
+    if isinstance(system_cfg, Z2System2DConfig) or isinstance(
+        system_cfg, U1System2DConfig
+    ):
+        # This is a holdover for compatibility with these ansatz's,
+        # since they have never been tested or used without being forced to be pure gauge.
         system_cfg.make_pure_gauge()
 
-    # Enforce the required parameter conditions to get the correct use of layers
-    # This only has an effect for the ansatz's with fermions
+    # Enforce the required parameter conditions
     system_cfg.enforce_parameter_conditions(system_cfg.paramvec)
 
     # Switch to control the binning analysis on EOM (Error of mean)

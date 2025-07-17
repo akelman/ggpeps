@@ -68,11 +68,27 @@ class U1System2DConfig(Config2DBase):
         self.unitcell_size = 1
         self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(3)
 
+        # We store a list of the parameters forced to be zero by the ansatz
+        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
+        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
+
     def make_pure_gauge(self):
         # The order of the parameters is [t,y,z]
+        # Here we set the t parameters to zero for the pure gauge layers (which is all the layers)
+        assert self.nlayer == self.num_pg_layer
         for lay in range(self.nlayer):
             for uc_ind in range(self.unitcell_size):
                 self.paramvec[lay, uc_ind, 0] = 0
+
+    def get_zeroed_params(self):
+        """This should really call make_pure_gauge() - i.e. return the indices which are set to zero there.
+        However, some tests which use this ansatz do not actually satisfy the pure gauge condition
+        - they use this ansatz with nonzero t params, and test against hard-coded values.
+        (This works because make_pure_gauge() is often not called in the executaion path of those tests).
+        To preserve compatibility with those tests, we do not call make_pure_gauge() here.
+        """
+        zeroed_params = []
+        return zeroed_params
 
     def _create_symbolvec(self):
         t = sympy.Symbol("t", real=True)

@@ -71,6 +71,10 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
             )
             raise ValueError("Invalid enforce_u1_symmetry.")
 
+        # We store a list of the parameters forced to be zero by the ansatz
+        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
+        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
+
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j]] * 8
         indices_layer1 = [
@@ -105,15 +109,7 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         )  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
         self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2)
 
-    def make_pure_gauge(self):
-        raise NotImplementedError(
-            "Haven't implemented parameter conditions for pure gauge for this ansatz."
-        )
-
-    def enforce_parameter_conditions(self, mat):
-        """Enforce conditions on parameters on each layer to get the required behaviour
-        for the ansatz."""
-
+    def get_zeroed_params(self):
         zeroed_params = []  # we'll save the indices of the zeroed parameters
 
         # pure gauge layers
@@ -123,7 +119,6 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
                 copies = [1, 3, 5, 7]  # copies which couple to physical modes
                 for cop in copies:
                     for com in ["r", "i"]:  # real or imaginary
-                        mat[layer, uc_ind, ind] = 0
                         ind += 1
                         zeroed_params.append((layer, uc_ind, ind))
 
@@ -140,13 +135,10 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
                 for cop in copies:
                     for l in ["z", "y"]:
                         for com in ["r", "i"]:
-                            mat[layer_ind, uc_ind, ind] = 0
                             ind += 1
                             zeroed_params.append((layer, uc_ind, ind))
 
-        # save zeroed params
-        self.zeroed_params = zeroed_params
-        return
+        return zeroed_params
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
