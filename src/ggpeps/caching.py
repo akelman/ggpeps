@@ -24,7 +24,7 @@ class Cache:
             "energy_grad": {},
         }
 
-    def paramvec2key(self, paramvec: np.ndarray):
+    def paramvec2key(self, paramvec: np.ndarray) -> bytes:
         """Convert paramvect to bytes for use as a key in the cache."""
         return paramvec.data.tobytes()
 
