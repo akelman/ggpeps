@@ -22,7 +22,6 @@ import ggpeps
 from ggpeps.caching import Cache
 from ggpeps.system import U1System2DConfig
 from ggpeps.system import Z2System2DConfig
-from ggpeps.system import Z2System2D2CConfig
 from ggpeps.system import Z2System2D_G2C_F2C_Config
 from ggpeps.system import Z2System2D_G4C_F4C_Config
 from ggpeps.system import Z2System2D_G8C_F8C_Config
@@ -281,6 +280,13 @@ def main(args):
 
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L, args.gauge_fixing)
+
+    if args.fermions:
+        # in python > 3.12 there is a flag to indicate deprecation, but we want to maintain support for earlier versions.
+        logger.warning(
+            "The --fermions flag is deprecated, will have no effect, and should no longer be used."
+            "Instead specify the number of fermionic layers with --num_fermionic_layer."
+        )
 
     # Depending on the parameters, we instantiate different systems/system_configs
     # Since they all share the same interface, we do not care much about the details of the system after this point
@@ -733,7 +739,7 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
         help="Use an ansatz that allows for the inclusion of fermions",
-    )  # TODO: improve handling of pure-gauge and fermions arguments
+    )  # TODO: this argument is no longer used, and can be removed after some time
     parser.add_argument(
         "--unitcell_size",
         type=int,
