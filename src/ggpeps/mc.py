@@ -37,7 +37,7 @@ class MonteCarloEvaluatorConfig:
         )
 
         # Logging frequency
-        self.warmup_log_freq: int = 5000  # log every X steps
+        self.warmup_log_freq: int = 5000
         self.run_log_freq: int = 20000
 
     @property
@@ -66,10 +66,20 @@ class MonteCarloEvaluatorConfig:
             "Request to set the state directly was ignored."
         )
 
-    def get_rng_state_internal_repr(self):
+    def get_rng_state_internal_repr(self) -> tuple:
+        """Get the state of the RNG.
+
+        Returns:
+            tuple[str, np.NDArray[uint32], int, int, float]
+        """
         return self._rng_state.get_state()
 
-    def set_rng_state_internal_repr(self, state_repr):
+    def set_rng_state_internal_repr(self, state_repr: tuple) -> None:
+        """Set the state of the RNG.
+
+        Args:
+            state_repr (tuple[str, np.NDArray[uint32], int, int, float])
+        """
         self._rng_state.set_state(state_repr)
         return
 
