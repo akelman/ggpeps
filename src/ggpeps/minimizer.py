@@ -41,7 +41,7 @@ class MinimizerResult:
 
 class MinimizerConfig:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.max_iter: int = 100
         self.tol: float = 1e-5  # convergence tol (e.g. stop when grad falls below tol)
         self.alpha: float = 1e-2
@@ -52,13 +52,13 @@ class MinimizerConfig:
         return self._method
 
     @method.setter
-    def method(self, val: str):
+    def method(self, val: str) -> None:
         self._method = val.upper()
 
 
 class Minimizer:
-    grad_methods = ["CG", "BFGS", "L-BFGS-B", "TNC", "CUSTOM", "NEVMC"]
-    no_grad_methods = ["POWELL", "NELDER-MEAD"]
+    grad_methods: list[str] = ["CG", "BFGS", "L-BFGS-B", "TNC", "CUSTOM", "NEVMC"]
+    no_grad_methods: list[str] = ["POWELL", "NELDER-MEAD"]
     supported_scipy_methods = grad_methods[:-2] + no_grad_methods
 
     def __init__(self, cfg: MinimizerConfig, evaluator_manager: EvaluatorManager):
@@ -84,7 +84,7 @@ class Minimizer:
             logger.error(f"Unkown minimization method '{self.cfg.method}'. Aborting...")
             return None
 
-    def minimize_custom(self):
+    def minimize_custom(self) -> MinimizerResult:
         paramvec = self.evaluator_manager.system_cfg.paramvec
 
         for ind in range(self.cfg.max_iter):
@@ -112,8 +112,14 @@ class Minimizer:
             if max_grad_paramvec < abs(self.cfg.tol):
                 message = f"Reached convergence: max grad paramvec < {self.cfg.tol}"
                 logger.info(message)
+
                 self.min_result = MinimizerResult(
-                    paramvec, self.cfg.method, energy, grad_paramvec, True, message
+                    paramvec,
+                    grad_paramvec,
+                    self.cfg.method,
+                    energy,
+                    True,
+                    message,
                 )
                 return self.min_result
 
@@ -126,12 +132,18 @@ class Minimizer:
 
         message = "Reached maximum number of iterations without convergence."
         logger.warning(message)
+
         self.min_result = MinimizerResult(
-            paramvec, self.cfg.method, energy, grad_paramvec, False, message
+            paramvec,
+            grad_paramvec,
+            self.cfg.method,
+            energy,
+            False,
+            message,
         )
         return self.min_result
 
-    def minimize_scipy(self):
+    def minimize_scipy(self) -> MinimizerResult:
 
         # Energy wrapper
         def energy_wrapper(flattened_paramvec):
@@ -251,7 +263,7 @@ class Minimizer:
         self.min_result = dest
         return dest
 
-    def save(self, output_dir="."):
+    def save(self, output_dir: str = ".") -> None:
         if self.min_result is not None:
             sys_cfg = self.evaluator_manager.system_cfg
 
@@ -398,8 +410,14 @@ class Minimizer:
                 if max_grad_paramvec < abs(self.cfg.tol):
                     message = f"Reached convergence: max grad paramvec < {self.cfg.tol}"
                     logger.info(message)
+
                     self.min_result = MinimizerResult(
-                        paramvec, self.cfg.method, energy, grad_paramvec, True, message
+                        paramvec,
+                        grad_paramvec,
+                        self.cfg.method,
+                        energy,
+                        True,
+                        message,
                     )
                     return self.min_result
 
@@ -410,8 +428,14 @@ class Minimizer:
 
         message = "Reached maximum number of iterations without convergence."
         logger.warning(message)
+
         self.min_result = MinimizerResult(
-            paramvec, self.cfg.method, energy, grad_paramvec, False, message
+            paramvec,
+            grad_paramvec,
+            self.cfg.method,
+            energy,
+            False,
+            message,
         )
         return self.min_result
 
