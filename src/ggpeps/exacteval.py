@@ -71,48 +71,30 @@ class ExactEvaluator(Evaluator):
             loops = self.system.cfg.lattice.generate_all_wilson_loops((0, 0), sizes)
             max_string = 1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
             strings = [self.system.cfg.lattice.generate_L_string((0, 0), (k, k)) for k in range(1, max_string)]
+
+            data: dict = {
+                "energy": [],
+                "norm": [],
+                "mag_energy": [],
+                "el_energy": [],
+                "mass_energy": [],
+                "int_energy": [],
+                "chem_energy": [],
+                "mag_energy_op": [],
+                "el_energy_op": [],
+                "mass_energy_op": [],
+                "int_energy_op": [],
+                "el_energy_op_grad": [],
+                "mass_energy_op_grad": [],
+                "int_energy_op_grad": [],
+                "chem_energy_op_grad": [],
+                "grad_norm": [],
+                "polyakov_00_x": [],
+            }
             if self.system.cfg.num_fermionic_layer > 0:
-                data: dict = {
-                    "energy": [],
-                    "norm": [],
-                    "mag_energy": [],
-                    "el_energy": [],
-                    "mass_energy": [],
-                    "int_energy": [],
-                    "chem_energy": [],
-                    "mag_energy_op": [],
-                    "el_energy_op": [],
-                    "mass_energy_op": [],
-                    "int_energy_op": [],
-                    "all_occupations": [],
-                    "average_occupation": [],
-                    "el_energy_op_grad": [],
-                    "mass_energy_op_grad": [],
-                    "int_energy_op_grad": [],
-                    "chem_energy_op_grad": [],
-                    "grad_norm": [],
-                    "polyakov_00_x": [],
-                }
-            else:  # If there are no fermionic layers, we do not compute occupations
-                data: dict = {
-                    "energy": [],
-                    "norm": [],
-                    "mag_energy": [],
-                    "el_energy": [],
-                    "mass_energy": [],
-                    "int_energy": [],
-                    "chem_energy": [],
-                    "mag_energy_op": [],
-                    "el_energy_op": [],
-                    "mass_energy_op": [],
-                    "int_energy_op": [],
-                    "el_energy_op_grad": [],
-                    "mass_energy_op_grad": [],
-                    "int_energy_op_grad": [],
-                    "chem_energy_op_grad": [],
-                    "grad_norm": [],
-                    "polyakov_00_x": [],
-                }
+                # Only compute occupations if there are fermionic layers
+                data["all_occupations"] = []
+                data["average_occupation"] = []
 
             # Wilson loops
             for k in range(len(sizes)):
