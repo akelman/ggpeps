@@ -85,20 +85,14 @@ class Testgaugefixing(unittest.TestCase):
         system_with_gf.cfg.enforce_parameter_conditions(cfg_with_gf.paramvec)
 
         # System without gauge fixing
-        cfg_without_gf = system.Z2System2D_G2C_F2C_Config(
-            lat2_without_gf, 1, 1, 1, 1, None
-        )
+        cfg_without_gf = system.Z2System2D_G2C_F2C_Config(lat2_without_gf, 1, 1, 1, 1, None)
         cfg_without_gf.paramvec = paramvec
         system_without_gf = system.Z2System2D(cfg_without_gf)
         system_without_gf.cfg.enforce_parameter_conditions(cfg_without_gf.paramvec)
 
         # Evaluation
-        evaluator_with_gf = exacteval.ExactEvaluator(
-            ExactEvaluatorConfig(), system_with_gf
-        )
-        evaluator_without_gf = exacteval.ExactEvaluator(
-            ExactEvaluatorConfig(), system_without_gf
-        )
+        evaluator_with_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_with_gf)
+        evaluator_without_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_without_gf)
 
         eval_with_gf = evaluator_with_gf.evaluate()
         eval_without_gf = evaluator_without_gf.evaluate()
@@ -119,20 +113,14 @@ class Testgaugefixing(unittest.TestCase):
         system_with_gf.cfg.enforce_parameter_conditions(cfg_with_gf.paramvec)
 
         # System without gauge fixing
-        cfg_without_gf = system.Z2System2D_G2C_F2C_Config(
-            lat2_without_gf, 1, 1, 1, 1, None
-        )
+        cfg_without_gf = system.Z2System2D_G2C_F2C_Config(lat2_without_gf, 1, 1, 1, 1, None)
         cfg_without_gf.paramvec = paramvec
         system_without_gf = system.Z2System2D(cfg_without_gf)
         system_without_gf.cfg.enforce_parameter_conditions(cfg_without_gf.paramvec)
 
         # Evaluation
-        evaluator_with_gf = exacteval.ExactEvaluator(
-            ExactEvaluatorConfig(), system_with_gf
-        )
-        evaluator_without_gf = exacteval.ExactEvaluator(
-            ExactEvaluatorConfig(), system_without_gf
-        )
+        evaluator_with_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_with_gf)
+        evaluator_without_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_without_gf)
 
         eval_with_gf = evaluator_with_gf.evaluate()
         eval_without_gf = evaluator_without_gf.evaluate()
@@ -154,20 +142,14 @@ class Testgaugefixing(unittest.TestCase):
         system_with_gf.cfg.enforce_parameter_conditions(cfg_with_gf.paramvec)
 
         # System without gauge fixing
-        cfg_without_gf = system.Z2System2D_G2C_F2C_Config(
-            lat2_without_gf, 1, 1, 1, 1, [0]
-        )
+        cfg_without_gf = system.Z2System2D_G2C_F2C_Config(lat2_without_gf, 1, 1, 1, 1, [0])
         cfg_without_gf.paramvec = paramvec
         system_without_gf = system.Z2System2D(cfg_without_gf)
         system_without_gf.cfg.enforce_parameter_conditions(cfg_without_gf.paramvec)
 
         # Evaluation
-        evaluator_with_gf = exacteval.ExactEvaluator(
-            ExactEvaluatorConfig(), system_with_gf
-        )
-        evaluator_without_gf = exacteval.ExactEvaluator(
-            ExactEvaluatorConfig(), system_without_gf
-        )
+        evaluator_with_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_with_gf)
+        evaluator_without_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_without_gf)
 
         eval_with_gf = evaluator_with_gf.evaluate()
         eval_without_gf = evaluator_without_gf.evaluate()
@@ -188,9 +170,7 @@ class Testgaugefixing(unittest.TestCase):
         # Configuration
         cfg_with_gf = system.Z2System2D_G2C_F2C_Config(lat2_with_gf, 1, 1, 1, 1, [0])
         cfg_with_gf.paramvec = paramvec
-        cfg_without_gf = system.Z2System2D_G2C_F2C_Config(
-            lat2_without_gf, 1, 1, 1, 1, [0]
-        )
+        cfg_without_gf = system.Z2System2D_G2C_F2C_Config(lat2_without_gf, 1, 1, 1, 1, [0])
         cfg_without_gf.paramvec = paramvec
 
         system_with_gf = system.Z2System2D(cfg_with_gf)

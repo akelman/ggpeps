@@ -70,9 +70,7 @@ class EvaluatorManager:
         self,
         system_cls: type[System2DBase],
         system_cfg: Config2DBase,
-        cfg: Union[
-            MonteCarloEvaluatorConfig, ExactEvaluatorConfig, NEVMC_EvaluatorConfig
-        ],
+        cfg: Union[MonteCarloEvaluatorConfig, ExactEvaluatorConfig, NEVMC_EvaluatorConfig],
         nrunner: int,
     ):
 
@@ -144,9 +142,7 @@ class EvaluatorManager:
             Currently only Monte Carlo is supported (the exacteval implementation currently only supports one runner),
             and multiple runners cannot be resumed from where they left off.
             """
-            assert isinstance(self.cfg, MonteCarloEvaluatorConfig) or isinstance(
-                self.cfg, NEVMC_EvaluatorConfig
-            )
+            assert isinstance(self.cfg, MonteCarloEvaluatorConfig) or isinstance(self.cfg, NEVMC_EvaluatorConfig)
 
             resultvec = []
             # system_cfg_id = ray.put(self.system_cfg)
@@ -174,9 +170,7 @@ class EvaluatorManager:
                     "logger_level": ggpeps.global_vars["args"].level,
                 }
 
-                cpu_frac = (
-                    1 / ggpeps.global_vars["args"].nrunner
-                )  # multiplied by the number of available cpus?
+                cpu_frac = 1 / ggpeps.global_vars["args"].nrunner  # multiplied by the number of available cpus?
                 gpu_frac = 0.0
                 if ggpeps.GPU_AVAILABLE:
                     gpu_frac = 1 / ggpeps.global_vars["args"].nrunner

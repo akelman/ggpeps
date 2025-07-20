@@ -34,9 +34,7 @@ class NEVMC_EvaluatorConfig:
         self.meas_steps = None
         self.binsize: int = 1
         self.compute_grads: bool = False
-        self.update_size_per_step: int = (
-            1  # this can be set anywhere from 1 to nlinks (inclusive)
-        )
+        self.update_size_per_step: int = 1  # this can be set anywhere from 1 to nlinks (inclusive)
 
         ### beg NEVMC ###
         self.store_gauge = []
@@ -71,9 +69,7 @@ class NEVMC_EvaluatorConfig:
 
     @rng_state.setter
     def rng_state(self, state):
-        logger.error(
-            "MonteCarloEstimatorConfig: Do not set the state directly. Use a seed instead."
-        )
+        logger.error("MonteCarloEstimatorConfig: Do not set the state directly. Use a seed instead.")
         self.rng_state = None
         self.seed = None
 
@@ -124,24 +120,14 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["int_energy"] = Measurement("Interaction Energy", binsize)
         self.obsdict["mass_energy"] = Measurement("Mass Energy", binsize)
         self.obsdict["chem_energy"] = Measurement("Chemical Energy", binsize)
-        self.obsdict["mag_energy_op"] = Measurement(
-            "Magnetic Energy Operator (bare)", binsize
-        )
-        self.obsdict["el_energy_op"] = Measurement(
-            "Electric Energy Operator (bare)", binsize
-        )
-        self.obsdict["int_energy_op"] = Measurement(
-            "Interaction Energy Operator (bare)", binsize
-        )
-        self.obsdict["mass_energy_op"] = Measurement(
-            "Mass Energy Operator (bare)", binsize
-        )
+        self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
+        self.obsdict["el_energy_op"] = Measurement("Electric Energy Operator (bare)", binsize)
+        self.obsdict["int_energy_op"] = Measurement("Interaction Energy Operator (bare)", binsize)
+        self.obsdict["mass_energy_op"] = Measurement("Mass Energy Operator (bare)", binsize)
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
         if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
-            self.obsdict["all_occupations"] = Measurement(
-                "All Occupations (after PH)", binsize
-            )
+            self.obsdict["all_occupations"] = Measurement("All Occupations (after PH)", binsize)
             self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
 
         # Wilson loops (of various sizes)
@@ -151,44 +137,26 @@ class NEVMC_Evaluator(Evaluator):
             self.obsdict[loop_name] = Measurement(loop_name, binsize)
 
         # Meson strings
-        max_string = (
-            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
-        )
+        max_string = 1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
         for k in range(1, max_string):
-            self.obsdict[f"square_string_0-0_{k}x{k}"] = Measurement(
-                f"square_string_0-0_{k}x{k}", binsize
-            )
+            self.obsdict[f"square_string_0-0_{k}x{k}"] = Measurement(f"square_string_0-0_{k}x{k}", binsize)
 
         if self.cfg.compute_grads:
             ### beg NEVMC ###
             self.obsdict["work"] = Measurement("Work", binsize)
             ### end NEVMC ###
-            self.obsdict["el_energy_op_grad"] = Measurement(
-                "Electric Energy Operator Gradient", binsize
-            )
-            self.obsdict["int_energy_op_grad"] = Measurement(
-                "Interaction Energy Operator Gradient", binsize
-            )
-            self.obsdict["mass_energy_op_grad"] = Measurement(
-                "Mass Energy Operator Gradient", binsize
-            )
-            self.obsdict["chem_energy_op_grad"] = Measurement(
-                "Chemical Energy Operator Gradient", binsize
-            )
+            self.obsdict["el_energy_op_grad"] = Measurement("Electric Energy Operator Gradient", binsize)
+            self.obsdict["int_energy_op_grad"] = Measurement("Interaction Energy Operator Gradient", binsize)
+            self.obsdict["mass_energy_op_grad"] = Measurement("Mass Energy Operator Gradient", binsize)
+            self.obsdict["chem_energy_op_grad"] = Measurement("Chemical Energy Operator Gradient", binsize)
             self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm", binsize)
-            self.obsdict["energy_grad"] = Measurement(
-                "Gradient of Total Energy", binsize
-            )
+            self.obsdict["energy_grad"] = Measurement("Gradient of Total Energy", binsize)
 
     def measure(self):
         """Measure the corresponding observables in the dictionary"""
-        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
-            (0, 0), lattice.Direction.X
-        )
+        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
 
-        self.obsdict["polyakov_00_x"].append(
-            np.real(self.system.compute_path(polyakov_loop))
-        )
+        self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
         # self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
@@ -215,28 +183,17 @@ class NEVMC_Evaluator(Evaluator):
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
 
         # Meson strings
-        max_string = (
-            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
-        )
-        strings = [
-            self.system.cfg.lattice.generate_L_string((0, 0), (k, k))
-            for k in range(1, max_string)
-        ]
+        max_string = 1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
+        strings = [self.system.cfg.lattice.generate_L_string((0, 0), (k, k)) for k in range(1, max_string)]
         for k in range(1, max_string):
             string_name = f"square_string_0-0_{k}x{k}"
             self.obsdict[string_name].append(self.system.meson_string(strings[k - 1]))
 
         if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
-            self.obsdict["int_energy_op_grad"].append(
-                self.system.int_energy_op_grad_vec
-            )
-            self.obsdict["mass_energy_op_grad"].append(
-                self.system.mass_energy_op_grad_vec
-            )
-            self.obsdict["chem_energy_op_grad"].append(
-                self.system.chem_energy_op_grad_vec
-            )
+            self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
+            self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
+            self.obsdict["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
             self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
 
         return
@@ -248,10 +205,7 @@ class NEVMC_Evaluator(Evaluator):
         # Gradient of the magnetic energy
         meas_mag_energy_op = self.obsdict["mag_energy_op"]
         prod_mag_energy_grad = meas_mag_energy_op * meas_grad_over_norm
-        mag_energy_op_grad = (
-            prod_mag_energy_grad.mean()
-            - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
-        )
+        mag_energy_op_grad = prod_mag_energy_grad.mean() - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
         # Add the constants back into the expression of the magnetic energy
         mag_energy_grad = -2 * self.system.cfg.g_mag * mag_energy_op_grad
 
@@ -322,9 +276,7 @@ class NEVMC_Evaluator(Evaluator):
 
         if warmsteps > 0:
             total_grad = self.energy_gradient_mc()
-            self.obsdict["energy_grad"].extend(
-                [total_grad] * len(self.obsdict["energy"])
-            )
+            self.obsdict["energy_grad"].extend([total_grad] * len(self.obsdict["energy"]))
 
         logger.debug("Finished NEVMC measurement")
 
@@ -356,9 +308,7 @@ class NEVMC_Evaluator(Evaluator):
                 self.obsdict["acceptance_prob"].append(0)
 
                 self.cfg.store_weights.append(weight_old)
-                self.cfg.store_gauge.append(
-                    (link_ind, copy.deepcopy(self.system._gaugefieldvec[link_ind]))
-                )
+                self.cfg.store_gauge.append((link_ind, copy.deepcopy(self.system._gaugefieldvec[link_ind])))
 
     def scan_cfgs(self, idx):
         link, theta = self.cfg.store_gauge[idx]
@@ -413,10 +363,7 @@ class NEVMC_Evaluator(Evaluator):
         prod_mag_energy_grad = prod_mag_energy_grad * expW
         meas_mag_energy_op = meas_mag_energy_op * expW
 
-        mag_energy_op_grad = (
-            prod_mag_energy_grad.mean()
-            - meas_mag_energy_op.mean() * expW_grad_over_norm.mean()
-        )
+        mag_energy_op_grad = prod_mag_energy_grad.mean() - meas_mag_energy_op.mean() * expW_grad_over_norm.mean()
         # Add the constants back into the expression of the magnetic energy
         mag_energy_grad = -2 * self.system.cfg.g_mag * mag_energy_op_grad
 
@@ -478,13 +425,9 @@ class NEVMC_Evaluator(Evaluator):
 
     def measure_nograd(self):
         """Measure the corresponding observables in the dictionary"""
-        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
-            (0, 0), lattice.Direction.X
-        )
+        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
 
-        self.obsdict["polyakov_00_x"].append(
-            np.real(self.system.compute_path(polyakov_loop))
-        )
+        self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
         # self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
@@ -511,13 +454,8 @@ class NEVMC_Evaluator(Evaluator):
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
 
         # Meson strings
-        max_string = (
-            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
-        )
-        strings = [
-            self.system.cfg.lattice.generate_L_string((0, 0), (k, k))
-            for k in range(1, max_string)
-        ]
+        max_string = 1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
+        strings = [self.system.cfg.lattice.generate_L_string((0, 0), (k, k)) for k in range(1, max_string)]
         for k in range(1, max_string):
             string_name = f"square_string_0-0_{k}x{k}"
             self.obsdict[string_name].append(self.system.meson_string(strings[k - 1]))
@@ -525,13 +463,9 @@ class NEVMC_Evaluator(Evaluator):
         return
 
     def measure_grad(self):
-        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
-            (0, 0), lattice.Direction.X
-        )
+        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
 
-        self.obsdict["polyakov_00_x"].append(
-            np.real(self.system.compute_path(polyakov_loop))
-        )
+        self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
@@ -548,7 +482,7 @@ class NEVMC_Evaluator(Evaluator):
         if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
             self.obsdict["average_occupation"].append(self.system.average_occupation())
             self.obsdict["all_occupations"].append(self.system.all_occupations)
-        
+
         #############################
         self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
         self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)

@@ -23,9 +23,7 @@ class Evaluator(ABC):
                   Each key-val pair is of the form (obs: List) where List is a list of
                   values for the observable for the simulated gauge configurations
         """
-        raise NotImplementedError(
-            "This is an abstract method. Implement in child class please."
-        )
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
     def get_obs_mean(self, obs: str):
@@ -38,9 +36,7 @@ class Evaluator(ABC):
             float or array: Mean value of the observable.
                             If the observable is an array, the returned value is also an array.
         """
-        raise NotImplementedError(
-            "This is an abstract method. Implement in child class please."
-        )
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
     def summary(self) -> pd.DataFrame:
@@ -49,9 +45,7 @@ class Evaluator(ABC):
         Returns:
             pd.DataFrame: Pandas dataframe with a summary of all results
         """
-        raise NotImplementedError(
-            "This is an abstract method. Implement in child class please."
-        )
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     def save_summary(self, fname_summary: str) -> None:
         """Save the summary of the computation to a given filename

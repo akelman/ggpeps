@@ -114,9 +114,7 @@ class D6System2D_Config(Config2DBase):
         ]
         idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
         idxarr_lay_fermionic = get_pfaffian_arrays(indices_layer_fermionic, prefactors)
-        self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [
-            idxarr_lay_fermionic
-        ] * self.num_fermionic_layer
+        self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
         self.el_overall_factors = [
             -1 / 16
         ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
@@ -268,48 +266,50 @@ class D6System2D_Config(Config2DBase):
         b = br + 1.0j * bi
         c = cr + 1.0j * ci
         d = dr + 1.0j * di
-        tmat_symb_block = sympy.Matrix(  # For a single color. Both colors have the same structure as well as parameters
-            [
-                [0, -1.0j * t1, 1.0j * t1, t1, -t1, -1.0j * t2, 1.0j * t2, t2, -t2],
+        tmat_symb_block = (
+            sympy.Matrix(  # For a single color. Both colors have the same structure as well as parameters
                 [
-                    1.0j * t1,
-                    0,
-                    1.0j * y1,
-                    z1,
-                    1.0j * z1,
-                    -1.0j * a,
-                    -1.0j * c,
-                    -1.0j * b,
-                    -1.0j * d,
-                ],
-                [
-                    -1.0j * t1,
-                    -1.0j * y1,
-                    0,
-                    -1.0j * z1,
-                    -z1,
-                    1.0j * c,
-                    1.0j * a,
-                    1.0j * d,
-                    1.0j * b,
-                ],
-                [-t1, -z1, 1.0j * z1, 0, -y1, d, b, a, c],
-                [t1, -1.0j * z1, z1, y1, 0, -b, -d, -c, -a],
-                [1.0j * t2, 1.0j * a, -1.0j * c, -d, b, 0, 1.0j * y2, z2, 1.0j * z2],
-                [
-                    -1.0j * t2,
-                    1.0j * c,
-                    -1.0j * a,
-                    -b,
-                    d,
-                    -1.0j * y2,
-                    0,
-                    -1.0j * z2,
-                    -z2,
-                ],
-                [-t2, 1.0j * b, -1.0j * d, -a, c, -z2, 1.0j * z2, 0, -y2],
-                [t2, 1.0j * d, -1.0j * b, -c, a, -1.0j * z2, z2, y2, 0],
-            ]
+                    [0, -1.0j * t1, 1.0j * t1, t1, -t1, -1.0j * t2, 1.0j * t2, t2, -t2],
+                    [
+                        1.0j * t1,
+                        0,
+                        1.0j * y1,
+                        z1,
+                        1.0j * z1,
+                        -1.0j * a,
+                        -1.0j * c,
+                        -1.0j * b,
+                        -1.0j * d,
+                    ],
+                    [
+                        -1.0j * t1,
+                        -1.0j * y1,
+                        0,
+                        -1.0j * z1,
+                        -z1,
+                        1.0j * c,
+                        1.0j * a,
+                        1.0j * d,
+                        1.0j * b,
+                    ],
+                    [-t1, -z1, 1.0j * z1, 0, -y1, d, b, a, c],
+                    [t1, -1.0j * z1, z1, y1, 0, -b, -d, -c, -a],
+                    [1.0j * t2, 1.0j * a, -1.0j * c, -d, b, 0, 1.0j * y2, z2, 1.0j * z2],
+                    [
+                        -1.0j * t2,
+                        1.0j * c,
+                        -1.0j * a,
+                        -b,
+                        d,
+                        -1.0j * y2,
+                        0,
+                        -1.0j * z2,
+                        -z2,
+                    ],
+                    [-t2, 1.0j * b, -1.0j * d, -a, c, -z2, 1.0j * z2, 0, -y2],
+                    [t2, 1.0j * d, -1.0j * b, -c, a, -1.0j * z2, z2, y2, 0],
+                ]
+            )
         )
         # Define the 16x16 block diagonal tmat matrix for the two different colors in the order of:
         #  Psi1, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, Psi2, l_3, r_3, d_3, u_3, l_4, r_4, d_4, u_4, where 3 and 4 are the m=2 color
@@ -363,9 +363,7 @@ class D6System2D_Config(Config2DBase):
                 correct_order,
             )
         )
-        tmat_symb = (
-            xnp.transpose(perm) @ tmat_symb @ perm
-        )  # permute the modes to the correct order
+        tmat_symb = xnp.transpose(perm) @ tmat_symb @ perm  # permute the modes to the correct order
         return tmat_symb
 
     def generate_gamma_gauge_neutral_dict(self):
@@ -418,7 +416,4 @@ class D6System2D_Config(Config2DBase):
         )
         dest_unmixed[Direction.Y] = block_diag(blockumixed_Y, blockumixed_Y)
 
-        return np.array(
-            [dest_unmixed] * self.num_pg_layer
-            + [dest_unmixed] * self.num_fermionic_layer
-        )
+        return np.array([dest_unmixed] * self.num_pg_layer + [dest_unmixed] * self.num_fermionic_layer)

@@ -24,9 +24,7 @@ class Z2System2D2CConfig(Config2DBase):
 
     _nparams = 20
     ncopy = 2
-    nvirtmodes_vertex = (
-        8  # We have two virtual modes per direction (4 directions x 2 modes)
-    )
+    nvirtmodes_vertex = 8  # We have two virtual modes per direction (4 directions x 2 modes)
     nvirtmodes_link = 4  # Number of virtual modes per link (2 copies and l/r or u/d)
     nphysmodes_site = 1  # number of physical modes per site
 
@@ -46,9 +44,7 @@ class Z2System2D2CConfig(Config2DBase):
         # The parameters have the following order: [[t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i...],[..next layer..],....]
         if num_fermionic_layer != 0:
             # This ansatz does not support fermionic layers
-            raise ValueError(
-                "The Z2System2D2C ansatz does not support fermionic layers."
-            )
+            raise ValueError("The Z2System2D2C ansatz does not support fermionic layers.")
         super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0)
 
         # Translation invariance
@@ -64,9 +60,7 @@ class Z2System2D2CConfig(Config2DBase):
         self.unitcell_size = 1
 
         if not enforce_u1_symmetry:
-            logger.error(
-                "This ansatz does not support the relaxation of U(1) symmetry."
-            )
+            logger.error("This ansatz does not support the relaxation of U(1) symmetry.")
             raise ValueError("Invalid enforce_u1_symmetry.")
 
         # We store a list of the parameters forced to be zero by the ansatz
@@ -273,10 +267,6 @@ class Z2System2D2CConfig(Config2DBase):
             List[np.ndarray]: Covariance matrix of the ungauged projector on a single link
         """
         dest = [0] * 2
-        dest[Direction.X] = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix))
-        )
-        dest[Direction.Y] = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz))
-        )
+        dest[Direction.X] = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix)))
+        dest[Direction.Y] = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz)))
         return [dest] * self.nlayer

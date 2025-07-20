@@ -372,9 +372,7 @@ class TestSystemBase(unittest.TestCase):
                 for gamma_dirac in self.system_z2_1c.gamma_dirac_layervec_sitevec
             ]
         )
-        new_calc = xnp.real(
-            smat @ self.system_z2_1c.gamma_dirac_layervec_sitevec @ xnp.transpose(smat)
-        )
+        new_calc = xnp.real(smat @ self.system_z2_1c.gamma_dirac_layervec_sitevec @ xnp.transpose(smat))
         self.assertTrue((gamma_maj_vec == new_calc).all())
 
 
@@ -389,9 +387,7 @@ class TestSystemBaseDimensions(unittest.TestCase):
         nlayers = pg_layers + fermionic_layers
         unitcell_size = 2
         paramvec2C = np.random.rand(nlayers, unitcell_size, 20)
-        cfg2C = system.Z2System2D_G2C_F2C_Config(
-            lat, 0, 0, 0, 0, None, pg_layers, fermionic_layers, unitcell_size
-        )
+        cfg2C = system.Z2System2D_G2C_F2C_Config(lat, 0, 0, 0, 0, None, pg_layers, fermionic_layers, unitcell_size)
         cfg2C.paramvec = paramvec2C
         self.system_z2_2c = system.Z2System2D(cfg2C)
 
@@ -405,9 +401,7 @@ class TestSystemBaseDimensions(unittest.TestCase):
 
     def test_tmat_layervec_unitcellvec(self):
 
-        tmat_layervec_unitcellvec = np.array(
-            self.system_z2_2c.tmat_layervec_unitcellvec
-        )
+        tmat_layervec_unitcellvec = np.array(self.system_z2_2c.tmat_layervec_unitcellvec)
         actual_shape = tmat_layervec_unitcellvec.shape
 
         num_dirac_modes = 1 + 2 * 4  # (1 physical + 2 copies * 4 links)
@@ -435,9 +429,7 @@ class TestSystemBaseDimensions(unittest.TestCase):
 
     def test_gamma_dirac_layervec_sitevec(self):
 
-        gamma_dirac_layervec_sitevec = np.array(
-            self.system_z2_2c.gamma_dirac_layervec_sitevec
-        )
+        gamma_dirac_layervec_sitevec = np.array(self.system_z2_2c.gamma_dirac_layervec_sitevec)
         actual_shape = gamma_dirac_layervec_sitevec.shape
 
         num_dirac_modes = 2 * (1 + 2 * 4)  # 2 modes * (1 physical + 2 copies * 4 links)
@@ -451,9 +443,7 @@ class TestSystemBaseDimensions(unittest.TestCase):
 
     def test_gamma_maj_layervec_sitevec(self):
 
-        gamma_maj_layervec_sitevec = np.array(
-            self.system_z2_2c.gamma_maj_layervec_sitevec
-        )
+        gamma_maj_layervec_sitevec = np.array(self.system_z2_2c.gamma_maj_layervec_sitevec)
         actual_shape = gamma_maj_layervec_sitevec.shape
 
         num_maj_modes = 2 * (1 + 2 * 4)  # 2 modes * (1 physical + 2 copies * 4 links)
@@ -470,9 +460,7 @@ class TestSystemBaseDimensions(unittest.TestCase):
         gamma_maj_sys_vec = np.array(self.system_z2_2c.gamma_maj_sys_vec)
         actual_shape = gamma_maj_sys_vec.shape
 
-        num_modes_per_site = 2 * (
-            1 + 2 * 4
-        )  # 2 modes * (1 physical + 2 copies * 4 links)
+        num_modes_per_site = 2 * (1 + 2 * 4)  # 2 modes * (1 physical + 2 copies * 4 links)
         num_modes = num_modes_per_site * self.system_z2_2c.cfg.lattice.size
         target_shape = (
             self.system_z2_2c.cfg.nlayer,
@@ -487,9 +475,7 @@ class TestSystemBaseDimensions(unittest.TestCase):
         gamma_maj_sys_deriv_vec = self.system_z2_2c.gamma_maj_sys_deriv_vec(symb)
         actual_shape = gamma_maj_sys_deriv_vec.shape
 
-        num_modes_per_site = 2 * (
-            1 + 2 * 4
-        )  # 2 modes * (1 physical + 2 copies * 4 links)
+        num_modes_per_site = 2 * (1 + 2 * 4)  # 2 modes * (1 physical + 2 copies * 4 links)
         num_modes = num_modes_per_site * self.system_z2_2c.cfg.lattice.size
         target_shape = (
             self.system_z2_2c.cfg.nlayer,

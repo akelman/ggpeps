@@ -39,9 +39,7 @@ if __name__ == "__main__":
     nlayer = num_pg_layer + num_fermionic_layer
     unitcell_size = 1
     paramvec = np.random.rand(nlayer, unitcell_size, 20)
-    cfg = system.D6System2D_Config(
-        lat, 1, 1, 0, 0, None, num_pg_layer, num_fermionic_layer
-    )
+    cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer, num_fermionic_layer)
     cfg.paramvec = paramvec
     system_D6 = system.D2nSystem2D(cfg)
     system_D6.cfg.enforce_parameter_conditions(system_D6.cfg.paramvec)

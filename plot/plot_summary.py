@@ -43,9 +43,7 @@ def main(args):
 
     # Enrich dataset
     df_mc_ec["L"] = df_mc_ec["nx"].astype("str") + "x" + df_mc_ec["ny"].astype("str")
-    df_mc_ec.rename(
-        columns={"g2_el": "g_el", "g2_mag": "g_mag", "g2": "g"}, inplace=True
-    )
+    df_mc_ec.rename(columns={"g2_el": "g_el", "g2_mag": "g_mag", "g2": "g"}, inplace=True)
     obsnamevec = df_mc_ec.name.unique()
 
     if "g" not in df_mc_ec.columns:
@@ -56,9 +54,7 @@ def main(args):
     # Get exact data
     if args.exact is not None and os.path.isfile(args.exact):
         df_exact = pd.read_pickle(args.exact)
-        df_exact["L"] = (
-            df_exact["nx"].astype("str") + "x" + df_exact["ny"].astype("str")
-        )
+        df_exact["L"] = df_exact["nx"].astype("str") + "x" + df_exact["ny"].astype("str")
         df_exact["type"] = "ED"
         # Add numbers to the grouping columns to enable grouping
         df_exact["nlayer"] = -1
@@ -67,9 +63,7 @@ def main(args):
         # Adapt the naming convention between the ED and the MC/EC data
         df_exact.rename(columns={"g2_ham": "g", "value": "mean"}, inplace=True)
         df_exact.drop(columns=["nz", "gauge"], inplace=True)
-        if (
-            "g_el" not in df_exact.columns
-        ):  # the next four lines should be handled in a more robust way
+        if "g_el" not in df_exact.columns:  # the next four lines should be handled in a more robust way
             df_exact["g_el"] = df_exact.g / 2
         if "g" not in df_exact.columns:
             df_exact["g"] = df_exact.g_el * 2
@@ -112,9 +106,7 @@ def main(args):
         df = df_mc_ec
         df_diff = None
         if args.diff:
-            print(
-                f"File {args.exact} not found. We need it for the differences. Aborting."
-            )
+            print(f"File {args.exact} not found. We need it for the differences. Aborting.")
             sys.exit(1)
         else:
             print(f"File {args.exact} not found. Skipping.")
@@ -229,24 +221,16 @@ if __name__ == "__main__":
         default=False,
         help="Use logarithmic scaling for y axis",
     )
-    parser.add_argument(
-        "--show", action="store_true", default=False, help="Show the plot"
-    )
-    parser.add_argument(
-        "--no-save", action="store_true", default=False, help="Do not save the plot"
-    )
-    parser.add_argument(
-        "--xaxis", type=str, default="g_el", help="Quantity to be plotted on the x axis"
-    )
+    parser.add_argument("--show", action="store_true", default=False, help="Show the plot")
+    parser.add_argument("--no-save", action="store_true", default=False, help="Do not save the plot")
+    parser.add_argument("--xaxis", type=str, default="g_el", help="Quantity to be plotted on the x axis")
     parser.add_argument(
         "--xaxis_ind",
         type=int,
         default="0",
         help="If --xaxis quantity is an array, use this index",
     )
-    parser.add_argument(
-        "--obs", type=str, nargs="+", default=["energy"], help="Observables to plot"
-    )
+    parser.add_argument("--obs", type=str, nargs="+", default=["energy"], help="Observables to plot")
     parser.add_argument(
         "--obs_ind",
         type=int,

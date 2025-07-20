@@ -32,9 +32,7 @@ class MonteCarloEvaluatorConfig:
         self.meas_steps = None
         self.binsize: int = 1
         self.compute_grads: bool = False
-        self.update_size_per_step: int = (
-            1  # this can be set anywhere from 1 to nlinks (inclusive)
-        )
+        self.update_size_per_step: int = 1  # this can be set anywhere from 1 to nlinks (inclusive)
 
         # Logging frequency
         self.warmup_log_freq: int = 5000
@@ -124,28 +122,16 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["int_energy"] = Measurement("Interaction Energy", binsize)
         self.obsdict["mass_energy"] = Measurement("Mass Energy", binsize)
         self.obsdict["chem_energy"] = Measurement("Chemical Energy", binsize)
-        self.obsdict["mag_energy_op"] = Measurement(
-            "Magnetic Energy Operator (bare)", binsize
-        )
-        self.obsdict["el_energy_op"] = Measurement(
-            "Electric Energy Operator (bare)", binsize
-        )
-        self.obsdict["int_energy_op"] = Measurement(
-            "Interaction Energy Operator (bare)", binsize
-        )
-        self.obsdict["mass_energy_op"] = Measurement(
-            "Mass Energy Operator (bare)", binsize
-        )
+        self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
+        self.obsdict["el_energy_op"] = Measurement("Electric Energy Operator (bare)", binsize)
+        self.obsdict["int_energy_op"] = Measurement("Interaction Energy Operator (bare)", binsize)
+        self.obsdict["mass_energy_op"] = Measurement("Mass Energy Operator (bare)", binsize)
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
         if self.system.cfg.num_fermionic_layer > 0:
-            self.obsdict["all_occupations"] = Measurement(
-                "All Occupations (after PH)", binsize
-            )
+            self.obsdict["all_occupations"] = Measurement("All Occupations (after PH)", binsize)
             self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
-            self.obsdict["variance_occupation"] = Measurement(
-                "Variance Occupation", binsize
-            )
+            self.obsdict["variance_occupation"] = Measurement("Variance Occupation", binsize)
 
         # Wilson loops (of various sizes)
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
@@ -154,42 +140,24 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict[loop_name] = Measurement(loop_name, binsize)
 
         # Meson strings
-        max_string = (
-            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
-        )
+        max_string = 1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
         for k in range(1, max_string):
-            self.obsdict[f"square_string_0-0_{k}x{k}"] = Measurement(
-                f"square_string_0-0_{k}x{k}", binsize
-            )
+            self.obsdict[f"square_string_0-0_{k}x{k}"] = Measurement(f"square_string_0-0_{k}x{k}", binsize)
 
         # Gradients
         if self.cfg.compute_grads:
-            self.obsdict["el_energy_op_grad"] = Measurement(
-                "Electric Energy Operator Gradient", binsize
-            )
-            self.obsdict["int_energy_op_grad"] = Measurement(
-                "Interaction Energy Operator Gradient", binsize
-            )
-            self.obsdict["mass_energy_op_grad"] = Measurement(
-                "Mass Energy Operator Gradient", binsize
-            )
-            self.obsdict["chem_energy_op_grad"] = Measurement(
-                "Chemical Energy Operator Gradient", binsize
-            )
+            self.obsdict["el_energy_op_grad"] = Measurement("Electric Energy Operator Gradient", binsize)
+            self.obsdict["int_energy_op_grad"] = Measurement("Interaction Energy Operator Gradient", binsize)
+            self.obsdict["mass_energy_op_grad"] = Measurement("Mass Energy Operator Gradient", binsize)
+            self.obsdict["chem_energy_op_grad"] = Measurement("Chemical Energy Operator Gradient", binsize)
             self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm", binsize)
-            self.obsdict["energy_grad"] = Measurement(
-                "Gradient of Total Energy", binsize
-            )
+            self.obsdict["energy_grad"] = Measurement("Gradient of Total Energy", binsize)
 
     def measure(self) -> None:
         """Measure the corresponding observables in the dictionary"""
-        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
-            (0, 0), lattice.Direction.X
-        )
+        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
 
-        self.obsdict["polyakov_00_x"].append(
-            np.real(self.system.compute_path(polyakov_loop))
-        )
+        self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
         # self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
@@ -204,7 +172,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["mass_energy"].append(self.system.mass_energy)
         self.obsdict["chem_energy"].append(self.system.chem_energy)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
-        if self.system.cfg.num_fermionic_layer > 0: #We only compute occupations if there are fermionic layers
+        if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
             self.obsdict["all_occupations"].append(self.system.all_occupations)
             self.obsdict["average_occupation"].append(self.system.average_occupation())
 
@@ -217,28 +185,17 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
 
         # Meson strings
-        max_string = (
-            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
-        )
-        strings = [
-            self.system.cfg.lattice.generate_L_string((0, 0), (k, k))
-            for k in range(1, max_string)
-        ]
+        max_string = 1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
+        strings = [self.system.cfg.lattice.generate_L_string((0, 0), (k, k)) for k in range(1, max_string)]
         for k in range(1, max_string):
             string_name = f"square_string_0-0_{k}x{k}"
             self.obsdict[string_name].append(self.system.meson_string(strings[k - 1]))
 
         if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
-            self.obsdict["int_energy_op_grad"].append(
-                self.system.int_energy_op_grad_vec
-            )
-            self.obsdict["mass_energy_op_grad"].append(
-                self.system.mass_energy_op_grad_vec
-            )
-            self.obsdict["chem_energy_op_grad"].append(
-                self.system.chem_energy_op_grad_vec
-            )
+            self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
+            self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
+            self.obsdict["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
             self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
 
         return
@@ -250,10 +207,7 @@ class MonteCarloEvaluator(Evaluator):
         # Gradient of the magnetic energy
         meas_mag_energy_op = self.obsdict["mag_energy_op"]
         prod_mag_energy_grad = meas_mag_energy_op * meas_grad_over_norm
-        mag_energy_op_grad = (
-            prod_mag_energy_grad.mean()
-            - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
-        )
+        mag_energy_op_grad = prod_mag_energy_grad.mean() - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
         # Add the constants back into the expression of the magnetic energy
         mag_energy_grad = -2 * self.system.cfg.g_mag * mag_energy_op_grad
 
@@ -308,13 +262,7 @@ class MonteCarloEvaluator(Evaluator):
         )
 
         # Total gradient
-        grad = (
-            mag_energy_grad
-            + el_energy_grad
-            + int_energy_grad
-            + mass_energy_grad
-            + chem_energy_grad
-        )
+        grad = mag_energy_grad + el_energy_grad + int_energy_grad + mass_energy_grad + chem_energy_grad
         return grad
 
     def warmup(self) -> None:
@@ -334,9 +282,7 @@ class MonteCarloEvaluator(Evaluator):
         logger.debug("Starting MC measurement")
         while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
             if self.step % self.cfg.run_log_freq == 0:
-                acceptance_ratio = np.mean(
-                    self.obsdict["acceptance_prob"].datavec[-self.cfg.run_log_freq : :]
-                )
+                acceptance_ratio = np.mean(self.obsdict["acceptance_prob"].datavec[-self.cfg.run_log_freq : :])
                 logger.debug(
                     f"Run: {self.step}. Acceptance ratio of last {self.cfg.run_log_freq} steps is {acceptance_ratio}"
                 )
@@ -347,19 +293,13 @@ class MonteCarloEvaluator(Evaluator):
         # Update observables which depend on expectation values
         if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
             self.obsdict["variance_occupation"].extend(
-                (
-                    self.obsdict["average_occupation"].datavec
-                    - self.obsdict["average_occupation"].mean()
-                )
-                ** 2
+                (self.obsdict["average_occupation"].datavec - self.obsdict["average_occupation"].mean()) ** 2
             )
         if self.cfg.compute_grads:
             # Update gradients which depend on expectation values
             # For interface reasons, we insert meas_steps copies of this gradient
             total_grad = self.energy_gradient_mc()
-            self.obsdict["energy_grad"].extend(
-                [total_grad] * len(self.obsdict["energy"])
-            )
+            self.obsdict["energy_grad"].extend([total_grad] * len(self.obsdict["energy"]))
 
         logger.debug("Finished MC measurement")
         return
@@ -374,9 +314,7 @@ class MonteCarloEvaluator(Evaluator):
         # Pick a site to update
         lattice = self.system.cfg.lattice
         nlinks = lattice.nlinks
-        link_ind = self.cfg.rng_state.choice(
-            self.system.cfg.lattice.comp_tree, replace=False
-        )
+        link_ind = self.cfg.rng_state.choice(self.system.cfg.lattice.comp_tree, replace=False)
         # Uniformly pick a gauge value
         theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
         # Store the old values

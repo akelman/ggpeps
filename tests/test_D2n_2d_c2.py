@@ -24,9 +24,7 @@ class TestD2nSystem(unittest.TestCase):
         nlayer = num_pg_layer + num_fermionic_layer
         unitcell_size = 1
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
-        cfg = system.D6System2D_Config(
-            lat, 1, 1, 0, 0, None, num_pg_layer, num_fermionic_layer
-        )
+        cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer, num_fermionic_layer)
         cfg.paramvec = paramvec
         self.system_D6 = system.D2nSystem2D(cfg)
         self.system_D6.cfg.enforce_parameter_conditions(self.system_D6.cfg.paramvec)
@@ -54,9 +52,7 @@ class TestD2nSystem(unittest.TestCase):
             14,
             15,
         ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
-        for layer_ind in range(
-            self.system_D6.cfg.num_pg_layer, self.system_D6.cfg.nlayer
-        ):
+        for layer_ind in range(self.system_D6.cfg.num_pg_layer, self.system_D6.cfg.nlayer):
             for uc_ind in range(self.system_D6.cfg.unitcell_size):
                 for ind in zero_for_fermionic_layer:
                     with self.subTest(ind=ind, layerind=layer_ind):
@@ -84,9 +80,7 @@ class TestD2nSystem(unittest.TestCase):
         self.assertTrue(np.allclose(covmat_layer1, expected_covmat))
         self.assertTrue(np.allclose(covmat_layer2, expected_covmat))
 
-    @skip(
-        "This test needs adjusments and expected to pass after implementing physical fermionic layers."
-    )
+    @skip("This test needs adjusments and expected to pass after implementing physical fermionic layers.")
     def test_covmat_with_fermions(self):
         """Ensure the covariance matrix is not the pure-gauge one when t != 0.
         This test must be done with a gauge configuration that includes some flux.
@@ -135,9 +129,7 @@ class TestD2nSystem(unittest.TestCase):
             gamma_in_sys = self.system_D6.gamma_in_sys_vec[lay]
             self.assertTrue(utils.is_covmat(gamma_in_sys))
 
-    @skip(
-        "This test needs adjusments and expected to pass after implementing physical fermionic layers."
-    )
+    @skip("This test needs adjusments and expected to pass after implementing physical fermionic layers.")
     def test_t_zero(self):
         """Ensure mass and interaction energy are zero when t = 0"""
         # TODO: Fix after implementing physical fermionic layers.
@@ -149,9 +141,7 @@ class TestD2nSystem(unittest.TestCase):
         self.assertTrue(np.allclose(0, dest_dict["mass_energy"]))
         self.assertTrue(np.allclose(0, dest_dict["int_energy"]))
 
-    @skip(
-        "This test needs adjusments and expected to pass after implementing physical fermionic layers."
-    )
+    @skip("This test needs adjusments and expected to pass after implementing physical fermionic layers.")
     def test_t_nonzero(self):
         """Ensure mass and interaction energy are zero when t != 0.
         This checks for random params, which we assume do not give t = 0"""
@@ -195,9 +185,7 @@ class TestD2nSystem(unittest.TestCase):
         R = np.transpose(permutation_mat) @ R @ permutation_mat
         tmat = self.system_D6.cfg.tmat_symb
         res_rot = R.T @ tmat @ R - tmat
-        res = sp.simplify(
-            sp.simplify(res_rot)
-        )  # for some reason, two passes are needed
+        res = sp.simplify(sp.simplify(res_rot))  # for some reason, two passes are needed
         self.assertFalse(any(res))
 
         res = sp.simplify(tmat + tmat.T)
@@ -260,9 +248,7 @@ class TestD2nSystem(unittest.TestCase):
     # random parameters comparison with ED
 
     ###### Test Energy Gradients ######
-    @skip(
-        "This test needs adjusments and expected to pass after implementing electric energy."
-    )
+    @skip("This test needs adjusments and expected to pass after implementing electric energy.")
     def test_grad_el_energy_2C(self):
         # This is comparison of the analytic derivative against the numeric derivative
         # for the 2 copy fermionic ansatz
@@ -284,12 +270,8 @@ class TestD2nSystem(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2, 1.0, 0.0, 0.0, 0.0, None
-                    )
-                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2, 1.0, 0.0, 0.0, 0.0, None
-                    )
+                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -303,9 +285,7 @@ class TestD2nSystem(unittest.TestCase):
 
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
     @skip("This gradient tests with the 4 copy ansatz take to long")
     def test_grad_el_energy_4C(self):
@@ -329,12 +309,8 @@ class TestD2nSystem(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G4C_F4C_Config(
-                        lat_2x2, 1.0, 0.0, 0.0, 0.0, None
-                    )
-                    system_cfg_right = system.Z2System2D_G4C_F4C_Config(
-                        lat_2x2, 1.0, 0.0, 0.0, 0.0, None
-                    )
+                    system_cfg_left = system.Z2System2D_G4C_F4C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+                    system_cfg_right = system.Z2System2D_G4C_F4C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -346,13 +322,9 @@ class TestD2nSystem(unittest.TestCase):
                     val_right = system_z2_2_2_right.el_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
-    @skip(
-        "This test needs adjusments and expected to pass after implementing mass energy."
-    )
+    @skip("This test needs adjusments and expected to pass after implementing mass energy.")
     def test_grad_mass_energy_2C(self):
         # This is comparison of the analytic derivative against the numeric derivative
         # for the 2 copy fermionic ansatz
@@ -380,12 +352,8 @@ class TestD2nSystem(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2, 0.0, 0.0, 1.0, 1.0, None
-                    )
-                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2, 0.0, 0.0, 1.0, 1.0, None
-                    )
+                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
+                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -401,13 +369,9 @@ class TestD2nSystem(unittest.TestCase):
 
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
-    @skip(
-        "This test needs adjusments and expected to pass after implementing mass energy."
-    )
+    @skip("This test needs adjusments and expected to pass after implementing mass energy.")
     def test_grad_mass_energy_2flavor(self):
         # This is comparison of the analytic derivative against the numeric derivative
         # for the 2 copy fermionic ansatz with 2 physical flavors
@@ -472,9 +436,7 @@ class TestD2nSystem(unittest.TestCase):
 
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
     @skip("This gradient tests with the 4 copy ansatz take to long")
     def test_grad_mass_energy_4C(self):
@@ -539,13 +501,9 @@ class TestD2nSystem(unittest.TestCase):
 
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
-    @skip(
-        "This test needs adjusments and expected to pass after implementing intercation energy."
-    )
+    @skip("This test needs adjusments and expected to pass after implementing intercation energy.")
     def test_grad_int_energy_2C(self):
         # This is comparison of the analytic derivative against the numeric derivative
         # for the 2 copy fermionic ansatz
@@ -612,9 +570,7 @@ class TestD2nSystem(unittest.TestCase):
 
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
     @skip("This gradient tests with the 4 copy ansatz take to long")
     def test_grad_int_energy_4C(self):
@@ -683,13 +639,9 @@ class TestD2nSystem(unittest.TestCase):
 
                     # print(f"left: {val_left}, right: {val_right}")
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
-    @skip(
-        "This test needs adjusments and expected to pass after implementing chmical energy."
-    )
+    @skip("This test needs adjusments and expected to pass after implementing chmical energy.")
     def test_grad_chem_energy_2flavor(self):
         # This is comparison of the analytic derivative against the numeric derivative
         # for the 2 copy fermionic ansatz with 2 physical flavors
@@ -761,9 +713,7 @@ class TestD2nSystem(unittest.TestCase):
                     val_right = system_z2_2_2_right.chem_energy
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
     @skip("This test needs adjusments and mot expected to pass for now.")
     def test_FM(self):

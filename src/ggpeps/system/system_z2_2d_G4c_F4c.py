@@ -111,9 +111,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
 
         idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
         idxarr_lay_fermionic = get_pfaffian_arrays(indices_layer_fermionic, prefactors)
-        self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [
-            idxarr_lay_fermionic
-        ] * self.num_fermionic_layer
+        self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
 
         self.el_overall_factors = [1 / 256] * (
             self.nlayer
@@ -141,9 +139,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         for cop1 in range(self.ncopy):
             for cop2 in range(cop1 + 1, self.ncopy):
                 if (cop1 % 2) == (cop2 % 2):
-                    start = (
-                        3 * self.ncopy + (sum(countdown[:cop1]) + cop2 - cop1 - 1) * 4
-                    )
+                    start = 3 * self.ncopy + (sum(countdown[:cop1]) + cop2 - cop1 - 1) * 4
                     inds = [ind for ind in range(start, start + 4)]  # a,b,c,d
                     mixed_copy_inds += inds
 
@@ -236,9 +232,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         # Create a dictionary of parameters
         offset = self._nparams // 2  # offset to get index of imaginary part
         keys = [str(symb)[:-1] for symb in self.symbolvec[:offset]]
-        vals = [
-            self.symbolvec[i] + 1j * self.symbolvec[i + offset] for i in range(offset)
-        ]
+        vals = [self.symbolvec[i] + 1j * self.symbolvec[i + offset] for i in range(offset)]
         params = {key: val for key, val in zip(keys, vals)}
 
         # Define the form blocks of the T matrix -
@@ -276,15 +270,10 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         )
 
         # Generate all the blocks for all copies
-        t_blocks = [
-            Block_1.subs(params["t1"], params[f"t{i}"])
-            for i in range(1, self.ncopy + 1)
-        ]
+        t_blocks = [Block_1.subs(params["t1"], params[f"t{i}"]) for i in range(1, self.ncopy + 1)]
 
         yz_blocks = [
-            Block_2.subs(
-                [(params["y1"], params[f"y{i}"]), (params["z1"], params[f"z{i}"])]
-            )
+            Block_2.subs([(params["y1"], params[f"y{i}"]), (params["z1"], params[f"z{i}"])])
             for i in range(1, self.ncopy + 1)
         ]
 
@@ -378,12 +367,8 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         zeros_8 = np.zeros((8, 8))
 
         # We want to give the projectors for the pure gauge part, which mix copies
-        mixed_X = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix))
-        )
-        mixed_Y = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz))
-        )
+        mixed_X = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix)))
+        mixed_Y = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz)))
 
         dest_mixed[Direction.X] = np.block([[mixed_X, zeros_8], [zeros_8, mixed_X]])
         dest_mixed[Direction.Y] = np.block([[mixed_Y, zeros_8], [zeros_8, mixed_Y]])
@@ -416,13 +401,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
             ]
         )
 
-        dest_unmixed[Direction.X] = np.block(
-            [[unmixed_X, zeros_8], [zeros_8, unmixed_X]]
-        )
-        dest_unmixed[Direction.Y] = np.block(
-            [[unmixed_Y, zeros_8], [zeros_8, unmixed_Y]]
-        )
+        dest_unmixed[Direction.X] = np.block([[unmixed_X, zeros_8], [zeros_8, unmixed_X]])
+        dest_unmixed[Direction.Y] = np.block([[unmixed_Y, zeros_8], [zeros_8, unmixed_Y]])
 
-        return [dest_mixed] * self.num_pg_layer + [
-            dest_unmixed
-        ] * self.num_fermionic_layer
+        return [dest_mixed] * self.num_pg_layer + [dest_unmixed] * self.num_fermionic_layer

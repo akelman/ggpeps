@@ -29,42 +29,24 @@ def main(args, save_path=None):
             if pkl_ext == ".gz":
                 with gzip.open(args.pkl_fname[i], "rb") as infile:
                     dumpobj = pickle.load(infile)
-                    if (
-                        args.obs == "energy_grad"
-                    ):  # If we are plotting a gradient we need more than just the
+                    if args.obs == "energy_grad":  # If we are plotting a gradient we need more than just the
                         # observable timeseries to compute the dynamical eom. We need 3 more operators.
-                        energy_obsvec = np.asarray(
-                            dumpobj["mc"].obsdict["energy"].get_timeseries()
-                        )
-                        el_energy_grad = np.asarray(
-                            dumpobj["mc"].obsdict["el_energy_op_grad"].get_timeseries()
-                        )
+                        energy_obsvec = np.asarray(dumpobj["mc"].obsdict["energy"].get_timeseries())
+                        el_energy_grad = np.asarray(dumpobj["mc"].obsdict["el_energy_op_grad"].get_timeseries())
                         g_el = dumpobj["mc"].system.cfg.g_el
                         el_energy_grad = -2 * g_el * el_energy_grad
 
-                        mass_energy_grad = np.asarray(
-                            dumpobj["mc"]
-                            .obsdict["mass_energy_op_grad"]
-                            .get_timeseries()
-                        )
+                        mass_energy_grad = np.asarray(dumpobj["mc"].obsdict["mass_energy_op_grad"].get_timeseries())
                         g_mass = dumpobj["mc"].system.cfg.g_mass
                         mass_energy_grad = g_mass * mass_energy_grad
-                        int_energy_grad = np.asarray(
-                            dumpobj["mc"].obsdict["int_energy_op_grad"].get_timeseries()
-                        )
+                        int_energy_grad = np.asarray(dumpobj["mc"].obsdict["int_energy_op_grad"].get_timeseries())
                         g_int = dumpobj["mc"].system.cfg.g_int
                         int_energy_grad = g_int * int_energy_grad
 
-                        energy_grad_obsvec = (
-                            el_energy_grad + mass_energy_grad + int_energy_grad
-                        )
-                        grad_norm_obsvec = np.asarray(
-                            dumpobj["mc"].obsdict["grad_norm"].get_timeseries()
-                        )
+                        energy_grad_obsvec = el_energy_grad + mass_energy_grad + int_energy_grad
+                        grad_norm_obsvec = np.asarray(dumpobj["mc"].obsdict["grad_norm"].get_timeseries())
                     else:
-                        obsvec = np.asarray(
-                            dumpobj["mc"].obsdict[args.obs].get_timeseries()
-                        )
+                        obsvec = np.asarray(dumpobj["mc"].obsdict[args.obs].get_timeseries())
 
                     warmup_steps = dumpobj["mc"].cfg.warmup_steps
             else:
@@ -81,12 +63,8 @@ def main(args, save_path=None):
                     final_match = re.findall(final_pattern, content)
                     if final_match:
                         diff = int(matches[1][1]) - int(matches[0][1])
-                        matches.append(
-                            (final_match[0], str(int(matches[-1][1]) + diff))
-                        )
-                    start_time = datetime.strptime(
-                        matches[0][0], "%Y-%m-%d %H:%M:%S,%f"
-                    )
+                        matches.append((final_match[0], str(int(matches[-1][1]) + diff)))
+                    start_time = datetime.strptime(matches[0][0], "%Y-%m-%d %H:%M:%S,%f")
                     time = []
                     step_numbers = []
                     for match in matches:
@@ -104,9 +82,7 @@ def main(args, save_path=None):
                                 :, layer, grad_ind
                             ]  # if it is a gradient, we plot the graph for the specific index and layer num. We also need to compute the dynamic mean and eom differently.
 
-                            grad_norm_obsvec_sliced = grad_norm_obsvec[
-                                :, layer, grad_ind
-                            ]
+                            grad_norm_obsvec_sliced = grad_norm_obsvec[:, layer, grad_ind]
                             dyn_mean, dyn_eom = compute_dynamic_eom_mean_grad(
                                 energy_obsvec,
                                 energy_grad_obsvec_sliced,
@@ -117,10 +93,7 @@ def main(args, save_path=None):
                                 step_numbers[1:],
                                 dyn_mean,
                                 "o",
-                                label="layer "
-                                + str(layer)
-                                + ", grad_ind "
-                                + str(grad_ind),
+                                label="layer " + str(layer) + ", grad_ind " + str(grad_ind),
                             )
                             axvec[1].plot(step_numbers[1:], dyn_eom, "o")
                             axvec[2].plot(step_numbers[1:], dyn_eom, "o")
@@ -187,14 +160,10 @@ def compute_dynamic_eom_mean(obsvec, step_numbers):
     return dyn_mean, dyn_eom
 
 
-def compute_dynamic_eom_mean_grad(
-    op_obsvec, op_grad_obsvec, grad_norm_obsvec, step_numbers
-):
+def compute_dynamic_eom_mean_grad(op_obsvec, op_grad_obsvec, grad_norm_obsvec, step_numbers):
     dyn_eom = []
     dyn_mean = []
-    for step in step_numbers[
-        1:
-    ]:  # We are starting from 1 because there is no error at the first step.
+    for step in step_numbers[1:]:  # We are starting from 1 because there is no error at the first step.
         op_dyn = op_obsvec[0 : step + 1]
         op_grad_dyn = op_grad_obsvec[0 : step + 1]
         grad_norm_dyn = grad_norm_obsvec[0 : step + 1]

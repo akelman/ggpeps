@@ -76,9 +76,7 @@ def compute_grad_over_norm_jax(
     Returns:
         float: Gradient of the norm divided by the norm.
     """
-    dest = -0.5 * jnp.trace(
-        jnp.matmul(jnp.matmul(gamma_in_sys, deriv_d), jnp.matmul(mat_d_inv, diff))
-    )
+    dest = -0.5 * jnp.trace(jnp.matmul(jnp.matmul(gamma_in_sys, deriv_d), jnp.matmul(mat_d_inv, diff)))
     return dest
 
 
@@ -115,10 +113,7 @@ def compute_el_grad_vec_jax(system):
             layerind
         ].inv()  # this does not actually do a computation, just a retrieval
         single_link_offset = 2 * system.cfg.nvirtmodes_link
-        offset = (
-            2 * system.cfg.lattice.size * system.cfg.nphysmodes_site
-            + single_link_offset
-        )
+        offset = 2 * system.cfg.lattice.size * system.cfg.nphysmodes_site + single_link_offset
         idxarr = idxarrs[layerind]
         overall_factor = overall_factors[layerind]
         nlinks = system.cfg.lattice.nlinks
@@ -139,28 +134,18 @@ def compute_el_grad_vec_jax(system):
                     # we can skip it for parameters that are forced by the ansatz to be zero
                     dest_grad.at[layerind, uc_ind, symbol_ind].set(0)
                 else:
-                    deriv_gamma_maj_sys = system.gamma_maj_sys_deriv_vec(symbol)[
-                        layerind, uc_ind
-                    ]
-                    d_mat_a, d_mat_b, d_mat_d = (
-                        ggpeps.system.system_base.extract_partial_covmats(
-                            deriv_gamma_maj_sys, offset
-                        )
+                    deriv_gamma_maj_sys = system.gamma_maj_sys_deriv_vec(symbol)[layerind, uc_ind]
+                    d_mat_a, d_mat_b, d_mat_d = ggpeps.system.system_base.extract_partial_covmats(
+                        deriv_gamma_maj_sys, offset
                     )
                     d_gamma_out = (
                         d_mat_a
                         + d_mat_b @ diff_d_gamma_inv @ jnp.transpose(mat_b)
                         + mat_b @ diff_d_gamma_inv @ jnp.transpose(d_mat_b)
-                        - mat_b
-                        @ diff_d_gamma_inv
-                        @ d_mat_d
-                        @ diff_d_gamma_inv
-                        @ jnp.transpose(mat_b)
+                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ jnp.transpose(mat_b)
                     )
                     # The virtual mode is the last link on the bottom right of the covariance matrix
-                    d_covmat_out_virt = d_gamma_out[
-                        -single_link_offset:, -single_link_offset:
-                    ]
+                    d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
                     # Summand with derivative of the covariance matrix
                     # We re-use the list comprehension from above to use the indices
                     deriv_pfarr = [
@@ -171,9 +156,9 @@ def compute_el_grad_vec_jax(system):
                         )
                         for prefactor, ind in idxarr
                     ]
-                    d_el_energy = jnp.real(
-                        overall_factor * jnp.sum(jnp.array(deriv_pfarr))
-                    ) * jnp.exp(norm_mod - lognorm_default)
+                    d_el_energy = jnp.real(overall_factor * jnp.sum(jnp.array(deriv_pfarr))) * jnp.exp(
+                        norm_mod - lognorm_default
+                    )
 
                     # Summand with derivative of norms
                     trace_def = system.compute_grad_over_norm(symbol, layerind, uc_ind)
@@ -187,9 +172,7 @@ def compute_el_grad_vec_jax(system):
                     d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
                     # Scale to system size
                     d_el_energy *= nlinks
-                    dest_grad.at[layerind, uc_ind, symbol_ind].set(
-                        jnp.real(d_el_energy)
-                    )
+                    dest_grad.at[layerind, uc_ind, symbol_ind].set(jnp.real(d_el_energy))
 
     # We have to weigh the different layers with the electric energy operator expectation of the other layers.
     # They act as a prefactor in the derivative

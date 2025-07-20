@@ -101,9 +101,7 @@ if __name__ == "__main__":
         help="time attribute (default: 24:00:00)",
         default="24:00:00",
     )
-    parser.add_argument(
-        "-c", "--command", dest="command", type=str, help="command", default=""
-    )
+    parser.add_argument("-c", "--command", dest="command", type=str, help="command", default="")
     parser.add_argument(
         "-a",
         "--args",
@@ -120,8 +118,6 @@ if __name__ == "__main__":
         help="number of OMP threads (default: 4)",
         default="4",
     )
-    parser.add_argument(
-        "--prefix", type=str, help="name prefix (default: empty string)", default=""
-    )
+    parser.add_argument("--prefix", type=str, help="name prefix (default: empty string)", default="")
     args = parser.parse_args()
     main(args)

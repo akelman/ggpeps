@@ -67,10 +67,7 @@ class D2nSystem2D(System2DBase):
         rotmat = self.generate_rotmat(theta, coord, dir)
         gamma_neutral_gauge_vec = self.gamma_gauge_neutral_vec
         if color_to_check is not None:
-            ind_mat = (
-                2 * self.cfg.nvirtmodes_link * link_ind
-                + 2 * color_to_check * self.cfg.nvirtmodes_link_per_color
-            )
+            ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind + 2 * color_to_check * self.cfg.nvirtmodes_link_per_color
             rotmat = slice_matrix(
                 rotmat,
                 2 * self.cfg.nvirtmodes_link_per_color * color_to_check,
@@ -87,9 +84,7 @@ class D2nSystem2D(System2DBase):
                     2 * self.cfg.nvirtmodes_link_per_color * color_to_check,
                     2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1),
                 )
-                gamma_in_subst_layers.append(
-                    rotmat @ gamma_neutral_gauge_sliced @ xnp.transpose(rotmat)
-                )
+                gamma_in_subst_layers.append(rotmat @ gamma_neutral_gauge_sliced @ xnp.transpose(rotmat))
         else:
             ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
             gamma_in_subst_layers = [
@@ -99,15 +94,11 @@ class D2nSystem2D(System2DBase):
 
         updates = [
             self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys)
-            for gamma_in_subst, gamma_in_sys in zip(
-                gamma_in_subst_layers, self.gamma_in_sys_vec
-            )
+            for gamma_in_subst, gamma_in_sys in zip(gamma_in_subst_layers, self.gamma_in_sys_vec)
         ]
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
 
-    def calculate_weight_attempt(
-        self, link_ind: int, theta: xnp.array, all_factors=False
-    ):
+    def calculate_weight_attempt(self, link_ind: int, theta: xnp.array, all_factors=False):
         """
         This method overwrites an abstract method in System2DBase. For now, we need it only for the D2n systems.
 
@@ -139,9 +130,7 @@ class D2nSystem2D(System2DBase):
         )  # The transition that connects the two unconnected subgtoups of elements that are connected by singular paths
         for (
             g_tuple
-        ) in (
-            self.cfg.gaugemgr.forbidden_transitions
-        ):  # check if the update matrix is expected to be singular
+        ) in self.cfg.gaugemgr.forbidden_transitions:  # check if the update matrix is expected to be singular
             g1, g2 = g_tuple
             if (xnp.allclose(g1, current_theta) and xnp.allclose(g2, theta)) or (
                 xnp.allclose(g1, theta) and xnp.allclose(g2, current_theta)
@@ -155,12 +144,8 @@ class D2nSystem2D(System2DBase):
             for g in path:
                 self.update_gauge_ind(link_ind, g)
             current_g = xnp.copy(path[-1])
-            if (
-                xnp.allclose(current_g, g_transition_1)
-                and xnp.allclose(theta, g_transition_2)
-            ) or (
-                xnp.allclose(current_g, g_transition_2)
-                and xnp.allclose(theta, g_transition_1)
+            if (xnp.allclose(current_g, g_transition_1) and xnp.allclose(theta, g_transition_2)) or (
+                xnp.allclose(current_g, g_transition_2) and xnp.allclose(theta, g_transition_1)
             ):
 
                 color_to_check = 1
@@ -170,17 +155,11 @@ class D2nSystem2D(System2DBase):
 
             for g in path[-2::-1]:  # go back to the original gauge field
                 self.update_gauge_ind(link_ind, g)
-            self.update_gauge_ind(
-                link_ind, current_theta
-            )  # go back to the original gauge field
+            self.update_gauge_ind(link_ind, current_theta)  # go back to the original gauge field
 
         else:  # the update matrix is not singular and we can update the gauge straightforwardly
-            if (
-                xnp.allclose(current_theta, g_transition_1)
-                and xnp.allclose(theta, g_transition_2)
-            ) or (
-                xnp.allclose(current_theta, g_transition_2)
-                and xnp.allclose(theta, g_transition_1)
+            if (xnp.allclose(current_theta, g_transition_1) and xnp.allclose(theta, g_transition_2)) or (
+                xnp.allclose(current_theta, g_transition_2) and xnp.allclose(theta, g_transition_1)
             ):
 
                 color_to_check = 1
@@ -260,9 +239,7 @@ class D2nSystem2D(System2DBase):
 
         rotmat = xnp.kron(xnp.eye(self.cfg.ncopy), dest)
 
-        wrong_order = (
-            self.get_wrong_single_link_majorana_mode_order_by_copy_then_color()
-        )
+        wrong_order = self.get_wrong_single_link_majorana_mode_order_by_copy_then_color()
         correct_order_first_color_then_copy = self.get_single_link_majorana_mode_order()
         perm_mat = xnp.array(
             modearray.generate_permutation_matrix(
@@ -298,9 +275,7 @@ class D2nSystem2D(System2DBase):
         )  # The transition that connects the two unconnected subgtoups of elements that are connected by singular paths
         for (
             g_tuple
-        ) in (
-            self.cfg.gaugemgr.forbidden_transitions
-        ):  # check if the update matrix is expected to be singular
+        ) in self.cfg.gaugemgr.forbidden_transitions:  # check if the update matrix is expected to be singular
             g1, g2 = g_tuple
             if (xnp.allclose(g1, old_theta) and xnp.allclose(g2, theta)) or (
                 xnp.allclose(g1, theta) and xnp.allclose(g2, old_theta)
@@ -314,25 +289,15 @@ class D2nSystem2D(System2DBase):
             )  # get a non singular path between the two gauge values
             for g in path:
                 color_to_update = None  # we update both colors
-                if (
-                    xnp.allclose(previous_g, g_transition_1)
-                    and xnp.allclose(g, g_transition_2)
-                ) or (
-                    xnp.allclose(previous_g, g_transition_2)
-                    and xnp.allclose(g, g_transition_1)
+                if (xnp.allclose(previous_g, g_transition_1) and xnp.allclose(g, g_transition_2)) or (
+                    xnp.allclose(previous_g, g_transition_2) and xnp.allclose(g, g_transition_1)
                 ):  # in this case we update only the color m=1 (second color)
                     color_to_update = 1
-                self.update_non_singular_gauge_ind(
-                    link_ind, g, color_to_update=color_to_update
-                )
+                self.update_non_singular_gauge_ind(link_ind, g, color_to_update=color_to_update)
                 previous_g = xnp.copy(g)
         color_to_update = None  # we update both colors
-        if (
-            xnp.allclose(previous_g, g_transition_1)
-            and xnp.allclose(theta, g_transition_2)
-        ) or (
-            xnp.allclose(previous_g, g_transition_2)
-            and xnp.allclose(theta, g_transition_1)
+        if (xnp.allclose(previous_g, g_transition_1) and xnp.allclose(theta, g_transition_2)) or (
+            xnp.allclose(previous_g, g_transition_2) and xnp.allclose(theta, g_transition_1)
         ):  # in this case we update only the color m=1 (second color)
             color_to_update = 1
         self.update_non_singular_gauge_ind(
@@ -370,8 +335,7 @@ class D2nSystem2D(System2DBase):
             ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         else:
             ind_mat = (
-                2 * self.cfg.nvirtmodes_link * link_ind
-                + 2 * color_to_update * self.cfg.nvirtmodes_link_per_color
+                2 * self.cfg.nvirtmodes_link * link_ind + 2 * color_to_update * self.cfg.nvirtmodes_link_per_color
             )
             rotmat = slice_matrix(  # In this case we slice rotmat to only contain the relevant color
                 # We assume a specific ordering of the modes: (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
@@ -396,9 +360,7 @@ class D2nSystem2D(System2DBase):
                 )
             gamma_in_subst = rotmat @ gamma_neutral_gauge @ xnp.transpose(rotmat)
             update_vec.append(
-                self.calculate_update_gamma_in(
-                    ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]
-                )
+                self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer])
             )
             # Substitute in the array
             if ggpeps.PREFERRED_BACKEND == "jax":
@@ -419,17 +381,13 @@ class D2nSystem2D(System2DBase):
         detval_vec = np.array(
             [
                 incdet.update_index(mat_inv, update, ind_mat, ind_mat)
-                for mat_inv, update, incdet in zip(
-                    mat_inv_vec, update_vec, self.incdet_vec
-                )
+                for mat_inv, update, incdet in zip(mat_inv_vec, update_vec, self.incdet_vec)
             ]
         )
         # Update the modified determinant
         offset = 2 * self.cfg.nvirtmodes_link
         if ind_mat - offset >= 0:
-            for wi, update, incdet in zip(
-                self.wi_gamma_in_mod_vec, update_vec, self.incdet_mod_vec
-            ):
+            for wi, update, incdet in zip(self.wi_gamma_in_mod_vec, update_vec, self.incdet_mod_vec):
                 mat_inv = wi.inv()
                 incdet.update_index(mat_inv, update, ind_mat - offset, ind_mat - offset)
         # Update the weight
@@ -451,12 +409,8 @@ class D2nSystem2D(System2DBase):
                 for wi_gamma_in_mod, update in zip(self.wi_gamma_in_mod_vec, update_vec)
             ]
             [
-                wi_gamma_out_mod.update_index(
-                    update, ind_mat - offset, ind_mat - offset
-                )
-                for wi_gamma_out_mod, update in zip(
-                    self.wi_gamma_out_mod_vec, update_vec
-                )
+                wi_gamma_out_mod.update_index(update, ind_mat - offset, ind_mat - offset)
+                for wi_gamma_out_mod, update in zip(self.wi_gamma_out_mod_vec, update_vec)
             ]
 
         # Invalidate gauge dependent quantities
@@ -512,12 +466,8 @@ class D2nSystem2D(System2DBase):
 
         if not use_trans_inv:
             # Evaluate every link of the system
-            logger.error(
-                "compute_el_energy: The non-translational invariant case is not implemented yet."
-            )
-            raise NotImplementedError(
-                "The non-translational invariant case is not implemented yet."
-            )
+            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
+            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
         gradients = xnp.zeros(self.cfg.param_shape())
         return gradients
@@ -544,9 +494,7 @@ class D2nSystem2D(System2DBase):
             mag_energy_bare = 0
             for x in range(self.cfg.lattice.nx):
                 for y in range(self.cfg.lattice.ny):
-                    wilson_plaquette = self.cfg.lattice.generate_wilson_loop(
-                        (x, y), (1, 1)
-                    )
+                    wilson_plaquette = self.cfg.lattice.generate_wilson_loop((x, y), (1, 1))
                     mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
         return mag_energy_bare
 

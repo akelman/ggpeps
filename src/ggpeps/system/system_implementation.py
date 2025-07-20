@@ -79,9 +79,7 @@ class Z2System2D(System2DBase):
 
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
-        rot_right = xnp.array(
-            [[xnp.cos(theta), xnp.sin(theta)], [-xnp.sin(theta), xnp.cos(theta)]]
-        )
+        rot_right = xnp.array([[xnp.cos(theta), xnp.sin(theta)], [-xnp.sin(theta), xnp.cos(theta)]])
         # We have only one left mode => 2 Majorana modes
         rot_left = xnp.eye(2)
         # The mode order is lr (horizontally) or du (vertically).
@@ -118,9 +116,7 @@ class Z2System2D(System2DBase):
             gamma_neutral_gauge = self.gamma_gauge_neutral_vec[layer][dir]
             gamma_in_subst = rotmat @ gamma_neutral_gauge @ xnp.transpose(rotmat)
             update_vec.append(
-                self.calculate_update_gamma_in(
-                    ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]
-                )
+                self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer])
             )
 
             # Substitute in the array
@@ -142,17 +138,13 @@ class Z2System2D(System2DBase):
         detval_vec = np.array(
             [
                 incdet.update_index(mat_inv, update, ind_mat, ind_mat)
-                for mat_inv, update, incdet in zip(
-                    mat_inv_vec, update_vec, self.incdet_vec
-                )
+                for mat_inv, update, incdet in zip(mat_inv_vec, update_vec, self.incdet_vec)
             ]
         )
         # Update the modified determinant
         offset = 2 * self.cfg.nvirtmodes_link
         if ind_mat - offset >= 0:
-            for wi, update, incdet in zip(
-                self.wi_gamma_in_mod_vec, update_vec, self.incdet_mod_vec
-            ):
+            for wi, update, incdet in zip(self.wi_gamma_in_mod_vec, update_vec, self.incdet_mod_vec):
                 mat_inv = wi.inv()
                 incdet.update_index(mat_inv, update, ind_mat - offset, ind_mat - offset)
         # Update the weight
@@ -174,12 +166,8 @@ class Z2System2D(System2DBase):
                 for wi_gamma_in_mod, update in zip(self.wi_gamma_in_mod_vec, update_vec)
             ]
             [
-                wi_gamma_out_mod.update_index(
-                    update, ind_mat - offset, ind_mat - offset
-                )
-                for wi_gamma_out_mod, update in zip(
-                    self.wi_gamma_out_mod_vec, update_vec
-                )
+                wi_gamma_out_mod.update_index(update, ind_mat - offset, ind_mat - offset)
+                for wi_gamma_out_mod, update in zip(self.wi_gamma_out_mod_vec, update_vec)
             ]
 
         # Invalidate gauge dependent quantities
@@ -226,17 +214,13 @@ class Z2System2D(System2DBase):
                             symbol_ind,
                         ) not in self.cfg.zeroed_params:
 
-                            d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[
-                                symbol_ind
-                            ]
+                            d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[symbol_ind]
                             if ggpeps.PREFERRED_BACKEND == "numpy":
-                                gradients[layer_ind, uc_ind, symbol_ind] += (
+                                gradients[layer_ind, uc_ind, symbol_ind] += 0.5 * d_gamma_out[site_ind + 1, site_ind]
+                            elif ggpeps.PREFERRED_BACKEND == "jax":
+                                gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(
                                     0.5 * d_gamma_out[site_ind + 1, site_ind]
                                 )
-                            elif ggpeps.PREFERRED_BACKEND == "jax":
-                                gradients = gradients.at[
-                                    layer_ind, uc_ind, symbol_ind
-                                ].add(0.5 * d_gamma_out[site_ind + 1, site_ind])
 
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
@@ -271,12 +255,8 @@ class Z2System2D(System2DBase):
         """
         if not use_trans_inv:
             # Evaluate every link of the system
-            logger.error(
-                "compute_el_energy: The non-translational invariant case is not implemented yet."
-            )
-            raise NotImplementedError(
-                "The non-translational invariant case is not implemented yet."
-            )
+            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
+            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
         lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
         # This is the usual norm without any modifications
@@ -343,9 +323,7 @@ class Z2System2D(System2DBase):
                 pfvals.append(pfaval)
             el_energy_full = overall_factor * xnp.sum(xnp.array(pfarr))
 
-            el_energy_layer = xnp.real(el_energy_full) * xnp.exp(
-                norm_mod - lognorm_default
-            )
+            el_energy_layer = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
             dest.append(el_energy_layer)
 
             # Save intermediate calculations for use in gradient calculation
@@ -374,12 +352,8 @@ class Z2System2D(System2DBase):
 
         if not use_trans_inv:
             # Evaluate every link of the system
-            logger.error(
-                "compute_el_energy: The non-translational invariant case is not implemented yet."
-            )
-            raise NotImplementedError(
-                "The non-translational invariant case is not implemented yet."
-            )
+            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
+            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
         gradients = compute_el_grad_vec(self)
         return gradients
@@ -407,9 +381,7 @@ class Z2System2D(System2DBase):
             mag_energy_bare = 0
             for x in range(self.cfg.lattice.nx):
                 for y in range(self.cfg.lattice.ny):
-                    wilson_plaquette = self.cfg.lattice.generate_wilson_loop(
-                        (x, y), (1, 1)
-                    )
+                    wilson_plaquette = self.cfg.lattice.generate_wilson_loop((x, y), (1, 1))
                     mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
         return mag_energy_bare
 
@@ -438,27 +410,18 @@ class Z2System2D(System2DBase):
                 site_ind_cov = 2 * site_ind
 
                 # Horizontal link
-                ind_field_hor = self.cfg.lattice.coord2ind_dir(
-                    coord, Direction.X
-                )  # index of the horizontal link
-                neighborX_coord = self.cfg.lattice.get_neighbor(
-                    coord, Direction.X
-                )  # coordinates of neighboring site
+                ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X)  # index of the horizontal link
+                neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X)  # coordinates of neighboring site
                 neighborX_ind = 2 * self.cfg.lattice.coord2ind(
                     neighborX_coord
                 )  # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
                 gaugefield_hor = self.gaugefieldvec[
                     ind_field_hor
                 ]  # gaugefield_hor is a matrix representation of a group element
-                theta_hor = self.cfg.gaugemgr.get_angle(
-                    gaugefield_hor
-                )  # convert it to an angle
-                cos_factor_hor = xnp.cos(
-                    theta_hor
-                )  # simple way to get U from gauge value
+                theta_hor = self.cfg.gaugemgr.get_angle(gaugefield_hor)  # convert it to an angle
+                cos_factor_hor = xnp.cos(theta_hor)  # simple way to get U from gauge value
                 hor_link_energy = 0.5 * (
-                    covmat[site_ind_cov, neighborX_ind]
-                    - covmat[site_ind_cov + 1, neighborX_ind + 1]
+                    covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov + 1, neighborX_ind + 1]
                 )
                 layer_int_energy += hor_link_energy * cos_factor_hor
 
@@ -472,8 +435,7 @@ class Z2System2D(System2DBase):
                 )  # gaugefield_vert is a matrix represntation of a group elemnt
                 cos_factor_vert = xnp.cos(theta_vert)
                 vert_link_energy = 0.5 * (
-                    covmat[site_ind_cov, neighborY_ind + 1]
-                    + covmat[site_ind_cov + 1, neighborY_ind]
+                    covmat[site_ind_cov, neighborY_ind + 1] + covmat[site_ind_cov + 1, neighborY_ind]
                 )
                 layer_int_energy -= vert_link_energy * cos_factor_vert
 
@@ -489,9 +451,7 @@ class Z2System2D(System2DBase):
                             symbol_ind,
                         ) not in self.cfg.zeroed_params:
 
-                            d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[
-                                symbol_ind
-                            ]
+                            d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[symbol_ind]
                             grad = (
                                 0.5
                                 * cos_factor_hor
@@ -511,9 +471,7 @@ class Z2System2D(System2DBase):
                             if ggpeps.PREFERRED_BACKEND == "numpy":
                                 gradients[layer_ind, uc_ind, symbol_ind] += grad
                             elif ggpeps.PREFERRED_BACKEND == "jax":
-                                gradients = gradients.at[
-                                    layer_ind, uc_ind, symbol_ind
-                                ].add(grad)
+                                gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(grad)
 
             int_energy_op.append(layer_int_energy)
 
@@ -565,22 +523,14 @@ class Z2System2D(System2DBase):
                             symbol_ind,
                         ) not in self.cfg.zeroed_params:
 
-                            d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[
-                                symbol_ind
-                            ]
+                            d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[symbol_ind]
                             if ggpeps.PREFERRED_BACKEND == "numpy":
                                 gradients[layer_ind, uc_ind, symbol_ind] += (
-                                    0.5
-                                    * site_factor
-                                    * d_gamma_out[site_ind + 1, site_ind]
+                                    0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
                                 )
                             elif ggpeps.PREFERRED_BACKEND == "jax":
-                                gradients = gradients.at[
-                                    layer_ind, uc_ind, symbol_ind
-                                ].add(
-                                    0.5
-                                    * site_factor
-                                    * d_gamma_out[site_ind + 1, site_ind]
+                                gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(
+                                    0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
                                 )
 
                     # further terms of the derivative are included higher up in the computation stack
@@ -634,9 +584,7 @@ class Z2System2D(System2DBase):
                 )
             )
 
-            meson_op_vec.append(
-                xnp.abs(layer_val)
-            )  # TODO: is the absolute value necessary? why?
+            meson_op_vec.append(xnp.abs(layer_val))  # TODO: is the absolute value necessary? why?
         return xnp.array(meson_op_vec)
 
     def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:

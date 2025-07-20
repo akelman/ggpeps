@@ -84,9 +84,7 @@ class Measurement:
             return 0
 
         if use_binning:
-            if isinstance(self.datavec[0], np.ndarray) or isinstance(
-                self.datavec[0], jnp.ndarray
-            ):
+            if isinstance(self.datavec[0], np.ndarray) or isinstance(self.datavec[0], jnp.ndarray):
                 # self.datavec is an array of higher dimension
                 # we do not yet support finding the autocorrelation for such observables (TODO)
                 return utils.rebin_eom(self.datavec)

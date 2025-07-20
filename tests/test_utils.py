@@ -77,9 +77,7 @@ class TestUtils(unittest.TestCase):
             mat_rand_left = mat.copy()
             mat_rand_left[0, 1] -= eps
             mat_rand_left[1, 0] += eps
-            derivative_numeric = (
-                pf.pfaffian(mat_rand_right) - pf.pfaffian(mat_rand_left)
-            ) / (2 * eps)
+            derivative_numeric = (pf.pfaffian(mat_rand_right) - pf.pfaffian(mat_rand_left)) / (2 * eps)
             self.assertAlmostEqual(derivative_numeric, derivative_ana)
 
     def test_derivative_pfaffian_rnd(self):
@@ -101,9 +99,7 @@ class TestUtils(unittest.TestCase):
             mat_rand_left = xnp.array(mat_rand_left)
 
             derivative_ana = utils.derivative_pfaffian(mat_rand, deriv_mat)
-            derivative_numeric = (
-                pf.pfaffian(mat_rand_right) - pf.pfaffian(mat_rand_left)
-            ) / (2 * eps)
+            derivative_numeric = (pf.pfaffian(mat_rand_right) - pf.pfaffian(mat_rand_left)) / (2 * eps)
             self.assertAlmostEqual(derivative_numeric, derivative_ana)
 
 

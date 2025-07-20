@@ -19,9 +19,7 @@ def calculate_lognormvec_numpy(
         gamma_in_sys = gamma_in_sys_vec[ind]
         mat_d = mat_d_vec[ind]
 
-        sign, logval = np.linalg.slogdet(
-            (np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d)
-        )
+        sign, logval = np.linalg.slogdet((np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d))
 
         if all_factors:
             logval -= mat_d.shape[0] * np.log(2)
@@ -103,10 +101,7 @@ def compute_el_grad_vec_numpy(system):
             layerind
         ].inv()  # this does not actually do a computation, just a retrieval
         single_link_offset = 2 * system.cfg.nvirtmodes_link
-        offset = (
-            2 * system.cfg.lattice.size * system.cfg.nphysmodes_site
-            + single_link_offset
-        )
+        offset = 2 * system.cfg.lattice.size * system.cfg.nphysmodes_site + single_link_offset
         idxarr = idxarrs[layerind]
         overall_factor = overall_factors[layerind]
         nlinks = system.cfg.lattice.nlinks
@@ -127,28 +122,18 @@ def compute_el_grad_vec_numpy(system):
                     # we can skip it for parameters that are forced by the ansatz to be zero
                     dest_grad[layerind, uc_ind, symbol_ind] = 0
                 else:
-                    deriv_gamma_maj_sys = system.gamma_maj_sys_deriv_vec(symbol)[
-                        layerind, uc_ind
-                    ]
-                    d_mat_a, d_mat_b, d_mat_d = (
-                        ggpeps.system.system_base.extract_partial_covmats(
-                            deriv_gamma_maj_sys, offset
-                        )
+                    deriv_gamma_maj_sys = system.gamma_maj_sys_deriv_vec(symbol)[layerind, uc_ind]
+                    d_mat_a, d_mat_b, d_mat_d = ggpeps.system.system_base.extract_partial_covmats(
+                        deriv_gamma_maj_sys, offset
                     )
                     d_gamma_out = (
                         d_mat_a
                         + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
                         + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b)
-                        - mat_b
-                        @ diff_d_gamma_inv
-                        @ d_mat_d
-                        @ diff_d_gamma_inv
-                        @ np.transpose(mat_b)
+                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
                     )
                     # The virtual mode is the last link on the bottom right of the covariance matrix
-                    d_covmat_out_virt = d_gamma_out[
-                        -single_link_offset:, -single_link_offset:
-                    ]
+                    d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
                     # Summand with derivative of the covariance matrix
                     # We re-use the list comprehension from above to use the indices
                     deriv_pfarr = [
@@ -159,9 +144,7 @@ def compute_el_grad_vec_numpy(system):
                         )
                         for prefactor, ind in idxarr
                     ]
-                    d_el_energy = np.real(
-                        overall_factor * np.sum(deriv_pfarr)
-                    ) * np.exp(norm_mod - lognorm_default)
+                    d_el_energy = np.real(overall_factor * np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
 
                     # Summand with derivative of norms
                     trace_def = system.compute_grad_over_norm(symbol, layerind, uc_ind)

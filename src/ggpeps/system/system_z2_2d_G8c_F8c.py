@@ -66,9 +66,7 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         self.unitcell_size = 1
 
         if not enforce_u1_symmetry:
-            logger.error(
-                "This ansatz does not support the relaxation of U(1) symmetry."
-            )
+            logger.error("This ansatz does not support the relaxation of U(1) symmetry.")
             raise ValueError("Invalid enforce_u1_symmetry.")
 
         # We store a list of the parameters forced to be zero by the ansatz
@@ -97,12 +95,8 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
             [(26, 24), (27, 25), (24, 25), (26, 27)],
             [(30, 28), (31, 29), (28, 29), (30, 31)],
         ]
-        idxarr_lay1 = get_pfaffian_arrays(
-            indices_layer1, prefactors
-        )  # pure gauge layers
-        idxarr_lay2 = get_pfaffian_arrays(
-            indices_layer2, prefactors
-        )  # fermionic layers
+        idxarr_lay1 = get_pfaffian_arrays(indices_layer1, prefactors)  # pure gauge layers
+        idxarr_lay2 = get_pfaffian_arrays(indices_layer2, prefactors)  # fermionic layers
         self.idxarr_vec = [idxarr_lay1] * (self.num_pg_layer) + [idxarr_lay2]
         self.el_overall_factors = [1 / 256**2] * (
             self.nlayer
@@ -220,9 +214,7 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         ]  # copies which couple to themselves (if not zeroed out in enforce_parameter_conditions)
         for cop in copies:
             for l in ["z", "y"]:
-                all_params[f"{l}{cop}"] = (
-                    self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
-                )
+                all_params[f"{l}{cop}"] = self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
                 ind += 2
 
         copies_odd = [1, 3, 5, 7]
@@ -230,9 +222,7 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         for r in copies_odd:
             for c in copies_even:
                 for l in ["p", "q", "r", "s"]:
-                    all_params[f"{l}{r}{c}"] = (
-                        self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
-                    )
+                    all_params[f"{l}{r}{c}"] = self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
                     ind += 2
 
         # Extract params as variables for convenience
@@ -482,9 +472,7 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         M31 = -M13.T
         M32 = -M23.T
         Block_2b_33 = Block_2b.subs([(p12, p56), (q12, q56), (r12, r56), (s12, s56)])
-        M33 = sympy.Matrix(
-            sympy.BlockMatrix([[zeros_4, Block_2b_33], [-Block_2b_33.T, zeros_4]])
-        )
+        M33 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b_33], [-Block_2b_33.T, zeros_4]]))
         M34 = sympy.Matrix(
             sympy.BlockMatrix(
                 [
@@ -506,9 +494,7 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         M42 = -M24.T
         M43 = -M34.T
         Block_2b_44 = Block_2b.subs([(p12, p78), (q12, q78), (r12, r78), (s12, s78)])
-        M44 = sympy.Matrix(
-            sympy.BlockMatrix([[zeros_4, Block_2b_44], [-Block_2b_44.T, zeros_4]])
-        )
+        M44 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b_44], [-Block_2b_44.T, zeros_4]]))
 
         # Full T matrix
         tmat_symb = sympy.Matrix(
@@ -552,12 +538,8 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         dest_unmixed = [0] * 2  # does not mix copies
 
         # We want to give the projectors for the pure gauge part, which mix copies
-        mixed_X = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix))
-        )
-        mixed_Y = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz))
-        )
+        mixed_X = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix)))
+        mixed_Y = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz)))
 
         dest_mixed[Direction.X] = np.kron(np.eye(4), mixed_X)
         dest_mixed[Direction.Y] = np.kron(np.eye(4), mixed_Y)
@@ -592,6 +574,4 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         dest_unmixed[Direction.X] = np.kron(np.eye(4), unmixed_X)
         dest_unmixed[Direction.Y] = np.kron(np.eye(4), unmixed_Y)
 
-        return [dest_mixed] * self.num_pg_layer + [
-            dest_unmixed
-        ] * self.num_fermionic_layer
+        return [dest_mixed] * self.num_pg_layer + [dest_unmixed] * self.num_fermionic_layer

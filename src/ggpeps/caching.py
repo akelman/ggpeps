@@ -56,9 +56,7 @@ class Cache:
     def load_obj_from_local_cache(self, obj_name: str):
         return self.cache_data[obj_name]
 
-    def add_obs_to_cache(
-        self, paramvec: np.ndarray, obs: str, val: float, save_to_file: bool = False
-    ) -> None:
+    def add_obs_to_cache(self, paramvec: np.ndarray, obs: str, val: float, save_to_file: bool = False) -> None:
         if self.disable_cache:
             return
 
@@ -67,9 +65,7 @@ class Cache:
         obs_cache[key] = val
 
         obs_cache_len = len(obs_cache)
-        if (
-            obs_cache_len >= 1000 and not obs_cache_len % 500
-        ):  # 1000 is an arbitrary threshold
+        if obs_cache_len >= 1000 and not obs_cache_len % 500:  # 1000 is an arbitrary threshold
             logger.warning(f"Cache for obs {obs} is large: {obs_cache_len} items.")
 
         # Save to pickle file

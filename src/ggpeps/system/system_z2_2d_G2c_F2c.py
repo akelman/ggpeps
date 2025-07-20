@@ -107,9 +107,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         ]
         idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
         idxarr_lay_fermionic = get_pfaffian_arrays(indices_layer_fermionic, prefactors)
-        self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [
-            idxarr_lay_fermionic
-        ] * self.num_fermionic_layer
+        self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
         self.el_overall_factors = [
             -1 / 16
         ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
@@ -341,12 +339,8 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         dest_unmixed = [0] * 2  # does not mix copies
 
         # We want to give the projectors for the pure gauge part, which mix copies
-        dest_mixed[Direction.X] = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix))
-        )
-        dest_mixed[Direction.Y] = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz))
-        )
+        dest_mixed[Direction.X] = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix)))
+        dest_mixed[Direction.Y] = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz)))
 
         # We want to give the projectors for the fermionic part which don't mix copies
         # (so as to preserve global U(1) symmetry)
@@ -376,6 +370,4 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             ]
         )
 
-        return np.array(
-            [dest_mixed] * self.num_pg_layer + [dest_unmixed] * self.num_fermionic_layer
-        )
+        return np.array([dest_mixed] * self.num_pg_layer + [dest_unmixed] * self.num_fermionic_layer)

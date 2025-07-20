@@ -33,16 +33,12 @@ pauliz = np.array([[1, 0], [0, -1]])
 # ========== Utility Functions ====================
 
 
-def setup_logger(
-    logger: logging.Logger, log_file: str, level: str, runner_msg: str = ""
-):
+def setup_logger(logger: logging.Logger, log_file: str, level: str, runner_msg: str = ""):
     log_file_handler = logging.FileHandler(log_file)
     h_stdout = logging.StreamHandler(stream=sys.stdout)
     h_stderr = logging.StreamHandler(stream=sys.stderr)
     h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
-    formatter = logging.Formatter(
-        f"%(asctime)s [{runner_msg}%(levelname)s] %(message)s"
-    )
+    formatter = logging.Formatter(f"%(asctime)s [{runner_msg}%(levelname)s] %(message)s")
     h_stdout.setFormatter(formatter)
     log_file_handler.setFormatter(formatter)
     logger.addHandler(h_stdout)
@@ -197,9 +193,7 @@ def get_git_hash():
     srcdir = os.path.join(packagedir, os.path.pardir)
     rootdir = os.path.join(srcdir, os.path.pardir)
     gitdir = os.path.join(rootdir, ".git")
-    githash = subprocess.check_output(
-        ["git", f"--git-dir={gitdir}", "rev-parse", "HEAD"]
-    )
+    githash = subprocess.check_output(["git", f"--git-dir={gitdir}", "rev-parse", "HEAD"])
     return githash.decode("utf-8").strip()
 
 
@@ -245,11 +239,7 @@ def multiply_except(arr, ind: int):
 @nb.njit(cache=True)
 def pfaffian_explicit_4x4_masked(mat, ind):
     i0, i1, i2, i3 = ind
-    return (
-        (mat[i0, i1] * mat[i2, i3])
-        - (mat[i0, i2] * mat[i1, i3])
-        + (mat[i1, i2] * mat[i0, i3])
-    )
+    return (mat[i0, i1] * mat[i2, i3]) - (mat[i0, i2] * mat[i1, i3]) + (mat[i1, i2] * mat[i0, i3])
 
 
 @nb.njit(cache=True)
@@ -288,7 +278,8 @@ def derivative_pfaffian(mat, d_mat, pfaval=None):
     else:
         return 0.0
 
-def get_obs_mean_df(df: pd.DataFrame, obs: str)-> float:
+
+def get_obs_mean_df(df: pd.DataFrame, obs: str) -> float:
     """Get the mean of an observable from the summary dataframe.
 
     Args:
@@ -300,6 +291,7 @@ def get_obs_mean_df(df: pd.DataFrame, obs: str)-> float:
     """
     return df.loc[df["name"] == obs, "mean"].values[0]
 
+
 def save_summary_df(df, fname_summary: str):
     """Save the evaluation summary to a given filename
 
@@ -308,6 +300,7 @@ def save_summary_df(df, fname_summary: str):
         fname_summary (str): Output filename for the summary
     """
     df.to_pickle(fname_summary)
+
 
 # =========== Matrix Evaluation Functions ====================
 
@@ -340,9 +333,7 @@ def is_permutation(mat):
     """Returns true if the matrix is a permutation matrix."""
     n, m = mat.shape
     if issparse(mat):
-        raise NotImplementedError(
-            "Checking for sparse permutation matrices is not implemented."
-        )
+        raise NotImplementedError("Checking for sparse permutation matrices is not implemented.")
     else:
         square = n == m
         id = xnp.allclose(xnp.eye(n), mat @ xnp.transpose(mat))
@@ -504,9 +495,7 @@ class WoodburyInverter:
         if not xnp.allclose(c, 0):
             # We cannot update with C being zero since this matrix has no inverse
             cinv = xnp.linalg.inv(c)
-            self.ainv -= (
-                (self.ainv @ u) @ xnp.linalg.inv(cinv + v @ self.ainv @ u)
-            ) @ (v @ self.ainv)
+            self.ainv -= ((self.ainv @ u) @ xnp.linalg.inv(cinv + v @ self.ainv @ u)) @ (v @ self.ainv)
         return self.ainv
 
     def update_index(self, m, indi, indj):
@@ -518,9 +507,7 @@ class WoodburyInverter:
             idmat = xnp.eye(m_m, n_m)
             u = xnp.zeros((m_a, m_m))
             v = xnp.zeros((n_m, n_a))
-            if (
-                ggpeps.PREFERRED_BACKEND == "jax"
-            ):  # TODO: handle based on type checking instead
+            if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
                 u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
                 v = v.at[0:m_m, indj : indj + n_m].set(idmat)
             else:
@@ -558,9 +545,7 @@ def update_index(self, ainv, m, indi, indj, store=True):
         idmat = xnp.eye(m_m, n_m)
         u = xnp.zeros(m_a, m_m)
         v = xnp.zeros(n_m, n_a)
-        if (
-            ggpeps.PREFERRED_BACKEND == "jax"
-        ):  # TODO: handle based on type checking instead
+        if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
             u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
             v = v.at[0:m_m, indj : indj + n_m].set(idmat)
         else:
@@ -609,9 +594,7 @@ class IncLogAbsDeterminant:
             idmat = xnp.eye(m_m, n_m)
             u = xnp.zeros((m_a, m_m))
             v = xnp.zeros((n_m, n_a))
-            if (
-                ggpeps.PREFERRED_BACKEND == "jax"
-            ):  # TODO: handle based on type checking instead
+            if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
                 u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
                 v = v.at[0:m_m, indj : indj + n_m].set(idmat)
             else:
@@ -632,9 +615,7 @@ class BgbTransform:
     @property
     def mat_out(self):
         if self._mat_out is None:
-            wn, s, wp = svd(
-                self.mat_in, full_matrices=True, compute_uv=True
-            )  # self.mat_in is the T matrix
+            wn, s, wp = svd(self.mat_in, full_matrices=True, compute_uv=True)  # self.mat_in is the T matrix
             wp = herm_conj(wp)
             if not self.is_pure_gauge:
                 # TODO: Fix this
@@ -652,9 +633,7 @@ class BgbTransform:
             up = np.transpose(wp)
             un_rows, un_cols = un.shape
             up_rows, up_cols = up.shape
-            unitary_transform = np.zeros(
-                (un.shape[0] + up.shape[0], un.shape[1] + up.shape[1]), dtype=complex
-            )
+            unitary_transform = np.zeros((un.shape[0] + up.shape[0], un.shape[1] + up.shape[1]), dtype=complex)
             unitary_transform[:un_rows, :un_cols] = un
             unitary_transform[-up_rows:, -up_cols:] = up
 
@@ -663,9 +642,7 @@ class BgbTransform:
             r0_diagonal = np.zeros(trafo_size, dtype=complex)
             if not self.is_pure_gauge:
                 r0_diagonal[0] = 1j / 2.0
-            r0_diagonal[start_ind : start_ind + len(s)] = (
-                1j / 2.0 * (1 - s**2) / (1 + s**2)
-            )
+            r0_diagonal[start_ind : start_ind + len(s)] = 1j / 2.0 * (1 - s**2) / (1 + s**2)
             r0_diagonal[-len(s) :] = 1j / 2.0 * (1 - s**2) / (1 + s**2)
             r0 = np.diag(r0_diagonal)
 
@@ -686,9 +663,7 @@ class BgbTransform:
 
             gamma0 = np.zeros((2 * trafo_size, 2 * trafo_size), dtype=complex)
             gamma0 = np.block([[q0, r0], [np.conj(r0), np.conj(q0)]])
-            trafo_0 = block_diag(
-                herm_conj(unitary_transform), np.transpose(unitary_transform)
-            )
+            trafo_0 = block_diag(herm_conj(unitary_transform), np.transpose(unitary_transform))
             trafo_1 = block_diag(np.conj(unitary_transform), unitary_transform)
             # This matrix has the following order: psi, r+, u-, l-, d+,t,b, r-, l+,
             # u+, d-,t,b psi_dag, r+_dag, l-_dag, u-_dag, d+_dag,t_dag,b_dag,
@@ -862,14 +837,10 @@ def jacknife_gradient_error_propagation(op_datavec, op_grad_datavec, grad_norm_d
     grad_norm_datavec_resamples = jackknife_resampling(grad_norm_datavec)
     op_times_grad_norm_resamples = jackknife_resampling(op_datavec * grad_norm_datavec)
     mean_grad = np.mean(
-        op_grad_datavec_resamples
-        + op_times_grad_norm_resamples
-        - op_datavec_resamples * grad_norm_datavec_resamples
+        op_grad_datavec_resamples + op_times_grad_norm_resamples - op_datavec_resamples * grad_norm_datavec_resamples
     )
     grad_jacknife = (
-        op_grad_datavec_resamples
-        + op_times_grad_norm_resamples
-        - op_datavec_resamples * grad_norm_datavec_resamples
+        op_grad_datavec_resamples + op_times_grad_norm_resamples - op_datavec_resamples * grad_norm_datavec_resamples
     )
     n = len(grad_jacknife)
 
@@ -887,12 +858,8 @@ def compute_grad_err(op_datavec, op_grad_datavec, grad_norm_datavec):
         float: Error of the gradient of the observable
     """
     op_datavec_rebinned, op_datavec_rebinned_binsize = autocorr_rebin_data(op_datavec)
-    op_grad_datavec_rebinned, op_grad_datavec_rebinned_binsize = autocorr_rebin_data(
-        op_grad_datavec
-    )
-    grad_norm_datavec_rebinned, grad_norm_datavec_rebinned_binsize = (
-        autocorr_rebin_data(grad_norm_datavec)
-    )
+    op_grad_datavec_rebinned, op_grad_datavec_rebinned_binsize = autocorr_rebin_data(op_grad_datavec)
+    grad_norm_datavec_rebinned, grad_norm_datavec_rebinned_binsize = autocorr_rebin_data(grad_norm_datavec)
     max_binsize = max(
         op_datavec_rebinned_binsize,
         op_grad_datavec_rebinned_binsize,
@@ -1071,9 +1038,7 @@ def extract_params_from_run(source_dir, dest_dir):
             files = os.listdir(inner_dir)
             for f in files:
                 if os.path.isfile(os.path.join(inner_dir, f)):
-                    extract_params_from_results_file(
-                        os.path.join(inner_dir, f), dest_dir
-                    )
+                    extract_params_from_results_file(os.path.join(inner_dir, f), dest_dir)
 
 
 # ========== Testing Functions ====================

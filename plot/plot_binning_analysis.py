@@ -18,9 +18,7 @@ def main(args):
             if ext == ".gz":
                 with gzip.open(fname, "rb") as infile:
                     dumpobj = pickle.load(infile)
-                    obsvec = np.asarray(
-                        dumpobj["mc"].obsdict[args.obs].get_timeseries()
-                    )
+                    obsvec = np.asarray(dumpobj["mc"].obsdict[args.obs].get_timeseries())
             elif ext == ".txt":
                 obsvec = np.genfromtxt(fname)
             else:

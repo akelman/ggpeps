@@ -70,14 +70,10 @@ class TestU1SystemMethods(unittest.TestCase):
         # This update is a nullop since we initialize the gauge-field with 0
         zeroarr = np.zeros((1, 1))
         # The factor of 2 compensates for the
-        logdet_inc = 2 * self.system_u1_2_2.update_lognorm_inc(
-            0, zeroarr, all_factors=False
-        )
+        logdet_inc = 2 * self.system_u1_2_2.update_lognorm_inc(0, zeroarr, all_factors=False)
         # This is equivalent to
         # logdet_inc = self.system_u1_2_2.incdet.det()
-        diff = (
-            self.system_u1_2_2.mat_d_inv_vec[0] - self.system_u1_2_2.gamma_in_sys_vec[0]
-        )
+        diff = self.system_u1_2_2.mat_d_inv_vec[0] - self.system_u1_2_2.gamma_in_sys_vec[0]
         sign, logdet = np.linalg.slogdet(diff)
         self.assertGreater(sign, 0)
         self.assertAlmostEqual(logdet_inc, logdet)
@@ -94,9 +90,7 @@ class TestU1SystemMethods(unittest.TestCase):
         # Test that the incremental update is equivalent to re-calculation of the norm
         ind = 0
         theta = np.array([[-1.0]])
-        weight_inc = self.system_u1_2_2.calculate_weight_attempt(
-            ind, theta, all_factors=True
-        )
+        weight_inc = self.system_u1_2_2.calculate_weight_attempt(ind, theta, all_factors=True)
         self.system_u1_2_2.update_gauge_ind(ind, theta)
         weight_recalc = self.system_u1_2_2.calculate_lognorm(all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
@@ -108,9 +102,7 @@ class TestU1SystemMethods(unittest.TestCase):
         cfg.paramvec = paramvec
         system_u1_2_2 = system.U1System2D(cfg)
         gamma_dirac = system_u1_2_2.gamma_dirac_layervec_sitevec[0]
-        gamma_dirac_cpp = utils.load_matrix_dat_fmt(
-            "misc/gamma_dirac_cpp_t_0.1_y_0.4_z_0.2.dat"
-        )
+        gamma_dirac_cpp = utils.load_matrix_dat_fmt("misc/gamma_dirac_cpp_t_0.1_y_0.4_z_0.2.dat")
         self.assertTrue(np.allclose(gamma_dirac, gamma_dirac_cpp))
 
     def test_compare_cpp_gamma_maj(self):
@@ -122,9 +114,7 @@ class TestU1SystemMethods(unittest.TestCase):
         lay = 0
         site = 0
         gamma_maj = system_u1_2_2.gamma_maj_layervec_sitevec[lay][site]
-        gamma_maj_cpp = utils.load_matrix_dat_fmt(
-            "misc/gamma_maj_cpp_t_0.1_y_0.4_z_0.2.dat", is_complex=False
-        )
+        gamma_maj_cpp = utils.load_matrix_dat_fmt("misc/gamma_maj_cpp_t_0.1_y_0.4_z_0.2.dat", is_complex=False)
         self.assertTrue(np.allclose(gamma_maj, gamma_maj_cpp))
 
     def test_compare_cpp_pure_gauge_gamma_dirac(self):
@@ -134,9 +124,7 @@ class TestU1SystemMethods(unittest.TestCase):
         cfg.paramvec = paramvec
         system_u1_2_2 = system.U1System2D(cfg)
         gamma_dirac = system_u1_2_2.gamma_dirac_layervec_sitevec[0]
-        gamma_dirac_cpp = utils.load_matrix_dat_fmt(
-            "misc/gamma_dirac_cpp_t_0.0_y_0.4_z_0.2.dat"
-        )
+        gamma_dirac_cpp = utils.load_matrix_dat_fmt("misc/gamma_dirac_cpp_t_0.0_y_0.4_z_0.2.dat")
         self.assertTrue(np.allclose(gamma_dirac, gamma_dirac_cpp))
 
     def test_compare_cpp_pure_gauge_gamma_maj(self):
@@ -148,9 +136,7 @@ class TestU1SystemMethods(unittest.TestCase):
         lay = 0
         site = 0
         gamma_maj = system_u1_2_2.gamma_maj_layervec_sitevec[lay][site]
-        gamma_maj_cpp = utils.load_matrix_dat_fmt(
-            "misc/gamma_maj_cpp_t_0.0_y_0.4_z_0.2.dat", is_complex=False
-        )
+        gamma_maj_cpp = utils.load_matrix_dat_fmt("misc/gamma_maj_cpp_t_0.0_y_0.4_z_0.2.dat", is_complex=False)
         self.assertTrue(np.allclose(gamma_maj, gamma_maj_cpp))
 
     @skip(
@@ -214,17 +200,11 @@ class TestU1SystemMethods(unittest.TestCase):
         # Setting mode r(0,1)-
         gamma_maj_sys[offset + 14 : offset + 16, offset + 14 : offset + 16] = filled
         system_u1.gamma_maj_sys_vec[0] = gamma_maj_sys
-        mat_d = gamma_maj_sys[
-            offset : gamma_maj_sys.shape[0], offset : gamma_maj_sys.shape[1]
-        ]
+        mat_d = gamma_maj_sys[offset : gamma_maj_sys.shape[0], offset : gamma_maj_sys.shape[1]]
 
         if ggpeps.PREFERRED_BACKEND == "jax":
-            system_u1._mat_d_inv_vec = system_u1.mat_d_inv_vec.at[0].set(
-                xnp.linalg.inv(mat_d)
-            )
-            system_u1._det_mat_d_vec = system_u1.det_mat_d_vec.at[0].set(
-                xnp.linalg.slogdet(mat_d)[1]
-            )
+            system_u1._mat_d_inv_vec = system_u1.mat_d_inv_vec.at[0].set(xnp.linalg.inv(mat_d))
+            system_u1._det_mat_d_vec = system_u1.det_mat_d_vec.at[0].set(xnp.linalg.slogdet(mat_d)[1])
         else:
             system_u1.mat_d_inv_vec[0] = np.linalg.inv(mat_d)
             system_u1.det_mat_d_vec[0] = np.linalg.slogdet(mat_d)[1]
@@ -258,17 +238,11 @@ class TestU1SystemMethods(unittest.TestCase):
         # Setting mode r(0,1)+
         gamma_maj_sys[offset + 12 : offset + 14, offset + 12 : offset + 14] = filled
         system_u1.gamma_maj_sys_vec[0] = gamma_maj_sys
-        mat_d = gamma_maj_sys[
-            offset : gamma_maj_sys.shape[0], offset : gamma_maj_sys.shape[1]
-        ]
+        mat_d = gamma_maj_sys[offset : gamma_maj_sys.shape[0], offset : gamma_maj_sys.shape[1]]
 
         if ggpeps.PREFERRED_BACKEND == "jax":
-            system_u1._mat_d_inv_vec = system_u1.mat_d_inv_vec.at[0].set(
-                xnp.linalg.inv(mat_d)
-            )
-            system_u1._det_mat_d_vec = system_u1.det_mat_d_vec.at[0].set(
-                xnp.linalg.slogdet(mat_d)[1]
-            )
+            system_u1._mat_d_inv_vec = system_u1.mat_d_inv_vec.at[0].set(xnp.linalg.inv(mat_d))
+            system_u1._det_mat_d_vec = system_u1.det_mat_d_vec.at[0].set(xnp.linalg.slogdet(mat_d)[1])
         else:
             system_u1.mat_d_inv_vec[0] = np.linalg.inv(mat_d)
             system_u1.det_mat_d_vec[0] = np.linalg.slogdet(mat_d)[1]

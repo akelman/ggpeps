@@ -21,9 +21,7 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 class Z2System2DConfig(Config2DBase):
     _nparams = 6
     ncopy = 1
-    nvirtmodes_vertex = (
-        4  # We have one virtual mode per direction (1 mode x 4 directions)
-    )
+    nvirtmodes_vertex = 4  # We have one virtual mode per direction (1 mode x 4 directions)
     nvirtmodes_link = 2  # We have two virtual modes per link (l/r or u/d)
     nphysmodes_site = 1  # number of physical modes per site
 
@@ -60,9 +58,7 @@ class Z2System2DConfig(Config2DBase):
         self.unitcell_size = 1
 
         if not enforce_u1_symmetry:
-            logger.error(
-                "This ansatz does not support the relaxation of U(1) symmetry."
-            )
+            logger.error("This ansatz does not support the relaxation of U(1) symmetry.")
             raise ValueError("Invalid enforce_u1_symmetry.")
 
         # This is for pure-gauge only atm

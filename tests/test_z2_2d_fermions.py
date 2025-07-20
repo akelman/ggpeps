@@ -24,9 +24,7 @@ class TestZ2System(unittest.TestCase):
         nlayer = num_pg_layer + num_fermionic_layer
         unitcell_size = 1
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
-        cfg = system.Z2System2D_G2C_F2C_Config(
-            lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1
-        )
+        cfg = system.Z2System2D_G2C_F2C_Config(lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1)
         cfg.paramvec = paramvec
         self.system_z2 = system.Z2System2D(cfg)
         self.system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
@@ -56,9 +54,7 @@ class TestZ2System(unittest.TestCase):
             14,
             15,
         ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
-        for layer_ind in range(
-            self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer
-        ):
+        for layer_ind in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
             for uc_ind in range(self.system_z2.cfg.unitcell_size):
                 for ind in zero_for_fermionic_layer:
                     with self.subTest(ind=ind, layerind=layer_ind):
@@ -177,9 +173,7 @@ class TestZ2System(unittest.TestCase):
         )
         tmat = self.system_z2.cfg.tmat_symb
         res_rot = R.T @ tmat @ R - tmat
-        res = sp.simplify(
-            sp.simplify(res_rot)
-        )  # for some reason, two passes are needed
+        res = sp.simplify(sp.simplify(res_rot))  # for some reason, two passes are needed
         self.assertFalse(any(res))
 
         res = sp.simplify(tmat + tmat.T)
@@ -252,12 +246,8 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2, 1.0, 0.0, 0.0, 0.0, None
-                    )
-                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2, 1.0, 0.0, 0.0, 0.0, None
-                    )
+                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -269,9 +259,7 @@ class TestZ2System(unittest.TestCase):
                     val_right = system_z2_2_2_right.el_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
     @skip("This gradient tests with the 4 copy ansatz take to long")
     def test_grad_el_energy_4C(self):
@@ -295,12 +283,8 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G4C_F4C_Config(
-                        lat_2x2, 1.0, 0.0, 0.0, 0.0, None
-                    )
-                    system_cfg_right = system.Z2System2D_G4C_F4C_Config(
-                        lat_2x2, 1.0, 0.0, 0.0, 0.0, None
-                    )
+                    system_cfg_left = system.Z2System2D_G4C_F4C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+                    system_cfg_right = system.Z2System2D_G4C_F4C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -312,9 +296,7 @@ class TestZ2System(unittest.TestCase):
                     val_right = system_z2_2_2_right.el_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
     def test_grad_mass_energy_2C(self):
         # This is comparison of the analytic derivative against the numeric derivative
@@ -345,12 +327,8 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2, 0.0, 0.0, 1.0, 1.0, None
-                    )
-                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(
-                        lat_2x2, 0.0, 0.0, 1.0, 1.0, None
-                    )
+                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
+                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -364,9 +342,7 @@ class TestZ2System(unittest.TestCase):
                     val_right = system_z2_2_2_right.mass_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
     def test_grad_mass_energy_2flavor(self):
         # This is comparison of the analytic derivative against the numeric derivative
@@ -432,9 +408,7 @@ class TestZ2System(unittest.TestCase):
                     val_right = system_z2_2_2_right.mass_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
     @skip("This gradient tests with the 4 copy ansatz take to long")
     def test_grad_mass_energy_4C(self):
@@ -499,9 +473,7 @@ class TestZ2System(unittest.TestCase):
                     val_right = system_z2_2_2_right.mass_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
     def test_grad_int_energy_2C(self):
         # This is comparison of the analytic derivative against the numeric derivative
@@ -570,9 +542,7 @@ class TestZ2System(unittest.TestCase):
                     val_right = system_z2_2_2_right.int_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
     @skip("This gradient tests with the 4 copy ansatz take to long")
     def test_grad_int_energy_4C(self):
@@ -641,9 +611,7 @@ class TestZ2System(unittest.TestCase):
                     val_right = system_z2_2_2_right.int_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
     def test_grad_chem_energy_2flavor(self):
         # This is comparison of the analytic derivative against the numeric derivative
@@ -719,9 +687,7 @@ class TestZ2System(unittest.TestCase):
                     val_right = system_z2_2_2_right.chem_energy
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
     def test_FM(self):
 
@@ -1003,9 +969,7 @@ class TestTransVariance(unittest.TestCase):
         modes_link_order = self.system_z2.get_link_based_mode_order()
         modes_site_order = self.system_z2.get_site_based_mode_order()
         mat_perm = generate_permutation_matrix(modes_link_order, modes_site_order)
-        mat_perm = np.array(
-            mat_perm
-        )  # multiplication of ModeArray with np.ndarray is not working properly
+        mat_perm = np.array(mat_perm)  # multiplication of ModeArray with np.ndarray is not working properly
         mat_d = np.transpose(mat_perm) @ mat_d @ mat_perm
 
         mat_site_0 = mat_d[0:16, 0:16]
@@ -1013,9 +977,7 @@ class TestTransVariance(unittest.TestCase):
         self.assertFalse(np.allclose(mat_site_0, mat_site_1))
         for site in range(self.system_z2.cfg.lattice.size):
             site_ind = 2 * site
-            mat = mat_d[
-                8 * site_ind : 8 * (site_ind + 2), 8 * site_ind : 8 * (site_ind + 2)
-            ]
+            mat = mat_d[8 * site_ind : 8 * (site_ind + 2), 8 * site_ind : 8 * (site_ind + 2)]
 
             x, y = self.system_z2.cfg.lattice.ind2coord(site)
             if (x + y) % 2 == 0:
@@ -1075,9 +1037,7 @@ class TestTransVariance(unittest.TestCase):
                 #  so we set the link to the right of the site under consideration to pi
                 x, y = self.system_z2.cfg.lattice.ind2coord(site)
                 config = np.array([neutral_gauge] * 8)
-                ind = self.system_z2.cfg.lattice.coord2ind_dir(
-                    (x, y), lattice.Direction.X
-                )
+                ind = self.system_z2.cfg.lattice.coord2ind_dir((x, y), lattice.Direction.X)
                 config[ind] = flux_gauge
                 self.system_z2.update_gauge_full_system(config)
                 covmat = self.system_z2.compute_ferm_cov(lay)
@@ -1089,9 +1049,7 @@ class TestTransVariance(unittest.TestCase):
             # Check the covmats
             covmat_even = covmats[0]
             covmat_odd = covmats[1]
-            self.assertFalse(
-                np.allclose(covmat_even, covmat_odd)
-            )  # with high probability for random parameters
+            self.assertFalse(np.allclose(covmat_even, covmat_odd))  # with high probability for random parameters
             for site in range(self.system_z2.cfg.lattice.size):
                 x, y = self.system_z2.cfg.lattice.ind2coord(site)
                 mat = covmats[site]
@@ -1121,9 +1079,7 @@ class TestTransVariance(unittest.TestCase):
                 #  so we set the link to the right of the site under consideration to pi
                 x, y = self.system_z2.cfg.lattice.ind2coord(site)
                 config = np.array([neutral_gauge] * 7 + [neutral_gauge] * 1)
-                ind = self.system_z2.cfg.lattice.coord2ind_dir(
-                    (x, y), lattice.Direction.X
-                )
+                ind = self.system_z2.cfg.lattice.coord2ind_dir((x, y), lattice.Direction.X)
                 config[ind] = flux_gauge
                 self.system_z2.update_gauge_full_system(config)
                 covmat = self.system_z2.compute_ferm_cov(lay)
@@ -1135,9 +1091,7 @@ class TestTransVariance(unittest.TestCase):
             # Check the masses
             mass_even = masses[0]
             mass_odd = masses[1]
-            self.assertFalse(
-                np.allclose(mass_even, mass_odd)
-            )  # with high probability for random parameters
+            self.assertFalse(np.allclose(mass_even, mass_odd))  # with high probability for random parameters
             for site in range(self.system_z2.cfg.lattice.size):
                 x, y = self.system_z2.cfg.lattice.ind2coord(site)
                 mass_site = masses[site]
@@ -1190,11 +1144,7 @@ class TestTransVariance(unittest.TestCase):
         new_chem_op = np.sum(system_z2.chem_energy_op_vec)
 
         # Correct for chem offsets
-        chem_offset = (
-            0.5
-            * self.system_z2.cfg.lattice.size
-            * self.system_z2.cfg.num_fermionic_layer
-        )
+        chem_offset = 0.5 * self.system_z2.cfg.lattice.size * self.system_z2.cfg.num_fermionic_layer
         chem_val = chem_op - chem_offset
         new_chem_val = new_chem_op - chem_offset
 
@@ -1219,11 +1169,7 @@ class TestTransVariance(unittest.TestCase):
         chem_op = np.sum(self.system_z2.chem_energy_op_vec)
         all_occupations = self.system_z2.all_occupations
 
-        mass_offset = (
-            0.5
-            * self.system_z2.cfg.lattice.size
-            * self.system_z2.cfg.num_fermionic_layer
-        )
+        mass_offset = 0.5 * self.system_z2.cfg.lattice.size * self.system_z2.cfg.num_fermionic_layer
         mass = mass_offset
         mass += np.sum(all_occupations[:, [0, 3]])  # even sites
         mass -= np.sum(all_occupations[:, [1, 2]])  # odd sites
@@ -1252,9 +1198,7 @@ class TestTransVariance(unittest.TestCase):
             # we could skip the pure gauge layers, since they do not contribute
             for uc_ind in range(unitcell_size):
                 for ind in range(len(symbolvec)):
-                    with self.subTest(
-                        symbol=symbolvec[ind], layerind=layerind, uc_ind=uc_ind
-                    ):
+                    with self.subTest(symbol=symbolvec[ind], layerind=layerind, uc_ind=uc_ind):
                         paramvec_left = np.copy(paramvec)
                         paramvec_right = np.copy(paramvec)
                         paramvec_left[layerind, uc_ind, ind] -= eps
@@ -1296,9 +1240,7 @@ class TestTransVariance(unittest.TestCase):
                         val_right = system_z2_2_2_right.mass_energy_op
                         deriv_num = (val_right - val_left) / (2 * eps)
 
-                        self.assertAlmostEqual(
-                            deriv_ana[layerind, uc_ind, ind], deriv_num, places=3
-                        )
+                        self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=3)
 
     def test_grad_chem_energy(self):
         # This is comparison of the analytic derivative against the numeric derivative
@@ -1321,9 +1263,7 @@ class TestTransVariance(unittest.TestCase):
             # we could skip the pure gauge layers, since they do not contribute
             for uc_ind in range(unitcell_size):
                 for ind in range(len(symbolvec)):
-                    with self.subTest(
-                        symbol=symbolvec[ind], layerind=layerind, uc_ind=uc_ind
-                    ):
+                    with self.subTest(symbol=symbolvec[ind], layerind=layerind, uc_ind=uc_ind):
                         paramvec_left = np.copy(paramvec)
                         paramvec_right = np.copy(paramvec)
                         paramvec_left[layerind, uc_ind, ind] -= eps
@@ -1365,9 +1305,7 @@ class TestTransVariance(unittest.TestCase):
                         val_right = system_z2_2_2_right.chem_energy_op_vec[layerind]
                         deriv_num = (val_right - val_left) / (2 * eps)
 
-                        self.assertAlmostEqual(
-                            deriv_ana[layerind, uc_ind, ind], deriv_num, places=3
-                        )
+                        self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=3)
 
     def test_grad_norm(self):
         # This is comparison of the analytic derivative against the numeric derivative
@@ -1390,9 +1328,7 @@ class TestTransVariance(unittest.TestCase):
             # we could skip the pure gauge layers, since they do not contribute
             for uc_ind in range(unitcell_size):
                 for ind in range(len(symbolvec)):
-                    with self.subTest(
-                        symbol=symbolvec[ind], layerind=layerind, uc_ind=uc_ind
-                    ):
+                    with self.subTest(symbol=symbolvec[ind], layerind=layerind, uc_ind=uc_ind):
                         paramvec_left = np.copy(paramvec)
                         paramvec_right = np.copy(paramvec)
                         paramvec_left[layerind, uc_ind, ind] -= eps
@@ -1430,17 +1366,11 @@ class TestTransVariance(unittest.TestCase):
                         system_z2_2_2_left.update_gauge_full_system(config)
                         system_z2_2_2_right.update_gauge_full_system(config)
 
-                        val_left = system_z2_2_2_left.calculate_lognorm(
-                            all_factors=True
-                        )
-                        val_right = system_z2_2_2_right.calculate_lognorm(
-                            all_factors=True
-                        )
+                        val_left = system_z2_2_2_left.calculate_lognorm(all_factors=True)
+                        val_right = system_z2_2_2_right.calculate_lognorm(all_factors=True)
                         deriv_num = (val_right - val_left) / (2 * eps)
 
-                        self.assertAlmostEqual(
-                            deriv_ana[layerind, uc_ind, ind], deriv_num, places=3
-                        )
+                        self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=3)
 
 
 class TestFullGrads(unittest.TestCase):
@@ -1503,9 +1433,7 @@ class TestFullGrads(unittest.TestCase):
             # we could skip the pure gauge layers, since they do not contribute
             for uc_ind in range(unitcell_size):
                 for ind in range(len(symbolvec)):
-                    with self.subTest(
-                        symbol=symbolvec[ind], layerind=layerind, uc_ind=uc_ind
-                    ):
+                    with self.subTest(symbol=symbolvec[ind], layerind=layerind, uc_ind=uc_ind):
                         paramvec_left = np.copy(paramvec)
                         paramvec_right = np.copy(paramvec)
                         paramvec_left[layerind, uc_ind, ind] -= eps
@@ -1540,12 +1468,8 @@ class TestFullGrads(unittest.TestCase):
 
                         ec_config_num = exacteval.ExactEvaluatorConfig()
                         ec_config_num.compute_grads = False
-                        ex_eval_right = EvaluatorManager(
-                            system_type, system_cfg_right, ec_config_num, 0
-                        )
-                        ex_eval_left = EvaluatorManager(
-                            system_type, system_cfg_left, ec_config_num, 0
-                        )
+                        ex_eval_right = EvaluatorManager(system_type, system_cfg_right, ec_config_num, 0)
+                        ex_eval_left = EvaluatorManager(system_type, system_cfg_left, ec_config_num, 0)
 
                         ex_eval_right.simulate()
                         dest_right = ex_eval_right.get_evaluator()
