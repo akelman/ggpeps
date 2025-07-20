@@ -109,7 +109,8 @@ def compute_el_grad_vec_numpy(system):
         intermediate = system._electric_energy_intermediate_vals
         covmat_out_virt = system.covmat_out_virt_vec[layerind]
         norm_mod = system.norm_mod_vec[layerind]
-        lognorm_default = intermediate.lognorm_default_vec[layerind]
+        # lognorm_default = system.lognorm_default_vec[layerind]
+        lognorm_default = np.sum(system.lognorm_default_vec)
 
         ###################### Calculation of the derivative ########################
         for uc_ind in range(system.cfg.unitcell_size):
