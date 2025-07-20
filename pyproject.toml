@@ -75,6 +75,9 @@ test = ["coverage", "nox"]
 [tool.setuptools_scm]
 version_file = "src/ggpeps/_version.py"
 
+[tool.black]
+line-length = 119
+
 #[project.urls]
 #"Homepage" = ""
 #"Bug Reports" = ""
