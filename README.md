@@ -133,8 +133,8 @@ Each implemented ansatz has it's own config class, each a subclass of Config2DBa
 The pure gauge ansatz's all techincally contain a parameter for coupling to matter, but (a) it is manually set to zero, (b) other parts of the ansatz (e.g. the $\Gamma_{\text{in}}$) do not obey the symmetries required for including matter.
 
 ### Code Formatting
-Code is formatted using `black` with the default configuration.
-To format your code, run `python black .` from the main repository directory. 
+Code is formatted using `black` with the default configuration, except that the maximum allowed line length is 119.
+To format your code, run `python black . --line-length 119` from the main repository directory. 
 To set up your editor to automatically format your code (e.g. on save), see [Black Editor Integrations](https://black.readthedocs.io/en/stable/integrations/editors.html). Black is not listed in the package dependencies, and must be installed manually (`pip install black`).
 
 ### Tests
