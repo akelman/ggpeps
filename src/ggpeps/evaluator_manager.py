@@ -57,8 +57,8 @@ def run_mc(
 @ray.remote
 def run_nevmc(
     runner_id: int,
-    evaluator_class: Union[MonteCarloEvaluator, NEVMC_Evaluator],
-    evaluator_cfg: Union[MonteCarloEvaluatorConfig, NEVMC_EvaluatorConfig],
+    evaluator_class: type[NEVMC_Evaluator],
+    evaluator_cfg: Union[NEVMC_EvaluatorConfig],
     system_cls,
     system_cfg,
     store_gauge,
@@ -102,9 +102,7 @@ class EvaluatorManager:
         self,
         system_cls: type[System2DBase],
         system_cfg: Config2DBase,
-        cfg: Union[
-            MonteCarloEvaluatorConfig, ExactEvaluatorConfig, NEVMC_EvaluatorConfig
-        ],
+        cfg: Union[MonteCarloEvaluatorConfig, ExactEvaluatorConfig, NEVMC_EvaluatorConfig],
         nrunner: int,
     ):
 
@@ -114,9 +112,9 @@ class EvaluatorManager:
         self.nrunner = nrunner
 
         ### beg NEVMC ###
-        self.store_gauge = []
-        self.store_weights = []
-        self.store_work = []
+        self.store_gauge: list = []
+        self.store_weights: list[float] = []
+        self.store_work: list[float] = []
         ### end NEVMC ###
 
         if isinstance(self.cfg, ExactEvaluatorConfig):
@@ -145,9 +143,7 @@ class EvaluatorManager:
             self.evaluator = MonteCarloEvaluator(self.cfg, system)
         elif self.type == "nevmc":
             assert isinstance(self.cfg, NEVMC_EvaluatorConfig)
-            self.evaluator = NEVMC_Evaluator(
-                self.cfg, system, self.store_gauge, self.store_weights, self.store_work
-            )
+            self.evaluator = NEVMC_Evaluator(self.cfg, system, self.store_gauge, self.store_weights, self.store_work)
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
         return self.evaluator
@@ -180,6 +176,7 @@ class EvaluatorManager:
         """
 
         if self.type == "nevmc" and self.nrunner > 0:
+            assert isinstance(self.cfg, NEVMC_EvaluatorConfig)
 
             resultvec = []
             reduced_meas_steps = self.cfg.meas_steps // self.nrunner
@@ -197,23 +194,15 @@ class EvaluatorManager:
                     "logger_level": ggpeps.global_vars["args"].level,
                 }
 
-                cpu_frac = (
-                    1 / ggpeps.global_vars["args"].nrunner
-                )  # multiplied by the number of available cpus?
+                cpu_frac = 1 / ggpeps.global_vars["args"].nrunner  # multiplied by the number of available cpus?
                 gpu_frac = 0.0
                 if ggpeps.GPU_AVAILABLE:
                     gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
                 evaluator_class = self.get_evaluator_class()
 
-                local_gauge = self.store_gauge[
-                    i * reduced_meas_steps : (i + 1) * reduced_meas_steps
-                ]
-                local_weights = self.store_weights[
-                    i * reduced_meas_steps : (i + 1) * reduced_meas_steps
-                ]
-                local_work = self.store_work[
-                    i * reduced_meas_steps : (i + 1) * reduced_meas_steps
-                ]
+                local_gauge = self.store_gauge[i * reduced_meas_steps : (i + 1) * reduced_meas_steps]
+                local_weights = self.store_weights[i * reduced_meas_steps : (i + 1) * reduced_meas_steps]
+                local_work = self.store_work[i * reduced_meas_steps : (i + 1) * reduced_meas_steps]
 
                 run_mc_modified = run_nevmc.options(
                     num_gpus=gpu_frac
@@ -242,9 +231,7 @@ class EvaluatorManager:
             Currently only Monte Carlo is supported (the exacteval implementation currently only supports one runner),
             and multiple runners cannot be resumed from where they left off.
             """
-            assert isinstance(self.cfg, MonteCarloEvaluatorConfig) or isinstance(
-                self.cfg, NEVMC_EvaluatorConfig
-            )
+            assert isinstance(self.cfg, MonteCarloEvaluatorConfig)
 
             resultvec = []
             # system_cfg_id = ray.put(self.system_cfg)
@@ -272,9 +259,7 @@ class EvaluatorManager:
                     "logger_level": ggpeps.global_vars["args"].level,
                 }
 
-                cpu_frac = (
-                    1 / ggpeps.global_vars["args"].nrunner
-                )  # multiplied by the number of available cpus?
+                cpu_frac = 1 / ggpeps.global_vars["args"].nrunner  # multiplied by the number of available cpus?
                 gpu_frac = 0.0
                 if ggpeps.GPU_AVAILABLE:
                     gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
@@ -303,6 +288,7 @@ class EvaluatorManager:
             result_df = self.evaluator.summary()
 
             if self.type == "nevmc":
+                assert isinstance(self.evaluator, NEVMC_Evaluator)
                 self.store_gauge = self.evaluator.store_gauge
                 self.store_weights = self.evaluator.store_weights
                 self.store_work = self.evaluator.store_work
