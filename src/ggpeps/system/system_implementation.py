@@ -259,7 +259,8 @@ class Z2System2D(System2DBase):
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
         # This is the usual norm without any modifications
-        lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
+        lognormvec_default = self.lognorm_default_vec
+        # lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
         lognorm_default = xnp.sum(lognormvec_default)
 
         # Indices and prefactors for building the required Pfaffians
@@ -296,12 +297,8 @@ class Z2System2D(System2DBase):
             el_energy_layer = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
             dest.append(el_energy_layer)
 
-            # Save intermediate calculations for use in gradient calculation
             intermediate = self._electric_energy_intermediate_vals
-            # intermediate.covmat_out_virt_vec.append(covmat_out_virt)
-            # intermediate.norm_mod_vec.append(norm_mod)
             intermediate.lognorm_default_vec.append(lognorm_default)
-            # intermediate.pfaffian_vec.append(pfvals)
 
         return xnp.asarray(dest)
 

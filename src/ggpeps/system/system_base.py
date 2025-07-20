@@ -357,7 +357,6 @@ class System2DBase(ABC):
         self._covmat_out_virt_vec: Optional[list[xnp.array]] = None
         self._norm_mod_vec: Optional[list[float]] = None
         self._lognorm_default_vec: Optional[list[float]] = None
-        # self._pfaffian_vec: Optional[list[float]] = None
 
         # Management of the gauge fields
         self._gamma_gauge_neutral_vec_dirs: Optional[xnp.ndarray] = (
@@ -451,7 +450,6 @@ class System2DBase(ABC):
         self._covmat_out_virt_vec = None
         self._norm_mod_vec = None
         self._lognorm_default_vec = None
-        # self._pfaffian_vec = None
         return
 
     def _extract_partial_covmatvec(self, offset: int):
@@ -881,9 +879,7 @@ class System2DBase(ABC):
         """
         if self._norm_mod_vec is None:
             norm_mod_vec = []
-            lognormvec_default = self.calculate_lognormvec_inc(
-                all_factors=True
-            )  # TODO: this is recomputed several times throughout the code, should be cached
+            lognormvec_default = self.lognorm_default_vec
 
             for layerind in range(self.cfg.nlayer):
                 # For the modified norm, we still have to take into account the other contributions from the unmodified parts
@@ -900,10 +896,19 @@ class System2DBase(ABC):
             self._norm_mod_vec = norm_mod_vec
         return self._norm_mod_vec
 
-    ## self._covmat_out_virt_vec: Optional[list[xnp.array]] = None
-    ## self._norm_mod_vec: Optional[list[float]] = None
-    # self._lognorm_default_vec: Optional[list[float]] = None
-    ## self._pfaffian_vec: Optional[list[float]] = None
+    @property
+    def lognorm_default_vec(self) -> list[float]:
+        """Compute the log of the norm of the state, with no modifications (e.g. those of the electric energy),
+        including all factors.
+        This function returns a vector over layers of these norms.
+        This is a get function.
+
+        Returns:
+            list[float]: a vector of norms
+        """
+        if self._lognorm_default_vec is None:
+            self._lognorm_default_vec = self.calculate_lognormvec_inc(all_factors=True)
+        return self._lognorm_default_vec
 
     def initialize_gamma_in_and_trackers(self):
         """Initialize gamma_in (the covariance matrix of the projectors),
