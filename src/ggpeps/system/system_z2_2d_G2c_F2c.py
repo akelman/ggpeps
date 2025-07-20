@@ -1,4 +1,3 @@
-import sys
 import sympy
 import logging
 from typing import List
@@ -8,7 +7,7 @@ from ggpeps import xnp as xnp
 from ggpeps import xscipy as xscipy
 
 import ggpeps
-from ggpeps import utils
+from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 from ggpeps.system.global_funcs import *
 
@@ -36,6 +35,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
     ncopy = 2
     nvirtmodes_vertex = 8
     nvirtmodes_link = 4
+    nphysmodes_site = 1  # number of physical modes per site
 
     def __init__(
         self,
@@ -62,33 +62,38 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         )
 
         # Translation invariance (or variance)
-        if unitcell_size not in [1, 2]:
-            logger.error(
-                "This ansatz only supports unitcell_size = 1 or 2. \
-                         This can be adapted by adding in a specification in the config to map sites to parameters."
-            )
-            sys.exit(1)
-        # map from site to index of independent parameters (default is unitcell_size = 1)
-        self.site_params_dict = {site: 0 for site in range(self.lattice.size)}
-
-        # For now, we use hard code the unitcell_size = 1 or 2 case
-        # More general ways to do so are supported - just change these lines
-        if unitcell_size == 2:
+        # define a map from site to index of independent parameters
+        if unitcell_size == 1:
+            self.site_params_dict = {site: 0 for site in range(self.lattice.size)}
+        elif unitcell_size == 2:
+            self.site_params_dict = {}
             for site in range(self.lattice.size):
                 x, y = self.lattice.ind2coord(site)
                 uc_ind = 1 if (x + y) % 2 else 0  # 0 for even sublattice, 1 for odd
                 self.site_params_dict[site] = uc_ind
-        self.unitcell_size = len(
-            set(self.site_params_dict.values())
-        )  # number of different sets of parameters across sites (min: 1, max: num_sites)
-        if self.unitcell_size != unitcell_size:
-            # It should be impossible to reach here
-            raise ValueError("Inconsistent unitcell_size.")
+        elif unitcell_size == -1:
+            # no unitcell - every site has its own parameters
+            self.site_params_dict = {}
+            for site in range(self.lattice.size):
+                self.site_params_dict[site] = site
+        else:
+            logger.error(
+                "This ansatz only supports unitcell_size = 1, 2, or -1 (all sites independent). \
+                This can be adapted by adding in a specification in the config to map sites to parameters."
+            )
+            raise ValueError("Invalid unitcell_size.")
+
+        # number of different sets of parameters across sites (min: 1, max: num_sites)
+        self.unitcell_size = len(set(self.site_params_dict.values()))
 
         # U1 invariance
         # set to True if you want to enforce U(1) symmetry in the fermionic layers
         # (set to False to allow fermionic number to float between sectors)
         self.u1_symmetry = enforce_u1_symmetry
+
+        # We store a list of the parameters forced to be zero by the ansatz
+        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
+        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
@@ -102,17 +107,16 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         ]
         idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
         idxarr_lay_fermionic = get_pfaffian_arrays(indices_layer_fermionic, prefactors)
-        self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [
-            idxarr_lay_fermionic
-        ] * self.num_fermionic_layer
+        self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
         self.el_overall_factors = [
             -1 / 16
         ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2)
 
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.
 
-        This function is obsolete for this ansatz, and is kept for compatibility reasons.
+        This function is obsolete for this ansatz, and is kept for some tests.
         """
         t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.nlayer):
@@ -121,9 +125,9 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
                     coord = (layer_ind, uc_ind, t_ind)
                     self.paramvec[coord] = 0
 
-    def enforce_parameter_conditions(self, mat):
-        """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz."""
-        # The order of the parameters (for each layer) is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
+    def get_zeroed_params(self):
+        # The order of the parameters (for each layer) is:
+        # [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
 
         zeroed_params = []  # we'll save the indices of the zeroed parameters
 
@@ -132,10 +136,6 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             for uc_ind in range(self.unitcell_size):
                 for t_ind in t_indices:
                     coord = (layer_ind, uc_ind, t_ind)
-                    if isinstance(mat, np.ndarray):  # TODO: handle jax better
-                        mat[coord] = 0
-                    else:
-                        mat = mat.at[coord].set(0)
                     zeroed_params.append(coord)
 
         if self.u1_symmetry:
@@ -157,19 +157,14 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             for uc_ind in range(self.unitcell_size):
                 for ind in zero_for_fermionic_layer:
                     coord = (layer_ind, uc_ind, ind)
-                    if isinstance(mat, np.ndarray):
-                        mat[coord] = 0
-                    else:
-                        mat = mat.at[coord].set(0)
                     zeroed_params.append(coord)
 
-        # save zeroed params
-        self.zeroed_params = zeroed_params
-        return
+        return zeroed_params
 
     def _create_symbolvec(self) -> List[sympy.Symbol]:
         """Define all symbols of the T matrix as symbols.
-        We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
+        We will use the analytic expression of the T matrix to calculate the derivative
+        of the covariance matrices analytically.
 
         Returns:
             list: List of all analytic symbols
@@ -221,8 +216,10 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
     @property
     def tmat_symb(self):
         """Definition of the symbolic T matrix.
-        The definition of T here is a result of an analytic consideration of global symmetries like rotational invariance, charge conjugation invarance, etc.
-        The T matrix is given in terms of symbols to compute the derivative of the covariance matrices analytically via sympy.
+        The definition of T here is a result of an analytic consideration of global
+        symmetries like rotational invariance, charge conjugation invarance, etc.
+        The T matrix is given in terms of symbols to compute the derivative of the
+        covariance matrices analytically via sympy.
         We do not have to type them explicitly anymore into the code.
 
         This is one of two analytic inputs into the code.
@@ -230,7 +227,8 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
         The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2
 
-        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
+        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations)
+        because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
         The permutation matrices are prone to errors.
 
         Returns:
@@ -315,10 +313,14 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
     def generate_gamma_gauge_neutral_dict(self):
         """Generate the covariance matrix of the ungauged projectors.
-        The mode order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2}.
+        The mode order is
+            {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}
+            or (for vertical links)
+            {d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
         We order first by link and then by copy.
-        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The sites are picked such that the left mode is right of the right modes,
+        i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
         This function returns two different covariance matrices for ungauged projectors:
@@ -337,14 +339,11 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         dest_unmixed = [0] * 2  # does not mix copies
 
         # We want to give the projectors for the pure gauge part, which mix copies
-        dest_mixed[Direction.X] = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix))
-        )
-        dest_mixed[Direction.Y] = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz))
-        )
+        dest_mixed[Direction.X] = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix)))
+        dest_mixed[Direction.Y] = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz)))
 
-        # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
+        # We want to give the projectors for the fermionic part which don't mix copies
+        # (so as to preserve global U(1) symmetry)
         dest_unmixed[Direction.X] = np.array(
             [
                 [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
@@ -371,6 +370,4 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             ]
         )
 
-        return np.array(
-            [dest_mixed] * self.num_pg_layer + [dest_unmixed] * self.num_fermionic_layer
-        )
+        return np.array([dest_mixed] * self.num_pg_layer + [dest_unmixed] * self.num_fermionic_layer)

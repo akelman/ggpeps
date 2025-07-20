@@ -66,12 +66,8 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("--fnames", nargs="+", help="Files to be loaded")
-    parser.add_argument(
-        "--obs", type=str, default="energy", help="Observable to be plotted"
-    )
-    parser.add_argument(
-        "--show", default=False, action="store_true", help="Show plot interactively"
-    )
+    parser.add_argument("--obs", type=str, default="energy", help="Observable to be plotted")
+    parser.add_argument("--show", default=False, action="store_true", help="Show plot interactively")
 
     args = parser.parse_args()
 

@@ -1,5 +1,7 @@
 import os
 import itertools as it
+from typing import Union
+from collections.abc import Iterator
 
 import numpy as np
 import pandas as pd
@@ -16,100 +18,102 @@ class ExactEvaluatorConfig:
     It is more convenient than passing an extensive number of parameters to the constructor.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.compute_grads: bool = True
 
 
 class ExactEvaluator(Evaluator):
-    """An ExactEvaluator exactly evaluates the expectation value of an observable by iterating over all possible states of the gauge field."""
+    """An ExactEvaluator exactly evaluates the expectation value of an observable by
+    iterating over all possible states of the gauge field."""
+
+    evaluator_type: str = "exact"
 
     def __init__(self, evaluator_cfg, system) -> None:
-        self.cfg = evaluator_cfg
-        self.system = system
-        self.obsdict: dict = None
-        self.evaluator_type = "exact"
+        super().__init__(evaluator_cfg, system)
 
-    def compute_expval(self, obs: np.ndarray, normvec: np.ndarray):
+    def compute_expval(self, obs: np.ndarray, normvec: np.ndarray) -> Union[float, np.ndarray]:
         """Compute the expectation value of an observable.
 
         Args:
-            obs (np.ndarray): Measurement values of an observables for different gauge field configurations
-            normvec (np.ndarray): Values of the norm of <Psi(G)|Psi(G)> for different gauge field configurations
+            obs (np.ndarray): Measurement values of an observables for different gauge
+                              field configurations. The last dimension is the gauge field configurations.
+            normvec (np.ndarray): Values of the norm of <Psi(G)|Psi(G)> for different gauge field configurations.
 
         Returns:
-            _type_: _description_
+            float or array: the expectation value of the observable
         """
         normalization = np.sum(normvec)
-        if len(obs.shape) > 1:
-            # We have to treat the gradients differently as they are multi-dimensional observables
-            prod = obs * normvec
-            expval = np.sum(prod, axis=3)
-        else:
-            expval = np.sum(obs * normvec)
+        # sum over the last dimension (the gauge field configurations)
+        expval = np.sum(obs * normvec, axis=obs.ndim - 1)
         return expval / normalization
 
-    def get_obs_mean(self, obs: str):
+    def get_obs_mean(self, obs: str) -> Union[float, np.ndarray]:
         """Return expectation value of an observable.
         Use this function to match the interface of the MonteCarloEvaluator."""
         return self.obsdict[obs]
 
-    def evaluate(self):
+    def evaluate(self) -> dict:
         """Main evaluation function of ExactEvaluator.
-        This function computes the exact expectation values <Psi|O|Psi>/<Psi|Psi> for a range of observables defined in the function.
+        This function computes the exact expectation values <Psi|O|Psi>/<Psi|Psi> for
+        a range of observables defined in the function.
 
         Returns:
             dict: Dictionary of the results
         """
-        if self.obsdict is None:
-            configvec = (
-                self.generate_config_vec()
-            )  # an iterable object with all possible field configurations for all the links we go over.
+        if not self.obsdict:  # obsdict is empty
+            # Build an iterable object with all field configurations for all the links
+            configvec = self.generate_config_vec()
 
-            polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
-                (0, 0), lattice.Direction.X
-            )
-            wilson_loop = self.system.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
+            polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
 
             # Wilson loop & meson string preliminaries
             sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
             loops = self.system.cfg.lattice.generate_all_wilson_loops((0, 0), sizes)
-            max_string = (
-                1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
-            )
-            strings = [
-                self.system.cfg.lattice.generate_L_string((0, 0), (k, k))
-                for k in range(1, max_string)
-            ]
+            max_string = 1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
+            strings = [self.system.cfg.lattice.generate_L_string((0, 0), (k, k)) for k in range(1, max_string)]
+            if self.system.cfg.num_fermionic_layer > 0:
+                data: dict = {
+                    "energy": [],
+                    "norm": [],
+                    "mag_energy": [],
+                    "el_energy": [],
+                    "mass_energy": [],
+                    "int_energy": [],
+                    "chem_energy": [],
+                    "mag_energy_op": [],
+                    "el_energy_op": [],
+                    "mass_energy_op": [],
+                    "int_energy_op": [],
+                    "all_occupations": [],
+                    "average_occupation": [],
+                    "el_energy_op_grad": [],
+                    "mass_energy_op_grad": [],
+                    "int_energy_op_grad": [],
+                    "chem_energy_op_grad": [],
+                    "grad_norm": [],
+                    "polyakov_00_x": [],
+                }
+            else:  # If there are no fermionic layers, we do not compute occupations
+                data: dict = {
+                    "energy": [],
+                    "norm": [],
+                    "mag_energy": [],
+                    "el_energy": [],
+                    "mass_energy": [],
+                    "int_energy": [],
+                    "chem_energy": [],
+                    "mag_energy_op": [],
+                    "el_energy_op": [],
+                    "mass_energy_op": [],
+                    "int_energy_op": [],
+                    "el_energy_op_grad": [],
+                    "mass_energy_op_grad": [],
+                    "int_energy_op_grad": [],
+                    "chem_energy_op_grad": [],
+                    "grad_norm": [],
+                    "polyakov_00_x": [],
+                }
 
-            # Occupations
-            if self.system.cfg.num_fermionic_layer >= 1:
-                # for now, we'll save the occupations on just the first fermionic layer
-                # this is the index of the first fermionic layer:
-                target_lay = self.system.cfg.num_pg_layer
-            else:
-                # no need to save occupations
-                target_lay = False
-
-            data = {
-                "energy": [],
-                "norm": [],
-                "mag_energy": [],
-                "el_energy": [],
-                "mass_energy": [],
-                "int_energy": [],
-                "chem_energy": [],
-                "mag_energy_op": [],
-                "el_energy_op": [],
-                "mass_energy_op": [],
-                "int_energy_op": [],
-                "el_energy_op_grad": [],
-                "mass_energy_op_grad": [],
-                "int_energy_op_grad": [],
-                "chem_energy_op_grad": [],
-                "grad_norm": [],
-                "polyakov_00_x": [],
-                "number_per_site": [],
-            }
             # Wilson loops
             for k in range(len(sizes)):
                 loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
@@ -117,10 +121,6 @@ class ExactEvaluator(Evaluator):
             # Meson strings - for now, we compute only "square" meson strings
             for k in range(1, max_string):
                 data[f"square_string_0-0_{k}x{k}"] = []
-            # Occupations
-            if target_lay:
-                for site in range(self.system.cfg.lattice.size):
-                    data[f"occupation_site_lay{target_lay}_{site}"] = []
 
             for config in configvec:
                 self.system.update_gauge_full_system(config)
@@ -137,25 +137,8 @@ class ExactEvaluator(Evaluator):
                 data["mass_energy_op"].append(self.system.mass_energy_op)
                 data["int_energy_op"].append(self.system.int_energy_op)
 
-                if self.cfg.compute_grads:
-                    data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
-                    data["mass_energy_op_grad"].append(
-                        self.system.mass_energy_op_grad_vec
-                    )
-                    data["int_energy_op_grad"].append(
-                        self.system.int_energy_op_grad_vec
-                    )
-                    data["chem_energy_op_grad"].append(
-                        self.system.chem_energy_op_grad_vec
-                    )
-                    data["grad_norm"].append(self.system.compute_grad_norm_vec())
-
                 data["norm"].append(self.system.calculate_lognorm(all_factors=True))
-                data["polyakov_00_x"].append(
-                    np.real(self.system.compute_path(polyakov_loop))
-                )
-
-                data["number_per_site"].append(np.real(self.system.number_per_site))
+                data["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
 
                 # Wilson loops
                 for k in range(len(sizes)):
@@ -164,45 +147,55 @@ class ExactEvaluator(Evaluator):
 
                 # Meson strings
                 for k in range(1, max_string):
-                    data[f"square_string_0-0_{k}x{k}"].append(
-                        self.system.meson_string(strings[k - 1])
-                    )
+                    data[f"square_string_0-0_{k}x{k}"].append(self.system.meson_string(strings[k - 1]))
 
                 # Occupations
-                if target_lay:
-                    for site in range(self.system.cfg.lattice.size):
-                        data[f"occupation_site_lay{target_lay}_{site}"].append(
-                            self.system.occupation(lay=target_lay, site=site)
-                        )
+                if self.system.cfg.num_fermionic_layer > 0:  # If there are fermionic layers
+                    data["average_occupation"].append(self.system.average_occupation())
+                    data["all_occupations"].append(self.system.all_occupations)
+
+                if self.cfg.compute_grads:
+                    data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
+                    data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
+                    data["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
+                    data["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
+                    data["grad_norm"].append(self.system.compute_grad_norm_vec())
 
             # TODO: handle this better - boundary should not be here!
             if ggpeps.PREFERRED_BACKEND == "jax":
                 for key, val in data.items():
                     data[key] = np.asarray(val)
 
-            # Expectation values
-            dest = {}
             # Convert all lists to arrays
             data = {key: np.asarray(data[key]) for key in data}
 
             # We need to change from log values to regular values here
             normvec = np.exp(data["norm"])
 
+            # Expectation values
+            dest: dict[str, Union[float, np.ndarray]] = {}
             dest["energy"] = self.compute_expval(data["energy"], normvec)
             dest["mag_energy"] = self.compute_expval(data["mag_energy"], normvec)
             dest["el_energy"] = self.compute_expval(data["el_energy"], normvec)
             dest["mass_energy"] = self.compute_expval(data["mass_energy"], normvec)
             dest["int_energy"] = self.compute_expval(data["int_energy"], normvec)
             dest["chem_energy"] = self.compute_expval(data["chem_energy"], normvec)
+            dest["mass_energy_op"] = self.compute_expval(data["mass_energy_op"], normvec)
             dest["polyakov_00_x"] = self.compute_expval(data["polyakov_00_x"], normvec)
-            dest["number_per_site"] = self.compute_expval(
-                data["number_per_site"], normvec
-            )
-            if self.cfg.compute_grads:
-                # Transpose to enable broadcasting
-                grad_norm_transposed = np.transpose(data["grad_norm"], [1, 2, 3, 0])
+            if self.system.cfg.num_fermionic_layer > 0:  # If there are fermionic layers
+                dest["average_occupation"] = self.compute_expval(
+                    np.transpose(data["average_occupation"], [1, 0]), normvec
+                )
 
-                dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)
+                avg_occ = np.asarray(dest["average_occupation"])[:, np.newaxis]
+
+                dest["variance_occupation"] = self.compute_expval(
+                    (np.transpose(data["average_occupation"], [1, 0]) - avg_occ) ** 2,
+                    normvec,
+                )
+                dest["all_occupations"] = self.compute_expval(
+                    np.transpose(data["all_occupations"], [1, 2, 0]), normvec
+                )
 
             # Wilson loops
             for k in range(len(sizes)):
@@ -215,31 +208,22 @@ class ExactEvaluator(Evaluator):
                 dest[string_name] = self.compute_expval(data[string_name], normvec)
 
                 # Fredenhagen-Marcu (FM) parameter
-                dest[f"FM_{k}x{k}"] = dest[string_name] / np.sqrt(
-                    np.abs(dest[f"wilson_loop_0-0_{k}x{k}"])
-                )
-
-            # Occupations
-            if target_lay:
-                for site in range(self.system.cfg.lattice.size):
-                    dest[f"occupation_site_lay{target_lay}_{site}"] = (
-                        self.compute_expval(
-                            data[f"occupation_site_lay{target_lay}_{site}"], normvec
-                        )
-                    )
+                dest[f"FM_{k}x{k}"] = dest[string_name] / np.sqrt(np.abs(dest[f"wilson_loop_0-0_{k}x{k}"]))
 
             # The norm that we turn in the end is the actual norm, not the lognorm!
             dest["norm"] = np.sum(normvec)
 
             # Compute the gradients
             if self.cfg.compute_grads:
+                # Transpose to enable broadcasting
+                grad_norm_transposed = np.transpose(data["grad_norm"], [1, 2, 3, 0])
+
+                dest["grad_norm"] = self.compute_expval(grad_norm_transposed, normvec)
+
                 # Magnetic gradient
                 prod_mag_op_norm = data["mag_energy_op"] * grad_norm_transposed
                 expval_prod_mag = self.compute_expval(prod_mag_op_norm, normvec)
-                prod_expval_mag = (
-                    self.compute_expval(data["mag_energy_op"], normvec)
-                    * dest["grad_norm"]
-                )
+                prod_expval_mag = self.compute_expval(data["mag_energy_op"], normvec) * dest["grad_norm"]
                 mag_op_grad = expval_prod_mag - prod_expval_mag
                 mag_energy_grad = (
                     -2 * self.system.cfg.g_mag * mag_op_grad
@@ -249,35 +233,23 @@ class ExactEvaluator(Evaluator):
                 # Electric gradient
                 prod_el_op_norm = data["el_energy_op"] * grad_norm_transposed
                 expval_prod_el = self.compute_expval(prod_el_op_norm, normvec)
-                prod_expval_el = (
-                    self.compute_expval(data["el_energy_op"], normvec)
-                    * dest["grad_norm"]
-                )
+                prod_expval_el = self.compute_expval(data["el_energy_op"], normvec) * dest["grad_norm"]
                 el_op_grad = (
                     expval_prod_el
                     - prod_expval_el
-                    + self.compute_expval(
-                        np.transpose(data["el_energy_op_grad"], [1, 2, 3, 0]), normvec
-                    )
+                    + self.compute_expval(np.transpose(data["el_energy_op_grad"], [1, 2, 3, 0]), normvec)
                 )
-                el_energy_grad = (
-                    -2 * self.system.cfg.g_el * el_op_grad
-                )  # the factor of two comes from the Hamiltonian
+                el_energy_grad = -2 * self.system.cfg.g_el * el_op_grad  # the factor of two comes from the Hamiltonian
                 dest["el_energy_grad"] = el_energy_grad
 
                 # Mass gradient
                 prod_mass_op_norm = data["mass_energy_op"] * grad_norm_transposed
                 expval_prod_mass = self.compute_expval(prod_mass_op_norm, normvec)
-                prod_expval_mass = (
-                    self.compute_expval(data["mass_energy_op"], normvec)
-                    * dest["grad_norm"]
-                )
+                prod_expval_mass = self.compute_expval(data["mass_energy_op"], normvec) * dest["grad_norm"]
                 mass_energy_grad = (
                     expval_prod_mass
                     - prod_expval_mass
-                    + self.compute_expval(
-                        np.transpose(data["mass_energy_op_grad"], [1, 2, 3, 0]), normvec
-                    )
+                    + self.compute_expval(np.transpose(data["mass_energy_op_grad"], [1, 2, 3, 0]), normvec)
                 )
                 mass_energy_grad *= self.system.cfg.g_mass
                 dest["mass_energy_grad"] = mass_energy_grad
@@ -285,16 +257,11 @@ class ExactEvaluator(Evaluator):
                 # Interaction gradient
                 prod_int_op_norm = data["int_energy_op"] * grad_norm_transposed
                 expval_prod_int = self.compute_expval(prod_int_op_norm, normvec)
-                prod_expval_int = (
-                    self.compute_expval(data["int_energy_op"], normvec)
-                    * dest["grad_norm"]
-                )
+                prod_expval_int = self.compute_expval(data["int_energy_op"], normvec) * dest["grad_norm"]
                 int_energy_grad = (
                     expval_prod_int
                     - prod_expval_int
-                    + self.compute_expval(
-                        np.transpose(data["int_energy_op_grad"], [1, 2, 3, 0]), normvec
-                    )
+                    + self.compute_expval(np.transpose(data["int_energy_op_grad"], [1, 2, 3, 0]), normvec)
                 )
                 int_energy_grad *= self.system.cfg.g_int
                 dest["int_energy_grad"] = int_energy_grad
@@ -302,71 +269,55 @@ class ExactEvaluator(Evaluator):
                 # Chemical potential gradient
                 prod_chem_op_norm = data["chem_energy"] * grad_norm_transposed
                 expval_prod_chem = self.compute_expval(prod_chem_op_norm, normvec)
-                prod_expval_chem = (
-                    self.compute_expval(data["chem_energy"], normvec)
-                    * dest["grad_norm"]
-                )
-                scaled_chem_grad = np.transpose(
-                    data["chem_energy_op_grad"], [1, 2, 3, 0]
-                )
-                for lay in range(self.system.cfg.nlayer):
+                prod_expval_chem = self.compute_expval(data["chem_energy"], normvec) * dest["grad_norm"]
+                scaled_chem_grad = np.transpose(data["chem_energy_op_grad"], [1, 2, 3, 0])
+                for lay in range(self.system.cfg.num_pg_layer, self.system.cfg.nlayer):
                     # the gradients must be scaled by the chemical potential
-                    scaled_chem_grad[lay, :, :, :] *= self.system.cfg.g_chem[lay]
-                chem_energy_grad = (
-                    expval_prod_chem
-                    - prod_expval_chem
-                    + self.compute_expval(scaled_chem_grad, normvec)
-                )
+                    ind = lay - self.system.cfg.num_pg_layer
+                    scaled_chem_grad[lay, :, :, :] *= self.system.cfg.g_chem[ind]
+                chem_energy_grad = expval_prod_chem - prod_expval_chem + self.compute_expval(scaled_chem_grad, normvec)
                 dest["chem_energy_grad"] = chem_energy_grad
 
                 # Add for the full gradient, subject to conditions on parameterization
-                total_grad = (
-                    mag_energy_grad
-                    + el_energy_grad
-                    + mass_energy_grad
-                    + int_energy_grad
-                    + chem_energy_grad
-                )
+                total_grad = mag_energy_grad + el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
                 self.system.cfg.enforce_parameter_conditions(total_grad)
                 dest["energy_grad"] = total_grad
 
             self.obsdict = dest
         return self.obsdict
 
-    def generate_config_vec(self):
-        """Generates gauge field configurations for all links, for the gauge fixed case."""
-        poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
+    def generate_config_vec(self) -> Iterator[list[np.ndarray]]:
+        """Generate gauge field configurations for all links."""
+
+        poss_gauges = self.system.cfg.gaugemgr.get_possible_gauge_values()
         nlinks = self.system.cfg.lattice.nlinks
-        non_fixed_links_ind = (
-            self.system.cfg.lattice.comp_tree
-        )  # All possible indices for the non-fixed positions
-        neutral_gauge = self.system.gaugemgr.get_neutral_gauge_value()
+        non_fixed_links_ind = self.system.cfg.lattice.comp_tree  # All possible indices for the non-fixed positions
+        neutral_gauge = self.system.cfg.gaugemgr.get_neutral_gauge_value()
 
         # Generate all possible gauge field combinations
         combinations = it.product(poss_gauges, repeat=len(non_fixed_links_ind))
 
         for combo in combinations:
-            # Initialize configvec as a list filled with neutral_gauge
+            # Initialize configvec as a list filled with the neutral gauge value
             configvec = [neutral_gauge] * nlinks
             for i, pos in enumerate(non_fixed_links_ind):
                 configvec[pos] = combo[i]
             yield configvec
 
-    def generate_config_vec_no_gf(self):
-        poss_gauges = self.system.gaugemgr.get_possible_gauge_values()
+    def generate_config_vec_no_gf(self) -> Iterator:
+        """Generate gauge field configurations for all links when there is no gauge fixing.
+        The function above, generate_config_vec(), is fully general, but this one may be more
+        efficient when there is no gauge fixing."""
+
+        poss_gauges = self.system.cfg.gaugemgr.get_possible_gauge_values()
         nlinks = self.system.cfg.lattice.nlinks
         configvec = it.product(
             poss_gauges, repeat=nlinks
         )  # an iterable object with all possible field configurations for the entire lattice.
         return configvec
 
-    def summary(self):
-        """Summarize the results of the exact contraction in a dataframe.
-
-        Returns:
-            pd.DataFrame: Result of the contraction
-        """
-        dest = {
+    def summary(self) -> pd.DataFrame:
+        dest: dict = {
             "name": [],
             "nx": [],
             "ny": [],
@@ -377,6 +328,7 @@ class ExactEvaluator(Evaluator):
             "g_mag": [],
             "g_int": [],
             "g_mass": [],
+            "g_chem": [],
             "mean": [],
         }
         for key in self.obsdict.keys():
@@ -387,6 +339,7 @@ class ExactEvaluator(Evaluator):
             dest["g_mag"].append(self.system.cfg.g_mag)
             dest["g_int"].append(self.system.cfg.g_int)
             dest["g_mass"].append(self.system.cfg.g_mass)
+            dest["g_chem"].append(self.system.cfg.g_chem)
             dest["paramvec"].append(self.system.cfg.paramvec)
             dest["ncopy"].append(self.system.cfg.ncopy)
             dest["nlayer"].append(self.system.cfg.nlayer)
@@ -394,7 +347,7 @@ class ExactEvaluator(Evaluator):
         df = pd.DataFrame(dest)
         return df
 
-    def save(self, output_dir="."):
+    def save(self, output_dir: str = ".") -> None:
         """Convenience function to generate a filename and save the summary in one step"""
         syscfg = self.system.cfg
 

@@ -1,6 +1,5 @@
 import numpy as np
 import numpy.lib.mixins
-from numbers import Number
 
 HANDLED_FUNCTIONS = {}
 

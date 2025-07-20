@@ -1,5 +1,6 @@
 import copy
 import numpy as np
+import jax.numpy as jnp
 import ggpeps.utils as utils
 
 
@@ -23,7 +24,8 @@ class Measurement:
 
     def append(self, data):
         """Append data to the measurement.
-        The data is first added to an acquisition array and when this array reaches binsize, the mean of the data is copied to the actual datavec.
+        The data is first added to an acquisition array and when this array reaches binsize,
+        the mean of the data is copied to the actual datavec.
 
         Args:
             data: Data to be added
@@ -70,7 +72,8 @@ class Measurement:
         """Computation of the error on the mean
 
         Args:
-            use_binning (bool, optional): Switch to decide whether to use rebinning to de-correlate the datapoints during error estimation. Defaults to True.
+            use_binning (bool, optional): Switch to decide whether to use rebinning to de-correlate the datapoints
+                                          during error estimation. Defaults to True.
 
         Returns:
             float: Error on the mean
@@ -81,7 +84,7 @@ class Measurement:
             return 0
 
         if use_binning:
-            if isinstance(self.datavec[0], np.ndarray):
+            if isinstance(self.datavec[0], np.ndarray) or isinstance(self.datavec[0], jnp.ndarray):
                 # self.datavec is an array of higher dimension
                 # we do not yet support finding the autocorrelation for such observables (TODO)
                 return utils.rebin_eom(self.datavec)
@@ -121,7 +124,8 @@ class Measurement:
     def __mul__(self, other):
         """Multiplication specialization for two Measurements.
         The datavecs are multiplied.
-        If the binsize is not 1, the result of binning and then multiplying will be different from first multiplying and then binning the result.
+        If the binsize is not 1, the result of binning and then multiplying will be different
+        than first multiplying and then binning the result.
 
         Args:
             other (Measurement): Second argument of multiplication
@@ -172,16 +176,16 @@ class Measurement:
                 return dest
         else:
             return NotImplemented
-        
+
     ### beg NEVMC ###
     def __expDF__(self, DF):
         dest = Measurement("exp_" + self.name + "-_DF", self.binsize)
-        dest.datavec = [np.exp(-(x-DF)) for x in self.datavec]
+        dest.datavec = [np.exp(-(x - DF)) for x in self.datavec]
         return dest
-    
+
     def __const_mul__(self, g):
         dest = Measurement("g*_" + self.name, self.binsize)
-        dest.datavec = [g*x for x in self.datavec]
+        dest.datavec = [g * x for x in self.datavec]
         return dest
-    
+
     ### end NEVMC ###

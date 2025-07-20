@@ -70,6 +70,11 @@ For the next step, please navigate into the repo that you just downloaded and ac
     ```
     This command installs the package as an editable package, i.e. all changes in the source code will be directly reflected in the installed package.
 
+    If you wish to install the optional depencies, instead run
+    ```
+    pip install  -e .[dev,test]
+    ```
+
     If you do not intend to edit the code, you can install with
     ```
     pip install .
@@ -121,15 +126,15 @@ Each implemented ansatz has it's own config class, each a subclass of Config2DBa
 - `system_u1_2d`: Not working - the implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
 - `system_z2_2d`: $\mathbb{Z}_2$, 1 copy of virtual modes per layer, pure gauge.
 - `system_z2_2d_2c`: $\mathbb{Z}_2$, 2 copies of virtual modes per layer, pure gauge.
-- `system_z2_2d_8c`: $\mathbb{Z}_2$, 8 copies of virtual modes per layer. This is extremely impractical to run, even for 2x2 systems, due to the large number of virtual modes; it was built for testing purposes. Because there are so many parameters, this ansatz is more systematic in handling them.
 - `system_z2_2d_G2c_F2c`: $\mathbb{Z}_2$, 2 copies of virtual modes per layer (PG and matter layers), includes matter.
-- `system_z2_2d_G2c_F4c`: *this is misnamed, and includes 4 copies per layer for both layers*. However the extra copies in the PG layer are set to zero, which makes it effectively 2 copies (though with matrix sizes, and computational cost, of 4 copies).
+- `system_z2_2d_G4c_F4c`: $\mathbb{Z}_2$, 4 copies of virtual modes per layer (PG and matter layers), includes matter.
+- `system_z2_2d_G8c_F8c`: $\mathbb{Z}_2$, 8 copies of virtual modes per layer. This is extremely impractical to run, even for 2x2 systems, due to the large number of virtual modes; it was built for testing purposes. Because there are so many parameters, this ansatz is more systematic in handling them. Note that not all theoretically allowed parameters are included (e.g. the y,z parameters which couple a copy to itself are only created for the first four copies).
 
 The pure gauge ansatz's all techincally contain a parameter for coupling to matter, but (a) it is manually set to zero, (b) other parts of the ansatz (e.g. the $\Gamma_{\text{in}}$) do not obey the symmetries required for including matter.
 
 ### Code Formatting
-Code is formatted using `black` with the default configuration.
-To format your code, run `python black .` from the main repository directory. 
+Code is formatted using `black` with the default configuration, except that the maximum allowed line length is 119.
+To format your code, run `python black . --line-length 119` from the main repository directory. 
 To set up your editor to automatically format your code (e.g. on save), see [Black Editor Integrations](https://black.readthedocs.io/en/stable/integrations/editors.html). Black is not listed in the package dependencies, and must be installed manually (`pip install black`).
 
 ### Tests

@@ -1,5 +1,4 @@
-"""This script plots the timeseries of given observable.
-"""
+"""This script plots the timeseries of given observable."""
 
 import os
 import sys
@@ -53,9 +52,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("--fnames", nargs="+", help="Files to be loaded")
-    parser.add_argument(
-        "--obs", type=str, default="energy", help="Observable to be plotted"
-    )
+    parser.add_argument("--obs", type=str, default="energy", help="Observable to be plotted")
 
     args = parser.parse_args()
 

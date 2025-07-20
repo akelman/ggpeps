@@ -5,12 +5,11 @@ import sympy
 # import numpy as np
 import ggpeps
 from ggpeps import xnp as np
-from scipy.linalg import block_diag
 
-from ggpeps import utils
+from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
-from .system_base import Config2DBase, System2DBase
+from .system_base import Config2DBase
 from .system_base import get_pfaffian_arrays
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -19,7 +18,7 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 ###################### Z2System2D ##########################
 
 
-class Z2System2D_8C_Config(Config2DBase):
+class Z2System2D_G8C_F8C_Config(Config2DBase):
     """Configuration of the Z2 system in 2D with 8 copies of virtual fermions on the links.
     More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
     """
@@ -28,6 +27,7 @@ class Z2System2D_8C_Config(Config2DBase):
     ncopy = 8
     nvirtmodes_vertex = 32
     nvirtmodes_link = 16
+    nphysmodes_site = 1  # number of physical modes per site
 
     def __init__(
         self,
@@ -40,6 +40,7 @@ class Z2System2D_8C_Config(Config2DBase):
         num_pg_layer=1,
         num_fermionic_layer=1,
         unitcell_size=1,
+        enforce_u1_symmetry=True,
     ):
         super().__init__(
             lattice,
@@ -55,7 +56,7 @@ class Z2System2D_8C_Config(Config2DBase):
         # Translation invariance
         if unitcell_size not in [1]:
             logger.error(
-                "This ansatz only supports unitcell_size = 1 or 2. \
+                "This ansatz only supports unitcell_size = 1. \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             raise ValueError("Invalid unitcell_size.")
@@ -63,6 +64,14 @@ class Z2System2D_8C_Config(Config2DBase):
             site: 0 for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
         self.unitcell_size = 1
+
+        if not enforce_u1_symmetry:
+            logger.error("This ansatz does not support the relaxation of U(1) symmetry.")
+            raise ValueError("Invalid enforce_u1_symmetry.")
+
+        # We store a list of the parameters forced to be zero by the ansatz
+        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
+        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j]] * 8
@@ -86,25 +95,15 @@ class Z2System2D_8C_Config(Config2DBase):
             [(26, 24), (27, 25), (24, 25), (26, 27)],
             [(30, 28), (31, 29), (28, 29), (30, 31)],
         ]
-        idxarr_lay1 = get_pfaffian_arrays(
-            indices_layer1, prefactors
-        )  # pure gauge layers
-        idxarr_lay2 = get_pfaffian_arrays(
-            indices_layer2, prefactors
-        )  # fermionic layers
+        idxarr_lay1 = get_pfaffian_arrays(indices_layer1, prefactors)  # pure gauge layers
+        idxarr_lay2 = get_pfaffian_arrays(indices_layer2, prefactors)  # fermionic layers
         self.idxarr_vec = [idxarr_lay1] * (self.num_pg_layer) + [idxarr_lay2]
         self.el_overall_factors = [1 / 256**2] * (
             self.nlayer
         )  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2)
 
-    def make_pure_gauge(self):
-        raise NotImplementedError(
-            "Haven't implemented parameter conditions for pure gauge for this ansatz."
-        )
-
-    def enforce_parameter_conditions(self, mat):
-        """Enforce conditions on parameters on each layer to get the required behaviour for the ansatz."""
-
+    def get_zeroed_params(self):
         zeroed_params = []  # we'll save the indices of the zeroed parameters
 
         # pure gauge layers
@@ -114,7 +113,6 @@ class Z2System2D_8C_Config(Config2DBase):
                 copies = [1, 3, 5, 7]  # copies which couple to physical modes
                 for cop in copies:
                     for com in ["r", "i"]:  # real or imaginary
-                        mat[layer, uc_ind, ind] = 0
                         ind += 1
                         zeroed_params.append((layer, uc_ind, ind))
 
@@ -126,19 +124,15 @@ class Z2System2D_8C_Config(Config2DBase):
                 for cop in copies:
                     for com in ["r", "i"]:
                         ind += 1  # don't zero out t params
-                        zeroed_params.append((layer, uc_ind, ind))
 
                 copies = [1, 2, 3, 4]  # copies which couple to themselves
                 for cop in copies:
                     for l in ["z", "y"]:
                         for com in ["r", "i"]:
-                            mat[layer_ind, uc_ind, ind] = 0
                             ind += 1
                             zeroed_params.append((layer, uc_ind, ind))
 
-        # save zeroed params
-        self.zeroed_params = zeroed_params
-        return
+        return zeroed_params
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
@@ -184,8 +178,10 @@ class Z2System2D_8C_Config(Config2DBase):
     @property
     def tmat_symb(self):
         """Definition of the symbolic T matrix.
-        The definition of T here is a result of an analytic consideration of global symmetries like rotational invariance, charge conjugation invarance, etc.
-        The T matrix is given in terms of symbols to compute the derivative of the covariance matrices analytically via sympy.
+        The definition of T here is a result of an analytic consideration of global
+        symmetries like rotational invariance, charge conjugation invarance, etc.
+        The T matrix is given in terms of symbols to compute the derivative of the
+        covariance matrices analytically via sympy.
         We do not have to type them explicitly anymore into the code.
 
         This is one of two analytic inputs into the code.
@@ -193,7 +189,8 @@ class Z2System2D_8C_Config(Config2DBase):
 
         The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, l_3, r_3...
 
-        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
+        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations)
+        because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
         The permutation matrices are prone to errors.
 
         Returns:
@@ -217,9 +214,7 @@ class Z2System2D_8C_Config(Config2DBase):
         ]  # copies which couple to themselves (if not zeroed out in enforce_parameter_conditions)
         for cop in copies:
             for l in ["z", "y"]:
-                all_params[f"{l}{cop}"] = (
-                    self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
-                )
+                all_params[f"{l}{cop}"] = self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
                 ind += 2
 
         copies_odd = [1, 3, 5, 7]
@@ -227,9 +222,7 @@ class Z2System2D_8C_Config(Config2DBase):
         for r in copies_odd:
             for c in copies_even:
                 for l in ["p", "q", "r", "s"]:
-                    all_params[f"{l}{r}{c}"] = (
-                        self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
-                    )
+                    all_params[f"{l}{r}{c}"] = self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
                     ind += 2
 
         # Extract params as variables for convenience
@@ -479,9 +472,7 @@ class Z2System2D_8C_Config(Config2DBase):
         M31 = -M13.T
         M32 = -M23.T
         Block_2b_33 = Block_2b.subs([(p12, p56), (q12, q56), (r12, r56), (s12, s56)])
-        M33 = sympy.Matrix(
-            sympy.BlockMatrix([[zeros_4, Block_2b_33], [-Block_2b_33.T, zeros_4]])
-        )
+        M33 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b_33], [-Block_2b_33.T, zeros_4]]))
         M34 = sympy.Matrix(
             sympy.BlockMatrix(
                 [
@@ -503,9 +494,7 @@ class Z2System2D_8C_Config(Config2DBase):
         M42 = -M24.T
         M43 = -M34.T
         Block_2b_44 = Block_2b.subs([(p12, p78), (q12, q78), (r12, r78), (s12, s78)])
-        M44 = sympy.Matrix(
-            sympy.BlockMatrix([[zeros_4, Block_2b_44], [-Block_2b_44.T, zeros_4]])
-        )
+        M44 = sympy.Matrix(sympy.BlockMatrix([[zeros_4, Block_2b_44], [-Block_2b_44.T, zeros_4]]))
 
         # Full T matrix
         tmat_symb = sympy.Matrix(
@@ -524,10 +513,14 @@ class Z2System2D_8C_Config(Config2DBase):
 
     def generate_gamma_gauge_neutral_dict(self):
         """Generate the covariance matrix of the ungauged projectors.
-        The mode order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2, l3_1...}/{d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2, d3_1...}.
+        The mode order is
+            {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2, l3_1...}
+            or (for vertical links)
+            {d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2, d3_1...}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
         We order first by link and then by copy.
-        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The sites are picked such that the left mode is right of the right modes,
+        i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
         This function returns two different covariance matrices for ungauged projectors:
@@ -545,12 +538,8 @@ class Z2System2D_8C_Config(Config2DBase):
         dest_unmixed = [0] * 2  # does not mix copies
 
         # We want to give the projectors for the pure gauge part, which mix copies
-        mixed_X = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix))
-        )
-        mixed_Y = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz))
-        )
+        mixed_X = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix)))
+        mixed_Y = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz)))
 
         dest_mixed[Direction.X] = np.kron(np.eye(4), mixed_X)
         dest_mixed[Direction.Y] = np.kron(np.eye(4), mixed_Y)
@@ -585,6 +574,4 @@ class Z2System2D_8C_Config(Config2DBase):
         dest_unmixed[Direction.X] = np.kron(np.eye(4), unmixed_X)
         dest_unmixed[Direction.Y] = np.kron(np.eye(4), unmixed_Y)
 
-        return [dest_mixed] * self.num_pg_layer + [
-            dest_unmixed
-        ] * self.num_fermionic_layer
+        return [dest_mixed] * self.num_pg_layer + [dest_unmixed] * self.num_fermionic_layer

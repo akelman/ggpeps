@@ -1,15 +1,6 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 
-import numpy as np
-
-
-# Currently not used
-@dataclass
-class EvaluatorResult:
-    obsdict: dict  # = {}
-    params: np.ndarray  # = None
-    # TODO: what else needs to be here? system info?
+import pandas as pd
 
 
 class Evaluator(ABC):
@@ -17,24 +8,22 @@ class Evaluator(ABC):
 
     def __init__(self, evaluator_cfg, system):
         self.system = system
-        self.obsdict: dict = None
+        self.obsdict: dict = {}
         self.cfg = evaluator_cfg
-        self.evaluator_type: str | None = None  # exact or mc
 
     @abstractmethod
-    def evaluate(self):  # -> dict
+    def evaluate(self):
         """Simulate the system and return the results as a dictionary of observables
 
         Raises:
-            NotImplementedError: _description_
+            NotImplementedError: raised if the method is not implemented in the subclass.
 
         Returns:
             dict: Dictionary of observables
-                  Each key-val pair is of the form (obs: List) where List is a list of values for the observable for the simulated gauge configurations
+                  Each key-val pair is of the form (obs: List) where List is a list of
+                  values for the observable for the simulated gauge configurations
         """
-        raise NotImplementedError(
-            "This is an abstract method. Implement in child class please."
-        )
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
     def get_obs_mean(self, obs: str):
@@ -44,13 +33,21 @@ class Evaluator(ABC):
             obs (str): Name of the observable
 
         Returns:
-            float: Mean value of the observable
+            float or array: Mean value of the observable.
+                            If the observable is an array, the returned value is also an array.
         """
-        raise NotImplementedError(
-            "This is an abstract method. Implement in child class please."
-        )
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
-    def save_summary(self, fname_summary: str):
+    @abstractmethod
+    def summary(self) -> pd.DataFrame:
+        """Generate a summary of the simulation in the form of a pandas dataframe
+
+        Returns:
+            pd.DataFrame: Pandas dataframe with a summary of all results
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    def save_summary(self, fname_summary: str) -> None:
         """Save the summary of the computation to a given filename
 
         Args:

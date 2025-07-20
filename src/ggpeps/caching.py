@@ -5,7 +5,6 @@ import logging
 import numpy as np
 
 import ggpeps
-from ggpeps import utils
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -13,32 +12,41 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class Cache:
-    def __init__(self, mode: str):
-        self.cache_version = 0.1
-        # self.cache_filebase: str = dest_dir
-        # self.cache_filename: str = cache_file
+    def __init__(self, disable_cache: bool = False) -> None:
+        self.cache_version = 0.2
+        self.disable_cache: bool = disable_cache
+
         self.cache_data: dict = {
             "cache_version": self.cache_version,
             "ggpeps_version": ggpeps.__version__,
-            "mode": mode,
             "evaluator_manager": None,
             "energy": {},
             "energy_grad": {},
         }
 
-    def paramvec2key(self, paramvec: np.ndarray):
+    def paramvec2key(self, paramvec: np.ndarray) -> bytes:
+        """Convert paramvect to bytes for use as a key in the cache."""
         return paramvec.data.tobytes()
 
-    def key2paramvec(self, key: bytes):
+    def key2paramvec(self, key: bytes) -> np.ndarray:
+        """Convert bytes key to paramvec."""
         return np.frombuffer(key)
 
-    def save_cache_file(self, dest_filepath: str):
+    def save_cache_file(self, dest_filepath: str) -> None:
+        """Save the current cache to file."""
+
+        if self.disable_cache:
+            return
+
         # if os.path.exists(dest_filepath):
         #    logger.warning(f"Overwriting cache file {dest_filepath}")
         with open(dest_filepath, "wb") as outfile:
             pickle.dump(self.cache_data, outfile)
+        return
 
-    def add_obj_to_cache(self, obj_name: str, obj_val):
+    def add_obj_to_cache(self, obj_name: str, obj_val) -> None:
+        if self.disable_cache:
+            return
         if obj_name not in self.cache_data.keys():
             logger.warning(f"Cache does not support {obj_name}. Not adding to cache.")
         else:
@@ -48,24 +56,25 @@ class Cache:
     def load_obj_from_local_cache(self, obj_name: str):
         return self.cache_data[obj_name]
 
-    def add_obs_to_cache(
-        self, paramvec: np.ndarray, obs: str, val: float, save_to_file: bool = True
-    ):
+    def add_obs_to_cache(self, paramvec: np.ndarray, obs: str, val: float, save_to_file: bool = False) -> None:
+        if self.disable_cache:
+            return
+
         key = self.paramvec2key(paramvec)
         obs_cache = self.cache_data[obs]
         obs_cache[key] = val
 
         obs_cache_len = len(obs_cache)
-        if (
-            obs_cache_len >= 1000 and not obs_cache_len % 500
-        ):  # 1000 is an arbitrary threshold
+        if obs_cache_len >= 1000 and not obs_cache_len % 500:  # 1000 is an arbitrary threshold
             logger.warning(f"Cache for obs {obs} is large: {obs_cache_len} items.")
 
         # Save to pickle file
         if save_to_file:
-            self.save_cache_file(ggpeps.global_vars["args"].cache_file)
+            self.save_cache_file(ggpeps.global_vars["args"].save_cache_dest)
 
     def load_obs_from_local_cache(self, paramvec: np.ndarray, obs: str):
+        if self.disable_cache:
+            return
         if obs not in ["energy", "energy_grad"]:
             raise ValueError(f"Unknown observable {obs} is not in cache.")
         obs_cache = self.cache_data[obs]
@@ -73,28 +82,15 @@ class Cache:
             if np.allclose(self.key2paramvec(key), paramvec):
                 return obs_cache[key]
 
-        # if cached value is not found, but an eval manager is present,
-        # update the minimizer to use that eval manager
-        # ISSUE: note that this overwrites the current eval manager, including when the config (e.g. meas_steps) has changed
-        # TODO: this is a hack, we should have a better way to handle this
-        if self.cache_data["evaluator_manager"] is not None:
-            eval_manager = self.cache_data["evaluator_manager"]
-            if (
-                eval_manager.nrunner
-                == ggpeps.global_vars["minimizer"].evaluator_manager.nrunner
-            ):
-                if np.allclose(
-                    eval_manager.system_cfg.paramvec,
-                    np.reshape(paramvec, eval_manager.system_cfg.param_shape()),
-                ):
-                    ggpeps.global_vars["minimizer"].evaluator_manager = eval_manager
-        return None
+        return
 
     def load_cache_file(self, cache_file: str) -> bool:
         # TODO: once we include other objects in the cache,
         #       this function should check that cached objects have the same configs
         #       (unless a change is deliberate...)
         success = False
+        if self.disable_cache:
+            return success
         if os.path.exists(cache_file):
             with open(cache_file, "rb") as infile:
                 cache_data = pickle.load(infile)
@@ -104,11 +100,9 @@ class Cache:
                     logger.info(f"Loaded cache file {cache_file}")
                 else:
                     message = (
-                        f"Cache version or mode mismatch: "
+                        f"Cache version mismatch: "
                         + f"file {cache_file} has version {cache_data['cache_version']} "
-                        + f"but the current code uses version {self.cache_version}; "
-                        + f"file {cache_file} has mode {cache_data['mode']} "
-                        + f"but the current run uses mode {ggpeps.global_vars['args'].mode}. "
+                        + f"but the current code uses version {self.cache_version}. "
                         + f"Ignoring cached data."
                     )
                     logger.warning(message)
@@ -116,7 +110,7 @@ class Cache:
         return success
 
 
-def remove_eval_manager_from_cache(cache_files):
+def remove_eval_manager_from_cache(cache_files: list[str]) -> None:
     """Remove the evaluator_manager from the cache files.
 
     Args:
@@ -124,10 +118,11 @@ def remove_eval_manager_from_cache(cache_files):
     """
     for cache_file in cache_files:
         if os.path.exists(cache_file):
-            cache = Cache("")
+            cache = Cache()
             cache.load_cache_file(cache_file)
-            cache.cache_data["evaluator_manager"] = None
-            cache.save_cache_file(cache_file)
+            if "evaluator_manager" in cache.cache_data.keys():
+                cache.cache_data["evaluator_manager"] = None
+                cache.save_cache_file(cache_file)
     return
 
 

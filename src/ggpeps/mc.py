@@ -1,6 +1,4 @@
 import os
-import ray
-import copy
 import gzip
 import pickle
 import logging
@@ -34,68 +32,73 @@ class MonteCarloEvaluatorConfig:
         self.meas_steps = None
         self.binsize: int = 1
         self.compute_grads: bool = False
-        self.update_size_per_step: int = (
-            1  # this can be set anywhere from 1 to nlinks (inclusive)
-        )
+        self.update_size_per_step: int = 1  # this can be set anywhere from 1 to nlinks (inclusive)
 
         # Logging frequency
-        self.warmup_log_freq: int = 5000  # log every X steps
+        self.warmup_log_freq: int = 5000
         self.run_log_freq: int = 20000
 
     @property
-    def seed(self):
+    def seed(self) -> int:
         if self._seed is None:
             self._seed = np.random.randint(np.iinfo(np.int32).max)
             self._rng_state = np.random.RandomState(self._seed)
         return self._seed
 
     @seed.setter
-    def seed(self, seedval):
+    def seed(self, seedval: int) -> None:
         self._seed = seedval
         self._rng_state = np.random.RandomState(seedval)
 
     @property
-    def rng_state(self):
+    def rng_state(self) -> np.random.RandomState:
         if self._rng_state is None:
             self._seed = np.random.randint(np.iinfo(np.int32).max)
             self._rng_state = np.random.RandomState(self._seed)
         return self._rng_state
 
     @rng_state.setter
-    def rng_state(self, state):
+    def rng_state(self, state: np.random.RandomState) -> None:
         logger.error(
             "MonteCarloEstimatorConfig: Do not set the state directly. Use a seed instead."
+            "Request to set the state directly was ignored."
         )
-        self.rng_state = None
-        self.seed = None
 
-    def get_rng_state_internal_repr(self):
+    def get_rng_state_internal_repr(self) -> tuple:
+        """Get the state of the RNG.
+
+        Returns:
+            tuple[str, np.NDArray[uint32], int, int, float]
+        """
         return self._rng_state.get_state()
 
-    def set_rng_state_internal_repr(self, state_repr):
+    def set_rng_state_internal_repr(self, state_repr: tuple) -> None:
+        """Set the state of the RNG.
+
+        Args:
+            state_repr (tuple[str, np.NDArray[uint32], int, int, float])
+        """
         self._rng_state.set_state(state_repr)
         return
 
-    def __str__(self):
-        dest = ""
-        dest += f"Seed: {self.seed}\n"
+    def __str__(self) -> str:
+        dest = f"Seed: {self.seed}\n"
         dest += f"Warmup steps: {self.warmup_steps}\n"
         dest += f"Measurement steps: {self.meas_steps}\n"
         dest += f"Update size: {self.update_size_per_step}\n"
         return dest
 
 
-################################### Monte Carlo runner ###############
+############### Monte Carlo runner ###############
 
 
 class MonteCarloEvaluator(Evaluator):
     """Class to take care of the MC simulation on a single runner"""
 
+    evaluator_type = "mc"
+
     def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
-        self.cfg = evaluator_cfg
-        self.system = system
-        self.evaluator_type = "mc"
-        self.obsdict: dict = {}
+        super().__init__(evaluator_cfg, system)
 
         self.step: int = 0
         self.init_measurements()
@@ -108,7 +111,7 @@ class MonteCarloEvaluator(Evaluator):
             # self.update = self.update_single_site
             self.update = self.update_N_sites
 
-    def init_measurements(self):
+    def init_measurements(self) -> None:
         """Add empty measurement vectors to the measurement dictionary"""
         binsize = self.cfg.binsize
 
@@ -119,40 +122,16 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["int_energy"] = Measurement("Interaction Energy", binsize)
         self.obsdict["mass_energy"] = Measurement("Mass Energy", binsize)
         self.obsdict["chem_energy"] = Measurement("Chemical Energy", binsize)
-        self.obsdict["mag_energy_op"] = Measurement(
-            "Magnetic Energy Operator (bare)", binsize
-        )
-        self.obsdict["el_energy_op"] = Measurement(
-            "Electric Energy Operator (bare)", binsize
-        )
-        self.obsdict["int_energy_op"] = Measurement(
-            "Interaction Energy Operator (bare)", binsize
-        )
-        self.obsdict["mass_energy_op"] = Measurement(
-            "Mass Energy Operator (bare)", binsize
-        )
+        self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
+        self.obsdict["el_energy_op"] = Measurement("Electric Energy Operator (bare)", binsize)
+        self.obsdict["int_energy_op"] = Measurement("Interaction Energy Operator (bare)", binsize)
+        self.obsdict["mass_energy_op"] = Measurement("Mass Energy Operator (bare)", binsize)
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
         self.obsdict["norm"] = Measurement("Norm", binsize)
-        self.obsdict["number_per_site"] = Measurement("Number per site", binsize)
-
-        if self.cfg.compute_grads:
-            self.obsdict["el_energy_op_grad"] = Measurement(
-                "Electric Energy Operator Gradient", binsize
-            )
-            self.obsdict["int_energy_op_grad"] = Measurement(
-                "Interaction Energy Operator Gradient", binsize
-            )
-            self.obsdict["mass_energy_op_grad"] = Measurement(
-                "Mass Energy Operator Gradient", binsize
-            )
-            self.obsdict["chem_energy_op_grad"] = Measurement(
-                "Chemical Energy Operator Gradient", binsize
-            )
-            self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm", binsize)
-            self.obsdict["energy_grad"] = Measurement(
-                "Gradient of Total Energy", binsize
-            )
-        # self.obsdict["cov_ferm"] = Measurement("Covariance Matrix fermions", binsize)
+        if self.system.cfg.num_fermionic_layer > 0:
+            self.obsdict["all_occupations"] = Measurement("All Occupations (after PH)", binsize)
+            self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
+            self.obsdict["variance_occupation"] = Measurement("Variance Occupation", binsize)
 
         # Wilson loops (of various sizes)
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
@@ -161,23 +140,24 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict[loop_name] = Measurement(loop_name, binsize)
 
         # Meson strings
-        max_string = (
-            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
-        )
+        max_string = 1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
         for k in range(1, max_string):
-            self.obsdict[f"square_string_0-0_{k}x{k}"] = Measurement(
-                f"square_string_0-0_{k}x{k}", binsize
-            )
+            self.obsdict[f"square_string_0-0_{k}x{k}"] = Measurement(f"square_string_0-0_{k}x{k}", binsize)
 
-    def measure(self):
+        # Gradients
+        if self.cfg.compute_grads:
+            self.obsdict["el_energy_op_grad"] = Measurement("Electric Energy Operator Gradient", binsize)
+            self.obsdict["int_energy_op_grad"] = Measurement("Interaction Energy Operator Gradient", binsize)
+            self.obsdict["mass_energy_op_grad"] = Measurement("Mass Energy Operator Gradient", binsize)
+            self.obsdict["chem_energy_op_grad"] = Measurement("Chemical Energy Operator Gradient", binsize)
+            self.obsdict["grad_norm"] = Measurement("Gradient of Norm/Norm", binsize)
+            self.obsdict["energy_grad"] = Measurement("Gradient of Total Energy", binsize)
+
+    def measure(self) -> None:
         """Measure the corresponding observables in the dictionary"""
-        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop(
-            (0, 0), lattice.Direction.X
-        )
+        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
 
-        self.obsdict["polyakov_00_x"].append(
-            np.real(self.system.compute_path(polyakov_loop))
-        )
+        self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
         # self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
@@ -192,23 +172,12 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["mass_energy"].append(self.system.mass_energy)
         self.obsdict["chem_energy"].append(self.system.chem_energy)
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
-        self.obsdict["number_per_site"].append(self.system.number_per_site)
+        if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
+            self.obsdict["all_occupations"].append(self.system.all_occupations)
+            self.obsdict["average_occupation"].append(self.system.average_occupation())
 
-        if self.cfg.compute_grads:
-            self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
-            self.obsdict["int_energy_op_grad"].append(
-                self.system.int_energy_op_grad_vec
-            )
-            self.obsdict["mass_energy_op_grad"].append(
-                self.system.mass_energy_op_grad_vec
-            )
-            self.obsdict["chem_energy_op_grad"].append(
-                self.system.chem_energy_op_grad_vec
-            )
-            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
-
-        # TODO: save sizes/loops/strings in a more efficient way, so that they are not recomputed each step
         # Wilson loops
+        # TODO: save sizes/loops/strings in a more efficient way, so that they are not recomputed each step
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
         loops = self.system.cfg.lattice.generate_all_wilson_loops((0, 0), sizes)
         for k in range(len(sizes)):
@@ -216,16 +185,18 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
 
         # Meson strings
-        max_string = (
-            1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
-        )
-        strings = [
-            self.system.cfg.lattice.generate_L_string((0, 0), (k, k))
-            for k in range(1, max_string)
-        ]
+        max_string = 1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
+        strings = [self.system.cfg.lattice.generate_L_string((0, 0), (k, k)) for k in range(1, max_string)]
         for k in range(1, max_string):
             string_name = f"square_string_0-0_{k}x{k}"
             self.obsdict[string_name].append(self.system.meson_string(strings[k - 1]))
+
+        if self.cfg.compute_grads:
+            self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
+            self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
+            self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
+            self.obsdict["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
+            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
 
         return
 
@@ -236,10 +207,7 @@ class MonteCarloEvaluator(Evaluator):
         # Gradient of the magnetic energy
         meas_mag_energy_op = self.obsdict["mag_energy_op"]
         prod_mag_energy_grad = meas_mag_energy_op * meas_grad_over_norm
-        mag_energy_op_grad = (
-            prod_mag_energy_grad.mean()
-            - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
-        )
+        mag_energy_op_grad = prod_mag_energy_grad.mean() - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
         # Add the constants back into the expression of the magnetic energy
         mag_energy_grad = -2 * self.system.cfg.g_mag * mag_energy_op_grad
 
@@ -282,9 +250,10 @@ class MonteCarloEvaluator(Evaluator):
         # Gradient of the chemical potential
         meas_chem_energy = self.obsdict["chem_energy"]
         meas_chem_energy_op_grad = self.obsdict["chem_energy_op_grad"]
-        for lay in range(self.system.cfg.nlayer):
+        for lay in range(self.system.cfg.num_pg_layer, self.system.cfg.nlayer):
             # the gradients must be scaled by the chemical potential
-            meas_chem_energy_op_grad.datavec[lay] *= self.system.cfg.g_chem[lay]
+            ind = lay - self.system.cfg.num_pg_layer
+            meas_chem_energy_op_grad.datavec[lay] *= self.system.cfg.g_chem[ind]
         prod_chem_energy_grad = meas_chem_energy * meas_grad_over_norm
         chem_energy_grad = (
             prod_chem_energy_grad.mean()
@@ -293,17 +262,12 @@ class MonteCarloEvaluator(Evaluator):
         )
 
         # Total gradient
-        grad = (
-            mag_energy_grad
-            + el_energy_grad
-            + int_energy_grad
-            + mass_energy_grad
-            + chem_energy_grad
-        )
+        grad = mag_energy_grad + el_energy_grad + int_energy_grad + mass_energy_grad + chem_energy_grad
         return grad
 
-    def warmup(self):
+    def warmup(self) -> None:
         """Warm up phase without measurement"""
+
         logger.debug("Starting MC warmup")
         while self.step < self.cfg.warmup_steps:
             if self.step % self.cfg.warmup_log_freq == 0:
@@ -312,14 +276,13 @@ class MonteCarloEvaluator(Evaluator):
             self.step += 1
         logger.debug("Finished MC warmup")
 
-    def run(self):
+    def run(self) -> None:
         """Meaurement phase"""
+
         logger.debug("Starting MC measurement")
         while self.step < self.cfg.warmup_steps + self.cfg.meas_steps:
             if self.step % self.cfg.run_log_freq == 0:
-                acceptance_ratio = np.mean(
-                    self.obsdict["acceptance_prob"].datavec[-self.cfg.run_log_freq : :]
-                )
+                acceptance_ratio = np.mean(self.obsdict["acceptance_prob"].datavec[-self.cfg.run_log_freq : :])
                 logger.debug(
                     f"Run: {self.step}. Acceptance ratio of last {self.cfg.run_log_freq} steps is {acceptance_ratio}"
                 )
@@ -327,32 +290,33 @@ class MonteCarloEvaluator(Evaluator):
             self.measure()
             self.step += 1
 
+        # Update observables which depend on expectation values
+        if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
+            self.obsdict["variance_occupation"].extend(
+                (self.obsdict["average_occupation"].datavec - self.obsdict["average_occupation"].mean()) ** 2
+            )
         if self.cfg.compute_grads:
             # Update gradients which depend on expectation values
             # For interface reasons, we insert meas_steps copies of this gradient
             total_grad = self.energy_gradient_mc()
-            self.obsdict["energy_grad"].extend(
-                [total_grad] * len(self.obsdict["energy"])
-            )
+            self.obsdict["energy_grad"].extend([total_grad] * len(self.obsdict["energy"]))
 
         logger.debug("Finished MC measurement")
         return
 
-    def update_single_site(self):
+    def update_single_site(self) -> None:
         """Update for the MC simulation.
         This updates randomly chooses a single site and updates it.
-        The update is local. The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The update is local. The new gauge field value is drawn uniformly from the
+        distribution of possible gauge fields (according to the gauge group).
 
-        TODO: test gauge fixing with this function
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
         nlinks = lattice.nlinks
-        link_ind = self.cfg.rng_state.choice(
-            self.system.cfg.lattice.comp_tree, replace=False
-        )
+        link_ind = self.cfg.rng_state.choice(self.system.cfg.lattice.comp_tree, replace=False)
         # Uniformly pick a gauge value
-        theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+        theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
         # Store the old values
         weight_old = self.system.weight
         weight_new = self.system.calculate_weight_attempt(link_ind, theta)
@@ -364,18 +328,19 @@ class MonteCarloEvaluator(Evaluator):
             # Reject
             self.obsdict["acceptance_prob"].append(0)
 
-    def update_all_sites_single_site(self):
+    def update_all_sites_single_site(self) -> None:
         """Update for the MC simulation.
         This updates iterates over all lattice sites and updates every site once.
         The update is local.
-        The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The new gauge field value is drawn uniformly from the distribution of possible gauge fields
+        (according to the gauge group).
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
         comp_tree = lattice.comp_tree  # non gauge fixed links
         for i in comp_tree:
             # Uniformly pick a gauge to replace
-            theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+            theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
             # Store the old values
             weight_old = self.system.weight
             weight_new = self.system.calculate_weight_attempt(i, theta)
@@ -387,11 +352,12 @@ class MonteCarloEvaluator(Evaluator):
                 # Reject
                 self.obsdict["acceptance_prob"].append(0)
 
-    def update_N_sites(self):
+    def update_N_sites(self) -> None:
         """Update for the MC simulation.
         This updates iterates over N lattice sites and updates every site once.
         The update is local.
-        The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The new gauge field value is drawn uniformly from the distribution of possible gauge fields
+        (according to the gauge group).
         """
         links_inds = self.cfg.rng_state.choice(
             self.system.cfg.lattice.comp_tree,
@@ -401,7 +367,7 @@ class MonteCarloEvaluator(Evaluator):
 
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
-            theta = self.system.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+            theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
             # Store the old values
             weight_old = self.system.weight
             weight_new = self.system.calculate_weight_attempt(link_ind, theta)
@@ -413,8 +379,8 @@ class MonteCarloEvaluator(Evaluator):
                 # Reject
                 self.obsdict["acceptance_prob"].append(0)
 
-    def evaluate(self):
-        """Main routine to start a Monte Carlo simulation."""
+    def evaluate(self) -> None:
+        """Main routine to run a Monte Carlo simulation."""
         self.warmup()
         self.run()
 
@@ -480,7 +446,7 @@ class MonteCarloEvaluator(Evaluator):
                 return meas.var()
         return None
 
-    def save_full(self, fname_full: str):
+    def save_full(self, fname_full: str) -> None:
         """Save the full MonteCarloEstimator
 
         Args:
@@ -494,13 +460,16 @@ class MonteCarloEvaluator(Evaluator):
         with gzip.open(fname_full, "wb") as outfile:
             pickle.dump(data_full, outfile)
 
-    def save(self, output_dir="."):
-        """Convenience function to combine saving the MonteCarloEstimator and the summary of the observables"""
+    def save(self, output_dir: str = ".") -> None:
+        """Convenience function to combine saving the MonteCarloEstimator and the
+        summary of the observables"""
+
         syscfg = self.system.cfg
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
 
-        couplings_str = f"gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_gmass_{syscfg.g_mass:.3f}_gchem_{np.array2string(syscfg.g_chem, separator=',')}"
+        chem_str = ",".join([f"{val:.3f}" for val in syscfg.g_chem])
+        couplings_str = f"gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_gmass_{syscfg.g_mass:.3f}_gchem_{chem_str}"
 
         fname_full = f"data_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_{couplings_str}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl.gz"
         fname_summary = f"summary_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_{couplings_str}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl"
@@ -510,20 +479,15 @@ class MonteCarloEvaluator(Evaluator):
 
     #### Output (plots or on the commandline) ####
 
-    def print_stats(self):
+    def print_stats(self) -> None:
         """Print a quick summary of the observables"""
         for key in self.obsdict.keys():
             val = self.obsdict[key]
             if val is not None and len(val) > 0:
                 logger.info(f"<{key}>: {self.obsdict[key].mean()}")
 
-    def summary(self):
-        """Generate a summary of the simulation in the form of a pandas dataframe
-
-        Returns:
-            pd.DataFrame: Pandas dataframe with a summary of all results
-        """
-        dest = {
+    def summary(self) -> pd.DataFrame:
+        dest: dict = {
             "name": [],
             "nx": [],
             "ny": [],
@@ -534,6 +498,7 @@ class MonteCarloEvaluator(Evaluator):
             "g_mag": [],
             "g_int": [],
             "g_mass": [],
+            "g_chem": [],
             "mean": [],
             "warmup_steps": [],
             "meas_steps": [],
@@ -549,6 +514,7 @@ class MonteCarloEvaluator(Evaluator):
             dest["g_int"].append(self.system.cfg.g_int)
             dest["g_mag"].append(self.system.cfg.g_mag)
             dest["g_mass"].append(self.system.cfg.g_mass)
+            dest["g_chem"].append(self.system.cfg.g_chem)
             dest["paramvec"].append(self.system.cfg.paramvec)
             dest["ncopy"].append(self.system.cfg.ncopy)
             dest["nlayer"].append(self.system.cfg.nlayer)

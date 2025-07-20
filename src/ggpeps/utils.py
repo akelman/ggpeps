@@ -13,6 +13,7 @@ from scipy.linalg import svd, block_diag
 
 import numpy as np
 from ggpeps import xnp as xnp
+import pandas as pd
 
 from pfapack import pfaffian as pf
 
@@ -32,16 +33,12 @@ pauliz = np.array([[1, 0], [0, -1]])
 # ========== Utility Functions ====================
 
 
-def setup_logger(
-    logger: logging.Logger, log_file: str, level: str, runner_msg: str = ""
-):
+def setup_logger(logger: logging.Logger, log_file: str, level: str, runner_msg: str = ""):
     log_file_handler = logging.FileHandler(log_file)
     h_stdout = logging.StreamHandler(stream=sys.stdout)
     h_stderr = logging.StreamHandler(stream=sys.stderr)
     h_stderr.addFilter(lambda record: record.levelno >= logging.WARNING)
-    formatter = logging.Formatter(
-        f"%(asctime)s [{runner_msg}%(levelname)s] %(message)s"
-    )
+    formatter = logging.Formatter(f"%(asctime)s [{runner_msg}%(levelname)s] %(message)s")
     h_stdout.setFormatter(formatter)
     log_file_handler.setFormatter(formatter)
     logger.addHandler(h_stdout)
@@ -196,9 +193,7 @@ def get_git_hash():
     srcdir = os.path.join(packagedir, os.path.pardir)
     rootdir = os.path.join(srcdir, os.path.pardir)
     gitdir = os.path.join(rootdir, ".git")
-    githash = subprocess.check_output(
-        ["git", f"--git-dir={gitdir}", "rev-parse", "HEAD"]
-    )
+    githash = subprocess.check_output(["git", f"--git-dir={gitdir}", "rev-parse", "HEAD"])
     return githash.decode("utf-8").strip()
 
 
@@ -244,11 +239,7 @@ def multiply_except(arr, ind: int):
 @nb.njit(cache=True)
 def pfaffian_explicit_4x4_masked(mat, ind):
     i0, i1, i2, i3 = ind
-    return (
-        (mat[i0, i1] * mat[i2, i3])
-        - (mat[i0, i2] * mat[i1, i3])
-        + (mat[i1, i2] * mat[i0, i3])
-    )
+    return (mat[i0, i1] * mat[i2, i3]) - (mat[i0, i2] * mat[i1, i3]) + (mat[i1, i2] * mat[i0, i3])
 
 
 @nb.njit(cache=True)
@@ -288,6 +279,29 @@ def derivative_pfaffian(mat, d_mat, pfaval=None):
         return 0.0
 
 
+def get_obs_mean_df(df: pd.DataFrame, obs: str) -> float:
+    """Get the mean of an observable from the summary dataframe.
+
+    Args:
+        obs (str): Name of the observable.
+        df (pd.DataFrame): Summary dataframe.
+
+    Returns:
+        float: Mean value of the observable.
+    """
+    return df.loc[df["name"] == obs, "mean"].values[0]
+
+
+def save_summary_df(df, fname_summary: str):
+    """Save the evaluation summary to a given filename
+
+    Args:
+        df (pd.DataFrame): Dataframe containing the summary
+        fname_summary (str): Output filename for the summary
+    """
+    df.to_pickle(fname_summary)
+
+
 # =========== Matrix Evaluation Functions ====================
 
 
@@ -319,9 +333,7 @@ def is_permutation(mat):
     """Returns true if the matrix is a permutation matrix."""
     n, m = mat.shape
     if issparse(mat):
-        raise NotImplementedError(
-            "Checking for sparse permutation matrices is not implemented."
-        )
+        raise NotImplementedError("Checking for sparse permutation matrices is not implemented.")
     else:
         square = n == m
         id = xnp.allclose(xnp.eye(n), mat @ xnp.transpose(mat))
@@ -330,24 +342,25 @@ def is_permutation(mat):
         return square and id and sum_rows and sum_cols
 
 
-def is_antisymmetric(mat):
-    """Returns true if the matrix is symmetric."""
+def is_antisymmetric(mat, rtol: float = 1e-5, atol: float = 1e-8):
+    """Returns true if the matrix mat is anti-symmetric."""
     if issparse(mat):
-        return xnp.allclose(mat.todense(), -mat.T.todense())
+        return xnp.allclose(mat.todense(), -mat.T.todense(), rtol=rtol, atol=atol)
     else:
-        return xnp.allclose(-xnp.transpose(mat), mat)
+        return xnp.allclose(-xnp.transpose(mat), mat, rtol=rtol, atol=atol)
 
 
-def is_covmat(mat: np.ndarray) -> bool:
+def is_covmat(mat: np.ndarray, rtol: float = 1e-5, atol: float = 1e-8) -> bool:
     """Returns true if the given matrix satisfies all the conditions to be a covariance matrix."""
     m, n = mat.shape
     if (
         m == n
-        and is_antisymmetric(mat)
-        and xnp.allclose(mat @ mat, -xnp.eye(m))
-        and xnp.allclose(mat @ xnp.transpose(mat), xnp.eye(m))
+        and is_antisymmetric(mat, rtol=rtol, atol=atol)
+        and xnp.allclose(mat @ mat, -xnp.eye(m), rtol=rtol, atol=atol)
+        and xnp.allclose(mat @ xnp.transpose(mat), xnp.eye(m), rtol=rtol, atol=atol)
     ):
-        # note that the last check should be mat @ mat^dagger = 1, but transpose gets the same information for a matrix with real elements
+        # note that the last check should be mat @ mat^dagger = 1, but transpose gets
+        # the same information for a matrix with real elements
         return True
     return False
 
@@ -482,9 +495,7 @@ class WoodburyInverter:
         if not xnp.allclose(c, 0):
             # We cannot update with C being zero since this matrix has no inverse
             cinv = xnp.linalg.inv(c)
-            self.ainv -= (
-                (self.ainv @ u) @ xnp.linalg.inv(cinv + v @ self.ainv @ u)
-            ) @ (v @ self.ainv)
+            self.ainv -= ((self.ainv @ u) @ xnp.linalg.inv(cinv + v @ self.ainv @ u)) @ (v @ self.ainv)
         return self.ainv
 
     def update_index(self, m, indi, indj):
@@ -496,9 +507,7 @@ class WoodburyInverter:
             idmat = xnp.eye(m_m, n_m)
             u = xnp.zeros((m_a, m_m))
             v = xnp.zeros((n_m, n_a))
-            if (
-                ggpeps.PREFERRED_BACKEND == "jax"
-            ):  # TODO: handle based on type checking instead
+            if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
                 u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
                 v = v.at[0:m_m, indj : indj + n_m].set(idmat)
             else:
@@ -536,9 +545,7 @@ def update_index(self, ainv, m, indi, indj, store=True):
         idmat = xnp.eye(m_m, n_m)
         u = xnp.zeros(m_a, m_m)
         v = xnp.zeros(n_m, n_a)
-        if (
-            ggpeps.PREFERRED_BACKEND == "jax"
-        ):  # TODO: handle based on type checking instead
+        if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
             u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
             v = v.at[0:m_m, indj : indj + n_m].set(idmat)
         else:
@@ -587,9 +594,7 @@ class IncLogAbsDeterminant:
             idmat = xnp.eye(m_m, n_m)
             u = xnp.zeros((m_a, m_m))
             v = xnp.zeros((n_m, n_a))
-            if (
-                ggpeps.PREFERRED_BACKEND == "jax"
-            ):  # TODO: handle based on type checking instead
+            if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
                 u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
                 v = v.at[0:m_m, indj : indj + n_m].set(idmat)
             else:
@@ -610,9 +615,7 @@ class BgbTransform:
     @property
     def mat_out(self):
         if self._mat_out is None:
-            wn, s, wp = svd(
-                self.mat_in, full_matrices=True, compute_uv=True
-            )  # self.mat_in is the T matrix
+            wn, s, wp = svd(self.mat_in, full_matrices=True, compute_uv=True)  # self.mat_in is the T matrix
             wp = herm_conj(wp)
             if not self.is_pure_gauge:
                 # TODO: Fix this
@@ -630,9 +633,7 @@ class BgbTransform:
             up = np.transpose(wp)
             un_rows, un_cols = un.shape
             up_rows, up_cols = up.shape
-            unitary_transform = np.zeros(
-                (un.shape[0] + up.shape[0], un.shape[1] + up.shape[1]), dtype=complex
-            )
+            unitary_transform = np.zeros((un.shape[0] + up.shape[0], un.shape[1] + up.shape[1]), dtype=complex)
             unitary_transform[:un_rows, :un_cols] = un
             unitary_transform[-up_rows:, -up_cols:] = up
 
@@ -641,9 +642,7 @@ class BgbTransform:
             r0_diagonal = np.zeros(trafo_size, dtype=complex)
             if not self.is_pure_gauge:
                 r0_diagonal[0] = 1j / 2.0
-            r0_diagonal[start_ind : start_ind + len(s)] = (
-                1j / 2.0 * (1 - s**2) / (1 + s**2)
-            )
+            r0_diagonal[start_ind : start_ind + len(s)] = 1j / 2.0 * (1 - s**2) / (1 + s**2)
             r0_diagonal[-len(s) :] = 1j / 2.0 * (1 - s**2) / (1 + s**2)
             r0 = np.diag(r0_diagonal)
 
@@ -664,9 +663,7 @@ class BgbTransform:
 
             gamma0 = np.zeros((2 * trafo_size, 2 * trafo_size), dtype=complex)
             gamma0 = np.block([[q0, r0], [np.conj(r0), np.conj(q0)]])
-            trafo_0 = block_diag(
-                herm_conj(unitary_transform), np.transpose(unitary_transform)
-            )
+            trafo_0 = block_diag(herm_conj(unitary_transform), np.transpose(unitary_transform))
             trafo_1 = block_diag(np.conj(unitary_transform), unitary_transform)
             # This matrix has the following order: psi, r+, u-, l-, d+,t,b, r-, l+,
             # u+, d-,t,b psi_dag, r+_dag, l-_dag, u-_dag, d+_dag,t_dag,b_dag,
@@ -741,7 +738,8 @@ def rebin_error(arr):
 def rebin_eom(arr, num_of_bins=20):
     """Calculate the error on the mean (EOM) by rebinning.
     As a heuristic for the EOM we use that the biggest bin will give the best estimate.
-    We do not rebin to the maximal extent, but use the heuristic of taking the largest binsize of the form 2^i that can fit N/20.
+    We do not rebin to the maximal extent, but use the heuristic of taking the largest
+    binsize of the form 2^i that can fit N/20.
 
     Args:
         arr (np.ndarray): Timeseries of a measurement
@@ -763,7 +761,8 @@ def rebin_eom(arr, num_of_bins=20):
 
 
 def autocorr_rebin_eom(arr):
-    """Calculate the autocorrelation, and finds the corrrelation decay time (when the auto-correlation decays below 1/100)
+    """Calculate the autocorrelation, find the corrrelation decay time
+    (when the auto-correlation decays below 1/100),
     and calculate the error using bins with the correlation time size
 
     Args:
@@ -786,6 +785,116 @@ def autocorr_rebin_eom(arr):
             eom = rebin_eom(arr, num_of_bins)
             decay_time = i
             return eom, decay_time
+
+
+def autocorr_rebin_data(arr):
+    """
+    Rebin the data to remove autocorrelation.
+    The binsize is determined by the first two elements of the autocorrelation function that are below 1/100.
+
+    Args:
+        arr (np.ndarray): Timeseries of a measurement
+    Returns:
+        np.ndarray: Rebinend data
+    """
+    N = len(arr)
+    autocorr_array = autocorr_fft(arr)
+    for i in range(len(autocorr_array)):  # find first two elements below 1/100
+        if i >= N / 10:  # limit the number of binsto a minimum of 10.
+            binsize = i
+            break
+        elif autocorr_array[i] <= 1 / 100 and autocorr_array[i + 1] <= 1 / 100:
+            binsize = i
+            break
+    rebinned_array = rebin_array(arr, binsize)
+    return rebinned_array, binsize
+
+
+def jackknife_resampling(data):
+    """Generate jackknife resamples of the data."""
+    n = len(data)
+    indices = np.arange(n)
+    resamples = np.zeros(n)
+    for i in range(n):
+        resamples[i] = np.mean(data[indices != i])
+    return resamples
+
+
+def jacknife_gradient_error_propagation(op_datavec, op_grad_datavec, grad_norm_datavec):
+    """Calculate the error propagation of the gradient of an observable using jackknife resampling.
+
+    Args:
+        op_datavec (np.ndarray): Timeseries of the observable - rebinned data, i.e., not autocorrelation
+        op_grad_datavec (np.ndarray): Timeseries of the gradient of the observable - rebinned data, i.e., not autocorrelation
+        grad_norm_datavec (np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm of the ansatz
+        - rebinned data, i.e., not autocorrelation
+
+    Returns:
+        float: Error of the gradient of the observable
+    """
+    op_datavec_resamples = jackknife_resampling(op_datavec)
+    op_grad_datavec_resamples = jackknife_resampling(op_grad_datavec)
+    grad_norm_datavec_resamples = jackknife_resampling(grad_norm_datavec)
+    op_times_grad_norm_resamples = jackknife_resampling(op_datavec * grad_norm_datavec)
+    mean_grad = np.mean(
+        op_grad_datavec_resamples + op_times_grad_norm_resamples - op_datavec_resamples * grad_norm_datavec_resamples
+    )
+    grad_jacknife = (
+        op_grad_datavec_resamples + op_times_grad_norm_resamples - op_datavec_resamples * grad_norm_datavec_resamples
+    )
+    n = len(grad_jacknife)
+
+    return np.sqrt((n - 1) * np.mean((grad_jacknife - mean_grad) ** 2))
+
+
+def compute_grad_err(op_datavec, op_grad_datavec, grad_norm_datavec):
+    """Compute the error of the gradient of an observable.
+
+    Args:
+        op_datavec(np.ndarray): Timeseries of the observable
+        op_grad_datavec(np.ndarray): Timeseries of the gradient of the observable
+        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm of the ansatz
+    Returns:
+        float: Error of the gradient of the observable
+    """
+    op_datavec_rebinned, op_datavec_rebinned_binsize = autocorr_rebin_data(op_datavec)
+    op_grad_datavec_rebinned, op_grad_datavec_rebinned_binsize = autocorr_rebin_data(op_grad_datavec)
+    grad_norm_datavec_rebinned, grad_norm_datavec_rebinned_binsize = autocorr_rebin_data(grad_norm_datavec)
+    max_binsize = max(
+        op_datavec_rebinned_binsize,
+        op_grad_datavec_rebinned_binsize,
+        grad_norm_datavec_rebinned_binsize,
+    )
+
+    if (
+        max_binsize > op_datavec_rebinned_binsize
+    ):  # All arrays should be of the same size, so we pick the largest binsize
+        op_datavec_rebinned = rebin_array(op_datavec, max_binsize)
+    if max_binsize > op_grad_datavec_rebinned_binsize:
+        op_grad_datavec_rebinned = rebin_array(op_grad_datavec, max_binsize)
+    if max_binsize > grad_norm_datavec_rebinned_binsize:
+        grad_norm_datavec_rebinned = rebin_array(
+            grad_norm_datavec,
+            max_binsize,
+        )
+    return jacknife_gradient_error_propagation(
+        op_datavec_rebinned, op_grad_datavec_rebinned, grad_norm_datavec_rebinned
+    )
+
+
+def compute_grad_mean(op_datavec, op_grad_datavec, grad_norm_datavec):
+    """Compute the mean of the gradient of an observable.
+
+    Args:
+        op_datavec(np.ndarray): Timeseries of the observable
+        op_grad_datavec(np.ndarray): Timeseries of the gradient of the observable
+        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm of the ansatz
+    Returns:
+        float: Mean of the gradient of the observable
+    """
+    mean = np.mean(op_grad_datavec + op_datavec * grad_norm_datavec)
+    mean = mean - np.mean(op_datavec) * np.mean(grad_norm_datavec)
+    return mean
 
 
 # ========== Debugging Functions ====================
@@ -870,10 +979,11 @@ def get_couplings_from_foldername(fname: str) -> str:
             res += f"{arg}_{result.group(0)}_"
 
     # chem - we treat this differently because it is a vector for different flavors
-    pattern = r"chem_\[.*?\]"
+    pattern = rf"(?<=chem_)(-?\d+\.\d+)_(-?\d+\.\d+)"
     result = re.search(pattern, fname)
     if result is not None:
-        res += f"{arg}_{result.group(0)}_"
+        vals = f"_".join(result.groups())
+        res += f"chem_{vals}_"
     return res
 
 
@@ -882,7 +992,8 @@ def extract_params_from_results_file(fname: str, dest_dir: Optional[str] = "") -
 
     Args:
         fname (str): results file path
-        dest_dir (str, optional): destination directory for param file. If none is given, defaults to current directory.
+        dest_dir (str, optional): destination directory for param file.
+                                  If none is given, defaults to current directory.
 
     Returns:
         bool: True if succesful, false otherwise.
@@ -913,7 +1024,8 @@ def extract_params_from_results_file(fname: str, dest_dir: Optional[str] = "") -
 
 
 def extract_params_from_run(source_dir, dest_dir):
-    """Extracts all the parameters from the results files of a run (with varying couplings), and stores them as .npy files.
+    """Extracts all the parameters from the results files of a run (with varying
+    couplings), and stores them as .npy files.
 
     Args:
         source_dir (str): a source directory containing directories, each of which is the result of a run.
@@ -926,9 +1038,7 @@ def extract_params_from_run(source_dir, dest_dir):
             files = os.listdir(inner_dir)
             for f in files:
                 if os.path.isfile(os.path.join(inner_dir, f)):
-                    extract_params_from_results_file(
-                        os.path.join(inner_dir, f), dest_dir
-                    )
+                    extract_params_from_results_file(os.path.join(inner_dir, f), dest_dir)
 
 
 # ========== Testing Functions ====================

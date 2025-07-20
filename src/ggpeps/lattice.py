@@ -27,7 +27,8 @@ class Lattice2D:
     Args:
         nx (int): Extend of the lattice in x direction (given in number of vertices)
         ny (int): Extend of the lattice in y direction (given in number of vertices)
-        gf_num_of_rows (int): Number of rows on which we fix the gauge when gauge fixing. If -1: we fix a maximal tree. It generates a tree in which the links are fixed accordingly.
+        gf_num_of_rows (int): Number of rows on which we fix the gauge when gauge fixing.
+                              If -1: we fix a maximal tree. It generates a tree in which the links are fixed accordingly.
     """
 
     dim = 2
@@ -40,9 +41,12 @@ class Lattice2D:
         self.size = nx * ny  # number of sites
 
         # We trust the user not to modify these
-        if gf_num_of_rows == -1:  # If we gauge_fix over a maximal tree
-            gf_num_of_rows = None  # We fix a maximal tree
-        self.fixed_tree = self.generate_tree(gf_num_of_rows)
+        if gf_num_of_rows == -2:  # we fix a chess tree
+            self.fixed_tree = self.generate_chess_tree()
+        else:
+            if gf_num_of_rows == -1:  # If we gauge_fix over a maximal tree
+                gf_num_of_rows = None  # We fix a maximal tree
+            self.fixed_tree = self.generate_tree(gf_num_of_rows)
 
         self.comp_tree = self.generate_tree_complement()
 
@@ -139,9 +143,7 @@ class Lattice2D:
         elif dir == Direction.Y:
             return self.nx * self.ny * dir.value + self.ny * x + y
         else:
-            logger.error(
-                "coord2ind_dir: There are only X and Y as directions", file=sys.stderr
-            )
+            logger.error("coord2ind_dir: There are only X and Y as directions", file=sys.stderr)
             return None
 
     def get_neighbor(self, coord: tuple, orient: Direction) -> tuple:
@@ -209,9 +211,7 @@ class Lattice2D:
             end_site = end_site_coord
         return (start_site, end_site)
 
-    def generate_polyakov_loop(
-        self, coord: tuple, dir: Direction, use_indices: bool = True
-    ) -> list:
+    def generate_polyakov_loop(self, coord: tuple, dir: Direction, use_indices: bool = True) -> list:
         """Generate a Polyakov loop, a loop around the full system.
         We only need one point so start from and a direction.
         The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
@@ -247,9 +247,7 @@ class Lattice2D:
             dest = [(self.coord2ind_dir(*coorddir), conj) for (coorddir, conj) in dest]
         return dest
 
-    def generate_wilson_loop(
-        self, coord: tuple, size: tuple, use_indices: bool = True
-    ) -> list:
+    def generate_wilson_loop(self, coord: tuple, size: tuple, use_indices: bool = True) -> list:
         """Generate a Wilson loop with bottom left corner at coord and an extent specified by the tuple size.
         This method is aware of the periodic boundary conditions of the lattice.
         The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
@@ -285,9 +283,7 @@ class Lattice2D:
             dest = [(self.coord2ind_dir(*coorddir), conj) for (coorddir, conj) in dest]
         return dest
 
-    def generate_L_string(
-        self, coord: tuple, size: tuple, use_indices: bool = True
-    ) -> list:
+    def generate_L_string(self, coord: tuple, size: tuple, use_indices: bool = True) -> list:
         """Generate an L shaped path with bottom left corner at coord and an extent specified by the tuple size.
         This method is aware of the periodic boundary conditions of the lattice.
         The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
@@ -330,9 +326,7 @@ class Lattice2D:
             list: A list of tuples will allowed loop sizes.
         """
         sizes = []
-        max_x = (
-            self.nx // 2
-        )  # due to periodic boundary conditions, loops should only go up to half the system size
+        max_x = self.nx // 2  # due to periodic boundary conditions, loops should only go up to half the system size
         max_y = self.ny // 2
 
         for size_x in range(1, max_x + 1):
@@ -342,9 +336,7 @@ class Lattice2D:
 
         return sizes
 
-    def generate_all_wilson_loops(
-        self, coord: tuple, sizes: list = [], use_indices: bool = True
-    ) -> list:
+    def generate_all_wilson_loops(self, coord: tuple, sizes: list = [], use_indices: bool = True) -> list:
         """Generate all rectangular Wilson loops with bottom left corner at coord, up to a size determined by the lattice size.
         This method is aware of the periodic boundary conditions of the lattice.
         Each loop is returned in the format [(link_id,bool),...,(link_id,bool)].
@@ -376,7 +368,8 @@ class Lattice2D:
         (no integration is needed over links on the tree).
         This method is built for a lattice with periodic boundary conditions.
 
-        The particular tree returned by this function includes all the horizontal links in the first num_of_rows rows but the last one on each row.
+        The particular tree returned by this function includes all the horizontal links
+        in the first num_of_rows rows but the last one on each row.
 
         If num_of_rows is not given then a maximal tree containing all the rows but the last link
         and all the vertical links but the last one on the first column.
@@ -393,17 +386,27 @@ class Lattice2D:
         ):  # If number of rows to fix is not given or larger than lattice size we generate a maximal tree
             num_of_rows = self.ny
 
-            tree += [
-                self.coord2ind_dir((0, y), Direction(1)) for y in range(self.ny - 1)
-            ]
+            tree += [self.coord2ind_dir((0, y), Direction(1)) for y in range(self.ny - 1)]
 
         # add horizontal links, except for the last
-        tree += [
-            self.coord2ind_dir((x, y), Direction(0))
-            for y in range(num_of_rows)
-            for x in range(self.nx - 1)
-        ]
+        tree += [self.coord2ind_dir((x, y), Direction(0)) for y in range(num_of_rows) for x in range(self.nx - 1)]
 
+        return tree
+
+    def generate_chess_tree(self):
+        """Generate a chess tree on the lattice - all links in the x direction comming out of only even sites.
+        This allows all values on the tree to be fixed to the identity when gauge_fixing
+        (no integration is needed over links on the tree).
+        This method is built for a lattice with periodic boundary conditions.
+
+        Returns:
+            list: List of link-indices in the tree
+        """
+        tree = []
+        for y in range(self.ny):
+            for x in range(self.nx):
+                if (x + y) % 2 == 0:
+                    tree.append(self.coord2ind_dir((x, y), Direction(0)))
         return tree
 
     def generate_tree_complement(self):
@@ -462,12 +465,7 @@ class Lattice3D:
 
     def coord2ind_dir(self, coord, dir):
         x, y, z = coord
-        return (
-            self.nx * self.ny * self.nz * dir.value
-            + self.nx * self.ny * z
-            + self.nx * y
-            + x
-        )
+        return self.nx * self.ny * self.nz * dir.value + self.nx * self.ny * z + self.nx * y + x
 
 
 class PermutationBuilderGMS2DU1:
@@ -544,9 +542,7 @@ class PermutationBuilderGMS2DU1:
                 u_i_perm = offset_physical_modes + 8 * size + y * nx * 8 + 8 * x + 4
                 if y == 0:
                     # We have to add the periodic boundary condition here for the down mode
-                    d_i_perm = (
-                        offset_physical_modes + 8 * size + (ny - 1) * nx * 8 + 8 * x
-                    )
+                    d_i_perm = offset_physical_modes + 8 * size + (ny - 1) * nx * 8 + 8 * x
                 dest[range(d_i_perm, d_i_perm + 4), range(d_j_perm, d_j_perm + 4)] = 1
                 dest[range(u_i_perm, u_i_perm + 4), range(u_j_perm, u_j_perm + 4)] = 1
         return dest

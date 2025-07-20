@@ -2,7 +2,7 @@ import os
 import nox
 
 # Define the minimal nox version required to run
-nox.options.needs_version = ">= 2024.3.2"
+nox.needs_version = ">= 2024.3.2"
 
 
 @nox.session
@@ -16,10 +16,28 @@ def lint(session):
         "E,W,F",
         ".",
         "--extend-ignore",
-        "E203",  # whitespace around : in slices
+        "E203, W503",  # whitespace in slices, line break before binary operator
         "--max-line-length",
-        "89",
+        "119",
     )
+
+
+@nox.session
+def typing(session):
+    """Perform static type checking."""
+
+    session.install(".")
+    session.install("mypy")
+    session.run(
+        "mypy",
+        "--install-types",  # install missing types for third-party packages
+        "--non-interactive",  # don't ask user for confirmation before installing missing types
+        "src/ggpeps/caching.py",
+        "src/ggpeps/evaluator_manager.py",
+        "src/ggpeps/evaluator.py",
+        "src/ggpeps/exacteval.py",
+    )
+    # TODO: Add passing files (eventually should be entire repo)
 
 
 @nox.session
@@ -33,42 +51,18 @@ def build_and_check_dists(session):
 
 
 @nox.session(python=["3"])
-def tests_jax(session):
-    build_and_check_dists(session)
-
-    generated_files = os.listdir("dist/")
-    generated_sdist = os.path.join("dist/", generated_files[1])
-
-    session.install(generated_sdist)
-
-    session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "jax"})
-
-
-@nox.session(python=["3"])
 def tests_numpy(session):
-    build_and_check_dists(session)
 
-    generated_files = os.listdir("dist/")
-    generated_sdist = os.path.join("dist/", generated_files[1])
-
-    session.install(generated_sdist)
+    session.install("-e", ".")
 
     session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "numpy"})
 
 
 @nox.session(python=["3"])
-def tests(session):
-    build_and_check_dists(session)
-
-    generated_files = os.listdir("dist/")
-    generated_sdist = os.path.join("dist/", generated_files[1])
-
-    session.install(generated_sdist)
-
-    session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "numpy"})
+def tests_jax(session):
+    session.install("-e", ".")
 
     session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "jax"})
-    session.notify("coverage")
 
 
 @nox.session

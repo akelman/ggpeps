@@ -10,7 +10,7 @@ import logging
 import platform
 from timeit import default_timer as timer
 
-# Ensure that logs are not deduplicated, i.e. the same log message can be printed from different workers
+# Ensure that logs are not deduplicated, i.e. allow the same log message to be printed from different workers
 os.environ["RAY_DEDUP_LOGS"] = "0"
 import ray
 
@@ -20,12 +20,14 @@ np.set_printoptions(linewidth=200)
 
 import ggpeps
 from ggpeps.caching import Cache
+from ggpeps.system import U1System2DConfig
 from ggpeps.system import Z2System2DConfig
-from ggpeps.system import Z2System2D2CConfig
 from ggpeps.system import Z2System2D_G2C_F2C_Config
-from ggpeps.system import Z2System2D_G2C_F4C_Config
-from ggpeps.system import Z2System2D_8C_Config
+from ggpeps.system import Z2System2D_G4C_F4C_Config
+from ggpeps.system import Z2System2D_G8C_F8C_Config
+from ggpeps.system import D6System2D_Config
 from ggpeps.system import Z2System2D
+from ggpeps.system import D2nSystem2D
 
 from ggpeps import utils
 from ggpeps import lattice as lat
@@ -46,21 +48,12 @@ INTERRUPT_EXIT_CODE = 10
 
 def save_state_on_exit():
     args = ggpeps.global_vars["args"]
-    cache = ggpeps.global_vars["cache"]
+    cache: Cache = ggpeps.global_vars["cache"]
 
-    if not args.ignore_cache_eval:
-        if "min" in args.mode:
-            minimizer = ggpeps.global_vars["minimizer"]
-            cache.add_obj_to_cache("evaluator_manager", minimizer.evaluator_manager)
-            logger.info(f"Added evaluator manager to cache.")
-        elif "eval" in args.mode:
-            eval_manager = ggpeps.global_vars["eval_manager"]
-            cache.add_obj_to_cache("evaluator_manager", eval_manager)
-            logger.info(f"Added evaluator manager to cache.")
-
-    cache_file = ggpeps.global_vars["args"].cache_file
-    cache.save_cache_file(cache_file)
-    logger.info(f"Saved cache file to {os.path.basename(cache_file)} in output folder.")
+    cache_file = ggpeps.global_vars["args"].save_cache_dest
+    if cache_file is not None and not cache.disable_cache:
+        cache.save_cache_file(cache_file)
+        logger.info(f"Saved cache file to {os.path.basename(cache_file)} in output folder.")
     return
 
 
@@ -89,7 +82,8 @@ def args2logname(args, couplings: dict) -> str:
     Returns:
         str: Filename of the log file
     """
-    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_gchem_{np.array2string(couplings['g_chem'], separator=',')}"
+    chem_str = "_".join([f"{val:.3f}" for val in couplings["g_chem"]])
+    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_gchem_{chem_str}"
 
     if "exact" in args.mode:
         fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}.log"
@@ -98,9 +92,7 @@ def args2logname(args, couplings: dict) -> str:
     return os.path.join(args.output, fname)
 
 
-def translate_parameters(
-    system_cfg, params: str, rng_state: np.random.RandomState
-) -> tuple[np.array, str]:
+def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomState) -> tuple[np.array, str]:
     """Translate the parameters given on the commandline to a form useful in the code
 
     Args:
@@ -112,12 +104,7 @@ def translate_parameters(
         np.array: Array of parameters that are suited for the simulation according to the command line parameters
     """
     shape = system_cfg.param_shape()
-    if (
-        params is not None
-        and len(params) == 1
-        and isinstance(params[0], str)
-        and os.path.isfile(params[0])
-    ):
+    if params is not None and len(params) == 1 and isinstance(params[0], str) and os.path.isfile(params[0]):
         # The parameters are stored in a file and we can load them
         dest = np.load(params[0])
         dest = np.reshape(dest, shape)
@@ -133,9 +120,7 @@ def translate_parameters(
             dest = dest.reshape(shape)
             source = "command-line provided parameters"
         except:
-            logger.warning(
-                "Reshape of provided parameters impossible. Starting with random parameters."
-            )
+            logger.warning("Reshape of provided parameters impossible. Starting with random parameters.")
             dest = rng_state.rand(shape)
             source = "random state"
     return dest, source
@@ -144,14 +129,10 @@ def translate_parameters(
 def validate_inputs(args) -> bool:
 
     if args.L % 2 != 0:
-        logger.error(
-            "The lattice dimension must currently be an even number."
-        )  # this is important when staggering
+        logger.error("The lattice dimension must currently be an even number.")  # this is important when staggering
         return False
     if args.ncopy == 1 and args.g_mass != 0:
-        logger.error(
-            "Not Implemented: the mass term has not yet been implemented for the 1 copy case."
-        )
+        logger.error("Not Implemented: the mass term has not yet been implemented for the 1 copy case.")
         return False
     if args.ncopy not in [1, 2, 4, 8]:
         logger.error("Not Implemented: only 1,2,4, or 8 copies are possible.")
@@ -196,12 +177,17 @@ def main(args):
 
     jax.config.update("jax_enable_x64", True)
 
-    # GPU or CPU
+    # GPU or CPU detection (compatible with ROCm GPUs)
+    # If GPUs are available, use the first available GPU;
+    # if not, default to using the CPU.
     available_devices_ = jax.devices()  # available_gpus = jax.devices('gpu')
     PREFERRED_DEVICE = available_devices_[0]
     device_name = PREFERRED_DEVICE.device_kind.lower()
-    if "gpu" in device_name or "nvidia" in device_name:  # heuristic
+
+    # Updated GPU detection heuristic
+    if any(x in device_name for x in ["gpu", "nvidia", "amd", "rocm"]):
         ggpeps.GPU_AVAILABLE = True
+        ggpeps.PREFERRED_DEVICE = PREFERRED_DEVICE
     else:
         ggpeps.GPU_AVAILABLE = False
 
@@ -222,9 +208,11 @@ def main(args):
     g_int = args.g_int
     g_mass = args.g_mass
     if args.g_chem is None:
-        g_chem = np.zeros(args.num_pg_layer + args.num_fermionic_layer)
+        g_chem = np.zeros(args.num_fermionic_layer)
     else:
         g_chem = np.array(args.g_chem)
+    if len(g_chem) != args.num_fermionic_layer:
+        raise ValueError("The number of chemical potentials must match the number of fermionic layers.")
     couplings = {
         "g_el": g_el,
         "g_mag": g_mag,
@@ -276,90 +264,61 @@ def main(args):
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L, args.gauge_fixing)
 
-    # Determine setting for translation invariance
-    if args.unitcell_size != 1:
-        unitcell_size = args.unitcell_size
-    elif np.any(g_chem):
-        unitcell_size = 2
-    else:
-        unitcell_size = 1
-
-    # Depending on the parameters, we instantiate different systems
-    # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.fermions:
-        if args.ncopy == 2:
-            # Z2 system with 4 copies of virtual fermions on the links (2 for the pure gauge case, 2 for interacting with physical fermions)
-            system_cfg = Z2System2D_G2C_F2C_Config(
-                lattice,
-                g_el,
-                g_mag,
-                g_int,
-                g_mass,
-                g_chem,
-                num_pg_layer=args.num_pg_layer,
-                num_fermionic_layer=args.num_fermionic_layer,
-                unitcell_size=unitcell_size,
-                enforce_u1_symmetry=not args.relax_u1,
-            )
-        elif args.ncopy == 4:
-            # Z2 system with 6 copies of virtual fermions on the links (2 for the pure gauge case, 4 for interacting with physical fermions)
-            system_cfg = Z2System2D_G2C_F4C_Config(
-                lattice,
-                g_el,
-                g_mag,
-                g_int,
-                g_mass,
-                g_chem,
-                num_pg_layer=args.num_pg_layer,
-                num_fermionic_layer=args.num_fermionic_layer,
-            )
-        elif args.ncopy == 8:
-            system_cfg = Z2System2D_8C_Config(
-                lattice,
-                g_el,
-                g_mag,
-                g_int,
-                g_mass,
-                g_chem,
-                num_pg_layer=args.num_pg_layer,
-                num_fermionic_layer=args.num_fermionic_layer,
-            )
-        else:
-            logger.error(
-                "Not Implemented: Only 2, 4, or 8 copies are possible with fermions."
-            )
-            sys.exit(1)
-    else:
+        # in python > 3.12 there is a flag to indicate deprecation, but we want to maintain support for earlier versions.
+        logger.warning(
+            "The --fermions flag is deprecated, will have no effect, and should no longer be used."
+            "Instead specify the number of fermionic layers with --num_fermionic_layer."
+        )
+
+    # Depending on the parameters, we instantiate different systems/system_configs
+    # Since they all share the same interface, we do not care much about the details of the system after this point
+    if args.gauge_group == "Z2":
+        system_type = Z2System2D
+
         if args.ncopy == 1:
-            # Z2 system with one copy of virtual fermions on the links
-            system_cfg = Z2System2DConfig(
-                lattice,
-                g_el,
-                g_mag,
-                g_int,
-                g_mass,
-                None,  # no chemical potential for this ansatz, which does not include matter
-                num_pg_layer=args.num_pg_layer,
-                num_fermionic_layer=0,
-            )
+            # Z2 system with one copy of virtual fermions on the links and no support for fermions
+            if (
+                args.num_fermionic_layer != 0
+                or not np.allclose(g_mass, 0.0)
+                or not np.allclose(g_int, 0.0)
+                or not np.allclose(g_chem, 0.0)
+            ):
+                logger.error("Not Implemented: The 1 copy case does not support fermionic matter.")
+                sys.exit(1)
+            cfg_class = Z2System2DConfig
         elif args.ncopy == 2:
-            # Z2 system with two copies of virtual fermions on the links
-            system_cfg = Z2System2D2CConfig(
-                lattice,
-                g_el,
-                g_mag,
-                g_int,
-                g_mass,
-                None,  # no chemical potential for this ansatz, which does not include matter
-                num_pg_layer=args.num_pg_layer,
-                num_fermionic_layer=0,
-            )
+            cfg_class = Z2System2D_G2C_F2C_Config
+        elif args.ncopy == 4:
+            cfg_class = Z2System2D_G4C_F4C_Config
+        elif args.ncopy == 8:
+            cfg_class = Z2System2D_G8C_F8C_Config
         else:
-            logger.error(
-                "Not Implemented: Only 1 or 2 copies are possible without fermions."
-            )
+            logger.error("Not Implemented: Only 1, 2, 4, or 8 copies are currently supported for Z2.")
             sys.exit(1)
-    system_type = Z2System2D
+    elif args.gauge_group == "D6":
+        system_type = D2nSystem2D
+        cfg_class = D6System2D_Config
+    elif args.gauge_group == "U1":
+        logger.error("Not Implemented: The U1 gauge group is not currently working.")
+        sys.exit(1)
+    else:
+        logger.error("Not Implemented: Only the gauge groups Z2 and D6 are implemented and working.")
+        sys.exit(1)
+
+    # Create the system configuration of the appropriate type
+    system_cfg = cfg_class(
+        lattice,
+        g_el,
+        g_mag,
+        g_int,
+        g_mass,
+        g_chem,
+        num_pg_layer=args.num_pg_layer,
+        num_fermionic_layer=args.num_fermionic_layer,
+        unitcell_size=args.unitcell_size,
+        enforce_u1_symmetry=not args.relax_u1,
+    )
 
     # We use a local random number generator instead of the global numpy one to assure
     # reproducibility across different runs, even when using mulitple processes
@@ -370,12 +329,12 @@ def main(args):
     paramvec, param_source = translate_parameters(system_cfg, args.params, rngstate)
     system_cfg.paramvec = paramvec
 
-    # Ensure pure gauge (setting t parameter(s) to zero) if enabled
-    if not args.fermions:
+    if isinstance(system_cfg, Z2System2DConfig) or isinstance(system_cfg, U1System2DConfig):
+        # This is a holdover for compatibility with these ansatz's,
+        # since they have never been tested or used without being forced to be pure gauge.
         system_cfg.make_pure_gauge()
 
-    # Enforce the required parameter conditions to get the correct use of layers
-    # This only has an effect for the ansatz's with fermions
+    # Enforce the required parameter conditions
     system_cfg.enforce_parameter_conditions(system_cfg.paramvec)
 
     # Switch to control the binning analysis on EOM (Error of mean)
@@ -386,11 +345,12 @@ def main(args):
     if args.mode == "min-nevmc":
         args.method = "NEVMC"
 
-    # Device selection: Checks if GPUs are available. If yes it uses the first available GPU;
-    # if not, defaults to using the CPU.
+    # Update Log
+    # Log backend info - GPU/CPU, JAX/NUMPY, precision, etc.
     logger.info("======= BACKEND INFO =======")
     if ggpeps.GPU_AVAILABLE:
-        logger.info(f"Found GPU, using {ggpeps.PREFERRED_DEVICE}.")
+        # logger.info(f"Available JAX devices: {available_devices_}")
+        logger.info(f"Found GPU, using device: {ggpeps.PREFERRED_DEVICE}.")
         # TODO: add basic GPU info
         # logger.info(f"GPU info: {ggpeps.PREFERRED_DEVICE.device_kind}"
     else:
@@ -400,7 +360,16 @@ def main(args):
     logger.info(f"Precision: {arr.dtype}")
     logger.info("============================")
 
-    # Update Log
+    # Caching info
+    logger.info("======= CACHE INFO ========")
+    if args.ignore_cache:
+        logger.info("Cache is disabled.")
+    else:
+        logger.info(f"Loaded cache from: {args.load_cache}")
+        logger.info(f"Will save cache to: {args.save_cache_dest}")
+    logger.info("============================")
+
+    # System info
     logger.info("======= SYSTEM INFO ========")
     logger.info(f"L: {L}")
     logger.info(f"# of PG layers: {system_cfg.num_pg_layer}")
@@ -411,8 +380,10 @@ def main(args):
         logger.info(f"Gauge fixing: True - maximal tree")
     elif args.gauge_fixing == 0:
         logger.info(f"Gauge fixing: False")
+    elif args.gauge_fixing == -2:
+        logger.info(f"Gauge fixing: True - chessboard")
     else:
-        logger.info(f"Gauge fixing: {args.gauge_fixing}")
+        logger.info(f"Gauge fixing: {args.gauge_fixing} rows fixed")
     logger.info(f"Unit cell size: {system_cfg.unitcell_size}")
     logger.info(f"Enforce U(1) number conservation: {not args.relax_u1}")
     logger.info(f"g (lambda): {g}")
@@ -420,24 +391,22 @@ def main(args):
     logger.info(f"g_mag: {g_mag}")
     logger.info(f"g_int: {g_int}")
     logger.info(f"g_mass: {g_mass}")
-    logger.info(f"g_chem: {np.array2string(g_chem, separator=', ', precision=2)}")
+    chem_str = ", ".join([f"{val:.3f}" for val in g_chem])
+    logger.info(f"g_chem: {chem_str}")
     logger.info(f"Rebinning EOM: {Measurement.use_rebinning}")
     logger.info(f"Loaded parameters from: {param_source}")
     logger.info(f"Starting parameters: {paramvec}")
     logger.info("============================")
 
+    # Mode info
     if "mc" in args.mode:
         logger.info("========= MC INFO ==========")
         logger.info(f"Seed: {mc_config.seed}")
         logger.info(f"Warmup steps: {mc_config.warmup_steps}")
         logger.info(f"Measurement steps: {mc_config.meas_steps}")
         logger.info(f"Bin size: {mc_config.binsize}")
-        logger.info(
-            f"Update size: {mc_config.update_size_per_step} (out of {2*L**2} total links)"
-        )
-        logger.info(
-            f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)"
-        )
+        logger.info(f"Update size: {mc_config.update_size_per_step} (out of {2*L**2} total links)")
+        logger.info(f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)")
         logger.info("============================")
         mc_config.warmup_log_freq = args.warmup_log_freq
         mc_config.run_log_freq = args.run_log_freq
@@ -451,17 +420,29 @@ def main(args):
             logger.info(f"Learning rate: {args.alpha}")
         logger.info("============================")
 
+    # Warn about potential/likely unintended choice of settings
+    if not np.allclose(g_chem, 0):
+        if args.unitcell_size == 1:
+            logger.warning(
+                "There is a non-zero chemical potential, but 1-site translation invariance. This may be unintended."
+            )
+        if not args.relax_u1:
+            logger.warning("There is a non-zero chemical potential, but U1 invariance. This may be unintended.")
+
     # Set up cache
     # and save the command line arguments to ggpeps global variable so that they are available everywhere
-    cache = Cache(args.mode)
-    if not args.ignore_cache:
-        cache.load_cache_file(args.cache_file)
-        if args.ignore_cache_eval:
-            cache.add_obj_to_cache("evaluator_manager", None)
-    if not os.path.isabs(args.cache_file):
-        # Save the cache filename as an absolute path (so that it can be used throughout the code,
-        # without needing to track the destination).
-        args.cache_file = os.path.join(args.output, os.path.basename(args.cache_file))
+    cache = Cache(disable_cache=args.ignore_cache)
+    if args.load_cache is not None and not cache.disable_cache:
+        if os.path.isfile(args.load_cache):
+            cache.load_cache_file(args.load_cache)
+        else:
+            logger.error(f"Unable to find cache file {args.load_cache}.")
+    if args.save_cache_dest is not None and not cache.disable_cache:
+        if not os.path.isabs(args.save_cache_dest):
+            # Save the cache filename as an absolute path (so that it can be used throughout the code,
+            # without needing to track the destination).
+            args.save_cache_dest = os.path.join(args.output, os.path.basename(args.save_cache_dest))
+        cache.save_cache_dest = args.save_cache_dest
     ggpeps.global_vars["args"] = args
     ggpeps.global_vars["cache"] = cache
 
@@ -478,15 +459,14 @@ def main(args):
         ggpeps.global_vars["eval_manager"] = mc_mgr  # save for global access
 
         start = timer()
-        mc_result = mc_mgr.simulate()
+        mc_result_df = mc_mgr.simulate()  # Results as dataframe
+        mc_result = mc_mgr.get_evaluator()  # Results as Evaluator object
         stop = timer()
         mc_result.print_stats()
         mc_result.save(output_dir=args.output)
 
         logger.info("==== Acceptance prob =======")
-        logger.info(
-            f"Acceptance probability: {mc_result.get_obs_mean('acceptance_prob')}"
-        )
+        logger.info(f"Acceptance probability: {mc_result.get_obs_mean('acceptance_prob')}")
         logger.info("============================")
     elif args.mode == "min-mc":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with MC
@@ -522,7 +502,8 @@ def main(args):
         ggpeps.global_vars["eval_manager"] = ex_eval
 
         start = timer()
-        dest = ex_eval.simulate()
+        ex_eval.simulate()
+        dest = ex_eval.get_evaluator()
         stop = timer()
 
         dest_dict = dest.obsdict
@@ -620,7 +601,8 @@ def main(args):
             args.nrunner,
             port=args.port,
         )
-        mc_result = mc_mgr.simulate()
+        mc_result_df = mc_mgr.simulate()  # Results as dataframe
+        mc_result = mc_mgr.get_evaluator()  # Results as Evaluator object
         mc_result.save(output_dir=args.output)
     else:
         logger.error(f"Mode '{args.mode}' unknown.")
@@ -631,9 +613,7 @@ def main(args):
     # Log the time taken for the simulation
     logger.info("========== TIME ============")
     logger.info(f"The simulation took {stop - start}s.")
-    logger.info(
-        "============================\n\n"
-    )  # add new lines to separate from next run
+    logger.info("============================\n\n")  # add new lines to separate from next run
 
 
 if __name__ == "__main__":
@@ -645,7 +625,6 @@ if __name__ == "__main__":
         epilog="""Possible modes: eval-mc, eval-exact, min-mc (minimize with MC), min-exact, minmult-mc. \
                     Possible logging levels: critical, error, warning, info, debug.""",
     )
-
     # Mode and lattice size
     parser.add_argument(
         "mode",
@@ -660,12 +639,12 @@ if __name__ == "__main__":
         ],
         help="Mode of the program",
     )
+    parser.add_argument("gauge_group", type=str, choices=["Z2", "D6"])
+
     parser.add_argument("--L", type=int, help="Size of the square system (one side)")
 
     # Hamiltonian couplings
-    parser.add_argument(
-        "--g", type=float, default=None, help="coupling constant (equal to lambda)"
-    )
+    parser.add_argument("--g", type=float, default=None, help="coupling constant (equal to lambda)")
     parser.add_argument(
         "--g_el",
         "--el",
@@ -678,12 +657,8 @@ if __name__ == "__main__":
         type=float,
         help="magnetic coupling constant (if not given, computed as [2*g]^-1)",
     )
-    parser.add_argument(
-        "--g_int", "--int", type=float, default=0.0, help="gauge matter coupling"
-    )
-    parser.add_argument(
-        "--g_mass", "--mass", "--m", type=float, default=0.0, help="matter coupling"
-    )
+    parser.add_argument("--g_int", "--int", type=float, default=0.0, help="gauge matter coupling")
+    parser.add_argument("--g_mass", "--mass", "--m", type=float, default=0.0, help="matter coupling")
     parser.add_argument(
         "--g_chem",
         "--chem",
@@ -702,7 +677,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--num_fermionic_layer",
-        default=1,
+        default=0,
         type=int,
         help="Number of matter PEPS layers for the variational state",
     )
@@ -724,7 +699,7 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
         help="Use an ansatz that allows for the inclusion of fermions",
-    )  # TODO: improve handling of pure-gauge and fermions arguments
+    )  # TODO: this argument is no longer used, and can be removed after some time
     parser.add_argument(
         "--unitcell_size",
         type=int,
@@ -745,7 +720,7 @@ if __name__ == "__main__":
         const=-1,  # Value when argument is used without a value
         type=int,  # Convert the input to an integer if provided
         default=0,  # Default value when argument is not used
-        help="Gauge fixing: 0 if not provided (default), -1 if --gauge_fixing is used without a value - fix a maximal tree, or any integer if we fix a specific number of rows.",
+        help="Gauge fixing: 0 if not provided (default), -1 if --gauge_fixing is used without a value - fix a maximal tree, or -2 to gauge fix like a chess boars, or any integer if we fix a specific number of rows.",
     )
 
     # Monte Carlo settings
@@ -754,23 +729,17 @@ if __name__ == "__main__":
         type=int,
         help="Seed for the MC simulation and parameter initialization",
     )
+    parser.add_argument("--warmup_steps", type=int, default=int(1e5), help="Number of warmup steps")
+    parser.add_argument("--meas_steps", type=int, default=int(1e5), help="Number of run steps")
+    parser.add_argument("--binsize", default=1, type=int, help="Binsize used in the MC computation")
     parser.add_argument(
-        "--warmup_steps", type=int, default=int(1e5), help="Number of warmup steps"
-    )
-    parser.add_argument(
-        "--meas_steps", type=int, default=int(1e5), help="Number of run steps"
-    )
-    parser.add_argument(
-        "--binsize", default=1, type=int, help="Binsize used in the MC computation"
-    )
-    parser.add_argument(
-        "--no-bin-eom",
+        "--no_bin_eom",
         default=False,
         action="store_true",
         help="Use the standard EOM instead of a rebinning analysis",
     )
     parser.add_argument(
-        "--use-systemsize-updates",
+        "--use_systemsize_updates",
         action="store_true",
         default=False,
         help="Update every spin of the system between each update step. This option is kept for backwards compatibility",
@@ -782,25 +751,21 @@ if __name__ == "__main__":
         help="The number of spins to update in each step (can be an integer, or one of: system, halfsystem)",
     )
     parser.add_argument(
-        "--compute-grads",
+        "--compute_grads",
         action="store_true",
         default=False,
         help="Compute grads even if in eval mode",
     )
 
     # Arguments for the minimizer
-    parser.add_argument(
-        "--method", type=str, default="bfgs", help="Minimization method"
-    )
+    parser.add_argument("--method", type=str, default="bfgs", help="Minimization method")
     parser.add_argument(
         "--maxiter",
         type=int,
         default=100,
         help="Maximum number of steps for the minimizer",
     )
-    parser.add_argument(
-        "--alpha", "--lr", type=float, default=0.1, help="Learning rate"
-    )
+    parser.add_argument("--alpha", "--lr", type=float, default=0.1, help="Learning rate")
     parser.add_argument(
         "--tol",
         type=float,
@@ -826,28 +791,30 @@ if __name__ == "__main__":
 
     # Cache settings
     parser.add_argument(
+        "--load_cache",
+        nargs="?",  # Optional value
+        const="cache.pkl",  # Value when argument is used without a value
+        default=None,  # Default value when argument is not used
+        type=str,
+        help="Load cache from the specified file. If no file provided, but the flag is present, the cache will be loaded from the default cache file (cache.pkl) if available.",
+    )
+    parser.add_argument(
+        "--save_cache_dest",
+        nargs="?",  # Optional value
+        const="cache.pkl",  # Value when argument is used without a value
+        default=None,  # Default value when argument is not used
+        type=str,
+        help="Save cache to the specified file. This will overwrite the old one if it exists.",
+    )
+    parser.add_argument(
         "--ignore_cache",
         action="store_true",
         default=False,
-        help="Ignore the cache and start from scratch. A new cache will be saved (and overwrite the old one if it exists).",
-    )
-    parser.add_argument(
-        "--ignore_cache_eval",
-        action="store_true",
-        default=False,
-        help="Ignore the cache eval manager.",
-    )
-    parser.add_argument(
-        "--cache_file",
-        type=str,
-        default="cache.pkl",
-        help="Filename of the cache.",
+        help="Ignore the cache and do not load or save it. Overrides other cache settings.",
     )
 
     # Arguments for ray
-    parser.add_argument(
-        "--nrunner", type=int, default=0, help="Number of parallel MC runners"
-    )
+    parser.add_argument("--nrunner", type=int, default=0, help="Number of parallel MC runners")
 
     args = parser.parse_args()
     main(args)

@@ -52,9 +52,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--files", nargs="+", help="Directory")
     parser.add_argument("--out", help="Output CSV file")
-    parser.add_argument(
-        "--tag", type=str, default="", help="Tag to add to each row of the CSV file"
-    )
+    parser.add_argument("--tag", type=str, default="", help="Tag to add to each row of the CSV file")
 
     args = parser.parse_args()
 

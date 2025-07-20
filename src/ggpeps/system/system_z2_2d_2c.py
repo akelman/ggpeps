@@ -3,13 +3,12 @@ import logging
 
 import numpy as np
 from ggpeps import xnp as xnp
-from scipy.linalg import block_diag
 
 import ggpeps
-from ggpeps import utils
+from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
-from .system_base import Config2DBase, System2DBase
+from .system_base import Config2DBase
 from .system_base import get_pfaffian_arrays
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -25,10 +24,9 @@ class Z2System2D2CConfig(Config2DBase):
 
     _nparams = 20
     ncopy = 2
-    nvirtmodes_vertex = (
-        8  # We have two virtual modes per direction (4 directions x 2 modes)
-    )
+    nvirtmodes_vertex = 8  # We have two virtual modes per direction (4 directions x 2 modes)
     nvirtmodes_link = 4  # Number of virtual modes per link (2 copies and l/r or u/d)
+    nphysmodes_site = 1  # number of physical modes per site
 
     def __init__(
         self,
@@ -41,19 +39,18 @@ class Z2System2D2CConfig(Config2DBase):
         num_pg_layer=1,
         num_fermionic_layer=0,
         unitcell_size=1,
+        enforce_u1_symmetry=True,
     ):
         # The parameters have the following order: [[t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i...],[..next layer..],....]
         if num_fermionic_layer != 0:
             # This ansatz does not support fermionic layers
-            raise ValueError(
-                "The Z2System2D2C ansatz does not support fermionic layers."
-            )
+            raise ValueError("The Z2System2D2C ansatz does not support fermionic layers.")
         super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0)
 
         # Translation invariance
         if unitcell_size not in [1]:
             logger.error(
-                "This ansatz only supports unitcell_size = 1 or 2. \
+                "This ansatz only supports unitcell_size = 1. \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             raise ValueError("Invalid unitcell_size.")
@@ -61,6 +58,14 @@ class Z2System2D2CConfig(Config2DBase):
             site: 0 for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
         self.unitcell_size = 1
+
+        if not enforce_u1_symmetry:
+            logger.error("This ansatz does not support the relaxation of U(1) symmetry.")
+            raise ValueError("Invalid enforce_u1_symmetry.")
+
+        # We store a list of the parameters forced to be zero by the ansatz
+        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
+        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
 
         # This is for pure-gauge only atm
         self.num_pg_layer = self.nlayer
@@ -77,16 +82,29 @@ class Z2System2D2CConfig(Config2DBase):
         self.el_overall_factors = [
             -1 / 16
         ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2)
 
     def make_pure_gauge(self):
         """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t."""
         # The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
+        # Here we set the t parameters to zero for the pure gauge layers (which is all the layers)
+        assert self.nlayer == self.num_pg_layer
         for lay in range(self.nlayer):
             for uc_ind in range(self.unitcell_size):
                 self.paramvec[lay, uc_ind, 0] = 0  # Set t1r to 0
                 self.paramvec[lay, uc_ind, 10] = 0  # Set t1i to 0
                 self.paramvec[lay, uc_ind, 3] = 0  # Set t2r to 0
                 self.paramvec[lay, uc_ind, 13] = 0  # Set t2i to 0
+
+    def get_zeroed_params(self):
+        """This should really call make_pure_gauge() - i.e. return the indices which are set to zero there.
+        However, some tests which use this ansatz do not actually satisfy the pure gauge condition
+        - they use this ansatz with nonzero t params, and test against hard-coded values.
+        (This works because make_pure_gauge() is often not called in the executaion path of those tests).
+        To preserve compatibility with those tests, we do not call make_pure_gauge() here.
+        """
+        zeroed_params = []
+        return zeroed_params
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
@@ -249,10 +267,6 @@ class Z2System2D2CConfig(Config2DBase):
             List[np.ndarray]: Covariance matrix of the ungauged projector on a single link
         """
         dest = [0] * 2
-        dest[Direction.X] = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix))
-        )
-        dest[Direction.Y] = np.real_if_close(
-            1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz))
-        )
+        dest[Direction.X] = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix)))
+        dest[Direction.Y] = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz)))
         return [dest] * self.nlayer

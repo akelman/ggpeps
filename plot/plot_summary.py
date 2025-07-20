@@ -3,6 +3,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 from ggpeps import utils
@@ -42,9 +43,7 @@ def main(args):
 
     # Enrich dataset
     df_mc_ec["L"] = df_mc_ec["nx"].astype("str") + "x" + df_mc_ec["ny"].astype("str")
-    df_mc_ec.rename(
-        columns={"g2_el": "g_el", "g2_mag": "g_mag", "g2": "g"}, inplace=True
-    )
+    df_mc_ec.rename(columns={"g2_el": "g_el", "g2_mag": "g_mag", "g2": "g"}, inplace=True)
     obsnamevec = df_mc_ec.name.unique()
 
     if "g" not in df_mc_ec.columns:
@@ -52,11 +51,10 @@ def main(args):
     if "g_mag" not in df_mc_ec.columns:
         df_mc_ec["g_mag"] = 1 / (df_tmp.g_el * 4)
 
+    # Get exact data
     if args.exact is not None and os.path.isfile(args.exact):
         df_exact = pd.read_pickle(args.exact)
-        df_exact["L"] = (
-            df_exact["nx"].astype("str") + "x" + df_exact["ny"].astype("str")
-        )
+        df_exact["L"] = df_exact["nx"].astype("str") + "x" + df_exact["ny"].astype("str")
         df_exact["type"] = "ED"
         # Add numbers to the grouping columns to enable grouping
         df_exact["nlayer"] = -1
@@ -65,9 +63,7 @@ def main(args):
         # Adapt the naming convention between the ED and the MC/EC data
         df_exact.rename(columns={"g2_ham": "g", "value": "mean"}, inplace=True)
         df_exact.drop(columns=["nz", "gauge"], inplace=True)
-        if (
-            "g_el" not in df_exact.columns
-        ):  # the next four lines should be handled in a more robust way
+        if "g_el" not in df_exact.columns:  # the next four lines should be handled in a more robust way
             df_exact["g_el"] = df_exact.g / 2
         if "g" not in df_exact.columns:
             df_exact["g"] = df_exact.g_el * 2
@@ -110,13 +106,15 @@ def main(args):
         df = df_mc_ec
         df_diff = None
         if args.diff:
-            print(
-                f"File {args.exact} not found. We need it for the differences. Aborting."
-            )
+            print(f"File {args.exact} not found. We need it for the differences. Aborting.")
             sys.exit(1)
         else:
             print(f"File {args.exact} not found. Skipping.")
 
+    palette = sns.color_palette("husl", n_colors=len(args.obs))
+    observable_colors = dict(zip(args.obs, palette))
+
+    # Plot
     f, ax = plt.subplots(1, 1)
     for obs in args.obs:
         if obs in obsnamevec:
@@ -127,47 +125,53 @@ def main(args):
                 df_diff_filtered = df_diff[df_diff["name"] == obs]
                 df_diff_filtered.reset_index(drop=True, inplace=True)
 
-            if args.diff:
+            for name, group in df_filtered.groupby(["type", "L", "nlayer", "ncopy"]):
+
+                type_, L, nlayer, ncopy = name
+
+                # Handle case where chosen values are an array
+                if isinstance(group[args.xaxis].iloc[0], np.ndarray):
+                    xaxis_values = group[args.xaxis].apply(lambda x: x[args.xaxis_ind])
+                else:
+                    xaxis_values = group[args.xaxis]
+
+                if isinstance(group["mean"].iloc[0], np.ndarray):
+                    yaxis_values = group["mean"].apply(lambda x: x[args.obs_ind])
+                else:
+                    yaxis_values = group["mean"]
+
                 # show errors for MC
-                for name, group in df_diff_filtered.groupby(
-                    ["type", "L", "nlayer", "ncopy"]
-                ):
-                    type, L, nlayer, ncopy = name
-                    if type == "MC":
-                        error = group["err"]
-                    else:
-                        error = None
+                if type_ == "MC":
+                    error = group["err"]
+                else:
+                    error = None
+
+                if args.diff:
                     ax.errorbar(
-                        group[args.xaxis],
+                        xaxis_values,
                         group["diff"],
                         fmt="o",
                         yerr=error,
-                        label=f"{type}, obs={obs}, L={L}",
+                        label=f"{type_}, obs={obs}, L={L}",
                     )
-            else:
-                for name, group in df_filtered.groupby(
-                    ["type", "L", "nlayer", "ncopy"]
-                ):
-                    type, L, nlayer, ncopy = name
-                    if type == "ED":
-                        ax.plot(
-                            group[args.xaxis],
-                            group["mean"],
-                            label=f"ED, obs={obs}, L={L}",
-                        )
-                    else:
-                        if type == "MC":
-                            error = group["err"]
-                        else:
-                            error = None
-                        ax.errorbar(
-                            group[args.xaxis],
-                            group["mean"],
-                            fmt="o",
-                            yerr=error,
-                            label=f"{type}, obs={obs}, L={L}",
-                        )
+                elif type_ == "ED":
+                    ax.plot(
+                        xaxis_values,
+                        yaxis_values,
+                        label=f"ED, obs={obs}, L={L}",
+                        c=observable_colors[obs],
+                    )
+                else:
+                    ax.errorbar(
+                        xaxis_values,
+                        yaxis_values,
+                        fmt="o",
+                        yerr=error,
+                        label=f"{type_}, obs={obs}, L={L}",
+                        c=observable_colors[obs],
+                    )
 
+    # Set axis properties
     if args.logx:
         ax.set_xscale("log")
     if args.logy:
@@ -179,6 +183,7 @@ def main(args):
         ax.set_ylabel("Value", fontsize=10)
     ax.legend(fontsize=8)
     f.tight_layout()
+
     if not args.no_save:
         if args.diff:
             f.savefig(f"summary_diff_{'-'.join(args.obs)}.pdf")
@@ -186,6 +191,8 @@ def main(args):
             f.savefig(f"summary_{'-'.join(args.obs)}.pdf")
     if args.show:
         plt.show()
+
+    return
 
 
 if __name__ == "__main__":
@@ -214,17 +221,21 @@ if __name__ == "__main__":
         default=False,
         help="Use logarithmic scaling for y axis",
     )
+    parser.add_argument("--show", action="store_true", default=False, help="Show the plot")
+    parser.add_argument("--no-save", action="store_true", default=False, help="Do not save the plot")
+    parser.add_argument("--xaxis", type=str, default="g_el", help="Quantity to be plotted on the x axis")
     parser.add_argument(
-        "--show", action="store_true", default=False, help="Show the plot"
+        "--xaxis_ind",
+        type=int,
+        default="0",
+        help="If --xaxis quantity is an array, use this index",
     )
+    parser.add_argument("--obs", type=str, nargs="+", default=["energy"], help="Observables to plot")
     parser.add_argument(
-        "--no-save", action="store_true", default=False, help="Do not save the plot"
-    )
-    parser.add_argument(
-        "--xaxis", type=str, default="g_el", help="Quantity to be plotted on the x axis"
-    )
-    parser.add_argument(
-        "--obs", type=str, nargs="+", default=["energy"], help="Observables to plot"
+        "--obs_ind",
+        type=int,
+        default=0,
+        help="If observables is an array, plot this index",
     )
 
     args = parser.parse_args()

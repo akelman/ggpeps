@@ -1,5 +1,4 @@
 import unittest
-from unittest import skip
 
 import numpy as np
 
@@ -7,7 +6,7 @@ from ggpeps import utils
 from ggpeps import system
 from ggpeps import lattice
 
-# ======================= Z2 fermionic system (2 copies) =========================================
+# ======================= Z2 fermionic system (2 copies) =======================
 
 
 class TestZ2C2SystemMethods(unittest.TestCase):
@@ -133,7 +132,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         self.assertTrue(np.allclose(gamma_maj @ np.transpose(gamma_maj), np.eye(m)))
 
     def test_gamma_in_sys_covariance(self):
-        gamma_in = self.system_z2_2_2.gamma_in_sys
+        gamma_in = self.system_z2_2_2.gamma_in_sys_vec[0]
         m, n = gamma_in.shape
         self.assertEqual(m, n)
         self.assertTrue(utils.is_antisymmetric(gamma_in))
@@ -157,12 +156,8 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                 # We are only modifying the first layer (there is only one)
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
-                system_cfg_left = system.Z2System2D2CConfig(
-                    lat_2x2, 1.0, None, None, None, None
-                )
-                system_cfg_right = system.Z2System2D2CConfig(
-                    lat_2x2, 1.0, None, None, None, None
-                )
+                system_cfg_left = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None)
+                system_cfg_right = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None)
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
 
@@ -173,9 +168,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                 deriv_maj_sys_left = system_z2_2_2_left.gamma_maj_sys_vec[0]
                 deriv_maj_sys_right = system_z2_2_2_right.gamma_maj_sys_vec[0]
 
-                deriv_maj_sys_num = (deriv_maj_sys_right - deriv_maj_sys_left) / (
-                    2 * eps
-                )
+                deriv_maj_sys_num = (deriv_maj_sys_right - deriv_maj_sys_left) / (2 * eps)
 
                 self.assertTrue(np.allclose(deriv_maj_sys_num, deriv_maj_sys))
 
@@ -183,36 +176,27 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         # This update is a nullop since we initialize the gauge-field with 0
         zeroarr = np.zeros((1, 1))
         # The factor of 2 compensates for the
-        logdet_inc = 2 * self.system_z2_2_2_real.update_lognorm_inc(
-            0, zeroarr, all_factors=False
-        )
+        logdet_inc = 2 * self.system_z2_2_2_real.update_lognorm_inc(0, zeroarr, all_factors=False)
         # This is equivalent to
         # logdet_inc = self.system_z2_2_2.incdet.det()
-        diff = (
-            self.system_z2_2_2_real.mat_d_inv_vec[0]
-            - self.system_z2_2_2_real.gamma_in_sys
-        )
+        diff = self.system_z2_2_2_real.mat_d_inv_vec[0] - self.system_z2_2_2_real.gamma_in_sys_vec[0]
         sign, logdet = np.linalg.slogdet(diff)
         self.assertGreater(sign, 0)
         self.assertAlmostEqual(logdet_inc, logdet)
 
     def test_norm_incremental(self):
-        # Test that the incremental update is equivalent to the re-calculation of the norm
+        # Test that the incremental update is equivalent to re-calculation of the norm
         # This update is a nullop since we initialize the gauge-field with 0
         zeroarr = np.zeros((1, 1))
-        weight_inc = self.system_z2_2_2_real.update_lognorm_inc(
-            0, zeroarr, all_factors=True
-        )
+        weight_inc = self.system_z2_2_2_real.update_lognorm_inc(0, zeroarr, all_factors=True)
         weight_recalc = self.system_z2_2_2_real.calculate_lognorm(all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
     def test_norm_incremental_update(self):
-        # Test that the incremental update is equivalent to the re-calculation of the norm
+        # Test that the incremental update is equivalent to re-calculation of the norm
         ind = 0
-        theta = np.pi
-        weight_inc = self.system_z2_2_2_real.calculate_weight_attempt(
-            ind, theta, all_factors=True
-        )
+        theta = np.array([[-1.0]])
+        weight_inc = self.system_z2_2_2_real.calculate_weight_attempt(ind, theta, all_factors=True)
         self.system_z2_2_2_real.update_gauge_ind(ind, theta)
         weight_recalc = self.system_z2_2_2_real.calculate_lognorm(all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
@@ -263,9 +247,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                 system_z2_2_2_right = system.Z2System2D(system_cfg_right)
 
                 # This is a single layer construction, we always use layer 0 to test.
-                deriv_ana = system_z2_2_2.compute_grad_over_norm(
-                    symbolvec[ind], lay, uc_ind
-                )
+                deriv_ana = system_z2_2_2.compute_grad_over_norm(symbolvec[ind], lay, uc_ind)
                 norm_left = system_z2_2_2_left.calculate_lognorm(all_factors=True)
                 norm_right = system_z2_2_2_right.calculate_lognorm(all_factors=True)
                 deriv_num = (norm_right - norm_left) / (2 * eps)
@@ -378,9 +360,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                     val_right = system_z2_2_2_right.el_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    self.assertAlmostEqual(
-                        deriv_ana[layerind, uc_ind, ind], deriv_num, places=5
-                    )
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
     def test_el_energy_1_layer_single_eval(self):
         # Calculate the electric energy of an empty system.

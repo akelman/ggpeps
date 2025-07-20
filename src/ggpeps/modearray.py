@@ -61,9 +61,7 @@ class ModeArray(np.ndarray):
             return
 
         if len(val) != len(self.shape):
-            raise ValueError(
-                "The dimension of the mode array must be equal to the dimension of the data."
-            )
+            raise ValueError("The dimension of the mode array must be equal to the dimension of the data.")
 
         self._verify_modes(val)
 
@@ -122,9 +120,7 @@ class ModeArray(np.ndarray):
                 return modes[0]
         if len(modes) == 2:
             if not modes[0] == modes[1]:
-                raise ValueError(
-                    "The mode arrays must match for elementwise multiplication."
-                )
+                raise ValueError("The mode arrays must match for elementwise multiplication.")
             else:
                 return modes[0]
         # TODO: More checks
@@ -257,13 +253,9 @@ class ModeArray(np.ndarray):
             mode_dim = val[ind]
             mode_set = set(mode_dim)
             if len(mode_set) != len(mode_dim):
-                raise ValueError(
-                    "The names of modes must be unique, they are supposed to form a basis."
-                )
+                raise ValueError("The names of modes must be unique, they are supposed to form a basis.")
             if len(mode_set) != self.shape[ind]:
-                raise ValueError(
-                    f"The number of modes does not match the number of entries in dimension {ind}"
-                )
+                raise ValueError(f"The number of modes does not match the number of entries in dimension {ind}")
 
 
 def generate_permutation_matrix(start_modes, end_modes):

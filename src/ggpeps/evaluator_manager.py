@@ -1,50 +1,47 @@
-from typing import Union
-from abc import ABC, abstractmethod
+from typing import Union, Optional
 
 import ray
 import copy
 import logging
-import numpy as np
 
 import ggpeps
 from ggpeps import utils
+from ggpeps.evaluator import Evaluator
+from ggpeps.system.system_base import System2DBase, Config2DBase
 from ggpeps.exacteval import ExactEvaluator, ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig
 from ggpeps.nevmc import NEVMC_Evaluator, NEVMC_EvaluatorConfig
-from ggpeps.system import SystemType, SystemConfigType
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 ####################### Multiprocessing layer #######################
-
-
 @ray.remote
 def run_mc(
     runner_id: int,
-    evaluator_class: Union[MonteCarloEvaluator, NEVMC_Evaluator],
+    evaluator_class: type[Evaluator],
     evaluator_cfg: Union[MonteCarloEvaluatorConfig, NEVMC_EvaluatorConfig],
-    system_cls,
-    system_cfg,
+    system_cls: type[System2DBase],
+    system_cfg: Config2DBase,
     logger_info: dict,
     eval_args: dict = {},
-):
+) -> Evaluator:
     """Worker for running part of a MC simulation.
 
     Args:
         runner_id (int): Runner ID
-        mc_cfg (MonteCarloEvaluatorConfig):
-        system_cls ():
-        system_cfg ():
+        evaluator_class: (type[Evaluator]): MonteCarloEvaluator or NEVMC_Evaluator class type
+        mc_cfg (MonteCarloEvaluatorConfig): the evaluator config
+        system_cls (type[System2DBase]): a system class type (must inherit from System2DBase)
+        system_cfg (Config2DBase): the system config
         logger_info (dict): configs for the logger (logger needs to be set up in each worker)
-        eval_args (dict): Arguments for the evaluator 
+        eval_args (dict): Arguments for the evaluator
 
     Returns:
-        MonteCarloEvaluator
+        Evaluator after running the simulation.
     """
 
-    # Setup logger
-    # TODO: this is probably not the best way to get the required logger configuration
+    # Setup logger for each worker
     logger_file = logger_info["filename"]
     level = logger_info["logger_level"]
     logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -53,6 +50,47 @@ def run_mc(
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
     mc = evaluator_class(evaluator_cfg, system)
+    mc.evaluate(**eval_args)
+    return mc
+
+
+@ray.remote
+def run_nevmc(
+    runner_id: int,
+    evaluator_class: type[Evaluator],
+    evaluator_cfg: Union[MonteCarloEvaluatorConfig, NEVMC_EvaluatorConfig],
+    system_cls,
+    system_cfg,
+    store_gauge,
+    store_weights,
+    store_work,
+    logger_info: dict,
+    eval_args: dict = {},
+):
+    """Worker for running part of a MC simulation.
+
+    Args:
+        runner_id (int): Runner ID
+        evaluator_class: (type[Evaluator]): MonteCarloEvaluator or NEVMC_Evaluator class type
+        mc_cfg (MonteCarloEvaluatorConfig): the evaluator config
+        system_cls (type[System2DBase]): a system class type (must inherit from System2DBase)
+        system_cfg (Config2DBase): the system config
+        logger_info (dict): configs for the logger (logger needs to be set up in each worker)
+        eval_args (dict): Arguments for the evaluator
+
+    Returns:
+        Evaluator after running the simulation.
+    """
+
+    # Setup logger for each worker
+    logger_file = logger_info["filename"]
+    level = logger_info["logger_level"]
+    logger = logging.getLogger(ggpeps.LOGGER_NAME)
+    utils.setup_logger(logger, logger_file, level, runner_msg=f"Runner {runner_id}-")
+
+    system = system_cls(copy.deepcopy(system_cfg))
+    system.initialize()
+    mc = evaluator_class(evaluator_cfg, system, store_gauge, store_weights, store_work)
     mc.evaluate(**eval_args)
     return mc
 
@@ -69,7 +107,6 @@ def run_nevmc(
     store_work,
     logger_info: dict,
     eval_args: dict = {},
-    
 ):
     """Worker for running part of a MC simulation.
 
@@ -79,7 +116,7 @@ def run_nevmc(
         system_cls ():
         system_cfg ():
         logger_info (dict): configs for the logger (logger needs to be set up in each worker)
-        eval_args (dict): Arguments for the evaluator 
+        eval_args (dict): Arguments for the evaluator
 
     Returns:
         MonteCarloEvaluator
@@ -94,27 +131,30 @@ def run_nevmc(
 
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
-    mc = evaluator_class(evaluator_cfg, system, store_gauge,
-                         store_weights, store_work)
+    mc = evaluator_class(evaluator_cfg, system, store_gauge, store_weights, store_work)
     mc.evaluate(**eval_args)
     return mc
 
 
+####################### Evaluator Manager #######################
 class EvaluatorManager:
     """The EvaluatorManager is a wrapper around the different evaluators (ExactEvaluator and MonteCarloEvaluator).
     It allows the execution of a simulation with multiple cores.
-    The parallelization is performed with ray; currently this is only supported for Monte Carlo (not Exact Contraction).
+    The parallelization is handled with ray; currently this is only supported for Monte Carlo (not Exact Contraction).
 
-    If an MC simulation is distributed across N runners, each runner performs the full warm-up but only 1/N of the total measurement steps.
+    If an MC simulation is distributed across N runners, each runner performs the full
+    warm-up but only 1/N of the total measurement steps.
 
     This is the general interface for simulations that is used in the manager and minimizer.
     """
 
     def __init__(
         self,
-        system_cls: SystemType,
-        system_cfg: SystemConfigType,
-        cfg: Union[MonteCarloEvaluatorConfig, ExactEvaluatorConfig, NEVMC_EvaluatorConfig],
+        system_cls: type[System2DBase],
+        system_cfg: Config2DBase,
+        cfg: Union[
+            MonteCarloEvaluatorConfig, ExactEvaluatorConfig, NEVMC_EvaluatorConfig
+        ],
         nrunner: int,
     ):
 
@@ -122,11 +162,6 @@ class EvaluatorManager:
         self.system_cfg = system_cfg
         self.cfg = cfg
         self.nrunner = nrunner
-
-        self.evaluator = None
-        self.simulation_in_progress: bool = (
-            False  # Flag to indicate whether a simulation should be resumed
-        )
 
         ### beg NEVMC ###
         self.store_gauge = []
@@ -143,34 +178,55 @@ class EvaluatorManager:
         else:
             raise ValueError("Unrecognized type of evaluator config.")
 
-    def reset_evaluator(self):
+        # Set the evaluator
+        self.evaluator: Evaluator = self.reset_evaluator()
+
+    def reset_evaluator(self) -> Evaluator:
+        """Reset the evaluator to a new instance with the current configuration."""
+
         system = self.system_cls(self.system_cfg)
-        
         system.initialize()
+
         if self.type == "exact":
+            assert isinstance(self.cfg, ExactEvaluatorConfig)
             self.evaluator = ExactEvaluator(self.cfg, system)
         elif self.type == "mc":
+            assert isinstance(self.cfg, MonteCarloEvaluatorConfig)
             self.evaluator = MonteCarloEvaluator(self.cfg, system)
         elif self.type == "nevmc":
-            self.evaluator = NEVMC_Evaluator(self.cfg, system, self.store_gauge,
-                                             self.store_weights, self.store_work)
+            assert isinstance(self.cfg, NEVMC_EvaluatorConfig)
+            self.evaluator = NEVMC_Evaluator(
+                self.cfg, system, self.store_gauge, self.store_weights, self.store_work
+            )
+        else:
+            raise ValueError(f"Unknown evaluator type {self.type}")
+        return self.evaluator
+
+    def get_evaluator_class(self) -> type[Evaluator]:
+        """Get the evaluator class based on the type of evaluator."""
+
+        if self.type == "exact":
+            return ExactEvaluator
+        elif self.type == "mc":
+            return MonteCarloEvaluator
+        elif self.type == "nevmc":
+            return NEVMC_Evaluator
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
 
-    def get_evaluator_class(self):
-        if self.type == "exact":
-            evaluator_class = ExactEvaluator
-        elif self.type == "mc":
-            evaluator_class = MonteCarloEvaluator
-        elif self.type == "nevmc":
-            evaluator_class = NEVMC_Evaluator
-        return evaluator_class
+    def get_evaluator(self):
+        """Get the evaluator instance.
 
-    def simulate(self, eval_args:dict={}):
+        Returns:
+            Evaluator: The current evaluator instance.
+        """
+        return self.evaluator
+
+    def simulate(self, eval_args: dict = {}):
         """Simulate
-        
+
         Args:
-            eval_args (dict): Arguments for the evaluator (e.g. for NEVMC). 
+            eval_args (dict): Arguments for the evaluator (e.g. for NEVMC).
         """
 
         if self.type == "nevmc" and self.nrunner > 0:
@@ -199,10 +255,15 @@ class EvaluatorManager:
                     gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
                 evaluator_class = self.get_evaluator_class()
 
-                local_gauge = self.store_gauge[i * reduced_meas_steps : (i+1) * reduced_meas_steps]
-                local_weights = self.store_weights[i * reduced_meas_steps : (i+1) * reduced_meas_steps]
-                local_work = self.store_work[i * reduced_meas_steps : (i+1) * reduced_meas_steps]
-
+                local_gauge = self.store_gauge[
+                    i * reduced_meas_steps : (i + 1) * reduced_meas_steps
+                ]
+                local_weights = self.store_weights[
+                    i * reduced_meas_steps : (i + 1) * reduced_meas_steps
+                ]
+                local_work = self.store_work[
+                    i * reduced_meas_steps : (i + 1) * reduced_meas_steps
+                ]
 
                 run_mc_modified = run_nevmc.options(
                     num_gpus=gpu_frac
@@ -223,13 +284,18 @@ class EvaluatorManager:
                 )
 
             resultvec = ray.get(resultvec)
-            return self.collect_NEVMC(resultvec)
+            self.evaluator = self.collect_NEVMC(resultvec)
+            result_df = self.evaluator.summary()
 
-        elif "mc" in self.type and self.nrunner > 0:  
+        elif "mc" in self.type and self.nrunner > 0:
             """Start the simulation of the runners.
-            Currently only Monte Carlo is supported (the exacteval implementation currently only supports a single runner), 
+            Currently only Monte Carlo is supported (the exacteval implementation currently only supports one runner),
             and multiple runners cannot be resumed from where they left off.
             """
+            assert isinstance(self.cfg, MonteCarloEvaluatorConfig) or isinstance(
+                self.cfg, NEVMC_EvaluatorConfig
+            )
+
             resultvec = []
             # system_cfg_id = ray.put(self.system_cfg)
             reduced_meas_steps = self.cfg.meas_steps // self.nrunner
@@ -279,27 +345,19 @@ class EvaluatorManager:
                     )
                 )
             resultvec = ray.get(resultvec)
-            return self.collect(resultvec)
+            self.evaluator = self.collect(resultvec)
+            result_df = self.evaluator.summary()
         else:
-            if (
-                self.type == "mc" and self.simulation_in_progress
-            ):  # exacteval does not support resuming an evaluation
-                self.evaluator.system.invalidate_gauge_update()
-            elif(
-                self.type == "nevmc" and self.simulation_in_progress
-            ):  # exacteval does not support resuming an evaluation
-                self.evaluator.system.invalidate_gauge_update()
-            else:
-                self.reset_evaluator()
-            self.simulation_in_progress = True
+            self.reset_evaluator()
             self.evaluator.evaluate(**eval_args)
-            self.simulation_in_progress = False
+            result_df = self.evaluator.summary()
 
-            self.store_gauge = self.evaluator.store_gauge
-            self.store_weights = self.evaluator.store_weights
-            self.store_work = self.evaluator.store_work
+            if self.type == "nevmc":
+                self.store_gauge = self.evaluator.store_gauge
+                self.store_weights = self.evaluator.store_weights
+                self.store_work = self.evaluator.store_work
 
-            return self.evaluator
+        return result_df
 
     def collect(self, resultvec):
         """Unify the results of multiple runners
@@ -308,7 +366,7 @@ class EvaluatorManager:
             resultvec (list): List of Estimators from the different runners
 
         Returns:
-            Estimator: estimator with information from all runners
+            Evaluator: evaluator with information from all runners
         """
         system = self.system_cls(self.system_cfg)
         dest = MonteCarloEvaluator(self.cfg, system)
@@ -319,7 +377,6 @@ class EvaluatorManager:
         else:
             dest = resultvec[0]
         return dest
-    
 
     def collect_NEVMC(self, resultvec):
         """Unify the results of multiple runners
@@ -355,4 +412,3 @@ class EvaluatorManager:
         self.store_work = dest.store_work
 
         return dest
-    

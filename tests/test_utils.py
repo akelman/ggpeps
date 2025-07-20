@@ -77,9 +77,7 @@ class TestUtils(unittest.TestCase):
             mat_rand_left = mat.copy()
             mat_rand_left[0, 1] -= eps
             mat_rand_left[1, 0] += eps
-            derivative_numeric = (
-                pf.pfaffian(mat_rand_right) - pf.pfaffian(mat_rand_left)
-            ) / (2 * eps)
+            derivative_numeric = (pf.pfaffian(mat_rand_right) - pf.pfaffian(mat_rand_left)) / (2 * eps)
             self.assertAlmostEqual(derivative_numeric, derivative_ana)
 
     def test_derivative_pfaffian_rnd(self):
@@ -101,9 +99,7 @@ class TestUtils(unittest.TestCase):
             mat_rand_left = xnp.array(mat_rand_left)
 
             derivative_ana = utils.derivative_pfaffian(mat_rand, deriv_mat)
-            derivative_numeric = (
-                pf.pfaffian(mat_rand_right) - pf.pfaffian(mat_rand_left)
-            ) / (2 * eps)
+            derivative_numeric = (pf.pfaffian(mat_rand_right) - pf.pfaffian(mat_rand_left)) / (2 * eps)
             self.assertAlmostEqual(derivative_numeric, derivative_ana)
 
 
@@ -164,7 +160,7 @@ class TestBGBTransform(unittest.TestCase):
         mat_full = np.block([[mat_zero, mat], [-np.transpose(mat), mat_zero]])
         # We have different input conventions for the two functions
         # BgbTransform takes only the single matrix and doubles it for positive and negative modes
-        # uitls.tmat_to_covariance_matrix takes the full T matrix
+        # utils.tmat_to_covariance_matrix takes the full T matrix
         covmat_direct = utils.tmat_to_covariance_matrix(mat_full)
         covmat_bgb = utils.BgbTransform(mat, pure_gauge=True).mat_out
         self.assertTrue(np.allclose(covmat_direct, covmat_bgb))

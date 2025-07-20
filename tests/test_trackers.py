@@ -40,9 +40,7 @@ class TestWoodburyInverter(unittest.TestCase):
         mat = np.random.rand(n, n)
         update_mat = np.random.rand(n_up, n_up)
         padval = n - n_up
-        update_padded = np.pad(
-            update_mat, [(0, padval), (0, padval)], "constant", constant_values=(0, 0)
-        )
+        update_padded = np.pad(update_mat, [(0, padval), (0, padval)], "constant", constant_values=(0, 0))
         wi = utils.WoodburyInverter(mat)
         inv_wb = wi.update_index(update_mat, 0, 0)
         inv = np.linalg.inv(mat + update_padded)
@@ -72,9 +70,7 @@ class TestIncDeterminant(unittest.TestCase):
     def test_identity_incr(self):
         track = np.copy(self.ident)
         for _ in range(10):
-            self.incdet.update(
-                np.linalg.inv(track), self.ident, 0.1 * self.ident, self.ident
-            )
+            self.incdet.update(np.linalg.inv(track), self.ident, 0.1 * self.ident, self.ident)
             track += 0.1 * self.ident
         detval = self.incdet.det()
         detval_direct = np.linalg.det(2 * self.ident)
@@ -101,7 +97,7 @@ class TestIncDeterminant(unittest.TestCase):
         self.assertAlmostEqual(detval, detval_direct)
 
 
-# ======================= IncLogAbsDeterminant Test =========================================
+# ======================= IncLogAbsDeterminant Test =======================
 
 
 def generate_pos_def_matrix(n):
@@ -125,9 +121,7 @@ class TestIncLogDeterminant(unittest.TestCase):
     def test_identity_incr(self):
         track = np.copy(self.ident)
         for _ in range(10):
-            self.incdet.update(
-                np.linalg.inv(track), self.ident, 0.1 * self.ident, self.ident
-            )
+            self.incdet.update(np.linalg.inv(track), self.ident, 0.1 * self.ident, self.ident)
             track += 0.1 * self.ident
         detval = self.incdet.det()
         _, detval_direct = np.linalg.slogdet(2 * self.ident)

@@ -4,6 +4,8 @@ import itertools as it
 
 from tqdm import tqdm
 
+from ggpeps import utils
+
 import exacteval
 import lattice as lat
 from system import Z2System2D, Z2System2DConfig
@@ -67,16 +69,14 @@ def main(args):
                 paramvec[1],
                 paramvec[2],
             )
-            mc_result.save_summary(fname_summary)
+            utils.save_summary_df(mc_result, fname_summary)
 
 
 if __name__ == "__main__":
 
     import argparse
 
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("L", type=int, help="Size of the square system (one side)")
 
@@ -88,9 +88,7 @@ if __name__ == "__main__":
         default=False,
         help="Force the coupling of physical and virtual fermions (t-parameters) to be 0",
     )
-    parser.add_argument(
-        "--nstep", default=10, type=int, help="Number of steps in the parameter"
-    )
+    parser.add_argument("--nstep", default=10, type=int, help="Number of steps in the parameter")
 
     # parser.add_argument("--g2", type=float, default=1.0,
     # help="coupling constant")
@@ -98,21 +96,15 @@ if __name__ == "__main__":
     # parser.add_argument("--g_int", type=float, default=0.0,
     # help="gauge matter coupling")
     parser.add_argument("--seed", type=int, help="Seed for the MC simulation")
-    parser.add_argument(
-        "--warmup_steps", type=int, default=int(1e5), help="Number of warmup steps"
-    )
-    parser.add_argument(
-        "--meas_steps", type=int, default=int(1e4), help="Number of run steps"
-    )
+    parser.add_argument("--warmup_steps", type=int, default=int(1e5), help="Number of warmup steps")
+    parser.add_argument("--meas_steps", type=int, default=int(1e4), help="Number of run steps")
     parser.add_argument(
         "--nlayer",
         default=1,
         type=int,
         help="Number of PEPS layers for the variational state",
     )
-    parser.add_argument(
-        "--ncopy", default=1, type=int, help="Number of virtual fermions on the links"
-    )
+    parser.add_argument("--ncopy", default=1, type=int, help="Number of virtual fermions on the links")
     parser.add_argument(
         "--exact",
         default=False,

@@ -1,4 +1,3 @@
-import sys
 import sympy
 import logging
 
@@ -16,11 +15,9 @@ from ggpeps.lattice import Direction
 from .system_base import (
     Config2DBase,
     System2DBase,
-    calculate_lognorm,
-    calculate_lognormvec_inc,
-    extract_partial_covmats,
     calculate_lognorm_inc,
 )
+from ggpeps.system.global_funcs import compute_grad_over_norm, extract_partial_covmats
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -32,6 +29,7 @@ class U1System2DConfig(Config2DBase):
     ncopy = 1
     nvirtmodes_link = 8
     nvirtmodes_link = 4
+    nphysmodes_site = 1  # number of physical modes per site
 
     def __init__(
         self,
@@ -60,7 +58,7 @@ class U1System2DConfig(Config2DBase):
         # Translation invariance
         if unitcell_size not in [1]:
             logger.error(
-                "This ansatz only supports unitcell_size = 1 or 2. \
+                "This ansatz only supports unitcell_size = 1. \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             raise ValueError("Invalid unitcell_size.")
@@ -68,12 +66,29 @@ class U1System2DConfig(Config2DBase):
             site: 0 for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
         self.unitcell_size = 1
+        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(3)
+
+        # We store a list of the parameters forced to be zero by the ansatz
+        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
+        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
 
     def make_pure_gauge(self):
         # The order of the parameters is [t,y,z]
+        # Here we set the t parameters to zero for the pure gauge layers (which is all the layers)
+        assert self.nlayer == self.num_pg_layer
         for lay in range(self.nlayer):
             for uc_ind in range(self.unitcell_size):
                 self.paramvec[lay, uc_ind, 0] = 0
+
+    def get_zeroed_params(self):
+        """This should really call make_pure_gauge() - i.e. return the indices which are set to zero there.
+        However, some tests which use this ansatz do not actually satisfy the pure gauge condition
+        - they use this ansatz with nonzero t params, and test against hard-coded values.
+        (This works because make_pure_gauge() is often not called in the executaion path of those tests).
+        To preserve compatibility with those tests, we do not call make_pure_gauge() here.
+        """
+        zeroed_params = []
+        return zeroed_params
 
     def _create_symbolvec(self):
         t = sympy.Symbol("t", real=True)
@@ -107,12 +122,8 @@ class U1System2DConfig(Config2DBase):
     def generate_gamma_gauge_neutral_dict(self):
         # Note: unlike in the Z2 case, here we can ignore the direction of the link
         dest = [0] * 2
-        dest[Direction.X] = np.real(
-            1.0j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix)
-        )
-        dest[Direction.Y] = np.real(
-            1.0j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix)
-        )
+        dest[Direction.X] = np.real(1.0j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
+        dest[Direction.Y] = np.real(1.0j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
         return [dest] * self.nlayer
 
 
@@ -167,16 +178,12 @@ class U1System2D(System2DBase):
             self._gamma_dirac_layervec_sitevec = []
             for lay in range(self.cfg.nlayer):
                 gamma_dirac_lay = [
-                    perm
-                    @ xnp.array(utils.tmat_to_covariance_matrix(tmat))
-                    @ np.transpose(perm)
+                    perm @ xnp.array(utils.tmat_to_covariance_matrix(tmat)) @ np.transpose(perm)
                     for tmat in self.tmat_layervec_sitevec[lay]
                 ]
                 self._gamma_dirac_layervec_sitevec.append(gamma_dirac_lay)
 
-            self._gamma_dirac_layervec_sitevec = xnp.array(
-                self._gamma_dirac_layervec_sitevec
-            )
+            self._gamma_dirac_layervec_sitevec = xnp.array(self._gamma_dirac_layervec_sitevec)
         return self._gamma_dirac_layervec_sitevec
 
     def _expand_gamma_maj_to_system(self, covmats_layervec_sitevec):
@@ -184,15 +191,11 @@ class U1System2D(System2DBase):
         # covmats_layervec_sitevec to handle different values on different sites.
         # The U1 ansatz does not support this at the moment, so we just use the first site
         site = 0
-        covmats = [
-            covmats_layervec_sitevec[lay][site] for lay in range(self.cfg.nlayer)
-        ]
+        covmats = [covmats_layervec_sitevec[lay][site] for lay in range(self.cfg.nlayer)]
 
         vec = []
         for covmat in covmats:
-            permbuilder = lat.PermutationBuilderGMS2DU1(
-                self.cfg.lattice, nmodes_per_link=2
-            )
+            permbuilder = lat.PermutationBuilderGMS2DU1(self.cfg.lattice, nmodes_per_link=2)
             mat_perm = permbuilder.perm()
             nsites = self.cfg.lattice.size
             id = np.eye(nsites)
@@ -204,16 +207,14 @@ class U1System2D(System2DBase):
             bmat_sys = np.kron(id, bmat)
             dmat_sys = np.kron(id, dmat)
             # Reassemble them in the correct order
-            mat_sys_unordered = np.block(
-                [[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]]
-            )
+            mat_sys_unordered = np.block([[amat_sys, bmat_sys], [-np.transpose(bmat_sys), dmat_sys]])
             dest = (
                 mat_perm @ mat_sys_unordered @ np.transpose(mat_perm)
             )  # Note that this uses a different permutation matrix convention than in Z2 case.
             vec.append(dest)
         return np.array(vec)
 
-    def initialize_gamma_in_sys(self):
+    def initialize_gamma_in_and_trackers(self):
         """
         The mode-order in gamma_in_sys is dictated by the numbering of the links on the lattice.
         The numbering guarantees that we split the vertical from the horizontal links for easier gauging.
@@ -231,8 +232,9 @@ class U1System2D(System2DBase):
 
         For a 2x2 system, gamma_in has the order {l_1, r_0, l_0, r_1, l_3, r_2, l_2, r_3, d_2, u_0, d_0, u_2, d_3, u_1, d_1, d_3}.
         The modes are named as <mode letter>_<vertex site>. Each constitent in the list above labels two Majorana modes.
+
+        TODO: This function could probably be replaced by the general one in System2DBase, but this has not been tested.
         """
-        # TODO: Fix description
 
         size = self.cfg.lattice.size  # number of sites
 
@@ -250,22 +252,15 @@ class U1System2D(System2DBase):
 
         diffvec = [mat_d_inv - gamma_in_sys for mat_d_inv in self.mat_d_inv_vec]
         wi_gamma_in_vec = [utils.WoodburyInverter(diff) for diff in diffvec]
-        wi_gamma_out_vec = [
-            utils.WoodburyInverter(mat_d - gamma_in_sys) for mat_d in self.mat_d_vec
-        ]
+        wi_gamma_out_vec = [utils.WoodburyInverter(mat_d - gamma_in_sys) for mat_d in self.mat_d_vec]
         incdet_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec]
 
         # Initialize the modified gamma_in_sys for the full system (and trackers)
         single_link_offset = 2 * self.cfg.nvirtmodes_link
         gamma_in_sys_mod = gamma_in_sys[single_link_offset:, single_link_offset:]
-        diffvec_mod = [
-            mat_d_inv - gamma_in_sys_mod for mat_d_inv in self.mat_d_mod_inv_vec
-        ]
+        diffvec_mod = [mat_d_inv - gamma_in_sys_mod for mat_d_inv in self.mat_d_mod_inv_vec]
         wi_gamma_in_mod_vec = [utils.WoodburyInverter(diff) for diff in diffvec_mod]
-        wi_gamma_out_mod_vec = [
-            utils.WoodburyInverter(mat_d - gamma_in_sys_mod)
-            for mat_d in self.mat_d_mod_vec
-        ]
+        wi_gamma_out_mod_vec = [utils.WoodburyInverter(mat_d - gamma_in_sys_mod) for mat_d in self.mat_d_mod_vec]
         incdet_mod_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec_mod]
 
         # Though for this ansatz gamma_in_sys does not vary between layers, it is convenient to have gamma_in_sys_vec available as a vector with length = nlayers
@@ -280,20 +275,22 @@ class U1System2D(System2DBase):
 
     ################## Local Gauge ######################
 
-    def _generate_rotmat_half(self, theta):
-        rot_right = np.array(
-            [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
-        )
+    def _generate_rotmat_half(self, group_element):
+        theta = self.gaugemgr.get_angle(group_element)
+        rot_right = np.array([[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]])
         # We have only one left mode => 2 Majorana modes
         rot_left = np.eye(2)
         # The mode order is lr (horizontally) or du (vertically).
         dest = block_diag(rot_left, rot_right)
         return dest
 
-    def generate_rotmat(self, theta, coord, dir):
-        gauge_field = theta * pow(-1, np.sum(coord))
+    def generate_rotmat(self, group_element, coord, dir):
+        if np.sum(coord) % 2 == 0:
+            gauge_field = group_element
+        else:
+            gauge_field = np.transpose(np.conjugate(group_element))
         rot_plus = self._generate_rotmat_half(gauge_field)
-        rot_minus = self._generate_rotmat_half(-gauge_field)
+        rot_minus = self._generate_rotmat_half(np.transpose(np.conj(gauge_field)))
         return block_diag(rot_plus, rot_minus)
 
     def update_gauge_ind(self, link_ind, theta):
@@ -309,7 +306,7 @@ class U1System2D(System2DBase):
         gamma_in_subst = (
             rotmat @ self.gamma_gauge_neutral_vec[0][dir] @ np.transpose(rotmat)
         )  # just use the first gamma_gauge_neutral, since they're shared by all layers
-        update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst)
+        update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst, self.gamma_in_sys_vec[0])
         # Update the determinant
         mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
         detval_vec = [
@@ -325,14 +322,8 @@ class U1System2D(System2DBase):
         # Update the weight
         self.weight = 0.5 * np.sum(detval_vec)
         # Update the matrix inversion
-        [
-            wi_gamma_in.update_index(update, ind_mat, ind_mat)
-            for wi_gamma_in in self.wi_gamma_in_vec
-        ]
-        [
-            wi_gamma_out.update_index(update, ind_mat, ind_mat)
-            for wi_gamma_out in self.wi_gamma_out_vec
-        ]
+        [wi_gamma_in.update_index(update, ind_mat, ind_mat) for wi_gamma_in in self.wi_gamma_in_vec]
+        [wi_gamma_out.update_index(update, ind_mat, ind_mat) for wi_gamma_out in self.wi_gamma_out_vec]
 
         if ind_mat - offset >= 0:
             # We do not update the matrix if the first link is updated (it is just not there)
@@ -341,13 +332,11 @@ class U1System2D(System2DBase):
                 for wi_gamma_in_mod in self.wi_gamma_in_mod_vec
             ]
             [
-                wi_gamma_out_mod.update_index(
-                    update, ind_mat - offset, ind_mat - offset
-                )
+                wi_gamma_out_mod.update_index(update, ind_mat - offset, ind_mat - offset)
                 for wi_gamma_out_mod in self.wi_gamma_out_mod_vec
             ]
         # Substitute in the array
-        self.gamma_in_sys[
+        self.gamma_in_sys_vec[0][
             ind_mat : ind_mat + rotmat.shape[0], ind_mat : ind_mat + rotmat.shape[1]
         ] = gamma_in_subst
         # Invalidate gauge dependent quantities
@@ -381,7 +370,7 @@ class U1System2D(System2DBase):
             single_link_offset = 2 * self.cfg.nvirtmodes_link
             offset = 2 * self.cfg.lattice.size + single_link_offset
             # We have to cut one link from gamma_in_sys as well
-            gamma_in_sys_mod = self.gamma_in_sys_mod
+            gamma_in_sys_mod = self.gamma_in_sys_mod_vec[0]
             nlinks = self.cfg.lattice.nlinks
             dest = []
             dest_grad = []
@@ -397,9 +386,7 @@ class U1System2D(System2DBase):
                 diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
 
                 ###################### Calculation of <P> ########################
-                covmat_out = mat_a + mat_b @ self.wi_gamma_out_mod_vec[
-                    layerind
-                ].inv() @ np.transpose(mat_b)
+                covmat_out = mat_a + mat_b @ self.wi_gamma_out_mod_vec[layerind].inv() @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_link_offset:, -single_link_offset:]
                 # For the modified norm, we still have to take into account the other contributions from the unmodified parts
                 norm_mod = calculate_lognorm_inc(
@@ -410,43 +397,29 @@ class U1System2D(System2DBase):
                 )
                 # norm_mod = calculate_lognorm(gamma_in_sys_mod, [mat_d],
                 # all_factors=True)
-                norm_mod += np.sum(
-                    utils.select_except(lognormvec_default_inc, layerind)
-                )
+                norm_mod += np.sum(utils.select_except(lognormvec_default_inc, layerind))
                 # The matrix elements yield only the real part of <P>
                 # el_energy_layer = 0.25*( covmat_out_virt[0, 1] + covmat_out_virt[2, 3] + 1.j*covmat_out_virt[0,2] - 1.j*covmat_out_virt[0,3]) * np.exp(norm_mod - lognorm_default)
                 el_energy_layer = (
-                    0.25
-                    * (covmat_out_virt[0, 1] + covmat_out_virt[2, 3])
-                    * np.exp(norm_mod - lognorm_default)
+                    0.25 * (covmat_out_virt[0, 1] + covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                 )
                 dest.append(el_energy_layer)
 
                 ###################### Calculation of the derivative ########################
                 for symbol in self.symbolvec:
                     deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
-                    d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(
-                        deriv_gamma_maj_sys, offset
-                    )
+                    d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
                     d_gamma_out = (
                         d_mat_a
                         + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
                         + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b)
-                        - mat_b
-                        @ diff_d_gamma_inv
-                        @ d_mat_d
-                        @ diff_d_gamma_inv
-                        @ np.transpose(mat_b)
+                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
                     )
                     # The virtual mode is the last link on the bottom right of the covariance matrix
-                    d_covmat_out_virt = d_gamma_out[
-                        -single_link_offset:, -single_link_offset:
-                    ]
+                    d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
                     # Summand with derivative of the covariance matrix
                     d_el_energy = (
-                        0.25
-                        * (d_covmat_out_virt[0, 1] + d_covmat_out_virt[2, 3])
-                        * np.exp(norm_mod - lognorm_default)
+                        0.25 * (d_covmat_out_virt[0, 1] + d_covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                     )
                     # Summand with derivative of norms
                     trace_def = self.compute_grad_over_norm(symbol, layerind)
@@ -480,14 +453,12 @@ class U1System2D(System2DBase):
         link_ind = self.cfg.lattice.coord2ind_dir(coord, dir)
         current_phase = self.gaugefieldvec[link_ind]
         increment = -self.gaugemgr.get_increment()
-        dest = self.gamma_in_sys.astype(complex).copy()
+        dest = self.gamma_in_sys_vec[0].astype(complex).copy()
         adapted_no_gauge = self.generate_electric_full(increment)
         rotmat = self.generate_rotmat(current_phase, coord, dir)
         adapted = rotmat @ adapted_no_gauge @ rotmat.transpose()
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
-        dest[
-            ind_mat : ind_mat + adapted.shape[0], ind_mat : ind_mat + adapted.shape[1]
-        ] = adapted
+        dest[ind_mat : ind_mat + adapted.shape[0], ind_mat : ind_mat + adapted.shape[1]] = adapted
         return dest
 
     def generate_electric_single_mode(self, phi):
@@ -540,9 +511,7 @@ class U1System2D(System2DBase):
                 overlap_diff_gauge = pf.pfaffian(
                     np.array(diff_try)
                 )  # When using jax, this line produces garbage unless diff_try is first cast to numpy, which causes a test to fail. TODO: investigate why
-                dest.append(
-                    prefactor * np.real(overlap_diff_gauge) / overlap_same_gauge
-                )
+                dest.append(prefactor * np.real(overlap_diff_gauge) / overlap_same_gauge)
             # TODO: Implement gradient
             dest_grad = np.asarray([[None] * len(self.symbolvec)] * self.cfg.nlayer)
         else:
@@ -558,14 +527,40 @@ class U1System2D(System2DBase):
         else:
             return self._compute_el_energy_op_and_grad_gaussian()
 
+    def _compute_el_energy_op_vec(self):
+        """This function is just for compatibility with the base class.
+        The electric energy and grads should be refactored for this class."""
+        if self.use_pfaffian:
+            return self._compute_el_energy_op_and_grad_pfaffian()[0]
+        else:
+            return self._compute_el_energy_op_and_grad_gaussian()[0]
+
+    def _compute_el_grad_vec(self):
+        """This function is just for compatibility with the base class.
+        The electric energy and grads should be refactored for this class."""
+        if self.use_pfaffian:
+            return self._compute_el_energy_op_and_grad_pfaffian()[1]
+        else:
+            return self._compute_el_energy_op_and_grad_gaussian()[1]
+
     def _compute_int_energy_op_vec_and_grad(self):
         # This function is not implemented yet!
-        raise NotImplementedError(
-            "The interaction energy is not implemented yet for U(1)."
-        )
+        raise NotImplementedError("The interaction energy is not implemented yet for U(1).")
 
     def _compute_chem_energy_op_vec_and_grad(self):
         """Calculate the chemical potential energy operator and its gradient."""
-        raise NotImplementedError(
-            "The chemical potential energy is not implemented yet for U(1)."
-        )
+        raise NotImplementedError("The chemical potential energy is not implemented yet for U(1).")
+
+    def _meson_string_vec(self, path):
+        """Compute a layer resolved meson string for the given path.
+        This is \psi^dagger (start) * String * \psi(end) before particle-hole,
+        and assumes that start and end are on the same sublattice.
+
+        Args:
+            path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
+
+        Returns:
+            array: meson_str_vec
+        """
+        meson_op_vec = xnp.zeros(self.cfg.nlayer)
+        return xnp.array(meson_op_vec)

@@ -1,19 +1,19 @@
 from typing import Optional
 
 import os
+import copy
 import pickle
 import logging
 
 import numpy as np
 from scipy.optimize import minimize
-
 from scipy.special import logsumexp
-import copy
 
 import ggpeps
 from ggpeps.caching import Cache
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.evaluator import Evaluator
+from ggpeps import utils
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -42,7 +42,7 @@ class MinimizerResult:
 
 class MinimizerConfig:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.max_iter: int = 100
         self.tol: float = 1e-5  # convergence tol (e.g. stop when grad falls below tol)
         self.alpha: float = 1e-2
@@ -53,13 +53,13 @@ class MinimizerConfig:
         return self._method
 
     @method.setter
-    def method(self, val: str):
+    def method(self, val: str) -> None:
         self._method = val.upper()
 
 
 class Minimizer:
-    grad_methods = ["CG", "BFGS", "L-BFGS-B", "TNC", "CUSTOM", "NEVMC"]
-    no_grad_methods = ["POWELL", "NELDER-MEAD"]
+    grad_methods: list[str] = ["CG", "BFGS", "L-BFGS-B", "TNC", "CUSTOM", "NEVMC"]
+    no_grad_methods: list[str] = ["POWELL", "NELDER-MEAD"]
     supported_scipy_methods = grad_methods[:-2] + no_grad_methods
 
     def __init__(self, cfg: MinimizerConfig, evaluator_manager: EvaluatorManager):
@@ -85,21 +85,23 @@ class Minimizer:
             logger.error(f"Unkown minimization method '{self.cfg.method}'. Aborting...")
             return None
 
-    def minimize_custom(self):
+    def minimize_custom(self) -> MinimizerResult:
         paramvec = self.evaluator_manager.system_cfg.paramvec
-        
+
         for ind in range(self.cfg.max_iter):
             if self.last_paramvec is None or not np.allclose(
                 self.last_paramvec, paramvec
             ):
-                # We copy here to get a new set of variables. We will change paramvec below and do not want to change last_paramvec
+                # We copy here to get a new set of variables.
+                # We will change paramvec below and do not want to change last_paramvec
                 self.last_paramvec = np.copy(paramvec)
 
                 # Monte Carlo part of the optimizer
                 result = self.evaluator_manager.simulate()
 
-            energy = result.get_obs_mean("energy")
-            grad_paramvec = result.get_obs_mean("energy_grad")
+            # Energy and gradient
+            energy = utils.get_obs_mean_df(result, "energy")
+            grad_paramvec = utils.get_obs_mean_df(result, "energy_grad")
 
             # Energy and rewieghted gradient
 
@@ -113,8 +115,14 @@ class Minimizer:
             if max_grad_paramvec < abs(self.cfg.tol):
                 message = f"Reached convergence: max grad paramvec < {self.cfg.tol}"
                 logger.info(message)
+
                 self.min_result = MinimizerResult(
-                    paramvec, self.cfg.method, energy, grad_paramvec, True, message
+                    paramvec,
+                    grad_paramvec,
+                    self.cfg.method,
+                    energy,
+                    True,
+                    message,
                 )
                 return self.min_result
 
@@ -127,19 +135,25 @@ class Minimizer:
 
         message = "Reached maximum number of iterations without convergence."
         logger.warning(message)
+
         self.min_result = MinimizerResult(
-            paramvec, self.cfg.method, energy, grad_paramvec, False, message
+            paramvec,
+            grad_paramvec,
+            self.cfg.method,
+            energy,
+            False,
+            message,
         )
         return self.min_result
 
-    def minimize_scipy(self):
+    def minimize_scipy(self) -> MinimizerResult:
 
         # Energy wrapper
         def energy_wrapper(flattened_paramvec):
             # Check if value is stored in cache (e.g. from previous minimization)
             energy = self.cache.load_obs_from_local_cache(flattened_paramvec, "energy")
             if energy is not None:
-                logger.debug(f"Found cached value for energy: {energy}")
+                # logger.debug(f"Found cached value for energy: {energy}")
                 return energy
 
             if self.last_paramvec is None or not np.allclose(
@@ -157,14 +171,14 @@ class Minimizer:
             #   it is important to save energy and gradients (even though the last_paramvec stores both)
             #   so that if the computation is interrupted (which loses the last_paramvec),
             #   we can still use the cached values
-            energy = self.last_result.get_obs_mean("energy")
+            energy = utils.get_obs_mean_df(self.last_result, "energy")
             self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy)
             if self.evaluator_manager.cfg.compute_grads:
-                parametergrad = self.last_result.get_obs_mean("energy_grad")
+                parametergrad = utils.get_obs_mean_df(self.last_result, "energy_grad")
                 self.cache.add_obs_to_cache(
                     flattened_paramvec, "energy_grad", parametergrad
                 )
-            logger.debug(f"Calculated energy: {energy}")
+            # logger.debug(f"Calculated energy: {energy}")
 
             return energy
 
@@ -200,9 +214,9 @@ class Minimizer:
                 self.last_result = self.evaluator_manager.simulate()
 
             # Save to cache
-            energy = self.last_result.get_obs_mean("energy")
+            energy = utils.get_obs_mean_df(self.last_result, "energy")
             self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy)
-            parametergrad = self.last_result.get_obs_mean("energy_grad")
+            parametergrad = utils.get_obs_mean_df(self.last_result, "energy_grad")
             self.cache.add_obs_to_cache(
                 flattened_paramvec, "energy_grad", parametergrad
             )
@@ -224,7 +238,7 @@ class Minimizer:
             energy_wrapper,
             flattened_paramvec,
             method=self.cfg.method,
-            jac=gradient_wrapper,
+            jac=gradient_wrapper if self.cfg.method in self.grad_methods else None,
             tol=self.cfg.tol,
             callback=lambda x: print_callback(x, self),
             options=options_dict,
@@ -252,16 +266,21 @@ class Minimizer:
         self.min_result = dest
         return dest
 
-    def save(self, output_dir="."):
+    def save(self, output_dir: str = ".") -> None:
         if self.min_result is not None:
             sys_cfg = self.evaluator_manager.system_cfg
 
-            couplings_str = f"gel_{sys_cfg.g_el}_gmag_{sys_cfg.g_mag}_gint_{sys_cfg.g_int}_gmass_{sys_cfg.g_mass}_gchem_{np.array2string(sys_cfg.g_chem, separator=',')}"
+            chem_str = "_".join([f"{val:.3f}" for val in sys_cfg.g_chem])
+            couplings_str = f"gel_{sys_cfg.g_el}_gmag_{sys_cfg.g_mag}_gint_{sys_cfg.g_int}_gmass_{sys_cfg.g_mass}_gchem_{chem_str}"
 
             fname_mc_summary = f"summary_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
             fname_result_min = f"result_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
 
-            self.last_result.save_summary(os.path.join(output_dir, fname_mc_summary))
+            if self.last_result is not None:
+                # last_result may be None if caching is on and the last result was not computed
+                utils.save_summary_df(
+                    self.last_result, os.path.join(output_dir, fname_mc_summary)
+                )
             with open(os.path.join(output_dir, fname_result_min), "wb") as outfile:
                 pickle.dump(self.min_result, outfile)
 
@@ -275,17 +294,17 @@ class Minimizer:
 
             if ind == 0:
                 # First run at equilibrium
-                result0 = self.evaluator_manager.simulate(
+                result0_df = self.evaluator_manager.simulate(
                     eval_args={"first_warmup": True}
                 )
+                result0 = self.evaluator_manager.get_evaluator()
 
                 # Standard calculation energy and grads
                 energy = result0.get_obs_mean("energy")
                 grad_paramvec = result0.get_obs_mean("energy_grad")
 
                 max_grad_paramvec = np.max(np.abs(grad_paramvec))
-                self.last_result = result0
-
+                self.last_result = result0_df
                 # Update logs
                 print_callback(ind, self)
 
@@ -295,7 +314,8 @@ class Minimizer:
                 )
 
                 # First reweighting: only scanning
-                result1 = self.evaluator_manager.simulate(eval_args={"scanning": True})
+                self.evaluator_manager.simulate(eval_args={"scanning": True})
+                result1 = self.evaluator_manager.get_evaluator()
 
                 # Compute DF
                 Wmean = result1.obsdict["work"].mean()
@@ -326,23 +346,23 @@ class Minimizer:
                 )
                 next_paramvec -= self.cfg.alpha * grad_paramvec
 
-
             else:
                 # if self.last_paramvec is None or not np.allclose(
                 #    self.last_paramvec, next_paramvec
                 # ):
 
-                # We copy here to get a new set of variables. 
+                # We copy here to get a new set of variables.
                 # We will change paramvec below and do not want to change last_paramvec
                 self.last_paramvec = np.copy(paramvec)
-                
-                # Monte Carlo part of the optimizer
-                result0 = self.evaluator_manager.simulate()
 
+                # Monte Carlo part of the optimizer
+                self.evaluator_manager.simulate()
+                result0 = self.evaluator_manager.get_evaluator()
                 self.evaluator_manager.system_cfg.paramvec = copy.deepcopy(
                     next_paramvec
                 )
-                result1 = self.evaluator_manager.simulate(eval_args={"scanning": True})
+                self.evaluator_manager.simulate(eval_args={"scanning": True})
+                result1 = self.evaluator_manager.get_evaluator()
 
                 # Compute DF
                 Wmean = copy.deepcopy(result1.obsdict["work"].mean())
@@ -374,8 +394,14 @@ class Minimizer:
                 if max_grad_paramvec < abs(self.cfg.tol):
                     message = f"Reached convergence: max grad paramvec < {self.cfg.tol}"
                     logger.info(message)
+
                     self.min_result = MinimizerResult(
-                        paramvec, self.cfg.method, energy, grad_paramvec, True, message
+                        paramvec,
+                        grad_paramvec,
+                        self.cfg.method,
+                        energy,
+                        True,
+                        message,
                     )
                     return self.min_result
 
@@ -384,11 +410,16 @@ class Minimizer:
                 )
                 next_paramvec -= self.cfg.alpha * grad_paramvec
 
-
         message = "Reached maximum number of iterations without convergence."
         logger.warning(message)
+
         self.min_result = MinimizerResult(
-            paramvec, self.cfg.method, energy, grad_paramvec, False, message
+            paramvec,
+            grad_paramvec,
+            self.cfg.method,
+            energy,
+            False,
+            message,
         )
         return self.min_result
 
@@ -412,37 +443,53 @@ def print_callback(x, minimizer):
         logger.info("Callback message due to caching. The last_result is None.")
         return
 
-    energy = res.get_obs_mean("energy")
-    number_per_site = res.get_obs_mean("number_per_site")
+    energy = utils.get_obs_mean_df(res, "energy")
     if minimizer.evaluator_manager.cfg.compute_grads:
-        grad_paramvec = res.get_obs_mean("energy_grad")
+        grad_paramvec = utils.get_obs_mean_df(res, "energy_grad")
         max_grad_paramvec = np.max(np.abs(grad_paramvec))
     else:
         grad_paramvec = None
         max_grad_paramvec = np.nan
 
-    mass_energy = res.get_obs_mean("mass_energy")
-    int_energy = res.get_obs_mean("int_energy")
-    el_energy = res.get_obs_mean("el_energy")
-    mag_energy = res.get_obs_mean("mag_energy")
-    chem_energy = res.get_obs_mean("chem_energy")
+    mass_energy = utils.get_obs_mean_df(res, "mass_energy")
+    int_energy = utils.get_obs_mean_df(res, "int_energy")
+    el_energy = utils.get_obs_mean_df(res, "el_energy")
+    mag_energy = utils.get_obs_mean_df(res, "mag_energy")
+    chem_energy = utils.get_obs_mean_df(res, "chem_energy")
 
-    plaquette = res.get_obs_mean("wilson_loop_0-0_1x1")
+    plaquette = utils.get_obs_mean_df(res, "wilson_loop_0-0_1x1")
+    mass_energy_op = utils.get_obs_mean_df(res, "mass_energy_op")
+    if minimizer.evaluator_manager.system_cfg.num_fermionic_layer > 0:
+        # If we have fermionic layers, we can compute the average occupation
+        avg_occupation = utils.get_obs_mean_df(res, "average_occupation")
+        avg_occ = ", ".join([f"{val:.4f}" for val in avg_occupation])
+    else:
+        avg_occ = "None"
 
-    message = f"Energy: {energy:.9f}, Occupation: {number_per_site:.6f}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
+    message = f"Energy: {energy:.9f}, Total Mass: {mass_energy_op}, Occupation: {avg_occ}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
     if minimizer.cfg.method == "CUSTOM":
         # We only have access to the iteration number if we are handling the minimization (via the CUSTOM method)
         message = f"Iter: {x:03d}, {message}"
     if "mc" in minimizer.evaluator_manager.type:
         # Acceptance probability is only defined for MC
-        acceptance_prob = res.get_obs_mean("acceptance_prob")
+        acceptance_prob = utils.get_obs_mean_df(res, "acceptance_prob")
         message += f", acceptance prob: {acceptance_prob:.6f}"
     logger.info(message)
 
-    logger.debug(
-        f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}, chem: {chem_energy:.6f}"
-    )
-    logger.debug(f"Parametervec: {paramvec}")
+    if minimizer.evaluator_manager.system_cfg.num_fermionic_layer > 0:
+        all_occupations = utils.get_obs_mean_df(res, "all_occupations")
+        occ_str = ""
+        for lay in range(len(all_occupations)):
+            occ_str += ", ".join([f"{val:.10f}" for val in all_occupations[lay]])
+            occ_str += " | "  # layer separator
+    else:
+        occ_str = "None"
+    logger.debug(f"Occupations: {occ_str}")
+
+    # logger.debug(
+    #    f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}, chem: {chem_energy:.6f}"
+    # )
+    # logger.debug(f"Parametervec: {paramvec}")
 
     # If we're at the lowest energy seen so far, log the parameters
     # if current_iter == 0 or energy < lowest_energy:

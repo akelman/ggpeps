@@ -28,12 +28,9 @@ class TestLattice(unittest.TestCase):
 
     def test_coord2ind_dir(self):
         # test for negative coordinates
+        self.assertTrue(self.lat2d.coord2ind_dir((-1, 0), Direction.X) == self.lat2d.nx - 1)
         self.assertTrue(
-            self.lat2d.coord2ind_dir((-1, 0), Direction.X) == self.lat2d.nx - 1
-        )
-        self.assertTrue(
-            self.lat2d.coord2ind_dir((0, -1), Direction.Y)
-            == self.lat2d.nx * self.lat2d.ny + self.lat2d.ny - 1
+            self.lat2d.coord2ind_dir((0, -1), Direction.Y) == self.lat2d.nx * self.lat2d.ny + self.lat2d.ny - 1
         )
 
     def test_wilson_loop_1x1(self):
@@ -84,7 +81,8 @@ class TestLattice(unittest.TestCase):
 
     def test_wilson_loop_generation_4x4_lattice(self):
         """Test that all expected wilson loops are generated for a 4x4 lattice.
-        Note that the order of the loops is set to match the expected output from Lattice2D.generate_all_wilson_loops()
+        Note that the order of the loops is set to match the expected output from
+        Lattice2D.generate_all_wilson_loops()
         """
         lat = lattice.Lattice2D(4, 4)
         refs = [
@@ -118,7 +116,8 @@ class TestLattice(unittest.TestCase):
 
     def test_wilson_loop_generation_5x5_lattice(self):
         """Test that all expected wilson loops are generated for a 5x5 lattice.
-        Note that the order of the loops is set to match the expected output from Lattice2D.generate_all_wilson_loops()
+        Note that the order of the loops is set to match the expected output from
+        Lattice2D.generate_all_wilson_loops()
         """
         lat = lattice.Lattice2D(5, 5)
         refs = [
@@ -171,9 +170,7 @@ class TestLattice(unittest.TestCase):
             (((6, 0), lattice.Direction.X), False),
             (((7, 0), lattice.Direction.X), False),
         ]
-        path = self.lat2d.generate_polyakov_loop(
-            (0, 0), lattice.Direction.X, use_indices=False
-        )
+        path = self.lat2d.generate_polyakov_loop((0, 0), lattice.Direction.X, use_indices=False)
         self.assertEqual(ref, path)
 
     def test_polyakov_loop_vert(self):
@@ -187,9 +184,7 @@ class TestLattice(unittest.TestCase):
             (((0, 6), lattice.Direction.Y), False),
             (((0, 7), lattice.Direction.Y), False),
         ]
-        path = self.lat2d.generate_polyakov_loop(
-            (0, 0), lattice.Direction.Y, use_indices=False
-        )
+        path = self.lat2d.generate_polyakov_loop((0, 0), lattice.Direction.Y, use_indices=False)
         self.assertEqual(ref, path)
 
     def test_2d_covering(self):
@@ -233,7 +228,8 @@ class TestLattice(unittest.TestCase):
         self.assertEqual(tree4_expected, set(lat_4x4.fixed_tree))
 
     def test_complementary_maximal_tree_generation(self):
-        """Ensure that complement of the maximal tree (all the links which are not in the tree) is generated correctly."""
+        """Ensure that complement of the maximal tree (all the links which are not
+        in the tree) is generated correctly."""
         lat_2x2 = lattice.Lattice2D(2, 2, -1)
         lat_4x4 = lattice.Lattice2D(4, 4, -1)
         comp_tree2_expected = {1, 3, 5, 6, 7}
@@ -261,6 +257,13 @@ class TestLattice(unittest.TestCase):
 
     def test_tree_againt_complement(self):
         """Check that the maximal tree and its complement are disjoint"""
-        self.assertTrue(
-            set(self.lat2d.fixed_tree).isdisjoint(set(self.lat2d.comp_tree))
-        )
+        self.assertTrue(set(self.lat2d.fixed_tree).isdisjoint(set(self.lat2d.comp_tree)))
+
+    def test_rows_tree(self):
+        """Check that the rows tree is generated correctly for 4x4 and 2x2 lattices."""
+        lat2x2 = lattice.Lattice2D(2, 2, 1)
+        lat4x4 = lattice.Lattice2D(4, 4, 3)
+        expected_rows_tree_4by4 = {0, 1, 2, 4, 5, 6, 8, 9, 10}
+        expected_rows_tree_2by2 = {0}
+        self.assertEqual(expected_rows_tree_4by4, set(lat4x4.fixed_tree))
+        self.assertEqual(expected_rows_tree_2by2, set(lat2x2.fixed_tree))
