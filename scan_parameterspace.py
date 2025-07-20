@@ -4,6 +4,8 @@ import itertools as it
 
 from tqdm import tqdm
 
+from ggpeps import utils
+
 import exacteval
 import lattice as lat
 from system import Z2System2D, Z2System2DConfig
@@ -67,7 +69,7 @@ def main(args):
                 paramvec[1],
                 paramvec[2],
             )
-            mc_result.save_summary(fname_summary)
+            utils.save_summary_df(mc_result, fname_summary)
 
 
 if __name__ == "__main__":

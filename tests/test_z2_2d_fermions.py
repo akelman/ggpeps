@@ -1489,7 +1489,8 @@ class TestFullGrads(unittest.TestCase):
         ec_config.compute_grads = True
         ex_eval = EvaluatorManager(system_type, cfg, ec_config, 0)
 
-        dest = ex_eval.simulate()
+        ex_eval.simulate()
+        dest = ex_eval.get_evaluator()
 
         obs = "chem_energy"
         obs_grad = "chem_energy_grad"
@@ -1546,8 +1547,10 @@ class TestFullGrads(unittest.TestCase):
                             system_type, system_cfg_left, ec_config_num, 0
                         )
 
-                        dest_right = ex_eval_right.simulate()
-                        dest_left = ex_eval_left.simulate()
+                        ex_eval_right.simulate()
+                        dest_right = ex_eval_right.get_evaluator()
+                        ex_eval_left.simulate()
+                        dest_left = ex_eval_left.get_evaluator()
 
                         val_right = dest_right.obsdict[obs]
                         val_left = dest_left.obsdict[obs]

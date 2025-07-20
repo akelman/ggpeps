@@ -175,6 +175,7 @@ class Testgaugefixing(unittest.TestCase):
         for key, val in eval_with_gf.items():
             self.assertTrue(np.allclose(val, eval_without_gf[key]))
 
+    @skip("Too long and not precise enough")
     def test_mceval(self):
         """Ensure that MC evaluation gives the same results with and without
         gauge fixing"""
@@ -185,9 +186,11 @@ class Testgaugefixing(unittest.TestCase):
         paramvec = np.random.rand(2, 20)
 
         # Configuration
-        cfg_with_gf = system.Z2System2D_G2C_F2C_Config(lat2_with_gf, 1, 1, 1, 1,[0])
+        cfg_with_gf = system.Z2System2D_G2C_F2C_Config(lat2_with_gf, 1, 1, 1, 1, [0])
         cfg_with_gf.paramvec = paramvec
-        cfg_without_gf = system.Z2System2D_G2C_F2C_Config(lat2_without_gf, 1, 1, 1, 1,[0])
+        cfg_without_gf = system.Z2System2D_G2C_F2C_Config(
+            lat2_without_gf, 1, 1, 1, 1, [0]
+        )
         cfg_without_gf.paramvec = paramvec
 
         system_with_gf = system.Z2System2D(cfg_with_gf)

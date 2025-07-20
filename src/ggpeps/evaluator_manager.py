@@ -124,6 +124,14 @@ class EvaluatorManager:
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
 
+    def get_evaluator(self):
+        """Get the evaluator instance.
+
+        Returns:
+            Evaluator: The current evaluator instance.
+        """
+        return self.evaluator
+
     def simulate(self, eval_args: dict = {}):
         """Simulate
 
@@ -191,11 +199,14 @@ class EvaluatorManager:
                 )
 
             resultvec = ray.get(resultvec)
-            return self.collect(resultvec)
+            self.evaluator = self.collect(resultvec)
+            result_df = self.evaluator.summary()
         else:
             self.reset_evaluator()
             self.evaluator.evaluate(**eval_args)
-            return self.evaluator
+            result_df = self.evaluator.summary()
+
+        return result_df
 
     def collect(self, resultvec):
         """Unify the results of multiple runners
@@ -204,7 +215,7 @@ class EvaluatorManager:
             resultvec (list): List of Estimators from the different runners
 
         Returns:
-            Estimator: estimator with information from all runners
+            Evaluator: evaluator with information from all runners
         """
         system = self.system_cls(self.system_cfg)
         dest = MonteCarloEvaluator(self.cfg, system)

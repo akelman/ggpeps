@@ -492,7 +492,8 @@ def main(args):
         ggpeps.global_vars["eval_manager"] = mc_mgr  # save for global access
 
         start = timer()
-        mc_result = mc_mgr.simulate()
+        mc_result_df = mc_mgr.simulate() #Results as dataframe
+        mc_result = mc_mgr.get_evaluator() #Results as Evaluator object
         stop = timer()
         mc_result.print_stats()
         mc_result.save(output_dir=args.output)
@@ -536,7 +537,8 @@ def main(args):
         ggpeps.global_vars["eval_manager"] = ex_eval
 
         start = timer()
-        dest = ex_eval.simulate()
+        ex_eval.simulate()
+        dest = ex_eval.get_evaluator()
         stop = timer()
 
         dest_dict = dest.obsdict
@@ -634,7 +636,8 @@ def main(args):
             args.nrunner,
             port=args.port,
         )
-        mc_result = mc_mgr.simulate()
+        mc_result_df = mc_mgr.simulate() # Results as dataframe
+        mc_result = mc_mgr.get_evaluator() # Results as Evaluator object
         mc_result.save(output_dir=args.output)
     else:
         logger.error(f"Mode '{args.mode}' unknown.")

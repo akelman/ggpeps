@@ -1456,7 +1456,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         mc_config.gauge_fixing = False
         mc_mgr = EvaluatorManager(system.Z2System2D, system_cfg, mc_config, 0)
         mc_result = mc_mgr.simulate()
-        el_energy = mc_result.get_obs_mean("el_energy")
+        el_energy = utils.get_obs_mean_df(mc_result, "el_energy")
         self.assertAlmostEqual(el_energy, 0.0)
 
     @skip("This test is not precise enough")

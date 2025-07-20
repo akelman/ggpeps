@@ -13,6 +13,7 @@ import ggpeps
 from ggpeps.caching import Cache
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.evaluator import Evaluator
+from ggpeps import utils
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -99,8 +100,18 @@ class Minimizer:
                 result = self.evaluator_manager.simulate()
 
             # Energy and gradient
-            energy = result.get_obs_mean("energy")
-            grad_paramvec = result.get_obs_mean("energy_grad")
+            energy = utils.get_obs_mean_df(result, "energy")
+            grad_paramvec = utils.get_obs_mean_df(result, "energy_grad")
+
+            # DEBUG #######################################################################################################
+            # print("Paramvec: ", self.evaluator_manager.system_cfg.paramvec)
+            # print("Energy: ", energy)
+            # print("grad_paramvec: ", grad_paramvec)
+            # if ind == 1:
+            #    exit()
+            ####################################################################################################################
+
+            # Energy and rewieghted gradient
 
             max_grad_paramvec = np.max(np.abs(grad_paramvec))
             self.last_result = result
@@ -168,10 +179,10 @@ class Minimizer:
             #   it is important to save energy and gradients (even though the last_paramvec stores both)
             #   so that if the computation is interrupted (which loses the last_paramvec),
             #   we can still use the cached values
-            energy = self.last_result.get_obs_mean("energy")
+            energy = utils.get_obs_mean_df(self.last_result, "energy")
             self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy)
             if self.evaluator_manager.cfg.compute_grads:
-                parametergrad = self.last_result.get_obs_mean("energy_grad")
+                parametergrad = utils.get_obs_mean_df(self.last_result, "energy_grad")
                 self.cache.add_obs_to_cache(
                     flattened_paramvec, "energy_grad", parametergrad
                 )
@@ -211,9 +222,9 @@ class Minimizer:
                 self.last_result = self.evaluator_manager.simulate()
 
             # Save to cache
-            energy = self.last_result.get_obs_mean("energy")
+            energy = utils.get_obs_mean_df(self.last_result, "energy")
             self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy)
-            parametergrad = self.last_result.get_obs_mean("energy_grad")
+            parametergrad = utils.get_obs_mean_df(self.last_result, "energy_grad")
             self.cache.add_obs_to_cache(
                 flattened_paramvec, "energy_grad", parametergrad
             )
@@ -275,8 +286,8 @@ class Minimizer:
 
             if self.last_result is not None:
                 # last_result may be None if caching is on and the last result was not computed
-                self.last_result.save_summary(
-                    os.path.join(output_dir, fname_mc_summary)
+                utils.save_summary_df(
+                    self.last_result, os.path.join(output_dir, fname_mc_summary)
                 )
             with open(os.path.join(output_dir, fname_result_min), "wb") as outfile:
                 pickle.dump(self.min_result, outfile)
@@ -290,9 +301,10 @@ class Minimizer:
 
             if ind == 0:
                 # First run at equilibrium
-                result0 = self.evaluator_manager.simulate(
+                result0_df = self.evaluator_manager.simulate(
                     eval_args={"first_warmup": True}
                 )
+                result0 = self.evaluator_manager.get_evaluator()
 
                 # Standard calculation energy and grads
                 energy = result0.get_obs_mean("energy")
@@ -310,8 +322,7 @@ class Minimizer:
                 ####################################################################################################################
 
                 max_grad_paramvec = np.max(np.abs(grad_paramvec))
-                self.last_result = result0
-
+                self.last_result = result0_df
                 # Update logs
                 print_callback(ind, self)
                 # Standard minimization
@@ -320,7 +331,8 @@ class Minimizer:
                 )
 
                 # First reweighting: only scanning
-                result1 = self.evaluator_manager.simulate(eval_args={"scanning": True})
+                self.evaluator_manager.simulate(eval_args={"scanning": True})
+                result1 = self.evaluator_manager.get_evaluator()
 
                 # Compute DF
                 Wmean = result1.obsdict["work"].mean()
@@ -374,11 +386,13 @@ class Minimizer:
                 self.last_paramvec = np.copy(paramvec)
 
                 # Monte Carlo part of the optimizer
-                result0 = self.evaluator_manager.simulate()
+                self.evaluator_manager.simulate()
+                result0 = self.evaluator_manager.get_evaluator()
                 self.evaluator_manager.system_cfg.paramvec = copy.deepcopy(
                     next_paramvec
                 )
-                result1 = self.evaluator_manager.simulate(eval_args={"scanning": True})
+                self.evaluator_manager.simulate(eval_args={"scanning": True})
+                result1 = self.evaluator_manager.get_evaluator()
 
                 # Compute DF
                 Wmean = copy.deepcopy(result1.obsdict["work"].mean())
@@ -459,24 +473,28 @@ def print_callback(x, minimizer):
         logger.info("Callback message due to caching. The last_result is None.")
         return
 
-    energy = res.get_obs_mean("energy")
-    avg_occupation = res.get_obs_mean("average_occupation")
+    energy = utils.get_obs_mean_df(res, "energy")
     if minimizer.evaluator_manager.cfg.compute_grads:
-        grad_paramvec = res.get_obs_mean("energy_grad")
+        grad_paramvec = utils.get_obs_mean_df(res, "energy_grad")
         max_grad_paramvec = np.max(np.abs(grad_paramvec))
     else:
         grad_paramvec = None
         max_grad_paramvec = np.nan
 
-    mass_energy = res.get_obs_mean("mass_energy")
-    int_energy = res.get_obs_mean("int_energy")
-    el_energy = res.get_obs_mean("el_energy")
-    mag_energy = res.get_obs_mean("mag_energy")
-    chem_energy = res.get_obs_mean("chem_energy")
+    mass_energy = utils.get_obs_mean_df(res, "mass_energy")
+    int_energy = utils.get_obs_mean_df(res, "int_energy")
+    el_energy = utils.get_obs_mean_df(res, "el_energy")
+    mag_energy = utils.get_obs_mean_df(res, "mag_energy")
+    chem_energy = utils.get_obs_mean_df(res, "chem_energy")
 
-    plaquette = res.get_obs_mean("wilson_loop_0-0_1x1")
-    mass_energy_op = res.get_obs_mean("mass_energy_op")
-    avg_occ = ", ".join([f"{val:.4f}" for val in avg_occupation])
+    plaquette = utils.get_obs_mean_df(res, "wilson_loop_0-0_1x1")
+    mass_energy_op = utils.get_obs_mean_df(res, "mass_energy_op")
+    if minimizer.evaluator_manager.system_cfg.num_fermionic_layer > 0:
+        # If we have fermionic layers, we can compute the average occupation
+        avg_occupation = utils.get_obs_mean_df(res, "average_occupation")
+        avg_occ = ", ".join([f"{val:.4f}" for val in avg_occupation])
+    else:
+        avg_occ = "None"
 
     message = f"Energy: {energy:.9f}, Total Mass: {mass_energy_op}, Occupation: {avg_occ}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
     if minimizer.cfg.method == "CUSTOM":
@@ -484,15 +502,18 @@ def print_callback(x, minimizer):
         message = f"Iter: {x:03d}, {message}"
     if "mc" in minimizer.evaluator_manager.type:
         # Acceptance probability is only defined for MC
-        acceptance_prob = res.get_obs_mean("acceptance_prob")
+        acceptance_prob = utils.get_obs_mean_df(res, "acceptance_prob")
         message += f", acceptance prob: {acceptance_prob:.6f}"
     logger.info(message)
 
-    all_occupations = res.get_obs_mean("all_occupations")
-    occ_str = ""
-    for lay in range(len(all_occupations)):
-        occ_str += ", ".join([f"{val:.10f}" for val in all_occupations[lay]])
-        occ_str += " | "  # layer separator
+    if minimizer.evaluator_manager.system_cfg.num_fermionic_layer > 0:
+        all_occupations = utils.get_obs_mean_df(res, "all_occupations")
+        occ_str = ""
+        for lay in range(len(all_occupations)):
+            occ_str += ", ".join([f"{val:.10f}" for val in all_occupations[lay]])
+            occ_str += " | "  # layer separator
+    else:
+        occ_str = "None"
     logger.debug(f"Occupations: {occ_str}")
 
     # logger.debug(
