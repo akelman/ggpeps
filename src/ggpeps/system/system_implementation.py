@@ -258,56 +258,26 @@ class Z2System2D(System2DBase):
             logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
-        lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
         # This is the usual norm without any modifications
+        lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
         lognorm_default = xnp.sum(lognormvec_default)
-        # Number of fermions = # of sites
-        # Since we have 2 copies, we get 8 virtual fermions per site
-        single_link_offset = 2 * self.cfg.nvirtmodes_link
-        # We have to cut one link from gamma_in_sys as well
-        gamma_in_sys_mod_vec = self.gamma_in_sys_mod_vec
-        dest = []
 
         # Indices and prefactors for building the required Pfaffians
         overall_factors = self.cfg.el_overall_factors
         idxarrs = self.cfg.idxarr_vec
 
+        dest = []
         # TODO: vectorize!
         for layerind in range(self.cfg.nlayer):
-
-            # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
-            mat_a = self.mat_a_mod_vec[
-                layerind
-            ]  # dim: 2*nsites (for majorana) + 8 (= 4 virtual modes per link x2 for majorana)
-            mat_b = self.mat_b_mod_vec[layerind]
-            diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
-
-            gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
 
             idxarr = idxarrs[layerind]
             overall_factor = overall_factors[layerind]
 
             ###################### Calculation of <P> ########################
-            covmat_out = mat_a + mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
-            size = covmat_out.shape[1]
-            covmat_out_virt = slice_matrix(
-                covmat_out,
-                size - single_link_offset,
-                size,
-                size - single_link_offset,
-                size,
-            )
 
-            # The library pfapack is rather picky about the anti-symmetrization (to 1e-14)
-            covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
-            # For the modified norm, we still have to take into account the other contributions from the unmodified parts
-            norm_mod = calculate_lognorm_inc(
-                [self.incdet_mod_vec[layerind]],
-                [self.det_mat_d_mod_vec[layerind]],
-                gamma_in_sys_mod.shape[0],
-                all_factors=True,
-            )
-            norm_mod += xnp.sum(utils.select_except(lognormvec_default, layerind))
+            covmat_out_virt = self.covmat_out_virt_vec[layerind]
+
+            norm_mod = self.norm_mod_vec[layerind]
             # The matrix elements yield only the real part of <P>
             # If we use the log formulation, we can calculate the log of single terms.
 
@@ -328,10 +298,10 @@ class Z2System2D(System2DBase):
 
             # Save intermediate calculations for use in gradient calculation
             intermediate = self._electric_energy_intermediate_vals
-            intermediate.covmat_out_virt_vec.append(covmat_out_virt)
-            intermediate.norm_mod_vec.append(norm_mod)
+            # intermediate.covmat_out_virt_vec.append(covmat_out_virt)
+            # intermediate.norm_mod_vec.append(norm_mod)
             intermediate.lognorm_default_vec.append(lognorm_default)
-            intermediate.pfaffian_vec.append(pfvals)
+            # intermediate.pfaffian_vec.append(pfvals)
 
         return xnp.asarray(dest)
 

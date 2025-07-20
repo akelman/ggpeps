@@ -122,8 +122,8 @@ def compute_el_grad_vec_jax(system):
 
         # get saved intermediate results from electric energy calculation
         intermediate = system._electric_energy_intermediate_vals
-        covmat_out_virt = intermediate.covmat_out_virt_vec[layerind]
-        norm_mod = intermediate.norm_mod_vec[layerind]
+        covmat_out_virt = system.covmat_out_virt_vec[layerind]
+        norm_mod = system.norm_mod_vec[layerind]
         lognorm_default = intermediate.lognorm_default_vec[layerind]
 
         ###################### Calculation of the derivative ########################

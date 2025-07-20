@@ -351,7 +351,13 @@ class System2DBase(ABC):
         self._mat_d_mod_vec: Optional[xnp.ndarray] = None
         self._det_mat_d_mod_vec: Optional[xnp.ndarray] = None
         self._mat_d_mod_inv_vec: Optional[xnp.ndarray] = None
+        # Electric energy intermediate values - if we compute the electric energy,
+        # we store intermediate values to be reused in the gradient calculation
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
+        self._covmat_out_virt_vec: Optional[list[xnp.array]] = None
+        self._norm_mod_vec: Optional[list[float]] = None
+        self._lognorm_default_vec: Optional[list[float]] = None
+        # self._pfaffian_vec: Optional[list[float]] = None
 
         # Management of the gauge fields
         self._gamma_gauge_neutral_vec_dirs: Optional[xnp.ndarray] = (
@@ -440,7 +446,12 @@ class System2DBase(ABC):
                 self.symbolvec,
             )
         }
+
         self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
+        self._covmat_out_virt_vec = None
+        self._norm_mod_vec = None
+        self._lognorm_default_vec = None
+        # self._pfaffian_vec = None
         return
 
     def _extract_partial_covmatvec(self, offset: int):
@@ -811,6 +822,88 @@ class System2DBase(ABC):
         if self._mat_d_mod_inv_vec is None:
             self._mat_d_mod_inv_vec = xnp.linalg.inv(self.mat_d_mod_vec)
         return self._mat_d_mod_inv_vec
+
+    @property
+    def covmat_out_virt_vec(self) -> list[xnp.array]:
+        """Compute the convariance matrix of the state, including physical fermions and
+        the virtual fermions on the link on which the electric energy is computed.
+        This function returns a vector over layers of these covariance matrices.
+        This is a get function.
+
+        Returns:
+            list[xnp.array]: a vector of covariance matrices
+        """
+
+        if self._covmat_out_virt_vec is None:
+            covmat_out_virt_vec = []
+
+            # Number of fermions = # of sites
+            # Since we have 2 copies, we get 8 virtual fermions per site
+            single_link_offset = 2 * self.cfg.nvirtmodes_link
+
+            # TODO: vectorize!
+            for layerind in range(self.cfg.nlayer):
+
+                # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
+                mat_a = self.mat_a_mod_vec[
+                    layerind
+                ]  # dim: 2*nsites (for majorana) + 8 (= 4 virtual modes per link x2 for majorana)
+                mat_b = self.mat_b_mod_vec[layerind]
+                diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
+
+                ###################### Calculation of <P> ########################
+                covmat_out = mat_a + mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                size = covmat_out.shape[1]
+                covmat_out_virt = slice_matrix(
+                    covmat_out,
+                    size - single_link_offset,
+                    size,
+                    size - single_link_offset,
+                    size,
+                )
+
+                # The library pfapack (used in the electric energy) is rather picky about the anti-symmetrization (to 1e-14)
+                covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
+                covmat_out_virt_vec.append(covmat_out_virt)
+
+            self._covmat_out_virt_vec = covmat_out_virt_vec
+        return self._covmat_out_virt_vec
+
+    @property
+    def norm_mod_vec(self) -> list[float]:
+        """Compute the normalization factor for the modified covariance matrix.
+        This is used to compute the electric energy.
+        This function returns a vector over layers of these normalization factors.
+        This is a get function.
+
+        Returns:
+            list[float]: a vector of modified normalization factors
+        """
+        if self._norm_mod_vec is None:
+            norm_mod_vec = []
+            lognormvec_default = self.calculate_lognormvec_inc(
+                all_factors=True
+            )  # TODO: this is recomputed several times throughout the code, should be cached
+
+            for layerind in range(self.cfg.nlayer):
+                # For the modified norm, we still have to take into account the other contributions from the unmodified parts
+                norm_mod = calculate_lognorm_inc(
+                    [self.incdet_mod_vec[layerind]],
+                    [self.det_mat_d_mod_vec[layerind]],
+                    self.gamma_in_sys_mod_vec[layerind].shape[0],
+                    all_factors=True,
+                )
+
+                norm_mod += xnp.sum(utils.select_except(lognormvec_default, layerind))
+                norm_mod_vec.append(norm_mod)
+
+            self._norm_mod_vec = norm_mod_vec
+        return self._norm_mod_vec
+
+    ## self._covmat_out_virt_vec: Optional[list[xnp.array]] = None
+    ## self._norm_mod_vec: Optional[list[float]] = None
+    # self._lognorm_default_vec: Optional[list[float]] = None
+    ## self._pfaffian_vec: Optional[list[float]] = None
 
     def initialize_gamma_in_and_trackers(self):
         """Initialize gamma_in (the covariance matrix of the projectors),
