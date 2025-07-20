@@ -5,7 +5,7 @@ import gzip
 import pickle
 import logging
 import subprocess  # Start process for git hash
-from typing import Optional
+from typing import Optional, Union
 
 import numba as nb
 from scipy.sparse import issparse
@@ -279,7 +279,7 @@ def derivative_pfaffian(mat, d_mat, pfaval=None):
         return 0.0
 
 
-def get_obs_mean_df(df: pd.DataFrame, obs: str) -> float:
+def get_obs_mean_df(df: pd.DataFrame, obs):
     """Get the mean of an observable from the summary dataframe.
 
     Args:

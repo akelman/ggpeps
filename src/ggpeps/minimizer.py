@@ -21,7 +21,15 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class MinimizerResult:
-    def __init__(self, paramvec, energygrad, method, value, converged, message):
+    def __init__(
+        self,
+        paramvec: np.ndarray,
+        energygrad: Optional[np.ndarray],
+        method: str,
+        value: float,
+        converged: bool,
+        message: str,
+    ):
         self.paramvec = paramvec
         self.energygrad = energygrad
         self.method = method
@@ -29,7 +37,7 @@ class MinimizerResult:
         self.converged = converged
         self.message = message
 
-    def __str__(self):
+    def __str__(self) -> str:
         dest = "==== Minimizer Result ====\n"
         dest += f"converged: {self.converged}\n"
         dest += f"Value: {self.value}\n"
@@ -86,6 +94,12 @@ class Minimizer:
             return None
 
     def minimize_custom(self) -> MinimizerResult:
+        """
+        Minimize the energy using a custom method.
+
+        Returns:
+            MinimizerResult: The result of the minimization.
+        """
         paramvec = self.evaluator_manager.system_cfg.paramvec
 
         for ind in range(self.cfg.max_iter):
@@ -153,9 +167,22 @@ class Minimizer:
         return self.min_result
 
     def minimize_scipy(self) -> MinimizerResult:
+        """
+        Minimize the energy using scipy's optimization methods.
+
+        Returns:
+            MinimizerResult: The result of the minimization.
+        """
 
         # Energy wrapper
-        def energy_wrapper(flattened_paramvec):
+        def energy_wrapper(flattened_paramvec: np.ndarray) -> float:
+            """
+            Wrapper for the energy
+            Args:
+                flattened_paramvec (np.ndarray): parameters, arranged as a 1D array
+            Returns:
+                energy (float): value of the total energy
+            """
             # Check if value is stored in cache (e.g. from previous minimization)
             energy = self.cache.load_obs_from_local_cache(flattened_paramvec, "energy")
             if energy is not None:
@@ -185,7 +212,7 @@ class Minimizer:
             return energy
 
         # Jacobian wrapper
-        def gradient_wrapper(flattened_paramvec):
+        def gradient_wrapper(flattened_paramvec: np.ndarray) -> np.ndarray:
             """Wrapper for the gradient of the total energy
 
             Args:
@@ -228,7 +255,8 @@ class Minimizer:
         # Use the random initialization from the system.initialize as first guess.
         # We might want to change this later.
         flattened_paramvec = np.reshape(self.evaluator_manager.system_cfg.paramvec, (-1))
-        min_result = minimize(
+        min_result = minimize(  # type: ignore
+            # TODO: fix type hint
             energy_wrapper,
             flattened_paramvec,
             method=self.cfg.method,
@@ -431,7 +459,7 @@ def NEVMC_print_callback(x, res):
 ### end NEVMC ###
 
 
-def print_callback(x, minimizer):
+def print_callback(x: int, minimizer: "Minimizer") -> None:
 
     res = minimizer.last_result
     paramvec = minimizer.evaluator_manager.system_cfg.paramvec

@@ -123,11 +123,12 @@ class Config2DBase(ABC):
         self.g_mag = g_mag
         self.g_int = g_int
         self.g_mass = g_mass
-        self.g_chem = g_chem
         if self.g_chem is None:
             self.g_chem = np.zeros(self.num_fermionic_layer)
         elif len(self.g_chem) != self.num_fermionic_layer:
             raise ValueError("The number of chemical potentials must match the number of fermionic layers.")
+        else:
+            self.g_chem = g_chem
 
     def __str__(self) -> str:
         """Define a string method that can be used, e.g., in filenaming.
