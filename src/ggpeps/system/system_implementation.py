@@ -260,7 +260,6 @@ class Z2System2D(System2DBase):
 
         # This is the usual norm without any modifications
         lognormvec_default = self.lognorm_default_vec
-        # lognormvec_default = self.calculate_lognormvec_inc(all_factors=True)
         lognorm_default = xnp.sum(lognormvec_default)
 
         # Indices and prefactors for building the required Pfaffians
@@ -296,9 +295,6 @@ class Z2System2D(System2DBase):
 
             el_energy_layer = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
             dest.append(el_energy_layer)
-
-            intermediate = self._electric_energy_intermediate_vals
-            intermediate.lognorm_default_vec.append(lognorm_default)
 
         return xnp.asarray(dest)
 

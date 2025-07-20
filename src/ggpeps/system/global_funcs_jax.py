@@ -118,7 +118,6 @@ def compute_el_grad_vec_jax(system):
         gamma_in_sys_mod = system.gamma_in_sys_mod_vec[layerind]
         diff_d_inv_gamma_inv = system.wi_gamma_in_mod_vec[layerind].inv()
 
-        intermediate = system._electric_energy_intermediate_vals
         covmat_out_virt = system.covmat_out_virt_vec[layerind]
         norm_mod = system.norm_mod_vec[layerind]
         lognorm_default = jnp.sum(system.lognorm_default_vec)

@@ -56,20 +56,6 @@ def calculate_lognorm_inc(incdet_vec, det_mat_d_vec, n, all_factors: bool = Fals
     return xnp.sum(lognormvec)
 
 
-@dataclass  # if we upgrade to python 3.10 or higher, add in 'slots=True'
-class ElectricEnergyIntermediateVals:
-    """Class for keeping track of intermediate calculations of the electric energy,
-    for re-use with the gradient calculation"""
-
-    # TODO: make into numpy/jax arrays
-    covmat_out_virt_vec: List[xnp.array] = field(
-        default_factory=list
-    )  # this is the pythonic way to use lists in dataclasses
-    norm_mod_vec: List[float] = field(default_factory=list)
-    lognorm_default_vec: List[float] = field(default_factory=list)
-    pfaffian_vec: List[float] = field(default_factory=list)
-
-
 ################## Config2DBase ######################
 class Config2DBase(ABC):
     """Configuration for a system in two dimensions
@@ -353,7 +339,6 @@ class System2DBase(ABC):
         self._mat_d_mod_inv_vec: Optional[xnp.ndarray] = None
         # Electric energy intermediate values - if we compute the electric energy,
         # we store intermediate values to be reused in the gradient calculation
-        self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
         self._covmat_out_virt_vec: Optional[list[xnp.array]] = None
         self._norm_mod_vec: Optional[list[float]] = None
         self._lognorm_default_vec: Optional[list[float]] = None
@@ -446,7 +431,6 @@ class System2DBase(ABC):
             )
         }
 
-        self._electric_energy_intermediate_vals = ElectricEnergyIntermediateVals()
         self._covmat_out_virt_vec = None
         self._norm_mod_vec = None
         self._lognorm_default_vec = None
