@@ -29,7 +29,7 @@ class MinimizerResult:
         value: float,
         converged: bool,
         message: str,
-    ):
+    ) -> None:
         self.paramvec = paramvec
         self.energygrad = energygrad
         self.method = method
@@ -70,7 +70,7 @@ class Minimizer:
     no_grad_methods: list[str] = ["POWELL", "NELDER-MEAD"]
     supported_scipy_methods = grad_methods[:-2] + no_grad_methods
 
-    def __init__(self, cfg: MinimizerConfig, evaluator_manager: EvaluatorManager):
+    def __init__(self, cfg: MinimizerConfig, evaluator_manager: EvaluatorManager) -> None:
         self.cfg: MinimizerConfig = cfg
         # We use the polymorphism of python classes.
         # Below, we will have to be careful to only call valid functions
@@ -82,7 +82,7 @@ class Minimizer:
         # Cache for the energy values and gradients
         self.cache: Cache = ggpeps.global_vars["cache"]
 
-    def minimize(self):
+    def minimize(self) -> Optional[MinimizerResult]:
         if self.cfg.method == "CUSTOM":
             return self.minimize_custom()
         elif self.cfg.method == "NEVMC":
@@ -147,7 +147,7 @@ class Minimizer:
                 return self.min_result
 
             # Adapt the parametervec according to the gradient
-            # TODO: Implement stochastic reconfiguration
+            # TODO: Implement  stochasticreconfiguration
 
             # We have to use the internal name of the paramvec if we write to it since it is a property and not just an array
 
@@ -289,6 +289,14 @@ class Minimizer:
         return dest
 
     def save(self, output_dir: str = ".") -> None:
+        """
+        Save the minimization results to the output directory.
+        Args:
+            output_dir (str): Directory to save the results.
+            
+            Returns:
+                None
+        """
         if self.min_result is not None:
             sys_cfg = self.evaluator_manager.system_cfg
 
@@ -459,8 +467,15 @@ def NEVMC_print_callback(x, res):
 ### end NEVMC ###
 
 
-def print_callback(x: int, minimizer: "Minimizer") -> None:
-
+def print_callback(x: int, minimizer: Minimizer) -> None:
+    """ Print the current status of the minimization process.
+    
+    Args:
+        x (int): Current iteration number.
+        minimizer (Minimizer): The minimizer instance containing the results.
+    Returns:
+        None
+    """
     res = minimizer.last_result
     paramvec = minimizer.evaluator_manager.system_cfg.paramvec
 
