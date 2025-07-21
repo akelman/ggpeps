@@ -8,6 +8,7 @@ import subprocess  # Start process for git hash
 from typing import Optional, Union
 
 import numba as nb
+import scipy.sparse as sp
 from scipy.sparse import issparse
 from scipy.linalg import svd, block_diag
 
@@ -33,7 +34,10 @@ pauliz = np.array([[1, 0], [0, -1]])
 # ========== Utility Functions ====================
 
 
-def setup_logger(logger: logging.Logger, log_file: str, level: str, runner_msg: str = ""):
+def setup_logger(logger: logging.Logger, log_file: str, level: str, runner_msg: str = "") -> None:
+    """
+    Setup the logger to log to a file and stdout/stderr.
+    """
     log_file_handler = logging.FileHandler(log_file)
     h_stdout = logging.StreamHandler(stream=sys.stdout)
     h_stderr = logging.StreamHandler(stream=sys.stderr)
@@ -48,7 +52,7 @@ def setup_logger(logger: logging.Logger, log_file: str, level: str, runner_msg: 
     return
 
 
-def fname2nlayer(fname):
+def fname2nlayer(fname: str) -> Optional[int]:
     """Extract the number of layers from a filename"""
     pattern = r"(?<=nlayer_)[\d]*"
     result = re.search(pattern, fname)
@@ -58,7 +62,7 @@ def fname2nlayer(fname):
         return None
 
 
-def fname2ncopy(fname):
+def fname2ncopy(fname: str) -> Optional[int]:
     """Extract the number of copies from a filename"""
     pattern = r"(?<=ncopy_)[\d]*"
     result = re.search(pattern, fname)
@@ -68,7 +72,7 @@ def fname2ncopy(fname):
         return None
 
 
-def fname2g(fname):
+def fname2g(fname: str) -> Optional[float]:
     """Extract the coupling from a filename"""
     pattern = r"(?<=g_)[\d]*\.[\d]*"
     result = re.search(pattern, fname)
@@ -78,7 +82,7 @@ def fname2g(fname):
         return None
 
 
-def fname2gel(fname):
+def fname2gel(fname: str) -> Optional[float]:
     """Extract the electric coupling from a filename"""
     pattern = r"(?<=gel_)[\d]*\.[\d]*"
     result = re.search(pattern, fname)
@@ -88,18 +92,21 @@ def fname2gel(fname):
         return None
 
 
-def fname2L(fname):
+def fname2L(fname: str) -> Optional[int]:
     """Extract the system size from a filename"""
     pattern = r"(?<=L_)[\d]*"
     result = re.search(pattern, fname)
-    return int(result.group(0))
+    if result is not None:
+        return int(result.group(0))
+    else:
+        return None
 
 
-def isclose(x, y, rtol=1.0e-5, atol=1.0e-8):
+def isclose(x: float, y: float, rtol: float = 1.0e-5, atol: float = 1.0e-8) -> bool:
     return abs(x - y) <= atol + rtol * abs(y)
 
 
-def load_matrix_dat_fmt(path, is_complex=True):
+def load_matrix_dat_fmt(path: str, is_complex: bool=True) -> np.ndarray:
     """Load matrix format exported from C++.
 
     Args:
@@ -130,7 +137,7 @@ def load_matrix_dat_fmt(path, is_complex=True):
     return np.array(dest)
 
 
-def merge_measurements(meas1: meas.Measurement, meas2: meas.Measurement):
+def merge_measurements(meas1: meas.Measurement, meas2: meas.Measurement) -> meas.Measurement:
     """Merge two measurements by merging their timeseries
 
     Args:
@@ -146,8 +153,15 @@ def merge_measurements(meas1: meas.Measurement, meas2: meas.Measurement):
     return dest
 
 
-def mergeDict(dict1, dict2):
-    """Left Merge dictionaries that contain only lists and append lists if values are common"""
+def mergeDict(dict1: dict, dict2: dict) -> dict:
+    """Left Merge dictionaries that contain only lists and append lists if values are common
+    
+    Args:
+        dict1 (dict): First dictionary
+        dict2 (dict): Second dictionary
+    Returns:
+        dict: Merged dictionary
+    """
     dest = {}
     for key in dict1:
         if key in dict2:
@@ -158,7 +172,7 @@ def mergeDict(dict1, dict2):
     return dest
 
 
-def print_columns(listvals, padding=4, header=False):
+def print_columns(listvals: list[list], padding: int=4, header: bool=False) -> None:
     """Print a multi-dimensional list in a table
 
     Args:
@@ -173,8 +187,8 @@ def print_columns(listvals, padding=4, header=False):
             print("")
 
 
-def sizeof_fmt(num, suffix="B"):
-    """Pretty print a size as mutliples of 1024."""
+def sizeof_fmt(num: float, suffix: str="B") -> str:
+    """Print nicely a size as multiples of 1024."""
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
         if abs(num) < 1024.0:
             return "%3.1f %s%s" % (num, unit, suffix)
@@ -182,7 +196,7 @@ def sizeof_fmt(num, suffix="B"):
     return "%3.1f %s%s" % (num, "Yi", suffix)
 
 
-def get_git_hash():
+def get_git_hash() -> str:
     """Get the git hash of the current commit in the repository.
 
     Returns:
@@ -197,7 +211,7 @@ def get_git_hash():
     return githash.decode("utf-8").strip()
 
 
-def select_except(arr, ind: int):
+def select_except(arr: Union[list, xnp.ndarray], ind: int) -> xnp.ndarray:
     """Return all elements of a list except the indicated one
 
     Args:
@@ -205,24 +219,25 @@ def select_except(arr, ind: int):
         ind (int): index
 
     Returns:
-        np.array: Array with all elements of arr except for arr[ind]
+        xnp.ndarray: Array with all elements of arr except for arr[ind]
     """
     # This function works only on the outer-most layer
     if isinstance(arr, list):
         arr = xnp.asarray(arr)
     mask = xnp.ones(len(arr), dtype=bool)
-    if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
-        mask = mask.at[ind].set(False)
-    else:
+    if isinstance(mask, np.ndarray):
         mask[ind] = False
+    else:
+        mask = mask.at[ind].set(False)
+
     return arr[mask]  # TODO: fix for JAX
 
 
-def multiply_except(arr, ind: int):
-    """Product of all array values except for arr[ind]
+def multiply_except(arr: Union[xnp.ndarray, list], ind: int) -> float:
+    """Multiply all array values except for arr[ind]
 
     Args:
-        arr (list/np.arr): list of values
+        arr (list/xnp.ndarray): list of values
         ind (int): index
 
     Returns:
@@ -237,13 +252,25 @@ def multiply_except(arr, ind: int):
 
 
 @nb.njit(cache=True)
-def pfaffian_explicit_4x4_masked(mat, ind):
+def pfaffian_explicit_4x4_masked(mat: xnp.ndarray, ind: Union[tuple[int,int,int,int], list[int], xnp.ndarray]) -> float:
+    """
+    Calculate the Pfaffian of a 4x4 block of a matrix explicitly using the indices provided (the indices from which the block is sliced).
+    Args:
+        mat (xnp.ndarray): Input matrix
+        ind (Union[tuple[int,int,int,int], list[int], xnp.ndarray[int]]): Indices for the 4x4 block
+    """
     i0, i1, i2, i3 = ind
     return (mat[i0, i1] * mat[i2, i3]) - (mat[i0, i2] * mat[i1, i3]) + (mat[i1, i2] * mat[i0, i3])
 
 
 @nb.njit(cache=True)
-def pfaffian_explicit_4x4(mat):
+def pfaffian_explicit_4x4(mat: xnp.ndarray) -> float:
+    """Calculate the Pfaffian of a 4x4 matrix explicitly.
+    Args:
+        mat (np.ndarray): 4x4 matrix
+    Returns:
+        float: Pfaffian value
+    """
     return (mat[0, 1] * mat[2, 3]) - (mat[0, 2] * mat[1, 3]) + (mat[1, 2] * mat[0, 3])
 
 
@@ -257,7 +284,7 @@ def derivative_pfaffian_covariance_mat(pfarr, matvec, d_matvec):
     return dest
 
 
-def derivative_pfaffian(mat, d_mat, pfaval=None):
+def derivative_pfaffian(mat: xnp.ndarray, d_mat: xnp.ndarray, pfaval=None) -> float:
     """Compute the derivative of a Pfaffian of a matrix A.
     The explicit derivative dA/dx is given as a second argument
 
@@ -268,7 +295,7 @@ def derivative_pfaffian(mat, d_mat, pfaval=None):
         d_mat (np.ndarray): Derivative dA/dx
 
     Returns:
-        np.ndarray: d(Pf(A))/dx
+        float: d(Pf(A))/dx
     """
     if pfaval is None:
         pfaval = pf.pfaffian(mat)
@@ -279,7 +306,7 @@ def derivative_pfaffian(mat, d_mat, pfaval=None):
         return 0.0
 
 
-def get_obs_mean_df(df: pd.DataFrame, obs):
+def get_obs_mean_df(df: pd.DataFrame, obs: str) -> float:
     """Get the mean of an observable from the summary dataframe.
 
     Args:
@@ -292,7 +319,7 @@ def get_obs_mean_df(df: pd.DataFrame, obs):
     return df.loc[df["name"] == obs, "mean"].values[0]
 
 
-def save_summary_df(df, fname_summary: str):
+def save_summary_df(df: pd.DataFrame, fname_summary: str) -> None:
     """Save the evaluation summary to a given filename
 
     Args:
@@ -305,31 +332,31 @@ def save_summary_df(df, fname_summary: str):
 # =========== Matrix Evaluation Functions ====================
 
 
-def is_hermitian(mat):
+def is_hermitian(mat: Union[xnp.ndarray,  sp.spmatrix]) -> bool:
     """Returns true if the matrix is hermitian."""
-    if issparse(mat):
+    if isinstance(mat, sp.spmatrix):
         return xnp.allclose(mat.todense(), mat.H.todense())
     else:
         return xnp.allclose(xnp.conjugate(xnp.transpose(mat)), mat)
 
 
-def is_diagonal(mat):
+def is_diagonal(mat: Union[xnp.ndarray, sp.spmatrix]) -> bool:
     """Returns true if the matrix is diagonal."""
-    if issparse(mat):
+    if isinstance(mat, sp.spmatrix):
         return xnp.allclose((mat - mat.diagonal()).todense(), xnp.zeros(mat.shape))
     else:
         return xnp.allclose(mat - xnp.diag(xnp.diag(mat)), xnp.zeros_like(mat))
 
 
-def is_symmetric(mat):
+def is_symmetric(mat: Union[xnp.ndarray, sp.spmatrix]) -> bool:
     """Returns true if the matrix is symmetric."""
-    if issparse(mat):
+    if isinstance(mat, sp.spmatrix):
         return xnp.allclose(mat.todense(), mat.T.todense())
     else:
         return xnp.allclose(xnp.transpose(mat), mat)
 
 
-def is_permutation(mat):
+def is_permutation(mat: xnp.ndarray) -> bool:
     """Returns true if the matrix is a permutation matrix."""
     n, m = mat.shape
     if issparse(mat):
@@ -339,18 +366,18 @@ def is_permutation(mat):
         id = xnp.allclose(xnp.eye(n), mat @ xnp.transpose(mat))
         sum_rows = xnp.all(xnp.sum(mat, axis=0) == 1)
         sum_cols = xnp.all(xnp.sum(mat, axis=1) == 1)
-        return square and id and sum_rows and sum_cols
+        return bool(square and id and sum_rows and sum_cols)
 
 
-def is_antisymmetric(mat, rtol: float = 1e-5, atol: float = 1e-8):
+def is_antisymmetric(mat: Union[xnp.ndarray, sp.spmatrix], rtol: float = 1e-5, atol: float = 1e-8) -> bool:
     """Returns true if the matrix mat is anti-symmetric."""
-    if issparse(mat):
+    if isinstance(mat, sp.spmatrix):
         return xnp.allclose(mat.todense(), -mat.T.todense(), rtol=rtol, atol=atol)
     else:
         return xnp.allclose(-xnp.transpose(mat), mat, rtol=rtol, atol=atol)
 
 
-def is_covmat(mat: np.ndarray, rtol: float = 1e-5, atol: float = 1e-8) -> bool:
+def is_covmat(mat: xnp.ndarray, rtol: float = 1e-5, atol: float = 1e-8) -> bool:
     """Returns true if the given matrix satisfies all the conditions to be a covariance matrix."""
     m, n = mat.shape
     if (
@@ -365,22 +392,22 @@ def is_covmat(mat: np.ndarray, rtol: float = 1e-5, atol: float = 1e-8) -> bool:
     return False
 
 
-def anti_symmetrize(mat):
+def anti_symmetrize(mat: xnp.ndarray) -> xnp.ndarray:
     """Force a matrix to be anti-symmetirc."""
     return 0.5 * (mat - mat.T)
 
 
-def get_nonzero_fraction(mat):
+def get_nonzero_fraction(mat: xnp.ndarray):
     """Returns fraction of non-zero elements."""
     return xnp.count_nonzero(mat) / xnp.prod(mat.shape)
 
 
-def herm_conj(mat):
+def herm_conj(mat: xnp.ndarray) -> xnp.ndarray:
     """Returns the hermitian conjugate of a matrix."""
     return xnp.conjugate(xnp.transpose(mat))
 
 
-def commutator(mat1, mat2):
+def commutator(mat1: xnp.ndarray, mat2: xnp.ndarray) -> xnp.ndarray:
     """Calculate the commutator of two matrices
 
     Args:
@@ -393,7 +420,7 @@ def commutator(mat1, mat2):
     return (mat1 @ mat2) - (mat2 @ mat1)
 
 
-def anticommutator(mat1, mat2):
+def anticommutator(mat1: xnp.ndarray, mat2: xnp.ndarray) -> xnp.ndarray:
     """Calculate the anti-commutator of two matrices
 
     Args:
@@ -409,8 +436,8 @@ def anticommutator(mat1, mat2):
 # =========== Covariance Utility Funcitons ===========
 
 
-def tmat_to_covariance_matrix(tmat: np.ndarray) -> np.ndarray:
-    """Transforms a T matrix into the corresponding covariance matrix in terms of Dirac modes.
+def tmat_to_covariance_matrix(tmat: xnp.ndarray) -> xnp.ndarray:
+    """Transform a T matrix into the corresponding covariance matrix in terms of Dirac modes.
     This function assumes that the fiducial operator has a certain form: A=exp(T_{ij}a_i^\dagger a_j^\dagger)
 
     Args:
@@ -429,7 +456,7 @@ def tmat_to_covariance_matrix(tmat: np.ndarray) -> np.ndarray:
     return 1.0j * xnp.block([[lt, rt], [lb, rb]])
 
 
-def generate_smat(n: int):
+def generate_smat(n: int) -> xnp.ndarray:
     r"""Generate matrix to transform Dirac modes into Majorana modes.
     The function assumes the modes order of [a_1, a_2,....., a_n, a_1^\dagger,.....,a_n^\dagger].
 
@@ -450,33 +477,38 @@ def generate_smat(n: int):
 class CacheServer:
     """Storage Server for arbitrary data that can be stored in dictionaries"""
 
-    def __init__(self):
-        self.store = {}
+    def __init__(self) -> None:
+        self.store: dict = {}
 
-    def add(self, name, mat):
+    def add(self, name: str, mat) -> None:
         self.store[name] = mat
 
-    def get(self, name):
+    def get(self, name: str) -> Optional[xnp.ndarray]:
+        """Get data from the cache server by name."""
         try:
             return self.store[name]
         except KeyError:
             return None
 
-    def load(self, fname):
+    def load(self, fname: str) -> None:
+        """Load data from pkl file into the cache server."""
         if os.path.isfile(fname):
             with gzip.open(fname, "rb") as infile:
                 self.store = pickle.load(infile)
 
-    def save(self, fname):
+    def save(self, fname: str) -> None:
+        """Save the cache server to a pkl file."""
         # We only save if the file does not exist yet
         if not os.path.isfile(fname):
             with gzip.open(fname, "wb") as outfile:
                 pickle.dump(self.store, outfile)
 
-    def list(self):
+    def list(self) -> None:
+        """Print the keys of the cache server."""
         print(self.store.keys)
 
-    def __str__(self):
+    def __str__(self) -> None:
+        """Print the number of entries in the cache server."""
         print(f"CacheServer: {len(self.store)} Entries")
 
 
@@ -484,13 +516,25 @@ class CacheServer:
 
 
 class WoodburyInverter:
-    def __init__(self, mat):
+    def __init__(self, mat: xnp.ndarray):
         self.ainv = xnp.linalg.inv(mat)
 
-    def inv(self):
+    def inv(self) -> xnp.ndarray:
         return self.ainv
 
-    def update(self, u, c, v):
+    def update(self, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> xnp.ndarray:
+        """Update the inverse of a matrix A using the Woodbury formula.
+        The formula is: (A+UCV)^{-1}=A^{-1}-A^{-1}U(C^{-1}+VA^{-1}U)^{-1}VA^{-1}.
+        Args:
+            u (np.ndarray): U matrix - Contains zeroes and identity blocks, with V this matrix is 
+                                    used to place the update C to match the dimensions of M.
+            v (np.ndarray): V matrix - Contains zeroes and identity blocks, with U this matrix is
+                                    used to place the update C to match the dimensions of M.
+            c (np.ndarray): Local update matrix C
+        Returns:
+            np.ndarray: Updated inverse matrix (A+UCV)^{-1}
+
+        """
         # We ware updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
         if not xnp.allclose(c, 0):
             # We cannot update with C being zero since this matrix has no inverse
@@ -498,10 +542,21 @@ class WoodburyInverter:
             self.ainv -= ((self.ainv @ u) @ xnp.linalg.inv(cinv + v @ self.ainv @ u)) @ (v @ self.ainv)
         return self.ainv
 
-    def update_index(self, m, indi, indj):
-        # Construct two matrices to shift M to the correct position in A
+    def update_index(self, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
+        """
+        Update the inverse of the matrix A using the Woodbury formula, given indices indicating the positions in A
+        where the update M is placed.
+
+        Args:
+            m (np.ndarray): M matrix - The local update matrix to A.
+            indi (int): Index in the first dimension of A where the update m is placed.
+            indj (int): Index in the second dimension of A where the update m is placed.
+        Returns:
+            np.ndarray: Updated inverse matrix (A+UMV)^{-1}
+        """
+        # Construct two matrices to shift m to the correct position in A
         if not xnp.allclose(m, 0):
-            # We cannot update with C being zero since this matrix has no inverse
+            # We cannot update with m being zero since this matrix has no inverse
             m_m, n_m = m.shape
             m_a, n_a = self.ainv.shape
             idmat = xnp.eye(m_m, n_m)
@@ -511,7 +566,7 @@ class WoodburyInverter:
                 u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
                 v = v.at[0:m_m, indj : indj + n_m].set(idmat)
             else:
-                u[indi : indi + m_m, 0:n_m] = idmat  # TODO: fix for JAX - DONE
+                u[indi : indi + m_m, 0:n_m] = idmat
                 v[0:m_m, indj : indj + n_m] = idmat
             return self.update(u, m, v)
         else:
@@ -987,7 +1042,7 @@ def get_couplings_from_foldername(fname: str) -> str:
     return res
 
 
-def extract_params_from_results_file(fname: str, dest_dir: Optional[str] = "") -> bool:
+def extract_params_from_results_file(fname: str, dest_dir: str = "") -> bool:
     """Extract parameters from a results file and save to a new .npy file
 
     Args:
