@@ -267,3 +267,68 @@ class TestLattice(unittest.TestCase):
         expected_rows_tree_2by2 = {0}
         self.assertEqual(expected_rows_tree_4by4, set(lat4x4.fixed_tree))
         self.assertEqual(expected_rows_tree_2by2, set(lat2x2.fixed_tree))
+
+    def test_get_path_endpoints_indices_simple(self):
+        """Sanity test: checks correct start/end site indices for a simple horizontal-vertical path.
+
+        Path: [(link_id=0, conj=False), (link_id=5, conj=True)]
+        - Start link not conjugated → start site remains (0,0)
+        - End link conjugated → moves to neighbor in Y direction
+        Expected: start index=0, end index=2
+        """
+        lat2x2 = lattice.Lattice2D(2, 2)
+        path = [(0, False), (5, True)]
+        start, end = lat2x2.get_path_endpoints(path, use_indices=True)
+        self.assertEqual(start, 0)
+        self.assertEqual(end, 2)
+
+    def test_get_path_endpoints_indices_simple_3x3(self):
+        """Sanity test: checks correct start/end site indices for a simple horizontal-vertical path.
+
+        Path: [(link_id=3, conj=False), (link_id=16, conj=False)]
+        Expected: start index=3, end index=8
+        """
+        lat3x3 = lattice.Lattice2D(3, 3)
+        path = [(3, False), (16, False)]
+        start, end = lat3x3.get_path_endpoints(path, use_indices=True)
+        self.assertEqual(start, 3)
+        self.assertEqual(end, 8)
+
+    def test_get_path_endpoints_coords_simple(self):
+        """Sanity test: checks correct start/end coordinates when using coordinate-based path.
+
+        Path: [(((0,0), Direction.X), False), (((1,0), Direction.Y), False)]
+        - Start not conjugated → stays (0,0)
+        - End not conjugated → shifts upward to (1,1)
+        Expected: start=(0,0), end=(1,1)
+        """
+        lat2x2 = lattice.Lattice2D(2, 2)
+        path = [(((0, 0), lattice.Direction.X), False), (((1, 0), lattice.Direction.Y), False)]
+        start, end = lat2x2.get_path_endpoints(path, use_indices=False)
+        self.assertEqual(start, (0, 0))
+        self.assertEqual(end, (1, 1))
+
+    def test_get_path_endpoints_wraparound(self):
+        """Checks periodic boundary conditions (torus behavior).
+
+        Path: [(link_id=3, conj=True), (link_id=5, conj=False)]
+        Expected: start index=2, end index=0
+        """
+        lat2x2 = lattice.Lattice2D(2, 2)
+        path = [(3, True), (5, False)]
+        start, end = lat2x2.get_path_endpoints(path, use_indices=True)
+        self.assertEqual(start, 2)
+        self.assertEqual(end, 0)
+
+    def test_get_path_endpoints_type_mismatch_error(self):
+        """Ensures TypeError is raised when path contains mixed types (index vs coordinate)."""
+        lat2x2 = lattice.Lattice2D(2, 2)
+        path = [(0, False), (((1, 0), lattice.Direction.X), False)]
+        with self.assertRaises(TypeError):
+            lat2x2.get_path_endpoints(path)
+
+    def test_get_path_endpoints_empty_path_error(self):
+        """Ensures ValueError is raised for an empty path."""
+        lat2x2 = lattice.Lattice2D(2, 2)
+        with self.assertRaises(ValueError):
+            lat2x2.get_path_endpoints([])

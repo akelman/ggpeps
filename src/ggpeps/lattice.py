@@ -192,8 +192,6 @@ class Lattice2D:
         Returns:
             tuple: (start, end) coordinates or indices of the start and end of the path.
         """
-        # TODO: write tests for this function
-
         if path == []:
             raise ValueError("There are no start/end points for an empty path.")
 
