@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from ggpeps import xnp as xnp
+
 
 class BackendBase(ABC):
     """Abstract base class for the backend.
@@ -42,3 +44,29 @@ class BackendBase(ABC):
     @abstractmethod
     def gamma_in_sys_mod(gamma_in_sys, single_link_offset):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @classmethod
+    def calculate_lognorm(
+        cls, gamma_in_sys_vec: list[xnp.ndarray], mat_d_vec: list[xnp.ndarray], all_factors: bool = False
+    ) -> float:
+        # This is still the plain formula, without any update mechanism
+        normvec = cls.calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
+        return xnp.sum(normvec)
+
+    @staticmethod
+    def calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors: bool = False):
+        dest = []
+        for ind in range(len(incdet_vec)):
+            detval = incdet_vec[ind].det()
+            if all_factors:
+                detval -= n * xnp.log(2)
+                detval += det_mat_d_vec[ind]
+            # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
+            # The addition of the cumval is the multiplication of the indpendent PEPS
+            dest.append(0.5 * detval)
+        return xnp.array(dest)
+
+    @classmethod
+    def calculate_lognorm_inc(cls, incdet_vec, det_mat_d_vec, n, all_factors: bool = False):
+        lognormvec = cls.calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=all_factors)
+        return xnp.sum(lognormvec)

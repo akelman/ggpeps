@@ -12,7 +12,6 @@ from ggpeps.system.global_funcs import backend
 from ggpeps import modearray
 
 from .system_base import System2DBase
-from .system_base import calculate_lognorm_inc
 
 # from ggpeps.system.global_funcs import update_gauge_ind
 

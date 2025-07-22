@@ -12,7 +12,7 @@ from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
 from ggpeps.system import U1System2DConfig
-from .system_base import System2DBase, calculate_lognorm_inc
+from .system_base import System2DBase
 from ggpeps.system.global_funcs import backend
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)

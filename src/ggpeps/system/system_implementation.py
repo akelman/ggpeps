@@ -11,7 +11,6 @@ from ggpeps.lattice import Direction
 from ggpeps.system.global_funcs import backend
 
 from .system_base import System2DBase
-from .system_base import calculate_lognorm_inc
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
