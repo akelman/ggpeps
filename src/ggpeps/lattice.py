@@ -56,7 +56,19 @@ class Lattice2D:
 
         Returns:
             str: String representation of the lattice
-        """
+
+        Example:
+            2x2 lattice representation (sites and links), where the bottom left corner is (0,0):
+
+            ↑     ↑
+            5     7
+            |     |
+            [2]-2→[3]-3→
+            ↑     ↑
+            4     6
+            |     |         
+            [0]-0→[1]-1→
+    """
         dest = ""
         for ind in range(self.nplaquettes):
             x, y = self.ind2coord(ind)
@@ -549,12 +561,16 @@ class PermutationBuilderGMS2DU1:
 
 
 if __name__ == "__main__":
-    print("Lattice 2d, 3x2")
-    lat_3x2 = Lattice2D(4, 5)
-    print(lat_3x2)
-    wilson_loop = lat_3x2.generate_wilson_loop((0, 0), (1, 1))
-    print(wilson_loop)
-    lst = lat_3x2.generate_tree()
-    print(lst)
-    print([lat_3x2.ind2coord_dir(ind) for ind in lst])
-    print(len(lst))
+    # print("Lattice 2d, 3x2")
+    # lat_3x2 = Lattice2D(4, 5)
+    # print(lat_3x2)
+    # wilson_loop = lat_3x2.generate_wilson_loop((0, 0), (1, 1))
+    # print(wilson_loop)
+    # lst = lat_3x2.generate_tree()
+    # print(lst)
+    # print([lat_3x2.ind2coord_dir(ind) for ind in lst])
+    # print(len(lst))
+    print("Lattice 2d, 3x3")
+    lat_3x3 = Lattice2D(2, 2)
+    print(lat_3x3)
+
