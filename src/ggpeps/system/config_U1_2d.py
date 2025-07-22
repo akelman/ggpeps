@@ -10,7 +10,6 @@ from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
 from .system_base import Config2DBase
-from ggpeps.system.global_funcs import compute_grad_over_norm, extract_partial_covmats
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 

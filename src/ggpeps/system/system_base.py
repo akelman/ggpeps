@@ -9,13 +9,14 @@ import sympy
 from scipy.linalg import block_diag
 
 import numpy as np
+import jax.numpy as jnp
 from ggpeps import xnp as xnp
 from ggpeps import xscipy as xscipy
 
 import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction, Lattice2D, Lattice3D
-from ggpeps.system.global_funcs import *
+from ggpeps.system.global_funcs import backend
 from ggpeps.modearray import generate_permutation_matrix
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -29,7 +30,7 @@ def calculate_lognorm(
     all_factors: bool = False,
 ) -> float:
     # This is still the plain formula, without any update mechanism
-    normvec = calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
+    normvec = backend.calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
     return xnp.sum(normvec)
 
 
@@ -623,7 +624,7 @@ class System2DBase(ABC):
             for symbol in self.symbolvec:
                 mat_b = self.mat_b_vec[layer]
                 deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layer, uc_ind]
-                d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                d_mat_a, d_mat_b, d_mat_d = backend.extract_partial_covmats(deriv_gamma_maj_sys, offset)
                 diff_d_gamma_inv = self.wi_gamma_out_vec[layer].inv()
                 d_gamma_out = (
                     d_mat_a
@@ -831,7 +832,7 @@ class System2DBase(ABC):
                 ###################### Calculation of <P> ########################
                 covmat_out = mat_a + mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
                 size = covmat_out.shape[1]
-                covmat_out_virt = slice_matrix(
+                covmat_out_virt = backend.slice_matrix(
                     covmat_out,
                     size - single_link_offset,
                     size,
@@ -1313,7 +1314,7 @@ class System2DBase(ABC):
         Returns:
             float: Logarithm of the norm
         """
-        return calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
+        return backend.calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
 
     def calculate_lognormvec_inc(self, all_factors=False):
         """Compute the logarithm of the norm for all layers by incrementally updating the previous value
@@ -1389,12 +1390,14 @@ class System2DBase(ABC):
             offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
             # Extract only the part of the virtual-virtual correlations
             # deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:] # TODO: fix for JAX - DONE
-            _, _, deriv_d = extract_partial_covmats(self.gamma_maj_sys_deriv_vec(var)[layerind, uc_ind], offset)
+            _, _, deriv_d = backend.extract_partial_covmats(
+                self.gamma_maj_sys_deriv_vec(var)[layerind, uc_ind], offset
+            )
             mat_d_inv = self.mat_d_inv_vec[layerind]
 
             # TODO: We might save one matrix-matrix multiplication here
             # The deriv_d and mat_d_inv are constant
-            self._grad_over_norm_dict[(layerind, uc_ind, var)] = compute_grad_over_norm(
+            self._grad_over_norm_dict[(layerind, uc_ind, var)] = backend.compute_grad_over_norm(
                 self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv
             )
         return self._grad_over_norm_dict[(layerind, uc_ind, var)]
@@ -1481,8 +1484,7 @@ class System2DBase(ABC):
             xnp.ndarray: Additional update to reach update_mat at gamma_in[offset:,offset:]
         """
         m_up, n_up = update_mat.shape
-        gamma_in_old = slice_matrix(gamma_in_sys, offset, offset + m_up, offset, offset + n_up)
-        # gamma_in_sys[offset:offset + m_up, offset:offset + n_up] # TODO: fix for JAX - DONE
+        gamma_in_old = backend.slice_matrix(gamma_in_sys, offset, offset + m_up, offset, offset + n_up)
         return -(update_mat - gamma_in_old)
 
     ################## Observables ######################

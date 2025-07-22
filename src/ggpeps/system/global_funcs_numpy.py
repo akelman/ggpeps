@@ -118,9 +118,7 @@ def compute_el_grad_vec_numpy(system):
                     dest_grad[layerind, uc_ind, symbol_ind] = 0
                 else:
                     deriv_gamma_maj_sys = system.gamma_maj_sys_deriv_vec(symbol)[layerind, uc_ind]
-                    d_mat_a, d_mat_b, d_mat_d = ggpeps.system.system_base.extract_partial_covmats(
-                        deriv_gamma_maj_sys, offset
-                    )
+                    d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats_numpy(deriv_gamma_maj_sys, offset)
                     d_gamma_out = (
                         d_mat_a
                         + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
@@ -254,3 +252,19 @@ def gamma_in_sys_mod_numpy(gamma_in_sys, single_link_offset):
         np.ndarray: Gauged, modified covariance matrix of the system
     """
     return gamma_in_sys[single_link_offset:, single_link_offset:]
+
+
+class BackendNumpy_Z2:
+    """Backend for Z2 systems using numpy."""
+
+    backend_type = "numpy"
+    gauge_group = "Z2"
+
+    def __init__(self) -> None:
+        self.calculate_lognormvec = calculate_lognormvec_numpy
+        self.compute_grad_over_norm = compute_grad_over_norm_numpy
+        self.compute_el_grad_vec = compute_el_grad_vec_numpy
+
+        self.extract_partial_covmats = extract_partial_covmats_numpy
+        self.gamma_in_sys_mod = gamma_in_sys_mod_numpy
+        self.slice_matrix = slice_matrix_numpy

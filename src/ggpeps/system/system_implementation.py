@@ -8,7 +8,7 @@ from ggpeps import xscipy as xscipy
 import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
-from ggpeps.system.global_funcs import *
+from ggpeps.system.global_funcs import backend
 
 from .system_base import System2DBase
 from .system_base import calculate_lognorm_inc
@@ -318,7 +318,7 @@ class Z2System2D(System2DBase):
             logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
-        gradients = compute_el_grad_vec(self)
+        gradients = backend.compute_el_grad_vec(self)
         return gradients
 
     def _compute_mag_energy_op(self, use_trans_inv: bool = True):

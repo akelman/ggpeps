@@ -8,7 +8,7 @@ from ggpeps import xscipy as xscipy
 import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
-from ggpeps.system.global_funcs import *
+from ggpeps.system.global_funcs import backend
 from ggpeps import modearray
 
 from .system_base import System2DBase
@@ -68,7 +68,7 @@ class D2nSystem2D(System2DBase):
         gamma_neutral_gauge_vec = self.gamma_gauge_neutral_vec
         if color_to_check is not None:
             ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind + 2 * color_to_check * self.cfg.nvirtmodes_link_per_color
-            rotmat = slice_matrix(
+            rotmat = backend.slice_matrix(
                 rotmat,
                 2 * self.cfg.nvirtmodes_link_per_color * color_to_check,
                 2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1),
@@ -77,7 +77,7 @@ class D2nSystem2D(System2DBase):
             )
             gamma_in_subst_layers = []
             for gamma_neutral_gauge in gamma_neutral_gauge_vec:
-                gamma_neutral_gauge_sliced = slice_matrix(
+                gamma_neutral_gauge_sliced = backend.slice_matrix(
                     gamma_neutral_gauge[dir],
                     2 * self.cfg.nvirtmodes_link_per_color * color_to_check,
                     2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1),
@@ -336,7 +336,7 @@ class D2nSystem2D(System2DBase):
             ind_mat = (
                 2 * self.cfg.nvirtmodes_link * link_ind + 2 * color_to_update * self.cfg.nvirtmodes_link_per_color
             )
-            rotmat = slice_matrix(  # In this case we slice rotmat to only contain the relevant color
+            rotmat = backend.slice_matrix(  # In this case we slice rotmat to only contain the relevant color
                 # We assume a specific ordering of the modes: (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
                 rotmat,
                 2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
@@ -349,7 +349,7 @@ class D2nSystem2D(System2DBase):
         for layer in range(self.cfg.nlayer):
             gamma_neutral_gauge = self.gamma_gauge_neutral_vec[layer][dir]
             if color_to_update is not None:
-                gamma_neutral_gauge = slice_matrix(  # In this case we slice gamma_neutral_gauge to only contain the relevant color
+                gamma_neutral_gauge = backend.slice_matrix(  # In this case we slice gamma_neutral_gauge to only contain the relevant color
                     # We assume a specific ordering of the modes: (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
                     xnp.copy(gamma_neutral_gauge),
                     2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
