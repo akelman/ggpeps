@@ -60,14 +60,14 @@ class Lattice2D:
         Example:
             2x2 lattice representation (sites and links), where the bottom left corner is (0,0):
 
-            ↑     ↑
-            5     7
-            |     |
-            [2]-2→[3]-3→
-            ↑     ↑
-            4     6
-            |     |         
-            [0]-0→[1]-1→
+            |         |
+           "5"       "7"
+            |         |
+            2 --"2"-- 3 --"3"--
+            |         |
+           "4"       "6"
+            |         |
+            0 --"0"-- 1 --"1"--
     """
         dest = ""
         for ind in range(self.nplaquettes):
@@ -185,43 +185,42 @@ class Lattice2D:
         The end will be one of the sites adjacent to the last link, which one is determined by whether the link
         is conjugated or not.
 
-        The <site_id> can be either a tuple of coordinates or an integer id of a link (depending on use_indices).
-
         Args:
-            path (list): list of links, with each link represented as a tuple of the form (((x,y), dir), conj).
-            use_indices (bool, optional): Return the loop in terms of site indices rather than coordinates. Defaults to True.
+            path (list): list of links, with each link represented as a tuple of the form (((x,y), dir), conj), or of the form (link_id, conj).
+            use_indices (bool): If True, return the endpoints in terms of site indices (rather than coordinates). Defaults to True.
 
         Returns:
-            tuple: (start, end) coordinates or indices of the start and end of the path
+            tuple: (start, end) coordinates or indices of the start and end of the path.
         """
         # TODO: write tests for this function
 
         if path == []:
             raise ValueError("There are no start/end points for an empty path.")
+        
+        start_link, end_link = path[0][0], path[-1][0]
+        is_start_link_conj, is_end_link_conj = path[0][1], path[-1][1]
 
-        start_link = path[0]
-        if isinstance(start_link[0], int):
-            start_site_coord, dir = self.ind2coord_dir(start_link[0])
-        else:
-            start_site_coord, dir = start_link[0]
-        if start_link[1]:  # link is conjugated
-            start_site_coord = self.get_neighbor(start_site_coord, dir)
+        if not isinstance(start_link, type(end_link)):
+            raise TypeError(f"Inconsistent path input types: first link type is {type(start_link)}, "f"last link type is {type(end_link)}.")
+        
+        if isinstance(start_link, int): # path elements were given as tuples of the form (link_id, conj)
+            start_site_coord, start_site_dir = self.ind2coord_dir(start_link)
+            end_site_coord, end_site_dir = self.ind2coord_dir(end_link)
+        else: # path elements were given as tuples of the form (((x,y), dir), conj)
+            start_site_coord, start_site_dir = start_link
+            end_site_coord, end_site_dir = end_link
 
-        end_link = path[-1]
-        if isinstance(end_link[0], int):
-            end_site_coord, dir = self.ind2coord_dir(end_link[0])
-        else:
-            end_site_coord, dir = end_link[0]
-        if not end_link[1]:  # link is not conjugated
-            end_site_coord = self.get_neighbor(end_site_coord, dir)
+        if is_start_link_conj:
+            start_site_coord = self.get_neighbor(start_site_coord, start_site_dir)
 
-        if use_indices:
-            start_site = self.coord2ind(start_site_coord)
-            end_site = self.coord2ind(end_site_coord)
-        else:
-            start_site = start_site_coord
-            end_site = end_site_coord
-        return (start_site, end_site)
+        if not is_end_link_conj:
+            end_site_coord = self.get_neighbor(end_site_coord, end_site_dir)
+
+        if use_indices: # Transform the coordinates to indices
+            start_site_coord = self.coord2ind(start_site_coord)
+            end_site_coord = self.coord2ind(end_site_coord)
+
+        return (start_site_coord, end_site_coord)
 
     def generate_polyakov_loop(self, coord: tuple, dir: Direction, use_indices: bool = True) -> list:
         """Generate a Polyakov loop, a loop around the full system.
@@ -570,7 +569,13 @@ if __name__ == "__main__":
     # print(lst)
     # print([lat_3x2.ind2coord_dir(ind) for ind in lst])
     # print(len(lst))
-    print("Lattice 2d, 3x3")
+    # print("Lattice 2d, 3x3")
     lat_3x3 = Lattice2D(2, 2)
-    print(lat_3x3)
+    # print(lat_3x3)
+        
+        
+    # def ind2coord_dir(self, ind: int) -> tuple:
+    print(lat_3x3.coord2ind_dir((1,1), Direction.X))
+
+
 
