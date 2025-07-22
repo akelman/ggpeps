@@ -1,10 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import (
-    Union,
-    Optional,
-    List,
-)  # used in type hints; this approach might be deprecated in later python versions
-from dataclasses import dataclass, field
+from typing import Union, Optional  # used in type hints; this approach might be deprecated in later python versions
 
 import sys
 import logging
@@ -29,8 +24,8 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 def calculate_lognorm(
-    gamma_in_sys_vec: List[xnp.ndarray],
-    mat_d_vec: List[xnp.ndarray],
+    gamma_in_sys_vec: list[xnp.ndarray],
+    mat_d_vec: list[xnp.ndarray],
     all_factors: bool = False,
 ) -> float:
     # This is still the plain formula, without any update mechanism
@@ -315,8 +310,8 @@ class System2DBase(ABC):
         # Other types of vec are indicated by layervec, sitevec, etc.
 
         # Parameter based matrices
-        self._tmat_layervec_unitcellvec: Optional[List[List[xnp.ndarray]]] = None
-        self._tmat_layervec_sitevec: Optional[List[List[xnp.ndarray]]] = None
+        self._tmat_layervec_unitcellvec: Optional[list[list[xnp.ndarray]]] = None
+        self._tmat_layervec_sitevec: Optional[list[list[xnp.ndarray]]] = None
         self._gamma_dirac_layervec_sitevec: Optional[xnp.ndarray] = None
         self._gamma_maj_layervec_sitevec: Optional[xnp.ndarray] = None
         self._gamma_maj_sys_vec: Optional[xnp.ndarray] = None
@@ -329,7 +324,7 @@ class System2DBase(ABC):
         self._mat_d_inv_vec: Optional[xnp.ndarray] = None
 
         # Full covariance matrix (gamma_out) of the fermions
-        self._ferm_covmat_vec: Optional[List[xnp.ndarray]] = None
+        self._ferm_covmat_vec: Optional[list[xnp.ndarray]] = None
 
         # Parameter dependent quantities for the electric energy
         self._mat_a_mod_vec: Optional[xnp.ndarray] = None
@@ -357,14 +352,14 @@ class System2DBase(ABC):
         self._weight: Optional[float] = None
 
         # Gradients
-        self._gamma_maj_sys_deriv_dict: Optional[dict[sympy.Symbol, List[xnp.ndarray]]] = (
+        self._gamma_maj_sys_deriv_dict: Optional[dict[sympy.Symbol, list[xnp.ndarray]]] = (
             None  # the list is for layers
         )
         self._el_energy_op_grad_vec: Optional[xnp.ndarray] = None  # first index is layer, second index is symbol
         self._mass_energy_op_grad_vec: Optional[xnp.ndarray] = None
         self._int_energy_op_grad_vec: Optional[xnp.ndarray] = None
         self._chem_energy_op_grad_vec = None
-        self._d_gamma_out_symbolvec: Optional[List[List[List[xnp.ndarray]]]] = (
+        self._d_gamma_out_symbolvec: Optional[list[list[list[xnp.ndarray]]]] = (
             None  # gradients of gamma_out for all symbols: first index is layer, second index uc_ind, third is symbol
         )
         self._grad_over_norm_dict: Optional[dict[tuple[int, int, sympy.Symbol], float]] = {
@@ -379,23 +374,23 @@ class System2DBase(ABC):
         # Observables
         self._energy: Optional[float] = None
         self._el_energy_op: Optional[float] = None
-        self._el_energy_op_vec: Optional[List[float]] = None
+        self._el_energy_op_vec: Optional[list[float]] = None
         self._mag_energy_op: Optional[float] = None
         self._mass_energy_op: Optional[float] = None
-        self._mass_energy_op_vec: Optional[List[float]] = None
+        self._mass_energy_op_vec: Optional[list[float]] = None
         self._int_energy_op: Optional[float] = None
-        self._int_energy_op_vec: Optional[List[float]] = None
+        self._int_energy_op_vec: Optional[list[float]] = None
         self._chem_energy_op_vec = None
         self._all_occupations: Optional[xnp.ndarray] = None
 
         # Woodbury Update and Matrix Inversion
-        self._wi_gamma_in_vec: Optional[List[utils.WoodburyInverter]] = None  # Tracks (D^-1 - gammain)^-1
-        self._wi_gamma_out_vec: Optional[List[utils.WoodburyInverter]] = None  # Tracks (D - gammain)^-1
-        self._incdet_vec: Optional[List[utils.IncLogAbsDeterminant]] = None  # Tracks det(D^-1 - gammain)
+        self._wi_gamma_in_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (D^-1 - gammain)^-1
+        self._wi_gamma_out_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (D - gammain)^-1
+        self._incdet_vec: Optional[list[utils.IncLogAbsDeterminant]] = None  # Tracks det(D^-1 - gammain)
 
-        self._wi_gamma_in_mod_vec: Optional[List[utils.WoodburyInverter]] = None  # Tracks (Dmod^-1 - gammain)^-1
-        self._wi_gamma_out_mod_vec: Optional[List[utils.WoodburyInverter]] = None  # Tracks (Dmod - gammain)^-1
-        self._incdet_mod_vec: Optional[List[utils.IncLogAbsDeterminant]] = None  # Tracks det(Dmod^-1 - gammain)
+        self._wi_gamma_in_mod_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (Dmod^-1 - gammain)^-1
+        self._wi_gamma_out_mod_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (Dmod - gammain)^-1
+        self._incdet_mod_vec: Optional[list[utils.IncLogAbsDeterminant]] = None  # Tracks det(Dmod^-1 - gammain)
 
         return
 
@@ -443,7 +438,7 @@ class System2DBase(ABC):
         return mat_a_vec, mat_b_vec, mat_d_vec
 
     @property
-    def symbolvec(self) -> List[sympy.Symbol]:
+    def symbolvec(self) -> list[sympy.Symbol]:
         """Return the symbolvec.
 
         Returns:
@@ -477,7 +472,7 @@ class System2DBase(ABC):
         """Compute the numerical representation of the T matrix
 
         Args:
-            paramvec (list): List of parameter values (numerical)
+            paramvec (list): list of parameter values (numerical)
 
         Returns:
             xnp.ndarray: T matrix with numerical values
@@ -487,7 +482,7 @@ class System2DBase(ABC):
         return xnp.asarray(np.asarray(tmat_eval).astype(complex))
 
     @property
-    def tmat_layervec_unitcellvec(self) -> List[List[xnp.ndarray]]:
+    def tmat_layervec_unitcellvec(self) -> list[list[xnp.ndarray]]:
         if self._tmat_layervec_unitcellvec is None:
             self.cfg.enforce_parameter_conditions(self.cfg.paramvec)
             self._tmat_layervec_unitcellvec = []
@@ -497,7 +492,7 @@ class System2DBase(ABC):
         return self._tmat_layervec_unitcellvec
 
     @property
-    def tmat_layervec_sitevec(self) -> List[List[xnp.ndarray]]:
+    def tmat_layervec_sitevec(self) -> list[list[xnp.ndarray]]:
         """
         Generate the T-matrix vector (single virtual fermion on the link).
         Analytically, this mode order is not advantageous,
@@ -570,7 +565,7 @@ class System2DBase(ABC):
         This method is overwritten for the U1 system.
 
         Args:
-            covmats_layervec_sitevec (List[List[xnp.ndarray]]): list (per layer) of 2D covariance matrices of all sites; total shape (nlayer, nsites, nmodes, nmodes)
+            covmats_layervec_sitevec (list[list[xnp.ndarray]]): list (per layer) of 2D covariance matrices of all sites; total shape (nlayer, nsites, nmodes, nmodes)
 
         Returns:
             xnp.ndarray: 2D covariance matrix of the full system
@@ -615,7 +610,7 @@ class System2DBase(ABC):
         """Return a vector containing the derivatives of gamma_out (for the given layer) for each symbol.
 
         Returns:
-            [List]: List of xnp.ndarrays, with length equal to the number of symbols.
+            [list]: List of xnp.ndarrays, with length equal to the number of symbols.
         """
         if self._d_gamma_out_symbolvec is None:
             self._d_gamma_out_symbolvec = [None] * self.cfg.nlayer
@@ -707,7 +702,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            xnp.ndarray: List of log-determinants
+            xnp.ndarray: list of log-determinants
         """
         if self._det_mat_d_vec is None:
             _, self._det_mat_d_vec = xnp.linalg.slogdet(self.mat_d_vec)
@@ -2098,12 +2093,12 @@ def get_pfaffian_arrays(modes, coefficients):
     normalization.
 
     Args:
-        modes (List of lists of tuples of ints): _description_
-        coefficients (List of lists of complex floats): _description_
+        modes (list of lists of tuples of ints): _description_
+        coefficients (list of lists of complex floats): _description_
         neg (float): _description_
 
     Returns:
-        List: index array in the format required for the calculation of the electric energy (and electric gradients).
+        list: index array in the format required for the calculation of the electric energy (and electric gradients).
     """
     submatrices = [k for k in it.product(*modes)]
     indices = [sum(sub, ()) for sub in submatrices]

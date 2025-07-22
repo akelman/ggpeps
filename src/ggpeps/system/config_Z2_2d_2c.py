@@ -264,7 +264,7 @@ class Z2System2D2CConfig(Config2DBase):
         This method overwrites an abstract method in System2DBase.
 
         Returns:
-            List[np.ndarray]: Covariance matrix of the ungauged projector on a single link
+            list[np.ndarray]: Covariance matrix of the ungauged projector on a single link
         """
         dest = [0] * 2
         dest[Direction.X] = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix)))

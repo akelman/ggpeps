@@ -1,14 +1,13 @@
 ############## NUMPY CPU VERSIONS ##############
 
-from typing import List
 import numpy as np
 
 import ggpeps
 
 
 def calculate_lognormvec_numpy(
-    gamma_in_sys_vec: List[np.ndarray],
-    mat_d_vec: List[np.ndarray],
+    gamma_in_sys_vec: list[np.ndarray],
+    mat_d_vec: list[np.ndarray],
     all_factors: bool = False,
 ) -> float:
     # This is still the plain formula, without any update mechanism
