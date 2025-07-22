@@ -3,6 +3,7 @@
 import numpy as np
 
 import ggpeps
+from ggpeps.system.backend_base import BackendBase
 
 
 def calculate_lognormvec_numpy(
@@ -254,17 +255,35 @@ def gamma_in_sys_mod_numpy(gamma_in_sys, single_link_offset):
     return gamma_in_sys[single_link_offset:, single_link_offset:]
 
 
-class BackendNumpy_Z2:
+class BackendNumpy_Z2(BackendBase):
     """Backend for Z2 systems using numpy."""
 
     backend_type = "numpy"
     gauge_group = "Z2"
 
     def __init__(self) -> None:
-        self.calculate_lognormvec = calculate_lognormvec_numpy
-        self.compute_grad_over_norm = compute_grad_over_norm_numpy
-        self.compute_el_grad_vec = compute_el_grad_vec_numpy
+        pass
 
-        self.extract_partial_covmats = extract_partial_covmats_numpy
-        self.gamma_in_sys_mod = gamma_in_sys_mod_numpy
-        self.slice_matrix = slice_matrix_numpy
+    @staticmethod
+    def slice_matrix(mat, a, b, c, d):
+        return slice_matrix_numpy(mat, a, b, c, d)
+
+    @staticmethod
+    def extract_partial_covmats(mat, corner):
+        return extract_partial_covmats_numpy(mat, corner)
+
+    @staticmethod
+    def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
+        return calculate_lognormvec_numpy(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
+
+    @staticmethod
+    def compute_grad_over_norm(gamma_in_sys, diff, deriv_d, mat_d_inv):
+        return compute_grad_over_norm_numpy(gamma_in_sys, diff, deriv_d, mat_d_inv)
+
+    @staticmethod
+    def compute_el_grad_vec(system):
+        return compute_el_grad_vec_numpy(system)
+
+    @staticmethod
+    def gamma_in_sys_mod(gamma_in_sys, single_link_offset):
+        return gamma_in_sys_mod_numpy(gamma_in_sys, single_link_offset)

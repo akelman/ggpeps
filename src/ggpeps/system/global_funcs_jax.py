@@ -11,6 +11,7 @@ from jax import jit, device_put
 jax.config.update("jax_enable_x64", True)
 
 import ggpeps
+from ggpeps.system.backend_base import BackendBase
 
 
 @jit
@@ -209,17 +210,35 @@ def gamma_in_sys_mod_jax(gamma_in_sys, single_link_offset):
     return gamma_in_sys[single_link_offset:, single_link_offset:]
 
 
-class BackendJax_Z2:
+class BackendJax_Z2(BackendBase):
     """Backend for Z2 systems using jax."""
 
     backend_type = "jax"
     gauge_group = "Z2"
 
     def __init__(self) -> None:
-        self.calculate_lognormvec = calculate_lognormvec_jax
-        self.compute_grad_over_norm = compute_grad_over_norm_jax
-        self.compute_el_grad_vec = compute_el_grad_vec_jax
+        pass
 
-        self.extract_partial_covmats = extract_partial_covmats_jax
-        self.gamma_in_sys_mod = gamma_in_sys_mod_jax
-        self.slice_matrix = slice_matrix_jax
+    @staticmethod
+    def slice_matrix(mat, a, b, c, d):
+        return slice_matrix_jax(mat, a, b, c, d)
+
+    @staticmethod
+    def extract_partial_covmats(mat, corner):
+        return extract_partial_covmats_jax(mat, corner)
+
+    @staticmethod
+    def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
+        return calculate_lognormvec_jax(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
+
+    @staticmethod
+    def compute_grad_over_norm(gamma_in_sys, diff, deriv_d, mat_d_inv):
+        return compute_grad_over_norm_jax(gamma_in_sys, diff, deriv_d, mat_d_inv)
+
+    @staticmethod
+    def compute_el_grad_vec(system):
+        return compute_el_grad_vec_jax(system)
+
+    @staticmethod
+    def gamma_in_sys_mod(gamma_in_sys, single_link_offset):
+        return gamma_in_sys_mod_jax(gamma_in_sys, single_link_offset)
