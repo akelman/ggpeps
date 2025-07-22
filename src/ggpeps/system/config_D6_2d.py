@@ -11,7 +11,6 @@ import ggpeps
 from ggpeps import gauge
 from ggpeps import modearray
 from ggpeps.lattice import Direction
-from ggpeps.system.global_funcs import *
 
 from .system_base import Config2DBase
 from .system_base import get_pfaffian_arrays
