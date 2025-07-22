@@ -68,7 +68,7 @@ class Lattice2D:
            "4"       "6"
             |         |
             0 --"0"-- 1 --"1"--
-    """
+        """
         dest = ""
         for ind in range(self.nplaquettes):
             x, y = self.ind2coord(ind)
@@ -196,17 +196,20 @@ class Lattice2D:
 
         if path == []:
             raise ValueError("There are no start/end points for an empty path.")
-        
+
         start_link, end_link = path[0][0], path[-1][0]
         is_start_link_conj, is_end_link_conj = path[0][1], path[-1][1]
 
         if not isinstance(start_link, type(end_link)):
-            raise TypeError(f"Inconsistent path input types: first link type is {type(start_link)}, "f"last link type is {type(end_link)}.")
-        
-        if isinstance(start_link, int): # path elements were given as tuples of the form (link_id, conj)
+            raise TypeError(
+                f"Inconsistent path input types: first link type is {type(start_link)}, "
+                f"last link type is {type(end_link)}."
+            )
+
+        if isinstance(start_link, int):  # path elements were given as tuples of the form (link_id, conj)
             start_site_coord, start_site_dir = self.ind2coord_dir(start_link)
             end_site_coord, end_site_dir = self.ind2coord_dir(end_link)
-        else: # path elements were given as tuples of the form (((x,y), dir), conj)
+        else:  # path elements were given as tuples of the form (((x,y), dir), conj)
             start_site_coord, start_site_dir = start_link
             end_site_coord, end_site_dir = end_link
 
@@ -216,7 +219,7 @@ class Lattice2D:
         if not is_end_link_conj:
             end_site_coord = self.get_neighbor(end_site_coord, end_site_dir)
 
-        if use_indices: # Transform the coordinates to indices
+        if use_indices:  # Transform the coordinates to indices
             start_site_coord = self.coord2ind(start_site_coord)
             end_site_coord = self.coord2ind(end_site_coord)
 
@@ -572,10 +575,6 @@ if __name__ == "__main__":
     # print("Lattice 2d, 3x3")
     lat_3x3 = Lattice2D(2, 2)
     # print(lat_3x3)
-        
-        
+
     # def ind2coord_dir(self, ind: int) -> tuple:
-    print(lat_3x3.coord2ind_dir((1,1), Direction.X))
-
-
-
+    print(lat_3x3.coord2ind_dir((1, 1), Direction.X))
