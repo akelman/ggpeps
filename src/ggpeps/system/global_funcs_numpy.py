@@ -277,13 +277,13 @@ class BackendNumpy_Z2(BackendBase):
         return calculate_lognormvec_numpy(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
 
     @staticmethod
+    def gamma_in_sys_mod(gamma_in_sys, single_link_offset):
+        return gamma_in_sys_mod_numpy(gamma_in_sys, single_link_offset)
+
+    @staticmethod
     def compute_grad_over_norm(gamma_in_sys, diff, deriv_d, mat_d_inv):
         return compute_grad_over_norm_numpy(gamma_in_sys, diff, deriv_d, mat_d_inv)
 
     @staticmethod
     def compute_el_grad_vec(system):
         return compute_el_grad_vec_numpy(system)
-
-    @staticmethod
-    def gamma_in_sys_mod(gamma_in_sys, single_link_offset):
-        return gamma_in_sys_mod_numpy(gamma_in_sys, single_link_offset)
