@@ -8,6 +8,7 @@ import logging
 import numpy as np
 from scipy.optimize import minimize
 from scipy.special import logsumexp
+import pandas as pd
 
 import ggpeps
 from ggpeps.caching import Cache
@@ -76,7 +77,7 @@ class Minimizer:
         # Below, we will have to be careful to only call valid functions
         self.evaluator_manager: EvaluatorManager = evaluator_manager
         self.last_paramvec: Optional[np.ndarray] = None
-        self.last_result: Optional[Evaluator] = None
+        self.last_result: Optional[pd.DataFrame] = None
         self.min_result: Optional[MinimizerResult] = None
 
         # Cache for the energy values and gradients
@@ -293,7 +294,7 @@ class Minimizer:
         Save the minimization results to the output directory.
         Args:
             output_dir (str): Directory to save the results.
-            
+
             Returns:
                 None
         """
@@ -468,8 +469,8 @@ def NEVMC_print_callback(x, res):
 
 
 def print_callback(x: int, minimizer: Minimizer) -> None:
-    """ Print the current status of the minimization process.
-    
+    """Print the current status of the minimization process.
+
     Args:
         x (int): Current iteration number.
         minimizer (Minimizer): The minimizer instance containing the results.
