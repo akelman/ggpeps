@@ -71,7 +71,7 @@ class Config2DBase(ABC):
         g_mag: float,
         g_int: float,
         g_mass: float,
-        g_chem: Optional[np.array],
+        g_chem: Optional[np.ndarray],
         num_pg_layer: int = 1,
         num_fermionic_layer: int = 0,
     ):
@@ -334,7 +334,7 @@ class System2DBase(ABC):
         self._mat_d_mod_inv_vec: Optional[xnp.ndarray] = None
         # Electric energy intermediate values - if we compute the electric energy,
         # we store intermediate values to be reused in the gradient calculation
-        self._covmat_out_virt_vec: Optional[list[xnp.array]] = None
+        self._covmat_out_virt_vec: Optional[list[xnp.ndarray]] = None
         self._norm_mod_vec: Optional[list[float]] = None
         self._lognorm_default_vec: Optional[list[float]] = None
 
@@ -801,7 +801,7 @@ class System2DBase(ABC):
         return self._mat_d_mod_inv_vec
 
     @property
-    def covmat_out_virt_vec(self) -> list[xnp.array]:
+    def covmat_out_virt_vec(self) -> list[xnp.ndarray]:
         """Compute the convariance matrix of the state, including physical fermions and
         the virtual fermions on the link on which the electric energy is computed.
         This function returns a vector over layers of these covariance matrices.
