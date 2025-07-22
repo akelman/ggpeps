@@ -304,7 +304,6 @@ class D2nSystem2D(System2DBase):
             link_ind, theta, color_to_update=color_to_update
         )  # in case it was originally a singular, we update the gauge field to the final value. In the other case we can update the gauge straightforwardly
 
-    # TODO: fix for JAX - DONE, except for stuff in utils
     def update_non_singular_gauge_ind(self, link_ind, theta, color_to_update=None):
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
@@ -415,9 +414,6 @@ class D2nSystem2D(System2DBase):
 
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
-
-    # def update_gauge_ind(self, link_ind, theta):
-    #    update_gauge_ind(self, link_ind, theta)
 
     # Observables
     def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv: bool = True):
