@@ -174,20 +174,19 @@ class Z2System2D(System2DBase):
 
     ################## Observables ##################
 
-    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv: bool = True):
+    def _compute_mass_energy_op_vec(self, use_trans_inv: bool = True):
         """Compute the mass term of the Hamiltonian for a single site.
 
         Args:
             use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
 
         Returns:
-            tuple: Tuple of (mass energy for a single site, gradients)
+            array: mass energy as a vec over layers
         """
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
 
         mass_energy_op = [0] * self.cfg.num_pg_layer
-        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             # only the fermionic layers directly contribute to the mass
@@ -202,16 +201,37 @@ class Z2System2D(System2DBase):
             for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
                 layer_mass_energy += 0.5 * (1 + covmat[site_ind + 1, site_ind])
 
+            mass_energy_op.append(xnp.asarray(layer_mass_energy))
+
+        mass_energy_op = xnp.asarray(mass_energy_op)
+
+        return mass_energy_op
+
+    def _compute_mass_energy_grad(self, use_trans_inv: bool = True):
+        """Compute the mass term of the Hamiltonian for a single site.
+
+        Args:
+            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
+
+        Returns:
+            array: gradients of the mass energy
+        """
+        if not use_trans_inv:
+            raise NotImplementedError("Translation invariance must be set to True.")
+
+        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            # only the fermionic layers directly contribute to the mass
+
+            for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
+
                 for uc_ind in range(self.cfg.unitcell_size):
                     for symbol_ind, symbol in enumerate(self.symbolvec):
                         # the derivative calculation is relatively compuationally expensive
                         # (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
-                        if (
-                            layer_ind,
-                            uc_ind,
-                            symbol_ind,
-                        ) not in self.cfg.zeroed_params:
+                        if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
 
                             d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[symbol_ind]
                             if ggpeps.PREFERRED_BACKEND == "numpy":
@@ -224,10 +244,6 @@ class Z2System2D(System2DBase):
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
 
-            mass_energy_op.append(xnp.asarray(layer_mass_energy))
-
-        mass_energy_op = xnp.asarray(mass_energy_op)
-
         self.cfg.enforce_parameter_conditions(gradients)
 
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy
@@ -236,7 +252,7 @@ class Z2System2D(System2DBase):
         # and grads by the norm of the first layer
         # (this is handled higher up in the computation stack).
 
-        return mass_energy_op, xnp.array(gradients)
+        return xnp.array(gradients)
 
     def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
         """Computation of the electric energy.
@@ -347,18 +363,17 @@ class Z2System2D(System2DBase):
                     mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
         return mag_energy_bare
 
-    def _compute_int_energy_op_vec_and_grad(self):
-        """Calculate the energy and energy gradient due to the interaction of the
+    def _compute_int_energy_op_vec(self):
+        """Calculate the energy due to the interaction of the
         physical fermions with the gauge fields.
         Note: this function assumes that U = U^dagger, which is valid only for Z2.
         For other groups, the calculation will not be as simple.
 
         Returns:
-            tuple: Tuple of (interaction energy for a single link, gradients)
+            array: interaction energy for a single link
         """
 
         int_energy_op = [0] * self.cfg.num_pg_layer
-        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             layer_int_energy = 0.0
@@ -394,12 +409,61 @@ class Z2System2D(System2DBase):
                 gaugefield_vert = self.gaugefieldvec[ind_field_vert]
                 theta_vert = self.cfg.gaugemgr.get_angle(
                     gaugefield_vert
-                )  # gaugefield_vert is a matrix represntation of a group elemnt
+                )  # gaugefield_vert is a matrix represntation of a group element
                 cos_factor_vert = xnp.cos(theta_vert)
                 vert_link_energy = 0.5 * (
                     covmat[site_ind_cov, neighborY_ind + 1] + covmat[site_ind_cov + 1, neighborY_ind]
                 )
                 layer_int_energy -= vert_link_energy * cos_factor_vert
+
+            int_energy_op.append(layer_int_energy)
+
+        int_energy_op = xnp.asarray(int_energy_op)
+
+        return int_energy_op
+
+    def _compute_int_energy_grad(self):
+        """Calculate the energy gradient due to the interaction of the
+        physical fermions with the gauge fields.
+        Note: this function assumes that U = U^dagger, which is valid only for Z2.
+        For other groups, the calculation will not be as simple.
+
+        Returns:
+            array: gradients
+        """
+
+        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+
+            for site_ind in range(self.cfg.lattice.size):
+                coord = self.cfg.lattice.ind2coord(site_ind)
+
+                # this is the index to use when accessing elements of the covariance matrix,
+                # which has 2 Majorana modes per site
+                site_ind_cov = 2 * site_ind
+
+                # Horizontal link
+                ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X)  # index of the horizontal link
+                neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X)  # coordinates of neighboring site
+                neighborX_ind = 2 * self.cfg.lattice.coord2ind(
+                    neighborX_coord
+                )  # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
+                gaugefield_hor = self.gaugefieldvec[
+                    ind_field_hor
+                ]  # gaugefield_hor is a matrix representation of a group element
+                theta_hor = self.cfg.gaugemgr.get_angle(gaugefield_hor)  # convert it to an angle
+                cos_factor_hor = xnp.cos(theta_hor)  # simple way to get U from gauge value
+
+                # Vertical link
+                ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
+                neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
+                neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
+                gaugefield_vert = self.gaugefieldvec[ind_field_vert]
+                theta_vert = self.cfg.gaugemgr.get_angle(
+                    gaugefield_vert
+                )  # gaugefield_vert is a matrix represntation of a group element
+                cos_factor_vert = xnp.cos(theta_vert)
 
                 # Calculate derivatives
                 for uc_ind in range(self.cfg.unitcell_size):
@@ -407,11 +471,7 @@ class Z2System2D(System2DBase):
                         # the derivative calculation is relatively compuationally expensive
                         # (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
-                        if (
-                            layer_ind,
-                            uc_ind,
-                            symbol_ind,
-                        ) not in self.cfg.zeroed_params:
+                        if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
 
                             d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[symbol_ind]
                             grad = (
@@ -435,10 +495,6 @@ class Z2System2D(System2DBase):
                             elif ggpeps.PREFERRED_BACKEND == "jax":
                                 gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(grad)
 
-            int_energy_op.append(layer_int_energy)
-
-        int_energy_op = xnp.asarray(int_energy_op)
-
         self.cfg.enforce_parameter_conditions(gradients)
 
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy
@@ -447,13 +503,12 @@ class Z2System2D(System2DBase):
         # we simply multiply the int_energy and grads by the norm of the first layer
         # (this is handled higher up in the computation stack).
 
-        return int_energy_op, xnp.array(gradients)
+        return xnp.array(gradients)
 
-    def _compute_chem_energy_op_vec_and_grad(self):
-        """Calculate the chemical potential energy operator and its gradient."""
+    def _compute_chem_energy_op_vec(self):
+        """Calculate the chemical potential energy operator."""
 
         chem_energy_op = [0] * self.cfg.num_pg_layer
-        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             # only the fermionic layers directly contribute to the chemical potential
@@ -474,16 +529,35 @@ class Z2System2D(System2DBase):
                 layer_chem_energy += site_factor * mass_site
                 layer_chem_energy += 0.5  # constant offset which arises from particle-hole transformation
 
+            chem_energy_op.append(np.asarray(layer_chem_energy))
+
+        chem_energy_op = np.asarray(chem_energy_op)
+
+        return chem_energy_op
+
+    def _compute_chem_energy_grad(self):
+        """Calculate the chemical potential energy operator gradient."""
+
+        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            # only the fermionic layers directly contribute to the chemical potential
+
+            # Calculate chem term
+            # Since we set the system to have different parameters on the even and odd sites when using a non-zero
+            # chemical potential (i.e. the system is translationally invariant by two sites),
+            # we could just calculate it for one even and one odd site and multiply by the size of the system
+            for site in range(self.cfg.lattice.size):
+                site_ind = 2 * site  # index into covariance matrix
+                x, y = self.cfg.lattice.ind2coord(site)
+                site_factor = (-1) ** (x + y)  # even or odd sublattice
+
                 for uc_ind in range(self.cfg.unitcell_size):
                     for symbol_ind, symbol in enumerate(self.symbolvec):
                         # the derivative calculation is relatively compuationally expensive
                         # (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
-                        if (
-                            layer_ind,
-                            uc_ind,
-                            symbol_ind,
-                        ) not in self.cfg.zeroed_params:
+                        if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
 
                             d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[symbol_ind]
                             if ggpeps.PREFERRED_BACKEND == "numpy":
@@ -498,13 +572,9 @@ class Z2System2D(System2DBase):
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
 
-            chem_energy_op.append(np.asarray(layer_chem_energy))
-
-        chem_energy_op = np.asarray(chem_energy_op)
-
         self.cfg.enforce_parameter_conditions(gradients)
 
-        return chem_energy_op, gradients
+        return gradients
 
     def _meson_string_vec(self, path):
         r"""Compute a layer resolved meson string for the given path.

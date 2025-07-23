@@ -236,11 +236,17 @@ class U1System2D(System2DBase):
         self.invalidate_gauge_update()
 
     ################## Observables ######################
-    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv=True):
+    def _compute_mass_energy_op_vec(self, use_trans_inv=True):
         raise NotImplementedError("The mass term has not yet been implemented for U1.")
 
-        dest, dest_grad = 0, 0  # Needs to be calculated properly
-        return dest, dest_grad
+        dest = 0
+        return dest
+
+    def _compute_mass_energy_grad(self, use_trans_inv=True):
+        raise NotImplementedError("The mass gradient term has not yet been implemented for U1.")
+
+        dest_grad = 0
+        return dest_grad
 
     def _compute_mag_energy_op(self, use_trans_inv=True):
         if use_trans_inv:
@@ -436,12 +442,20 @@ class U1System2D(System2DBase):
         else:
             return self._compute_el_energy_op_and_grad_gaussian()[1]
 
-    def _compute_int_energy_op_vec_and_grad(self):
+    def _compute_int_energy_op_vec(self):
         # This function is not implemented yet!
         raise NotImplementedError("The interaction energy is not implemented yet for U(1).")
 
-    def _compute_chem_energy_op_vec_and_grad(self):
-        """Calculate the chemical potential energy operator and its gradient."""
+    def _compute_int_energy_grad(self):
+        # This function is not implemented yet!
+        raise NotImplementedError("The interaction energy is not implemented yet for U(1).")
+
+    def _compute_chem_energy_op_vec(self):
+        """Calculate the chemical potential energy operator."""
+        raise NotImplementedError("The chemical potential energy is not implemented yet for U(1).")
+
+    def _compute_chem_energy_grad(self):
+        """Calculate the chemical potential energy gradient."""
         raise NotImplementedError("The chemical potential energy is not implemented yet for U(1).")
 
     def _meson_string_vec(self, path):

@@ -69,7 +69,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["check-manifest", "seaborn"]
+dev = ["check-manifest", "seaborn", "black"]
 test = ["coverage", "nox"]
 
 [tool.setuptools_scm]

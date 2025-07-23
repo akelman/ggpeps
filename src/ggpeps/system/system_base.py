@@ -42,7 +42,7 @@ class Config2DBase(ABC):
         g_mag: float,
         g_int: float,
         g_mass: float,
-        g_chem: Optional[np.array],
+        g_chem: Optional[np.ndarray],
         num_pg_layer: int = 1,
         num_fermionic_layer: int = 0,
     ):
@@ -305,7 +305,7 @@ class System2DBase(ABC):
         self._mat_d_mod_inv_vec: Optional[xnp.ndarray] = None
         # Electric energy intermediate values - if we compute the electric energy,
         # we store intermediate values to be reused in the gradient calculation
-        self._covmat_out_virt_vec: Optional[list[xnp.array]] = None
+        self._covmat_out_virt_vec: Optional[list[xnp.ndarray]] = None
         self._norm_mod_vec: Optional[list[float]] = None
         self._lognorm_default_vec: Optional[list[float]] = None
 
@@ -772,7 +772,7 @@ class System2DBase(ABC):
         return self._mat_d_mod_inv_vec
 
     @property
-    def covmat_out_virt_vec(self) -> list[xnp.array]:
+    def covmat_out_virt_vec(self) -> list[xnp.ndarray]:
         """Compute the convariance matrix of the state, including physical fermions and
         the virtual fermions on the link on which the electric energy is computed.
         This function returns a vector over layers of these covariance matrices.
@@ -1466,22 +1466,43 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def _compute_mass_energy_op_vec_and_grad(self):
-        """Compute the mass energy and the gradient (per layer).
+    def _compute_mass_energy_op_vec(self):
+        """Compute the mass energy (per layer).
         This is an abstract method and has to be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def _compute_int_energy_op_vec_and_grad(self):
-        """Compute the interaction energy and the gradient (for a single layer).
+    def _compute_mass_energy_grad(self):
+        """Compute the mass energy gradient.
         This is an abstract method and has to be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def _compute_chem_energy_op_vec_and_grad(self):
-        """Compute the chemical potential energy and the gradient (per layer).
+    def _compute_int_energy_op_vec(self):
+        """Compute the interaction energy (per layer).
+        This is an abstract method and has to be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
+    def _compute_int_energy_grad(self):
+        """Compute the interaction energy gradient.
+        This is an abstract method and has to be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
+    def _compute_chem_energy_op_vec(self):
+        """Compute the chemical potential energy (per layer).
+        This is an abstract method and has to be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
+    def _compute_chem_energy_grad(self):
+        """Compute the chemical potential energy gradient.
         This is an abstract method and has to be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
@@ -1671,7 +1692,7 @@ class System2DBase(ABC):
             list: Layer-resolved mass energy w/o shift
         """
         if self._mass_energy_op_vec is None:
-            self._mass_energy_op_vec, self._mass_energy_op_grad_vec = self._compute_mass_energy_op_vec_and_grad()
+            self._mass_energy_op_vec = self._compute_mass_energy_op_vec()
         return self._mass_energy_op_vec
 
     @property
@@ -1683,7 +1704,7 @@ class System2DBase(ABC):
             list: Layer-resolved interaction energy w/o shift
         """
         if self._int_energy_op_vec is None:
-            self._int_energy_op_vec, self._int_energy_op_grad_vec = self._compute_int_energy_op_vec_and_grad()
+            self._int_energy_op_vec = self._compute_int_energy_op_vec()
         return self._int_energy_op_vec
 
     @property
@@ -1695,7 +1716,7 @@ class System2DBase(ABC):
             list: Layer-resolved interaction energy w/o shift
         """
         if self._chem_energy_op_vec is None:
-            self._chem_energy_op_vec, self._chem_energy_op_grad_vec = self._compute_chem_energy_op_vec_and_grad()
+            self._chem_energy_op_vec = self._compute_chem_energy_op_vec()
         return self._chem_energy_op_vec
 
     # Functions that return the layer-resolved gradients of each energy operator
@@ -1719,8 +1740,7 @@ class System2DBase(ABC):
             float: gradient of the mass energy operator (w/o shift) for the whole system
         """
         if self._mass_energy_op_grad_vec is None:
-            self._mass_energy_op_vec, self._mass_energy_op_grad_vec = self._compute_mass_energy_op_vec_and_grad()
-            # self._mass_energy_op_grad_vec *= self.cfg.lattice.size
+            self._mass_energy_op_grad_vec = self._compute_mass_energy_grad()
         return self._mass_energy_op_grad_vec
 
     @property
@@ -1732,8 +1752,7 @@ class System2DBase(ABC):
             float: Gradient of the interaction energy operator (w/o shift) for the whole system
         """
         if self._int_energy_op_grad_vec is None:
-            self._int_energy_op_vec, self._int_energy_op_grad_vec = self._compute_int_energy_op_vec_and_grad()
-            # Do for whole system...
+            self._int_energy_op_grad_vec = self._compute_int_energy_grad()
         return self._int_energy_op_grad_vec
 
     @property
@@ -1745,7 +1764,7 @@ class System2DBase(ABC):
             float: Gradient of the chemical potential energy operator (w/o shift) for the whole system
         """
         if self._chem_energy_op_grad_vec is None:
-            self._chem_energy_op_vec, self._chem_energy_op_grad_vec = self._compute_chem_energy_op_vec_and_grad()
+            self._chem_energy_op_grad_vec = self._compute_chem_energy_grad()
         return self._chem_energy_op_grad_vec
 
     ##################  ######################

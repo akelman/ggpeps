@@ -415,18 +415,13 @@ class D2nSystem2D(System2DBase):
         self.invalidate_gauge_update()
 
     # Observables
-    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv: bool = True):
-        """Compute the mass term of the Hamiltonian for a single site.
-
-        Args:
-            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
-
-        Returns:
-            tuple: Tuple of (mass energy for a single site, gradients)
-        """
+    def _compute_mass_energy_op_vec(self, use_trans_inv: bool = True):
         mass_energy_op = xnp.zeros(self.cfg.nlayer)
+        return mass_energy_op
+
+    def _compute_mass_energy_grad(self, use_trans_inv: bool = True):
         gradients = xnp.zeros(self.cfg.param_shape())
-        return mass_energy_op, gradients
+        return gradients
 
     def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
         """Computation of the electric energy.
@@ -493,26 +488,23 @@ class D2nSystem2D(System2DBase):
                     mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
         return mag_energy_bare
 
-    def _compute_int_energy_op_vec_and_grad(self):
-        """Calculate the energy and energy gradient due to the interaction of the
-        physical fermions with the gauge fields.
-
-        Note: this function assumes that U = U^dagger, which is valid only for Z2.
-        For other groups, the calculation will not be as simple.
-
-        Returns:
-            tuple: Tuple of (interaction energy for a single link, gradients)
-        """
+    def _compute_int_energy_op_vec(self):
 
         int_energy_op = xnp.zeros(self.cfg.nlayer)
-        gradients = xnp.zeros(self.cfg.param_shape())
-        return int_energy_op, xnp.array(gradients)
+        return int_energy_op
 
-    def _compute_chem_energy_op_vec_and_grad(self):
-        """Calculate the chemical potential energy operator and its gradient."""
-        chem_energy_op = xnp.zeros(self.cfg.nlayer)
+    def _compute_int_energy_grad(self):
+
         gradients = xnp.zeros(self.cfg.param_shape())
-        return chem_energy_op, gradients
+        return gradients
+
+    def _compute_chem_energy_op_vec(self):
+        chem_energy_op = xnp.zeros(self.cfg.nlayer)
+        return chem_energy_op
+
+    def _compute_chem_energy_grad(self):
+        gradients = xnp.zeros(self.cfg.param_shape())
+        return gradients
 
     def _meson_string_vec(self, path):
         """Compute a layer resolved meson string for the given path.
