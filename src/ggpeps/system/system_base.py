@@ -1891,9 +1891,14 @@ class System2DBase(ABC):
             self._ferm_covmat_vec = xnp.full(shape, xnp.nan)
 
             for layer in range(self.cfg.nlayer):
-                self._ferm_covmat_vec[layer] = self.mat_a_vec[layer] + (
+                covmat = self.mat_a_vec[layer] + (
                     self.mat_b_vec[layer] @ self.wi_gamma_out_vec[layer].inv() @ xnp.transpose(self.mat_b_vec[layer])
                 )
+
+                if ggpeps.PREFERRED_BACKEND == "jax":
+                    self._ferm_covmat_vec = self._ferm_covmat_vec.at[layer].set(covmat)
+                else:
+                    self._ferm_covmat_vec[layer] = covmat
         return self._ferm_covmat_vec
 
     ################## Mode Permutations ##################
