@@ -302,7 +302,7 @@ class Z2System2D(System2DBase):
             raise NotImplementedError("Translation invariance must be set to True.")
 
         nlayer = num_pg_layer + num_fermionic_layer
-        mass_energy_op = [0] * num_pg_layer
+        mass_energy_op = xnp.zeros(nlayer)
 
         for layer_ind in range(num_pg_layer, nlayer):
             # only the fermionic layers directly contribute to the mass
@@ -316,7 +316,10 @@ class Z2System2D(System2DBase):
             for site_ind in range(0, 2 * lattice_size, 2):
                 layer_mass_energy += 0.5 * (1 + covmat[site_ind + 1, site_ind])
 
-            mass_energy_op.append(xnp.asarray(layer_mass_energy))
+            if ggpeps.PREFERRED_BACKEND == "jax":
+                mass_energy_op = mass_energy_op.at[layer_ind].set(layer_mass_energy)
+            else:
+                mass_energy_op[layer_ind] = xnp.asarray(layer_mass_energy)
 
         mass_energy_op = xnp.asarray(mass_energy_op)
 
