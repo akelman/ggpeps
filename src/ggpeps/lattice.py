@@ -271,42 +271,6 @@ class Lattice2D:
             dest = [(self.coord2ind_dir(*coorddir), conj) for (coorddir, conj) in dest]
         return dest
 
-    # def generate_wilson_loop(self, coord: tuple, size: tuple, use_indices: bool = True) -> list:
-    #     """Generate a Wilson loop with bottom left corner at coord and an extent specified by the tuple size.
-    #     This method is aware of the periodic boundary conditions of the lattice.
-    #     The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
-    #     The <link_id> can be either a tuple of coordinates with a direction or an integer id of a link (depending on use_indices).
-    #     The bool in the tuples returned by this function signifies the orientation.
-    #     "True" means flip gauge field, "False" means no flip.
-
-    #     Args:
-    #         coord (tuple): bottom left corner (x,y) of the Wilson loop
-    #         size (tuple): extent in (x,y)
-    #         use_indices (bool, optional): Use link indices instead of coordinate representation. Defaults to True.
-
-    #     Returns:
-    #         list: List of tuples of the form (link_id,<bool>)
-    #     """
-    #     ext_x, ext_y = size
-    #     x, y = coord
-    #     dest = []
-    #     for i in range(ext_x):
-    #         coord_link = ((x + i) % self.nx, y)
-    #         dest.append(((coord_link, Direction.X), False))
-    #     for i in range(ext_y):
-    #         coord_link = ((x + ext_x) % self.nx, (y + i) % self.ny)
-    #         dest.append(((coord_link, Direction.Y), False))
-    #     for i in range(ext_x):
-    #         coord_link = ((x + ext_x - i - 1) % self.nx, (y + ext_y) % self.ny)
-    #         dest.append(((coord_link, Direction.X), True))
-    #     for i in range(ext_y):
-    #         coord_link = (x, (y + ext_y - i - 1) % self.ny)
-    #         dest.append(((coord_link, Direction.Y), True))
-    #     if use_indices:
-    #         # Transform the coordinates to indices
-    #         dest = [(self.coord2ind_dir(*coorddir), conj) for (coorddir, conj) in dest]
-    #     return dest
-
     def generate_wilson_loop(self, coord: tuple, size: tuple, use_indices: bool = True) -> list:
         """
         Generate a Wilson loop with bottom-left corner at coord and given size.
