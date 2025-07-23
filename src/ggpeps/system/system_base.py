@@ -1797,6 +1797,7 @@ class System2DBase(ABC):
 
     ##################  ######################
 
+    @abstractmethod
     def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
         """Compute the occupation number for the given layer and site.
 
