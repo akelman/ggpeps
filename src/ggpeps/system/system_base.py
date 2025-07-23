@@ -1508,8 +1508,15 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def _compute_int_energy_op_vec_and_grad(self):
-        """Compute the interaction energy and the gradient (for a single layer).
+    def _compute_int_energy_op_vec(self):
+        """Compute the interaction energy (per layer).
+        This is an abstract method and has to be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
+    def _compute_int_energy_grad(self):
+        """Compute the interaction energy gradient.
         This is an abstract method and has to be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
@@ -1725,7 +1732,7 @@ class System2DBase(ABC):
             list: Layer-resolved interaction energy w/o shift
         """
         if self._int_energy_op_vec is None:
-            self._int_energy_op_vec, self._int_energy_op_grad_vec = self._compute_int_energy_op_vec_and_grad()
+            self._int_energy_op_vec = self._compute_int_energy_op_vec()
         return self._int_energy_op_vec
 
     @property
@@ -1773,8 +1780,7 @@ class System2DBase(ABC):
             float: Gradient of the interaction energy operator (w/o shift) for the whole system
         """
         if self._int_energy_op_grad_vec is None:
-            self._int_energy_op_vec, self._int_energy_op_grad_vec = self._compute_int_energy_op_vec_and_grad()
-            # Do for whole system...
+            self._int_energy_op_grad_vec = self._compute_int_energy_grad()
         return self._int_energy_op_grad_vec
 
     @property

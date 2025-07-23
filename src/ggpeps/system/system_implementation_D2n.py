@@ -489,20 +489,15 @@ class D2nSystem2D(System2DBase):
                     mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
         return mag_energy_bare
 
-    def _compute_int_energy_op_vec_and_grad(self):
-        """Calculate the energy and energy gradient due to the interaction of the
-        physical fermions with the gauge fields.
-
-        Note: this function assumes that U = U^dagger, which is valid only for Z2.
-        For other groups, the calculation will not be as simple.
-
-        Returns:
-            tuple: Tuple of (interaction energy for a single link, gradients)
-        """
+    def _compute_int_energy_op_vec(self):
 
         int_energy_op = xnp.zeros(self.cfg.nlayer)
+        return int_energy_op
+
+    def _compute_int_energy_grad(self):
+
         gradients = xnp.zeros(self.cfg.param_shape())
-        return int_energy_op, xnp.array(gradients)
+        return gradients
 
     def _compute_chem_energy_op_vec(self):
         chem_energy_op = xnp.zeros(self.cfg.nlayer)

@@ -442,7 +442,11 @@ class U1System2D(System2DBase):
         else:
             return self._compute_el_energy_op_and_grad_gaussian()[1]
 
-    def _compute_int_energy_op_vec_and_grad(self):
+    def _compute_int_energy_op_vec(self):
+        # This function is not implemented yet!
+        raise NotImplementedError("The interaction energy is not implemented yet for U(1).")
+
+    def _compute_int_energy_grad(self):
         # This function is not implemented yet!
         raise NotImplementedError("The interaction energy is not implemented yet for U(1).")
 

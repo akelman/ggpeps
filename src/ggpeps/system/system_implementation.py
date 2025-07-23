@@ -364,18 +364,17 @@ class Z2System2D(System2DBase):
                     mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
         return mag_energy_bare
 
-    def _compute_int_energy_op_vec_and_grad(self):
-        """Calculate the energy and energy gradient due to the interaction of the
+    def _compute_int_energy_op_vec(self):
+        """Calculate the energy due to the interaction of the
         physical fermions with the gauge fields.
         Note: this function assumes that U = U^dagger, which is valid only for Z2.
         For other groups, the calculation will not be as simple.
 
         Returns:
-            tuple: Tuple of (interaction energy for a single link, gradients)
+            array: interaction energy for a single link
         """
 
         int_energy_op = [0] * self.cfg.num_pg_layer
-        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             layer_int_energy = 0.0
@@ -411,12 +410,61 @@ class Z2System2D(System2DBase):
                 gaugefield_vert = self.gaugefieldvec[ind_field_vert]
                 theta_vert = self.cfg.gaugemgr.get_angle(
                     gaugefield_vert
-                )  # gaugefield_vert is a matrix represntation of a group elemnt
+                )  # gaugefield_vert is a matrix represntation of a group element
                 cos_factor_vert = xnp.cos(theta_vert)
                 vert_link_energy = 0.5 * (
                     covmat[site_ind_cov, neighborY_ind + 1] + covmat[site_ind_cov + 1, neighborY_ind]
                 )
                 layer_int_energy -= vert_link_energy * cos_factor_vert
+
+            int_energy_op.append(layer_int_energy)
+
+        int_energy_op = xnp.asarray(int_energy_op)
+
+        return int_energy_op
+
+    def _compute_int_energy_grad(self):
+        """Calculate the energy gradient due to the interaction of the
+        physical fermions with the gauge fields.
+        Note: this function assumes that U = U^dagger, which is valid only for Z2.
+        For other groups, the calculation will not be as simple.
+
+        Returns:
+            array: gradients
+        """
+
+        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+
+            for site_ind in range(self.cfg.lattice.size):
+                coord = self.cfg.lattice.ind2coord(site_ind)
+
+                # this is the index to use when accessing elements of the covariance matrix,
+                # which has 2 Majorana modes per site
+                site_ind_cov = 2 * site_ind
+
+                # Horizontal link
+                ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X)  # index of the horizontal link
+                neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X)  # coordinates of neighboring site
+                neighborX_ind = 2 * self.cfg.lattice.coord2ind(
+                    neighborX_coord
+                )  # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
+                gaugefield_hor = self.gaugefieldvec[
+                    ind_field_hor
+                ]  # gaugefield_hor is a matrix representation of a group element
+                theta_hor = self.cfg.gaugemgr.get_angle(gaugefield_hor)  # convert it to an angle
+                cos_factor_hor = xnp.cos(theta_hor)  # simple way to get U from gauge value
+
+                # Vertical link
+                ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
+                neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
+                neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
+                gaugefield_vert = self.gaugefieldvec[ind_field_vert]
+                theta_vert = self.cfg.gaugemgr.get_angle(
+                    gaugefield_vert
+                )  # gaugefield_vert is a matrix represntation of a group element
+                cos_factor_vert = xnp.cos(theta_vert)
 
                 # Calculate derivatives
                 for uc_ind in range(self.cfg.unitcell_size):
@@ -424,11 +472,7 @@ class Z2System2D(System2DBase):
                         # the derivative calculation is relatively compuationally expensive
                         # (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
-                        if (
-                            layer_ind,
-                            uc_ind,
-                            symbol_ind,
-                        ) not in self.cfg.zeroed_params:
+                        if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
 
                             d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[symbol_ind]
                             grad = (
@@ -452,10 +496,6 @@ class Z2System2D(System2DBase):
                             elif ggpeps.PREFERRED_BACKEND == "jax":
                                 gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(grad)
 
-            int_energy_op.append(layer_int_energy)
-
-        int_energy_op = xnp.asarray(int_energy_op)
-
         self.cfg.enforce_parameter_conditions(gradients)
 
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy
@@ -464,7 +504,7 @@ class Z2System2D(System2DBase):
         # we simply multiply the int_energy and grads by the norm of the first layer
         # (this is handled higher up in the computation stack).
 
-        return int_energy_op, xnp.array(gradients)
+        return xnp.array(gradients)
 
     def _compute_chem_energy_op_vec(self):
         """Calculate the chemical potential energy operator."""
