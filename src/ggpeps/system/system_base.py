@@ -1465,6 +1465,20 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
+    def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
+        """Compute the electric energy.
+        This is an abstract method and has to be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
+    def _compute_el_grad_vec(self, use_trans_inv: bool = True):
+        """Compute the electric energy gradients.
+        This is an abstract method and has to be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
     def _compute_mass_energy_op_vec(self):
         """Compute the mass energy (per layer).
         This is an abstract method and has to be overwritten in a subclass.
@@ -1507,20 +1521,6 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
-        """Compute the electric energy.
-        This is an abstract method and has to be overwritten in a subclass.
-        """
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
-
-    @abstractmethod
-    def _compute_el_grad_vec(self, use_trans_inv: bool = True):
-        """Compute the electric energy gradients.
-        This is an abstract method and has to be overwritten in a subclass.
-        """
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
-
-    @abstractmethod
     def _meson_string_vec(self, path):
         """Compute a meson string.
         This is an abstract method and has to be overwritten in a subclass.
@@ -1538,10 +1538,10 @@ class System2DBase(ABC):
         """
         if self._energy is None:
             self._energy = 0.0
-            if not utils.isclose(self.cfg.g_el, 0):
-                self._energy += self.el_energy
             if not utils.isclose(self.cfg.g_mag, 0):
                 self._energy += self.mag_energy
+            if not utils.isclose(self.cfg.g_el, 0):
+                self._energy += self.el_energy
             if not utils.isclose(self.cfg.g_mass, 0):
                 self._energy += self.mass_energy
             if not utils.isclose(self.cfg.g_int, 0):
@@ -1549,6 +1549,18 @@ class System2DBase(ABC):
             if not np.allclose(self.cfg.g_chem, 0):
                 self._energy += self.chem_energy
         return self._energy
+
+    @property
+    def mag_energy(self) -> float:
+        """Compute magnetic energy with shift for the whole system
+        This is a get function.
+
+        Returns:
+            float: magnetic energy
+        """
+        nplaq = self.cfg.lattice.nplaquettes
+        mag_energy = self.cfg.g_mag * 2 * (nplaq - self.mag_energy_op)  # The 2 is for the hermitian conjugate
+        return mag_energy
 
     # Functions that return a term of the energy in the Hamiltonian, including all
     # prefactors and energy from the entire lattice.
@@ -1563,18 +1575,6 @@ class System2DBase(ABC):
         nlinks = self.cfg.lattice.nlinks
         el_energy = self.cfg.g_el * 2 * (nlinks - self.el_energy_op)
         return el_energy
-
-    @property
-    def mag_energy(self) -> float:
-        """Compute magnetic energy with shift for the whole system
-        This is a get function.
-
-        Returns:
-            float: magnetic energy
-        """
-        nplaq = self.cfg.lattice.nplaquettes
-        mag_energy = self.cfg.g_mag * 2 * (nplaq - self.mag_energy_op)  # The 2 is for the hermitian conjugate
-        return mag_energy
 
     @property
     def mass_energy(self) -> float:
@@ -1615,6 +1615,18 @@ class System2DBase(ABC):
     # Functions that return the energy for the operator part of a term in the Hamiltonian,
     # including the energy for the entire lattice, but not any shifts or prefactors.
     @property
+    def mag_energy_op(self) -> float:
+        """Compute the magnetic energy operator for the whole system without shift.
+        This is a get function.
+
+        Returns:
+            float: Magnetic energy operator (w/o shift) for the whole system
+        """
+        if self._mag_energy_op is None:
+            self._mag_energy_op = self._compute_mag_energy_op()
+        return self._mag_energy_op
+
+    @property
     def el_energy_op(self) -> float:
         """Compute electric energy (w/o shift) for the whole system.
         This is a get function.
@@ -1627,18 +1639,6 @@ class System2DBase(ABC):
             nlinks = self.cfg.lattice.nlinks
             self._el_energy_op = nlinks * xnp.prod(self.el_energy_op_vec)
         return self._el_energy_op
-
-    @property
-    def mag_energy_op(self) -> float:
-        """Compute the magnetic energy operator for the whole system without shift.
-        This is a get function.
-
-        Returns:
-            float: Magnetic energy operator (w/o shift) for the whole system
-        """
-        if self._mag_energy_op is None:
-            self._mag_energy_op = self._compute_mag_energy_op()
-        return self._mag_energy_op
 
     @property
     def mass_energy_op(self) -> float:
