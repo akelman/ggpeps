@@ -315,7 +315,17 @@ class Z2System2D(System2DBase):
 
         return mass_energy_op
 
-    def _compute_mass_energy_grad(self, use_trans_inv: bool = True):
+    @staticmethod
+    def _compute_mass_energy_grad(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        symbolvec: list,
+        d_gamma_out_symbolvec: xnp.array,
+        zeroed_params: list,
+        use_trans_inv: bool = True,
+    ):
         """Compute the mass term of the Hamiltonian for a single site.
 
         Args:
@@ -327,21 +337,23 @@ class Z2System2D(System2DBase):
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
 
-        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+        nlayer = num_pg_layer + num_fermionic_layer
+        param_shape = (nlayer, unitcell_size, len(symbolvec))
+        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
 
-        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+        for layer_ind in range(num_pg_layer, nlayer):
             # only the fermionic layers directly contribute to the mass
 
-            for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
+            for site_ind in range(0, 2 * lattice_size, 2):
 
-                for uc_ind in range(self.cfg.unitcell_size):
-                    for symbol_ind, symbol in enumerate(self.symbolvec):
+                for uc_ind in range(unitcell_size):
+                    for symbol_ind, symbol in enumerate(symbolvec):
                         # the derivative calculation is relatively compuationally expensive
                         # (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
-                        if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
+                        if (layer_ind, uc_ind, symbol_ind) not in zeroed_params:
 
-                            d_gamma_out = self.d_gamma_out_symbolvec()[layer_ind, uc_ind, symbol_ind]
+                            d_gamma_out = d_gamma_out_symbolvec[layer_ind, uc_ind, symbol_ind]
                             if ggpeps.PREFERRED_BACKEND == "numpy":
                                 gradients[layer_ind, uc_ind, symbol_ind] += 0.5 * d_gamma_out[site_ind + 1, site_ind]
                             elif ggpeps.PREFERRED_BACKEND == "jax":
