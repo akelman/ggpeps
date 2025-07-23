@@ -1512,9 +1512,9 @@ class System2DBase(ABC):
         num_pg_layer: int,
         num_fermionic_layer: int,
         unitcell_size: int,
-        symbolvec: list,
+        symbolvec: tuple,
         d_gamma_out_symbolvec: xnp.array,
-        zeroed_params: list,
+        zeroed_params: tuple,
         use_trans_inv: bool = True,
     ):
         """Compute the mass energy gradient.
@@ -1780,9 +1780,9 @@ class System2DBase(ABC):
                 self.cfg.num_pg_layer,
                 self.cfg.num_fermionic_layer,
                 self.cfg.unitcell_size,
-                self.cfg.symbolvec,
+                tuple(self.cfg.symbolvec),
                 self.d_gamma_out_symbolvec(),
-                self.cfg.zeroed_params,
+                tuple(self.cfg.zeroed_params),
                 use_trans_inv=True,
             )
         return self._mass_energy_op_grad_vec

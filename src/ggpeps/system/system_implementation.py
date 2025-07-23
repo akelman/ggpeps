@@ -1,6 +1,9 @@
 import logging
 from pfapack import pfaffian as pf
 
+import jax
+from functools import partial
+
 import numpy as np
 from ggpeps import xnp as xnp
 from ggpeps import xscipy as xscipy
@@ -283,6 +286,7 @@ class Z2System2D(System2DBase):
         return gradients
 
     @staticmethod
+    @partial(jax.jit, static_argnames=["lattice_size", "use_trans_inv", "num_pg_layer", "num_fermionic_layer"])
     def _compute_mass_energy_op_vec(
         lattice_size: int,
         num_pg_layer: int,
@@ -326,12 +330,24 @@ class Z2System2D(System2DBase):
         return mass_energy_op
 
     @staticmethod
+    @partial(
+        jax.jit,
+        static_argnames=[
+            "lattice_size",
+            "symbolvec",
+            "unitcell_size",
+            "use_trans_inv",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "zeroed_params",
+        ],
+    )
     def _compute_mass_energy_grad(
         lattice_size: int,
         num_pg_layer: int,
         num_fermionic_layer: int,
         unitcell_size: int,
-        symbolvec: list,
+        symbolvec: tuple,
         d_gamma_out_symbolvec: xnp.array,
         zeroed_params: list,
         use_trans_inv: bool = True,
