@@ -174,86 +174,32 @@ class Z2System2D(System2DBase):
         self.invalidate_gauge_update()
 
     ################## Observables ##################
+    def _compute_mag_energy_op(self, use_trans_inv: bool = True):
+        """Computation of the magnetic energy operator (w/o shift).
+        This operator is diagonal in the gauge field (group element) basis and can thus
+        be computed easily.
 
-    def _compute_mass_energy_op_vec(self, use_trans_inv: bool = True):
-        """Compute the mass term of the Hamiltonian for a single site.
-
-        Args:
-            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
-
-        Returns:
-            array: mass energy as a vec over layers
-        """
-        if not use_trans_inv:
-            raise NotImplementedError("Translation invariance must be set to True.")
-
-        mass_energy_op = [0] * self.cfg.num_pg_layer
-
-        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
-            # only the fermionic layers directly contribute to the mass
-
-            # Calculation prelimaries
-            covmat = self.compute_ferm_cov(layer_ind)
-            layer_mass_energy = 0.0
-
-            # Calculate mass term
-            # Since the system is translationally invariant, we could just calculate it
-            # for one site and multiply by nsites instead
-            for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
-                layer_mass_energy += 0.5 * (1 + covmat[site_ind + 1, site_ind])
-
-            mass_energy_op.append(xnp.asarray(layer_mass_energy))
-
-        mass_energy_op = xnp.asarray(mass_energy_op)
-
-        return mass_energy_op
-
-    def _compute_mass_energy_grad(self, use_trans_inv: bool = True):
-        """Compute the mass term of the Hamiltonian for a single site.
+        This method overwrites an abstract method in System2DBase.
 
         Args:
-            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
+            use_trans_inv (bool, optional): Use the translationally invariant computation method. Defaults to True.
 
         Returns:
-            array: gradients of the mass energy
+            float: magnetic energy w/o shift for a single plaquette
         """
-        if not use_trans_inv:
-            raise NotImplementedError("Translation invariance must be set to True.")
-
-        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
-
-        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
-            # only the fermionic layers directly contribute to the mass
-
-            for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
-
-                for uc_ind in range(self.cfg.unitcell_size):
-                    for symbol_ind, symbol in enumerate(self.symbolvec):
-                        # the derivative calculation is relatively compuationally expensive
-                        # (though less than for electric energy)
-                        # we can skip it for parameters that are forced by the ansatz to be zero
-                        if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
-
-                            d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[symbol_ind]
-                            if ggpeps.PREFERRED_BACKEND == "numpy":
-                                gradients[layer_ind, uc_ind, symbol_ind] += 0.5 * d_gamma_out[site_ind + 1, site_ind]
-                            elif ggpeps.PREFERRED_BACKEND == "jax":
-                                gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(
-                                    0.5 * d_gamma_out[site_ind + 1, site_ind]
-                                )
-
-                    # further terms of the derivative are included higher up in the computation stack
-                    # because computing them requires knowing various expectation values, which are not available here
-
-        self.cfg.enforce_parameter_conditions(gradients)
-
-        # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy
-        # operator expectation of the other layers. They act as a prefactor in the derivative.
-        # However, here, because the mass term only acts on the fermionic layers, we simply multiply the mass_energy
-        # and grads by the norm of the first layer
-        # (this is handled higher up in the computation stack).
-
-        return xnp.array(gradients)
+        if use_trans_inv:
+            # Evaluate one plaquette and multiply by number of plaquettes
+            wilson_plaquette = self.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
+            nplaq = self.cfg.lattice.nplaquettes
+            mag_energy_bare = nplaq * xnp.real(self.compute_path(wilson_plaquette))
+        else:
+            # Evaluate every plaquette of the system
+            mag_energy_bare = 0
+            for x in range(self.cfg.lattice.nx):
+                for y in range(self.cfg.lattice.ny):
+                    wilson_plaquette = self.cfg.lattice.generate_wilson_loop((x, y), (1, 1))
+                    mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
+        return mag_energy_bare
 
     def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
         """Computation of the electric energy.
@@ -337,32 +283,85 @@ class Z2System2D(System2DBase):
         gradients = compute_el_grad_vec(self)
         return gradients
 
-    def _compute_mag_energy_op(self, use_trans_inv: bool = True):
-        """Computation of the magnetic energy operator (w/o shift).
-        This operator is diagonal in the gauge field (group element) basis and can thus
-        be computed easily.
-
-        This method overwrites an abstract method in System2DBase.
+    def _compute_mass_energy_op_vec(self, use_trans_inv: bool = True):
+        """Compute the mass term of the Hamiltonian for a single site.
 
         Args:
-            use_trans_inv (bool, optional): Use the translationally invariant computation method. Defaults to True.
+            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
 
         Returns:
-            float: magnetic energy w/o shift for a single plaquette
+            array: mass energy as a vec over layers
         """
-        if use_trans_inv:
-            # Evaluate one plaquette and multiply by number of plaquettes
-            wilson_plaquette = self.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
-            nplaq = self.cfg.lattice.nplaquettes
-            mag_energy_bare = nplaq * xnp.real(self.compute_path(wilson_plaquette))
-        else:
-            # Evaluate every plaquette of the system
-            mag_energy_bare = 0
-            for x in range(self.cfg.lattice.nx):
-                for y in range(self.cfg.lattice.ny):
-                    wilson_plaquette = self.cfg.lattice.generate_wilson_loop((x, y), (1, 1))
-                    mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
-        return mag_energy_bare
+        if not use_trans_inv:
+            raise NotImplementedError("Translation invariance must be set to True.")
+
+        mass_energy_op = [0] * self.cfg.num_pg_layer
+
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            # only the fermionic layers directly contribute to the mass
+
+            # Calculation prelimaries
+            covmat = self.compute_ferm_cov(layer_ind)
+            layer_mass_energy = 0.0
+
+            # Calculate mass term
+            # Since the system is translationally invariant, we could just calculate it
+            # for one site and multiply by nsites instead
+            for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
+                layer_mass_energy += 0.5 * (1 + covmat[site_ind + 1, site_ind])
+
+            mass_energy_op.append(xnp.asarray(layer_mass_energy))
+
+        mass_energy_op = xnp.asarray(mass_energy_op)
+
+        return mass_energy_op
+
+    def _compute_mass_energy_grad(self, use_trans_inv: bool = True):
+        """Compute the mass term of the Hamiltonian for a single site.
+
+        Args:
+            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
+
+        Returns:
+            array: gradients of the mass energy
+        """
+        if not use_trans_inv:
+            raise NotImplementedError("Translation invariance must be set to True.")
+
+        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            # only the fermionic layers directly contribute to the mass
+
+            for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
+
+                for uc_ind in range(self.cfg.unitcell_size):
+                    for symbol_ind, symbol in enumerate(self.symbolvec):
+                        # the derivative calculation is relatively compuationally expensive
+                        # (though less than for electric energy)
+                        # we can skip it for parameters that are forced by the ansatz to be zero
+                        if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
+
+                            d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[symbol_ind]
+                            if ggpeps.PREFERRED_BACKEND == "numpy":
+                                gradients[layer_ind, uc_ind, symbol_ind] += 0.5 * d_gamma_out[site_ind + 1, site_ind]
+                            elif ggpeps.PREFERRED_BACKEND == "jax":
+                                gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(
+                                    0.5 * d_gamma_out[site_ind + 1, site_ind]
+                                )
+
+                    # further terms of the derivative are included higher up in the computation stack
+                    # because computing them requires knowing various expectation values, which are not available here
+
+        self.cfg.enforce_parameter_conditions(gradients)
+
+        # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy
+        # operator expectation of the other layers. They act as a prefactor in the derivative.
+        # However, here, because the mass term only acts on the fermionic layers, we simply multiply the mass_energy
+        # and grads by the norm of the first layer
+        # (this is handled higher up in the computation stack).
+
+        return xnp.array(gradients)
 
     def _compute_int_energy_op_vec(self):
         """Calculate the energy due to the interaction of the
