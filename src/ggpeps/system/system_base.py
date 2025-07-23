@@ -295,7 +295,7 @@ class System2DBase(ABC):
         self._mat_d_inv_vec: Optional[xnp.ndarray] = None
 
         # Full covariance matrix (gamma_out) of the fermions
-        self._ferm_covmat_vec: Optional[list[xnp.ndarray]] = None
+        self._ferm_covmat_vec: Optional[xnp.ndarray] = None
 
         # Parameter dependent quantities for the electric energy
         self._mat_a_mod_vec: Optional[xnp.ndarray] = None
@@ -1877,20 +1877,24 @@ class System2DBase(ABC):
                 path_product = path_product @ self.gaugefieldvec[ind]
         return xnp.trace(path_product)
 
-    def compute_ferm_cov(self, layer: int) -> xnp.ndarray:
+    def compute_ferm_cov(self) -> xnp.ndarray:
         """Compute the covariance matrix of the fermions in the system for the given layer.
-        We do not calculate it for all layers automatically, since it is not needed for pure-gauge layers.
+        We calculate it for all layers automatically, even though it is not needed for pure-gauge layers.
+        TODO: investigate whether skipping the pure-gauge layers is worthwhile.
 
-        Args:
-            layer (int): the layer for which the covmat should be calculated
+        Returns:
+            array: array[lay] is the covmat in that layer
         """
         if self._ferm_covmat_vec is None:
-            self._ferm_covmat_vec = [None] * self.cfg.nlayer
-        if self._ferm_covmat_vec[layer] is None:
-            self._ferm_covmat_vec[layer] = self.mat_a_vec[layer] + (
-                self.mat_b_vec[layer] @ self.wi_gamma_out_vec[layer].inv() @ xnp.transpose(self.mat_b_vec[layer])
-            )
-        return self._ferm_covmat_vec[layer]
+            dim_gamma_out = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
+            shape = (self.cfg.nlayer, dim_gamma_out, dim_gamma_out)
+            self._ferm_covmat_vec = xnp.full(shape, xnp.nan)
+
+            for layer in range(self.cfg.nlayer):
+                self._ferm_covmat_vec[layer] = self.mat_a_vec[layer] + (
+                    self.mat_b_vec[layer] @ self.wi_gamma_out_vec[layer].inv() @ xnp.transpose(self.mat_b_vec[layer])
+                )
+        return self._ferm_covmat_vec
 
     ################## Mode Permutations ##################
 

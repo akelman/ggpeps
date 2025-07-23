@@ -300,7 +300,7 @@ class Z2System2D(System2DBase):
             # only the fermionic layers directly contribute to the mass
 
             # Calculation prelimaries
-            covmat = self.compute_ferm_cov(layer_ind)
+            covmat = self.compute_ferm_cov()[layer_ind]
             layer_mass_energy = 0.0
 
             # Calculate mass term
@@ -380,7 +380,7 @@ class Z2System2D(System2DBase):
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             layer_int_energy = 0.0
-            covmat = self.compute_ferm_cov(layer_ind)
+            covmat = self.compute_ferm_cov()[layer_ind]
 
             for site_ind in range(self.cfg.lattice.size):
                 coord = self.cfg.lattice.ind2coord(site_ind)
@@ -509,7 +509,7 @@ class Z2System2D(System2DBase):
             # only the fermionic layers directly contribute to the chemical potential
 
             # Calculation prelimaries
-            covmat = self.compute_ferm_cov(layer_ind)
+            covmat = self.compute_ferm_cov()[layer_ind]
             layer_chem_energy = 0.0
 
             # Calculate chem term
@@ -594,7 +594,7 @@ class Z2System2D(System2DBase):
         site_ind_cov_fin = 2 * end_site_ind
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
-            covmat = self.compute_ferm_cov(layer_ind)
+            covmat = self.compute_ferm_cov()[layer_ind]
 
             # Since for the L-shaped strings considered here the endpoints are always on the same sublattice,
             # we still have \psi^\dagger \psi after the PH transformation
@@ -625,7 +625,7 @@ class Z2System2D(System2DBase):
             float: the occupation number for the given layer and site
         """
 
-        covmat = self.compute_ferm_cov(lay)
+        covmat = self.compute_ferm_cov()[lay]
         site_ind = 2 * site  # index into covariance matrix
 
         x, y = self.cfg.lattice.ind2coord(site)
