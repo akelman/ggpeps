@@ -330,17 +330,27 @@ class Lattice2D:
             list: List of tuples of the form (link_id,<bool>)
         """
         ext_x, ext_y = size
-        x, y = coord
         dest = []
-        for i in range(ext_x):
-            coord_link = ((x + i) % self.nx, y)
-            dest.append(((coord_link, Direction.X), False))
-        for i in range(ext_y):
-            coord_link = ((x + ext_x) % self.nx, (y + i) % self.ny)
-            dest.append(((coord_link, Direction.Y), False))
-        if use_indices:
-            # Transform the coordinates to indices
-            dest = [(self.coord2ind_dir(*coorddir), conj) for (coorddir, conj) in dest]
+
+        # Helper to append links, converting to indices if needed
+        def add_link(coord_edge, direction, orientation):
+            if use_indices:
+                link = (self.coord2ind_dir(coord_edge, direction), orientation)
+            else:
+                link = ((coord_edge, direction), orientation)
+            dest.append(link)
+
+        # Horizontal segment (left → right, natural orientation)
+        coord_edge = coord
+        for _ in range(ext_x):
+            add_link(coord_edge, Direction.X, False)
+            coord_edge = self.get_neighbor(coord_edge, Direction.X, orientation=True)
+
+        # Vertical segment (bottom → top, natural orientation)
+        for _ in range(ext_y):
+            add_link(coord_edge, Direction.Y, False)
+            coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=True)
+
         return dest
 
     def generate_allowed_loop_dimensions(self, include_all: bool = False) -> list:
