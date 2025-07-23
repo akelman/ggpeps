@@ -504,11 +504,13 @@ class D2nSystem2D(System2DBase):
         gradients = xnp.zeros(self.cfg.param_shape())
         return int_energy_op, xnp.array(gradients)
 
-    def _compute_chem_energy_op_vec_and_grad(self):
-        """Calculate the chemical potential energy operator and its gradient."""
+    def _compute_chem_energy_op_vec(self):
         chem_energy_op = xnp.zeros(self.cfg.nlayer)
+        return chem_energy_op
+
+    def _compute_chem_energy_grad(self):
         gradients = xnp.zeros(self.cfg.param_shape())
-        return chem_energy_op, gradients
+        return gradients
 
     def _meson_string_vec(self, path):
         """Compute a layer resolved meson string for the given path.

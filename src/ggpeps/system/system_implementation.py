@@ -466,11 +466,10 @@ class Z2System2D(System2DBase):
 
         return int_energy_op, xnp.array(gradients)
 
-    def _compute_chem_energy_op_vec_and_grad(self):
-        """Calculate the chemical potential energy operator and its gradient."""
+    def _compute_chem_energy_op_vec(self):
+        """Calculate the chemical potential energy operator."""
 
         chem_energy_op = [0] * self.cfg.num_pg_layer
-        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             # only the fermionic layers directly contribute to the chemical potential
@@ -491,16 +490,35 @@ class Z2System2D(System2DBase):
                 layer_chem_energy += site_factor * mass_site
                 layer_chem_energy += 0.5  # constant offset which arises from particle-hole transformation
 
+            chem_energy_op.append(np.asarray(layer_chem_energy))
+
+        chem_energy_op = np.asarray(chem_energy_op)
+
+        return chem_energy_op
+
+    def _compute_chem_energy_grad(self):
+        """Calculate the chemical potential energy operator gradient."""
+
+        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            # only the fermionic layers directly contribute to the chemical potential
+
+            # Calculate chem term
+            # Since we set the system to have different parameters on the even and odd sites when using a non-zero
+            # chemical potential (i.e. the system is translationally invariant by two sites),
+            # we could just calculate it for one even and one odd site and multiply by the size of the system
+            for site in range(self.cfg.lattice.size):
+                site_ind = 2 * site  # index into covariance matrix
+                x, y = self.cfg.lattice.ind2coord(site)
+                site_factor = (-1) ** (x + y)  # even or odd sublattice
+
                 for uc_ind in range(self.cfg.unitcell_size):
                     for symbol_ind, symbol in enumerate(self.symbolvec):
                         # the derivative calculation is relatively compuationally expensive
                         # (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
-                        if (
-                            layer_ind,
-                            uc_ind,
-                            symbol_ind,
-                        ) not in self.cfg.zeroed_params:
+                        if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
 
                             d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[symbol_ind]
                             if ggpeps.PREFERRED_BACKEND == "numpy":
@@ -515,13 +533,9 @@ class Z2System2D(System2DBase):
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
 
-            chem_energy_op.append(np.asarray(layer_chem_energy))
-
-        chem_energy_op = np.asarray(chem_energy_op)
-
         self.cfg.enforce_parameter_conditions(gradients)
 
-        return chem_energy_op, gradients
+        return gradients
 
     def _meson_string_vec(self, path):
         r"""Compute a layer resolved meson string for the given path.

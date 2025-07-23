@@ -446,8 +446,12 @@ class U1System2D(System2DBase):
         # This function is not implemented yet!
         raise NotImplementedError("The interaction energy is not implemented yet for U(1).")
 
-    def _compute_chem_energy_op_vec_and_grad(self):
-        """Calculate the chemical potential energy operator and its gradient."""
+    def _compute_chem_energy_op_vec(self):
+        """Calculate the chemical potential energy operator."""
+        raise NotImplementedError("The chemical potential energy is not implemented yet for U(1).")
+
+    def _compute_chem_energy_grad(self):
+        """Calculate the chemical potential energy gradient."""
         raise NotImplementedError("The chemical potential energy is not implemented yet for U(1).")
 
     def _meson_string_vec(self, path):

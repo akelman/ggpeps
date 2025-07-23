@@ -1515,8 +1515,15 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def _compute_chem_energy_op_vec_and_grad(self):
-        """Compute the chemical potential energy and the gradient (per layer).
+    def _compute_chem_energy_op_vec(self):
+        """Compute the chemical potential energy (per layer).
+        This is an abstract method and has to be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
+    def _compute_chem_energy_grad(self):
+        """Compute the chemical potential energy gradient.
         This is an abstract method and has to be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
@@ -1730,7 +1737,7 @@ class System2DBase(ABC):
             list: Layer-resolved interaction energy w/o shift
         """
         if self._chem_energy_op_vec is None:
-            self._chem_energy_op_vec, self._chem_energy_op_grad_vec = self._compute_chem_energy_op_vec_and_grad()
+            self._chem_energy_op_vec = self._compute_chem_energy_op_vec()
         return self._chem_energy_op_vec
 
     # Functions that return the layer-resolved gradients of each energy operator
@@ -1779,7 +1786,7 @@ class System2DBase(ABC):
             float: Gradient of the chemical potential energy operator (w/o shift) for the whole system
         """
         if self._chem_energy_op_grad_vec is None:
-            self._chem_energy_op_vec, self._chem_energy_op_grad_vec = self._compute_chem_energy_op_vec_and_grad()
+            self._chem_energy_op_grad_vec = self._compute_chem_energy_grad()
         return self._chem_energy_op_grad_vec
 
     ##################  ######################
