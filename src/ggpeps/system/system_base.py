@@ -330,9 +330,11 @@ class System2DBase(ABC):
         self._mass_energy_op_grad_vec: Optional[xnp.ndarray] = None
         self._int_energy_op_grad_vec: Optional[xnp.ndarray] = None
         self._chem_energy_op_grad_vec = None
-        self._d_gamma_out_symbolvec: Optional[list[list[list[xnp.ndarray]]]] = (
-            None  # gradients of gamma_out for all symbols: first index is layer, second index uc_ind, third is symbol
-        )
+
+        # gradients of gamma_out for all symbols: _d_gamma_out_symbolvec[lay, uc_ind, symbol]
+        # is the matrix of derivatives of gamma_out[lay] wrt the parameter at that (lay, uc_ind, symbol)
+        self._d_gamma_out_symbolvec: Optional[xnp.ndarray] = None
+
         self._grad_over_norm_dict: Optional[dict[tuple[int, int, sympy.Symbol], float]] = {
             (lay, uc_ind, symb): None
             for lay, uc_ind, symb in it.product(
@@ -577,34 +579,43 @@ class System2DBase(ABC):
             gamma_maj_sys_vec.append(dest)
         return xnp.array(gamma_maj_sys_vec)
 
-    def d_gamma_out_symbolvec(self, layer: int, uc_ind: int):
-        """Return a vector containing the derivatives of gamma_out (for the given layer) for each symbol.
+    def d_gamma_out_symbolvec(self) -> xnp.ndarray:
+        """Return a vector containing the derivatives of gamma_out for each symbol.
 
         Returns:
-            [list]: List of xnp.ndarrays, with length equal to the number of symbols.
+            array: d_gamma_out_symbolvec[layer, uc_ind, symbol] is the matrix of derivatives of gamma_out[lay]
+                   wrt the parameter at that (lay, uc_ind, symbol)
         """
         if self._d_gamma_out_symbolvec is None:
-            self._d_gamma_out_symbolvec = [None] * self.cfg.nlayer
-        if self._d_gamma_out_symbolvec[layer] is None:
-            self._d_gamma_out_symbolvec[layer] = [None] * self.cfg.unitcell_size
-        if self._d_gamma_out_symbolvec[layer][uc_ind] is None:
-            self._d_gamma_out_symbolvec[layer][uc_ind] = []
-            offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
+            dim_gamma_out = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
+            shape = (self.cfg.nlayer, self.cfg.unitcell_size, len(self.symbolvec), dim_gamma_out, dim_gamma_out)
+            self._d_gamma_out_symbolvec = xnp.full(shape, xnp.nan)
 
-            for symbol in self.symbolvec:
-                mat_b = self.mat_b_vec[layer]
-                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layer, uc_ind]
-                d_mat_a, d_mat_b, d_mat_d = backend.extract_partial_covmats(deriv_gamma_maj_sys, offset)
-                diff_d_gamma_inv = self.wi_gamma_out_vec[layer].inv()
-                d_gamma_out = (
-                    d_mat_a
-                    + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
-                    + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
-                    - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ xnp.transpose(mat_b)
-                )
-                self._d_gamma_out_symbolvec[layer][uc_ind].append(d_gamma_out)
+            for layer in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+                for uc_ind in range(self.cfg.unitcell_size):
+                    offset = dim_gamma_out
 
-        return self._d_gamma_out_symbolvec[layer][uc_ind]
+                    for ind, symbol in enumerate(self.symbolvec):
+                        mat_b = self.mat_b_vec[layer]
+                        deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layer, uc_ind]
+                        d_mat_a, d_mat_b, d_mat_d = backend.extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                        diff_d_gamma_inv = self.wi_gamma_out_vec[layer].inv()
+                        d_gamma_out = (
+                            d_mat_a
+                            + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                            + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
+                            - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                        )
+
+                        if ggpeps.PREFERRED_BACKEND == "jax":
+                            self._d_gamma_out_symbolvec = self._d_gamma_out_symbolvec.at[layer, uc_ind, ind].set(
+                                d_gamma_out
+                            )
+                        else:
+                            self._d_gamma_out_symbolvec[layer, uc_ind, ind] = d_gamma_out
+
+            self._d_gamma_out_symbolvec = xnp.array(self._d_gamma_out_symbolvec)
+        return self._d_gamma_out_symbolvec
 
     @property
     def gamma_maj_sys_vec(self):
