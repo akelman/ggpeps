@@ -33,6 +33,37 @@ class TestLattice(unittest.TestCase):
             self.lat2d.coord2ind_dir((0, -1), Direction.Y) == self.lat2d.nx * self.lat2d.ny + self.lat2d.ny - 1
         )
 
+    def test_get_neighbor_all_directions_3x3(self):
+        """Checks all four neighbors (right, left, up, down) for every site in a 3x3 lattice,
+        ensuring correct periodic boundary conditions.
+        """
+        lat3x3 = lattice.Lattice2D(3, 3)
+
+        expected_neighbors = {
+            # (x, y): (right, left, up, down)
+            (0, 0): ((1, 0), (2, 0), (0, 1), (0, 2)),
+            (1, 0): ((2, 0), (0, 0), (1, 1), (1, 2)),
+            (2, 0): ((0, 0), (1, 0), (2, 1), (2, 2)),
+            (0, 1): ((1, 1), (2, 1), (0, 2), (0, 0)),
+            (1, 1): ((2, 1), (0, 1), (1, 2), (1, 0)),
+            (2, 1): ((0, 1), (1, 1), (2, 2), (2, 0)),
+            (0, 2): ((1, 2), (2, 2), (0, 0), (0, 1)),
+            (1, 2): ((2, 2), (0, 2), (1, 0), (1, 1)),
+            (2, 2): ((0, 2), (1, 2), (2, 0), (2, 1)),
+        }
+
+        for coord, (right, left, up, down) in expected_neighbors.items():
+            with self.subTest(coord=coord):
+                right_neighbor = lat3x3.get_neighbor(coord, lattice.Direction.X, True)
+                left_neighbor = lat3x3.get_neighbor(coord, lattice.Direction.X, False)
+                up_neighbor = lat3x3.get_neighbor(coord, lattice.Direction.Y, True)
+                down_neighbor = lat3x3.get_neighbor(coord, lattice.Direction.Y, False)
+
+                self.assertEqual(right_neighbor, right, f"Right neighbor incorrect for {coord}")
+                self.assertEqual(left_neighbor, left, f"Left neighbor incorrect for {coord}")
+                self.assertEqual(up_neighbor, up, f"Up neighbor incorrect for {coord}")
+                self.assertEqual(down_neighbor, down, f"Down neighbor incorrect for {coord}")
+
     def test_wilson_loop_1x1(self):
         ref = [
             (((0, 0), lattice.Direction.X), False),

@@ -23,6 +23,7 @@ class Direction(IntEnum):
 class Lattice2D:
     """
     Handler of a square lattice of size nx x ny
+    TODO add boundary conditions and other relavent information.
 
     Args:
         nx (int): Extend of the lattice in x direction (given in number of vertices)
@@ -158,25 +159,35 @@ class Lattice2D:
             logger.error("coord2ind_dir: There are only X and Y as directions", file=sys.stderr)
             return None
 
-    def get_neighbor(self, coord: tuple, orient: Direction) -> tuple:
-        """Get the next coordinate tuple in a given direction (wraps around periodic boundary conditions)
+    def get_neighbor(self, coord: tuple, direction: Direction, orientation: bool = True) -> tuple:
+        """Get the neighboring plaquette/site coordinates in a given direction.
+        This method is aware of the periodic boundary conditions of the lattice.
 
         Args:
-            coord (tuple): (x,y) coordinates of the original point
-            orient (Direction): direction of the desired neighbor
+            coord (tuple): (x, y) coordinates of the current plaquette or site.
+            direction (Direction): Direction to move (Direction.X or Direction.Y).
+            orientation (bool, optional):
+                True  → positive direction (right for X, up for Y)
+                False → negative direction (left for X, down for Y)
+                Defaults to True.
 
         Returns:
-            tuple: (x,y) coordinate of the next point
+            tuple: (x, y) coordinates of the neighboring plaquette/site.
         """
-        # We assume periodic boundary conditions
         x, y = coord
-        if orient == Direction.X:
-            xn = (x + 1) % self.nx
-            yn = y
-        elif orient == Direction.Y:
-            xn = x
-            yn = (y + 1) % self.ny
-        return (xn, yn)
+        if direction == Direction.X:
+            if orientation:  # Move right
+                return ((x + 1) % self.nx, y)
+            else:  # Move left
+                return ((x - 1) % self.nx, y)
+        elif direction == Direction.Y:
+            if orientation:  # Move up
+                return (x, (y + 1) % self.ny)
+            else:  # Move down
+                return (x, (y - 1) % self.ny)
+        else:
+            logger.error("get_neighbor: Only X and Y directions are supported")
+            return None
 
     def get_path_endpoints(self, path, use_indices: bool = True) -> tuple:
         """Get the lattice site endpoints of a path.
@@ -224,12 +235,13 @@ class Lattice2D:
         return (start_site_coord, end_site_coord)
 
     def generate_polyakov_loop(self, coord: tuple, dir: Direction, use_indices: bool = True) -> list:
-        """Generate a Polyakov loop, a loop around the full system.
+        """Generate a Polyakov loop in the positive direction, a loop around the full system.
         We only need one point so start from and a direction.
         The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
-        The <link_id> can be either a tuple of coordinates or an integer id of a link (depending on use_indices).
+        The <link_id> can be either a tuple of coordinates ((x,y), dir), or an integer id of a link (depending on use_indices).
         The bool in the tuples returned by this function signifies the orientation.
         "True" means flip gauge field, "False" means no flip.
+        And since the loop is constructed in the positive direction, we will get a list of (link_id, False) elements.
 
         Args:
             coord (tuple): Coordinate to start from
@@ -259,40 +271,81 @@ class Lattice2D:
             dest = [(self.coord2ind_dir(*coorddir), conj) for (coorddir, conj) in dest]
         return dest
 
+    # def generate_wilson_loop(self, coord: tuple, size: tuple, use_indices: bool = True) -> list:
+    #     """Generate a Wilson loop with bottom left corner at coord and an extent specified by the tuple size.
+    #     This method is aware of the periodic boundary conditions of the lattice.
+    #     The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
+    #     The <link_id> can be either a tuple of coordinates with a direction or an integer id of a link (depending on use_indices).
+    #     The bool in the tuples returned by this function signifies the orientation.
+    #     "True" means flip gauge field, "False" means no flip.
+
+    #     Args:
+    #         coord (tuple): bottom left corner (x,y) of the Wilson loop
+    #         size (tuple): extent in (x,y)
+    #         use_indices (bool, optional): Use link indices instead of coordinate representation. Defaults to True.
+
+    #     Returns:
+    #         list: List of tuples of the form (link_id,<bool>)
+    #     """
+    #     ext_x, ext_y = size
+    #     x, y = coord
+    #     dest = []
+    #     for i in range(ext_x):
+    #         coord_link = ((x + i) % self.nx, y)
+    #         dest.append(((coord_link, Direction.X), False))
+    #     for i in range(ext_y):
+    #         coord_link = ((x + ext_x) % self.nx, (y + i) % self.ny)
+    #         dest.append(((coord_link, Direction.Y), False))
+    #     for i in range(ext_x):
+    #         coord_link = ((x + ext_x - i - 1) % self.nx, (y + ext_y) % self.ny)
+    #         dest.append(((coord_link, Direction.X), True))
+    #     for i in range(ext_y):
+    #         coord_link = (x, (y + ext_y - i - 1) % self.ny)
+    #         dest.append(((coord_link, Direction.Y), True))
+    #     if use_indices:
+    #         # Transform the coordinates to indices
+    #         dest = [(self.coord2ind_dir(*coorddir), conj) for (coorddir, conj) in dest]
+    #     return dest
+
     def generate_wilson_loop(self, coord: tuple, size: tuple, use_indices: bool = True) -> list:
-        """Generate a Wilson loop with bottom left corner at coord and an extent specified by the tuple size.
-        This method is aware of the periodic boundary conditions of the lattice.
-        The loop is returned in the format [(link_id,bool),...,(link_id,bool)].
-        The <link_id> can be either a tuple of coordinates with a direction or an integer id of a link (depending on use_indices).
-        The bool in the tuples returned by this function signifies the orientation.
-        "True" means flip gauge field, "False" means no flip.
-
-        Args:
-            coord (tuple): bottom left corner (x,y) of the Wilson loop
-            size (tuple): extent in (x,y)
-            use_indices (bool, optional): Use link indices instead of coordinate representation. Defaults to True.
-
-        Returns:
-            list: List of tuples of the form (link_id,<bool>)
+        """
+        Generate a Wilson loop with bottom-left corner at coord and given size.
+        Uses get_neighbor to handle periodic boundaries, and optionally returns link indices.
         """
         ext_x, ext_y = size
         x, y = coord
         dest = []
-        for i in range(ext_x):
-            coord_link = ((x + i) % self.nx, y)
-            dest.append(((coord_link, Direction.X), False))
-        for i in range(ext_y):
-            coord_link = ((x + ext_x) % self.nx, (y + i) % self.ny)
-            dest.append(((coord_link, Direction.Y), False))
-        for i in range(ext_x):
-            coord_link = ((x + ext_x - i - 1) % self.nx, (y + ext_y) % self.ny)
-            dest.append(((coord_link, Direction.X), True))
-        for i in range(ext_y):
-            coord_link = (x, (y + ext_y - i - 1) % self.ny)
-            dest.append(((coord_link, Direction.Y), True))
-        if use_indices:
-            # Transform the coordinates to indices
-            dest = [(self.coord2ind_dir(*coorddir), conj) for (coorddir, conj) in dest]
+
+        # Helper to append links, converting to indices if needed
+        def add_link(coord_edge, direction, orientation):
+            if use_indices:
+                link = (self.coord2ind_dir(coord_edge, direction), orientation)
+            else:
+                link = ((coord_edge, direction), orientation)
+            dest.append(link)
+
+        # ----------------------
+        # Bottom edge (left → right, natural orientation)
+        coord_edge = (x, y)
+        for _ in range(ext_x):
+            add_link(coord_edge, Direction.X, False)
+            coord_edge = self.get_neighbor(coord_edge, Direction.X, orientation=True)
+
+        # Right edge (bottom → top, natural orientation)
+        for _ in range(ext_y):
+            add_link(coord_edge, Direction.Y, False)
+            coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=True)
+
+        # Top edge (right → left, reversed orientation)
+        for _ in range(ext_x):
+            coord_edge = self.get_neighbor(coord_edge, Direction.X, orientation=False)
+            add_link(coord_edge, Direction.X, True)
+
+        # Left edge (top → bottom, reversed orientation)
+        for _ in range(ext_y):
+            coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=False)
+            add_link(coord_edge, Direction.Y, True)
+
         return dest
 
     def generate_L_string(self, coord: tuple, size: tuple, use_indices: bool = True) -> list:
@@ -571,8 +624,10 @@ if __name__ == "__main__":
     # print([lat_3x2.ind2coord_dir(ind) for ind in lst])
     # print(len(lst))
     # print("Lattice 2d, 3x3")
-    lat_3x3 = Lattice2D(2, 2)
+    # lat_3x3 = Lattice2D(2, 2)
     # print(lat_3x3)
 
     # def ind2coord_dir(self, ind: int) -> tuple:
-    print(lat_3x3.coord2ind_dir((1, 1), Direction.X))
+    lat3x3 = Lattice2D(3, 3)
+    wilson_loop1 = lat3x3.generate_wilson_loop((0, 0), (2, 2))
+    print(wilson_loop1)
