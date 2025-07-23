@@ -1166,7 +1166,6 @@ class System2DBase(ABC):
             logger.error("gamma_maj_sys_deriv: Invalid variable name.")
         return None
 
-    ## MOVE TO GLOBAL
     def compute_grad_norm_vec(self) -> xnp.ndarray:
         """Compute the gradient of the norm for all layers with respect to all parameters.
         The parameter order is [[dt1, dy1, dz1...],[dt2,dy2,dz2...]...]
