@@ -371,7 +371,7 @@ def is_permutation(mat: xnp.ndarray) -> bool:
         return bool(square and id and sum_rows and sum_cols)
 
 
-def is_antisymmetric(mat, rtol, atol):
+def is_antisymmetric(mat, rtol=1e-5, atol=1e-8):
     """Returns true if the matrix mat is anti-symmetric."""
     if issparse(mat):
         return xnp.allclose(mat.todense(), -mat.T.todense(), rtol=rtol, atol=atol)
