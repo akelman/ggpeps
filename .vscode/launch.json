@@ -114,6 +114,31 @@
             ]
         },
         {
+            "name": "Z2 JAX Minexact L=2, Fermions, cp=2, nl=2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
+            "env":{
+                "GGPEPS_BACKEND": "jax"
+            },
+            "args": [
+                "min-exact",
+                "Z2",
+                "--L", "2",
+                "--g_el", "0.0",
+                "--g_mag", "0.0",
+                "--g_mass", "0.0",
+                "--g_int", "1.0",
+                "--method", "BFGS",
+                "--ncopy", "2",
+                "--num_pg_layer", "1", 
+                "--num_fermionic_layer", "1",
+                "--seed", "1438378742",
+                "--ignore_cache"
+            ]
+        },
+        {
             "name": "Z2 Minexact L=2, Fermions, cp=2, nl=2",
             "type": "debugpy",
             "request": "launch",
