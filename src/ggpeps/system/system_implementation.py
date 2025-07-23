@@ -352,14 +352,6 @@ class Z2System2D(System2DBase):
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
 
-        self.cfg.enforce_parameter_conditions(gradients)
-
-        # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy
-        # operator expectation of the other layers. They act as a prefactor in the derivative.
-        # However, here, because the mass term only acts on the fermionic layers, we simply multiply the mass_energy
-        # and grads by the norm of the first layer
-        # (this is handled higher up in the computation stack).
-
         return xnp.array(gradients)
 
     def _compute_int_energy_op_vec(self):
@@ -494,14 +486,6 @@ class Z2System2D(System2DBase):
                             elif ggpeps.PREFERRED_BACKEND == "jax":
                                 gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(grad)
 
-        self.cfg.enforce_parameter_conditions(gradients)
-
-        # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy
-        # operator expectation of the other layers. They act as a prefactor in the derivative.
-        # However, here (just as in the mass case), because the interaction term only acts on the fermionic layers,
-        # we simply multiply the int_energy and grads by the norm of the first layer
-        # (this is handled higher up in the computation stack).
-
         return xnp.array(gradients)
 
     def _compute_chem_energy_op_vec(self):
@@ -570,8 +554,6 @@ class Z2System2D(System2DBase):
 
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
-
-        self.cfg.enforce_parameter_conditions(gradients)
 
         return gradients
 
