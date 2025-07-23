@@ -471,3 +471,6 @@ class U1System2D(System2DBase):
         """
         meson_op_vec = xnp.zeros(self.cfg.nlayer)
         return xnp.array(meson_op_vec)
+
+    def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
+        return 0.0  # Not implemented
