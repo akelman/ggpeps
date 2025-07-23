@@ -8,19 +8,15 @@ import subprocess  # Start process for git hash
 from typing import Optional
 
 import numba as nb
+import pandas as pd
 from scipy.sparse import issparse
 from scipy.linalg import svd, block_diag
 
 import jax
-import jax.numpy as jnp
 import numpy as np
 from ggpeps import xnp as xnp
-import pandas as pd
 
 import py_pfaffian.jax
-
-pfaffian = jax.jit(py_pfaffian.jax.pfaffian)
-
 from pfapack import pfaffian as pf
 
 import matplotlib.pyplot as plt
@@ -28,6 +24,8 @@ from matplotlib.colors import LogNorm
 
 import ggpeps
 import ggpeps.measurement as meas
+
+pfaffian = jax.jit(py_pfaffian.jax.pfaffian)
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -263,70 +261,7 @@ def derivative_pfaffian_covariance_mat(pfarr, matvec, d_matvec):
     return dest
 
 
-def pfaffian_LTL_jax(A, overwrite_a=False):
-    """JAX version of pfaffian_LTL(A, overwrite_a=False)
-
-    Compute the Pfaffian of a real or complex skew-symmetric
-    matrix A (A=-A^T). If overwrite_a=True, the matrix A
-    is overwritten in the process. This function uses
-    the Parlett-Reid algorithm, using JAX for computation.
-    """
-    # Check if matrix is square
-    # assert A.shape[0] == A.shape[1] > 0
-    # Check if it's skew-symmetric
-    # assert jnp.allclose(A + A.T, 0, atol=1e-14)
-
-    n, m = A.shape
-    # type check to fix problems with integer numbers
-    dtype = A.dtype
-    if dtype != jnp.complex128:
-        A = jnp.asarray(A, dtype=jnp.float64)
-
-    # Quick return if possible
-    if n % 2 == 1:
-        return 0.0
-
-    if not overwrite_a:
-        A = jnp.array(A)
-
-    pfaffian_val = 1.0
-
-    for k in range(0, n - 1, 2):
-        # First, find the largest entry in A[k+1:,k] and permute it to A[k+1,k]
-        kp = k + 1 + jnp.abs(A[k + 1 :, k]).argmax()
-
-        # Check if we need to pivot
-        if kp != k + 1:
-            # interchange rows k+1 and kp
-            temp = A[k + 1, k:].copy()
-            A = A.at[k + 1, k:].set(A[kp, k:])
-            A = A.at[kp, k:].set(temp)
-
-            # Then interchange columns k+1 and kp
-            temp = A[k:, k + 1].copy()
-            A = A.at[k:, k + 1].set(A[k:, kp])
-            A = A.at[k:, kp].set(temp)
-
-            pfaffian_val *= -1
-
-        # Now form the Gauss vector
-        if A[k + 1, k] != 0.0:
-            tau = A[k, k + 2 :].copy()
-            tau = tau / A[k, k + 1]
-
-            pfaffian_val *= A[k, k + 1]
-
-            if k + 2 < n:
-                # Update the matrix block A(k+2:,k+2)
-                A = A.at[k + 2 :, k + 2 :].set(A[k + 2 :, k + 2 :] + jnp.outer(tau, A[k + 2 :, k + 1]))
-                A = A.at[k + 2 :, k + 2 :].set(A[k + 2 :, k + 2 :] - jnp.outer(A[k + 2 :, k + 1], tau))
-        else:
-            return 0.0
-
-    return pfaffian_val
-
-
-def derivative_pfaffian(mat, d_mat, pfaval=None):
+def derivative_pfaffian(mat, d_mat, pfaval=None, backend="numpy"):
     """Compute the derivative of a Pfaffian of a matrix A.
     The explicit derivative dA/dx is given as a second argument
 
@@ -340,8 +275,10 @@ def derivative_pfaffian(mat, d_mat, pfaval=None):
         np.ndarray: d(Pf(A))/dx
     """
     if pfaval is None:
-        # pfaval = pf.pfaffian(mat)
-        pfaval = pfaffian(mat)
+        if backend == "jax":
+            pfaval = pfaffian(mat)
+        else:
+            pfaval = pf.pfaffian(mat)
 
     if not isclose(pfaval, 0):
         return 0.5 * pfaval * xnp.trace(xnp.linalg.inv(mat) @ d_mat)
