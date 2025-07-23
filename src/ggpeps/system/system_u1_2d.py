@@ -236,11 +236,17 @@ class U1System2D(System2DBase):
         self.invalidate_gauge_update()
 
     ################## Observables ######################
-    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv=True):
+    def _compute_mass_energy_op_vec(self, use_trans_inv=True):
         raise NotImplementedError("The mass term has not yet been implemented for U1.")
 
-        dest, dest_grad = 0, 0  # Needs to be calculated properly
-        return dest, dest_grad
+        dest = 0
+        return dest
+
+    def _compute_mass_energy_grad(self, use_trans_inv=True):
+        raise NotImplementedError("The mass gradient term has not yet been implemented for U1.")
+
+        dest_grad = 0
+        return dest_grad
 
     def _compute_mag_energy_op(self, use_trans_inv=True):
         if use_trans_inv:

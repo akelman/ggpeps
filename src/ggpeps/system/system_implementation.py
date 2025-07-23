@@ -175,20 +175,19 @@ class Z2System2D(System2DBase):
 
     ################## Observables ##################
 
-    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv: bool = True):
+    def _compute_mass_energy_op_vec(self, use_trans_inv: bool = True):
         """Compute the mass term of the Hamiltonian for a single site.
 
         Args:
             use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
 
         Returns:
-            tuple: Tuple of (mass energy for a single site, gradients)
+            array: mass energy as a vec over layers
         """
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
 
         mass_energy_op = [0] * self.cfg.num_pg_layer
-        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             # only the fermionic layers directly contribute to the mass
@@ -203,16 +202,37 @@ class Z2System2D(System2DBase):
             for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
                 layer_mass_energy += 0.5 * (1 + covmat[site_ind + 1, site_ind])
 
+            mass_energy_op.append(xnp.asarray(layer_mass_energy))
+
+        mass_energy_op = xnp.asarray(mass_energy_op)
+
+        return mass_energy_op
+
+    def _compute_mass_energy_grad(self, use_trans_inv: bool = True):
+        """Compute the mass term of the Hamiltonian for a single site.
+
+        Args:
+            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
+
+        Returns:
+            array: gradients of the mass energy
+        """
+        if not use_trans_inv:
+            raise NotImplementedError("Translation invariance must be set to True.")
+
+        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            # only the fermionic layers directly contribute to the mass
+
+            for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
+
                 for uc_ind in range(self.cfg.unitcell_size):
                     for symbol_ind, symbol in enumerate(self.symbolvec):
                         # the derivative calculation is relatively compuationally expensive
                         # (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
-                        if (
-                            layer_ind,
-                            uc_ind,
-                            symbol_ind,
-                        ) not in self.cfg.zeroed_params:
+                        if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
 
                             d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[symbol_ind]
                             if ggpeps.PREFERRED_BACKEND == "numpy":
@@ -225,10 +245,6 @@ class Z2System2D(System2DBase):
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
 
-            mass_energy_op.append(xnp.asarray(layer_mass_energy))
-
-        mass_energy_op = xnp.asarray(mass_energy_op)
-
         self.cfg.enforce_parameter_conditions(gradients)
 
         # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy
@@ -237,7 +253,7 @@ class Z2System2D(System2DBase):
         # and grads by the norm of the first layer
         # (this is handled higher up in the computation stack).
 
-        return mass_energy_op, xnp.array(gradients)
+        return xnp.array(gradients)
 
     def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
         """Computation of the electric energy.

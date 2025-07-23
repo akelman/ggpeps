@@ -1494,8 +1494,15 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def _compute_mass_energy_op_vec_and_grad(self):
-        """Compute the mass energy and the gradient (per layer).
+    def _compute_mass_energy_op_vec(self):
+        """Compute the mass energy (per layer).
+        This is an abstract method and has to be overwritten in a subclass.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
+    def _compute_mass_energy_grad(self):
+        """Compute the mass energy gradient.
         This is an abstract method and has to be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
@@ -1699,7 +1706,7 @@ class System2DBase(ABC):
             list: Layer-resolved mass energy w/o shift
         """
         if self._mass_energy_op_vec is None:
-            self._mass_energy_op_vec, self._mass_energy_op_grad_vec = self._compute_mass_energy_op_vec_and_grad()
+            self._mass_energy_op_vec = self._compute_mass_energy_op_vec()
         return self._mass_energy_op_vec
 
     @property
@@ -1747,8 +1754,7 @@ class System2DBase(ABC):
             float: gradient of the mass energy operator (w/o shift) for the whole system
         """
         if self._mass_energy_op_grad_vec is None:
-            self._mass_energy_op_vec, self._mass_energy_op_grad_vec = self._compute_mass_energy_op_vec_and_grad()
-            # self._mass_energy_op_grad_vec *= self.cfg.lattice.size
+            self._mass_energy_op_grad_vec = self._compute_mass_energy_grad()
         return self._mass_energy_op_grad_vec
 
     @property

@@ -416,18 +416,13 @@ class D2nSystem2D(System2DBase):
         self.invalidate_gauge_update()
 
     # Observables
-    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv: bool = True):
-        """Compute the mass term of the Hamiltonian for a single site.
-
-        Args:
-            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
-
-        Returns:
-            tuple: Tuple of (mass energy for a single site, gradients)
-        """
+    def _compute_mass_energy_op_vec(self, use_trans_inv: bool = True):
         mass_energy_op = xnp.zeros(self.cfg.nlayer)
+        return mass_energy_op
+
+    def _compute_mass_energy_grad(self, use_trans_inv: bool = True):
         gradients = xnp.zeros(self.cfg.param_shape())
-        return mass_energy_op, gradients
+        return gradients
 
     def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
         """Computation of the electric energy.
