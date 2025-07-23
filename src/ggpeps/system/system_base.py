@@ -1491,8 +1491,15 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    @staticmethod
     @abstractmethod
-    def _compute_mass_energy_op_vec(self):
+    def _compute_mass_energy_op_vec(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        ferm_cov_vec: xnp.ndarray,
+        use_trans_inv: bool = True,
+    ):
         """Compute the mass energy (per layer).
         This is an abstract method and has to be overwritten in a subclass.
         """
@@ -1714,7 +1721,13 @@ class System2DBase(ABC):
             list: Layer-resolved mass energy w/o shift
         """
         if self._mass_energy_op_vec is None:
-            self._mass_energy_op_vec = self._compute_mass_energy_op_vec()
+            self._mass_energy_op_vec = self._compute_mass_energy_op_vec(
+                self.cfg.lattice.size,
+                self.cfg.num_pg_layer,
+                self.cfg.num_fermionic_layer,
+                self.compute_ferm_cov(),
+                use_trans_inv=True,
+            )
         return self._mass_energy_op_vec
 
     @property

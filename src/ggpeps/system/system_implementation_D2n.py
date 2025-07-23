@@ -480,8 +480,15 @@ class D2nSystem2D(System2DBase):
         gradients = xnp.zeros(self.cfg.param_shape())
         return gradients
 
-    def _compute_mass_energy_op_vec(self, use_trans_inv: bool = True):
-        mass_energy_op = xnp.zeros(self.cfg.nlayer)
+    @staticmethod
+    def _compute_mass_energy_op_vec(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        ferm_cov_vec: xnp.ndarray,
+        use_trans_inv: bool = True,
+    ):
+        mass_energy_op = xnp.zeros(num_pg_layer + num_fermionic_layer)
         return mass_energy_op
 
     @staticmethod
