@@ -2,10 +2,14 @@ import unittest
 from unittest import skip
 
 import numpy as np
+import jax
+import jax.numpy as jnp
 from pfapack import pfaffian as pf
 
 from ggpeps import utils, lattice, system
 from ggpeps import xnp as xnp
+
+import py_pfaffian.jax
 
 
 class TestUtils(unittest.TestCase):
@@ -202,3 +206,43 @@ class TestPfaffian(unittest.TestCase):
         a_part = a[np.ix_(indarr, indarr)]
         ref = pf.pfaffian(a_part)
         self.assertAlmostEqual(val, ref)
+
+    def test_pfaffian_LTL_jax_vs_numpy1(self):
+        """Test pfaffian_LTL_jax against numpy version for random skew-symmetric matrices."""
+        np.random.seed(42)
+        for n in [4, 6, 8]:
+            # Real case
+            mat = np.random.randn(n, n)
+            mat = mat - mat.T  # Make skew-symmetric
+            pf_np = pf.pfaffian_LTL(mat)
+            pf_jax = utils.pfaffian_LTL_jax(jnp.array(mat))
+            # print(f"n={n} real: numpy={pf_np}, jax={pf_jax}")
+            self.assertTrue(np.allclose(pf_np, float(pf_jax), rtol=1e-6, atol=1e-8))
+
+            # Complex case
+            mat = np.random.randn(n, n) + 1j * np.random.randn(n, n)
+            mat = mat - mat.T
+            pf_np = pf.pfaffian_LTL(mat)
+            pf_jax = utils.pfaffian_LTL_jax(jnp.array(mat))
+            # print(f"n={n} complex: numpy={pf_np}, jax={pf_jax}")
+            self.assertTrue(np.allclose(pf_np, pf_jax, rtol=1e-6, atol=1e-8))
+
+    def test_pfaffian_LTL_jax_vs_numpy2(self):
+        """Test pfaffian_LTL_jax against numpy version for random skew-symmetric matrices."""
+        np.random.seed(42)
+        for n in [4, 6, 8]:
+            # Real case
+            mat = np.random.randn(n, n)
+            mat = mat - mat.T  # Make skew-symmetric
+            pf_np = pf.pfaffian_LTL(mat)
+            pf_jax = py_pfaffian.jax.pfaffian(jnp.array(mat))
+            # print(f"n={n} real: numpy={pf_np}, jax={pf_jax}")
+            self.assertTrue(np.allclose(pf_np, float(pf_jax), rtol=1e-6, atol=1e-8))
+
+            # Complex case
+            mat = np.random.randn(n, n) + 1j * np.random.randn(n, n)
+            mat = mat - mat.T
+            pf_np = pf.pfaffian_LTL(mat)
+            pf_jax = py_pfaffian.jax.pfaffian(jnp.array(mat))
+            # print(f"n={n} complex: numpy={pf_np}, jax={pf_jax}")
+            self.assertTrue(np.allclose(pf_np, pf_jax, rtol=1e-6, atol=1e-8))

@@ -6,11 +6,14 @@ import jax
 import jax.numpy as jnp
 from jax import jit, device_put
 
+import py_pfaffian.jax
+
 # The following line ensures that JAX is configured to 64-bit precision.
 # Without this line, some of the precision tests do not pass.
 jax.config.update("jax_enable_x64", True)
 
 import ggpeps
+from ggpeps import utils
 from ggpeps.system.backend_base import BackendBase
 
 
@@ -148,6 +151,7 @@ def compute_el_grad_vec_jax(system):
                         * ggpeps.utils.derivative_pfaffian(
                             covmat_out_virt[jnp.ix_(jnp.array(ind), jnp.array(ind))],
                             d_covmat_out_virt[jnp.ix_(jnp.array(ind), jnp.array(ind))],
+                            # pfaval=py_pfaffian.jax.pfaffian(covmat_out_virt[jnp.ix_(jnp.array(ind), jnp.array(ind))]),
                         )
                         for prefactor, ind in idxarr
                     ]
