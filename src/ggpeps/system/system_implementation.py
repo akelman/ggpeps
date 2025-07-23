@@ -2,7 +2,6 @@ import logging
 from pfapack import pfaffian as pf
 
 import jax
-from functools import partial
 
 import numpy as np
 from ggpeps import xnp as xnp
@@ -16,6 +15,16 @@ from ggpeps.system.global_funcs import backend
 from .system_base import System2DBase
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
+
+
+def maybe_jit(*jit_args, **jit_kwargs):
+    def decorator(func):
+        if ggpeps.PREFERRED_BACKEND == "jax":
+            return jax.jit(func, *jit_args, **jit_kwargs)
+        else:
+            return func
+
+    return decorator
 
 
 ###################### Z2System2D ##########################
@@ -286,7 +295,7 @@ class Z2System2D(System2DBase):
         return gradients
 
     @staticmethod
-    @partial(jax.jit, static_argnames=["lattice_size", "use_trans_inv", "num_pg_layer", "num_fermionic_layer"])
+    @maybe_jit(static_argnames=["lattice_size", "use_trans_inv", "num_pg_layer", "num_fermionic_layer"])
     def _compute_mass_energy_op_vec(
         lattice_size: int,
         num_pg_layer: int,
@@ -330,8 +339,7 @@ class Z2System2D(System2DBase):
         return mass_energy_op
 
     @staticmethod
-    @partial(
-        jax.jit,
+    @maybe_jit(
         static_argnames=[
             "lattice_size",
             "symbolvec",
