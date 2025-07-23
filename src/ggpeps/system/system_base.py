@@ -582,6 +582,8 @@ class System2DBase(ABC):
     def d_gamma_out_symbolvec(self) -> xnp.ndarray:
         """Return a vector containing the derivatives of gamma_out for each symbol.
 
+        The derivatives for pure-gauge layers are set to nan.
+
         Returns:
             array: d_gamma_out_symbolvec[layer, uc_ind, symbol] is the matrix of derivatives of gamma_out[lay]
                    wrt the parameter at that (lay, uc_ind, symbol)
