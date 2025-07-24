@@ -420,6 +420,7 @@ class Lattice2D:
         Returns:
             list[tuple[int, int]]: Allowed loop sizes as (extent_x, extent_y).
         """
+        # TODO: Check/Test why are we limited to half the system size, and not the full system size.
         sizes = []
         max_x = self.nx // 2  # due to periodic boundary conditions, loops should only go up to half the system size
         max_y = self.ny // 2
