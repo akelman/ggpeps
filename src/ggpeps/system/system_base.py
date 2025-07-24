@@ -1494,7 +1494,26 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def _compute_el_grad_vec(self, use_trans_inv: bool = True):
+    def _compute_el_grad_vec(
+        self,
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        nvirtmodes_link: int,
+        nphysmodes_site: int,
+        symbolvec: tuple,
+        overall_factors,
+        idxarr_vec,
+        el_energy_vec,
+        mat_b_mod_vec,
+        gamma_in_sys_mod_vec,
+        covmat_out_virt_vec,
+        norm_mod_vec,
+        lognorm_default_vec,
+        zeroed_params,
+        use_trans_inv: bool = True,
+    ):
         """Compute the electric energy gradients.
         This is an abstract method and has to be overwritten in a subclass.
         """
@@ -1780,7 +1799,25 @@ class System2DBase(ABC):
             list: List of all electric energy gradients (w/o shift)
         """
         if self._el_energy_op_grad_vec is None:
-            self._el_energy_op_grad_vec = self._compute_el_grad_vec()
+            self._el_energy_op_grad_vec = self._compute_el_grad_vec(
+                self.cfg.lattice.size,
+                self.cfg.num_pg_layer,
+                self.cfg.num_fermionic_layer,
+                self.cfg.unitcell_size,
+                self.cfg.nvirtmodes_link,
+                self.cfg.nphysmodes_site,
+                tuple(self.cfg.symbolvec),
+                self.cfg.el_overall_factors,
+                self.cfg.idxarr_vec,
+                self.el_energy_op_vec,
+                self.mat_b_mod_vec,
+                self.gamma_in_sys_mod_vec,
+                self.covmat_out_virt_vec,
+                self.norm_mod_vec,
+                self.lognorm_default_vec,
+                self.cfg.zeroed_params,
+                use_trans_inv=True,
+            )
         return self._el_energy_op_grad_vec
 
     @property

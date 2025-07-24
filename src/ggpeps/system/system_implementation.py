@@ -277,7 +277,26 @@ class Z2System2D(System2DBase):
 
         return xnp.asarray(dest)
 
-    def _compute_el_grad_vec(self, use_trans_inv: bool = True):
+    def _compute_el_grad_vec(
+        self,
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        nvirtmodes_link: int,
+        nphysmodes_site: int,
+        symbolvec: tuple,
+        overall_factors,
+        idxarr_vec,
+        el_energy_vec,
+        mat_b_mod_vec,
+        gamma_in_sys_mod_vec,
+        covmat_out_virt_vec,
+        norm_mod_vec,
+        lognorm_default_vec,
+        zeroed_params,
+        use_trans_inv: bool = True,
+    ):
         """Computation of the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
         Since several operations needed for the computation of the gradient and the energy are similar,
@@ -297,7 +316,25 @@ class Z2System2D(System2DBase):
             logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
-        gradients = backend.compute_el_grad_vec(self)
+        gradients = backend.compute_el_grad_vec(
+            self,
+            lattice_size,
+            num_pg_layer,
+            num_fermionic_layer,
+            unitcell_size,
+            nvirtmodes_link,
+            nphysmodes_site,
+            symbolvec,
+            overall_factors,
+            idxarr_vec,
+            el_energy_vec,
+            mat_b_mod_vec,
+            gamma_in_sys_mod_vec,
+            covmat_out_virt_vec,
+            norm_mod_vec,
+            lognorm_default_vec,
+            zeroed_params,
+        )
         return gradients
 
     @staticmethod

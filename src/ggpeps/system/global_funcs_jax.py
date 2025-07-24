@@ -85,7 +85,25 @@ def compute_grad_over_norm_jax(
 # (a) cannot jit, because this function calls pfaffian code, which is not built for jax
 # (b) TODO: should accept required matrices, which will not need to be static
 # @partial(jax.jit, static_argnames=["system"])
-def compute_el_grad_vec_jax(system):
+def compute_el_grad_vec_jax(
+    system,
+    lattice_size: int,
+    num_pg_layer: int,
+    num_fermionic_layer: int,
+    unitcell_size: int,
+    nvirtmodes_link: int,
+    nphysmodes_site: int,
+    symbolvec: tuple,
+    overall_factors,
+    idxarr_vec,
+    el_energy_vec,
+    mat_b_mod_vec,
+    gamma_in_sys_mod_vec,
+    covmat_out_virt_vec,
+    norm_mod_vec,
+    lognorm_default_vec,
+    zeroed_params,
+) -> jnp.ndarray:
     """Computation of the electric energy gradients.
     We start by calculating the electric energies, since these are needed for evaluating the gradients.
     Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
@@ -99,37 +117,40 @@ def compute_el_grad_vec_jax(system):
         list: list of gradients for the full system
     """
 
-    dest_grad = jnp.zeros(system.cfg.param_shape(), dtype=jnp.float64)
-    overall_factors = system.cfg.el_overall_factors
-    idxarrs = system.cfg.idxarr_vec
-    el_energy_vec = system.el_energy_op_vec
+    nlayer = num_pg_layer + num_fermionic_layer
+    param_shape = (nlayer, unitcell_size, len(symbolvec))
+    dest_grad = jnp.zeros(param_shape, dtype=jnp.float64)
 
-    for layerind in range(system.cfg.nlayer):
+    # overall_factors = system.cfg.el_overall_factors
+    # idxarrs = system.cfg.idxarr_vec
+    # el_energy_vec = system.el_energy_op_vec
+
+    for layerind in range(nlayer):
 
         # Abbreviations for more readable code
-        mat_b = system.mat_b_mod_vec[layerind]
+        mat_b = mat_b_mod_vec[layerind]
         diff_d_gamma_inv = system.wi_gamma_out_mod_vec[
             layerind
         ].inv()  # this does not actually do a computation, just a retrieval
-        single_link_offset = 2 * system.cfg.nvirtmodes_link
-        offset = 2 * system.cfg.lattice.size * system.cfg.nphysmodes_site + single_link_offset
-        idxarr = idxarrs[layerind]
+        single_link_offset = 2 * nvirtmodes_link
+        offset = 2 * lattice_size * nphysmodes_site + single_link_offset
+        idxarr = idxarr_vec[layerind]
         overall_factor = overall_factors[layerind]
-        nlinks = system.cfg.lattice.nlinks
-        gamma_in_sys_mod = system.gamma_in_sys_mod_vec[layerind]
+        nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
+        gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
         diff_d_inv_gamma_inv = system.wi_gamma_in_mod_vec[layerind].inv()
 
-        covmat_out_virt = system.covmat_out_virt_vec[layerind]
-        norm_mod = system.norm_mod_vec[layerind]
-        lognorm_default = jnp.sum(system.lognorm_default_vec)
+        covmat_out_virt = covmat_out_virt_vec[layerind]
+        norm_mod = norm_mod_vec[layerind]
+        lognorm_default = jnp.sum(lognorm_default_vec)
 
         ###################### Calculation of the derivative ########################
-        for uc_ind in range(system.cfg.unitcell_size):
-            for symbol_ind, symbol in enumerate(system.symbolvec):
-                if (layerind, symbol_ind) in system.cfg.zeroed_params:
+        for uc_ind in range(unitcell_size):
+            for symbol_ind, symbol in enumerate(symbolvec):
+                if (layerind, uc_ind, symbol_ind) in zeroed_params:
                     # the derivative calculation is compuationally expensive
                     # we can skip it for parameters that are forced by the ansatz to be zero
-                    dest_grad.at[layerind, uc_ind, symbol_ind].set(0)
+                    dest_grad = dest_grad.at[layerind, uc_ind, symbol_ind].set(0)
                 else:
                     deriv_gamma_maj_sys = system.gamma_maj_sys_deriv_vec(symbol)[layerind, uc_ind]
                     d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats_jax(deriv_gamma_maj_sys, offset)
@@ -168,16 +189,17 @@ def compute_el_grad_vec_jax(system):
                     d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
                     # Scale to system size
                     d_el_energy *= nlinks
-                    dest_grad.at[layerind, uc_ind, symbol_ind].set(jnp.real(d_el_energy))
+                    dest_grad = dest_grad.at[layerind, uc_ind, symbol_ind].set(jnp.real(d_el_energy))
+
+    dest_grad = jnp.asarray(dest_grad)
 
     # We have to weigh the different layers with the electric energy operator expectation of the other layers.
     # They act as a prefactor in the derivative
-    if system.cfg.nlayer > 1:
-        for i in range(system.cfg.nlayer):
+    if nlayer > 1:
+        for i in range(nlayer):
             prod_other_layers = ggpeps.utils.multiply_except(el_energy_vec, i)
             dest_grad = dest_grad.at[i].multiply(prod_other_layers)
 
-    system.cfg.enforce_parameter_conditions(dest_grad)
     return dest_grad
 
 
@@ -241,5 +263,41 @@ class BackendJax_Z2(BackendBase):
         return compute_grad_over_norm_jax(gamma_in_sys, diff, deriv_d, mat_d_inv)
 
     @staticmethod
-    def compute_el_grad_vec(system):
-        return compute_el_grad_vec_jax(system)
+    def compute_el_grad_vec(
+        system,
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        nvirtmodes_link: int,
+        nphysmodes_site: int,
+        symbolvec: tuple,
+        overall_factors,
+        idxarr_vec,
+        el_energy_vec,
+        mat_b_mod_vec,
+        gamma_in_sys_mod_vec,
+        covmat_out_virt_vec,
+        norm_mod_vec,
+        lognorm_default_vec,
+        zeroed_params,
+    ):
+        return compute_el_grad_vec_jax(
+            system,
+            lattice_size,
+            num_pg_layer,
+            num_fermionic_layer,
+            unitcell_size,
+            nvirtmodes_link,
+            nphysmodes_site,
+            symbolvec,
+            overall_factors,
+            idxarr_vec,
+            el_energy_vec,
+            mat_b_mod_vec,
+            gamma_in_sys_mod_vec,
+            covmat_out_virt_vec,
+            norm_mod_vec,
+            lognorm_default_vec,
+            zeroed_params,
+        )
