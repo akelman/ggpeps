@@ -1477,8 +1477,17 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    @staticmethod
     @abstractmethod
-    def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
+    def _compute_el_energy_op_vec(
+        lognormvec_default,
+        overall_factors,
+        idxarrs,
+        nlayer: int,
+        covmat_out_virt_vec,
+        norm_mod_vec,
+        use_trans_inv: bool = True,
+    ):
         """Compute the electric energy.
         This is an abstract method and has to be overwritten in a subclass.
         """
@@ -1709,7 +1718,15 @@ class System2DBase(ABC):
         if self._el_energy_op_vec is None:
             # This vector is the electric energy on a single link. Otherwise, we get a
             # power of nlinks in the product and the electric energy term (with prefactors) gets negative
-            self._el_energy_op_vec = self._compute_el_energy_op_vec()
+            self._el_energy_op_vec = self._compute_el_energy_op_vec(
+                self.lognorm_default_vec,
+                self.cfg.el_overall_factors,
+                self.cfg.idxarr_vec,
+                self.cfg.nlayer,
+                self.covmat_out_virt_vec,
+                self.norm_mod_vec,
+                use_trans_inv=True,
+            )
         return self._el_energy_op_vec
 
     @property

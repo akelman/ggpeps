@@ -441,20 +441,21 @@ class D2nSystem2D(System2DBase):
                     mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
         return mag_energy_bare
 
-    def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
+    @staticmethod
+    def _compute_el_energy_op_vec(
+        lognormvec_default,
+        overall_factors,
+        idxarrs,
+        nlayer: int,
+        covmat_out_virt_vec,
+        norm_mod_vec,
+        use_trans_inv: bool = True,
+    ):
         """Computation of the electric energy.
-        Since several operations needed for the computation of the gradient and the energy are similar,
-        we can reuse many intermediate steps. These are saved at the end of the function.
 
         This method overwrites an abstract method in System2DBase.
-
-        Args:
-            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
-
-        Returns:
-            list: list of electric energies for a single link
         """
-        dest = xnp.zeros(self.cfg.nlayer)
+        dest = xnp.zeros(nlayer)
         return xnp.asarray(dest)
 
     def _compute_el_grad_vec(self, use_trans_inv: bool = True):

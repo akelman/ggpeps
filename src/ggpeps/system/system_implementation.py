@@ -212,15 +212,27 @@ class Z2System2D(System2DBase):
                     mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
         return mag_energy_bare
 
-    def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
+    @staticmethod
+    def _compute_el_energy_op_vec(
+        lognormvec_default,
+        overall_factors,
+        idxarrs,
+        nlayer: int,
+        covmat_out_virt_vec,
+        norm_mod_vec,
+        use_trans_inv: bool = True,
+    ):
         """Computation of the electric energy.
-        Since several operations needed for the computation of the gradient and the energy are similar,
-        we can reuse many intermediate steps.
-        These are saved at the end of the function.
 
         This method overwrites an abstract method in System2DBase.
 
         Args:
+            lognormvec_default: the usual norm without any modifications
+            overall_factors: prefactors for building the required Pfaffians
+            idxarrs: indices for building the required Pfaffians
+            nlayer (int): total number of layers (pure gauge + fermionic)
+            covmat_out_virt_vec:
+            norm_mod_vec:
             use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
 
         Returns:
@@ -231,26 +243,20 @@ class Z2System2D(System2DBase):
             logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
-        # This is the usual norm without any modifications
-        lognormvec_default = self.lognorm_default_vec
         lognorm_default = xnp.sum(lognormvec_default)
-
-        # Indices and prefactors for building the required Pfaffians
-        overall_factors = self.cfg.el_overall_factors
-        idxarrs = self.cfg.idxarr_vec
 
         dest = []
         # TODO: vectorize!
-        for layerind in range(self.cfg.nlayer):
+        for layerind in range(nlayer):
 
             idxarr = idxarrs[layerind]
             overall_factor = overall_factors[layerind]
 
             ###################### Calculation of <P> ########################
 
-            covmat_out_virt = self.covmat_out_virt_vec[layerind]
+            covmat_out_virt = covmat_out_virt_vec[layerind]
 
-            norm_mod = self.norm_mod_vec[layerind]
+            norm_mod = norm_mod_vec[layerind]
             # The matrix elements yield only the real part of <P>
             # If we use the log formulation, we can calculate the log of single terms.
 
