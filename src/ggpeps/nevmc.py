@@ -315,9 +315,8 @@ class NEVMC_Evaluator(Evaluator):
         if NEQ:
             curr_gauge = self.store_gauge[idx]
 
-            for i in range(len(curr_gauge)):
-                self.system.update_gauge_ind(i, curr_gauge[i])
-                tmp = self.system.weight
+            self.system.update_gauge_full_system(curr_gauge)
+            tmp = copy.deepcopy(self.system.weight)
 
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
@@ -355,12 +354,9 @@ class NEVMC_Evaluator(Evaluator):
         curr_gauge = self.store_gauge[idx]
         weight = self.store_weights[idx]
 
-        for i in range(len(curr_gauge)):
-            self.system.update_gauge_ind(i, curr_gauge[i])
-            tmp = copy.deepcopy(self.system.weight)
+        self.system.update_gauge_full_system(curr_gauge)
+        new_weight = copy.deepcopy(self.system.weight)
 
-        # self.system.update_gauge_ind(link, theta)
-        new_weight = tmp  # self.system.weight
         self.store_work[idx] += -new_weight + weight
 
         self.obsdict["work"].append(self.store_work[idx])
