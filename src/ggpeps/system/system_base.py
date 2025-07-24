@@ -1371,7 +1371,6 @@ class System2DBase(ABC):
             # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
             offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
             # Extract only the part of the virtual-virtual correlations
-            # deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:] # TODO: fix for JAX - DONE
             _, _, deriv_d = backend.extract_partial_covmats(
                 self.gamma_maj_sys_deriv_vec(var)[layerind, uc_ind], offset
             )
