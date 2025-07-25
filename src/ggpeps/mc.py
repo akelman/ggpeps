@@ -412,6 +412,37 @@ class MonteCarloEvaluator(Evaluator):
         """
         if obsname in self.obsdict.keys():
             meas = self.obsdict[obsname]
+            if obsname == "energy_grad":
+                nlayer, unitcell_size, nparams = self.system.cfg.param_shape()
+                dest = np.zeros((nlayer, unitcell_size, nparams))
+                energy_obsvec = np.asarray(self.obsdict["energy"].get_timeseries())
+                el_energy_grad = np.asarray(self.obsdict["el_energy_op_grad"].get_timeseries())
+                g_el = self.system.cfg.g_el
+                el_energy_grad = -2 * g_el * el_energy_grad
+
+                mass_energy_grad = np.asarray(self.obsdict["mass_energy_op_grad"].get_timeseries())
+                g_mass = self.system.cfg.g_mass
+                mass_energy_grad = g_mass * mass_energy_grad
+                int_energy_grad = np.asarray(self.obsdict["int_energy_op_grad"].get_timeseries())
+                g_int = self.system.cfg.g_int
+                int_energy_grad = g_int * int_energy_grad
+                
+                chem_energy_grad = np.asarray(self.obsdict["chem_energy_op_grad"].get_timeseries()) 
+                # We assume that unlike the other grad_op the chmical energy has already been mulplied by the relevant couplings
+
+                energy_grad_obsvec = el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
+                grad_norm_obsvec = np.asarray(self.obsdict["grad_norm"].get_timeseries())
+
+                for layer in range(nlayer):
+                    for unit_cell in range(unitcell_size):
+                        for grad_ind in range(nparams):
+                            energy_grad_component = energy_grad_obsvec[
+                                :, layer, unit_cell, grad_ind
+                            ]
+                            grad_norm_component = grad_norm_obsvec[:, layer, unit_cell, grad_ind]
+                            dest[layer, unit_cell, grad_ind] = utils.compute_grad_err(energy_obsvec, energy_grad_component, grad_norm_component)
+                return dest
+    
             if meas is not None and len(meas) > 0:
                 return meas.mean_err()
         return None
