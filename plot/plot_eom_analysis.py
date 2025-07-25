@@ -43,7 +43,10 @@ def main(args, save_path=None):
                         g_int = dumpobj["mc"].system.cfg.g_int
                         int_energy_grad = g_int * int_energy_grad
 
-                        energy_grad_obsvec = el_energy_grad + mass_energy_grad + int_energy_grad
+                        chem_energy_grad = dumpobj["mc"].obsdict["chem_energy_op_grad"].get_timeseries()
+                        # We assume that unlike the other grad_op the chmical energy has already been mulplied by the relevant couplings
+
+                        energy_grad_obsvec = el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
                         grad_norm_obsvec = np.asarray(dumpobj["mc"].obsdict["grad_norm"].get_timeseries())
                     else:
                         obsvec = np.asarray(dumpobj["mc"].obsdict[args.obs].get_timeseries())
