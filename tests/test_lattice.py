@@ -319,7 +319,7 @@ class TestLattice(unittest.TestCase):
         """
         lat2x2 = lattice.Lattice2D(2, 2)
         path = [(0, False), (5, True)]
-        start, end = lat2x2.get_path_endpoints(path, use_indices=True)
+        start, end = lat2x2.get_path_endpoints(path)
         self.assertEqual(start, 0)
         self.assertEqual(end, 2)
 
@@ -331,7 +331,7 @@ class TestLattice(unittest.TestCase):
         """
         lat3x3 = lattice.Lattice2D(3, 3)
         path = [(3, False), (16, False)]
-        start, end = lat3x3.get_path_endpoints(path, use_indices=True)
+        start, end = lat3x3.get_path_endpoints(path)
         self.assertEqual(start, 3)
         self.assertEqual(end, 8)
 
@@ -345,9 +345,9 @@ class TestLattice(unittest.TestCase):
         """
         lat2x2 = lattice.Lattice2D(2, 2)
         path = [(((0, 0), lattice.Direction.X), False), (((1, 0), lattice.Direction.Y), False)]
-        start, end = lat2x2.get_path_endpoints(path, use_indices=False)
-        self.assertEqual(start, (0, 0))
-        self.assertEqual(end, (1, 1))
+        start, end = lat2x2.get_path_endpoints(path)
+        self.assertEqual(start, lat2x2.coord2ind((0, 0)))
+        self.assertEqual(end, lat2x2.coord2ind((1, 1)))
 
     def test_get_path_endpoints_wraparound(self):
         """Checks periodic boundary conditions (torus behavior).
@@ -357,7 +357,7 @@ class TestLattice(unittest.TestCase):
         """
         lat2x2 = lattice.Lattice2D(2, 2)
         path = [(3, True), (5, False)]
-        start, end = lat2x2.get_path_endpoints(path, use_indices=True)
+        start, end = lat2x2.get_path_endpoints(path)
         self.assertEqual(start, 2)
         self.assertEqual(end, 0)
 

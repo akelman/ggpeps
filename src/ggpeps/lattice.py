@@ -223,28 +223,23 @@ class Lattice2D:
         else:
             raise ValueError("get_neighbor: Only X and Y directions are supported")
 
-    def get_path_endpoints(
-        self, path: list[tuple[tuple[tuple[int, int], Direction] | int, bool]], use_indices: bool = True
-    ) -> tuple[int, int] | tuple[tuple[int, int], tuple[int, int]]:
+    def get_path_endpoints(self, path: list[tuple[tuple[tuple[int, int], Direction] | int, bool]]) -> tuple[int, int]:
         """
         Get the lattice site endpoints of a path.
 
-        The start will be one of the sites adjacent to the first link, which one is determined by whether the link
-        is conjugated or not.
-        The end will be one of the sites adjacent to the last link, which one is determined by whether the link
-        is conjugated or not.
+        The start will be one of the sites adjacent to the first link, determined by whether the link
+        is conjugated or not. The end will be one of the sites adjacent to the last link, also determined
+        by whether the link is conjugated or not.
 
         Args:
             path (list[tuple[((x, y), Direction) | int, bool]]):
                 List of links. Each link is either:
                     - (((x, y), Direction), conj), or
                     - (link_id, conj).
-            use_indices (bool, optional): If True, return endpoints as site indices
-                instead of coordinates. Defaults to True.
 
         Returns:
-            tuple[int, int] | tuple[tuple[int, int], tuple[int, int]]:
-                Start and end sites, as indices or coordinates.
+            tuple[int, int]:
+                Start and end sites as lattice site indices.
         """
         if path == []:
             raise ValueError("There are no start/end points for an empty path.")
@@ -275,12 +270,9 @@ class Lattice2D:
         if not is_end_link_conj:
             end_site_coord = self.get_neighbor(end_site_coord, end_site_dir)
 
-        if use_indices:  # Transform the coordinates to indices
-            start_site_index = self.coord2ind(start_site_coord)
-            end_site_index = self.coord2ind(end_site_coord)
-            return (start_site_index, end_site_index)
-
-        return (start_site_coord, end_site_coord)
+        start_site_index = self.coord2ind(start_site_coord)
+        end_site_index = self.coord2ind(end_site_coord)
+        return (start_site_index, end_site_index)
 
     def generate_polyakov_loop(self, coord: tuple[int, int], dir: Direction) -> list[tuple[int, bool]]:
         """
