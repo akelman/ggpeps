@@ -34,7 +34,7 @@ class Lattice2D:
 
     dim = 2
 
-    def __init__(self, nx: int, ny: int, gf_num_of_rows: int = 0) -> None:
+    def __init__(self, nx: int, ny: int, gf_num_of_rows: int | None = 0) -> None:
         """
         Initialize a 2D lattice and set its gauge-fixing tree.
 
@@ -116,7 +116,7 @@ class Lattice2D:
         x, y = coord
         return self.nx * y + x
 
-    def ind2coord_dir(self, ind: int) -> tuple[tuple[int, int], Direction] | None:
+    def ind2coord_dir(self, ind: int) -> tuple[tuple[int, int], Direction]:
         """
         Convert a link index to its lattice coordinates and direction.
 
@@ -124,8 +124,7 @@ class Lattice2D:
             ind (int): Link index.
 
         Returns:
-            tuple[tuple[int, int], Direction] | None:
-                ((x, y), Direction) of the link, or None if the direction is invalid.
+            tuple[tuple[int, int], Direction]: ((x, y), Direction) of the link.
         """
         dir = Direction(ind // (self.nx * self.ny))
         if dir == Direction.X:
@@ -145,10 +144,9 @@ class Lattice2D:
                 dir,
             )
         else:
-            logger.error("ind2coord_dir: There are only X and Y as directions")
-            return None
+            raise ValueError("ind2coord_dir: There are only X and Y as directions")
 
-    def coord2ind_dir(self, coord: tuple[int, int], dir: Direction) -> int | None:
+    def coord2ind_dir(self, coord: tuple[int, int], dir: Direction) -> int:
         """
         Convert lattice coordinates and a direction to a link index.
 
@@ -161,7 +159,7 @@ class Lattice2D:
             dir (Direction): Direction of the link (Direction.X or Direction.Y).
 
         Returns:
-            int | None: Link index, or None if the direction is invalid.
+            int: Link index.
         """
         x, y = coord
 
@@ -176,12 +174,24 @@ class Lattice2D:
         elif dir == Direction.Y:
             return self.nx * self.ny * dir.value + self.ny * x + y
         else:
-            logger.error("coord2ind_dir: There are only X and Y as directions", file=sys.stderr)
-            return None
+            raise ValueError("coord2ind_dir: There are only X and Y as directions")
 
-    def get_neighbor(
-        self, coord: tuple[int, int], direction: Direction, orientation: bool = True
-    ) -> tuple[int, int] | None:
+    def convert_links_to_indices(
+        self, links: list[tuple[tuple[tuple[int, int], Direction], bool]]
+    ) -> list[tuple[int, bool]]:
+        """
+        Convert a list of coordinate-based links into index-based links.
+
+        Args:
+            links (list[tuple[((x, y), Direction), bool]]):
+                Links in coordinate representation.
+
+        Returns:
+            list[tuple[int, bool]]: Links in index representation.
+        """
+        return [(self.coord2ind_dir(coord, direction), conj) for (coord, direction), conj in links]
+
+    def get_neighbor(self, coord: tuple[int, int], direction: Direction, orientation: bool = True) -> tuple[int, int]:
         """
         Get the neighboring plaquette or site coordinates in a given direction.
 
@@ -195,7 +205,7 @@ class Lattice2D:
                 False → negative direction (left for X, down for Y). Defaults to True.
 
         Returns:
-            tuple[int, int] | None: (x, y) coordinates of the neighbor, or None if invalid.
+            tuple[int, int]: (x, y) coordinates of the neighbor.
         """
         x, y = coord
         if direction == Direction.X:
@@ -209,8 +219,7 @@ class Lattice2D:
             else:  # Move down
                 return (x, (y - 1) % self.ny)
         else:
-            logger.error("get_neighbor: Only X and Y directions are supported")
-            return None
+            raise ValueError("get_neighbor: Only X and Y directions are supported")
 
     def get_path_endpoints(
         self, path: list[tuple[tuple[tuple[int, int], Direction] | int, bool]], use_indices: bool = True
@@ -247,12 +256,16 @@ class Lattice2D:
                 f"last link type is {type(end_link)}."
             )
 
-        if isinstance(start_link, int):  # path elements were given as tuples of the form (link_id, conj)
+        if isinstance(start_link, int) and isinstance(end_link, int):
+            # path elements were given as tuples of the form (link_id, conj)
             start_site_coord, start_site_dir = self.ind2coord_dir(start_link)
             end_site_coord, end_site_dir = self.ind2coord_dir(end_link)
-        else:  # path elements were given as tuples of the form (((x,y), dir), conj)
+        elif isinstance(start_link, tuple) and isinstance(end_link, tuple):
+            # path elements were given as tuples of the form (((x,y), dir), conj)
             start_site_coord, start_site_dir = start_link
             end_site_coord, end_site_dir = end_link
+        else:
+            raise TypeError("Path links are neither both ints nor both tuples.")
 
         if is_start_link_conj:
             start_site_coord = self.get_neighbor(start_site_coord, start_site_dir)
@@ -261,14 +274,15 @@ class Lattice2D:
             end_site_coord = self.get_neighbor(end_site_coord, end_site_dir)
 
         if use_indices:  # Transform the coordinates to indices
-            start_site_coord = self.coord2ind(start_site_coord)
-            end_site_coord = self.coord2ind(end_site_coord)
+            start_site_index = self.coord2ind(start_site_coord)
+            end_site_index = self.coord2ind(end_site_coord)
+            return (start_site_index, end_site_index)
 
         return (start_site_coord, end_site_coord)
 
     def generate_polyakov_loop(
         self, coord: tuple[int, int], dir: Direction, use_indices: bool = True
-    ) -> list[tuple[int | tuple[tuple[int, int], Direction], bool]] | None:
+    ) -> list[tuple[int, bool]] | list[tuple[tuple[tuple[int, int], Direction], bool]]:
         """
         Generate a Polyakov loop around the full system in the positive direction.
 
@@ -284,27 +298,23 @@ class Lattice2D:
                 coordinate representation. Defaults to True.
 
         Returns:
-            list[tuple[int | tuple[tuple[int, int], Direction], bool]] | None:
-                Links forming the Polyakov loop, or None if the direction is invalid.
+            list[tuple[int, bool]] | list[tuple[((x, y), Direction), bool]]:
+                Links forming the Polyakov loop.
         """
         x, y = coord
-        dest = []
+        dest: list[tuple[tuple[tuple[int, int], Direction], bool]] = []
+
         if dir == Direction.X:
-            # Build polyakov loop in X direction
             for i in range(self.nx):
-                coord_link = ((i, y), dir)
-                dest.append((coord_link, False))
+                dest.append((((i, y), dir), False))
         elif dir == Direction.Y:
-            # Build polyakov loop in Y direction
             for i in range(self.ny):
-                coord_link = ((x, i), dir)
-                dest.append((coord_link, False))
+                dest.append((((x, i), dir), False))
         else:
-            logger.error("generate_polyakov_loop: There are only X and Y as directions")
-            return None
+            raise ValueError("generate_polyakov_loop: There are only X and Y as directions")
+
         if use_indices:
-            # Transform the coordinates to indices
-            dest = [(self.coord2ind_dir(*coorddir), conj) for (coorddir, conj) in dest]
+            return self.convert_links_to_indices(dest)
         return dest
 
     def generate_wilson_loop(
