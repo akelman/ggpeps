@@ -321,30 +321,26 @@ class Lattice2D:
         x, y = coord
         dest = []
 
-        def add_link(coord_edge: tuple[int, int], direction: Direction, orientation: bool):
-            dest.append(((coord_edge, direction), orientation))
-
-        # ----------------------
         # Bottom edge (left → right, natural orientation)
         coord_edge = (x, y)
         for _ in range(ext_x):
-            add_link(coord_edge, Direction.X, False)
+            dest.append(((coord_edge, Direction.X), False))
             coord_edge = self.get_neighbor(coord_edge, Direction.X, orientation=True)
 
         # Right edge (bottom → top, natural orientation)
         for _ in range(ext_y):
-            add_link(coord_edge, Direction.Y, False)
+            dest.append(((coord_edge, Direction.Y), False))
             coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=True)
 
         # Top edge (right → left, reversed orientation)
         for _ in range(ext_x):
             coord_edge = self.get_neighbor(coord_edge, Direction.X, orientation=False)
-            add_link(coord_edge, Direction.X, True)
+            dest.append(((coord_edge, Direction.X), True))
 
         # Left edge (top → bottom, reversed orientation)
         for _ in range(ext_y):
             coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=False)
-            add_link(coord_edge, Direction.Y, True)
+            dest.append(((coord_edge, Direction.Y), True))
 
         return self.convert_links_to_indices(dest)
 
@@ -367,19 +363,15 @@ class Lattice2D:
         ext_x, ext_y = size
         dest = []
 
-        # Helper to append links
-        def add_link(coord_edge: tuple[int, int], direction: Direction, orientation: bool):
-            dest.append(((coord_edge, direction), orientation))
-
         # Horizontal segment (left → right, natural orientation)
         coord_edge = coord
         for _ in range(ext_x):
-            add_link(coord_edge, Direction.X, False)
+            dest.append(((coord_edge, Direction.X), False))
             coord_edge = self.get_neighbor(coord_edge, Direction.X, orientation=True)
 
         # Vertical segment (bottom → top, natural orientation)
         for _ in range(ext_y):
-            add_link(coord_edge, Direction.Y, False)
+            dest.append(((coord_edge, Direction.Y), False))
             coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=True)
 
         return self.convert_links_to_indices(dest)
