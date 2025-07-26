@@ -320,7 +320,7 @@ class Lattice2D:
         """
         ext_x, ext_y = size
         x, y = coord
-        dest: list[tuple[tuple[tuple[int, int], Direction], bool]] = []
+        dest = []
 
         def add_link(coord_edge: tuple[int, int], direction: Direction, orientation: bool):
             dest.append(((coord_edge, direction), orientation))
