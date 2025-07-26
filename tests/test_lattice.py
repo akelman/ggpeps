@@ -373,3 +373,55 @@ class TestLattice(unittest.TestCase):
         lat2x2 = lattice.Lattice2D(2, 2)
         with self.assertRaises(ValueError):
             lat2x2.get_path_endpoints([])
+
+    def test_L_string_1x1(self):
+        """Test L-shaped string generation for size 1x1."""
+        lat = lattice.Lattice2D(4, 4)
+        ref = lat.convert_links_to_indices(
+            [
+                (((0, 0), lattice.Direction.X), False),
+                (((1, 0), lattice.Direction.Y), False),
+            ]
+        )
+        path = lat.generate_L_string((0, 0), (1, 1))
+        self.assertEqual(ref, path)
+
+    def test_L_string_2x1(self):
+        """Test L-shaped string generation for size 2x1."""
+        lat = lattice.Lattice2D(4, 4)
+        ref = lat.convert_links_to_indices(
+            [
+                (((0, 0), lattice.Direction.X), False),
+                (((1, 0), lattice.Direction.X), False),
+                (((2, 0), lattice.Direction.Y), False),
+            ]
+        )
+        path = lat.generate_L_string((0, 0), (2, 1))
+        self.assertEqual(ref, path)
+
+    def test_L_string_2x2(self):
+        """Test L-shaped string generation for size 2x2."""
+        lat = lattice.Lattice2D(4, 4)
+        ref = lat.convert_links_to_indices(
+            [
+                (((0, 0), lattice.Direction.X), False),
+                (((1, 0), lattice.Direction.X), False),
+                (((2, 0), lattice.Direction.Y), False),
+                (((2, 1), lattice.Direction.Y), False),
+            ]
+        )
+        path = lat.generate_L_string((0, 0), (2, 2))
+        self.assertEqual(ref, path)
+
+    def test_L_string_periodic_wrap(self):
+        """Test L-shaped string generation with periodic boundary conditions."""
+        lat = lattice.Lattice2D(4, 4)
+        ref = lat.convert_links_to_indices(
+            [
+                (((3, 3), lattice.Direction.X), False),
+                (((0, 3), lattice.Direction.X), False),
+                (((1, 3), lattice.Direction.Y), False),
+            ]
+        )
+        path = lat.generate_L_string((3, 3), (2, 1))
+        self.assertEqual(ref, path)
