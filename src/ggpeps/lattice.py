@@ -184,10 +184,12 @@ class Lattice2D:
 
         Args:
             links (list[tuple[((x, y), Direction), bool]]):
-                Links in coordinate representation.
+                Links in coordinate form, where each element is
+                (((x, y), direction), orientation).
 
         Returns:
-            list[tuple[int, bool]]: Links in index representation.
+            list[tuple[int, bool]]: Links in index form, where each element is
+            (link_index, orientation).
         """
         return [(self.coord2ind_dir(coord, direction), conj) for (coord, direction), conj in links]
 
@@ -284,20 +286,16 @@ class Lattice2D:
         """
         Generate a Polyakov loop around the full system in the positive direction.
 
-        The loop starts from a single point and proceeds entirely in the positive
-        direction. Each element is returned as (link_id, orientation), where:
-            - link_id is either a link index (int) or ((x, y), Direction).
-            - orientation is always False for Polyakov loops.
+        The loop starts from a given point and proceeds entirely in the positive
+        direction. Each link orientation is always False for Polyakov loops.
 
         Args:
-            coord (tuple[int, int]): Starting coordinates.
+            coord (tuple[int, int]): Starting site coordinates (x, y).
             dir (Direction): Loop direction (Direction.X or Direction.Y).
-            use_indices (bool, optional): If True, return link indices instead of
-                coordinate representation. Defaults to True.
 
         Returns:
-            list[tuple[int, bool]] | list[tuple[((x, y), Direction), bool]]:
-                Links forming the Polyakov loop.
+            list[tuple[int, bool]]: Links forming the Polyakov loop, each as
+            (link_index, orientation).
         """
         x, y = coord
         dest: list[tuple[tuple[tuple[int, int], Direction], bool]] = []
@@ -313,24 +311,20 @@ class Lattice2D:
 
         return self.convert_links_to_indices(dest)
 
-    def generate_wilson_loop(
-        self, coord: tuple[int, int], size: tuple[int, int]
-    ) -> list[tuple[int | tuple[tuple[int, int], Direction], bool]]:
+    def generate_wilson_loop(self, coord: tuple[int, int], size: tuple[int, int]) -> list[tuple[int, bool]]:
         """
         Generate a Wilson loop with a given size and bottom-left starting point.
 
-        The loop follows the rectangle edges in counter-clockwise order and respects
-        periodic boundary conditions.
+        The loop follows the rectangle edges in counter-clockwise order and
+        respects periodic boundary conditions.
 
         Args:
-            coord (tuple[int, int]): Bottom-left corner of the loop.
+            coord (tuple[int, int]): Bottom-left corner of the loop (x, y).
             size (tuple[int, int]): Loop size as (extent_x, extent_y).
-            use_indices (bool, optional): If True, return link indices instead of
-                coordinate representation. Defaults to True.
 
         Returns:
-            list[tuple[int | tuple[tuple[int, int], Direction], bool]]:
-                Links forming the Wilson loop, each as (link_id, orientation).
+            list[tuple[int, bool]]: Links forming the Wilson loop, each as
+            (link_index, orientation).
         """
         ext_x, ext_y = size
         x, y = coord
@@ -363,25 +357,21 @@ class Lattice2D:
 
         return self.convert_links_to_indices(dest)
 
-    def generate_L_string(
-        self, coord: tuple[int, int], size: tuple[int, int]
-    ) -> list[tuple[int | tuple[tuple[int, int], Direction], bool]]:
+    def generate_L_string(self, coord: tuple[int, int], size: tuple[int, int]) -> list[tuple[int, bool]]:
         """
         Generate an L-shaped path starting from a bottom-left corner.
 
-        The path extends rightward, then upward, respecting periodic boundary
-        conditions. Since the path only moves in the positive direction, no
-        conjugation (flip) occurs.
+        The path extends rightward, then upward, respecting periodic
+        boundary conditions. The path only moves in the positive direction,
+        so no conjugation (flip) occurs.
 
         Args:
-            coord (tuple[int, int]): Bottom-left corner (x, y) of the path.
-            size (tuple[int, int]): Extent of the path as (extent_x, extent_y).
-            use_indices (bool, optional): If True, return link indices instead of
-                coordinate representation. Defaults to True.
+            coord (tuple[int, int]): Bottom-left corner of the path (x, y).
+            size (tuple[int, int]): Path extents as (extent_x, extent_y).
 
         Returns:
-            list[tuple[int | tuple[tuple[int, int], Direction], bool]]:
-                Links forming the L-shaped path, each as (link_id, orientation).
+            list[tuple[int, bool]]: Links forming the L-shaped path, each as
+            (link_index, orientation).
         """
         ext_x, ext_y = size
         dest = []
@@ -431,24 +421,21 @@ class Lattice2D:
 
     def generate_all_wilson_loops(
         self, coord: tuple[int, int], sizes: list[tuple[int, int]] = []
-    ) -> list[list[tuple[int | tuple[tuple[int, int], Direction], bool]]]:
+    ) -> list[list[tuple[int, bool]]]:
         """
-        Generate all rectangular Wilson loops from a given starting point.
+        Generate all allowed rectangular Wilson loops from a starting point.
 
-        If no sizes are provided, all allowed loop sizes are generated.
+        If no sizes are provided, generate all allowed loop sizes.
         The method respects periodic boundary conditions.
 
         Args:
-            coord (tuple[int, int]): Bottom-left corner (x, y) of the Wilson loop.
+            coord (tuple[int, int]): Bottom-left corner of the Wilson loops (x, y).
             sizes (list[tuple[int, int]], optional): Loop sizes as (extent_x, extent_y).
-                If empty, generate all allowed loop sizes. Defaults to [].
-            use_indices (bool, optional): If True, return link indices instead of
-                coordinate representation. Defaults to True.
+                If empty, all allowed loop sizes are generated.
 
         Returns:
-            list[list[tuple[int | tuple[tuple[int, int], Direction], bool]]]:
-                Each element is a Wilson loop, represented as a list of
-                (link_id, orientation) tuples.
+            list[list[tuple[int, bool]]]: A list of Wilson loops, each represented as
+            a list of (link_index, orientation) tuples.
         """
         loops = []
 
