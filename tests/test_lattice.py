@@ -71,8 +71,9 @@ class TestLattice(unittest.TestCase):
             (((0, 1), lattice.Direction.X), True),
             (((0, 0), lattice.Direction.Y), True),
         ]
-        path = self.lat2d.generate_wilson_loop((0, 0), (1, 1), False)
-        self.assertEqual(ref, path)
+        ref_ind = self.lat2d.convert_links_to_indices(ref)
+        path = self.lat2d.generate_wilson_loop((0, 0), (1, 1))
+        self.assertEqual(ref_ind, path)
 
     def test_wilson_loop_2x1(self):
         ref = [
@@ -83,8 +84,9 @@ class TestLattice(unittest.TestCase):
             (((0, 1), lattice.Direction.X), True),
             (((0, 0), lattice.Direction.Y), True),
         ]
-        path = self.lat2d.generate_wilson_loop((0, 0), (2, 1), False)
-        self.assertEqual(ref, path)
+        ref_ind = self.lat2d.convert_links_to_indices(ref)
+        path = self.lat2d.generate_wilson_loop((0, 0), (2, 1))
+        self.assertEqual(ref_ind, path)
 
     def test_wilson_loop_1x1_periodic(self):
         ref = [
@@ -93,8 +95,9 @@ class TestLattice(unittest.TestCase):
             (((7, 0), lattice.Direction.X), True),
             (((7, 7), lattice.Direction.Y), True),
         ]
-        path = self.lat2d.generate_wilson_loop((7, 7), (1, 1), False)
-        self.assertEqual(ref, path)
+        ref_ind = self.lat2d.convert_links_to_indices(ref)
+        path = self.lat2d.generate_wilson_loop((7, 7), (1, 1))
+        self.assertEqual(ref_ind, path)
 
     def test_wilson_loop_generation_2x2_lattice(self):
         """Test that all expected wilson loops are generated for a 2x2 lattice."""
@@ -107,8 +110,10 @@ class TestLattice(unittest.TestCase):
                 (((0, 0), lattice.Direction.Y), True),
             ]
         ]
-        paths = lat.generate_all_wilson_loops((0, 0), use_indices=False)
-        self.assertEqual(refs, paths)
+        # Convert refs to index form
+        refs_ind = [lat.convert_links_to_indices(loop) for loop in refs]
+        paths = lat.generate_all_wilson_loops((0, 0))
+        self.assertEqual(refs_ind, paths)
 
     def test_wilson_loop_generation_4x4_lattice(self):
         """Test that all expected wilson loops are generated for a 4x4 lattice.
@@ -142,8 +147,10 @@ class TestLattice(unittest.TestCase):
                 (((0, 0), lattice.Direction.Y), True),
             ],  # 2x2 loop
         ]
-        paths = lat.generate_all_wilson_loops((0, 0), use_indices=False)
-        self.assertEqual(refs, paths)
+        # Convert refs to index form
+        refs_ind = [lat.convert_links_to_indices(loop) for loop in refs]
+        paths = lat.generate_all_wilson_loops((0, 0))
+        self.assertEqual(refs_ind, paths)
 
     def test_wilson_loop_generation_5x5_lattice(self):
         """Test that all expected wilson loops are generated for a 5x5 lattice.
@@ -186,9 +193,10 @@ class TestLattice(unittest.TestCase):
                 (((0,1),lattice.Direction.Y),True),
                 (((0,0),lattice.Direction.Y),True)     ], # 1x2 loop
         """
-
-        paths = lat.generate_all_wilson_loops((0, 0), use_indices=False)
-        self.assertEqual(refs, paths)
+        # Convert refs to index form
+        refs_ind = [lat.convert_links_to_indices(loop) for loop in refs]
+        paths = lat.generate_all_wilson_loops((0, 0))
+        self.assertEqual(refs_ind, paths)
 
     def test_polyakov_loop_hor(self):
         ref = [
@@ -201,8 +209,9 @@ class TestLattice(unittest.TestCase):
             (((6, 0), lattice.Direction.X), False),
             (((7, 0), lattice.Direction.X), False),
         ]
-        path = self.lat2d.generate_polyakov_loop((0, 0), lattice.Direction.X, use_indices=False)
-        self.assertEqual(ref, path)
+        ref_ind = self.lat2d.convert_links_to_indices(ref)
+        path = self.lat2d.generate_polyakov_loop((0, 0), lattice.Direction.X)
+        self.assertEqual(ref_ind, path)
 
     def test_polyakov_loop_vert(self):
         ref = [
@@ -215,8 +224,9 @@ class TestLattice(unittest.TestCase):
             (((0, 6), lattice.Direction.Y), False),
             (((0, 7), lattice.Direction.Y), False),
         ]
-        path = self.lat2d.generate_polyakov_loop((0, 0), lattice.Direction.Y, use_indices=False)
-        self.assertEqual(ref, path)
+        ref_ind = self.lat2d.convert_links_to_indices(ref)
+        path = self.lat2d.generate_polyakov_loop((0, 0), lattice.Direction.Y)
+        self.assertEqual(ref_ind, path)
 
     def test_2d_covering(self):
         nx = 13

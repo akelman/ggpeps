@@ -280,9 +280,7 @@ class Lattice2D:
 
         return (start_site_coord, end_site_coord)
 
-    def generate_polyakov_loop(
-        self, coord: tuple[int, int], dir: Direction, use_indices: bool = True
-    ) -> list[tuple[int, bool]] | list[tuple[tuple[tuple[int, int], Direction], bool]]:
+    def generate_polyakov_loop(self, coord: tuple[int, int], dir: Direction) -> list[tuple[int, bool]]:
         """
         Generate a Polyakov loop around the full system in the positive direction.
 
@@ -313,12 +311,10 @@ class Lattice2D:
         else:
             raise ValueError("generate_polyakov_loop: There are only X and Y as directions")
 
-        if use_indices:
-            return self.convert_links_to_indices(dest)
-        return dest
+        return self.convert_links_to_indices(dest)
 
     def generate_wilson_loop(
-        self, coord: tuple[int, int], size: tuple[int, int], use_indices: bool = True
+        self, coord: tuple[int, int], size: tuple[int, int]
     ) -> list[tuple[int | tuple[tuple[int, int], Direction], bool]]:
         """
         Generate a Wilson loop with a given size and bottom-left starting point.
@@ -338,15 +334,10 @@ class Lattice2D:
         """
         ext_x, ext_y = size
         x, y = coord
-        dest = []
+        dest: list[tuple[tuple[tuple[int, int], Direction], bool]] = []
 
-        # Helper to append links, converting to indices if needed
-        def add_link(coord_edge, direction, orientation):
-            if use_indices:
-                link = (self.coord2ind_dir(coord_edge, direction), orientation)
-            else:
-                link = ((coord_edge, direction), orientation)
-            dest.append(link)
+        def add_link(coord_edge: tuple[int, int], direction: Direction, orientation: bool):
+            dest.append(((coord_edge, direction), orientation))
 
         # ----------------------
         # Bottom edge (left → right, natural orientation)
@@ -370,10 +361,10 @@ class Lattice2D:
             coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=False)
             add_link(coord_edge, Direction.Y, True)
 
-        return dest
+        return self.convert_links_to_indices(dest)
 
     def generate_L_string(
-        self, coord: tuple[int, int], size: tuple[int, int], use_indices: bool = True
+        self, coord: tuple[int, int], size: tuple[int, int]
     ) -> list[tuple[int | tuple[tuple[int, int], Direction], bool]]:
         """
         Generate an L-shaped path starting from a bottom-left corner.
@@ -395,13 +386,9 @@ class Lattice2D:
         ext_x, ext_y = size
         dest = []
 
-        # Helper to append links, converting to indices if needed
-        def add_link(coord_edge, direction, orientation):
-            if use_indices:
-                link = (self.coord2ind_dir(coord_edge, direction), orientation)
-            else:
-                link = ((coord_edge, direction), orientation)
-            dest.append(link)
+        # Helper to append links
+        def add_link(coord_edge: tuple[int, int], direction: Direction, orientation: bool):
+            dest.append(((coord_edge, direction), orientation))
 
         # Horizontal segment (left → right, natural orientation)
         coord_edge = coord
@@ -414,7 +401,7 @@ class Lattice2D:
             add_link(coord_edge, Direction.Y, False)
             coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=True)
 
-        return dest
+        return self.convert_links_to_indices(dest)
 
     def generate_allowed_loop_dimensions(self, include_all: bool = False) -> list[tuple[int, int]]:
         """
@@ -443,7 +430,7 @@ class Lattice2D:
         return sizes
 
     def generate_all_wilson_loops(
-        self, coord: tuple[int, int], sizes: list[tuple[int, int]] = [], use_indices: bool = True
+        self, coord: tuple[int, int], sizes: list[tuple[int, int]] = []
     ) -> list[list[tuple[int | tuple[tuple[int, int], Direction], bool]]]:
         """
         Generate all rectangular Wilson loops from a given starting point.
@@ -469,7 +456,7 @@ class Lattice2D:
             sizes = self.generate_allowed_loop_dimensions()
 
         for size in sizes:
-            loop = self.generate_wilson_loop(coord, size, use_indices)
+            loop = self.generate_wilson_loop(coord, size)
             loops.append(loop)
 
         return loops
