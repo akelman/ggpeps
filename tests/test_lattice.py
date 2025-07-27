@@ -345,7 +345,8 @@ class TestLattice(unittest.TestCase):
         """
         lat2x2 = lattice.Lattice2D(2, 2)
         path = [(((0, 0), lattice.Direction.X), False), (((1, 0), lattice.Direction.Y), False)]
-        start, end = lat2x2.get_path_endpoints(path)
+        index_path = lat2x2.convert_links_to_indices(path)
+        start, end = lat2x2.get_path_endpoints(index_path)
         self.assertEqual(start, lat2x2.coord2ind((0, 0)))
         self.assertEqual(end, lat2x2.coord2ind((1, 1)))
 

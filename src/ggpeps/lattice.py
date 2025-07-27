@@ -222,7 +222,7 @@ class Lattice2D:
         else:
             raise ValueError("get_neighbor: Only X and Y directions are supported")
 
-    def get_path_endpoints(self, path: list[tuple[tuple[tuple[int, int], Direction] | int, bool]]) -> tuple[int, int]:
+    def get_path_endpoints(self, path: list[tuple[int, bool]]) -> tuple[int, int]:
         """
         Get the lattice site endpoints of a path.
 
@@ -231,10 +231,9 @@ class Lattice2D:
         by whether the link is conjugated or not.
 
         Args:
-            path (list[tuple[((x, y), Direction) | int, bool]]):
-                List of links. Each link is either:
-                    - (((x, y), Direction), conj), or
-                    - (link_id, conj).
+            path (list[tuple[int, bool]]):
+                List of links in index form. Each link is:
+                    - (link_id, conj)
 
         Returns:
             tuple[int, int]:
@@ -246,23 +245,8 @@ class Lattice2D:
         start_link, end_link = path[0][0], path[-1][0]
         is_start_link_conj, is_end_link_conj = path[0][1], path[-1][1]
 
-        # Extra type checking for consistency
-        if not isinstance(start_link, type(end_link)):
-            raise TypeError(
-                f"Inconsistent path input types: first link type is {type(start_link)}, "
-                f"last link type is {type(end_link)}."
-            )
-
-        if isinstance(start_link, int) and isinstance(end_link, int):
-            # path elements were given as tuples of the form (link_id, conj)
-            start_site_coord, start_site_dir = self.ind2coord_dir(start_link)
-            end_site_coord, end_site_dir = self.ind2coord_dir(end_link)
-        elif isinstance(start_link, tuple) and isinstance(end_link, tuple):
-            # path elements were given as tuples of the form (((x,y), dir), conj)
-            start_site_coord, start_site_dir = start_link
-            end_site_coord, end_site_dir = end_link
-        else:
-            raise TypeError("Path links are neither both ints nor both tuples.")
+        start_site_coord, start_site_dir = self.ind2coord_dir(start_link)
+        end_site_coord, end_site_dir = self.ind2coord_dir(end_link)
 
         if is_start_link_conj:
             start_site_coord = self.get_neighbor(start_site_coord, start_site_dir)
