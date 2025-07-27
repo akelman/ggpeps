@@ -44,7 +44,10 @@ def main(args, save_path=None):
                         int_energy_grad = g_int * int_energy_grad
 
                         chem_energy_grad = dumpobj["mc"].obsdict["chem_energy_op_grad"].get_timeseries()
-                        # We assume that unlike the other grad_op the chmical energy has already been mulplied by the relevant couplings
+                        for lay in range(dumpobj["mc"].system.cfg.num_pg_layer, dumpobj["mc"].system.cfg.nlayer):
+                            # the gradients must be scaled by the chemical potential
+                            ind = lay - dumpobj["mc"].system.cfg.num_pg_layer
+                            chem_energy_grad[lay] *= dumpobj["mc"].system.cfg.g_chem[ind]
 
                         energy_grad_obsvec = el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
                         grad_norm_obsvec = np.asarray(dumpobj["mc"].obsdict["grad_norm"].get_timeseries())

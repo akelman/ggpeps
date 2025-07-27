@@ -5,6 +5,7 @@ import logging
 
 import pandas as pd
 import numpy as np
+import copy
 
 import ggpeps
 import ggpeps.utils as utils
@@ -249,7 +250,7 @@ class MonteCarloEvaluator(Evaluator):
 
         # Gradient of the chemical potential
         meas_chem_energy = self.obsdict["chem_energy"]
-        meas_chem_energy_op_grad = self.obsdict["chem_energy_op_grad"]
+        meas_chem_energy_op_grad = copy.deepcopy(self.obsdict["chem_energy_op_grad"])
         for lay in range(self.system.cfg.num_pg_layer, self.system.cfg.nlayer):
             # the gradients must be scaled by the chemical potential
             ind = lay - self.system.cfg.num_pg_layer
@@ -427,8 +428,11 @@ class MonteCarloEvaluator(Evaluator):
                 g_int = self.system.cfg.g_int
                 int_energy_grad = g_int * int_energy_grad
 
-                chem_energy_grad = np.asarray(self.obsdict["chem_energy_op_grad"].get_timeseries())
-                # We assume that unlike the other grad_op, the chmical energy has already been mulplied by the relevant couplings
+                chem_energy_grad = np.copy(np.asarray(self.obsdict["chem_energy_op_grad"].get_timeseries()))
+                for lay in range(self.system.cfg.num_pg_layer, self.system.cfg.nlayer):
+                    # the gradients must be scaled by the chemical potential
+                    ind = lay - self.system.cfg.num_pg_layer
+                    chem_energy_grad[lay] *= self.system.cfg.g_chem[ind]
 
                 energy_grad_obsvec = el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
                 grad_norm_obsvec = np.asarray(self.obsdict["grad_norm"].get_timeseries())
