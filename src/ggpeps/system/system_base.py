@@ -1538,6 +1538,10 @@ class System2DBase(ABC):
         covmat_out_virt_vec,
         norm_mod_vec,
         lognorm_default_vec,
+        wi_gamma_in_mod_vec,
+        wi_gamma_out_mod_vec,
+        mat_d_mod_inv_vec,
+        gamma_maj_sys_deriv_layvec_ucvec_symbvec,
         zeroed_params,
         use_trans_inv: bool = True,
     ):
@@ -1843,6 +1847,10 @@ class System2DBase(ABC):
                 self.norm_mod_vec,
                 self.lognorm_default_vec,
                 self.cfg.zeroed_params,
+                self.wi_gamma_in_mod_vec,
+                self.wi_gamma_out_mod_vec,
+                self.mat_d_mod_inv_vec,
+                self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
                 use_trans_inv=True,
             )
         return self._el_energy_op_grad_vec

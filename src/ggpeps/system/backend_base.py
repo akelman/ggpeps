@@ -59,6 +59,10 @@ class BackendBase(ABC):
         covmat_out_virt_vec,
         norm_mod_vec,
         lognorm_default_vec,
+        wi_gamma_in_mod_vec,
+        wi_gamma_out_mod_vec,
+        mat_d_mod_inv_vec,
+        gamma_maj_sys_deriv_layvec_ucvec_symbvec,
         zeroed_params,
     ):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")

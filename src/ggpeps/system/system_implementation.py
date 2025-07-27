@@ -295,6 +295,10 @@ class Z2System2D(System2DBase):
         norm_mod_vec,
         lognorm_default_vec,
         zeroed_params,
+        wi_gamma_in_mod_vec,
+        wi_gamma_out_mod_vec,
+        mat_d_mod_inv_vec,
+        gamma_maj_sys_deriv_layvec_ucvec_symbvec,
         use_trans_inv: bool = True,
     ):
         """Computation of the electric energy gradients.
@@ -333,6 +337,10 @@ class Z2System2D(System2DBase):
             covmat_out_virt_vec,
             norm_mod_vec,
             lognorm_default_vec,
+            wi_gamma_in_mod_vec,
+            wi_gamma_out_mod_vec,
+            mat_d_mod_inv_vec,
+            gamma_maj_sys_deriv_layvec_ucvec_symbvec,
             zeroed_params,
         )
         return gradients

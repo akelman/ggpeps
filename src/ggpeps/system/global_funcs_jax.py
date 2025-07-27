@@ -102,6 +102,10 @@ def compute_el_grad_vec_jax(
     covmat_out_virt_vec,
     norm_mod_vec,
     lognorm_default_vec,
+    wi_gamma_in_mod_vec,
+    wi_gamma_out_mod_vec,
+    mat_d_mod_inv_vec,
+    gamma_maj_sys_deriv_layvec_ucvec_symbvec,
     zeroed_params,
 ) -> jnp.ndarray:
     """Computation of the electric energy gradients.
@@ -129,7 +133,7 @@ def compute_el_grad_vec_jax(
 
         # Abbreviations for more readable code
         mat_b = mat_b_mod_vec[layerind]
-        diff_d_gamma_inv = system.wi_gamma_out_mod_vec[
+        diff_d_gamma_inv = wi_gamma_out_mod_vec[
             layerind
         ].inv()  # this does not actually do a computation, just a retrieval
         single_link_offset = 2 * nvirtmodes_link
@@ -138,7 +142,7 @@ def compute_el_grad_vec_jax(
         overall_factor = overall_factors[layerind]
         nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
         gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
-        diff_d_inv_gamma_inv = system.wi_gamma_in_mod_vec[layerind].inv()
+        diff_d_inv_gamma_inv = wi_gamma_in_mod_vec[layerind].inv()
 
         covmat_out_virt = covmat_out_virt_vec[layerind]
         norm_mod = norm_mod_vec[layerind]
@@ -152,7 +156,7 @@ def compute_el_grad_vec_jax(
                     # we can skip it for parameters that are forced by the ansatz to be zero
                     dest_grad = dest_grad.at[layerind, uc_ind, symbol_ind].set(0)
                 else:
-                    deriv_gamma_maj_sys = system.gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind]
+                    deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind]
                     d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats_jax(deriv_gamma_maj_sys, offset)
                     d_gamma_out = (
                         d_mat_a
@@ -183,7 +187,7 @@ def compute_el_grad_vec_jax(
                         gamma_in_sys_mod,
                         diff_d_inv_gamma_inv,
                         d_mat_d,
-                        system.mat_d_mod_inv_vec[layerind],
+                        mat_d_mod_inv_vec[layerind],
                     )
                     # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
                     d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
@@ -280,6 +284,10 @@ class BackendJax_Z2(BackendBase):
         covmat_out_virt_vec,
         norm_mod_vec,
         lognorm_default_vec,
+        wi_gamma_in_mod_vec,
+        wi_gamma_out_mod_vec,
+        mat_d_mod_inv_vec,
+        gamma_maj_sys_deriv_layvec_ucvec_symbvec,
         zeroed_params,
     ):
         return compute_el_grad_vec_jax(
@@ -299,5 +307,9 @@ class BackendJax_Z2(BackendBase):
             covmat_out_virt_vec,
             norm_mod_vec,
             lognorm_default_vec,
+            wi_gamma_in_mod_vec,
+            wi_gamma_out_mod_vec,
+            mat_d_mod_inv_vec,
+            gamma_maj_sys_deriv_layvec_ucvec_symbvec,
             zeroed_params,
         )
