@@ -88,8 +88,8 @@ def compute_el_grad_vec_numpy(
     covmat_out_virt_vec,
     norm_mod_vec,
     lognorm_default_vec,
-    wi_gamma_in_mod_vec,
-    wi_gamma_out_mod_vec,
+    wi_gamma_in_mod_inv_vec,
+    wi_gamma_out_mod_inv_vec,
     mat_d_mod_inv_vec,
     gamma_maj_sys_deriv_layvec_ucvec_symbvec,
     grad_over_norm_vec,
@@ -116,16 +116,14 @@ def compute_el_grad_vec_numpy(
 
         # Abbreviations for more readable code
         mat_b = mat_b_mod_vec[layerind]
-        diff_d_gamma_inv = wi_gamma_out_mod_vec[
-            layerind
-        ].inv()  # this does not actually do a computation, just a retrieval
+        diff_d_gamma_inv = wi_gamma_out_mod_inv_vec[layerind]
         single_link_offset = 2 * nvirtmodes_link
         offset = 2 * lattice_size * nphysmodes_site + single_link_offset
         idxarr = idxarr_vec[layerind]
         overall_factor = overall_factors[layerind]
         nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
         gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
-        diff_d_inv_gamma_inv = wi_gamma_in_mod_vec[layerind].inv()
+        diff_d_inv_gamma_inv = wi_gamma_in_mod_inv_vec[layerind]
 
         covmat_out_virt = covmat_out_virt_vec[layerind]
         norm_mod = norm_mod_vec[layerind]
@@ -321,8 +319,8 @@ class BackendNumpy_Z2(BackendBase):
         covmat_out_virt_vec,
         norm_mod_vec,
         lognorm_default_vec,
-        wi_gamma_in_mod_vec,
-        wi_gamma_out_mod_vec,
+        wi_gamma_in_mod_inv_vec,
+        wi_gamma_out_mod_inv_vec,
         mat_d_mod_inv_vec,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec,
         grad_over_norm_vec,
@@ -344,8 +342,8 @@ class BackendNumpy_Z2(BackendBase):
             covmat_out_virt_vec,
             norm_mod_vec,
             lognorm_default_vec,
-            wi_gamma_in_mod_vec,
-            wi_gamma_out_mod_vec,
+            wi_gamma_in_mod_inv_vec,
+            wi_gamma_out_mod_inv_vec,
             mat_d_mod_inv_vec,
             gamma_maj_sys_deriv_layvec_ucvec_symbvec,
             grad_over_norm_vec,
