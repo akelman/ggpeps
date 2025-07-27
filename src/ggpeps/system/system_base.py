@@ -1394,20 +1394,7 @@ class System2DBase(ABC):
             xnp.ndarray: Vector of gradients of the norm with respect to all parameters
         """
         if self._grad_over_norm_vec is None:
-            dest = []
-            for layerind in range(self.cfg.nlayer):
-                layer_grad = []
-                for uc_ind in range(self.cfg.unitcell_size):
-                    uc_grad = []
-                    for symb in self.symbolvec:
-                        uc_grad.append(self.compute_grad_over_norm(symb, layerind, uc_ind))
-                    layer_grad.append(uc_grad)
-                dest.append(layer_grad)
-            dest = xnp.asarray(dest)
-
-            # Enforce ansatz conditions on the gradients
-            self.cfg.enforce_parameter_conditions(dest)
-            self._grad_over_norm_vec = dest
+            self._grad_over_norm_vec = self.compute_grad_norm_vec()
         return self._grad_over_norm_vec
 
     ################## Local Gauge ######################
