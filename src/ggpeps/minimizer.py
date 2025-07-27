@@ -263,7 +263,7 @@ class Minimizer:
             jac=gradient_wrapper if self.cfg.method in self.grad_methods else None,
             tol=self.cfg.tol,
             callback=lambda x: print_callback(x, self),
-            options=options_dict,
+            options=options_dict,  # TODO: this also causes a type error, but unclear why
         )
         flattened_paramvec = min_result.x
         if self.cfg.method in self.no_grad_methods:
