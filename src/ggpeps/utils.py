@@ -261,31 +261,6 @@ def derivative_pfaffian_covariance_mat(pfarr, matvec, d_matvec):
     return dest
 
 
-def derivative_pfaffian(mat, d_mat, pfaval=None, backend="numpy"):
-    """Compute the derivative of a Pfaffian of a matrix A.
-    The explicit derivative dA/dx is given as a second argument
-
-    The given formula is only valid if A is not singular.
-
-    Args:
-        mat (np.ndarray): Input Matrix A
-        d_mat (np.ndarray): Derivative dA/dx
-
-    Returns:
-        np.ndarray: d(Pf(A))/dx
-    """
-    if pfaval is None:
-        if backend == "jax":
-            pfaval = pfaffian(mat)
-        else:
-            pfaval = pf.pfaffian(mat)
-
-    if not isclose(pfaval, 0):
-        return 0.5 * pfaval * xnp.trace(xnp.linalg.inv(mat) @ d_mat)
-    else:
-        return 0.0
-
-
 def get_obs_mean_df(df: pd.DataFrame, obs: str) -> float:
     """Get the mean of an observable from the summary dataframe.
 

@@ -1,9 +1,33 @@
 ############## NUMPY CPU VERSIONS ##############
 
 import numpy as np
+from pfapack import pfaffian as pf
 
 import ggpeps
+from ggpeps.utils import isclose
 from ggpeps.system.backend_base import BackendBase
+
+
+def derivative_pfaffian_numpy(mat, d_mat, pfaval=None):
+    """Compute the derivative of a Pfaffian of a matrix A.
+    The explicit derivative dA/dx is given as a second argument
+
+    The given formula is only valid if A is not singular.
+
+    Args:
+        mat (np.ndarray): Input Matrix A
+        d_mat (np.ndarray): Derivative dA/dx
+
+    Returns:
+        np.ndarray: d(Pf(A))/dx
+    """
+    if pfaval is None:
+        pfaval = pf.pfaffian(mat)
+
+    if not isclose(pfaval, 0):
+        return 0.5 * pfaval * np.trace(np.linalg.inv(mat) @ d_mat)
+    else:
+        return 0.0
 
 
 def calculate_lognormvec_numpy(
@@ -151,7 +175,7 @@ def compute_el_grad_vec_numpy(
                     # We re-use the list comprehension from above to use the indices
                     deriv_pfarr = [
                         prefactor
-                        * ggpeps.utils.derivative_pfaffian(
+                        * derivative_pfaffian_numpy(
                             covmat_out_virt[np.ix_(ind, ind)],
                             d_covmat_out_virt[np.ix_(ind, ind)],
                         )

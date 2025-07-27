@@ -10,8 +10,29 @@ from jax import jit, device_put
 # Without this line, some of the precision tests do not pass.
 jax.config.update("jax_enable_x64", True)
 
+import py_pfaffian.jax
+
 import ggpeps
 from ggpeps.system.backend_base import BackendBase
+
+
+def derivative_pfaffian_jax(mat, d_mat, pfaval=None):
+    """Compute the derivative of a Pfaffian of a matrix A.
+    The explicit derivative dA/dx is given as a second argument
+
+    The given formula is only valid if A is not singular.
+
+    Args:
+        mat (np.ndarray): Input Matrix A
+        d_mat (np.ndarray): Derivative dA/dx
+
+    Returns:
+        np.ndarray: d(Pf(A))/dx
+    """
+    if pfaval is None:
+        pfaval = py_pfaffian.jax.pfaffian(mat)
+
+    return 0.5 * pfaval * jnp.trace(jnp.linalg.inv(mat) @ d_mat)
 
 
 @jit
@@ -84,7 +105,21 @@ def compute_grad_over_norm_jax(
 # Two issues:
 # (a) cannot jit, because this function calls pfaffian code, which is not built for jax
 # (b) TODO: should accept required matrices, which will not need to be static
-# @partial(jax.jit, static_argnames=["system"])
+@partial(
+    jax.jit,
+    static_argnames=[
+        "lattice_size",
+        "num_pg_layer",
+        "num_fermionic_layer",
+        "unitcell_size",
+        "nvirtmodes_link",
+        "nphysmodes_site",
+        "symbolvec",
+        "overall_factors",
+        "idxarr_vec",
+        "zeroed_params",
+    ],
+)
 def compute_el_grad_vec_jax(
     lattice_size: int,
     num_pg_layer: int,
@@ -168,10 +203,9 @@ def compute_el_grad_vec_jax(
                     # We re-use the list comprehension from above to use the indices
                     deriv_pfarr = [
                         prefactor
-                        * ggpeps.utils.derivative_pfaffian(
+                        * derivative_pfaffian_jax(
                             covmat_out_virt[jnp.ix_(jnp.array(ind), jnp.array(ind))],
                             d_covmat_out_virt[jnp.ix_(jnp.array(ind), jnp.array(ind))],
-                            backend="jax",
                         )
                         for prefactor, ind in idxarr
                     ]
@@ -199,7 +233,12 @@ def compute_el_grad_vec_jax(
     # They act as a prefactor in the derivative
     if nlayer > 1:
         for i in range(nlayer):
-            prod_other_layers = ggpeps.utils.multiply_except(el_energy_vec, i)
+            # prod_other_layers = ggpeps.utils.multiply_except(el_energy_vec, i)
+            # multiply_except does not currently work inside a jit function, so do this instead:
+            mask = jnp.ones(nlayer, dtype=bool)
+            mask = mask.at[i].set(False)
+            prod_other_layers = jnp.where(mask, el_energy_vec, 1.0).prod()
+
             dest_grad = dest_grad.at[i].multiply(prod_other_layers)
 
     return dest_grad
