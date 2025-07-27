@@ -1832,8 +1832,8 @@ class System2DBase(ABC):
                 self.cfg.nvirtmodes_link,
                 self.cfg.nphysmodes_site,
                 tuple(self.cfg.symbolvec),
-                self.cfg.el_overall_factors,
-                self.cfg.idxarr_vec,
+                tuple(self.cfg.el_overall_factors),
+                tuple(self.cfg.idxarr_vec),
                 self.el_energy_op_vec,
                 self.mat_b_mod_vec,
                 self.gamma_in_sys_mod_vec,
@@ -1845,7 +1845,7 @@ class System2DBase(ABC):
                 self.mat_d_mod_inv_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
                 self.grad_over_norm_vec,
-                self.cfg.zeroed_params,
+                tuple(self.cfg.zeroed_params),
                 use_trans_inv=True,
             )
         return self._el_energy_op_grad_vec
@@ -2232,8 +2232,8 @@ def get_pfaffian_arrays(modes, coefficients):
     submatrices = [k for k in it.product(*modes)]
     indices = [sum(sub, ()) for sub in submatrices]
 
-    factors = [xnp.asarray(k) for k in it.product(*coefficients)]
-    prefactors = [xnp.prod(k) for k in factors]
+    factors = [np.asarray(k) for k in it.product(*coefficients)]
+    prefactors = [np.prod(k) for k in factors]
     idxarr = [(p, i) for p, i in zip(prefactors, indices)]
 
-    return idxarr
+    return tuple(idxarr)
