@@ -426,23 +426,28 @@ class MonteCarloEvaluator(Evaluator):
                 int_energy_grad = np.asarray(self.obsdict["int_energy_op_grad"].get_timeseries())
                 g_int = self.system.cfg.g_int
                 int_energy_grad = g_int * int_energy_grad
-                
-                chem_energy_grad = np.asarray(self.obsdict["chem_energy_op_grad"].get_timeseries()) 
-                # We assume that unlike the other grad_op the chmical energy has already been mulplied by the relevant couplings
+
+                chem_energy_grad = np.asarray(self.obsdict["chem_energy_op_grad"].get_timeseries())
+                # We assume that unlike the other grad_op, the chmical energy has already been mulplied by the relevant couplings
 
                 energy_grad_obsvec = el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
                 grad_norm_obsvec = np.asarray(self.obsdict["grad_norm"].get_timeseries())
 
+                zeroed_params = self.system.cfg.get_zeroed_params()
                 for layer in range(nlayer):
                     for unit_cell in range(unitcell_size):
                         for grad_ind in range(nparams):
-                            energy_grad_component = energy_grad_obsvec[
-                                :, layer, unit_cell, grad_ind
-                            ]
-                            grad_norm_component = grad_norm_obsvec[:, layer, unit_cell, grad_ind]
-                            dest[layer, unit_cell, grad_ind] = utils.compute_grad_err(energy_obsvec, energy_grad_component, grad_norm_component)
+                            if (layer, unit_cell, grad_ind) in zeroed_params:
+                                # If this is the a forced zeroed component, the error is 0.0
+                                dest[layer, unit_cell, grad_ind] = 0.0
+                            else:
+                                energy_grad_component = energy_grad_obsvec[:, layer, unit_cell, grad_ind]
+                                grad_norm_component = grad_norm_obsvec[:, layer, unit_cell, grad_ind]
+                                dest[layer, unit_cell, grad_ind] = utils.compute_grad_err(
+                                    energy_obsvec, energy_grad_component, grad_norm_component
+                                )
                 return dest
-    
+
             if meas is not None and len(meas) > 0:
                 return meas.mean_err()
         return None
@@ -518,6 +523,7 @@ class MonteCarloEvaluator(Evaluator):
                 logger.info(f"<{key}>: {self.obsdict[key].mean()}")
 
     def summary(self) -> pd.DataFrame:
+        """Create panda dataframe file that summarizes the evaluation."""
         dest: dict = {
             "name": [],
             "nx": [],

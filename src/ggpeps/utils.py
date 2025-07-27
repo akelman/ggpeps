@@ -783,6 +783,7 @@ def autocorr_fft(arr: np.ndarray) -> np.ndarray:
         np.ndarray: Autocorrelation of the timeseries"""
     arr = arr - np.mean(arr)
     if np.allclose(arr, 0.0):
+        # If the timeseries is constant, the autocorrelation is maximal - all ones.
         return np.ones(arr.shape)
     fft_vals = np.fft.fft(arr)
     spectrum = fft_vals * np.conjugate(fft_vals)
