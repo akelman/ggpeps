@@ -257,10 +257,9 @@ class Minimizer:
         # We might want to change this later.
         flattened_paramvec = np.reshape(self.evaluator_manager.system_cfg.paramvec, (-1))
         min_result = minimize(  # type: ignore
-            # TODO: fix type hint
             energy_wrapper,
             flattened_paramvec,
-            method=self.cfg.method,
+            method=self.cfg.method,  # TODO: fix type hint - this must be a literal of the supported methods, not a string to pass type checker
             jac=gradient_wrapper if self.cfg.method in self.grad_methods else None,
             tol=self.cfg.tol,
             callback=lambda x: print_callback(x, self),
