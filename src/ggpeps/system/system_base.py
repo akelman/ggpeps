@@ -323,9 +323,7 @@ class System2DBase(ABC):
         self._weight: Optional[float] = None
 
         # Gradients
-        self._gamma_maj_sys_deriv_dict: Optional[dict[sympy.Symbol, list[xnp.ndarray]]] = (
-            None  # the list is for layers
-        )
+        self._gamma_maj_sys_deriv: Optional[xnp.ndarray] = None
         self._el_energy_op_grad_vec: Optional[xnp.ndarray] = None  # first index is layer, second index is symbol
         self._mass_energy_op_grad_vec: Optional[xnp.ndarray] = None
         self._int_energy_op_grad_vec: Optional[xnp.ndarray] = None
@@ -1129,22 +1127,23 @@ class System2DBase(ABC):
         smat = utils.generate_smat(m)
         return xnp.real(smat @ gamma_dirac_deriv @ xnp.transpose(smat))
 
-    def _generate_gamma_maj_sys_deriv_dict(self):
-        """Internal function to generate a dictionary of all possible derivatives of gamma_maj_sys, the system-wide
+    def _generate_gamma_maj_sys_deriv(self) -> xnp.ndarray:
+        """Internal function to generate an array of all possible derivatives of gamma_maj_sys, the system-wide
         covariance matrix of the fiducial state.
-        The key to the dictionary is the symbol with respect to which we derived.
-        Each entry contains a list with len(list) = nlayer.
+        The dimensions of the array are
+            (nlayer, unitcell_size, n_symbols, gamma_maj_dim, gamma_maj_dim)
+        where
+            gamma_maj_dim = 2 * nsites * (nphysmodes_site + 4 * ncopy)
 
         Returns:
-            dict: Dictionary with all derivatives
+            array: derivatives of gamma_maj_sys
         """
-        # TODO: should we save the computations here in private variables (as done elsewhere)?
-        dest = {}
-        for symb in self.symbolvec:
-            arr = []
-            for lay in range(self.cfg.nlayer):
-                uc_vec = []
-                for uc_ind in range(self.cfg.unitcell_size):
+        lay_vec = []
+        for lay in range(self.cfg.nlayer):
+            uc_vec = []
+            for uc_ind in range(self.cfg.unitcell_size):
+                arr = []
+                for symb in self.symbolvec:
                     gamma_maj_deriv = self.compute_gamma_maj_deriv(symb, lay, uc_ind)
 
                     gamma_maj_derivs_sitevec = []
@@ -1155,11 +1154,17 @@ class System2DBase(ABC):
                             gamma_maj_derivs_sitevec.append(xnp.zeros_like(gamma_maj_deriv))
 
                     gamma_maj_sys_derivs = self._expand_gamma_maj_to_system([gamma_maj_derivs_sitevec])[0]
-                    uc_vec.append(gamma_maj_sys_derivs)
-                arr.append(uc_vec)
-
-            dest[symb] = xnp.array(arr)
+                    arr.append(gamma_maj_sys_derivs)
+                uc_vec.append(arr)
+            lay_vec.append(uc_vec)
+        dest = xnp.array(lay_vec)
         return dest
+
+    @property
+    def gamma_maj_sys_deriv_layvec_ucvec_symbvec(self) -> xnp.ndarray:
+        if self._gamma_maj_sys_deriv is None:
+            self._gamma_maj_sys_deriv = self._generate_gamma_maj_sys_deriv()
+        return self._gamma_maj_sys_deriv
 
     def gamma_maj_sys_deriv_vec(self, symb: sympy.Symbol) -> xnp.ndarray:
         """Return a list of derivatives of all layers of gamma_maj_sys with respect to a given symbol.
@@ -1176,36 +1181,6 @@ class System2DBase(ABC):
 
         arr = self.gamma_maj_sys_deriv_layvec_ucvec_symbvec[:, :, self.symbolvec.index(symb), :, :]
         return arr
-
-    @property
-    def gamma_maj_sys_deriv_layvec_ucvec_symbvec(self) -> xnp.ndarray:
-        """Convert the data in gamma_maj_sys_deriv_vec into a large array, indexed by layer, unit cell, and symbol.
-        TODO: the old dict should be replaced with this function, and it should be saved in a private variable."""
-        if self._gamma_maj_sys_deriv_dict is None:
-            self._gamma_maj_sys_deriv_dict = self._generate_gamma_maj_sys_deriv_dict()
-
-        gamma_maj_dim = 2 * self.cfg.lattice.size * (self.cfg.nphysmodes_site + 4 * self.cfg.ncopy)
-        target = xnp.zeros(
-            (
-                self.cfg.nlayer,
-                self.cfg.unitcell_size,
-                len(self.symbolvec),
-                gamma_maj_dim,
-                gamma_maj_dim,
-            ),
-            dtype=xnp.float64,
-        )
-        for lay in range(self.cfg.nlayer):
-            for uc_ind in range(self.cfg.unitcell_size):
-
-                for symb_ind, symb in enumerate(self.symbolvec):
-                    if ggpeps.PREFERRED_BACKEND == "jax":
-                        target = target.at[lay, uc_ind, symb_ind].set(
-                            self._gamma_maj_sys_deriv_dict[symb][lay][uc_ind]
-                        )
-                    else:
-                        target[lay, uc_ind, symb_ind] = self._gamma_maj_sys_deriv_dict[symb][lay][uc_ind]
-        return target
 
     def compute_grad_norm_vec(self) -> xnp.ndarray:
         """Compute the gradient of the norm for all layers with respect to all parameters.
