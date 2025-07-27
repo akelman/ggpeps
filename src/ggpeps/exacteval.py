@@ -210,7 +210,6 @@ class ExactEvaluator(Evaluator):
                 mag_energy_grad = (
                     -2 * self.system.cfg.g_mag * mag_op_grad
                 )  # the factor of two comes from the Hamiltonian
-                dest["mag_energy_grad"] = mag_energy_grad
 
                 # Electric gradient
                 prod_el_op_norm = data["el_energy_op"] * grad_norm_transposed
@@ -222,7 +221,6 @@ class ExactEvaluator(Evaluator):
                     + self.compute_expval(np.transpose(data["el_energy_op_grad"], [1, 2, 3, 0]), normvec)
                 )
                 el_energy_grad = -2 * self.system.cfg.g_el * el_op_grad  # the factor of two comes from the Hamiltonian
-                dest["el_energy_grad"] = el_energy_grad
 
                 # Mass gradient
                 prod_mass_op_norm = data["mass_energy_op"] * grad_norm_transposed
@@ -234,7 +232,6 @@ class ExactEvaluator(Evaluator):
                     + self.compute_expval(np.transpose(data["mass_energy_op_grad"], [1, 2, 3, 0]), normvec)
                 )
                 mass_energy_grad *= self.system.cfg.g_mass
-                dest["mass_energy_grad"] = mass_energy_grad
 
                 # Interaction gradient
                 prod_int_op_norm = data["int_energy_op"] * grad_norm_transposed
@@ -246,7 +243,6 @@ class ExactEvaluator(Evaluator):
                     + self.compute_expval(np.transpose(data["int_energy_op_grad"], [1, 2, 3, 0]), normvec)
                 )
                 int_energy_grad *= self.system.cfg.g_int
-                dest["int_energy_grad"] = int_energy_grad
 
                 # Chemical potential gradient
                 prod_chem_op_norm = data["chem_energy"] * grad_norm_transposed
@@ -258,7 +254,6 @@ class ExactEvaluator(Evaluator):
                     ind = lay - self.system.cfg.num_pg_layer
                     scaled_chem_grad[lay, :, :, :] *= self.system.cfg.g_chem[ind]
                 chem_energy_grad = expval_prod_chem - prod_expval_chem + self.compute_expval(scaled_chem_grad, normvec)
-                dest["chem_energy_grad"] = chem_energy_grad
 
                 # Add for the full gradient, subject to conditions on parameterization
                 total_grad = mag_energy_grad + el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
