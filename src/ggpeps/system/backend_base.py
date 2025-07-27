@@ -43,7 +43,6 @@ class BackendBase(ABC):
     @staticmethod
     @abstractmethod
     def compute_el_grad_vec(
-        system,
         lattice_size: int,
         num_pg_layer: int,
         num_fermionic_layer: int,
@@ -63,6 +62,7 @@ class BackendBase(ABC):
         wi_gamma_out_mod_vec,
         mat_d_mod_inv_vec,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+        grad_over_norm_vec,
         zeroed_params,
     ):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")

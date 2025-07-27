@@ -73,7 +73,6 @@ def compute_grad_over_norm_numpy(
 
 
 def compute_el_grad_vec_numpy(
-    system,
     lattice_size: int,
     num_pg_layer: int,
     num_fermionic_layer: int,
@@ -93,6 +92,7 @@ def compute_el_grad_vec_numpy(
     wi_gamma_out_mod_vec,
     mat_d_mod_inv_vec,
     gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+    grad_over_norm_vec,
     zeroed_params,
 ) -> np.ndarray:
     """Computation of the electric energy gradients.
@@ -162,7 +162,7 @@ def compute_el_grad_vec_numpy(
                     d_el_energy = np.real(overall_factor * np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
 
                     # Summand with derivative of norms
-                    trace_def = system.grad_over_norm_vec[layerind, uc_ind, symbol_ind]
+                    trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
                     trace_mod = compute_grad_over_norm_numpy(
                         gamma_in_sys_mod,
                         diff_d_inv_gamma_inv,
@@ -306,7 +306,6 @@ class BackendNumpy_Z2(BackendBase):
 
     @staticmethod
     def compute_el_grad_vec(
-        system,
         lattice_size: int,
         num_pg_layer: int,
         num_fermionic_layer: int,
@@ -326,10 +325,10 @@ class BackendNumpy_Z2(BackendBase):
         wi_gamma_out_mod_vec,
         mat_d_mod_inv_vec,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+        grad_over_norm_vec,
         zeroed_params,
     ):
         return compute_el_grad_vec_numpy(
-            system,
             lattice_size,
             num_pg_layer,
             num_fermionic_layer,
@@ -349,5 +348,6 @@ class BackendNumpy_Z2(BackendBase):
             wi_gamma_out_mod_vec,
             mat_d_mod_inv_vec,
             gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+            grad_over_norm_vec,
             zeroed_params,
         )

@@ -1508,7 +1508,6 @@ class System2DBase(ABC):
 
     @abstractmethod
     def _compute_el_grad_vec(
-        self,
         lattice_size: int,
         num_pg_layer: int,
         num_fermionic_layer: int,
@@ -1528,6 +1527,7 @@ class System2DBase(ABC):
         wi_gamma_out_mod_vec,
         mat_d_mod_inv_vec,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+        grad_over_norm_vec,
         zeroed_params,
         use_trans_inv: bool = True,
     ):
@@ -1832,11 +1832,12 @@ class System2DBase(ABC):
                 self.covmat_out_virt_vec,
                 self.norm_mod_vec,
                 self.lognorm_default_vec,
-                self.cfg.zeroed_params,
                 self.wi_gamma_in_mod_vec,
                 self.wi_gamma_out_mod_vec,
                 self.mat_d_mod_inv_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+                self.grad_over_norm_vec,
+                self.cfg.zeroed_params,
                 use_trans_inv=True,
             )
         return self._el_energy_op_grad_vec

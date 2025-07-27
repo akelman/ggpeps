@@ -294,11 +294,12 @@ class Z2System2D(System2DBase):
         covmat_out_virt_vec,
         norm_mod_vec,
         lognorm_default_vec,
-        zeroed_params,
         wi_gamma_in_mod_vec,
         wi_gamma_out_mod_vec,
         mat_d_mod_inv_vec,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+        grad_over_norm_vec,
+        zeroed_params,
         use_trans_inv: bool = True,
     ):
         """Computation of the electric energy gradients.
@@ -321,7 +322,6 @@ class Z2System2D(System2DBase):
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
         gradients = backend.compute_el_grad_vec(
-            self,
             lattice_size,
             num_pg_layer,
             num_fermionic_layer,
@@ -341,6 +341,7 @@ class Z2System2D(System2DBase):
             wi_gamma_out_mod_vec,
             mat_d_mod_inv_vec,
             gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+            grad_over_norm_vec,
             zeroed_params,
         )
         return gradients
