@@ -24,8 +24,8 @@ from matplotlib.colors import LogNorm
 
 import ggpeps
 import ggpeps.measurement as meas
-
-pfaffian = jax.jit(py_pfaffian.jax.pfaffian)
+from ggpeps.system.global_funcs_jax import derivative_pfaffian_jax
+from ggpeps.system.global_funcs_numpy import derivative_pfaffian_numpy
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -259,6 +259,26 @@ def derivative_pfaffian_covariance_mat(pfarr, matvec, d_matvec):
             mat_inv = xnp.linalg.inv(mat)
             dest += 0.5 * pfaval * xnp.trace(mat_inv @ d_mat)
     return dest
+
+
+def derivative_pfaffian(mat, d_mat, pfaval=None):
+    """Compute the derivative of a Pfaffian of a matrix A.
+    The explicit derivative dA/dx is given as a second argument
+
+    The given formula is only valid if A is not singular.
+
+    Args:
+        mat (np.ndarray): Input Matrix A
+        d_mat (np.ndarray): Derivative dA/dx
+
+    Returns:
+        np.ndarray: d(Pf(A))/dx
+    """
+
+    if ggpeps.PREFERRED_BACKEND == "jax":
+        return derivative_pfaffian_jax(mat, d_mat, pfaval=pfaval)
+    else:
+        return derivative_pfaffian_numpy(mat, d_mat, pfaval=pfaval)
 
 
 def get_obs_mean_df(df: pd.DataFrame, obs: str) -> float:

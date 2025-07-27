@@ -4,7 +4,6 @@ import numpy as np
 from pfapack import pfaffian as pf
 
 import ggpeps
-from ggpeps.utils import isclose
 from ggpeps.system.backend_base import BackendBase
 
 
@@ -24,7 +23,7 @@ def derivative_pfaffian_numpy(mat, d_mat, pfaval=None):
     if pfaval is None:
         pfaval = pf.pfaffian(mat)
 
-    if not isclose(pfaval, 0):
+    if not ggpeps.utils.isclose(pfaval, 0):
         return 0.5 * pfaval * np.trace(np.linalg.inv(mat) @ d_mat)
     else:
         return 0.0
