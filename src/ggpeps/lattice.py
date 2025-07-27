@@ -206,8 +206,8 @@ class Lattice2D:
             coord (tuple[int, int]): (x, y) coordinates of the current plaquette or site.
             direction (Direction): Direction to move (Direction.X or Direction.Y).
             orientation (bool, optional):
-                True  → positive direction (right for X, up for Y).
-                False → negative direction (left for X, down for Y). Defaults to True.
+                True  -> positive direction (right for X, up for Y).
+                False -> negative direction (left for X, down for Y). Defaults to True.
 
         Returns:
             tuple[int, int]: (x, y) coordinates of the neighbor.
@@ -311,23 +311,23 @@ class Lattice2D:
         x, y = coord
         dest = []
 
-        # Bottom edge (left → right, natural orientation)
+        # Bottom edge (left -> right, natural orientation)
         coord_edge = (x, y)
         for _ in range(ext_x):
             dest.append(((coord_edge, Direction.X), False))
             coord_edge = self.get_neighbor(coord_edge, Direction.X, orientation=True)
 
-        # Right edge (bottom → top, natural orientation)
+        # Right edge (bottom -> top, natural orientation)
         for _ in range(ext_y):
             dest.append(((coord_edge, Direction.Y), False))
             coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=True)
 
-        # Top edge (right → left, reversed orientation)
+        # Top edge (right -> left, reversed orientation)
         for _ in range(ext_x):
             coord_edge = self.get_neighbor(coord_edge, Direction.X, orientation=False)
             dest.append(((coord_edge, Direction.X), True))
 
-        # Left edge (top → bottom, reversed orientation)
+        # Left edge (top -> bottom, reversed orientation)
         for _ in range(ext_y):
             coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=False)
             dest.append(((coord_edge, Direction.Y), True))
@@ -353,13 +353,13 @@ class Lattice2D:
         ext_x, ext_y = size
         dest = []
 
-        # Horizontal segment (left → right, natural orientation)
+        # Horizontal segment (left -> right, natural orientation)
         coord_edge = coord
         for _ in range(ext_x):
             dest.append(((coord_edge, Direction.X), False))
             coord_edge = self.get_neighbor(coord_edge, Direction.X, orientation=True)
 
-        # Vertical segment (bottom → top, natural orientation)
+        # Vertical segment (bottom -> top, natural orientation)
         for _ in range(ext_y):
             dest.append(((coord_edge, Direction.Y), False))
             coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=True)
