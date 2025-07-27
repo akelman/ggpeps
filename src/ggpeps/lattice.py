@@ -179,7 +179,7 @@ class Lattice2D:
         else:
             raise ValueError("coord2ind_dir: Only X and Y are valid directions.")
 
-    def convert_links_to_indices(
+    def links_coord_to_index(
         self, links: list[tuple[tuple[tuple[int, int], Direction], bool]]
     ) -> list[tuple[int, bool]]:
         """
@@ -290,7 +290,7 @@ class Lattice2D:
         else:
             raise ValueError("generate_polyakov_loop:  Only X and Y are valid directions.")
 
-        return self.convert_links_to_indices(dest)
+        return self.links_coord_to_index(dest)
 
     def generate_wilson_loop(self, coord: tuple[int, int], size: tuple[int, int]) -> list[tuple[int, bool]]:
         """
@@ -332,7 +332,7 @@ class Lattice2D:
             coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=False)
             dest.append(((coord_edge, Direction.Y), True))
 
-        return self.convert_links_to_indices(dest)
+        return self.links_coord_to_index(dest)
 
     def generate_L_string(self, coord: tuple[int, int], size: tuple[int, int]) -> list[tuple[int, bool]]:
         """
@@ -364,7 +364,7 @@ class Lattice2D:
             dest.append(((coord_edge, Direction.Y), False))
             coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=True)
 
-        return self.convert_links_to_indices(dest)
+        return self.links_coord_to_index(dest)
 
     def generate_allowed_loop_dimensions(self, include_all: bool = False) -> list[tuple[int, int]]:
         """

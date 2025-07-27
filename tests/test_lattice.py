@@ -71,7 +71,7 @@ class TestLattice(unittest.TestCase):
             (((0, 1), lattice.Direction.X), True),
             (((0, 0), lattice.Direction.Y), True),
         ]
-        ref_ind = self.lat2d.convert_links_to_indices(ref)
+        ref_ind = self.lat2d.links_coord_to_index(ref)
         path = self.lat2d.generate_wilson_loop((0, 0), (1, 1))
         self.assertEqual(ref_ind, path)
 
@@ -84,7 +84,7 @@ class TestLattice(unittest.TestCase):
             (((0, 1), lattice.Direction.X), True),
             (((0, 0), lattice.Direction.Y), True),
         ]
-        ref_ind = self.lat2d.convert_links_to_indices(ref)
+        ref_ind = self.lat2d.links_coord_to_index(ref)
         path = self.lat2d.generate_wilson_loop((0, 0), (2, 1))
         self.assertEqual(ref_ind, path)
 
@@ -95,7 +95,7 @@ class TestLattice(unittest.TestCase):
             (((7, 0), lattice.Direction.X), True),
             (((7, 7), lattice.Direction.Y), True),
         ]
-        ref_ind = self.lat2d.convert_links_to_indices(ref)
+        ref_ind = self.lat2d.links_coord_to_index(ref)
         path = self.lat2d.generate_wilson_loop((7, 7), (1, 1))
         self.assertEqual(ref_ind, path)
 
@@ -111,7 +111,7 @@ class TestLattice(unittest.TestCase):
             ]
         ]
         # Convert refs to index form
-        refs_ind = [lat.convert_links_to_indices(loop) for loop in refs]
+        refs_ind = [lat.links_coord_to_index(loop) for loop in refs]
         paths = lat.generate_all_wilson_loops((0, 0))
         self.assertEqual(refs_ind, paths)
 
@@ -148,7 +148,7 @@ class TestLattice(unittest.TestCase):
             ],  # 2x2 loop
         ]
         # Convert refs to index form
-        refs_ind = [lat.convert_links_to_indices(loop) for loop in refs]
+        refs_ind = [lat.links_coord_to_index(loop) for loop in refs]
         paths = lat.generate_all_wilson_loops((0, 0))
         self.assertEqual(refs_ind, paths)
 
@@ -194,7 +194,7 @@ class TestLattice(unittest.TestCase):
                 (((0,0),lattice.Direction.Y),True)     ], # 1x2 loop
         """
         # Convert refs to index form
-        refs_ind = [lat.convert_links_to_indices(loop) for loop in refs]
+        refs_ind = [lat.links_coord_to_index(loop) for loop in refs]
         paths = lat.generate_all_wilson_loops((0, 0))
         self.assertEqual(refs_ind, paths)
 
@@ -209,7 +209,7 @@ class TestLattice(unittest.TestCase):
             (((6, 0), lattice.Direction.X), False),
             (((7, 0), lattice.Direction.X), False),
         ]
-        ref_ind = self.lat2d.convert_links_to_indices(ref)
+        ref_ind = self.lat2d.links_coord_to_index(ref)
         path = self.lat2d.generate_polyakov_loop((0, 0), lattice.Direction.X)
         self.assertEqual(ref_ind, path)
 
@@ -224,7 +224,7 @@ class TestLattice(unittest.TestCase):
             (((0, 6), lattice.Direction.Y), False),
             (((0, 7), lattice.Direction.Y), False),
         ]
-        ref_ind = self.lat2d.convert_links_to_indices(ref)
+        ref_ind = self.lat2d.links_coord_to_index(ref)
         path = self.lat2d.generate_polyakov_loop((0, 0), lattice.Direction.Y)
         self.assertEqual(ref_ind, path)
 
@@ -345,7 +345,7 @@ class TestLattice(unittest.TestCase):
         """
         lat2x2 = lattice.Lattice2D(2, 2)
         path = [(((0, 0), lattice.Direction.X), False), (((1, 0), lattice.Direction.Y), False)]
-        index_path = lat2x2.convert_links_to_indices(path)
+        index_path = lat2x2.links_coord_to_index(path)
         start, end = lat2x2.get_path_endpoints(index_path)
         self.assertEqual(start, lat2x2.coord2ind((0, 0)))
         self.assertEqual(end, lat2x2.coord2ind((1, 1)))
@@ -378,7 +378,7 @@ class TestLattice(unittest.TestCase):
     def test_L_string_1x1(self):
         """Test L-shaped string generation for size 1x1."""
         lat = lattice.Lattice2D(4, 4)
-        ref = lat.convert_links_to_indices(
+        ref = lat.links_coord_to_index(
             [
                 (((0, 0), lattice.Direction.X), False),
                 (((1, 0), lattice.Direction.Y), False),
@@ -390,7 +390,7 @@ class TestLattice(unittest.TestCase):
     def test_L_string_2x1(self):
         """Test L-shaped string generation for size 2x1."""
         lat = lattice.Lattice2D(4, 4)
-        ref = lat.convert_links_to_indices(
+        ref = lat.links_coord_to_index(
             [
                 (((0, 0), lattice.Direction.X), False),
                 (((1, 0), lattice.Direction.X), False),
@@ -403,7 +403,7 @@ class TestLattice(unittest.TestCase):
     def test_L_string_2x2(self):
         """Test L-shaped string generation for size 2x2."""
         lat = lattice.Lattice2D(4, 4)
-        ref = lat.convert_links_to_indices(
+        ref = lat.links_coord_to_index(
             [
                 (((0, 0), lattice.Direction.X), False),
                 (((1, 0), lattice.Direction.X), False),
@@ -417,7 +417,7 @@ class TestLattice(unittest.TestCase):
     def test_L_string_periodic_wrap(self):
         """Test L-shaped string generation with periodic boundary conditions."""
         lat = lattice.Lattice2D(4, 4)
-        ref = lat.convert_links_to_indices(
+        ref = lat.links_coord_to_index(
             [
                 (((3, 3), lattice.Direction.X), False),
                 (((0, 3), lattice.Direction.X), False),
