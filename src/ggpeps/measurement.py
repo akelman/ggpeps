@@ -63,10 +63,10 @@ class Measurement:
         return self.datavec
 
     def mean(self) -> Union[float, xnp.ndarray]:
-        """Compte the mean of the datavec
+        """Compute the mean of the datavec
 
         Returns:
-            float: Mean of the measurement
+            float or np.ndarray: Mean of the measurement
         """
         return np.mean(self.datavec, axis=0)
 
