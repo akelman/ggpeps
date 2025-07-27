@@ -1171,13 +1171,11 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: List of derived gamma_maj_sys
         """
-        if symb in self.symbolvec:
-            if self._gamma_maj_sys_deriv_dict is None:
-                self._gamma_maj_sys_deriv_dict = self._generate_gamma_maj_sys_deriv_dict()
-            return self._gamma_maj_sys_deriv_dict[symb]
-        else:
-            logger.error("gamma_maj_sys_deriv: Invalid variable name.")
-        return None
+        if symb not in self.symbolvec:
+            raise ValueError(f"Symbol {symb} is not in the symbol vector.")
+
+        arr = self.gamma_maj_sys_deriv_layvec_ucvec_symbvec[:, :, self.symbolvec.index(symb), :, :]
+        return arr
 
     @property
     def gamma_maj_sys_deriv_layvec_ucvec_symbvec(self) -> xnp.ndarray:
@@ -1202,9 +1200,11 @@ class System2DBase(ABC):
 
                 for symb_ind, symb in enumerate(self.symbolvec):
                     if ggpeps.PREFERRED_BACKEND == "jax":
-                        target = target.at[lay, uc_ind, symb_ind].set(self.gamma_maj_sys_deriv_vec(symb)[lay][uc_ind])
+                        target = target.at[lay, uc_ind, symb_ind].set(
+                            self._gamma_maj_sys_deriv_dict[symb][lay][uc_ind]
+                        )
                     else:
-                        target[lay, uc_ind, symb_ind] = self.gamma_maj_sys_deriv_vec(symb)[lay][uc_ind]
+                        target[lay, uc_ind, symb_ind] = self._gamma_maj_sys_deriv_dict[symb][lay][uc_ind]
         return target
 
     def compute_grad_norm_vec(self) -> xnp.ndarray:
