@@ -1,14 +1,13 @@
 ############## NUMPY CPU VERSIONS ##############
 
-from typing import List
 import numpy as np
 
 import ggpeps
 
 
 def calculate_lognormvec_numpy(
-    gamma_in_sys_vec: List[np.ndarray],
-    mat_d_vec: List[np.ndarray],
+    gamma_in_sys_vec: list[np.ndarray],
+    mat_d_vec: list[np.ndarray],
     all_factors: bool = False,
 ) -> float:
     # This is still the plain formula, without any update mechanism
@@ -89,9 +88,7 @@ def compute_el_grad_vec_numpy(system):
     dest_grad = np.zeros(system.cfg.param_shape(), dtype=np.float64)
     overall_factors = system.cfg.el_overall_factors
     idxarrs = system.cfg.idxarr_vec
-    el_energy_vec = (
-        system.el_energy_op_vec
-    )  # this gets the electric energy, and ensures that the intermediate steps are calculated
+    el_energy_vec = system.el_energy_op_vec
 
     for layerind in range(system.cfg.nlayer):
 
@@ -108,11 +105,9 @@ def compute_el_grad_vec_numpy(system):
         gamma_in_sys_mod = system.gamma_in_sys_mod_vec[layerind]
         diff_d_inv_gamma_inv = system.wi_gamma_in_mod_vec[layerind].inv()
 
-        # get saved intermediate results from electric energy calculation
-        intermediate = system._electric_energy_intermediate_vals
-        covmat_out_virt = intermediate.covmat_out_virt_vec[layerind]
-        norm_mod = intermediate.norm_mod_vec[layerind]
-        lognorm_default = intermediate.lognorm_default_vec[layerind]
+        covmat_out_virt = system.covmat_out_virt_vec[layerind]
+        norm_mod = system.norm_mod_vec[layerind]
+        lognorm_default = np.sum(system.lognorm_default_vec)
 
         ###################### Calculation of the derivative ########################
         for uc_ind in range(system.cfg.unitcell_size):

@@ -1,6 +1,5 @@
 import sympy
 import logging
-from typing import List
 
 import numpy as np
 from ggpeps import xnp as xnp
@@ -161,7 +160,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
         return zeroed_params
 
-    def _create_symbolvec(self) -> List[sympy.Symbol]:
+    def _create_symbolvec(self) -> list[sympy.Symbol]:
         """Define all symbols of the T matrix as symbols.
         We will use the analytic expression of the T matrix to calculate the derivative
         of the covariance matrices analytically.
@@ -331,7 +330,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         This method overwrites an abstract method in System2DBase.
 
         Returns:
-            List[xnp.ndarray]: Covariance matrices of the ungauged projector on a single link
+            list[xnp.ndarray]: Covariance matrices of the ungauged projector on a single link
         """
 
         # 2 if for 2D lattice

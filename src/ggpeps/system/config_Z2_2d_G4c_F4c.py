@@ -358,7 +358,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         This method overwrites an abstract method in System2DBase.
 
         Returns:
-            List[np.ndarray]: Covariance matrices of the ungauged projector on a single link
+            list[np.ndarray]: Covariance matrices of the ungauged projector on a single link
         """
 
         dest_mixed = [0] * 2  # mixes copies

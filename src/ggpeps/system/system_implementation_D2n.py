@@ -304,7 +304,6 @@ class D2nSystem2D(System2DBase):
             link_ind, theta, color_to_update=color_to_update
         )  # in case it was originally a singular, we update the gauge field to the final value. In the other case we can update the gauge straightforwardly
 
-    # TODO: fix for JAX - DONE, except for stuff in utils
     def update_non_singular_gauge_ind(self, link_ind, theta, color_to_update=None):
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
@@ -416,22 +415,32 @@ class D2nSystem2D(System2DBase):
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
 
-    # def update_gauge_ind(self, link_ind, theta):
-    #    update_gauge_ind(self, link_ind, theta)
-
     # Observables
-    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv: bool = True):
-        """Compute the mass term of the Hamiltonian for a single site.
+    def _compute_mag_energy_op(self, use_trans_inv: bool = True):
+        """Computation of the magnetic energy operator (w/o shift).
+        This operator is diagonal in the gauge field (group element) basis and can thus be computed easily.
+
+        This method overwrites an abstract method in System2DBase.
 
         Args:
-            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
+            use_trans_inv (bool, optional): Use the translationally invariant computation method. Defaults to True.
 
         Returns:
-            tuple: Tuple of (mass energy for a single site, gradients)
+            float: magnetic energy w/o shift for a single plaquette
         """
-        mass_energy_op = xnp.zeros(self.cfg.nlayer)
-        gradients = xnp.zeros(self.cfg.param_shape())
-        return mass_energy_op, gradients
+        if use_trans_inv:
+            # Evaluate one plaquette and multiply by number of plaquettes
+            wilson_plaquette = self.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
+            nplaq = self.cfg.lattice.nplaquettes
+            mag_energy_bare = nplaq * xnp.real(self.compute_path(wilson_plaquette))
+        else:
+            # Evaluate every plaquette of the system
+            mag_energy_bare = 0
+            for x in range(self.cfg.lattice.nx):
+                for y in range(self.cfg.lattice.ny):
+                    wilson_plaquette = self.cfg.lattice.generate_wilson_loop((x, y), (1, 1))
+                    mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
+        return mag_energy_bare
 
     def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
         """Computation of the electric energy.
@@ -472,52 +481,31 @@ class D2nSystem2D(System2DBase):
         gradients = xnp.zeros(self.cfg.param_shape())
         return gradients
 
-    def _compute_mag_energy_op(self, use_trans_inv: bool = True):
-        """Computation of the magnetic energy operator (w/o shift).
-        This operator is diagonal in the gauge field (group element) basis and can thus be computed easily.
+    def _compute_mass_energy_op_vec(self, use_trans_inv: bool = True):
+        mass_energy_op = xnp.zeros(self.cfg.nlayer)
+        return mass_energy_op
 
-        This method overwrites an abstract method in System2DBase.
+    def _compute_mass_energy_grad(self, use_trans_inv: bool = True):
+        gradients = xnp.zeros(self.cfg.param_shape())
+        return gradients
 
-        Args:
-            use_trans_inv (bool, optional): Use the translationally invariant computation method. Defaults to True.
-
-        Returns:
-            float: magnetic energy w/o shift for a single plaquette
-        """
-        if use_trans_inv:
-            # Evaluate one plaquette and multiply by number of plaquettes
-            wilson_plaquette = self.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
-            nplaq = self.cfg.lattice.nplaquettes
-            mag_energy_bare = nplaq * xnp.real(self.compute_path(wilson_plaquette))
-        else:
-            # Evaluate every plaquette of the system
-            mag_energy_bare = 0
-            for x in range(self.cfg.lattice.nx):
-                for y in range(self.cfg.lattice.ny):
-                    wilson_plaquette = self.cfg.lattice.generate_wilson_loop((x, y), (1, 1))
-                    mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
-        return mag_energy_bare
-
-    def _compute_int_energy_op_vec_and_grad(self):
-        """Calculate the energy and energy gradient due to the interaction of the
-        physical fermions with the gauge fields.
-
-        Note: this function assumes that U = U^dagger, which is valid only for Z2.
-        For other groups, the calculation will not be as simple.
-
-        Returns:
-            tuple: Tuple of (interaction energy for a single link, gradients)
-        """
+    def _compute_int_energy_op_vec(self):
 
         int_energy_op = xnp.zeros(self.cfg.nlayer)
-        gradients = xnp.zeros(self.cfg.param_shape())
-        return int_energy_op, xnp.array(gradients)
+        return int_energy_op
 
-    def _compute_chem_energy_op_vec_and_grad(self):
-        """Calculate the chemical potential energy operator and its gradient."""
-        chem_energy_op = xnp.zeros(self.cfg.nlayer)
+    def _compute_int_energy_grad(self):
+
         gradients = xnp.zeros(self.cfg.param_shape())
-        return chem_energy_op, gradients
+        return gradients
+
+    def _compute_chem_energy_op_vec(self):
+        chem_energy_op = xnp.zeros(self.cfg.nlayer)
+        return chem_energy_op
+
+    def _compute_chem_energy_grad(self):
+        gradients = xnp.zeros(self.cfg.param_shape())
+        return gradients
 
     def _meson_string_vec(self, path):
         """Compute a layer resolved meson string for the given path.
