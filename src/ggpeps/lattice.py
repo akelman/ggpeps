@@ -50,14 +50,15 @@ class Lattice2D:
             For example, a 2x2 lattice representation (sites and links), where the bottom-left
             corner is (0,0), is shown as:
 
-                    |         |
-                "5"       "7"
-                    |         |
-                    2 --"2"-- 3 --"3"--
-                    |         |
-                "4"       "6"
-                    |         |
-                    0 --"0"-- 1 --"1"--
+            |         |
+           "5"       "7"
+            |         |
+            2 --"2"-- 3 --"3"--
+            |         |
+           "4"       "6"
+            |         |
+            0 --"0"-- 1 --"1"--
+
         """
         self.nx = nx
         self.ny = ny
