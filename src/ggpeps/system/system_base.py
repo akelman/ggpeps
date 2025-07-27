@@ -341,6 +341,7 @@ class System2DBase(ABC):
                 self.symbolvec,
             )
         }
+        self._grad_over_norm_vec: Optional[xnp.ndarray] = None  # vector form of _grad_over_norm_dict
 
         # Observables
         self._energy: Optional[float] = None
@@ -396,6 +397,7 @@ class System2DBase(ABC):
                 self.symbolvec,
             )
         }
+        self._grad_over_norm_vec = None
 
         self._covmat_out_virt_vec = None
         self._norm_mod_vec = None
@@ -1184,7 +1186,6 @@ class System2DBase(ABC):
 
     def compute_grad_norm_vec(self) -> xnp.ndarray:
         """Compute the gradient of the norm for all layers with respect to all parameters.
-        The parameter order is [[dt1, dy1, dz1...],[dt2,dy2,dz2...]...]
 
         Returns:
             xnp.ndarray: Vector of gradients of the norm with respect to all parameters
@@ -1201,7 +1202,6 @@ class System2DBase(ABC):
         self.cfg.enforce_parameter_conditions(dest)
         return dest
 
-    ## MOVE TO GLOBAL
     def compute_grad_norm(self, layerind: int, uc_ind: int) -> xnp.ndarray:
         """Compute the gradient of the norm for a given layer wrt to all parameters.
         The parameter order is the same as in the symbolvec
@@ -1385,6 +1385,30 @@ class System2DBase(ABC):
                 self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv
             )
         return self._grad_over_norm_dict[(layerind, uc_ind, var)]
+
+    @property
+    def grad_over_norm_vec(self) -> xnp.ndarray:
+        """Compute the gradient of the norm over all parameters for all layers and unit cells.
+
+        Returns:
+            xnp.ndarray: Vector of gradients of the norm with respect to all parameters
+        """
+        if self._grad_over_norm_vec is None:
+            dest = []
+            for layerind in range(self.cfg.nlayer):
+                layer_grad = []
+                for uc_ind in range(self.cfg.unitcell_size):
+                    uc_grad = []
+                    for symb in self.symbolvec:
+                        uc_grad.append(self.compute_grad_over_norm(symb, layerind, uc_ind))
+                    layer_grad.append(uc_grad)
+                dest.append(layer_grad)
+            dest = xnp.asarray(dest)
+
+            # Enforce ansatz conditions on the gradients
+            self.cfg.enforce_parameter_conditions(dest)
+            self._grad_over_norm_vec = dest
+        return self._grad_over_norm_vec
 
     ################## Local Gauge ######################
 

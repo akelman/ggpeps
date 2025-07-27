@@ -162,7 +162,7 @@ def compute_el_grad_vec_numpy(
                     d_el_energy = np.real(overall_factor * np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
 
                     # Summand with derivative of norms
-                    trace_def = system.compute_grad_over_norm(symbol, layerind, uc_ind)
+                    trace_def = system.grad_over_norm_vec[layerind, uc_ind, symbol_ind]
                     trace_mod = compute_grad_over_norm_numpy(
                         gamma_in_sys_mod,
                         diff_d_inv_gamma_inv,

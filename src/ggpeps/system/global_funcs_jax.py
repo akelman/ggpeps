@@ -182,7 +182,7 @@ def compute_el_grad_vec_jax(
                     )
 
                     # Summand with derivative of norms
-                    trace_def = system.compute_grad_over_norm(symbol, layerind, uc_ind)
+                    trace_def = system.grad_over_norm_vec[layerind, uc_ind, symbol_ind]
                     trace_mod = compute_grad_over_norm_jax(
                         gamma_in_sys_mod,
                         diff_d_inv_gamma_inv,
