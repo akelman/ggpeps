@@ -1222,9 +1222,9 @@ class System2DBase(ABC):
 
                 # Compute gradient
                 if ggpeps.PREFERRED_BACKEND == "jax":
-                    dest_grad = dest_grad.at[symbol_ind].set(self.compute_grad_over_norm(symbol, layerind, uc_ind))
+                    dest_grad = dest_grad.at[symbol_ind].set(self.compute_grad_over_norm(layerind, uc_ind, symbol))
                 else:
-                    dest_grad[symbol_ind] = self.compute_grad_over_norm(symbol, layerind, uc_ind)
+                    dest_grad[symbol_ind] = self.compute_grad_over_norm(layerind, uc_ind, symbol)
         return dest_grad
 
     ################## Weight management ######################
@@ -1358,7 +1358,7 @@ class System2DBase(ABC):
             cumval += 0.5 * detval
         return cumval
 
-    def compute_grad_over_norm(self, var: sympy.Symbol, layerind: int, uc_ind: int) -> float:
+    def compute_grad_over_norm(self, layerind: int, uc_ind: int, symb: sympy.Symbol) -> float:
         """Compute the quotient of derivative of the norm over the norm itself.
         We can avoid a lot of factors by computing the quotient directly.
 
@@ -1369,22 +1369,22 @@ class System2DBase(ABC):
         Returns:
             float: Value of the gradient divided by the norm of the state
         """
-        if self._grad_over_norm_dict[(layerind, uc_ind, var)] is None:
+        if self._grad_over_norm_dict[(layerind, uc_ind, symb)] is None:
             diff = self.wi_gamma_in_vec[layerind].inv()
             # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
             offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
             # Extract only the part of the virtual-virtual correlations
             _, _, deriv_d = backend.extract_partial_covmats(
-                self.gamma_maj_sys_deriv_vec(var)[layerind, uc_ind], offset
+                self.gamma_maj_sys_deriv_vec(symb)[layerind, uc_ind], offset
             )
             mat_d_inv = self.mat_d_inv_vec[layerind]
 
             # TODO: We might save one matrix-matrix multiplication here
             # The deriv_d and mat_d_inv are constant
-            self._grad_over_norm_dict[(layerind, uc_ind, var)] = backend.compute_grad_over_norm(
+            self._grad_over_norm_dict[(layerind, uc_ind, symb)] = backend.compute_grad_over_norm(
                 self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv
             )
-        return self._grad_over_norm_dict[(layerind, uc_ind, var)]
+        return self._grad_over_norm_dict[(layerind, uc_ind, symb)]
 
     @property
     def grad_over_norm_vec(self) -> xnp.ndarray:

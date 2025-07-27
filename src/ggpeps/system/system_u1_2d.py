@@ -321,7 +321,7 @@ class U1System2D(System2DBase):
                         0.25 * (d_covmat_out_virt[0, 1] + d_covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                     )
                     # Summand with derivative of norms
-                    trace_def = self.compute_grad_over_norm(symbol, layerind)
+                    trace_def = self.compute_grad_over_norm(layerind, 0, symbol)
                     trace_mod = backend.compute_grad_over_norm(
                         gamma_in_sys_mod,
                         diff_d_inv_gamma_inv,
