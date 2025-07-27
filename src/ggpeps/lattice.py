@@ -44,6 +44,20 @@ class Lattice2D:
                 - 0 (default): No gauge fixing.
                 - -1: Fix a maximal tree.
                 - -2: Fix a chess tree.
+
+        Notes:
+            In this codebase, lattice sites and links follow the convention illustrated below.
+            For example, a 2x2 lattice representation (sites and links), where the bottom-left
+            corner is (0,0), is shown as:
+
+                    |         |
+                "5"       "7"
+                    |         |
+                    2 --"2"-- 3 --"3"--
+                    |         |
+                "4"       "6"
+                    |         |
+                    0 --"0"-- 1 --"1"--
         """
         self.nx = nx
         self.ny = ny
@@ -62,22 +76,11 @@ class Lattice2D:
         self.comp_tree = self.generate_tree_complement()
 
     def __str__(self) -> str:
-        """Generate a string representation of the lattice.
+        """
+        Generate a string representation of the lattice.
         For each site index, print its coordinates and the indices of its adjacent
         X and Y links in the format:
             <site_index>, (x, y): x_link, y_link
-
-        Example:
-            2x2 lattice representation (sites and links), where the bottom left corner is (0,0):
-
-            |         |
-           "5"       "7"
-            |         |
-            2 --"2"-- 3 --"3"--
-            |         |
-           "4"       "6"
-            |         |
-            0 --"0"-- 1 --"1"--
 
         Returns:
             str: String representation of the lattice
