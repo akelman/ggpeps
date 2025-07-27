@@ -15,7 +15,7 @@ class Direction(IntEnum):
     Y = 1
     Z = 2
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -143,7 +143,7 @@ class Lattice2D:
                 dir,
             )
         else:
-            raise ValueError("ind2coord_dir: There are only X and Y as directions")
+            raise ValueError("ind2coord_dir: Only X and Y are valid directions.")
 
     def coord2ind_dir(self, coord: tuple[int, int], dir: Direction) -> int:
         """
@@ -151,7 +151,7 @@ class Lattice2D:
 
         If a link in the negative direction is needed, adjust `coord` so that moving
         in the positive direction yields the desired link. The method handles negative
-        coordinates, assuming periodic boundary conditions.
+        coordinates, and assumes periodic boundary conditions.
 
         Args:
             coord (tuple[int, int]): (x, y) coordinates of the link.
@@ -173,7 +173,7 @@ class Lattice2D:
         elif dir == Direction.Y:
             return self.nx * self.ny * dir.value + self.ny * x + y
         else:
-            raise ValueError("coord2ind_dir: There are only X and Y as directions")
+            raise ValueError("coord2ind_dir: Only X and Y are valid directions.")
 
     def convert_links_to_indices(
         self, links: list[tuple[tuple[tuple[int, int], Direction], bool]]
@@ -246,6 +246,7 @@ class Lattice2D:
         start_link, end_link = path[0][0], path[-1][0]
         is_start_link_conj, is_end_link_conj = path[0][1], path[-1][1]
 
+        # Extra type checking for consistency
         if not isinstance(start_link, type(end_link)):
             raise TypeError(
                 f"Inconsistent path input types: first link type is {type(start_link)}, "
@@ -278,7 +279,8 @@ class Lattice2D:
         Generate a Polyakov loop around the full system in the positive direction.
 
         The loop starts from a given point and proceeds entirely in the positive
-        direction. Each link orientation is always False for Polyakov loops.
+        direction. Each link orientation is always False for Polyakov loops (that is,
+        no links are conjugated).
 
         Args:
             coord (tuple[int, int]): Starting site coordinates (x, y).
@@ -298,7 +300,7 @@ class Lattice2D:
             for i in range(self.ny):
                 dest.append((((x, i), dir), False))
         else:
-            raise ValueError("generate_polyakov_loop: There are only X and Y as directions")
+            raise ValueError("generate_polyakov_loop:  Only X and Y are valid directions.")
 
         return self.convert_links_to_indices(dest)
 
