@@ -139,7 +139,7 @@ def compute_el_grad_vec_numpy(
                     # we can skip it for parameters that are forced by the ansatz to be zero
                     dest_grad[layerind, uc_ind, symbol_ind] = 0
                 else:
-                    deriv_gamma_maj_sys = system.gamma_maj_sys_deriv_vec(symbol)[layerind, uc_ind]
+                    deriv_gamma_maj_sys = system.gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind]
                     d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats_numpy(deriv_gamma_maj_sys, offset)
                     d_gamma_out = (
                         d_mat_a

@@ -1179,6 +1179,34 @@ class System2DBase(ABC):
             logger.error("gamma_maj_sys_deriv: Invalid variable name.")
         return None
 
+    @property
+    def gamma_maj_sys_deriv_layvec_ucvec_symbvec(self) -> xnp.ndarray:
+        """Convert the data in gamma_maj_sys_deriv_vec into a large array, indexed by layer, unit cell, and symbol.
+        TODO: the old dict should be replaced with this function, and it should be saved in a private variable."""
+        if self._gamma_maj_sys_deriv_dict is None:
+            self._gamma_maj_sys_deriv_dict = self._generate_gamma_maj_sys_deriv_dict()
+
+        gamma_maj_dim = 2 * self.cfg.lattice.size * (self.cfg.nphysmodes_site + 4 * self.cfg.ncopy)
+        target = xnp.zeros(
+            (
+                self.cfg.nlayer,
+                self.cfg.unitcell_size,
+                len(self.symbolvec),
+                gamma_maj_dim,
+                gamma_maj_dim,
+            ),
+            dtype=xnp.float64,
+        )
+        for lay in range(self.cfg.nlayer):
+            for uc_ind in range(self.cfg.unitcell_size):
+
+                for symb_ind, symb in enumerate(self.symbolvec):
+                    if ggpeps.PREFERRED_BACKEND == "jax":
+                        target = target.at[lay, uc_ind, symb_ind].set(self.gamma_maj_sys_deriv_vec(symb)[lay][uc_ind])
+                    else:
+                        target[lay, uc_ind, symb_ind] = self.gamma_maj_sys_deriv_vec(symb)[lay][uc_ind]
+        return target
+
     def compute_grad_norm_vec(self) -> xnp.ndarray:
         """Compute the gradient of the norm for all layers with respect to all parameters.
         The parameter order is [[dt1, dy1, dz1...],[dt2,dy2,dz2...]...]
