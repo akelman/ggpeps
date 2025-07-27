@@ -599,7 +599,7 @@ class System2DBase(ABC):
 
                     for ind, symbol in enumerate(self.symbolvec):
                         mat_b = self.mat_b_vec[layer]
-                        deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layer, uc_ind]
+                        deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_layvec_ucvec_symbvec[layer, uc_ind, ind]
                         d_mat_a, d_mat_b, d_mat_d = backend.extract_partial_covmats(deriv_gamma_maj_sys, offset)
                         diff_d_gamma_inv = self.wi_gamma_out_vec[layer].inv()
                         d_gamma_out = (
