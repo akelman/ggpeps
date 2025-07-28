@@ -16,9 +16,8 @@ class BackendBase(ABC):
         pass
 
     @staticmethod
-    @abstractmethod
     def slice_matrix(mat, a, b, c, d):
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+        return mat[a:b, c:d]
 
     @staticmethod
     @abstractmethod

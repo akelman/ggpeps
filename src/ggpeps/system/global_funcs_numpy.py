@@ -267,10 +267,6 @@ def compute_el_grad_vec_numpy(
 #     z2_system.invalidate_gauge_update()
 
 
-def slice_matrix_numpy(mat, a, b, c, d):
-    return mat[a:b, c:d]
-
-
 class BackendNumpy_Z2(BackendBase):
     """Backend for Z2 systems using numpy."""
 
@@ -279,10 +275,6 @@ class BackendNumpy_Z2(BackendBase):
 
     def __init__(self) -> None:
         pass
-
-    @staticmethod
-    def slice_matrix(mat, a, b, c, d):
-        return slice_matrix_numpy(mat, a, b, c, d)
 
     @staticmethod
     def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
