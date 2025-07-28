@@ -846,7 +846,7 @@ class System2DBase(ABC):
 
             for layerind in range(self.cfg.nlayer):
                 # For the modified norm, we still have to take into account the other contributions from the unmodified parts
-                norm_mod = backend.calculate_lognorm_inc(
+                norm_mod = self._calculate_lognorm_inc(
                     [self.incdet_mod_vec[layerind]],
                     [self.det_mat_d_mod_vec[layerind]],
                     self.gamma_in_sys_mod_vec[layerind].shape[0],
@@ -1301,6 +1301,24 @@ class System2DBase(ABC):
         """
         return backend.calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
 
+    @classmethod
+    def _calculate_lognorm_inc(cls, incdet_vec, det_mat_d_vec, n, all_factors: bool = False):
+        lognormvec = cls._calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=all_factors)
+        return xnp.sum(lognormvec)
+
+    @staticmethod
+    def _calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors: bool = False):
+        dest = []
+        for ind in range(len(incdet_vec)):
+            detval = incdet_vec[ind].det()
+            if all_factors:
+                detval -= n * xnp.log(2)
+                detval += det_mat_d_vec[ind]
+            # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
+            # The addition of the cumval is the multiplication of the indpendent PEPS
+            dest.append(0.5 * detval)
+        return xnp.array(dest)
+
     def calculate_lognormvec_inc(self, all_factors=False):
         """Compute the logarithm of the norm for all layers by incrementally updating the previous value
         (using IncDet and Woodbury)
@@ -1311,7 +1329,7 @@ class System2DBase(ABC):
         Returns:
             list: Vector of the incrementally updated norms for all layers
         """
-        return backend.calculate_lognormvec_inc(
+        return self._calculate_lognormvec_inc(
             self.incdet_vec,
             self.det_mat_d_vec,
             self.gamma_in_sys_vec[0].shape[0],
