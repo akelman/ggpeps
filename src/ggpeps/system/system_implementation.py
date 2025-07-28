@@ -396,7 +396,7 @@ class Z2System2D(System2DBase):
                         # Scale to system size
                         d_el_energy *= nlinks
                         if ggpeps.PREFERRED_BACKEND == "jax":
-                            dest_grad = dest_grad.at[layerind, uc_ind, symbol_ind].add(d_el_energy)
+                            dest_grad = dest_grad.at[layerind, uc_ind, symbol_ind].set(d_el_energy)
                         else:
                             dest_grad[layerind, uc_ind, symbol_ind] = d_el_energy
 
