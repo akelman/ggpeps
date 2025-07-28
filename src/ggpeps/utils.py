@@ -604,25 +604,6 @@ class IncDeterminant:
         return self.detval
 
 
-def update_index(self, ainv, m, indi, indj, store=True):
-    # Construct two matrices to shift M to the correct position in A
-    if not xnp.allclose(m, 0):
-        m_m, n_m = m.shape
-        m_a, n_a = ainv.shape
-        idmat = xnp.eye(m_m, n_m)
-        u = xnp.zeros(m_a, m_m)
-        v = xnp.zeros(n_m, n_a)
-        if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
-            u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
-            v = v.at[0:m_m, indj : indj + n_m].set(idmat)
-        else:
-            u[indi : indi + m_m, 0:n_m] = idmat  # TODO: fix for JAX - DONE
-            v[0:m_m, indj : indj + n_m] = idmat
-        return self.update(ainv, u, m, v, store)
-    else:
-        return self.detval
-
-
 # =========================== IncLogAbsDeterminant ===============================
 
 
