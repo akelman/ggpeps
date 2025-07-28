@@ -264,16 +264,6 @@ def slice_matrix_jax(mat, a, b, c, d):
     return mat[a:b, c:d]
 
 
-def gamma_in_sys_mod_jax(gamma_in_sys, single_link_offset):
-    """Get function to return the gauged gamma_in_sys with a single link modification (to compute the electric energy),
-    the covariance matrix of the links for the whole system.
-
-    Returns:
-        np.ndarray: Gauged, modified covariance matrix of the system
-    """
-    return gamma_in_sys[single_link_offset:, single_link_offset:]
-
-
 class BackendJax_Z2(BackendBase):
     """Backend for Z2 systems using jax."""
 
@@ -294,10 +284,6 @@ class BackendJax_Z2(BackendBase):
     @staticmethod
     def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
         return calculate_lognormvec_jax(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
-
-    @staticmethod
-    def gamma_in_sys_mod(gamma_in_sys, single_link_offset):
-        return gamma_in_sys_mod_jax(gamma_in_sys, single_link_offset)
 
     @staticmethod
     def compute_grad_over_norm(gamma_in_sys, diff, deriv_d, mat_d_inv):
