@@ -26,11 +26,6 @@ class BackendBase(ABC):
 
     @staticmethod
     @abstractmethod
-    def compute_grad_over_norm(gamma_in_sys, diff, deriv_d, mat_d_inv):
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
-
-    @staticmethod
-    @abstractmethod
     def compute_el_grad_vec(
         lattice_size: int,
         num_pg_layer: int,

@@ -185,6 +185,7 @@ def compute_el_grad_vec_numpy(
 
                     # Summand with derivative of norms
                     trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
+                    # TODO: use the system compute_grad_over_norm
                     trace_mod = compute_grad_over_norm_numpy(
                         gamma_in_sys_mod,
                         diff_d_inv_gamma_inv,
@@ -221,10 +222,6 @@ class BackendNumpy_Z2(BackendBase):
     @staticmethod
     def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
         return calculate_lognormvec_numpy(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
-
-    @staticmethod
-    def compute_grad_over_norm(gamma_in_sys, diff, deriv_d, mat_d_inv):
-        return compute_grad_over_norm_numpy(gamma_in_sys, diff, deriv_d, mat_d_inv)
 
     @staticmethod
     def compute_el_grad_vec(

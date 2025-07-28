@@ -322,7 +322,7 @@ class U1System2D(System2DBase):
                     )
                     # Summand with derivative of norms
                     trace_def = self.compute_grad_over_norm(layerind, 0, symbol)
-                    trace_mod = backend.compute_grad_over_norm(
+                    trace_mod = self._compute_grad_over_norm(
                         gamma_in_sys_mod,
                         diff_d_inv_gamma_inv,
                         d_mat_d,
