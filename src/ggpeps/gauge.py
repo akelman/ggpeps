@@ -18,21 +18,6 @@ class ZNGauge:
         self.rep_dim = 1  # Each group element is represented as a 1×1 matrix.
         self.forbidden_transitions: list = []  # List of forbidden transitions - Empty for Z_N gauge group.
 
-    def get_nonsingular_path(self, g_old: np.ndarray, g_new: np.ndarray) -> list[np.ndarray]:
-        """Return an empty path since Z_N has no singular transitions.
-
-        In Z_N, all gauge values lie on the unit circle and transitions
-        between any two elements are always nonsingular.
-
-        Args:
-            g_old (np.ndarray): Current gauge value (1x1 complex matrix).
-            g_new (np.ndarray): Target gauge value (1x1 complex matrix).
-
-        Returns:
-            list[np.ndarray]: Empty list; no intermediate steps are required.
-        """
-        return []
-
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> np.ndarray:
         """
         Generate a random Z_N group element as a 1x1 complex matrix.
@@ -124,23 +109,55 @@ class ZNGauge:
         """
         return np.angle(g[0][0])
 
+    def get_nonsingular_path(self, g_old: np.ndarray, g_new: np.ndarray) -> list[np.ndarray]:
+        """Return an empty path since Z_N has no singular transitions.
+
+        In Z_N, all gauge values lie on the unit circle and transitions
+        between any two elements are always nonsingular.
+
+        Args:
+            g_old (np.ndarray): Current gauge value (1x1 complex matrix).
+            g_new (np.ndarray): Target gauge value (1x1 complex matrix).
+
+        Returns:
+            list[np.ndarray]: Empty list; no intermediate steps are required.
+        """
+        return []
+
 
 class D2nGauge:
-    """Implements a D_2n gauge group, under a real 2D representation of rotation and reflection matrices.
-    The representaion for a group element of the form:
-        D(p,q=0)=        [
-                    [np.cos(2 * np.pi * p / self.n), -np.sin(2 * np.pi * p / self.n)],
-                    [np.sin(2 * np.pi * p / self.n), np.cos(2 * np.pi * p / self.n)],
-                ]
-        D(p,q=1)=                 [
-                    [np.cos(2 * np.pi * p / self.n), np.sin(2 * np.pi * p / self.n)],
-                    [np.sin(2 * np.pi * p / self.n), -np.cos(2 * np.pi * p / self.n)],
-                ]
+    """
+    Implement the D_2n gauge group using a real 2D matrix representation.
 
+    The D_2n group is the dihedral group of order 2n, representing the symmetries
+    (rotations and reflections) of a regular n-gon. Each element is identified by a pair (p, q):
+        - p in {0, 1, ..., n-1} represents rotation by angle theta = 2 * pi * p / n
+        - q in {0, 1}, where q = 0 denotes rotation and q = 1 denotes reflection
 
+    The group elements are represented as 2x2 real orthogonal matrices:
+        - D(p, 0) = [[ cos(theta), -sin(theta)],
+                     [ sin(theta),  cos(theta)]]
+        - D(p, 1) = [[ cos(theta),  sin(theta)],
+                     [ sin(theta), -cos(theta)]]
     """
 
-    def __init__(self, n: int):
+    def __init__(self, n: int) -> None:
+        """
+        Initialize the D_2n gauge group with a real 2D matrix representation.
+
+        Args:
+            n (int): Number of rotations in the dihedral group. The full group has 2n elements,
+                    including n rotations and n reflections.
+
+        Attributes:
+            n (int): The number of rotations in the group (half the total number of elements).
+            rep_dim (int): The dimension of the matrix representation (2 for D_2n).
+            forbidden_transitions (list[tuple[np.ndarray, np.ndarray]]):
+                A list of gauge element pairs that correspond to singular transitions
+                (i.e., reflection-changing transitions that yield a singular update matrix).
+            transition_pair (tuple[np.ndarray, np.ndarray]):
+                Special transition (0,0) -> (0,1) which is handled separately in update routines.
+        """
         self.n = n
         self.rep_dim = 2
         self.forbidden_transitions = [
@@ -152,14 +169,50 @@ class D2nGauge:
         self.transition_pair = (
             self.get_representation(0, 0),
             self.get_representation(0, 1),
-        )  # (0,0) -> (0,1) is not singular, but we treat it as a special case in the update_gauge_ind method.
-        # Contains all the forbidden transitions for updating the gamma matrix, i.e., the update matrix of this transitions is singualr. These are pairs that change under reflection.
-        # Note that we don't include here the transition (0,0) -> (0,1) since we turn it into a non singular transition in the update_gauge_ind method.
+        )
 
-    def get_nonsingular_path(self, g_old, g_new):
-        """Get the non singular update gauge field path between two gauge values.
-        If the transition between the two gauge fields yields a singular update we
-        return a path containing middle steps, such that we don't run into singular update matrices.
+    def get_representation(self, p: int, q: int) -> np.ndarray:
+        """
+        Return the 2x2 real matrix for the group element (p, q).
+
+        Args:
+            p (int): Rotation index.
+            q (int): Reflection index (0 for rotation, 1 for reflection).
+
+        Returns:
+            np.ndarray: 2x2 real orthogonal matrix.
+        """
+        prefactor = 2.0 * np.pi / self.n
+        prefactor_times_p = p * prefactor
+        if q % 2 == 0:  # we work in a convention of q=0 mod 2
+            representation = np.array(
+                [
+                    [np.cos(prefactor_times_p), -np.sin(prefactor_times_p)],
+                    [np.sin(prefactor_times_p), np.cos(prefactor_times_p)],
+                ],
+            )
+        else:  # if q=1 mod 2
+            representation = np.array(
+                [
+                    [np.cos(prefactor_times_p), np.sin(prefactor_times_p)],
+                    [np.sin(prefactor_times_p), -np.cos(prefactor_times_p)],
+                ],
+            )
+        return representation
+
+    def get_nonsingular_path(self, g_old: np.ndarray, g_new: np.ndarray) -> list[np.ndarray]:
+        """
+        Return a list of intermediate group elements for a non-singular transition from g_old to g_new.
+
+        If the transition from g_old to g_new is known to be singular, this method returns a short path
+        through allowed intermediate group elements (like the identity), avoiding singular update matrices.
+
+        Args:
+            g_old (np.ndarray): Starting gauge group element (2x2 matrix).
+            g_new (np.ndarray): Target gauge group element (2x2 matrix).
+
+        Returns:
+            list[np.ndarray]: Sequence of intermediate group elements (possibly empty).
         """
         p_0_q_0 = self.get_neutral_gauge_value()
         p_0_q_1 = self.get_representation(0, 1)
@@ -190,8 +243,23 @@ class D2nGauge:
             dest.append(p_0_q_0)
         return dest
 
-    def get_reflection_index(self, g):
-        """Get the reflection index of a gauge value"""
+    def get_reflection_index(self, g: np.ndarray) -> int:
+        """
+        Determine whether the given gauge element is a rotation or reflection.
+
+        Uses the determinant of the matrix to distinguish:
+            - det ≈ +1 → rotation (q = 0)
+            - det ≈ -1 → reflection (q = 1)
+
+        Args:
+            g (np.ndarray): A 2x2 matrix representing a D_2n group element.
+
+        Returns:
+            int: 0 if rotation, 1 if reflection.
+
+        Raises:
+            ValueError: If g is not a valid D_2n matrix (det not close to ±1).
+        """
         det = np.linalg.det(g)
         if np.isclose(det, 1.0):  # rotation - not reflection
             return 0
@@ -200,50 +268,42 @@ class D2nGauge:
         else:
             raise ValueError("Gauge value not in D2n group")
 
-    def get_random_gauge_value(self, rng_state: np.random.RandomState) -> float:
+    def get_random_gauge_value(self, rng_state: np.random.RandomState) -> np.ndarray:
+        """
+        Generate a random D_2n group element as a 2x2 real matrix.
+
+        Each element is defined by a pair (p, q) where:
+            - p in {0, ..., n-1} is the rotation index
+            - q in {0, 1} is the reflection index
+
+        Args:
+            rng_state (np.random.RandomState): Random number generator used for reproducibility.
+
+        Returns:
+            np.ndarray: 2x2 matrix representing a randomly selected D_2n group element.
+        """
         p = rng_state.randint(0, self.n)
         q = rng_state.randint(0, 2)
         return self.get_representation(p, q)
 
-    def get_representation(self, p, q):
-        """Get a real 2D representaion of the group"""
-        prefactor = 2.0 * np.pi / self.n
-        prefactor_times_p = p * prefactor
-        if q % 2 == 0:  # we work in a convention of q=0 mod 2
-            representation = np.array(
-                [
-                    [np.cos(prefactor_times_p), -np.sin(prefactor_times_p)],
-                    [np.sin(prefactor_times_p), np.cos(prefactor_times_p)],
-                ],
-            )
-        else:  # if q=1 mod 2
-            representation = np.array(
-                [
-                    [np.cos(prefactor_times_p), np.sin(prefactor_times_p)],
-                    [np.sin(prefactor_times_p), -np.cos(prefactor_times_p)],
-                ],
-            )
-        return representation
-
     def get_neutral_gauge_value(self) -> np.ndarray:
+        """
+        Return the identity element of the D_2n group as a 2x2 identity matrix.
+
+        This corresponds to the group element (p = 0, q = 0), representing no rotation and no reflection.
+
+        Returns:
+            np.ndarray: 2x2 identity matrix.
+        """
         return np.identity(2)
 
     def get_possible_gauge_values(self) -> np.ndarray:
-        dest = np.array(
-            [self.get_representation(p, q) for q in range(2) for p in range(self.n)],
-        )
+        """
+        Generate all group elements of D_2n in matrix representation.
+
+        Returns:
+            np.ndarray: Array of shape (2n, 2, 2), containing all 2x2 matrices corresponding
+                        to the elements of the D_2n group.
+        """
+        dest = np.array([self.get_representation(p, q) for q in range(2) for p in range(self.n)])
         return dest
-
-
-if __name__ == "__main__":
-    print("Z_2 Gauge Group Elements:")
-    Z_2 = ZNGauge(2)
-    for k in range(Z_2.n):
-        theta = (2 * np.pi * k) / Z_2.n
-        print(f"Z_2 element {k}: {Z_2.get_representation(theta)}")
-
-    print("Z_4 Gauge Group Elements:")
-    Z_4 = ZNGauge(4)
-    for k in range(Z_4.n):
-        theta = (2 * np.pi * k) / Z_4.n
-        print(f"Z_4 element {k}: {Z_4.get_representation(theta)}")
