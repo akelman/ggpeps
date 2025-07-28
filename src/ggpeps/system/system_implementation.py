@@ -266,9 +266,23 @@ class Z2System2D(System2DBase):
 
         return xnp.asarray(dest)
 
-    # @staticmethod
+    @staticmethod
+    @maybe_jit(
+        static_argnames=[
+            "lattice_size",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "unitcell_size",
+            "nvirtmodes_link",
+            "nphysmodes_site",
+            "symbolvec",
+            "overall_factors",
+            "idxarr_vec",
+            "zeroed_params",
+            "use_trans_inv",
+        ]
+    )
     def _compute_el_grad_vec(
-        self,
         lattice_size: int,
         num_pg_layer: int,
         num_fermionic_layer: int,
