@@ -1589,6 +1589,7 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    # @staticmethod
     @abstractmethod
     def _compute_el_grad_vec(
         lattice_size: int,

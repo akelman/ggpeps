@@ -266,6 +266,7 @@ class Z2System2D(System2DBase):
 
         return xnp.asarray(dest)
 
+    # @staticmethod
     def _compute_el_grad_vec(
         self,
         lattice_size: int,
@@ -310,30 +311,100 @@ class Z2System2D(System2DBase):
             logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
-        gradients = backend.compute_el_grad_vec(
-            lattice_size,
-            num_pg_layer,
-            num_fermionic_layer,
-            unitcell_size,
-            nvirtmodes_link,
-            nphysmodes_site,
-            symbolvec,
-            overall_factors,
-            idxarr_vec,
-            el_energy_vec,
-            mat_b_mod_vec,
-            gamma_in_sys_mod_vec,
-            covmat_out_virt_vec,
-            norm_mod_vec,
-            lognorm_default_vec,
-            wi_gamma_in_mod_inv_vec,
-            wi_gamma_out_mod_inv_vec,
-            mat_d_mod_inv_vec,
-            gamma_maj_sys_deriv_layvec_ucvec_symbvec,
-            grad_over_norm_vec,
-            zeroed_params,
-        )
-        return gradients
+        nlayer = num_pg_layer + num_fermionic_layer
+        param_shape = (nlayer, unitcell_size, len(symbolvec))
+        dest_grad = xnp.zeros(param_shape, dtype=xnp.float64)
+
+        for layerind in range(nlayer):
+
+            # Abbreviations for more readable code
+            mat_b = mat_b_mod_vec[layerind]
+            diff_d_gamma_inv = wi_gamma_out_mod_inv_vec[layerind]
+            single_link_offset = 2 * nvirtmodes_link
+            offset = 2 * lattice_size * nphysmodes_site + single_link_offset
+            idxarr = idxarr_vec[layerind]
+            overall_factor = overall_factors[layerind]
+            nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
+            gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
+            diff_d_inv_gamma_inv = wi_gamma_in_mod_inv_vec[layerind]
+
+            covmat_out_virt = covmat_out_virt_vec[layerind]
+            norm_mod = norm_mod_vec[layerind]
+            lognorm_default = xnp.sum(lognorm_default_vec)
+
+            ###################### Calculation of the derivative ########################
+            for uc_ind in range(unitcell_size):
+                for symbol_ind, symbol in enumerate(symbolvec):
+                    if (layerind, uc_ind, symbol_ind) in zeroed_params:
+                        # the derivative calculation is compuationally expensive
+                        # we can skip it for parameters that are forced by the ansatz to be zero
+                        if ggpeps.PREFERRED_BACKEND == "jax":
+                            dest_grad = dest_grad.at[layerind, uc_ind, symbol_ind].set(0.0)
+                        else:
+                            dest_grad[layerind, uc_ind, symbol_ind] = 0
+                    else:
+                        deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind]
+                        d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                        d_gamma_out = (
+                            d_mat_a
+                            + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                            + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
+                            - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+                        )
+                        # The virtual mode is the last link on the bottom right of the covariance matrix
+                        d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
+                        # Summand with derivative of the covariance matrix
+                        # We re-use the list comprehension from above to use the indices
+                        deriv_pfarr = xnp.array(
+                            [
+                                prefactor
+                                * utils.derivative_pfaffian(
+                                    covmat_out_virt[xnp.ix_(xnp.asarray(ind), xnp.asarray(ind))],
+                                    d_covmat_out_virt[xnp.ix_(xnp.asarray(ind), xnp.asarray(ind))],
+                                )
+                                for prefactor, ind in idxarr
+                            ]
+                        )
+                        d_el_energy = xnp.real(overall_factor * xnp.sum(deriv_pfarr)) * xnp.exp(
+                            norm_mod - lognorm_default
+                        )
+
+                        # Summand with derivative of norms
+                        trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
+                        trace_mod = self._compute_grad_over_norm(
+                            gamma_in_sys_mod,
+                            diff_d_inv_gamma_inv,
+                            d_mat_d,
+                            mat_d_mod_inv_vec[layerind],
+                        )
+                        # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
+                        d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
+                        # Scale to system size
+                        d_el_energy *= nlinks
+                        if ggpeps.PREFERRED_BACKEND == "jax":
+                            dest_grad = dest_grad.at[layerind, uc_ind, symbol_ind].add(d_el_energy)
+                        else:
+                            dest_grad[layerind, uc_ind, symbol_ind] = d_el_energy
+
+        dest_grad = xnp.asarray(dest_grad)
+
+        # We have to weigh the different layers with the electric energy operator expectation of the other layers.
+        # They act as a prefactor in the derivative
+        if nlayer > 1:
+            for i in range(nlayer):
+                if ggpeps.PREFERRED_BACKEND == "jax":
+                    # prod_other_layers = ggpeps.utils.multiply_except(el_energy_vec, i)
+                    # multiply_except does not currently work inside a jit function, so do this instead:
+                    mask = xnp.ones(nlayer, dtype=bool)
+                    mask = mask.at[i].set(False)
+                    prod_other_layers = xnp.where(mask, el_energy_vec, 1.0).prod()
+
+                    dest_grad = dest_grad.at[i].multiply(prod_other_layers)
+                else:
+                    prod_other_layers = ggpeps.utils.multiply_except(el_energy_vec, i)
+                    dest_grad[i] *= prod_other_layers
+
+        return dest_grad
 
     @staticmethod
     @maybe_jit(static_argnames=["lattice_size", "use_trans_inv", "num_pg_layer", "num_fermionic_layer"])
