@@ -371,7 +371,7 @@ class Z2System2D(System2DBase):
 
                         # Summand with derivative of norms
                         trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
-                        trace_mod = self._compute_grad_over_norm(
+                        trace_mod = utils.compute_grad_over_norm(
                             gamma_in_sys_mod,
                             diff_d_inv_gamma_inv,
                             d_mat_d,
