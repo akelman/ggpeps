@@ -102,10 +102,8 @@ class Z2System2D(System2DBase):
             theta (xnp.array): New gauge field value
         """
         # Update the gaugefield
-        if ggpeps.PREFERRED_BACKEND == "jax":
-            self._gaugefieldvec = self._gaugefieldvec.at[link_ind].set(theta)
-        else:
-            self._gaugefieldvec[link_ind] = theta
+        self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
+
         # There are two directions per vertex
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
@@ -120,18 +118,16 @@ class Z2System2D(System2DBase):
             )
 
             # Substitute in the array
-            if ggpeps.PREFERRED_BACKEND == "jax":
-                # TODO: should not modify "private" variable - make a setter?
-                self._gamma_in_sys_vec = self.gamma_in_sys_vec.at[
-                    layer,
-                    ind_mat : ind_mat + rotmat.shape[0],
-                    ind_mat : ind_mat + rotmat.shape[1],
-                ].set(gamma_in_subst)
-            else:
-                self.gamma_in_sys_vec[layer][
+            inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
+            self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
+            # TODO: should not modify "private" variable - make a setter?
+            """
+            equivalent to:
+                self._gamma_in_sys_vec[layer][
                     ind_mat : ind_mat + rotmat.shape[0],
                     ind_mat : ind_mat + rotmat.shape[1],
                 ] = gamma_in_subst
+            """
 
         # Update the determinant
         mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
@@ -352,10 +348,7 @@ class Z2System2D(System2DBase):
                     if (layerind, uc_ind, symbol_ind) in zeroed_params:
                         # the derivative calculation is compuationally expensive
                         # we can skip it for parameters that are forced by the ansatz to be zero
-                        if ggpeps.PREFERRED_BACKEND == "jax":
-                            dest_grad = dest_grad.at[layerind, uc_ind, symbol_ind].set(0.0)
-                        else:
-                            dest_grad[layerind, uc_ind, symbol_ind] = 0
+                        dest_grad = backend.array_assign(dest_grad, (layerind, uc_ind, symbol_ind), 0.0)
                     else:
                         deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind]
                         d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
@@ -395,10 +388,7 @@ class Z2System2D(System2DBase):
                         d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
                         # Scale to system size
                         d_el_energy *= nlinks
-                        if ggpeps.PREFERRED_BACKEND == "jax":
-                            dest_grad = dest_grad.at[layerind, uc_ind, symbol_ind].set(d_el_energy)
-                        else:
-                            dest_grad[layerind, uc_ind, symbol_ind] = d_el_energy
+                        dest_grad = backend.array_assign(dest_grad, (layerind, uc_ind, symbol_ind), d_el_energy)
 
         dest_grad = xnp.asarray(dest_grad)
 
@@ -455,10 +445,7 @@ class Z2System2D(System2DBase):
             for site_ind in range(0, 2 * lattice_size, 2):
                 layer_mass_energy += 0.5 * (1 + covmat[site_ind + 1, site_ind])
 
-            if ggpeps.PREFERRED_BACKEND == "jax":
-                mass_energy_op = mass_energy_op.at[layer_ind].set(layer_mass_energy)
-            else:
-                mass_energy_op[layer_ind] = xnp.asarray(layer_mass_energy)
+            mass_energy_op = backend.array_assign(mass_energy_op, layer_ind, layer_mass_energy)
 
         mass_energy_op = xnp.asarray(mass_energy_op)
 
@@ -514,12 +501,8 @@ class Z2System2D(System2DBase):
                         if (layer_ind, uc_ind, symbol_ind) not in zeroed_params:
 
                             d_gamma_out = d_gamma_out_symbolvec[layer_ind, uc_ind, symbol_ind]
-                            if ggpeps.PREFERRED_BACKEND == "numpy":
-                                gradients[layer_ind, uc_ind, symbol_ind] += 0.5 * d_gamma_out[site_ind + 1, site_ind]
-                            elif ggpeps.PREFERRED_BACKEND == "jax":
-                                gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(
-                                    0.5 * d_gamma_out[site_ind + 1, site_ind]
-                                )
+                            grad = 0.5 * d_gamma_out[site_ind + 1, site_ind]
+                            gradients = backend.array_add(gradients, (layer_ind, uc_ind, symbol_ind), grad)
 
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
@@ -653,10 +636,7 @@ class Z2System2D(System2DBase):
                                     + d_gamma_out[site_ind_cov + 1, neighborY_ind]
                                 )
                             )
-                            if ggpeps.PREFERRED_BACKEND == "numpy":
-                                gradients[layer_ind, uc_ind, symbol_ind] += grad
-                            elif ggpeps.PREFERRED_BACKEND == "jax":
-                                gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(grad)
+                            gradients = backend.array_add(gradients, (layer_ind, uc_ind, symbol_ind), grad)
 
         return xnp.array(gradients)
 
@@ -715,14 +695,8 @@ class Z2System2D(System2DBase):
                         if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
 
                             d_gamma_out = self.d_gamma_out_symbolvec()[layer_ind, uc_ind, symbol_ind]
-                            if ggpeps.PREFERRED_BACKEND == "numpy":
-                                gradients[layer_ind, uc_ind, symbol_ind] += (
-                                    0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
-                                )
-                            elif ggpeps.PREFERRED_BACKEND == "jax":
-                                gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(
-                                    0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
-                                )
+                            grad = 0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
+                            gradients = backend.array_add(gradients, (layer_ind, uc_ind, symbol_ind), grad)
 
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here

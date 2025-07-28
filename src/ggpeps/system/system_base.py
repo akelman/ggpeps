@@ -620,12 +620,9 @@ class System2DBase(ABC):
                             - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ xnp.transpose(mat_b)
                         )
 
-                        if ggpeps.PREFERRED_BACKEND == "jax":
-                            self._d_gamma_out_symbolvec = self._d_gamma_out_symbolvec.at[layer, uc_ind, ind].set(
-                                d_gamma_out
-                            )
-                        else:
-                            self._d_gamma_out_symbolvec[layer, uc_ind, ind] = d_gamma_out
+                        self._d_gamma_out_symbolvec = backend.array_assign(
+                            self._d_gamma_out_symbolvec, (layer, uc_ind, ind), d_gamma_out
+                        )
 
             self._d_gamma_out_symbolvec = xnp.array(self._d_gamma_out_symbolvec)
         return self._d_gamma_out_symbolvec
@@ -1232,10 +1229,9 @@ class System2DBase(ABC):
                 # we can skip it for parameters that are forced by the ansatz to be zero
 
                 # Compute gradient
-                if ggpeps.PREFERRED_BACKEND == "jax":
-                    dest_grad = dest_grad.at[symbol_ind].set(self.compute_grad_over_norm(layerind, uc_ind, symbol))
-                else:
-                    dest_grad[symbol_ind] = self.compute_grad_over_norm(layerind, uc_ind, symbol)
+                dest_grad = backend.array_assign(
+                    dest_grad, symbol_ind, self.compute_grad_over_norm(layerind, uc_ind, symbol)
+                )
         return dest_grad
 
     ################## Weight management ######################
@@ -2027,10 +2023,7 @@ class System2DBase(ABC):
                     self.mat_b_vec[layer] @ self.wi_gamma_out_vec[layer].inv() @ xnp.transpose(self.mat_b_vec[layer])
                 )
 
-                if ggpeps.PREFERRED_BACKEND == "jax":
-                    self._ferm_covmat_vec = self._ferm_covmat_vec.at[layer].set(covmat)
-                else:
-                    self._ferm_covmat_vec[layer] = covmat
+                self._ferm_covmat_vec = backend.array_assign(self._ferm_covmat_vec, layer, covmat)
         return self._ferm_covmat_vec
 
     ################## Mode Permutations ##################
