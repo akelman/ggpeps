@@ -24,6 +24,7 @@ from matplotlib.colors import LogNorm
 
 import ggpeps
 import ggpeps.measurement as meas
+from ggpeps.system.global_funcs import backend
 from ggpeps.system.global_funcs_jax import derivative_pfaffian_jax
 from ggpeps.system.global_funcs_numpy import derivative_pfaffian_numpy
 
@@ -574,12 +575,12 @@ class WoodburyInverter:
             idmat = xnp.eye(m_m, n_m)
             u = xnp.zeros((m_a, m_m))
             v = xnp.zeros((n_m, n_a))
-            if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
-                u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
-                v = v.at[0:m_m, indj : indj + n_m].set(idmat)
-            else:
-                u[indi : indi + m_m, 0:n_m] = idmat  # TODO: fix for JAX - DONE
-                v[0:m_m, indj : indj + n_m] = idmat
+
+            inds_u = (slice(indi, indi + m_m), slice(0, n_m))
+            u = backend.array_assign(u, inds_u, idmat)
+
+            inds_v = (slice(0, m_m), slice(indj, indj + n_m))
+            v = backend.array_assign(v, inds_v, idmat)
             return self.update(u, m, v)
         else:
             return self.inv()
@@ -642,12 +643,12 @@ class IncLogAbsDeterminant:
             idmat = xnp.eye(m_m, n_m)
             u = xnp.zeros((m_a, m_m))
             v = xnp.zeros((n_m, n_a))
-            if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
-                u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
-                v = v.at[0:m_m, indj : indj + n_m].set(idmat)
-            else:
-                u[indi : indi + m_m, 0:n_m] = idmat  # TODO: fix for JAX - DONE
-                v[0:m_m, indj : indj + n_m] = idmat
+
+            inds_u = (slice(indi, indi + m_m), slice(0, n_m))
+            u = backend.array_assign(u, inds_u, idmat)
+
+            inds_v = (slice(0, m_m), slice(indj, indj + n_m))
+            v = backend.array_assign(v, inds_v, idmat)
             return self.update(ainv, u, m, v, store)
         else:
             return self.det()

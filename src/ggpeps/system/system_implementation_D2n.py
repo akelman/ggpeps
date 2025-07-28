@@ -322,10 +322,8 @@ class D2nSystem2D(System2DBase):
             color_to_update (int, optional): Color to update. If None, both colors are updated. Defaults to None.
         """
         # Update the gaugefield
-        if ggpeps.PREFERRED_BACKEND == "jax":
-            self._gaugefieldvec = self._gaugefieldvec.at[link_ind].set(theta)
-        else:
-            self._gaugefieldvec[link_ind] = theta
+        self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
+
         # There are two directions per vertex
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord, dir)
@@ -361,18 +359,9 @@ class D2nSystem2D(System2DBase):
                 self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer])
             )
             # Substitute in the array
-            if ggpeps.PREFERRED_BACKEND == "jax":
-                # TODO: should not modify "private" variable - make a setter?
-                self._gamma_in_sys_vec = self.gamma_in_sys_vec.at[
-                    layer,
-                    ind_mat : ind_mat + rotmat.shape[0],
-                    ind_mat : ind_mat + rotmat.shape[1],
-                ].set(gamma_in_subst)
-            else:
-                self.gamma_in_sys_vec[layer][
-                    ind_mat : ind_mat + rotmat.shape[0],
-                    ind_mat : ind_mat + rotmat.shape[1],
-                ] = gamma_in_subst
+            # TODO: should not modify "private" variable - make a setter?
+            inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
+            self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
 
         # Update the determinant
         mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
