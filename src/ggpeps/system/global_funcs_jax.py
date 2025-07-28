@@ -103,9 +103,6 @@ def compute_grad_over_norm_jax(
     return dest
 
 
-# Two issues:
-# (a) cannot jit, because this function calls pfaffian code, which is not built for jax
-# (b) TODO: should accept required matrices, which will not need to be static
 @partial(
     jax.jit,
     static_argnames=[
@@ -160,10 +157,6 @@ def compute_el_grad_vec_jax(
     nlayer = num_pg_layer + num_fermionic_layer
     param_shape = (nlayer, unitcell_size, len(symbolvec))
     dest_grad = jnp.zeros(param_shape, dtype=jnp.float64)
-
-    # overall_factors = system.cfg.el_overall_factors
-    # idxarrs = system.cfg.idxarr_vec
-    # el_energy_vec = system.el_energy_op_vec
 
     for layerind in range(nlayer):
 
