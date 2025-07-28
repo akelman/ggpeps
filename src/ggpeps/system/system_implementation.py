@@ -1,8 +1,6 @@
 import logging
 from pfapack import pfaffian as pf
 
-import jax
-
 import numpy as np
 from ggpeps import xnp as xnp
 from ggpeps import xscipy as xscipy
@@ -13,18 +11,9 @@ from ggpeps.lattice import Direction
 from ggpeps.system.global_funcs import backend
 
 from .system_base import System2DBase
+from .system_base import maybe_jit
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
-
-
-def maybe_jit(*jit_args, **jit_kwargs):
-    def decorator(func):
-        if ggpeps.PREFERRED_BACKEND == "jax":
-            return jax.jit(func, *jit_args, **jit_kwargs)
-        else:
-            return func
-
-    return decorator
 
 
 ###################### Z2System2D ##########################

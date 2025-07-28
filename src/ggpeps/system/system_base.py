@@ -8,6 +8,7 @@ import itertools as it
 import sympy
 from scipy.linalg import block_diag
 
+import jax
 import numpy as np
 import jax.numpy as jnp
 from ggpeps import xnp as xnp
@@ -20,6 +21,16 @@ from ggpeps.system.global_funcs import backend
 from ggpeps.modearray import generate_permutation_matrix
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
+
+
+def maybe_jit(*jit_args, **jit_kwargs):
+    def decorator(func):
+        if ggpeps.PREFERRED_BACKEND == "jax":
+            return jax.jit(func, *jit_args, **jit_kwargs)
+        else:
+            return func
+
+    return decorator
 
 
 ################## Config2DBase ######################
