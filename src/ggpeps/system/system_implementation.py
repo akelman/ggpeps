@@ -396,16 +396,11 @@ class Z2System2D(System2DBase):
         # They act as a prefactor in the derivative
         if nlayer > 1:
             for i in range(nlayer):
-                if ggpeps.PREFERRED_BACKEND == "jax":
-                    # prod_other_layers = ggpeps.utils.multiply_except(el_energy_vec, i)
-                    # multiply_except does not currently work inside a jit function, so do this instead:
-                    mask = xnp.ones(nlayer, dtype=bool)
-                    mask = mask.at[i].set(False)
-                    prod_other_layers = xnp.where(mask, el_energy_vec, 1.0).prod()
+                prod_other_layers = utils.multiply_except(el_energy_vec, i)
 
+                if ggpeps.PREFERRED_BACKEND == "jax":
                     dest_grad = dest_grad.at[i].multiply(prod_other_layers)
                 else:
-                    prod_other_layers = ggpeps.utils.multiply_except(el_energy_vec, i)
                     dest_grad[i] *= prod_other_layers
 
         return dest_grad

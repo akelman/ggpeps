@@ -232,11 +232,8 @@ def select_except(arr, ind: int):
     if isinstance(arr, list):
         arr = xnp.asarray(arr)
     mask = xnp.ones(len(arr), dtype=bool)
-    if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
-        mask = mask.at[ind].set(False)
-    else:
-        mask[ind] = False
-    return arr[mask]  # TODO: fix for JAX
+    mask = backend.array_assign(mask, ind, False)
+    return arr[mask]  # TODO: fix for JAX jit
 
 
 def multiply_except(arr, ind: int):
@@ -250,8 +247,10 @@ def multiply_except(arr, ind: int):
         float: Multiplication of all array values except for arr[ind]
     """
     if len(arr) > 1:
-        others = select_except(arr, ind)
-        return xnp.prod(others)
+        mask = xnp.ones(len(arr), dtype=bool)
+        mask = backend.array_assign(mask, ind, False)
+        prod_other = xnp.where(mask, arr, 1.0).prod()
+        return prod_other
     else:
         # It does not make sense to execute this function with only one element
         return arr[0]
