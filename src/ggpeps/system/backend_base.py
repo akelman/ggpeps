@@ -20,6 +20,10 @@ class BackendBase(ABC):
         return mat[a:b, c:d]
 
     @staticmethod
+    def array_assign(mat, inds, val):
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @staticmethod
     @abstractmethod
     def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")

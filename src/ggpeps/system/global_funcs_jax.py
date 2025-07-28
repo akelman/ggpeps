@@ -113,5 +113,10 @@ class BackendJax_Z2(BackendBase):
         pass
 
     @staticmethod
+    def array_assign(mat, inds, val):
+        mat = mat.at[inds].set(val)
+        return mat
+
+    @staticmethod
     def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
         return calculate_lognormvec_jax(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
