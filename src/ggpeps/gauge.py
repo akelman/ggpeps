@@ -53,26 +53,75 @@ class ZNGauge:
         return self.get_representation(theta)
 
     def get_representation(self, theta: float) -> np.ndarray:
-        """Get a representation of the group element.
-        We return an array (rather than a float) to be consistent with other gauge groups of larger dimension
-        (non-Abelian groups)."""
+        """
+        Return the matrix representation of a Z_N group element given an angle theta.
+
+        The element g = exp(i * theta) is returned as a 1x1 complex NumPy array for consistency
+        with other (possibly non-Abelian) gauge groups that use higher-dimensional representations.
+
+        Args:
+            theta (float): Angle parameter for the group element, typically (2 * pi * k) / N.
+
+        Returns:
+            np.ndarray: 1x1 complex matrix representing the group element.
+        """
         return np.array([[np.exp(1.0j * theta)]])
 
     def get_neutral_gauge_value(self) -> np.ndarray:
+        """
+        Return the identity element of the Z_N gauge group.
+
+        The identity is represented as a 1x1 complex matrix: [[1 + 0j]].
+
+        Returns:
+            np.ndarray: 1x1 matrix representing the identity element.
+        """
         return np.array([[1.0 + 0.0j]])
 
     def get_possible_gauge_values(self) -> np.ndarray:
+        """
+        Generate all Z_N group elements as 1x1 complex matrices.
+
+        Each element is represented as [[exp(i * theta)]], where
+        theta = (2 * pi * k) / N for k in [0, N - 1].
+
+        Returns:
+            np.ndarray: Array of shape (N, 1, 1), where each element is a 1x1 matrix
+                        representing a Z_N group element.
+        """
         prefactor = 2.0 * np.pi / self.n
         dest = []
-        for i in range(self.n):
-            dest.append(self.get_representation(i * prefactor))
+        for k in range(self.n):
+            dest.append(self.get_representation(k * prefactor))
         return np.array(dest)
 
     def get_increment(self) -> float:
+        """
+        Return the angular separation between adjacent Z_N group elements.
+
+        Each element in Z_N is represented as exp(i * theta), where theta = (2 * pi * k) / N.
+        The difference in angle between consecutive elements is 2 * pi / N.
+
+        Note:
+            In Z_N, multiplying an element g(k) by exp(2 * pi * i / N) yields the next element: g(k + 1).
+
+        Returns:
+            float: Angular increment between neighboring group elements.
+        """
         return 2.0 * np.pi / self.n
 
     def get_angle(self, g) -> float:
-        """Get the angle, theta, for a group elemnt g=[[exp(1j*theta)]]"""
+        """
+        Return the angle theta for a Z_N group element g = [[exp(i * theta)]].
+
+        Extract the complex phase of a 1x1 matrix representing a Z_N group element.
+
+        Args:
+            g (np.ndarray): 1x1 matrix representing a Z_N group element.
+
+        Returns:
+            float: Angle theta in radians.
+        """
         return np.angle(g[0][0])
 
 
@@ -184,3 +233,17 @@ class D2nGauge:
             [self.get_representation(p, q) for q in range(2) for p in range(self.n)],
         )
         return dest
+
+
+if __name__ == "__main__":
+    print("Z_2 Gauge Group Elements:")
+    Z_2 = ZNGauge(2)
+    for k in range(Z_2.n):
+        theta = (2 * np.pi * k) / Z_2.n
+        print(f"Z_2 element {k}: {Z_2.get_representation(theta)}")
+
+    print("Z_4 Gauge Group Elements:")
+    Z_4 = ZNGauge(4)
+    for k in range(Z_4.n):
+        theta = (2 * np.pi * k) / Z_4.n
+        print(f"Z_4 element {k}: {Z_4.get_representation(theta)}")
