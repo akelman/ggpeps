@@ -12,8 +12,8 @@ import pandas as pd
 from scipy.sparse import issparse
 from scipy.linalg import svd, block_diag
 
-import jax
 import numpy as np
+import jax.numpy as jnp
 from ggpeps import xnp as xnp
 
 import py_pfaffian.jax
@@ -284,14 +284,14 @@ def derivative_pfaffian(mat, d_mat, pfaval=None):
     The given formula is only valid if A is not singular.
 
     Args:
-        mat (np.ndarray): Input Matrix A
-        d_mat (np.ndarray): Derivative dA/dx
+        mat (xnp.ndarray): Input Matrix A
+        d_mat (xnp.ndarray): Derivative dA/dx
 
     Returns:
-        np.ndarray: d(Pf(A))/dx
+        xnp.ndarray: d(Pf(A))/dx
     """
-
-    if ggpeps.PREFERRED_BACKEND == "jax":
+    # We assume the types of all the provided arguments match
+    if isinstance(mat, jnp.ndarray):
         return derivative_pfaffian_jax(mat, d_mat, pfaval=pfaval)
     else:
         return derivative_pfaffian_numpy(mat, d_mat, pfaval=pfaval)

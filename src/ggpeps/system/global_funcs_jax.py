@@ -197,7 +197,7 @@ def compute_el_grad_vec_jax(
                     # We re-use the list comprehension from above to use the indices
                     deriv_pfarr = [
                         prefactor
-                        * derivative_pfaffian_jax(
+                        * utils.derivative_pfaffian(
                             covmat_out_virt[jnp.ix_(jnp.array(ind), jnp.array(ind))],
                             d_covmat_out_virt[jnp.ix_(jnp.array(ind), jnp.array(ind))],
                         )

@@ -175,7 +175,7 @@ def compute_el_grad_vec_numpy(
                     # We re-use the list comprehension from above to use the indices
                     deriv_pfarr = [
                         prefactor
-                        * derivative_pfaffian_numpy(
+                        * utils.derivative_pfaffian(
                             covmat_out_virt[np.ix_(ind, ind)],
                             d_covmat_out_virt[np.ix_(ind, ind)],
                         )
