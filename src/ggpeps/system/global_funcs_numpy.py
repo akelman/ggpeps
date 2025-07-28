@@ -111,5 +111,10 @@ class BackendNumpy_Z2(BackendBase):
         return mat
 
     @staticmethod
+    def array_add(mat, inds, val):
+        mat[inds] += val
+        return mat
+
+    @staticmethod
     def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
         return calculate_lognormvec_numpy(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
