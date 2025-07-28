@@ -94,7 +94,7 @@ class U1System2D(System2DBase):
             id = np.eye(nsites)
             # Extract the parts of the covariance matrix
             # The 2 is the number of physical fermionic Majorana modes
-            amat, bmat, dmat = backend.extract_partial_covmats(covmat, 2)
+            amat, bmat, dmat = utils.extract_partial_covmats(covmat, 2)
             # Expand them
             amat_sys = np.kron(id, amat)
             bmat_sys = np.kron(id, bmat)
@@ -307,7 +307,7 @@ class U1System2D(System2DBase):
                 ###################### Calculation of the derivative ########################
                 for symbol in self.symbolvec:
                     deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
-                    d_mat_a, d_mat_b, d_mat_d = backend.extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                    d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
                     d_gamma_out = (
                         d_mat_a
                         + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)

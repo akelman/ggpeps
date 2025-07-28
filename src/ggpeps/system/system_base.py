@@ -611,7 +611,7 @@ class System2DBase(ABC):
                     for ind, symbol in enumerate(self.symbolvec):
                         mat_b = self.mat_b_vec[layer]
                         deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_layvec_ucvec_symbvec[layer, uc_ind, ind]
-                        d_mat_a, d_mat_b, d_mat_d = backend.extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                        d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
                         diff_d_gamma_inv = self.wi_gamma_out_vec[layer].inv()
                         d_gamma_out = (
                             d_mat_a
@@ -1410,9 +1410,7 @@ class System2DBase(ABC):
             # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
             offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
             # Extract only the part of the virtual-virtual correlations
-            _, _, deriv_d = backend.extract_partial_covmats(
-                self.gamma_maj_sys_deriv_vec(symb)[layerind, uc_ind], offset
-            )
+            _, _, deriv_d = utils.extract_partial_covmats(self.gamma_maj_sys_deriv_vec(symb)[layerind, uc_ind], offset)
             mat_d_inv = self.mat_d_inv_vec[layerind]
 
             # TODO: We might save one matrix-matrix multiplication here

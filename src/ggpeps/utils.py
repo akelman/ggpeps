@@ -201,6 +201,22 @@ def get_git_hash():
     return githash.decode("utf-8").strip()
 
 
+def extract_partial_covmats(mat: xnp.ndarray, corner: int):
+    """Extract the partial covariance matrices from a gaussian mapping
+
+    Args:
+        mat (xnp.ndarray): Full covariance matrix
+        corner (int): Index of the top left element of the bottom right matrix
+
+    Returns:
+        tuple: Matrices (A,B,D)
+    """
+    mat_a = mat[:corner, :corner]
+    mat_b = mat[:corner, corner:]
+    mat_d = mat[corner:, corner:]
+    return mat_a, mat_b, mat_d
+
+
 def select_except(arr, ind: int):
     """Return all elements of a list except the indicated one
 

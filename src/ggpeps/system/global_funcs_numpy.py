@@ -4,6 +4,7 @@ import numpy as np
 from pfapack import pfaffian as pf
 
 import ggpeps
+import ggpeps.utils as utils
 from ggpeps.system.backend_base import BackendBase
 
 
@@ -161,7 +162,7 @@ def compute_el_grad_vec_numpy(
                     dest_grad[layerind, uc_ind, symbol_ind] = 0
                 else:
                     deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind]
-                    d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats_numpy(deriv_gamma_maj_sys, offset)
+                    d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
                     d_gamma_out = (
                         d_mat_a
                         + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
@@ -266,22 +267,6 @@ def compute_el_grad_vec_numpy(
 #     z2_system.invalidate_gauge_update()
 
 
-def extract_partial_covmats_numpy(mat, corner):
-    """Extract the partial covariance matrices from a gaussian mapping
-
-    Args:
-        mat (np.ndarray): Full covariance matrix
-        corner (int): Index of the top left element of the bottom right matrix
-
-    Returns:
-        tuple: Matrices (A,B,D)
-    """
-    mat_a = mat[:corner, :corner]
-    mat_b = mat[:corner, corner:]
-    mat_d = mat[corner:, corner:]
-    return mat_a, mat_b, mat_d
-
-
 def slice_matrix_numpy(mat, a, b, c, d):
     return mat[a:b, c:d]
 
@@ -298,10 +283,6 @@ class BackendNumpy_Z2(BackendBase):
     @staticmethod
     def slice_matrix(mat, a, b, c, d):
         return slice_matrix_numpy(mat, a, b, c, d)
-
-    @staticmethod
-    def extract_partial_covmats(mat, corner):
-        return extract_partial_covmats_numpy(mat, corner)
 
     @staticmethod
     def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
