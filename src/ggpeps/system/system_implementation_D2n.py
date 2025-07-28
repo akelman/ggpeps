@@ -458,7 +458,31 @@ class D2nSystem2D(System2DBase):
         dest = xnp.zeros(nlayer)
         return xnp.asarray(dest)
 
-    def _compute_el_grad_vec(self, use_trans_inv: bool = True):
+    def _compute_el_grad_vec(
+        self,
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        nvirtmodes_link: int,
+        nphysmodes_site: int,
+        symbolvec: tuple,
+        overall_factors,
+        idxarr_vec,
+        el_energy_vec,
+        mat_b_mod_vec,
+        gamma_in_sys_mod_vec,
+        covmat_out_virt_vec,
+        norm_mod_vec,
+        lognorm_default_vec,
+        wi_gamma_in_mod_inv_vec,
+        wi_gamma_out_mod_inv_vec,
+        mat_d_mod_inv_vec,
+        gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+        grad_over_norm_vec,
+        zeroed_params,
+        use_trans_inv: bool = True,
+    ):
         """Computation of the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
         Since several operations needed for the computation of the gradient and the energy are similar,
