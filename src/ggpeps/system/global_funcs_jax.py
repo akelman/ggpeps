@@ -123,5 +123,10 @@ class BackendJax_Z2(BackendBase):
         return mat
 
     @staticmethod
+    def array_mult(mat, inds, val):
+        mat = mat.at[inds].multiply(val)
+        return mat
+
+    @staticmethod
     def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
         return calculate_lognormvec_jax(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)

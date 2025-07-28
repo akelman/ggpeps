@@ -397,11 +397,7 @@ class Z2System2D(System2DBase):
         if nlayer > 1:
             for i in range(nlayer):
                 prod_other_layers = utils.multiply_except(el_energy_vec, i)
-
-                if ggpeps.PREFERRED_BACKEND == "jax":
-                    dest_grad = dest_grad.at[i].multiply(prod_other_layers)
-                else:
-                    dest_grad[i] *= prod_other_layers
+                dest_grad = backend.array_mult(dest_grad, i, prod_other_layers)
 
         return dest_grad
 
