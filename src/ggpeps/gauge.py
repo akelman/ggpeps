@@ -2,26 +2,54 @@ import numpy as np
 
 
 class ZNGauge:
-    """Implements a Z_N gauge group, under a convenient representation in which values are chosen on the unit circle
-    and given in multiples of 2pi/N.
+    """Implement a Z_N gauge group with elements on the unit circle.
+
+    Elements are represented as 1x1 complex matrices corresponding to
+    unit-modulus complex numbers spaced at intervals of 2π/N around the circle.
     """
 
     def __init__(self, n: int) -> None:
-        self.n = n
-        self.rep_dim = 1  # dimension of the representation
+        """Initialize a Z_N gauge group.
 
-        # list of forbidden transitions - empty for Z_N gauge group
-        self.forbidden_transitions: list = []
-
-    def get_nonsingular_path(self, g_old, g_new):
-        """Get the non singular update gauge field path between two gauge values.
-        If the transition between the two gauge fields yields a singular update we
-        return a path containing middle steps, such that we don't run into singular update matrices.
+        Args:
+            n (int): Order of the group (i.e., the number of discrete elements).
         """
-        return []  # no singular paths in Z_N gauge group
+        self.n = n
+        self.rep_dim = 1  # Each group element is represented as a 1×1 matrix.
+        self.forbidden_transitions: list = []  # List of forbidden transitions - Empty for Z_N gauge group.
+
+    def get_nonsingular_path(self, g_old: np.ndarray, g_new: np.ndarray) -> list[np.ndarray]:
+        """Return an empty path since Z_N has no singular transitions.
+
+        In Z_N, all gauge values lie on the unit circle and transitions
+        between any two elements are always nonsingular.
+
+        Args:
+            g_old (np.ndarray): Current gauge value (1x1 complex matrix).
+            g_new (np.ndarray): Target gauge value (1x1 complex matrix).
+
+        Returns:
+            list[np.ndarray]: Empty list; no intermediate steps are required.
+        """
+        return []
 
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> np.ndarray:
-        theta = rng_state.randint(0, self.n) * 2 * np.pi / self.n
+        """
+        Generate a random Z_N group element as a 1x1 complex matrix.
+
+        Each element g of Z_N is represented as exp(i * theta), where theta = (2 * pi * k) / N,
+        and k is an integer in the range [0, N - 1].
+
+        Args:
+            rng_state (np.random.RandomState): A NumPy random number generator used to ensure
+                reproducibility of the random selection. Using the same seed will produce
+                the same sequence of random values.
+
+        Returns:
+            np.ndarray: 1x1 matrix representing a randomly selected Z_N group element.
+        """
+        k = rng_state.randint(0, self.n)
+        theta = (2 * np.pi * k) / self.n
         return self.get_representation(theta)
 
     def get_representation(self, theta: float) -> np.ndarray:
