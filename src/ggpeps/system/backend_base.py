@@ -66,11 +66,3 @@ class BackendBase(ABC):
         zeroed_params,
     ):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
-
-    @classmethod
-    def calculate_lognorm(
-        cls, gamma_in_sys_vec: list[xnp.ndarray], mat_d_vec: list[xnp.ndarray], all_factors: bool = False
-    ) -> float:
-        # This is still the plain formula, without any update mechanism
-        normvec = cls.calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
-        return xnp.sum(normvec)

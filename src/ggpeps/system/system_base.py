@@ -1290,6 +1290,13 @@ class System2DBase(ABC):
         ]
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
 
+    def _calculate_lognorm(
+        self, gamma_in_sys_vec: list[xnp.ndarray], mat_d_vec: list[xnp.ndarray], all_factors: bool = False
+    ) -> float:
+        # This is still the plain formula, without any update mechanism
+        normvec = backend.calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
+        return xnp.sum(normvec)
+
     def calculate_lognorm(self, all_factors=False):
         """Compute the logarithm of the norm
 
@@ -1299,7 +1306,7 @@ class System2DBase(ABC):
         Returns:
             float: Logarithm of the norm
         """
-        return backend.calculate_lognorm(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
+        return self._calculate_lognorm(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
 
     def calculate_lognormvec(self, all_factors=False):
         """Compute the logarithm of the norm for each layer
