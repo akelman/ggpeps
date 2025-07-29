@@ -1,23 +1,23 @@
 """
-As arguments this file receives the summary pkl file and the log file from a run in debug mode (only debug mode!).
+As arguments this file receives the summary pkl file and the log file from a run in logger debug mode (only debug!).
 
 This file plots three plots analysing the eom (error of mean - computed with autocorrelation and rebinning) -
-Dynamical mean of observable as a function of step number, EOM as a funcion of step number and EOM as a function of time.
+    1. Dynamical mean of an observable as a function of step number,
+    2. EOM as a function of step number,
+    3. EOM as a function of time.
 """
 
 import os
 import re
 import sys
-from ggpeps import utils
+import gzip
 import pickle
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import re
 from datetime import datetime
 
+import numpy as np
+import matplotlib.pyplot as plt
 
-import gzip
+from ggpeps import utils
 
 
 def main(args, save_path=None):
@@ -84,9 +84,9 @@ def main(args, save_path=None):
                 if args.grad_ind is not None and args.layer_num is not None:
                     for layer in args.layer_num:
                         for grad_ind in args.grad_ind:
-                            energy_grad_obsvec_sliced = energy_grad_obsvec[
-                                :, layer, grad_ind
-                            ]  # if it is a gradient, we plot the graph for the specific index and layer num. We also need to compute the dynamic mean and eom differently.
+                            # if it is a gradient, we plot the graph for the specific index and layer num.
+                            # We also need to compute the dynamic mean and eom differently.
+                            energy_grad_obsvec_sliced = energy_grad_obsvec[:, layer, grad_ind]
 
                             grad_norm_obsvec_sliced = grad_norm_obsvec[:, layer, grad_ind]
                             dyn_mean, dyn_eom = compute_dynamic_eom_mean_grad(
@@ -132,13 +132,13 @@ def main(args, save_path=None):
     axvec[0].legend()
     axvec[0].set_xlabel("step number")
     axvec[1].set_ylabel(f"Dynamical EOM {args.obs}")
-    axvec[1].set_xlabel(f"step number")
+    axvec[1].set_xlabel("step number")
     # axvec[1].set_yscale("log")
     # axvec[1].set_xscale("log")
     axvec[2].set_ylabel(f"EOM {args.obs}")
     axvec[2].set_yscale("log")
     axvec[2].set_xscale("log")
-    axvec[2].set_xlabel(f"step number [sec]")
+    axvec[2].set_xlabel("step number [sec]")
 
     # f.tight_layout()
     if save_path:
@@ -181,8 +181,6 @@ def compute_dynamic_eom_mean_grad(op_obsvec, op_grad_obsvec, grad_norm_obsvec, s
 
 
 if __name__ == "__main__":
-    import glob
-    import os
     import argparse
 
     parser = argparse.ArgumentParser()

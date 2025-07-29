@@ -2,7 +2,8 @@
 The value (and its error) is plotted against multiple MC runs with varying parameters.
 """
 
-import os, sys
+import os
+import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt

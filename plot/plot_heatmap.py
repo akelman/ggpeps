@@ -4,13 +4,11 @@ import numpy as np
 
 import pandas as pd
 
-pd.options.mode.use_inf_as_na = True
-
-from os.path import join
 import seaborn as sns
 import matplotlib.pyplot as plt
 from differential_heatmap import grad_heatmap
-import utils
+
+pd.options.mode.use_inf_as_na = True
 
 
 def _draw_heatmap(*args, **kwargs):
@@ -125,11 +123,11 @@ def main(args):
     df = df.convert_dtypes()
 
     # Make explicit t, y and z columns
-    if not "y" in df.columns:
+    if "y" not in df.columns:
         df["y"] = df["paramvec"].apply(lambda x: np.squeeze(x[:, 1]))
-    if not "z" in df.columns:
+    if "z" not in df.columns:
         df["z"] = df["paramvec"].apply(lambda x: np.squeeze(x[:, 2]))
-    if not "t" in df.columns:
+    if "t" not in df.columns:
         df["t"] = df["paramvec"].apply(lambda x: np.squeeze(x[:, 0]))
 
     print(df)

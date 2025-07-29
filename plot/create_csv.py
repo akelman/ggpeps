@@ -4,7 +4,8 @@ import pandas as pd
 
 def main(args):
 
-    # cols = ['el', 'mag', 'int', 'mass', 'energy', 'el_energy', 'mag_energy', 'mass_energy', 'int_energy', 'mass_energy', 'tag']
+    # cols = ['el', 'mag', 'int', 'mass', 'energy', 'el_energy', 'mag_energy', \
+    # 'mass_energy', 'int_energy', 'mass_energy', 'tag']
     data = pd.DataFrame()
     obs = ["energy", "el_energy", "mag_energy", "int_energy", "mass_energy", "norm"]
 
@@ -14,7 +15,7 @@ def main(args):
             vals = df.loc[:, "mean"]
             try:
                 error = df.loc[:, "err"]
-            except:
+            except Exception:
                 error = vals
             keys = df.loc[:, "name"]
             tag = args.tag
