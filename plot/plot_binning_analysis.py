@@ -1,13 +1,11 @@
 import os
-import re
 import sys
-from ggpeps import utils
+import gzip
 import pickle
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 
-import gzip
+from ggpeps import utils
 
 
 def main(args):
@@ -55,7 +53,6 @@ def main(args):
 if __name__ == "__main__":
 
     import argparse
-    import glob
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--fname", nargs="+", help="MC pickle or txt file")
