@@ -13,8 +13,9 @@ from ggpeps import xnp as xnp
 from ggpeps import xscipy as xscipy
 
 import ggpeps
+from ggpeps import gauge
 from ggpeps import utils
-from ggpeps.lattice import Direction, Lattice2D, Lattice3D
+from ggpeps.lattice import Direction, Lattice2D
 from ggpeps.system.global_funcs import *
 from ggpeps.modearray import generate_permutation_matrix
 
@@ -66,7 +67,8 @@ class Config2DBase(ABC):
 
     def __init__(
         self,
-        lattice: Union[Lattice2D, Lattice3D],
+        gaugemgr: Union[gauge.ZNGauge, gauge.D2nGauge],
+        lattice: Lattice2D,
         g_el: float,
         g_mag: float,
         g_int: float,
@@ -88,6 +90,7 @@ class Config2DBase(ABC):
             num_fermionic_layer (int, optional): number of fermionic layers. Defaults to 0.
         """
 
+        self.gaugemgr = gaugemgr
         self.lattice = lattice
         self.num_pg_layer = num_pg_layer
         self.num_fermionic_layer = num_fermionic_layer

@@ -13,6 +13,8 @@ import ggpeps.lattice as lattice
 
 from ggpeps.evaluator import Evaluator
 from ggpeps.measurement import Measurement
+from ggpeps.system.system_base import System2DBase
+
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -98,7 +100,7 @@ class MonteCarloEvaluator(Evaluator):
 
     evaluator_type = "mc"
 
-    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
+    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system: System2DBase):
         super().__init__(evaluator_cfg, system)
 
         self.step: int = 0
@@ -314,13 +316,15 @@ class MonteCarloEvaluator(Evaluator):
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
-        nlinks = lattice.nlinks
         link_ind = self.cfg.rng_state.choice(self.system.cfg.lattice.comp_tree, replace=False)
+
         # Uniformly pick a gauge value
         theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+
         # Store the old values
         weight_old = self.system.weight
         weight_new = self.system.calculate_weight_attempt(link_ind, theta)
+
         if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
             # Accept
             self.obsdict["acceptance_prob"].append(1)
@@ -339,12 +343,15 @@ class MonteCarloEvaluator(Evaluator):
         # Pick a site to update
         lattice = self.system.cfg.lattice
         comp_tree = lattice.comp_tree  # non gauge fixed links
+
         for i in comp_tree:
             # Uniformly pick a gauge to replace
             theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+
             # Store the old values
             weight_old = self.system.weight
             weight_new = self.system.calculate_weight_attempt(i, theta)
+
             if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
                 # Accept
                 self.obsdict["acceptance_prob"].append(1)
@@ -369,9 +376,11 @@ class MonteCarloEvaluator(Evaluator):
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
             theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+
             # Store the old values
             weight_old = self.system.weight
             weight_new = self.system.calculate_weight_attempt(link_ind, theta)
+
             if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
                 # Accept
                 self.obsdict["acceptance_prob"].append(1)

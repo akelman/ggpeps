@@ -50,6 +50,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         enforce_u1_symmetry=True,
     ):
         super().__init__(
+            gauge.ZNGauge(2),
             lattice,
             g_el,
             g_mag,
@@ -110,7 +111,6 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         self.el_overall_factors = [
             -1 / 16
         ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2)
 
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.
