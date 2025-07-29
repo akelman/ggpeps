@@ -36,6 +36,8 @@ def typing(session):
         "src/ggpeps/evaluator_manager.py",
         "src/ggpeps/evaluator.py",
         "src/ggpeps/exacteval.py",
+        "src/ggpeps/lattice.py",
+        "src/ggpeps/gauge.py",
     )
     # TODO: Add passing files (eventually should be entire repo)
 
