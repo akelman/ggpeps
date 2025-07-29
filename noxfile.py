@@ -1,4 +1,3 @@
-import os
 import nox
 
 # Define the minimal nox version required to run

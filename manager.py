@@ -47,7 +47,7 @@ INTERRUPT_EXIT_CODE = 10
 
 
 def save_state_on_exit():
-    args = ggpeps.global_vars["args"]
+    # args = ggpeps.global_vars["args"]
     cache: Cache = ggpeps.global_vars["cache"]
 
     cache_file = ggpeps.global_vars["args"].save_cache_dest
@@ -119,7 +119,7 @@ def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomSta
         try:
             dest = dest.reshape(shape)
             source = "command-line provided parameters"
-        except:
+        except Exception:
             logger.warning("Reshape of provided parameters impossible. Starting with random parameters.")
             dest = rng_state.rand(shape)
             source = "random state"
@@ -264,8 +264,8 @@ def main(args):
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L, args.gauge_fixing)
 
+    # in python > 3.12 there is a flag to indicate deprecation, but we want to maintain support for earlier versions.
     if args.fermions:
-        # in python > 3.12 there is a flag to indicate deprecation, but we want to maintain support for earlier versions.
         logger.warning(
             "The --fermions flag is deprecated, will have no effect, and should no longer be used."
             "Instead specify the number of fermionic layers with --num_fermionic_layer."
@@ -377,11 +377,11 @@ def main(args):
     logger.info(f"# of copies: {args.ncopy}")
     logger.info(f"fermions: {args.fermions}")
     if args.gauge_fixing == -1:
-        logger.info(f"Gauge fixing: True - maximal tree")
+        logger.info("Gauge fixing: True - maximal tree")
     elif args.gauge_fixing == 0:
-        logger.info(f"Gauge fixing: False")
+        logger.info("Gauge fixing: False")
     elif args.gauge_fixing == -2:
-        logger.info(f"Gauge fixing: True - chessboard")
+        logger.info("Gauge fixing: True - chessboard")
     else:
         logger.info(f"Gauge fixing: {args.gauge_fixing} rows fixed")
     logger.info(f"Unit cell size: {system_cfg.unitcell_size}")
@@ -453,15 +453,16 @@ def main(args):
         mc_config.compute_grads = args.compute_grads
         if cache.load_obj_from_local_cache("evaluator_manager") is not None:
             mc_mgr = cache.load_obj_from_local_cache("evaluator_manager")
-            logger.info(f"Loaded evaluator manager from cache.")
+            logger.info("Loaded evaluator manager from cache.")
         else:
             mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
         ggpeps.global_vars["eval_manager"] = mc_mgr  # save for global access
 
         start = timer()
-        mc_result_df = mc_mgr.simulate()  # Results as dataframe
-        mc_result = mc_mgr.get_evaluator()  # Results as Evaluator object
+        _ = mc_mgr.simulate()
         stop = timer()
+
+        mc_result = mc_mgr.get_evaluator()  # Results as Evaluator object
         mc_result.print_stats()
         mc_result.save(output_dir=args.output)
 
@@ -601,7 +602,7 @@ def main(args):
             args.nrunner,
             port=args.port,
         )
-        mc_result_df = mc_mgr.simulate()  # Results as dataframe
+        _ = mc_mgr.simulate()  # Results as dataframe
         mc_result = mc_mgr.get_evaluator()  # Results as Evaluator object
         mc_result.save(output_dir=args.output)
     else:
@@ -692,7 +693,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--params",
         nargs="+",
-        help="Parameters passed as a starting configuration (Order for one copy: [t1r, t2r,..., y1r, y2r,..., z1r, z2r..., t1i, t2i, ..., y1i, ... z1i])",
+        help="Parameters passed as a starting configuration (order should follow the order of the desired ansatz).",
     )
     parser.add_argument(
         "--fermions",
@@ -704,7 +705,7 @@ if __name__ == "__main__":
         "--unitcell_size",
         type=int,
         default=1,
-        help="Specify the size of the largest unit cell in the system. This determines the degree of translation invariance.",
+        help="Specify the size of the largest unit cell in the system to determine the translation invariance.",
     )
     parser.add_argument(
         "--relax_u1",
@@ -720,7 +721,10 @@ if __name__ == "__main__":
         const=-1,  # Value when argument is used without a value
         type=int,  # Convert the input to an integer if provided
         default=0,  # Default value when argument is not used
-        help="Gauge fixing: 0 if not provided (default), -1 if --gauge_fixing is used without a value - fix a maximal tree, or -2 to gauge fix like a chess boars, or any integer if we fix a specific number of rows.",
+        help="Gauge fixing:"
+        "0 if not provided (default), "
+        "-1 if --gauge_fixing is used without a value - fix a maximal tree, "
+        "-2 to gauge fix like a chess boars, or any integer if we fix a specific number of rows.",
     )
 
     # Monte Carlo settings
@@ -742,7 +746,7 @@ if __name__ == "__main__":
         "--use_systemsize_updates",
         action="store_true",
         default=False,
-        help="Update every spin of the system between each update step. This option is kept for backwards compatibility",
+        help="Update every spin of the system between each update step. This arg is kept for backwards compatibility",
     )
     parser.add_argument(
         "--update_size",
@@ -796,7 +800,8 @@ if __name__ == "__main__":
         const="cache.pkl",  # Value when argument is used without a value
         default=None,  # Default value when argument is not used
         type=str,
-        help="Load cache from the specified file. If no file provided, but the flag is present, the cache will be loaded from the default cache file (cache.pkl) if available.",
+        help="Load cache from the specified file. If no file provided, but the flag is present, "
+        "the cache will be loaded from the default cache file (cache.pkl) if available.",
     )
     parser.add_argument(
         "--save_cache_dest",
