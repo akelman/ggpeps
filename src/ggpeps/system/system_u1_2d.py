@@ -24,8 +24,10 @@ class U1System2D(System2DBase):
     """NOTE: The mode ordering of the T matrix in this class is different from all other classes in this repo.
     Order of the paramvec: [t,y,z]
     Mode order of T: {p,l,r,u,d}
-    Mode Order of gamma_dirac:  {p, l+, l-, r+, r-, d+, d-, u+, u-, psi_dag, l+_dag, l-_dag, r+_dag, r-_dag, d+_dag, d-_dag, u+_dag, u-_dag}
-    Mode Order of gamma_maj: {p_1,p_2,l+_1, l+_2, l-_1, l-_2, r+_1, r+_2, r-_1, r-_2, d+_1, d+_2, d-_1, d-_2, u+_1, u+_2, u-_1, u-_2}
+    Mode Order of gamma_dirac:
+        {p, l+, l-, r+, r-, d+, d-, u+, u-, psi_dag, l+_dag, l-_dag, r+_dag, r-_dag, d+_dag, d-_dag, u+_dag, u-_dag}
+    Mode Order of gamma_maj:
+        {p_1,p_2,l+_1, l+_2, l-_1, l-_2, r+_1, r+_2, r-_1, r-_2, d+_1, d+_2, d-_1, d-_2, u+_1, u+_2, u-_1, u-_2}
     The subscript indices are Majorana mode indices here."""
 
     def __init__(self, cfg: U1System2DConfig):
@@ -123,10 +125,12 @@ class U1System2D(System2DBase):
 
         The vertex indices are written as <number>, the link indices are written as "<number>".
 
-        For a 2x2 system, gamma_in has the order {l_1, r_0, l_0, r_1, l_3, r_2, l_2, r_3, d_2, u_0, d_0, u_2, d_3, u_1, d_1, d_3}.
-        The modes are named as <mode letter>_<vertex site>. Each constitent in the list above labels two Majorana modes.
+        For a 2x2 system, gamma_in has the order:
+            {l_1, r_0, l_0, r_1, l_3, r_2, l_2, r_3, d_2, u_0, d_0, u_2, d_3, u_1, d_1, d_3}.
+        The modes are named as <mode letter>_<vertex site>.
+        Each constitent in the list above labels two Majorana modes.
 
-        TODO: This function could probably be replaced by the general one in System2DBase, but this has not been tested.
+        TODO: This function could probably be replaced by the general one in System2DBase, but this has not been tested
         """
 
         size = self.cfg.lattice.size  # number of sites
@@ -156,7 +160,8 @@ class U1System2D(System2DBase):
         wi_gamma_out_mod_vec = [utils.WoodburyInverter(mat_d - gamma_in_sys_mod) for mat_d in self.mat_d_mod_vec]
         incdet_mod_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec_mod]
 
-        # Though for this ansatz gamma_in_sys does not vary between layers, it is convenient to have gamma_in_sys_vec available as a vector with length = nlayers
+        # Though for this ansatz gamma_in_sys does not vary between layers,
+        # it is convenient to have gamma_in_sys_vec available as a vector with length = nlayers
         # for general methods in system base
         gamma_in_sys_vec = [gamma_in_sys] * self.cfg.nlayer
 
@@ -287,7 +292,7 @@ class U1System2D(System2DBase):
                 ###################### Calculation of <P> ########################
                 covmat_out = mat_a + mat_b @ self.wi_gamma_out_mod_vec[layerind].inv() @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_link_offset:, -single_link_offset:]
-                # For the modified norm, we still have to take into account the other contributions from the unmodified parts
+                # For the modified norm, we still have to take into account the contributions from the unmodified parts
                 norm_mod = calculate_lognorm_inc(
                     [self.incdet_mod_vec[layerind]],
                     [self.det_mat_d_mod_vec[layerind]],
@@ -298,7 +303,8 @@ class U1System2D(System2DBase):
                 # all_factors=True)
                 norm_mod += np.sum(utils.select_except(lognormvec_default_inc, layerind))
                 # The matrix elements yield only the real part of <P>
-                # el_energy_layer = 0.25*( covmat_out_virt[0, 1] + covmat_out_virt[2, 3] + 1.j*covmat_out_virt[0,2] - 1.j*covmat_out_virt[0,3]) * np.exp(norm_mod - lognorm_default)
+                # el_energy_layer = 0.25*( covmat_out_virt[0, 1] + covmat_out_virt[2, 3] + 1.j*covmat_out_virt[0,2]
+                #   - 1.j*covmat_out_virt[0,3]) * np.exp(norm_mod - lognorm_default)
                 el_energy_layer = (
                     0.25 * (covmat_out_virt[0, 1] + covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                 )
@@ -409,7 +415,7 @@ class U1System2D(System2DBase):
                 diff_try = gamma_in_try - mat_d_inv
                 overlap_diff_gauge = pf.pfaffian(
                     np.array(diff_try)
-                )  # When using jax, this line produces garbage unless diff_try is first cast to numpy, which causes a test to fail. TODO: investigate why
+                )  # When using jax, this line produces garbage unless diff_try is first cast to numpy
                 dest.append(prefactor * np.real(overlap_diff_gauge) / overlap_same_gauge)
             # TODO: Implement gradient
             dest_grad = np.asarray([[None] * len(self.symbolvec)] * self.cfg.nlayer)
