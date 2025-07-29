@@ -48,6 +48,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         enforce_u1_symmetry=True,
     ):
         super().__init__(
+            gauge.ZNGauge(2),
             lattice,
             g_el,
             g_mag,
@@ -116,7 +117,6 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         self.el_overall_factors = [1 / 256] * (
             self.nlayer
         )  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2)
 
     def get_zeroed_params(self) -> list[tuple[int, int, int]]:
         offset = self._nparams // 2  # offset to get index of imaginary part

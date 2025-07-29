@@ -66,6 +66,7 @@ class Config2DBase(ABC):
 
     def __init__(
         self,
+        gaugemgr,
         lattice: Lattice2D,
         g_el: float,
         g_mag: float,
@@ -88,6 +89,7 @@ class Config2DBase(ABC):
             num_fermionic_layer (int, optional): number of fermionic layers. Defaults to 0.
         """
 
+        self.gaugemgr = gaugemgr
         self.lattice = lattice
         self.num_pg_layer = num_pg_layer
         self.num_fermionic_layer = num_fermionic_layer

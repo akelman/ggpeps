@@ -36,6 +36,7 @@ class U1System2DConfig(Config2DBase):
     ):
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         super().__init__(
+            gauge.ZNGauge(3),  # TODO: must be fixed - this is U(1)!
             lattice,
             g_el,
             g_mag,
@@ -57,7 +58,6 @@ class U1System2DConfig(Config2DBase):
             site: 0 for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
         self.unitcell_size = 1
-        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(3)
 
         # We store a list of the parameters forced to be zero by the ansatz
         # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
