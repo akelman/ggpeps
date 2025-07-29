@@ -66,6 +66,8 @@ dependencies = [
   "jax",
   "jaxlib",
   "ray",
+  # py-pfaffian is not available on PyPI, so we get it from GitHub:
+  "py-pfaffian @ git+https://github.com/Nuclear-Physics-with-Machine-Learning/PyPfaffian.git@main"
 ]
 
 [project.optional-dependencies]
