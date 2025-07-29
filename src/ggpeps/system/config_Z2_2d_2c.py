@@ -62,10 +62,9 @@ class Z2System2D2CConfig(Config2DBase):
         if not enforce_u1_symmetry:
             logger.error("This ansatz does not support the relaxation of U(1) symmetry.")
             raise ValueError("Invalid enforce_u1_symmetry.")
-
         # We store a list of the parameters forced to be zero by the ansatz
         # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
+        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # This is for pure-gauge only atm
         self.num_pg_layer = self.nlayer
@@ -104,7 +103,7 @@ class Z2System2D2CConfig(Config2DBase):
         To preserve compatibility with those tests, we do not call make_pure_gauge() here.
         """
         zeroed_params = []
-        return zeroed_params
+        return tuple(zeroed_params)
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.

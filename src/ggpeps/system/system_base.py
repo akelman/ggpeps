@@ -182,13 +182,15 @@ class Config2DBase(ABC):
         return self.unitcell_size == 1
 
     @abstractmethod
-    def get_zeroed_params(self) -> list[tuple[int, int, int]]:
+    def get_zeroed_params(self) -> tuple[tuple[int, int, int]]:
         """Create and return the list of parameters that are forced to zero by the ansatz.
 
         This abstract method must be overwritten by a subclass.
+        We return a tuple rather than a list to emphasize immutability, and because this
+        is required for jax.jit.
 
         Returns:
-            list: is a list of tuples (layer, unitcell index, symbol index).
+            tuple: is a tuple of tuples (layer, unitcell index, symbol index).
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
@@ -1876,7 +1878,7 @@ class System2DBase(ABC):
                 self.mat_d_mod_inv_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
                 self.grad_over_norm_vec,
-                tuple(self.cfg.zeroed_params),
+                self.cfg.zeroed_params,
                 use_trans_inv=True,
             )
         return self._el_energy_op_grad_vec
@@ -1897,7 +1899,7 @@ class System2DBase(ABC):
                 self.cfg.unitcell_size,
                 tuple(self.cfg.symbolvec),
                 self.d_gamma_out_symbolvec(),
-                tuple(self.cfg.zeroed_params),
+                self.cfg.zeroed_params,
                 use_trans_inv=True,
             )
         return self._mass_energy_op_grad_vec

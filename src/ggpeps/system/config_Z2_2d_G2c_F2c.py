@@ -89,10 +89,9 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         # set to True if you want to enforce U(1) symmetry in the fermionic layers
         # (set to False to allow fermionic number to float between sectors)
         self.u1_symmetry = enforce_u1_symmetry
-
         # We store a list of the parameters forced to be zero by the ansatz
         # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
+        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
@@ -158,7 +157,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
                     coord = (layer_ind, uc_ind, ind)
                     zeroed_params.append(coord)
 
-        return zeroed_params
+        return tuple(zeroed_params)
 
     def _create_symbolvec(self) -> list[sympy.Symbol]:
         """Define all symbols of the T matrix as symbols.
