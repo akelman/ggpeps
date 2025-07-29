@@ -263,6 +263,8 @@ class ExactEvaluator(Evaluator):
 
                 # Add for the full gradient, subject to conditions on parameterization
                 total_grad = mag_energy_grad + el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
+
+                assert isinstance(total_grad, np.ndarray)
                 self.system.cfg.enforce_parameter_conditions(total_grad)
                 dest["energy_grad"] = total_grad
 
