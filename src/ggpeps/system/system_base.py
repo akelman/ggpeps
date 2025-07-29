@@ -13,6 +13,7 @@ from ggpeps import xnp as xnp
 from ggpeps import xscipy as xscipy
 
 import ggpeps
+from ggpeps import gauge
 from ggpeps import utils
 from ggpeps.lattice import Direction, Lattice2D
 from ggpeps.system.global_funcs import *
@@ -66,7 +67,7 @@ class Config2DBase(ABC):
 
     def __init__(
         self,
-        gaugemgr,
+        gaugemgr: Union[gauge.ZNGauge, gauge.D2nGauge],
         lattice: Lattice2D,
         g_el: float,
         g_mag: float,
