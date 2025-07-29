@@ -3,7 +3,6 @@ from unittest import skip
 
 import numpy as np
 
-import ggpeps
 from ggpeps import lattice
 from ggpeps import system
 from ggpeps import utils

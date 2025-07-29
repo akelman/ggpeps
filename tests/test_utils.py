@@ -2,7 +2,6 @@ import unittest
 from unittest import skip
 
 import numpy as np
-import jax
 import jax.numpy as jnp
 from pfapack import pfaffian as pf
 
