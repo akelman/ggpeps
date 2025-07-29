@@ -193,7 +193,7 @@ class U1System2D(System2DBase):
 
     def update_gauge_ind(self, link_ind, theta):
         # Update the gaugefield
-        self.gaugefieldvec = backend.array_assign(self.gaugefieldvec, link_ind, theta)
+        self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
 
         # There are two directions per vertex
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
