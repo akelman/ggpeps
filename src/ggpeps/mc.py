@@ -315,13 +315,15 @@ class MonteCarloEvaluator(Evaluator):
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
-        nlinks = lattice.nlinks
         link_ind = self.cfg.rng_state.choice(self.system.cfg.lattice.comp_tree, replace=False)
+
         # Uniformly pick a gauge value
         theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+
         # Store the old values
         weight_old = self.system.weight
         weight_new = self.system.calculate_weight_attempt(link_ind, theta)
+
         if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
             # Accept
             self.obsdict["acceptance_prob"].append(1)
@@ -340,12 +342,15 @@ class MonteCarloEvaluator(Evaluator):
         # Pick a site to update
         lattice = self.system.cfg.lattice
         comp_tree = lattice.comp_tree  # non gauge fixed links
+
         for i in comp_tree:
             # Uniformly pick a gauge to replace
             theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+
             # Store the old values
             weight_old = self.system.weight
             weight_new = self.system.calculate_weight_attempt(i, theta)
+
             if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
                 # Accept
                 self.obsdict["acceptance_prob"].append(1)
@@ -370,9 +375,11 @@ class MonteCarloEvaluator(Evaluator):
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
             theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+
             # Store the old values
             weight_old = self.system.weight
             weight_new = self.system.calculate_weight_attempt(link_ind, theta)
+
             if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
                 # Accept
                 self.obsdict["acceptance_prob"].append(1)
@@ -430,7 +437,7 @@ class MonteCarloEvaluator(Evaluator):
                 int_energy_grad = g_int * int_energy_grad
 
                 chem_energy_grad = np.asarray(self.obsdict["chem_energy_op_grad"].get_timeseries())
-                # We assume that unlike the other grad_op, the chmical energy has already been mulplied by the relevant couplings
+                # We assume that unlike the other grads, the chemical energy has already been mulplied by the couplings
 
                 energy_grad_obsvec = el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
                 grad_norm_obsvec = np.asarray(self.obsdict["grad_norm"].get_timeseries())

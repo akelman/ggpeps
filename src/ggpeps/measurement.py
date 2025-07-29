@@ -82,7 +82,8 @@ class Measurement:
         """
         if np.allclose(self.datavec, np.mean(self.datavec)):
             # this happens if an observable is constant.
-            # In this case the autocorrelation array's first value is 0, and so we can't get a normalized auttocorrelation.
+            # In this case the autocorrelation array's first value is 0,
+            # and so we can't get a normalized auttocorrelation.
             return 0
 
         if use_binning:
