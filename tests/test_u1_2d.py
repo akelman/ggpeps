@@ -203,7 +203,7 @@ class TestU1SystemMethods(unittest.TestCase):
         system_u1.gamma_maj_sys_vec[0] = gamma_maj_sys
         mat_d = gamma_maj_sys[offset : gamma_maj_sys.shape[0], offset : gamma_maj_sys.shape[1]]
 
-        if isinstance(system_u1._mat_d_inv_vec, jnp.ndarray):
+        if isinstance(system_u1.mat_d_inv_vec, jnp.ndarray):
             system_u1._mat_d_inv_vec = system_u1.mat_d_inv_vec.at[0].set(jnp.linalg.inv(mat_d))
             system_u1._det_mat_d_vec = system_u1.det_mat_d_vec.at[0].set(jnp.linalg.slogdet(mat_d)[1])
         else:
@@ -241,7 +241,7 @@ class TestU1SystemMethods(unittest.TestCase):
         system_u1.gamma_maj_sys_vec[0] = gamma_maj_sys
         mat_d = gamma_maj_sys[offset : gamma_maj_sys.shape[0], offset : gamma_maj_sys.shape[1]]
 
-        if isinstance(system_u1._mat_d_inv_vec, jnp.ndarray):
+        if isinstance(system_u1.mat_d_inv_vec, jnp.ndarray):
             system_u1._mat_d_inv_vec = system_u1.mat_d_inv_vec.at[0].set(jnp.linalg.inv(mat_d))
             system_u1._det_mat_d_vec = system_u1.det_mat_d_vec.at[0].set(jnp.linalg.slogdet(mat_d)[1])
         else:
