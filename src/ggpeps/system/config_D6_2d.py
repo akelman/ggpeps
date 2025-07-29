@@ -11,7 +11,6 @@ import ggpeps
 from ggpeps import gauge
 from ggpeps import modearray
 from ggpeps.lattice import Direction
-from ggpeps.system.global_funcs import *
 
 from .system_base import Config2DBase
 from .system_base import get_pfaffian_arrays
@@ -98,10 +97,9 @@ class D6System2D_Config(Config2DBase):
         # set to True if you want to enforce U(1) symmetry in the fermionic layers
         # (set to False to allow fermionic number to float between sectors)
         self.u1_symmetry = enforce_u1_symmetry
-
         # We store a list of the parameters forced to be zero by the ansatz
         # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
+        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
@@ -144,25 +142,15 @@ class D6System2D_Config(Config2DBase):
                     coord = (layer_ind, uc_ind, t_ind)
                     zeroed_params.append(coord)
 
-        zero_for_fermionic_layer = [
-            3,
-            13,
-            1,
-            2,
-            4,
-            5,
-            11,
-            12,
-            14,
-            15,
-        ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
+        # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec:
+        zero_for_fermionic_layer = [3, 13, 1, 2, 4, 5, 11, 12, 14, 15]
         for layer_ind in range(self.num_pg_layer, self.nlayer):
             for uc_ind in range(self.unitcell_size):
                 for ind in zero_for_fermionic_layer:
                     coord = (layer_ind, uc_ind, ind)
                     zeroed_params.append(coord)
 
-        return zeroed_params
+        return tuple(zeroed_params)
 
     def _create_symbolvec(self) -> list[sympy.Symbol]:
         """Define all symbols of the T matrix as symbols.

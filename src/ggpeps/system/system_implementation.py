@@ -8,10 +8,10 @@ from ggpeps import xscipy as xscipy
 import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
-from ggpeps.system.global_funcs import *
+from ggpeps.system.global_funcs import backend
 
 from .system_base import System2DBase
-from .system_base import calculate_lognorm_inc
+from .system_base import maybe_jit
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -102,10 +102,8 @@ class Z2System2D(System2DBase):
             theta (xnp.array): New gauge field value
         """
         # Update the gaugefield
-        if ggpeps.PREFERRED_BACKEND == "jax":
-            self._gaugefieldvec = self._gaugefieldvec.at[link_ind].set(theta)
-        else:
-            self._gaugefieldvec[link_ind] = theta
+        self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
+
         # There are two directions per vertex
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
@@ -120,18 +118,16 @@ class Z2System2D(System2DBase):
             )
 
             # Substitute in the array
-            if ggpeps.PREFERRED_BACKEND == "jax":
-                # TODO: should not modify "private" variable - make a setter?
-                self._gamma_in_sys_vec = self.gamma_in_sys_vec.at[
-                    layer,
-                    ind_mat : ind_mat + rotmat.shape[0],
-                    ind_mat : ind_mat + rotmat.shape[1],
-                ].set(gamma_in_subst)
-            else:
-                self.gamma_in_sys_vec[layer][
+            inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
+            self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
+            # TODO: should not modify "private" variable - make a setter?
+            """
+            equivalent to:
+                self._gamma_in_sys_vec[layer][
                     ind_mat : ind_mat + rotmat.shape[0],
                     ind_mat : ind_mat + rotmat.shape[1],
                 ] = gamma_in_subst
+            """
 
         # Update the determinant
         mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
@@ -201,15 +197,27 @@ class Z2System2D(System2DBase):
                     mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
         return mag_energy_bare
 
-    def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
+    @staticmethod
+    def _compute_el_energy_op_vec(
+        lognormvec_default,
+        overall_factors,
+        idxarrs,
+        nlayer: int,
+        covmat_out_virt_vec,
+        norm_mod_vec,
+        use_trans_inv: bool = True,
+    ):
         """Computation of the electric energy.
-        Since several operations needed for the computation of the gradient and the energy are similar,
-        we can reuse many intermediate steps.
-        These are saved at the end of the function.
 
         This method overwrites an abstract method in System2DBase.
 
         Args:
+            lognormvec_default: the usual norm without any modifications
+            overall_factors: prefactors for building the required Pfaffians
+            idxarrs: indices for building the required Pfaffians
+            nlayer (int): total number of layers (pure gauge + fermionic)
+            covmat_out_virt_vec:
+            norm_mod_vec:
             use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
 
         Returns:
@@ -220,26 +228,20 @@ class Z2System2D(System2DBase):
             logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
-        # This is the usual norm without any modifications
-        lognormvec_default = self.lognorm_default_vec
         lognorm_default = xnp.sum(lognormvec_default)
-
-        # Indices and prefactors for building the required Pfaffians
-        overall_factors = self.cfg.el_overall_factors
-        idxarrs = self.cfg.idxarr_vec
 
         dest = []
         # TODO: vectorize!
-        for layerind in range(self.cfg.nlayer):
+        for layerind in range(nlayer):
 
             idxarr = idxarrs[layerind]
             overall_factor = overall_factors[layerind]
 
             ###################### Calculation of <P> ########################
 
-            covmat_out_virt = self.covmat_out_virt_vec[layerind]
+            covmat_out_virt = covmat_out_virt_vec[layerind]
 
-            norm_mod = self.norm_mod_vec[layerind]
+            norm_mod = norm_mod_vec[layerind]
             # The matrix elements yield only the real part of <P>
             # If we use the log formulation, we can calculate the log of single terms.
 
@@ -260,7 +262,46 @@ class Z2System2D(System2DBase):
 
         return xnp.asarray(dest)
 
-    def _compute_el_grad_vec(self, use_trans_inv: bool = True):
+    @staticmethod
+    @maybe_jit(
+        static_argnames=[
+            "lattice_size",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "unitcell_size",
+            "nvirtmodes_link",
+            "nphysmodes_site",
+            "symbolvec",
+            "overall_factors",
+            "idxarr_vec",
+            "zeroed_params",
+            "use_trans_inv",
+        ]
+    )
+    def _compute_el_grad_vec(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        nvirtmodes_link: int,
+        nphysmodes_site: int,
+        symbolvec: tuple,
+        overall_factors,
+        idxarr_vec,
+        el_energy_vec,
+        mat_b_mod_vec,
+        gamma_in_sys_mod_vec,
+        covmat_out_virt_vec,
+        norm_mod_vec,
+        lognorm_default_vec,
+        wi_gamma_in_mod_inv_vec,
+        wi_gamma_out_mod_inv_vec,
+        mat_d_mod_inv_vec,
+        gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+        grad_over_norm_vec,
+        zeroed_params,
+        use_trans_inv: bool = True,
+    ):
         """Computation of the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
         Since several operations needed for the computation of the gradient and the energy are similar,
@@ -280,10 +321,94 @@ class Z2System2D(System2DBase):
             logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
-        gradients = compute_el_grad_vec(self)
-        return gradients
+        nlayer = num_pg_layer + num_fermionic_layer
+        param_shape = (nlayer, unitcell_size, len(symbolvec))
+        dest_grad = xnp.zeros(param_shape, dtype=xnp.float64)
 
-    def _compute_mass_energy_op_vec(self, use_trans_inv: bool = True):
+        for layerind in range(nlayer):
+
+            # Abbreviations for more readable code
+            mat_b = mat_b_mod_vec[layerind]
+            diff_d_gamma_inv = wi_gamma_out_mod_inv_vec[layerind]
+            single_link_offset = 2 * nvirtmodes_link
+            offset = 2 * lattice_size * nphysmodes_site + single_link_offset
+            idxarr = idxarr_vec[layerind]
+            overall_factor = overall_factors[layerind]
+            nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
+            gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
+            diff_d_inv_gamma_inv = wi_gamma_in_mod_inv_vec[layerind]
+
+            covmat_out_virt = covmat_out_virt_vec[layerind]
+            norm_mod = norm_mod_vec[layerind]
+            lognorm_default = xnp.sum(lognorm_default_vec)
+
+            ###################### Calculation of the derivative ########################
+            for uc_ind in range(unitcell_size):
+                for symbol_ind, symbol in enumerate(symbolvec):
+                    if (layerind, uc_ind, symbol_ind) not in zeroed_params:
+                        # the derivative calculation is compuationally expensive
+                        # we can skip it for parameters that are forced by the ansatz to be zero
+
+                        deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind]
+                        d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                        d_gamma_out = (
+                            d_mat_a
+                            + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                            + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
+                            - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+                        )
+                        # The virtual mode is the last link on the bottom right of the covariance matrix
+                        d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
+                        # Summand with derivative of the covariance matrix
+                        # We re-use the list comprehension from above to use the indices
+                        deriv_pfarr = xnp.array(
+                            [
+                                prefactor
+                                * utils.derivative_pfaffian(
+                                    covmat_out_virt[xnp.ix_(xnp.asarray(ind), xnp.asarray(ind))],
+                                    d_covmat_out_virt[xnp.ix_(xnp.asarray(ind), xnp.asarray(ind))],
+                                )
+                                for prefactor, ind in idxarr
+                            ]
+                        )
+                        d_el_energy = xnp.real(overall_factor * xnp.sum(deriv_pfarr)) * xnp.exp(
+                            norm_mod - lognorm_default
+                        )
+
+                        # Summand with derivative of norms
+                        trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
+                        trace_mod = utils.compute_grad_over_norm(
+                            gamma_in_sys_mod,
+                            diff_d_inv_gamma_inv,
+                            d_mat_d,
+                            mat_d_mod_inv_vec[layerind],
+                        )
+                        # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
+                        d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
+                        # Scale to system size
+                        d_el_energy *= nlinks
+                        dest_grad = backend.array_assign(dest_grad, (layerind, uc_ind, symbol_ind), d_el_energy)
+
+        dest_grad = xnp.asarray(dest_grad)
+
+        # We have to weigh the different layers with the electric energy operator expectation of the other layers.
+        # They act as a prefactor in the derivative
+        if nlayer > 1:
+            for i in range(nlayer):
+                prod_other_layers = utils.multiply_except(el_energy_vec, i)
+                dest_grad = backend.array_mult(dest_grad, i, prod_other_layers)
+
+        return dest_grad
+
+    @staticmethod
+    @maybe_jit(static_argnames=["lattice_size", "use_trans_inv", "num_pg_layer", "num_fermionic_layer"])
+    def _compute_mass_energy_op_vec(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        ferm_cov_vec: xnp.ndarray,
+        use_trans_inv: bool = True,
+    ):
         """Compute the mass term of the Hamiltonian for a single site.
 
         Args:
@@ -295,28 +420,49 @@ class Z2System2D(System2DBase):
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
 
-        mass_energy_op = [0] * self.cfg.num_pg_layer
+        nlayer = num_pg_layer + num_fermionic_layer
+        mass_energy_op = xnp.zeros(nlayer)
 
-        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+        for layer_ind in range(num_pg_layer, nlayer):
             # only the fermionic layers directly contribute to the mass
 
-            # Calculation prelimaries
-            covmat = self.compute_ferm_cov(layer_ind)
+            covmat = ferm_cov_vec[layer_ind]
             layer_mass_energy = 0.0
 
             # Calculate mass term
             # Since the system is translationally invariant, we could just calculate it
             # for one site and multiply by nsites instead
-            for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
+            for site_ind in range(0, 2 * lattice_size, 2):
                 layer_mass_energy += 0.5 * (1 + covmat[site_ind + 1, site_ind])
 
-            mass_energy_op.append(xnp.asarray(layer_mass_energy))
+            mass_energy_op = backend.array_assign(mass_energy_op, layer_ind, layer_mass_energy)
 
         mass_energy_op = xnp.asarray(mass_energy_op)
 
         return mass_energy_op
 
-    def _compute_mass_energy_grad(self, use_trans_inv: bool = True):
+    @staticmethod
+    @maybe_jit(
+        static_argnames=[
+            "lattice_size",
+            "symbolvec",
+            "unitcell_size",
+            "use_trans_inv",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "zeroed_params",
+        ],
+    )
+    def _compute_mass_energy_grad(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        symbolvec: tuple,
+        d_gamma_out_symbolvec: xnp.array,
+        zeroed_params: list,
+        use_trans_inv: bool = True,
+    ):
         """Compute the mass term of the Hamiltonian for a single site.
 
         Args:
@@ -328,38 +474,28 @@ class Z2System2D(System2DBase):
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
 
-        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+        nlayer = num_pg_layer + num_fermionic_layer
+        param_shape = (nlayer, unitcell_size, len(symbolvec))
+        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
 
-        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+        for layer_ind in range(num_pg_layer, nlayer):
             # only the fermionic layers directly contribute to the mass
 
-            for site_ind in range(0, 2 * self.cfg.lattice.size, 2):
+            for site_ind in range(0, 2 * lattice_size, 2):
 
-                for uc_ind in range(self.cfg.unitcell_size):
-                    for symbol_ind, symbol in enumerate(self.symbolvec):
+                for uc_ind in range(unitcell_size):
+                    for symbol_ind, symbol in enumerate(symbolvec):
                         # the derivative calculation is relatively compuationally expensive
                         # (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
-                        if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
+                        if (layer_ind, uc_ind, symbol_ind) not in zeroed_params:
 
-                            d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[symbol_ind]
-                            if ggpeps.PREFERRED_BACKEND == "numpy":
-                                gradients[layer_ind, uc_ind, symbol_ind] += 0.5 * d_gamma_out[site_ind + 1, site_ind]
-                            elif ggpeps.PREFERRED_BACKEND == "jax":
-                                gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(
-                                    0.5 * d_gamma_out[site_ind + 1, site_ind]
-                                )
+                            d_gamma_out = d_gamma_out_symbolvec[layer_ind, uc_ind, symbol_ind]
+                            grad = 0.5 * d_gamma_out[site_ind + 1, site_ind]
+                            gradients = backend.array_add(gradients, (layer_ind, uc_ind, symbol_ind), grad)
 
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
-
-        self.cfg.enforce_parameter_conditions(gradients)
-
-        # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy
-        # operator expectation of the other layers. They act as a prefactor in the derivative.
-        # However, here, because the mass term only acts on the fermionic layers, we simply multiply the mass_energy
-        # and grads by the norm of the first layer
-        # (this is handled higher up in the computation stack).
 
         return xnp.array(gradients)
 
@@ -377,7 +513,7 @@ class Z2System2D(System2DBase):
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             layer_int_energy = 0.0
-            covmat = self.compute_ferm_cov(layer_ind)
+            covmat = self.compute_ferm_cov()[layer_ind]
 
             for site_ind in range(self.cfg.lattice.size):
                 coord = self.cfg.lattice.ind2coord(site_ind)
@@ -473,7 +609,7 @@ class Z2System2D(System2DBase):
                         # we can skip it for parameters that are forced by the ansatz to be zero
                         if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
 
-                            d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[symbol_ind]
+                            d_gamma_out = self.d_gamma_out_symbolvec()[layer_ind, uc_ind, symbol_ind]
                             grad = (
                                 0.5
                                 * cos_factor_hor
@@ -490,18 +626,7 @@ class Z2System2D(System2DBase):
                                     + d_gamma_out[site_ind_cov + 1, neighborY_ind]
                                 )
                             )
-                            if ggpeps.PREFERRED_BACKEND == "numpy":
-                                gradients[layer_ind, uc_ind, symbol_ind] += grad
-                            elif ggpeps.PREFERRED_BACKEND == "jax":
-                                gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(grad)
-
-        self.cfg.enforce_parameter_conditions(gradients)
-
-        # When computing the electric energy, we have to weigh the gradients of each layer with the electric energy
-        # operator expectation of the other layers. They act as a prefactor in the derivative.
-        # However, here (just as in the mass case), because the interaction term only acts on the fermionic layers,
-        # we simply multiply the int_energy and grads by the norm of the first layer
-        # (this is handled higher up in the computation stack).
+                            gradients = backend.array_add(gradients, (layer_ind, uc_ind, symbol_ind), grad)
 
         return xnp.array(gradients)
 
@@ -514,7 +639,7 @@ class Z2System2D(System2DBase):
             # only the fermionic layers directly contribute to the chemical potential
 
             # Calculation prelimaries
-            covmat = self.compute_ferm_cov(layer_ind)
+            covmat = self.compute_ferm_cov()[layer_ind]
             layer_chem_energy = 0.0
 
             # Calculate chem term
@@ -559,20 +684,12 @@ class Z2System2D(System2DBase):
                         # we can skip it for parameters that are forced by the ansatz to be zero
                         if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
 
-                            d_gamma_out = self.d_gamma_out_symbolvec(layer_ind, uc_ind)[symbol_ind]
-                            if ggpeps.PREFERRED_BACKEND == "numpy":
-                                gradients[layer_ind, uc_ind, symbol_ind] += (
-                                    0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
-                                )
-                            elif ggpeps.PREFERRED_BACKEND == "jax":
-                                gradients = gradients.at[layer_ind, uc_ind, symbol_ind].add(
-                                    0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
-                                )
+                            d_gamma_out = self.d_gamma_out_symbolvec()[layer_ind, uc_ind, symbol_ind]
+                            grad = 0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
+                            gradients = backend.array_add(gradients, (layer_ind, uc_ind, symbol_ind), grad)
 
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
-
-        self.cfg.enforce_parameter_conditions(gradients)
 
         return gradients
 
@@ -601,7 +718,7 @@ class Z2System2D(System2DBase):
         site_ind_cov_fin = 2 * end_site_ind
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
-            covmat = self.compute_ferm_cov(layer_ind)
+            covmat = self.compute_ferm_cov()[layer_ind]
 
             # Since for the L-shaped strings considered here the endpoints are always on the same sublattice,
             # we still have \psi^\dagger \psi after the PH transformation
@@ -632,7 +749,7 @@ class Z2System2D(System2DBase):
             float: the occupation number for the given layer and site
         """
 
-        covmat = self.compute_ferm_cov(lay)
+        covmat = self.compute_ferm_cov()[lay]
         site_ind = 2 * site  # index into covariance matrix
 
         x, y = self.cfg.lattice.ind2coord(site)

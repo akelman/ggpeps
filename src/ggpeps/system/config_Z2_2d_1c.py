@@ -74,10 +74,9 @@ class Z2System2DConfig(Config2DBase):
         # This is for pure-gauge only atm
         self.num_pg_layer = self.nlayer
         self.num_fermionic_layer = 0
-
         # We store a list of the parameters forced to be zero by the ansatz
         # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
+        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j]]
@@ -105,7 +104,7 @@ class Z2System2DConfig(Config2DBase):
         To preserve compatibility with those tests, we do not call make_pure_gauge() here.
         """
         zeroed_params = []
-        return zeroed_params
+        return tuple(zeroed_params)
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.

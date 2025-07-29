@@ -10,7 +10,6 @@ from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
 from .system_base import Config2DBase
-from ggpeps.system.global_funcs import compute_grad_over_norm, extract_partial_covmats
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -58,10 +57,9 @@ class U1System2DConfig(Config2DBase):
             site: 0 for site in range(self.lattice.size)
         }  # map from site to index of independent parameters
         self.unitcell_size = 1
-
         # We store a list of the parameters forced to be zero by the ansatz
         # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
+        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
     def make_pure_gauge(self):
         # The order of the parameters is [t,y,z]
@@ -79,7 +77,7 @@ class U1System2DConfig(Config2DBase):
         To preserve compatibility with those tests, we do not call make_pure_gauge() here.
         """
         zeroed_params = []
-        return zeroed_params
+        return tuple(zeroed_params)
 
     def _create_symbolvec(self):
         t = sympy.Symbol("t", real=True)

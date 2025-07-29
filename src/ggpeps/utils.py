@@ -8,14 +8,15 @@ import subprocess  # Start process for git hash
 from typing import Optional, Union
 
 import numba as nb
-import scipy.sparse as sp
+import pandas as pd
 from scipy.sparse import issparse
 from scipy.linalg import svd, block_diag
 
 import numpy as np
+import jax.numpy as jnp
 from ggpeps import xnp as xnp
-import pandas as pd
 
+import py_pfaffian.jax
 from pfapack import pfaffian as pf
 
 import matplotlib.pyplot as plt
@@ -23,6 +24,9 @@ from matplotlib.colors import LogNorm
 
 import ggpeps
 import ggpeps.measurement as meas
+from ggpeps.system.global_funcs import backend
+from ggpeps.system.global_funcs_jax import derivative_pfaffian_jax
+from ggpeps.system.global_funcs_numpy import derivative_pfaffian_numpy
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -211,6 +215,22 @@ def get_git_hash() -> str:
     return githash.decode("utf-8").strip()
 
 
+def extract_partial_covmats(mat: xnp.ndarray, corner: int):
+    """Extract the partial covariance matrices from a gaussian mapping
+
+    Args:
+        mat (xnp.ndarray): Full covariance matrix
+        corner (int): Index of the top left element of the bottom right matrix
+
+    Returns:
+        tuple: Matrices (A,B,D)
+    """
+    mat_a = mat[:corner, :corner]
+    mat_b = mat[:corner, corner:]
+    mat_d = mat[corner:, corner:]
+    return mat_a, mat_b, mat_d
+
+
 def select_except(arr: Union[list, xnp.ndarray], ind: int) -> xnp.ndarray:
     """Return all elements of a list except the indicated one
 
@@ -225,12 +245,8 @@ def select_except(arr: Union[list, xnp.ndarray], ind: int) -> xnp.ndarray:
     if isinstance(arr, list):
         arr = xnp.asarray(arr)
     mask = xnp.ones(len(arr), dtype=bool)
-    if isinstance(mask, np.ndarray):
-        mask[ind] = False
-    else:
-        mask = mask.at[ind].set(False)
-
-    return arr[mask]  # TODO: fix for JAX
+    mask = backend.array_assign(mask, ind, False)
+    return arr[mask]  # TODO: fix for JAX jit
 
 
 def multiply_except(arr: Union[xnp.ndarray, list], ind: int) -> float:
@@ -244,8 +260,10 @@ def multiply_except(arr: Union[xnp.ndarray, list], ind: int) -> float:
         float: Multiplication of all array values except for arr[ind]
     """
     if len(arr) > 1:
-        others = select_except(arr, ind)
-        return xnp.prod(others)
+        mask = xnp.ones(len(arr), dtype=bool)
+        mask = backend.array_assign(mask, ind, False)
+        prod_other = xnp.where(mask, arr, 1.0).prod()
+        return prod_other
     else:
         # It does not make sense to execute this function with only one element
         return arr[0]
@@ -288,24 +306,26 @@ def derivative_pfaffian_covariance_mat(pfarr, matvec, d_matvec):
 
 def derivative_pfaffian(mat: xnp.ndarray, d_mat: xnp.ndarray, pfaval=None) -> float:
     """Compute the derivative of a Pfaffian of a matrix A.
-    The explicit derivative dA/dx is given as a second argument
+        The explicit derivative dA/dx is given as a second argument
 
-    The given formula is only valid if A is not singular.
+        The given formula is only valid if A is not singular.
 
-    Args:
-        mat (np.ndarray): Input Matrix A
-        d_mat (np.ndarray): Derivative dA/dx
+        Args:
+            mat (xnp.ndarray): Input Matrix A
+            d_mat (xnp.ndarray): Derivative dA/dx
 
-    Returns:
-        float: d(Pf(A))/dx
+        Returns:
+    <<<<<<< HEAD
+            xnp.ndarray: d(Pf(A))/dx
+    =======
+            float: d(Pf(A))/dx
+    >>>>>>> dev
     """
-    if pfaval is None:
-        pfaval = pf.pfaffian(mat)
-
-    if not isclose(pfaval, 0):
-        return 0.5 * pfaval * xnp.trace(xnp.linalg.inv(mat) @ d_mat)
+    # We assume the types of all the provided arguments match
+    if isinstance(mat, jnp.ndarray):
+        return derivative_pfaffian_jax(mat, d_mat, pfaval=pfaval)
     else:
-        return 0.0
+        return derivative_pfaffian_numpy(mat, d_mat, pfaval=pfaval)
 
 
 def get_obs_mean_df(df, obs):
@@ -473,6 +493,55 @@ def generate_smat(n: int) -> xnp.ndarray:
     return xnp.block([halfmat, xnp.conjugate(halfmat)])
 
 
+def compute_grad_over_norm(
+    gamma_in_sys: np.ndarray,
+    diff: np.ndarray,
+    deriv_d: np.ndarray,
+    mat_d_inv: np.ndarray,
+    method: str = "hadamard",
+) -> float:
+    r"""Compute the gradient of the norm divided by the norm.
+    The expression of deriv_d given to this function decides which derivative is computed.
+
+    The gradient of the norm divided by the norm is given by
+        -0.5 * np.trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
+    which is very expensive to calculate.
+    To reduce the number of expensive matrix multiplications, we use the fact that
+        Tr(A @ B.T) = \sum_ij a_ij b_ij
+    i.e. trace of a square matrix which is the product of two real matrices can be rewritten as
+    the sum of entry-wise products of their elements, i.e. as the sum of all elements of their Hadamard product [1].
+    Note that for current systems, the input matrices are always real, but this should be checked if the system changes
+    (e.g. for other groups).
+
+    When using a GPU it is faster to do all the matrix multiplications
+    and then take the trace.
+
+    The choice of which method to use is given by the `method` parameter.
+
+    Refs:
+        [1] Trace, Wikipedia, https://en.wikipedia.org/wiki/Trace_(linear_algebra)#Trace_of_a_product
+
+    Args:
+        gamma_in_sys (np.ndarray): Gauged covariance matrix of the projectors
+        diff (np.ndarray): (D^{-1} - gamma_in_sys)^{-1}
+        deriv_d (np.ndarray): dD/d{alpha}: Derivative of the virtual-virtual covariance matrix
+        mat_d_inv (np.ndarray): Inverse of D: D^{-1}
+        method (str, optional): Method to use to compute the gradient over norm.
+
+    Returns:
+        float: Gradient of the norm divided by the norm.
+    """
+    if method == "hadamard":
+        A = gamma_in_sys @ deriv_d
+        B = mat_d_inv @ diff
+        dest = -0.5 * (A * B.T).sum()
+    elif method == "trace":
+        dest = -0.5 * xnp.trace(xnp.matmul(xnp.matmul(gamma_in_sys, deriv_d), xnp.matmul(mat_d_inv, diff)))
+    else:
+        raise ValueError(f"Unknown method {method} for computing the gradient over norm.")
+    return dest
+
+
 # =========================== Cache Server =================================
 
 
@@ -564,12 +633,12 @@ class WoodburyInverter:
             idmat = xnp.eye(m_m, n_m)
             u = xnp.zeros((m_a, m_m))
             v = xnp.zeros((n_m, n_a))
-            if isinstance(u, np.ndarray) and isinstance(v, np.ndarray):
-                u[indi : indi + m_m, 0:n_m] = idmat
-                v[0:m_m, indj : indj + n_m] = idmat
-            else:
-                u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
-                v = v.at[0:m_m, indj : indj + n_m].set(idmat)
+
+            inds_u = (slice(indi, indi + m_m), slice(0, n_m))
+            u = backend.array_assign(u, inds_u, idmat)
+
+            inds_v = (slice(0, m_m), slice(indj, indj + n_m))
+            v = backend.array_assign(v, inds_v, idmat)
             return self.update(u, m, v)
         else:
             return self.inv()
@@ -602,35 +671,6 @@ class IncDeterminant:
         return dest
 
     def det(self) -> float:
-        return self.detval
-
-
-def update_index(self, ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int, store: bool = True) -> float:
-    """Update the determinant of a matrix A using the matrix determinant lemma,
-    given indices indicating the positions in A where the update M is placed.
-    This is done by generating the U and V matrix for the update method.
-    Args:
-        ainv (np.ndarray): Inverse of the matrix A
-        m (np.ndarray): M matrix - The local update matrix to A.
-        indi (int): Index in the first dimension of A where the update m is placed.
-        indj (int): Index in the second dimension of A where the update m is placed
-        store (bool, optional): Store the updated determinant value. Defaults to True."""
-    # Construct two matrices to shift M to the correct position in A
-    if not xnp.allclose(m, 0):
-        m_m, n_m = m.shape
-        m_a, n_a = ainv.shape
-        idmat = xnp.eye(m_m, n_m)
-        u = xnp.zeros((m_a, m_m))
-        v = xnp.zeros((n_m, n_a))
-        if isinstance(u, np.ndarray) and isinstance(v, np.ndarray):
-            u[indi : indi + m_m, 0:n_m] = idmat
-            v[0:m_m, indj : indj + n_m] = idmat
-        else:
-            u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
-            v = v.at[0:m_m, indj : indj + n_m].set(idmat)
-
-        return self.update(ainv, u, m, v, store)
-    else:
         return self.detval
 
 
@@ -693,13 +733,12 @@ class IncLogAbsDeterminant:
             idmat = xnp.eye(m_m, n_m)
             u = xnp.zeros((m_a, m_m))
             v = xnp.zeros((n_m, n_a))
-            if isinstance(u, np.ndarray) and isinstance(v, np.ndarray):
-                u[indi : indi + m_m, 0:n_m] = idmat
-                v[0:m_m, indj : indj + n_m] = idmat
-            else:
-                u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
-                v = v.at[0:m_m, indj : indj + n_m].set(idmat)
 
+            inds_u = (slice(indi, indi + m_m), slice(0, n_m))
+            u = backend.array_assign(u, inds_u, idmat)
+
+            inds_v = (slice(0, m_m), slice(indj, indj + n_m))
+            v = backend.array_assign(v, inds_v, idmat)
             return self.update(ainv, u, m, v, store)
         else:
             return self.det()

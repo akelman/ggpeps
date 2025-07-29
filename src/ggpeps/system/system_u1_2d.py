@@ -12,8 +12,8 @@ from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
 from ggpeps.system import U1System2DConfig
-from .system_base import System2DBase, calculate_lognorm_inc
-from ggpeps.system.global_funcs import compute_grad_over_norm, extract_partial_covmats
+from .system_base import System2DBase
+from ggpeps.system.global_funcs import backend
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -96,7 +96,7 @@ class U1System2D(System2DBase):
             id = np.eye(nsites)
             # Extract the parts of the covariance matrix
             # The 2 is the number of physical fermionic Majorana modes
-            amat, bmat, dmat = extract_partial_covmats(covmat, 2)
+            amat, bmat, dmat = utils.extract_partial_covmats(covmat, 2)
             # Expand them
             amat_sys = np.kron(id, amat)
             bmat_sys = np.kron(id, bmat)
@@ -193,10 +193,8 @@ class U1System2D(System2DBase):
 
     def update_gauge_ind(self, link_ind, theta):
         # Update the gaugefield
-        if ggpeps.PREFERRED_BACKEND == "jax":
-            self._gaugefieldvec = self._gaugefieldvec.at[link_ind].set(theta)
-        else:
-            self._gaugefieldvec[link_ind] = theta
+        self.gaugefieldvec = backend.array_assign(self.gaugefieldvec, link_ind, theta)
+
         # There are two directions per vertex
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
@@ -293,7 +291,7 @@ class U1System2D(System2DBase):
                 covmat_out = mat_a + mat_b @ self.wi_gamma_out_mod_vec[layerind].inv() @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_link_offset:, -single_link_offset:]
                 # For the modified norm, we still have to take into account the contributions from the unmodified parts
-                norm_mod = calculate_lognorm_inc(
+                norm_mod = self._calculate_lognorm_inc(
                     [self.incdet_mod_vec[layerind]],
                     [self.det_mat_d_mod_vec[layerind]],
                     gamma_in_sys_mod.shape[0],
@@ -313,7 +311,7 @@ class U1System2D(System2DBase):
                 ###################### Calculation of the derivative ########################
                 for symbol in self.symbolvec:
                     deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
-                    d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                    d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
                     d_gamma_out = (
                         d_mat_a
                         + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
@@ -327,8 +325,8 @@ class U1System2D(System2DBase):
                         0.25 * (d_covmat_out_virt[0, 1] + d_covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                     )
                     # Summand with derivative of norms
-                    trace_def = self.compute_grad_over_norm(symbol, layerind)
-                    trace_mod = compute_grad_over_norm(
+                    trace_def = self.compute_grad_over_norm(layerind, 0, symbol)
+                    trace_mod = self._compute_grad_over_norm(
                         gamma_in_sys_mod,
                         diff_d_inv_gamma_inv,
                         d_mat_d,

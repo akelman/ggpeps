@@ -1,8 +1,33 @@
 ############## NUMPY CPU VERSIONS ##############
 
 import numpy as np
+from pfapack import pfaffian as pf
 
 import ggpeps
+import ggpeps.utils as utils
+from ggpeps.system.backend_base import BackendBase
+
+
+def derivative_pfaffian_numpy(mat, d_mat, pfaval=None):
+    """Compute the derivative of a Pfaffian of a matrix A.
+    The explicit derivative dA/dx is given as a second argument
+
+    The given formula is only valid if A is not singular.
+
+    Args:
+        mat (np.ndarray): Input Matrix A
+        d_mat (np.ndarray): Derivative dA/dx
+
+    Returns:
+        np.ndarray: d(Pf(A))/dx
+    """
+    if pfaval is None:
+        pfaval = pf.pfaffian(mat)
+
+    if not ggpeps.utils.isclose(pfaval, 0):
+        return 0.5 * pfaval * np.trace(np.linalg.inv(mat) @ d_mat)
+    else:
+        return 0.0
 
 
 def calculate_lognormvec_numpy(
@@ -71,186 +96,30 @@ def compute_grad_over_norm_numpy(
     return dest
 
 
-def compute_el_grad_vec_numpy(system):
-    """Computation of the electric energy gradients.
-    We start by calculating the electric energies, since these are needed for evaluating the gradients.
-    Since several operations needed for the computation of the gradient and the energy are similar, we can reuse many intermediate steps.
+class BackendNumpy_Z2(BackendBase):
+    """Backend for Z2 systems using numpy."""
 
-    This method overwrites an abstract method in System2DBase.
+    backend_type = "numpy"
+    gauge_group = "Z2"
 
-    Args:
-        use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
+    def __init__(self) -> None:
+        pass
 
-    Returns:
-        list: list of gradients for the full system
-    """
+    @staticmethod
+    def array_assign(mat, inds, val):
+        mat[inds] = val
+        return mat
 
-    dest_grad = np.zeros(system.cfg.param_shape(), dtype=np.float64)
-    overall_factors = system.cfg.el_overall_factors
-    idxarrs = system.cfg.idxarr_vec
-    el_energy_vec = system.el_energy_op_vec
+    @staticmethod
+    def array_add(mat, inds, val):
+        mat[inds] += val
+        return mat
 
-    for layerind in range(system.cfg.nlayer):
+    @staticmethod
+    def array_mult(mat, inds, val):
+        mat[inds] *= val
+        return mat
 
-        # Abbreviations for more readable code
-        mat_b = system.mat_b_mod_vec[layerind]
-        diff_d_gamma_inv = system.wi_gamma_out_mod_vec[
-            layerind
-        ].inv()  # this does not actually do a computation, just a retrieval
-        single_link_offset = 2 * system.cfg.nvirtmodes_link
-        offset = 2 * system.cfg.lattice.size * system.cfg.nphysmodes_site + single_link_offset
-        idxarr = idxarrs[layerind]
-        overall_factor = overall_factors[layerind]
-        nlinks = system.cfg.lattice.nlinks
-        gamma_in_sys_mod = system.gamma_in_sys_mod_vec[layerind]
-        diff_d_inv_gamma_inv = system.wi_gamma_in_mod_vec[layerind].inv()
-
-        covmat_out_virt = system.covmat_out_virt_vec[layerind]
-        norm_mod = system.norm_mod_vec[layerind]
-        lognorm_default = np.sum(system.lognorm_default_vec)
-
-        ###################### Calculation of the derivative ########################
-        for uc_ind in range(system.cfg.unitcell_size):
-            for symbol_ind, symbol in enumerate(system.symbolvec):
-                if (layerind, uc_ind, symbol_ind) in system.cfg.zeroed_params:
-                    # the derivative calculation is compuationally expensive
-                    # we can skip it for parameters that are forced by the ansatz to be zero
-                    dest_grad[layerind, uc_ind, symbol_ind] = 0
-                else:
-                    deriv_gamma_maj_sys = system.gamma_maj_sys_deriv_vec(symbol)[layerind, uc_ind]
-                    d_mat_a, d_mat_b, d_mat_d = ggpeps.system.system_base.extract_partial_covmats(
-                        deriv_gamma_maj_sys, offset
-                    )
-                    d_gamma_out = (
-                        d_mat_a
-                        + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
-                        + mat_b @ diff_d_gamma_inv @ np.transpose(d_mat_b)
-                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
-                    )
-                    # The virtual mode is the last link on the bottom right of the covariance matrix
-                    d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
-                    # Summand with derivative of the covariance matrix
-                    # We re-use the list comprehension from above to use the indices
-                    deriv_pfarr = [
-                        prefactor
-                        * ggpeps.utils.derivative_pfaffian(
-                            covmat_out_virt[np.ix_(ind, ind)],
-                            d_covmat_out_virt[np.ix_(ind, ind)],
-                        )
-                        for prefactor, ind in idxarr
-                    ]
-                    d_el_energy = np.real(overall_factor * np.sum(deriv_pfarr)) * np.exp(norm_mod - lognorm_default)
-
-                    # Summand with derivative of norms
-                    trace_def = system.compute_grad_over_norm(symbol, layerind, uc_ind)
-                    trace_mod = compute_grad_over_norm_numpy(
-                        gamma_in_sys_mod,
-                        diff_d_inv_gamma_inv,
-                        d_mat_d,
-                        system.mat_d_mod_inv_vec[layerind],
-                    )
-                    # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
-                    d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
-                    # Scale to system size
-                    d_el_energy *= nlinks
-                    dest_grad[layerind, uc_ind, symbol_ind] = d_el_energy
-
-    dest_grad = np.asarray(dest_grad)
-
-    # We have to weigh the different layers with the electric energy operator expectation of the other layers.
-    # They act as a prefactor in the derivative
-    if system.cfg.nlayer > 1:
-        for i in range(system.cfg.nlayer):
-            prod_other_layers = ggpeps.utils.multiply_except(el_energy_vec, i)
-            dest_grad[i] *= prod_other_layers
-
-    system.cfg.enforce_parameter_conditions(dest_grad)
-    return dest_grad
-
-
-# def update_gauge_ind_numpy(z2_system, link_ind, theta):
-#     """Update method that is called upon changing a gauge field.
-#     This method is central to the algorithm since it changes the gauged projectors and updates all incremental trackers
-#     of determinants and inverses.
-#     The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
-
-#     This method overwrites an abstract method in System2DBase.
-
-#     Args:
-#         link_ind (int): Link index to be updated
-#         theta (float): New gauge field value
-#     """
-#     # Update the gaugefield
-#     z2_system._gaugefieldvec[link_ind] = theta
-#     # There are two directions per vertex
-#     ind_mat = 2 * z2_system.cfg.nvirtmodes_link * link_ind
-#     coord, dir = z2_system.cfg.lattice.ind2coord_dir(link_ind)
-#     rotmat = z2_system.generate_rotmat(theta, coord, dir)
-#     gamma_neutral_gauge = z2_system.gamma_gauge_neutral[0][dir]
-#     gamma_in_subst = rotmat @ gamma_neutral_gauge @ np.transpose(rotmat)
-#     update = z2_system.calculate_update_gamma_in(ind_mat, gamma_in_subst)
-
-#     # Update the determinant
-#     mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in z2_system.wi_gamma_in_vec]
-#     detval_vec = [
-#         incdet.update_index(mat_inv, update, ind_mat, ind_mat)
-#         for mat_inv, incdet in zip(mat_inv_vec, z2_system.incdet_vec)
-#     ]
-
-#     # Update the modified determinant
-#     offset = 2 * z2_system.cfg.nvirtmodes_link
-#     if ind_mat - offset >= 0:
-#         for wi, incdet in zip(z2_system.wi_gamma_in_mod_vec, z2_system.incdet_mod_vec):
-#             mat_inv = wi.inv()
-#             incdet.update_index(mat_inv, update, ind_mat - offset, ind_mat - offset)
-
-#     # Update the weight
-#     z2_system.weight = 0.5 * np.sum(detval_vec)
-
-#     # Update the matrix inversion
-#     for wi_gamma_in in z2_system.wi_gamma_in_vec:
-#         wi_gamma_in.update_index(update, ind_mat, ind_mat)
-#     for wi_gamma_out in z2_system.wi_gamma_out_vec:
-#         wi_gamma_out.update_index(update, ind_mat, ind_mat)
-
-#     if ind_mat - offset >= 0:
-#         for wi_gamma_in_mod in z2_system.wi_gamma_in_mod_vec:
-#             wi_gamma_in_mod.update_index(update, ind_mat - offset, ind_mat - offset)
-#         for wi_gamma_out_mod in z2_system.wi_gamma_out_mod_vec:
-#             wi_gamma_out_mod.update_index(update, ind_mat - offset, ind_mat - offset)
-
-#     # Substitute in the array
-#     z2_system.gamma_in_sys[ind_mat:ind_mat + rotmat.shape[0], ind_mat:ind_mat + rotmat.shape[1]] = gamma_in_subst
-
-#     # Invalidate gauge dependent quantities
-#     z2_system.invalidate_gauge_update()
-
-
-def extract_partial_covmats_numpy(mat, corner):
-    """Extract the partial covariance matrices from a gaussian mapping
-
-    Args:
-        mat (np.ndarray): Full covariance matrix
-        corner (int): Index of the top left element of the bottom right matrix
-
-    Returns:
-        tuple: Matrices (A,B,D)
-    """
-    mat_a = mat[:corner, :corner]
-    mat_b = mat[:corner, corner:]
-    mat_d = mat[corner:, corner:]
-    return mat_a, mat_b, mat_d
-
-
-def slice_matrix_numpy(mat, a, b, c, d):
-    return mat[a:b, c:d]
-
-
-def gamma_in_sys_mod_numpy(gamma_in_sys, single_link_offset):
-    """Get function to return the gauged gamma_in_sys with a single link modification (to compute the electric energy),
-    the covariance matrix of the links for the whole system.
-
-    Returns:
-        np.ndarray: Gauged, modified covariance matrix of the system
-    """
-    return gamma_in_sys[single_link_offset:, single_link_offset:]
+    @staticmethod
+    def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
+        return calculate_lognormvec_numpy(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)

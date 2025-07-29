@@ -8,7 +8,9 @@ import itertools as it
 import sympy
 from scipy.linalg import block_diag
 
+import jax
 import numpy as np
+import jax.numpy as jnp
 from ggpeps import xnp as xnp
 from ggpeps import xscipy as xscipy
 
@@ -16,40 +18,20 @@ import ggpeps
 from ggpeps import gauge
 from ggpeps import utils
 from ggpeps.lattice import Direction, Lattice2D
-from ggpeps.system.global_funcs import *
+from ggpeps.system.global_funcs import backend
 from ggpeps.modearray import generate_permutation_matrix
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
-################## Utility Functions ######################
 
+def maybe_jit(*jit_args, **jit_kwargs):
+    def decorator(func):
+        if ggpeps.PREFERRED_BACKEND == "jax":
+            return jax.jit(func, *jit_args, **jit_kwargs)
+        else:
+            return func
 
-def calculate_lognorm(
-    gamma_in_sys_vec: list[xnp.ndarray],
-    mat_d_vec: list[xnp.ndarray],
-    all_factors: bool = False,
-) -> float:
-    # This is still the plain formula, without any update mechanism
-    normvec = calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
-    return xnp.sum(normvec)
-
-
-def calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors: bool = False):
-    dest = []
-    for ind in range(len(incdet_vec)):
-        detval = incdet_vec[ind].det()
-        if all_factors:
-            detval -= n * xnp.log(2)
-            detval += det_mat_d_vec[ind]
-        # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
-        # The addition of the cumval is the multiplication of the indpendent PEPS
-        dest.append(0.5 * detval)
-    return xnp.array(dest)
-
-
-def calculate_lognorm_inc(incdet_vec, det_mat_d_vec, n, all_factors: bool = False):
-    lognormvec = calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=all_factors)
-    return xnp.sum(lognormvec)
+    return decorator
 
 
 ################## Config2DBase ######################
@@ -204,13 +186,15 @@ class Config2DBase(ABC):
         return self.unitcell_size == 1
 
     @abstractmethod
-    def get_zeroed_params(self) -> list[tuple[int, int, int]]:
+    def get_zeroed_params(self) -> tuple[tuple[int, int, int]]:
         """Create and return the list of parameters that are forced to zero by the ansatz.
 
         This abstract method must be overwritten by a subclass.
+        We return a tuple rather than a list to emphasize immutability, and because this
+        is required for jax.jit.
 
         Returns:
-            list: is a list of tuples (layer, unitcell index, symbol index).
+            tuple: is a tuple of tuples (layer, unitcell index, symbol index).
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
@@ -328,7 +312,7 @@ class System2DBase(ABC):
         self._mat_d_inv_vec: Optional[xnp.ndarray] = None
 
         # Full covariance matrix (gamma_out) of the fermions
-        self._ferm_covmat_vec: Optional[list[xnp.ndarray]] = None
+        self._ferm_covmat_vec: Optional[xnp.ndarray] = None
 
         # Parameter dependent quantities for the electric energy
         self._mat_a_mod_vec: Optional[xnp.ndarray] = None
@@ -356,16 +340,16 @@ class System2DBase(ABC):
         self._weight: Optional[float] = None
 
         # Gradients
-        self._gamma_maj_sys_deriv_dict: Optional[dict[sympy.Symbol, list[xnp.ndarray]]] = (
-            None  # the list is for layers
-        )
+        self._gamma_maj_sys_deriv: Optional[xnp.ndarray] = None
         self._el_energy_op_grad_vec: Optional[xnp.ndarray] = None  # first index is layer, second index is symbol
         self._mass_energy_op_grad_vec: Optional[xnp.ndarray] = None
         self._int_energy_op_grad_vec: Optional[xnp.ndarray] = None
         self._chem_energy_op_grad_vec = None
-        self._d_gamma_out_symbolvec: Optional[list[list[list[xnp.ndarray]]]] = (
-            None  # gradients of gamma_out for all symbols: first index is layer, second index uc_ind, third is symbol
-        )
+
+        # gradients of gamma_out for all symbols: _d_gamma_out_symbolvec[lay, uc_ind, symbol]
+        # is the matrix of derivatives of gamma_out[lay] wrt the parameter at that (lay, uc_ind, symbol)
+        self._d_gamma_out_symbolvec: Optional[xnp.ndarray] = None
+
         self._grad_over_norm_dict: Optional[dict[tuple[int, int, sympy.Symbol], float]] = {
             (lay, uc_ind, symb): None
             for lay, uc_ind, symb in it.product(
@@ -374,6 +358,7 @@ class System2DBase(ABC):
                 self.symbolvec,
             )
         }
+        self._grad_over_norm_vec: Optional[xnp.ndarray] = None  # vector form of _grad_over_norm_dict
 
         # Observables
         self._energy: Optional[float] = None
@@ -429,6 +414,7 @@ class System2DBase(ABC):
                 self.symbolvec,
             )
         }
+        self._grad_over_norm_vec = None
 
         self._covmat_out_virt_vec = None
         self._norm_mod_vec = None
@@ -610,34 +596,42 @@ class System2DBase(ABC):
             gamma_maj_sys_vec.append(dest)
         return xnp.array(gamma_maj_sys_vec)
 
-    def d_gamma_out_symbolvec(self, layer: int, uc_ind: int):
-        """Return a vector containing the derivatives of gamma_out (for the given layer) for each symbol.
+    def d_gamma_out_symbolvec(self) -> xnp.ndarray:
+        """Return a vector containing the derivatives of gamma_out for each symbol.
+
+        The derivatives for pure-gauge layers are set to nan.
 
         Returns:
-            [list]: List of xnp.ndarrays, with length equal to the number of symbols.
+            array: d_gamma_out_symbolvec[layer, uc_ind, symbol] is the matrix of derivatives of gamma_out[lay]
+                   wrt the parameter at that (lay, uc_ind, symbol)
         """
         if self._d_gamma_out_symbolvec is None:
-            self._d_gamma_out_symbolvec = [None] * self.cfg.nlayer
-        if self._d_gamma_out_symbolvec[layer] is None:
-            self._d_gamma_out_symbolvec[layer] = [None] * self.cfg.unitcell_size
-        if self._d_gamma_out_symbolvec[layer][uc_ind] is None:
-            self._d_gamma_out_symbolvec[layer][uc_ind] = []
-            offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
+            dim_gamma_out = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
+            shape = (self.cfg.nlayer, self.cfg.unitcell_size, len(self.symbolvec), dim_gamma_out, dim_gamma_out)
+            self._d_gamma_out_symbolvec = xnp.full(shape, xnp.nan)
 
-            for symbol in self.symbolvec:
-                mat_b = self.mat_b_vec[layer]
-                deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layer, uc_ind]
-                d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
-                diff_d_gamma_inv = self.wi_gamma_out_vec[layer].inv()
-                d_gamma_out = (
-                    d_mat_a
-                    + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
-                    + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
-                    - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ xnp.transpose(mat_b)
-                )
-                self._d_gamma_out_symbolvec[layer][uc_ind].append(d_gamma_out)
+            for layer in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+                for uc_ind in range(self.cfg.unitcell_size):
+                    offset = dim_gamma_out
 
-        return self._d_gamma_out_symbolvec[layer][uc_ind]
+                    for ind, symbol in enumerate(self.symbolvec):
+                        mat_b = self.mat_b_vec[layer]
+                        deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_layvec_ucvec_symbvec[layer, uc_ind, ind]
+                        d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                        diff_d_gamma_inv = self.wi_gamma_out_vec[layer].inv()
+                        d_gamma_out = (
+                            d_mat_a
+                            + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                            + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
+                            - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                        )
+
+                        self._d_gamma_out_symbolvec = backend.array_assign(
+                            self._d_gamma_out_symbolvec, (layer, uc_ind, ind), d_gamma_out
+                        )
+
+            self._d_gamma_out_symbolvec = xnp.array(self._d_gamma_out_symbolvec)
+        return self._d_gamma_out_symbolvec
 
     @property
     def gamma_maj_sys_vec(self):
@@ -835,7 +829,7 @@ class System2DBase(ABC):
                 ###################### Calculation of <P> ########################
                 covmat_out = mat_a + mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
                 size = covmat_out.shape[1]
-                covmat_out_virt = slice_matrix(
+                covmat_out_virt = backend.slice_matrix(
                     covmat_out,
                     size - single_link_offset,
                     size,
@@ -866,7 +860,7 @@ class System2DBase(ABC):
 
             for layerind in range(self.cfg.nlayer):
                 # For the modified norm, we still have to take into account the other contributions from the unmodified parts
-                norm_mod = calculate_lognorm_inc(
+                norm_mod = self._calculate_lognorm_inc(
                     [self.incdet_mod_vec[layerind]],
                     [self.det_mat_d_mod_vec[layerind]],
                     self.gamma_in_sys_mod_vec[layerind].shape[0],
@@ -1149,22 +1143,23 @@ class System2DBase(ABC):
         smat = utils.generate_smat(m)
         return xnp.real(smat @ gamma_dirac_deriv @ xnp.transpose(smat))
 
-    def _generate_gamma_maj_sys_deriv_dict(self):
-        """Internal function to generate a dictionary of all possible derivatives of gamma_maj_sys, the system-wide
+    def _generate_gamma_maj_sys_deriv(self) -> xnp.ndarray:
+        """Internal function to generate an array of all possible derivatives of gamma_maj_sys, the system-wide
         covariance matrix of the fiducial state.
-        The key to the dictionary is the symbol with respect to which we derived.
-        Each entry contains a list with len(list) = nlayer.
+        The dimensions of the array are
+            (nlayer, unitcell_size, n_symbols, gamma_maj_dim, gamma_maj_dim)
+        where
+            gamma_maj_dim = 2 * nsites * (nphysmodes_site + 4 * ncopy)
 
         Returns:
-            dict: Dictionary with all derivatives
+            array: derivatives of gamma_maj_sys
         """
-        # TODO: should we save the computations here in private variables (as done elsewhere)?
-        dest = {}
-        for symb in self.symbolvec:
-            arr = []
-            for lay in range(self.cfg.nlayer):
-                uc_vec = []
-                for uc_ind in range(self.cfg.unitcell_size):
+        lay_vec = []
+        for lay in range(self.cfg.nlayer):
+            uc_vec = []
+            for uc_ind in range(self.cfg.unitcell_size):
+                arr = []
+                for symb in self.symbolvec:
                     gamma_maj_deriv = self.compute_gamma_maj_deriv(symb, lay, uc_ind)
 
                     gamma_maj_derivs_sitevec = []
@@ -1175,11 +1170,17 @@ class System2DBase(ABC):
                             gamma_maj_derivs_sitevec.append(xnp.zeros_like(gamma_maj_deriv))
 
                     gamma_maj_sys_derivs = self._expand_gamma_maj_to_system([gamma_maj_derivs_sitevec])[0]
-                    uc_vec.append(gamma_maj_sys_derivs)
-                arr.append(uc_vec)
-
-            dest[symb] = xnp.array(arr)
+                    arr.append(gamma_maj_sys_derivs)
+                uc_vec.append(arr)
+            lay_vec.append(uc_vec)
+        dest = xnp.array(lay_vec)
         return dest
+
+    @property
+    def gamma_maj_sys_deriv_layvec_ucvec_symbvec(self) -> xnp.ndarray:
+        if self._gamma_maj_sys_deriv is None:
+            self._gamma_maj_sys_deriv = self._generate_gamma_maj_sys_deriv()
+        return self._gamma_maj_sys_deriv
 
     def gamma_maj_sys_deriv_vec(self, symb: sympy.Symbol) -> xnp.ndarray:
         """Return a list of derivatives of all layers of gamma_maj_sys with respect to a given symbol.
@@ -1191,18 +1192,14 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: List of derived gamma_maj_sys
         """
-        if symb in self.symbolvec:
-            if self._gamma_maj_sys_deriv_dict is None:
-                self._gamma_maj_sys_deriv_dict = self._generate_gamma_maj_sys_deriv_dict()
-            return self._gamma_maj_sys_deriv_dict[symb]
-        else:
-            logger.error("gamma_maj_sys_deriv: Invalid variable name.")
-        return None
+        if symb not in self.symbolvec:
+            raise ValueError(f"Symbol {symb} is not in the symbol vector.")
 
-    ## MOVE TO GLOBAL
+        arr = self.gamma_maj_sys_deriv_layvec_ucvec_symbvec[:, :, self.symbolvec.index(symb), :, :]
+        return arr
+
     def compute_grad_norm_vec(self) -> xnp.ndarray:
         """Compute the gradient of the norm for all layers with respect to all parameters.
-        The parameter order is [[dt1, dy1, dz1...],[dt2,dy2,dz2...]...]
 
         Returns:
             xnp.ndarray: Vector of gradients of the norm with respect to all parameters
@@ -1219,7 +1216,6 @@ class System2DBase(ABC):
         self.cfg.enforce_parameter_conditions(dest)
         return dest
 
-    ## MOVE TO GLOBAL
     def compute_grad_norm(self, layerind: int, uc_ind: int) -> xnp.ndarray:
         """Compute the gradient of the norm for a given layer wrt to all parameters.
         The parameter order is the same as in the symbolvec
@@ -1239,10 +1235,9 @@ class System2DBase(ABC):
                 # we can skip it for parameters that are forced by the ansatz to be zero
 
                 # Compute gradient
-                if ggpeps.PREFERRED_BACKEND == "jax":
-                    dest_grad = dest_grad.at[symbol_ind].set(self.compute_grad_over_norm(symbol, layerind, uc_ind))
-                else:
-                    dest_grad[symbol_ind] = self.compute_grad_over_norm(symbol, layerind, uc_ind)
+                dest_grad = backend.array_assign(
+                    dest_grad, symbol_ind, self.compute_grad_over_norm(layerind, uc_ind, symbol)
+                )
         return dest_grad
 
     ################## Weight management ######################
@@ -1297,6 +1292,13 @@ class System2DBase(ABC):
         ]
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
 
+    def _calculate_lognorm(
+        self, gamma_in_sys_vec: list[xnp.ndarray], mat_d_vec: list[xnp.ndarray], all_factors: bool = False
+    ) -> float:
+        # This is still the plain formula, without any update mechanism
+        normvec = backend.calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
+        return xnp.sum(normvec)
+
     def calculate_lognorm(self, all_factors=False):
         """Compute the logarithm of the norm
 
@@ -1306,7 +1308,7 @@ class System2DBase(ABC):
         Returns:
             float: Logarithm of the norm
         """
-        return calculate_lognorm(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
+        return self._calculate_lognorm(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
 
     def calculate_lognormvec(self, all_factors=False):
         """Compute the logarithm of the norm for each layer
@@ -1317,7 +1319,25 @@ class System2DBase(ABC):
         Returns:
             float: Logarithm of the norm
         """
-        return calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
+        return backend.calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
+
+    @classmethod
+    def _calculate_lognorm_inc(cls, incdet_vec, det_mat_d_vec, n, all_factors: bool = False):
+        lognormvec = cls._calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=all_factors)
+        return xnp.sum(lognormvec)
+
+    @staticmethod
+    def _calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors: bool = False):
+        dest = []
+        for ind in range(len(incdet_vec)):
+            detval = incdet_vec[ind].det()
+            if all_factors:
+                detval -= n * xnp.log(2)
+                detval += det_mat_d_vec[ind]
+            # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
+            # The addition of the cumval is the multiplication of the indpendent PEPS
+            dest.append(0.5 * detval)
+        return xnp.array(dest)
 
     def calculate_lognormvec_inc(self, all_factors=False):
         """Compute the logarithm of the norm for all layers by incrementally updating the previous value
@@ -1329,7 +1349,7 @@ class System2DBase(ABC):
         Returns:
             list: Vector of the incrementally updated norms for all layers
         """
-        return calculate_lognormvec_inc(
+        return self._calculate_lognormvec_inc(
             self.incdet_vec,
             self.det_mat_d_vec,
             self.gamma_in_sys_vec[0].shape[0],
@@ -1376,7 +1396,7 @@ class System2DBase(ABC):
             cumval += 0.5 * detval
         return cumval
 
-    def compute_grad_over_norm(self, var: sympy.Symbol, layerind: int, uc_ind: int) -> float:
+    def compute_grad_over_norm(self, layerind: int, uc_ind: int, symb: sympy.Symbol) -> float:
         """Compute the quotient of derivative of the norm over the norm itself.
         We can avoid a lot of factors by computing the quotient directly.
 
@@ -1387,21 +1407,31 @@ class System2DBase(ABC):
         Returns:
             float: Value of the gradient divided by the norm of the state
         """
-        if self._grad_over_norm_dict[(layerind, uc_ind, var)] is None:
+        if self._grad_over_norm_dict[(layerind, uc_ind, symb)] is None:
             diff = self.wi_gamma_in_vec[layerind].inv()
             # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
             offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
             # Extract only the part of the virtual-virtual correlations
-            # deriv_d = self.gamma_maj_sys_deriv_vec(var)[layerind][offset:, offset:] # TODO: fix for JAX - DONE
-            _, _, deriv_d = extract_partial_covmats(self.gamma_maj_sys_deriv_vec(var)[layerind, uc_ind], offset)
+            _, _, deriv_d = utils.extract_partial_covmats(self.gamma_maj_sys_deriv_vec(symb)[layerind, uc_ind], offset)
             mat_d_inv = self.mat_d_inv_vec[layerind]
 
             # TODO: We might save one matrix-matrix multiplication here
             # The deriv_d and mat_d_inv are constant
-            self._grad_over_norm_dict[(layerind, uc_ind, var)] = compute_grad_over_norm(
+            self._grad_over_norm_dict[(layerind, uc_ind, symb)] = utils.compute_grad_over_norm(
                 self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv
             )
-        return self._grad_over_norm_dict[(layerind, uc_ind, var)]
+        return self._grad_over_norm_dict[(layerind, uc_ind, symb)]
+
+    @property
+    def grad_over_norm_vec(self) -> xnp.ndarray:
+        """Compute the gradient of the norm over all parameters for all layers and unit cells.
+
+        Returns:
+            xnp.ndarray: Vector of gradients of the norm with respect to all parameters
+        """
+        if self._grad_over_norm_vec is None:
+            self._grad_over_norm_vec = self.compute_grad_norm_vec()
+        return self._grad_over_norm_vec
 
     ################## Local Gauge ######################
 
@@ -1485,8 +1515,7 @@ class System2DBase(ABC):
             xnp.ndarray: Additional update to reach update_mat at gamma_in[offset:,offset:]
         """
         m_up, n_up = update_mat.shape
-        gamma_in_old = slice_matrix(gamma_in_sys, offset, offset + m_up, offset, offset + n_up)
-        # gamma_in_sys[offset:offset + m_up, offset:offset + n_up] # TODO: fix for JAX - DONE
+        gamma_in_old = backend.slice_matrix(gamma_in_sys, offset, offset + m_up, offset, offset + n_up)
         return -(update_mat - gamma_in_old)
 
     ################## Observables ######################
@@ -1497,29 +1526,79 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    @staticmethod
     @abstractmethod
-    def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
+    def _compute_el_energy_op_vec(
+        lognormvec_default,
+        overall_factors,
+        idxarrs,
+        nlayer: int,
+        covmat_out_virt_vec,
+        norm_mod_vec,
+        use_trans_inv: bool = True,
+    ):
         """Compute the electric energy.
         This is an abstract method and has to be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    @staticmethod
     @abstractmethod
-    def _compute_el_grad_vec(self, use_trans_inv: bool = True):
+    def _compute_el_grad_vec(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        nvirtmodes_link: int,
+        nphysmodes_site: int,
+        symbolvec: tuple,
+        overall_factors,
+        idxarr_vec,
+        el_energy_vec,
+        mat_b_mod_vec,
+        gamma_in_sys_mod_vec,
+        covmat_out_virt_vec,
+        norm_mod_vec,
+        lognorm_default_vec,
+        wi_gamma_in_mod_inv_vec,
+        wi_gamma_out_mod_inv_vec,
+        mat_d_mod_inv_vec,
+        gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+        grad_over_norm_vec,
+        zeroed_params,
+        use_trans_inv: bool = True,
+    ):
         """Compute the electric energy gradients.
         This is an abstract method and has to be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    @staticmethod
     @abstractmethod
-    def _compute_mass_energy_op_vec(self):
+    def _compute_mass_energy_op_vec(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        ferm_cov_vec: xnp.ndarray,
+        use_trans_inv: bool = True,
+    ):
         """Compute the mass energy (per layer).
         This is an abstract method and has to be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    @staticmethod
     @abstractmethod
-    def _compute_mass_energy_grad(self):
+    def _compute_mass_energy_grad(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        symbolvec: tuple,
+        d_gamma_out_symbolvec: xnp.array,
+        zeroed_params: tuple,
+        use_trans_inv: bool = True,
+    ):
         """Compute the mass energy gradient.
         This is an abstract method and has to be overwritten in a subclass.
         """
@@ -1712,7 +1791,15 @@ class System2DBase(ABC):
         if self._el_energy_op_vec is None:
             # This vector is the electric energy on a single link. Otherwise, we get a
             # power of nlinks in the product and the electric energy term (with prefactors) gets negative
-            self._el_energy_op_vec = self._compute_el_energy_op_vec()
+            self._el_energy_op_vec = self._compute_el_energy_op_vec(
+                self.lognorm_default_vec,
+                self.cfg.el_overall_factors,
+                self.cfg.idxarr_vec,
+                self.cfg.nlayer,
+                self.covmat_out_virt_vec,
+                self.norm_mod_vec,
+                use_trans_inv=True,
+            )
         return self._el_energy_op_vec
 
     @property
@@ -1724,7 +1811,13 @@ class System2DBase(ABC):
             list: Layer-resolved mass energy w/o shift
         """
         if self._mass_energy_op_vec is None:
-            self._mass_energy_op_vec = self._compute_mass_energy_op_vec()
+            self._mass_energy_op_vec = self._compute_mass_energy_op_vec(
+                self.cfg.lattice.size,
+                self.cfg.num_pg_layer,
+                self.cfg.num_fermionic_layer,
+                self.compute_ferm_cov(),
+                use_trans_inv=True,
+            )
         return self._mass_energy_op_vec
 
     @property
@@ -1760,7 +1853,38 @@ class System2DBase(ABC):
             list: List of all electric energy gradients (w/o shift)
         """
         if self._el_energy_op_grad_vec is None:
-            self._el_energy_op_grad_vec = self._compute_el_grad_vec()
+            # In order to jit, we must pass arrays, not WoodburyInverter objects.
+            wi_gamma_in_mod_inv_vec = xnp.asarray(
+                [self.wi_gamma_in_mod_vec[lay].inv() for lay in range(self.cfg.nlayer)]
+            )
+            wi_gamma_out_mod_inv_vec = xnp.asarray(
+                [self.wi_gamma_out_mod_vec[lay].inv() for lay in range(self.cfg.nlayer)]
+            )
+
+            self._el_energy_op_grad_vec = self._compute_el_grad_vec(
+                self.cfg.lattice.size,
+                self.cfg.num_pg_layer,
+                self.cfg.num_fermionic_layer,
+                self.cfg.unitcell_size,
+                self.cfg.nvirtmodes_link,
+                self.cfg.nphysmodes_site,
+                tuple(self.cfg.symbolvec),
+                tuple(self.cfg.el_overall_factors),
+                tuple(self.cfg.idxarr_vec),
+                self.el_energy_op_vec,
+                self.mat_b_mod_vec,
+                self.gamma_in_sys_mod_vec,
+                self.covmat_out_virt_vec,
+                self.norm_mod_vec,
+                self.lognorm_default_vec,
+                wi_gamma_in_mod_inv_vec,
+                wi_gamma_out_mod_inv_vec,
+                self.mat_d_mod_inv_vec,
+                self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+                self.grad_over_norm_vec,
+                self.cfg.zeroed_params,
+                use_trans_inv=True,
+            )
         return self._el_energy_op_grad_vec
 
     @property
@@ -1772,7 +1896,16 @@ class System2DBase(ABC):
             float: gradient of the mass energy operator (w/o shift) for the whole system
         """
         if self._mass_energy_op_grad_vec is None:
-            self._mass_energy_op_grad_vec = self._compute_mass_energy_grad()
+            self._mass_energy_op_grad_vec = self._compute_mass_energy_grad(
+                self.cfg.lattice.size,
+                self.cfg.num_pg_layer,
+                self.cfg.num_fermionic_layer,
+                self.cfg.unitcell_size,
+                tuple(self.cfg.symbolvec),
+                self.d_gamma_out_symbolvec(),
+                self.cfg.zeroed_params,
+                use_trans_inv=True,
+            )
         return self._mass_energy_op_grad_vec
 
     @property
@@ -1878,20 +2011,26 @@ class System2DBase(ABC):
                 path_product = path_product @ self.gaugefieldvec[ind]
         return xnp.trace(path_product)
 
-    def compute_ferm_cov(self, layer: int) -> xnp.ndarray:
+    def compute_ferm_cov(self) -> xnp.ndarray:
         """Compute the covariance matrix of the fermions in the system for the given layer.
-        We do not calculate it for all layers automatically, since it is not needed for pure-gauge layers.
+        We calculate it for all layers automatically, even though it is not needed for pure-gauge layers.
+        TODO: investigate whether skipping the pure-gauge layers is worthwhile.
 
-        Args:
-            layer (int): the layer for which the covmat should be calculated
+        Returns:
+            array: array[lay] is the covmat in that layer
         """
         if self._ferm_covmat_vec is None:
-            self._ferm_covmat_vec = [None] * self.cfg.nlayer
-        if self._ferm_covmat_vec[layer] is None:
-            self._ferm_covmat_vec[layer] = self.mat_a_vec[layer] + (
-                self.mat_b_vec[layer] @ self.wi_gamma_out_vec[layer].inv() @ xnp.transpose(self.mat_b_vec[layer])
-            )
-        return self._ferm_covmat_vec[layer]
+            dim_gamma_out = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
+            shape = (self.cfg.nlayer, dim_gamma_out, dim_gamma_out)
+            self._ferm_covmat_vec = xnp.full(shape, xnp.nan)
+
+            for layer in range(self.cfg.nlayer):
+                covmat = self.mat_a_vec[layer] + (
+                    self.mat_b_vec[layer] @ self.wi_gamma_out_vec[layer].inv() @ xnp.transpose(self.mat_b_vec[layer])
+                )
+
+                self._ferm_covmat_vec = backend.array_assign(self._ferm_covmat_vec, layer, covmat)
+        return self._ferm_covmat_vec
 
     ################## Mode Permutations ##################
 
@@ -2127,8 +2266,8 @@ def get_pfaffian_arrays(modes, coefficients):
     submatrices = [k for k in it.product(*modes)]
     indices = [sum(sub, ()) for sub in submatrices]
 
-    factors = [xnp.asarray(k) for k in it.product(*coefficients)]
-    prefactors = [xnp.prod(k) for k in factors]
+    factors = [np.asarray(k) for k in it.product(*coefficients)]
+    prefactors = [np.prod(k) for k in factors]
     idxarr = [(p, i) for p, i in zip(prefactors, indices)]
 
-    return idxarr
+    return tuple(idxarr)
