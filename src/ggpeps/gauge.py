@@ -233,15 +233,6 @@ class D2nGauge:
             dest = []
 
         return dest
-        dest = []
-        p_0_q_0 = self.get_neutral_gauge_value()
-        p_0_q_1 = self.get_representation(0, 1)
-        p_1_q_0 = self.get_representation(1, 0)
-        if np.allclose(g_old, p_0_q_0) or np.allclose(g_old, p_0_q_1):
-            dest.append(p_1_q_0)
-        else:
-            dest.append(p_0_q_0)
-        return dest
 
     def get_reflection_index(self, g: np.ndarray) -> int:
         """
