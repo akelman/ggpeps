@@ -207,7 +207,7 @@ class TestPfaffian(unittest.TestCase):
         ref = pf.pfaffian(a_part)
         self.assertAlmostEqual(val, ref)
 
-    def test_pfaffian_LTL_jax_vs_numpy1(self):
+    def test_pfaffian_LTL_jax_vs_numpy(self):
         """Test pfaffian jax against numpy version for random skew-symmetric matrices."""
         np.random.seed(42)
         for n in [4, 6, 8]:
