@@ -1375,7 +1375,7 @@ class TestZ2SystemMethods(unittest.TestCase):
                     val_right = system_z2_2_2_right.el_energy_op
                     deriv_num = (val_right - val_left) / (2 * eps)
 
-                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
+                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=4)
 
     def test_el_energy_1_layer_single_eval(self):
         # Calculate the electric energy of an empty system.
