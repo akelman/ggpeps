@@ -1,3 +1,4 @@
+from typing import Optional
 from enum import IntEnum
 
 import logging
@@ -33,7 +34,7 @@ class Lattice2D:
 
     dim = 2
 
-    def __init__(self, nx: int, ny: int, gf_num_of_rows: int | None = 0) -> None:
+    def __init__(self, nx: int, ny: int, gf_num_of_rows: Optional[int] = 0) -> None:
         """
         Initialize a 2D lattice and set its gauge-fixing tree.
 
@@ -421,7 +422,7 @@ class Lattice2D:
 
         return loops
 
-    def generate_tree(self, num_of_rows: int | None = None) -> list[int]:
+    def generate_tree(self, num_of_rows: Optional[int] = None) -> list[int]:
         """
         Generate a gauge-fixing tree on the lattice.
 
