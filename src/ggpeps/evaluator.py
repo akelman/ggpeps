@@ -2,14 +2,16 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
+from ggpeps.system.system_base import System2DBase
+
 
 class Evaluator(ABC):
     """Base class for the different evaluators (ExactEvaluator and MonteCarloEvaluator)."""
 
-    def __init__(self, evaluator_cfg, system):
+    def __init__(self, evaluator_cfg, system: System2DBase):
         self.system = system
-        self.obsdict: dict = {}
         self.cfg = evaluator_cfg
+        self.obsdict: dict = {}
 
     @abstractmethod
     def evaluate(self):

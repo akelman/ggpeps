@@ -43,6 +43,7 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         enforce_u1_symmetry=True,
     ):
         super().__init__(
+            gauge.ZNGauge(2),
             lattice,
             g_el,
             g_mag,
@@ -100,7 +101,6 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         self.el_overall_factors = [1 / 256**2] * (
             self.nlayer
         )  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2)
 
     def get_zeroed_params(self):
         zeroed_params = []  # we'll save the indices of the zeroed parameters

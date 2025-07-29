@@ -15,8 +15,9 @@ from ggpeps import xnp as xnp
 from ggpeps import xscipy as xscipy
 
 import ggpeps
+from ggpeps import gauge
 from ggpeps import utils
-from ggpeps.lattice import Direction, Lattice2D, Lattice3D
+from ggpeps.lattice import Direction, Lattice2D
 from ggpeps.system.global_funcs import backend
 from ggpeps.modearray import generate_permutation_matrix
 
@@ -48,7 +49,8 @@ class Config2DBase(ABC):
 
     def __init__(
         self,
-        lattice: Union[Lattice2D, Lattice3D],
+        gaugemgr: Union[gauge.ZNGauge, gauge.D2nGauge],
+        lattice: Lattice2D,
         g_el: float,
         g_mag: float,
         g_int: float,
@@ -70,6 +72,7 @@ class Config2DBase(ABC):
             num_fermionic_layer (int, optional): number of fermionic layers. Defaults to 0.
         """
 
+        self.gaugemgr = gaugemgr
         self.lattice = lattice
         self.num_pg_layer = num_pg_layer
         self.num_fermionic_layer = num_fermionic_layer
@@ -86,11 +89,12 @@ class Config2DBase(ABC):
         self.g_mag = g_mag
         self.g_int = g_int
         self.g_mass = g_mass
-        self.g_chem = g_chem
-        if self.g_chem is None:
+        if g_chem is None:
             self.g_chem = np.zeros(self.num_fermionic_layer)
-        elif len(self.g_chem) != self.num_fermionic_layer:
+        elif len(g_chem) != self.num_fermionic_layer:
             raise ValueError("The number of chemical potentials must match the number of fermionic layers.")
+        else:
+            self.g_chem = g_chem
 
     def __str__(self) -> str:
         """Define a string method that can be used, e.g., in filenaming.

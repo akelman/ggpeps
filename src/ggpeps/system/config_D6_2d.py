@@ -58,6 +58,7 @@ class D6System2D_Config(Config2DBase):
         enforce_u1_symmetry=True,
     ):
         super().__init__(
+            gauge.D2nGauge(3),
             lattice,
             g_el,
             g_mag,
@@ -67,11 +68,12 @@ class D6System2D_Config(Config2DBase):
             num_pg_layer,
             num_fermionic_layer,
         )
+
         # Translation invariance (or variance)
         if unitcell_size not in [1]:
             logger.error(
                 "For Dn groups this ansatz only supports unitcell_size = 1. \
-                         This can be adapted by adding in a specification in the config to map sites to parameters."
+                This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             sys.exit(1)
         # map from site to index of independent parameters (default is unitcell_size = 1)
@@ -115,8 +117,6 @@ class D6System2D_Config(Config2DBase):
         self.el_overall_factors = [
             -1 / 16
         ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-
-        self.gaugemgr: gauge.D2nGauge = gauge.D2nGauge(3)
 
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.

@@ -5,6 +5,7 @@ import logging
 
 import pandas as pd
 import numpy as np
+import copy
 
 import ggpeps
 import ggpeps.utils as utils
@@ -12,6 +13,8 @@ import ggpeps.lattice as lattice
 
 from ggpeps.evaluator import Evaluator
 from ggpeps.measurement import Measurement
+from ggpeps.system.system_base import System2DBase
+
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -97,7 +100,7 @@ class MonteCarloEvaluator(Evaluator):
 
     evaluator_type = "mc"
 
-    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
+    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system: System2DBase):
         super().__init__(evaluator_cfg, system)
 
         self.step: int = 0
@@ -249,7 +252,7 @@ class MonteCarloEvaluator(Evaluator):
 
         # Gradient of the chemical potential
         meas_chem_energy = self.obsdict["chem_energy"]
-        meas_chem_energy_op_grad = self.obsdict["chem_energy_op_grad"]
+        meas_chem_energy_op_grad = copy.deepcopy(self.obsdict["chem_energy_op_grad"])
         for lay in range(self.system.cfg.num_pg_layer, self.system.cfg.nlayer):
             # the gradients must be scaled by the chemical potential
             ind = lay - self.system.cfg.num_pg_layer
@@ -313,13 +316,15 @@ class MonteCarloEvaluator(Evaluator):
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
-        nlinks = lattice.nlinks
         link_ind = self.cfg.rng_state.choice(self.system.cfg.lattice.comp_tree, replace=False)
+
         # Uniformly pick a gauge value
         theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+
         # Store the old values
         weight_old = self.system.weight
         weight_new = self.system.calculate_weight_attempt(link_ind, theta)
+
         if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
             # Accept
             self.obsdict["acceptance_prob"].append(1)
@@ -338,12 +343,15 @@ class MonteCarloEvaluator(Evaluator):
         # Pick a site to update
         lattice = self.system.cfg.lattice
         comp_tree = lattice.comp_tree  # non gauge fixed links
+
         for i in comp_tree:
             # Uniformly pick a gauge to replace
             theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+
             # Store the old values
             weight_old = self.system.weight
             weight_new = self.system.calculate_weight_attempt(i, theta)
+
             if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
                 # Accept
                 self.obsdict["acceptance_prob"].append(1)
@@ -368,9 +376,11 @@ class MonteCarloEvaluator(Evaluator):
         for link_ind in links_inds:
             # Uniformly pick a gauge to replace
             theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
+
             # Store the old values
             weight_old = self.system.weight
             weight_new = self.system.calculate_weight_attempt(link_ind, theta)
+
             if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
                 # Accept
                 self.obsdict["acceptance_prob"].append(1)
@@ -412,6 +422,45 @@ class MonteCarloEvaluator(Evaluator):
         """
         if obsname in self.obsdict.keys():
             meas = self.obsdict[obsname]
+            if obsname == "energy_grad":
+                nlayer, unitcell_size, nparams = self.system.cfg.param_shape()
+                dest = np.zeros((nlayer, unitcell_size, nparams))
+                energy_obsvec = np.asarray(self.obsdict["energy"].get_timeseries())
+                el_energy_grad = np.asarray(self.obsdict["el_energy_op_grad"].get_timeseries())
+                g_el = self.system.cfg.g_el
+                el_energy_grad = -2 * g_el * el_energy_grad
+
+                mass_energy_grad = np.asarray(self.obsdict["mass_energy_op_grad"].get_timeseries())
+                g_mass = self.system.cfg.g_mass
+                mass_energy_grad = g_mass * mass_energy_grad
+                int_energy_grad = np.asarray(self.obsdict["int_energy_op_grad"].get_timeseries())
+                g_int = self.system.cfg.g_int
+                int_energy_grad = g_int * int_energy_grad
+
+                chem_energy_grad = np.copy(np.asarray(self.obsdict["chem_energy_op_grad"].get_timeseries()))
+                for lay in range(self.system.cfg.num_pg_layer, self.system.cfg.nlayer):
+                    # the gradients must be scaled by the chemical potential
+                    ind = lay - self.system.cfg.num_pg_layer
+                    chem_energy_grad[lay] *= self.system.cfg.g_chem[ind]
+
+                energy_grad_obsvec = el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
+                grad_norm_obsvec = np.asarray(self.obsdict["grad_norm"].get_timeseries())
+
+                zeroed_params = self.system.cfg.get_zeroed_params()
+                for layer in range(nlayer):
+                    for unit_cell in range(unitcell_size):
+                        for grad_ind in range(nparams):
+                            if (layer, unit_cell, grad_ind) in zeroed_params:
+                                # If this is the a forced zeroed component, the error is 0.0
+                                dest[layer, unit_cell, grad_ind] = 0.0
+                            else:
+                                energy_grad_component = energy_grad_obsvec[:, layer, unit_cell, grad_ind]
+                                grad_norm_component = grad_norm_obsvec[:, layer, unit_cell, grad_ind]
+                                dest[layer, unit_cell, grad_ind] = utils.compute_grad_err(
+                                    energy_obsvec, energy_grad_component, grad_norm_component
+                                )
+                return dest
+
             if meas is not None and len(meas) > 0:
                 return meas.mean_err()
         return None
@@ -487,6 +536,7 @@ class MonteCarloEvaluator(Evaluator):
                 logger.info(f"<{key}>: {self.obsdict[key].mean()}")
 
     def summary(self) -> pd.DataFrame:
+        """Create panda dataframe file that summarizes the evaluation."""
         dest: dict = {
             "name": [],
             "nx": [],

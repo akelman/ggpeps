@@ -43,7 +43,13 @@ def main(args, save_path=None):
                         g_int = dumpobj["mc"].system.cfg.g_int
                         int_energy_grad = g_int * int_energy_grad
 
-                        energy_grad_obsvec = el_energy_grad + mass_energy_grad + int_energy_grad
+                        chem_energy_grad = dumpobj["mc"].obsdict["chem_energy_op_grad"].get_timeseries()
+                        for lay in range(dumpobj["mc"].system.cfg.num_pg_layer, dumpobj["mc"].system.cfg.nlayer):
+                            # the gradients must be scaled by the chemical potential
+                            ind = lay - dumpobj["mc"].system.cfg.num_pg_layer
+                            chem_energy_grad[lay] *= dumpobj["mc"].system.cfg.g_chem[ind]
+
+                        energy_grad_obsvec = el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
                         grad_norm_obsvec = np.asarray(dumpobj["mc"].obsdict["grad_norm"].get_timeseries())
                     else:
                         obsvec = np.asarray(dumpobj["mc"].obsdict[args.obs].get_timeseries())

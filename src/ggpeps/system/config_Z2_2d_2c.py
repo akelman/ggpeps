@@ -45,7 +45,17 @@ class Z2System2D2CConfig(Config2DBase):
         if num_fermionic_layer != 0:
             # This ansatz does not support fermionic layers
             raise ValueError("The Z2System2D2C ansatz does not support fermionic layers.")
-        super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0)
+        super().__init__(
+            gauge.ZNGauge(2),
+            lattice,
+            g_el,
+            g_mag,
+            g_int,
+            g_mass,
+            g_chem,
+            num_pg_layer,
+            0,
+        )
 
         # Translation invariance
         if unitcell_size not in [1]:
@@ -81,7 +91,6 @@ class Z2System2D2CConfig(Config2DBase):
         self.el_overall_factors = [
             -1 / 16
         ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2)
 
     def make_pure_gauge(self):
         """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t."""

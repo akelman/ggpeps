@@ -17,7 +17,7 @@ The purpose of this README is to provide:
 1. [Development](#development)
     1. [Installation](#installation)
     2. [Structure of the Code](#structure-of-the-code)
-    3. [Code Formatting](#code-formatting)
+    3. [Code Style](#code-style)
     4. [Tests](#tests)
     5. [Known Issues](#known-issues)
     6. [Ideas](#ideas)
@@ -132,10 +132,14 @@ Each implemented ansatz has it's own config class, each a subclass of Config2DBa
 
 The pure gauge ansatz's all techincally contain a parameter for coupling to matter, but (a) it is manually set to zero, (b) other parts of the ansatz (e.g. the $\Gamma_{\text{in}}$) do not obey the symmetries required for including matter.
 
-### Code Formatting
+### Code Style
 Code is formatted using `black` with the default configuration, except that the maximum allowed line length is 119.
 To format your code, run `python black . --line-length 119` from the main repository directory. 
-To set up your editor to automatically format your code (e.g. on save), see [Black Editor Integrations](https://black.readthedocs.io/en/stable/integrations/editors.html). Black is not listed in the package dependencies, and must be installed manually (`pip install black`).
+To set up your editor to automatically format your code (e.g. on save), see [Black Editor Integrations](https://black.readthedocs.io/en/stable/integrations/editors.html). Black is listed in the package dependencies under the `dev` tag (thus it is available if the package was installed with the dev dependencies, otherwise it must be installed manually: `pip install black`).
+
+The goal of type hinting is to improve readability and reasoning about the code.
+We use `mypy` for static type checking, though it is not strictly enforced. A `nox` session is used to validate type hints (see below for details on `nox`).
+Occasionally `assert` statements or `# type: ignore` comments are used to address type errors.
 
 ### Tests
 
@@ -154,13 +158,13 @@ python -m unittest tests/test_lattice.py
 #### Testing across multiple architectures
 The package supports CPU and GPU operation.
 To test both these modes independently, the tests are run with `nox` to run in different environments.
-Additionally, it enables testing of the environment, coverage testing, and lint testing.
+Additionally, it enables testing of the environment, coverage, type hints, and lint testing.
 
 The full `nox` test suite can be executed with
 ```
 nox
 ```
-It will run all so-called sessions. For an overview of available sessions, execute `nox --list`.
+It will run all so-called sessions. For an overview of available sessions, execute `nox --list`. 
 Individual sessions can be executed with `nox -s <name of session>`.
 
 

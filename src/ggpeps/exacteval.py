@@ -9,6 +9,7 @@ import pandas as pd
 import ggpeps
 import ggpeps.lattice as lattice
 from ggpeps.evaluator import Evaluator
+from ggpeps.system.system_base import System2DBase
 
 
 class ExactEvaluatorConfig:
@@ -28,7 +29,7 @@ class ExactEvaluator(Evaluator):
 
     evaluator_type: str = "exact"
 
-    def __init__(self, evaluator_cfg, system) -> None:
+    def __init__(self, evaluator_cfg: ExactEvaluatorConfig, system: System2DBase) -> None:
         super().__init__(evaluator_cfg, system)
 
     def compute_expval(self, obs: np.ndarray, normvec: np.ndarray) -> Union[float, np.ndarray]:
@@ -262,6 +263,8 @@ class ExactEvaluator(Evaluator):
 
                 # Add for the full gradient, subject to conditions on parameterization
                 total_grad = mag_energy_grad + el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
+
+                assert isinstance(total_grad, np.ndarray)
                 self.system.cfg.enforce_parameter_conditions(total_grad)
                 dest["energy_grad"] = total_grad
 
