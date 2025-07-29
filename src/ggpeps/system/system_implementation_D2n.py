@@ -209,7 +209,7 @@ class D2nSystem2D(System2DBase):
         g_transpose = xnp.transpose(g)
         real_g_transpose = xnp.real(g_transpose)
         imag_g_transpose = xnp.imag(g_transpose)
-        if xnp.sum(coord) % 2 == 0:  # gauging is different for different sublattices
+        if xnp.sum(xnp.asarray(coord)) % 2 == 0:  # gauging is different for different sublattices
             rot_right = xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
                 # TODO: Generalize this to fermionic layers as well.
                 [
