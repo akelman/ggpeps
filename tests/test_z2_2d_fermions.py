@@ -3,6 +3,7 @@ from unittest import skip
 
 import numpy as np
 import sympy as sp
+import jax.numpy as jnp
 
 from ggpeps import lattice, utils
 from ggpeps import system, exacteval
@@ -644,7 +645,10 @@ class TestZ2System(unittest.TestCase):
         # Scale the gradients by the appropriate chemical potential
         for lay in range(1, 3):
             offset = system_cfg.num_pg_layer
-            deriv_ana[lay, :, :] *= g_chem[lay - offset]
+            if isinstance(deriv_ana, jnp.ndarray):
+                deriv_ana.at[lay, :, :].multiply(g_chem[lay - offset])
+            else:
+                deriv_ana[lay, :, :] *= g_chem[lay - offset]
         symbolvec = system_z2_2_2.symbolvec
         for layerind in range(3):
             # we could skip the pure gauge layers, since they do not contribute
