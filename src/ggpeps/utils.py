@@ -16,9 +16,6 @@ import numpy as np
 import jax.numpy as jnp
 from ggpeps import xnp as xnp
 
-import py_pfaffian.jax
-from pfapack import pfaffian as pf
-
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
