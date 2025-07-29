@@ -12,6 +12,8 @@ import ggpeps.lattice as lattice
 
 from ggpeps.evaluator import Evaluator
 from ggpeps.measurement import Measurement
+from ggpeps.system.system_base import System2DBase
+
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -97,7 +99,7 @@ class MonteCarloEvaluator(Evaluator):
 
     evaluator_type = "mc"
 
-    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system):
+    def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system: System2DBase):
         super().__init__(evaluator_cfg, system)
 
         self.step: int = 0
