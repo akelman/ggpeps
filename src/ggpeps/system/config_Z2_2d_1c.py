@@ -98,10 +98,10 @@ class Z2System2DConfig(Config2DBase):
                 self.paramvec[lay, uc_ind, 3] = 0
 
     def get_zeroed_params(self):
-        """This should really call make_pure_gauge() - i.e. return the indices which are set to zero there.
+        """This should really use make_pure_gauge() - i.e. return the indices which are set to zero there.
         However, some tests which use this ansatz do not actually satisfy the pure gauge condition
         - they use this ansatz with nonzero t params, and test against hard-coded values.
-        (This works because make_pure_gauge() is often not called in the executaion path of those tests).
+        (This works because make_pure_gauge() is often not called in the execution path of those tests).
         To preserve compatibility with those tests, we do not call make_pure_gauge() here.
         """
         zeroed_params = []

@@ -94,7 +94,10 @@ class Z2System2D2CConfig(Config2DBase):
         ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
-        """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t."""
+        """Ensure the system stays as pure_gauge.
+        Setting the t parameters to zero automatically ensures they remain zero,
+        since the derivative includes a factor of t."""
+
         # The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
         # Here we set the t parameters to zero for the pure gauge layers (which is all the layers)
         assert self.nlayer == self.num_pg_layer
@@ -106,10 +109,10 @@ class Z2System2D2CConfig(Config2DBase):
                 self.paramvec[lay, uc_ind, 13] = 0  # Set t2i to 0
 
     def get_zeroed_params(self):
-        """This should really call make_pure_gauge() - i.e. return the indices which are set to zero there.
+        """This should really use make_pure_gauge() - i.e. return the indices which are set to zero there.
         However, some tests which use this ansatz do not actually satisfy the pure gauge condition
         - they use this ansatz with nonzero t params, and test against hard-coded values.
-        (This works because make_pure_gauge() is often not called in the executaion path of those tests).
+        (This works because make_pure_gauge() is often not called in the execution path of those tests).
         To preserve compatibility with those tests, we do not call make_pure_gauge() here.
         """
         zeroed_params = []
@@ -117,7 +120,8 @@ class Z2System2D2CConfig(Config2DBase):
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
-        We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
+        We will use the analytic expression of the T matrix to calculate
+        the derivative of the covariance matrices analytically.
 
         Returns:
             list: List of all analytic symbols
