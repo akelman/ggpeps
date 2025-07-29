@@ -345,11 +345,10 @@ class Z2System2D(System2DBase):
             ###################### Calculation of the derivative ########################
             for uc_ind in range(unitcell_size):
                 for symbol_ind, symbol in enumerate(symbolvec):
-                    if (layerind, uc_ind, symbol_ind) in zeroed_params:
+                    if (layerind, uc_ind, symbol_ind) not in zeroed_params:
                         # the derivative calculation is compuationally expensive
                         # we can skip it for parameters that are forced by the ansatz to be zero
-                        dest_grad = backend.array_assign(dest_grad, (layerind, uc_ind, symbol_ind), 0.0)
-                    else:
+
                         deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind]
                         d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
                         d_gamma_out = (
