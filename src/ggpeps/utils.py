@@ -456,7 +456,7 @@ def anticommutator(mat1: xnp.ndarray, mat2: xnp.ndarray) -> xnp.ndarray:
 
 
 def tmat_to_covariance_matrix(tmat: xnp.ndarray) -> xnp.ndarray:
-    """Transform a T matrix into the corresponding covariance matrix in terms of Dirac modes.
+    r"""Transform a T matrix into the corresponding covariance matrix in terms of Dirac modes.
     This function assumes that the fiducial operator has a certain form: A=exp(T_{ij}a_i^\dagger a_j^\dagger)
 
     Args:

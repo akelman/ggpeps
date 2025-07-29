@@ -354,7 +354,7 @@ class D6System2D_Config(Config2DBase):
         return tmat_symb
 
     def generate_gamma_gauge_neutral_dict(self):
-        """Generate the covariance matrix of the ungauged projectors.
+        r"""Generate the covariance matrix of the ungauged projectors.
         The mode order is
         {l1_1_1, l1_2_1, r1_1_1, r1_2_1, l2_1_1, l2_2_1, r2_1_1, r2_2_1,l1_1_2, l1_2_2, r1_1_2, r1_2_2, l2_1_2, l2_2_2, r2_1_2, r2_2_2}
         /{d1_1_1, d1_2_1, u1_1_1, u1_2_1,d2_1_1, d2_2_1, u2_1_1, u2_2_1, d1_1_2, d1_2_2, u1_1_2, u1_2_2, d2_1_2, d2_2_2, u2_1_2, u2_2_2}.
