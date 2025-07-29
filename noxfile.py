@@ -38,6 +38,9 @@ def typing(session):
         "src/ggpeps/exacteval.py",
         "src/ggpeps/lattice.py",
         "src/ggpeps/gauge.py",
+        "src/ggpeps/utils.py",
+        "src/ggpeps/minimizer.py",
+        "src/ggpeps/measurement.py",
     )
     # TODO: Add passing files (eventually should be entire repo)
 

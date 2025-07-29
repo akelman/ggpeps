@@ -78,6 +78,12 @@ version_file = "src/ggpeps/_version.py"
 [tool.black]
 line-length = 119
 
+[[tool.mypy.overrides]]
+# mark packages which do not have typing data, 
+# see: https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-library-stubs-or-py-typed-marker
+module = ["numba.*", "pfapack.*"]
+ignore_missing_imports = true
+
 #[project.urls]
 #"Homepage" = ""
 #"Bug Reports" = ""
