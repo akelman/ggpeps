@@ -95,7 +95,7 @@ class ZNGauge:
         """
         return 2.0 * np.pi / self.n
 
-    def get_angle(self, g) -> float:
+    def get_angle(self, g: np.ndarray) -> float:
         """
         Return the angle theta for a Z_N group element g = [[exp(i * theta)]].
 
