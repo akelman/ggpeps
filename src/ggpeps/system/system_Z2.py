@@ -198,6 +198,7 @@ class Z2System2D(System2DBase):
         return mag_energy_bare
 
     @staticmethod
+    @maybe_jit(static_argnames=["overall_factors", "idxarrs", "use_trans_inv", "nlayer"])
     def _compute_el_energy_op_vec(
         lognormvec_default,
         overall_factors,
@@ -252,7 +253,7 @@ class Z2System2D(System2DBase):
             pfvals = []  # without the prefactor
             for prefactor, ind in idxarr:
                 ind = xnp.asarray(ind)
-                pfaval = pf.pfaffian(covmat_out_virt[xnp.ix_(ind, ind)])
+                pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(ind, ind)])
                 pfarr.append(prefactor * pfaval)
                 pfvals.append(pfaval)
             el_energy_full = overall_factor * xnp.sum(xnp.array(pfarr))
