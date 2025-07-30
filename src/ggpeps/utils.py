@@ -613,7 +613,7 @@ class WoodburyInverter:
     def update_index(self, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """
         Update the inverse of the matrix A using the Woodbury formula, given indices indicating the positions in A
-        where the update M is placed. This is done by generating the U and V matrix for the upddate method.
+        where the update M is placed. This is done by generating the U and V matrix for the update method.
 
         Args:
             m (np.ndarray): M matrix - The local update matrix to A.
