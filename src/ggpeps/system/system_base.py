@@ -1181,31 +1181,54 @@ class System2DBase(ABC):
         arr = self.gamma_maj_sys_deriv_layvec_ucvec_symbvec[:, :, self.symbolvec.index(symb), :, :]
         return arr
 
-    def compute_grad_norm_vec(self) -> xnp.ndarray:
+    @classmethod
+    @maybe_jit(
+        static_argnames=[
+            "cls",
+            "lattice_size",
+            "nphysmodes_site",
+            "nlayer",
+            "unitcell_size",
+            "nparams",
+            "zeroed_params",
+        ]
+    )
+    def compute_grad_norm_vec(
+        cls,
+        lattice_size: int,
+        nphysmodes_site: int,
+        nlayer: int,
+        unitcell_size: int,
+        nparams: int,
+        zeroed_params: list,
+        wi_gamma_in_inv_vec: xnp.ndarray,
+        gamma_in_sys_vec: xnp.ndarray,
+        mat_d_inv_vec: xnp.ndarray,
+        gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
+    ) -> xnp.ndarray:
         """Compute the gradient of the norm for all layers with respect to all parameters.
 
         Returns:
-            xnp.ndarray: Vector of gradients of the norm with respect to all parameters
+            xnp.ndarray: Vector of gradients of the norm with respect to all parameters of all layers and unit cells.
         """
-        dest_grad = xnp.zeros((self.cfg.nlayer, self.cfg.unitcell_size, len(self.symbolvec)))
-        wi_gamma_in_inv_vec = xnp.array([self.wi_gamma_in_vec[layerind].inv() for layerind in range(self.cfg.nlayer)])
+        dest_grad = xnp.zeros((nlayer, unitcell_size, nparams))
 
-        for layerind in range(self.cfg.nlayer):
-            for uc_ind in range(self.cfg.unitcell_size):
+        for layerind in range(nlayer):
+            for uc_ind in range(unitcell_size):
 
-                for symbol_ind, symbol in enumerate(self.symbolvec):
-                    if (layerind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
+                for symbol_ind in range(nparams):
+                    if (layerind, uc_ind, symbol_ind) not in zeroed_params:
                         # the derivative calculation is computationally expensive
                         # we can skip it for parameters that are forced by the ansatz to be zero
 
                         # Compute gradient
-                        grad = self._compute_grad_over_norm(
-                            self.cfg.lattice.size,
-                            self.cfg.nphysmodes_site,
+                        grad = cls._compute_grad_over_norm(
+                            lattice_size,
+                            nphysmodes_site,
                             wi_gamma_in_inv_vec,
-                            self.gamma_in_sys_vec,
-                            self.mat_d_inv_vec,
-                            self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+                            gamma_in_sys_vec,
+                            mat_d_inv_vec,
+                            gamma_maj_sys_deriv_layvec_ucvec_symbvec,
                             layerind,
                             uc_ind,
                             symbol_ind,
@@ -1445,7 +1468,21 @@ class System2DBase(ABC):
             xnp.ndarray: Vector of gradients of the norm with respect to all parameters
         """
         if self._grad_over_norm_vec is None:
-            self._grad_over_norm_vec = self.compute_grad_norm_vec()
+            wi_gamma_in_inv_vec = xnp.array(
+                [self.wi_gamma_in_vec[layerind].inv() for layerind in range(self.cfg.nlayer)]
+            )
+            self._grad_over_norm_vec = self.compute_grad_norm_vec(
+                self.cfg.lattice.size,
+                self.cfg.nphysmodes_site,
+                self.cfg.nlayer,
+                self.cfg.unitcell_size,
+                len(self.symbolvec),
+                self.cfg.zeroed_params,
+                wi_gamma_in_inv_vec,
+                self.gamma_in_sys_vec,
+                self.mat_d_inv_vec,
+                self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+            )
         return self._grad_over_norm_vec
 
     ################## Local Gauge ######################
