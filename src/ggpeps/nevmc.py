@@ -157,7 +157,7 @@ class NEVMC_Evaluator(Evaluator):
         polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
 
         self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
-        # self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
+        # self.obsdict["cov_ferm"].append(self.system.ferm_covmat_vec)
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
@@ -428,7 +428,7 @@ class NEVMC_Evaluator(Evaluator):
         polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
 
         self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
-        # self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
+        # self.obsdict["cov_ferm"].append(self.system.ferm_covmat_vec)
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)

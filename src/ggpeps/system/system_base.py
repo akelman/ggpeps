@@ -1817,7 +1817,7 @@ class System2DBase(ABC):
                 self.cfg.lattice.size,
                 self.cfg.num_pg_layer,
                 self.cfg.num_fermionic_layer,
-                self.compute_ferm_cov(),
+                self.ferm_covmat_vec,
                 use_trans_inv=True,
             )
         return self._mass_energy_op_vec
@@ -2013,7 +2013,16 @@ class System2DBase(ABC):
                 path_product = path_product @ self.gaugefieldvec[ind]
         return xnp.trace(path_product)
 
-    def compute_ferm_cov(self) -> xnp.ndarray:
+    @staticmethod
+    @maybe_jit(static_argnames=["lattice_size", "nphysmodes_site", "nlayer"])
+    def _compute_ferm_cov(
+        lattice_size: int,
+        nphysmodes_site: int,
+        nlayer: int,
+        wi_gamma_out_inv_vec: xnp.ndarray,
+        mat_a_vec: xnp.ndarray,
+        mat_b_vec: xnp.ndarray,
+    ) -> xnp.ndarray:
         """Compute the covariance matrix of the fermions in the system for the given layer.
         We calculate it for all layers automatically, even though it is not needed for pure-gauge layers.
         TODO: investigate whether skipping the pure-gauge layers is worthwhile.
@@ -2021,17 +2030,32 @@ class System2DBase(ABC):
         Returns:
             array: array[lay] is the covmat in that layer
         """
+        dim_gamma_out = 2 * lattice_size * nphysmodes_site
+        shape = (nlayer, dim_gamma_out, dim_gamma_out)
+        ferm_covmat_vec = xnp.full(shape, xnp.nan)
+
+        for layer in range(nlayer):
+            covmat = mat_a_vec[layer] + (
+                mat_b_vec[layer] @ wi_gamma_out_inv_vec[layer] @ xnp.transpose(mat_b_vec[layer])
+            )
+
+            ferm_covmat_vec = backend.array_assign(ferm_covmat_vec, layer, covmat)
+        return ferm_covmat_vec
+
+    @property
+    def ferm_covmat_vec(self) -> xnp.ndarray:
+        """Compute the covariance matrix of the fermions in the system for the given layer.
+        We calculate it for all layers automatically, even though it is not needed for pure-gauge layers."""
         if self._ferm_covmat_vec is None:
-            dim_gamma_out = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
-            shape = (self.cfg.nlayer, dim_gamma_out, dim_gamma_out)
-            self._ferm_covmat_vec = xnp.full(shape, xnp.nan)
-
-            for layer in range(self.cfg.nlayer):
-                covmat = self.mat_a_vec[layer] + (
-                    self.mat_b_vec[layer] @ self.wi_gamma_out_vec[layer].inv() @ xnp.transpose(self.mat_b_vec[layer])
-                )
-
-                self._ferm_covmat_vec = backend.array_assign(self._ferm_covmat_vec, layer, covmat)
+            wi_gamma_out_inv_vec = [self.wi_gamma_out_vec[layer].inv() for layer in range(self.cfg.nlayer)]
+            self._ferm_covmat_vec = self._compute_ferm_cov(
+                self.cfg.lattice.size,
+                self.cfg.nphysmodes_site,
+                self.cfg.nlayer,
+                wi_gamma_out_inv_vec,
+                self.mat_a_vec,
+                self.mat_b_vec,
+            )
         return self._ferm_covmat_vec
 
     ################## Mode Permutations ##################
