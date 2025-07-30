@@ -1,8 +1,8 @@
 """
 When performing local updates using the Woodbury matrix identity and the matrix determinant lemma,
-the update matrix C can sometimes be singular perventing us from performing the update.
-This fule contains functions to check for such singularities and find the pairs whose transitions is forbidden (where the C is singular).
-
+the update matrix C can sometimes be singular, perventing us from performing the update.
+This file contains functions to check for such singularities and find the pairs whose transitions are forbidden
+(i.e. those transitions for which the C is singular).
 """
 
 import numpy as np
