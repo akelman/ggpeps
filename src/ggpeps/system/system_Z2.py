@@ -8,7 +8,7 @@ from ggpeps import xscipy as xscipy
 import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
-from ggpeps.system.global_funcs import backend
+from ggpeps.system.backend import backend
 
 from .system_base import System2DBase
 from .system_base import maybe_jit

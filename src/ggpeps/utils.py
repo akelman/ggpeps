@@ -21,9 +21,9 @@ from matplotlib.colors import LogNorm
 
 import ggpeps
 import ggpeps.measurement as meas
-from ggpeps.system.global_funcs import backend
-from ggpeps.system.global_funcs_jax import derivative_pfaffian_jax
-from ggpeps.system.global_funcs_numpy import derivative_pfaffian_numpy
+from ggpeps.system.backend import backend
+from ggpeps.system.backend_jax import derivative_pfaffian_jax
+from ggpeps.system.backend_numpy import derivative_pfaffian_numpy
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 

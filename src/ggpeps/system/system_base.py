@@ -18,7 +18,7 @@ import ggpeps
 from ggpeps import gauge
 from ggpeps import utils
 from ggpeps.lattice import Direction, Lattice2D
-from ggpeps.system.global_funcs import backend
+from ggpeps.system.backend import backend
 from ggpeps.modearray import generate_permutation_matrix
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)

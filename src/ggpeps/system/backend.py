@@ -1,7 +1,7 @@
 import ggpeps
 
-from .global_funcs_numpy import BackendNumpy_Z2
-from .global_funcs_jax import BackendJax_Z2
+from ggpeps.system.backend_numpy import BackendNumpy_Z2
+from ggpeps.system.backend_jax import BackendJax_Z2
 
 ############## SELECT APPROPRIATE VERSION ##############
 if ggpeps.PREFERRED_BACKEND == "jax":

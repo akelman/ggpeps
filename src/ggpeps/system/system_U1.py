@@ -13,7 +13,7 @@ from ggpeps.lattice import Direction
 
 from ggpeps.system import U1System2DConfig
 from .system_base import System2DBase
-from ggpeps.system.global_funcs import backend
+from ggpeps.system.backend import backend
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
