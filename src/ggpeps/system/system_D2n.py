@@ -542,8 +542,20 @@ class D2nSystem2D(System2DBase):
         chem_energy_op = xnp.zeros(self.cfg.nlayer)
         return chem_energy_op
 
-    def _compute_chem_energy_grad(self):
-        gradients = xnp.zeros(self.cfg.param_shape())
+    @staticmethod
+    def _compute_chem_energy_grad(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        symbolvec: tuple,
+        sublattice_factors: tuple,
+        zeroed_params: tuple,
+        d_gamma_out_vec: xnp.ndarray,
+    ):
+        nlayer = num_pg_layer + num_fermionic_layer
+        param_shape = (nlayer, unitcell_size, len(symbolvec))
+        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
         return gradients
 
     def _meson_string_vec(self, path):

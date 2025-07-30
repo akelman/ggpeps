@@ -666,30 +666,42 @@ class Z2System2D(System2DBase):
 
         return chem_energy_op
 
-    def _compute_chem_energy_grad(self):
+    @staticmethod
+    def _compute_chem_energy_grad(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        symbolvec: tuple,
+        sublattice_factors: tuple,
+        zeroed_params: tuple,
+        d_gamma_out_vec: xnp.ndarray,
+    ):
         """Calculate the chemical potential energy operator gradient."""
 
-        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+        nlayer = num_pg_layer + num_fermionic_layer
+        param_shape = (nlayer, unitcell_size, len(symbolvec))
+        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
 
-        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+        for layer_ind in range(num_pg_layer, nlayer):
             # only the fermionic layers directly contribute to the chemical potential
 
             # Calculate chem term
             # Since we set the system to have different parameters on the even and odd sites when using a non-zero
             # chemical potential (i.e. the system is translationally invariant by two sites),
             # we could just calculate it for one even and one odd site and multiply by the size of the system
-            for site in range(self.cfg.lattice.size):
+            for site in range(lattice_size):
                 site_ind = 2 * site  # index into covariance matrix
-                site_factor = self.cfg.lattice.sublattice_factors[site]  # even or odd sublattice
+                site_factor = sublattice_factors[site]  # even or odd sublattice
 
-                for uc_ind in range(self.cfg.unitcell_size):
-                    for symbol_ind, symbol in enumerate(self.symbolvec):
+                for uc_ind in range(unitcell_size):
+                    for symbol_ind, symbol in enumerate(symbolvec):
                         # the derivative calculation is relatively compuationally expensive
                         # (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
-                        if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
+                        if (layer_ind, uc_ind, symbol_ind) not in zeroed_params:
 
-                            d_gamma_out = self.d_gamma_out_symbolvec[layer_ind, uc_ind, symbol_ind]
+                            d_gamma_out = d_gamma_out_vec[layer_ind, uc_ind, symbol_ind]
                             grad = 0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
                             gradients = backend.array_add(gradients, (layer_ind, uc_ind, symbol_ind), grad)
 

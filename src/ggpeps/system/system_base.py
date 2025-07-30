@@ -1718,8 +1718,18 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    @staticmethod
     @abstractmethod
-    def _compute_chem_energy_grad(self):
+    def _compute_chem_energy_grad(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        symbolvec: tuple,
+        sublattice_factors: tuple,
+        zeroed_params: tuple,
+        d_gamma_out_vec: xnp.ndarray,
+    ):
         """Compute the chemical potential energy gradient.
         This is an abstract method and has to be overwritten in a subclass.
         """
@@ -2027,7 +2037,16 @@ class System2DBase(ABC):
             float: Gradient of the chemical potential energy operator (w/o shift) for the whole system
         """
         if self._chem_energy_op_grad_vec is None:
-            self._chem_energy_op_grad_vec = self._compute_chem_energy_grad()
+            self._chem_energy_op_grad_vec = self._compute_chem_energy_grad(
+                self.cfg.lattice.size,
+                self.cfg.num_pg_layer,
+                self.cfg.num_fermionic_layer,
+                self.cfg.unitcell_size,
+                tuple(self.cfg.symbolvec),
+                self.cfg.lattice.sublattice_factors,
+                self.cfg.zeroed_params,
+                self.d_gamma_out_symbolvec,
+            )
         return self._chem_energy_op_grad_vec
 
     ##################  ######################
