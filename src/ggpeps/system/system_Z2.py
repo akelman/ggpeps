@@ -461,7 +461,7 @@ class Z2System2D(System2DBase):
         unitcell_size: int,
         symbolvec: tuple,
         d_gamma_out_symbolvec: xnp.array,
-        zeroed_params: list,
+        zeroed_params: tuple,
         use_trans_inv: bool = True,
     ):
         """Compute the mass term of the Hamiltonian for a single site.
