@@ -1187,38 +1187,34 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Vector of gradients of the norm with respect to all parameters
         """
-        dest = []
+        dest_grad = xnp.zeros((self.cfg.nlayer, self.cfg.unitcell_size, len(self.symbolvec)))
+        wi_gamma_in_inv_vec = xnp.array([self.wi_gamma_in_vec[layerind].inv() for layerind in range(self.cfg.nlayer)])
+
         for layerind in range(self.cfg.nlayer):
-            layer_grad = []
             for uc_ind in range(self.cfg.unitcell_size):
-                layer_grad.append(self.compute_grad_norm(layerind, uc_ind))
-            dest.append(layer_grad)
-        dest = xnp.asarray(dest)
 
-        return dest
+                for symbol_ind, symbol in enumerate(self.symbolvec):
+                    if (layerind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
+                        # the derivative calculation is computationally expensive
+                        # we can skip it for parameters that are forced by the ansatz to be zero
 
-    def compute_grad_norm(self, layerind: int, uc_ind: int) -> xnp.ndarray:
-        """Compute the gradient of the norm for a given layer wrt to all parameters.
-        The parameter order is the same as in the symbolvec
+                        # Compute gradient
+                        grad = self._compute_grad_over_norm(
+                            self.cfg.lattice.size,
+                            self.cfg.nphysmodes_site,
+                            wi_gamma_in_inv_vec,
+                            self.gamma_in_sys_vec,
+                            self.mat_d_inv_vec,
+                            self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+                            layerind,
+                            uc_ind,
+                            symbol_ind,
+                        )
 
-        Args:
-            layerind (int): layer index
-            uc_ind (int): unit cell index
+                        # Save
+                        inds = (layerind, uc_ind, symbol_ind)
+                        dest_grad = backend.array_assign(dest_grad, inds, grad)
 
-        Returns:
-            xnp.ndarray: Vector of gradients for the norm
-        """
-
-        dest_grad = xnp.zeros(len(self.symbolvec), dtype=xnp.float64)
-        for symbol_ind, symbol in enumerate(self.symbolvec):
-            if (layerind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
-                # the derivative calculation is computationally expensive
-                # we can skip it for parameters that are forced by the ansatz to be zero
-
-                # Compute gradient
-                dest_grad = backend.array_assign(
-                    dest_grad, symbol_ind, self.compute_grad_over_norm(layerind, uc_ind, symbol_ind)
-                )
         return dest_grad
 
     ################## Weight management ######################

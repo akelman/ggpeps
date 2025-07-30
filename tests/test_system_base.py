@@ -485,17 +485,6 @@ class TestSystemBaseDimensions(unittest.TestCase):
         )
         self.assertTrue(actual_shape == target_shape)
 
-    def test_grad_norm(self):
-
-        lay = 0
-        uc_ind = 0
-        grad_over_norm = self.system_z2_2c.compute_grad_norm(lay, uc_ind)
-        actual_shape = grad_over_norm.shape
-
-        target_shape = (len(self.system_z2_2c.symbolvec),)
-
-        self.assertTrue(actual_shape == target_shape)
-
     def test_grad_norm_vec(self):
 
         grad_over_norm_vec = self.system_z2_2c.grad_over_norm_vec
