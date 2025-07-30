@@ -1195,8 +1195,6 @@ class System2DBase(ABC):
             dest.append(layer_grad)
         dest = xnp.asarray(dest)
 
-        # Enforce ansatz conditions on the gradients
-        self.cfg.enforce_parameter_conditions(dest)
         return dest
 
     def compute_grad_norm(self, layerind: int, uc_ind: int) -> xnp.ndarray:
