@@ -2,10 +2,8 @@ import sympy
 import logging
 
 import numpy as np
-from ggpeps import xnp as xnp
 
 import ggpeps
-import ggpeps.lattice as lat
 from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 

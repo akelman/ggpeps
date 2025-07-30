@@ -1,11 +1,9 @@
 import logging
 
 import sympy
+import numpy as np
 
-# import numpy as np
 import ggpeps
-from ggpeps import xnp as np
-
 from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
@@ -126,7 +124,7 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
 
                 copies = [1, 2, 3, 4]  # copies which couple to themselves
                 for cop in copies:
-                    for l in ["z", "y"]:
+                    for p in ["z", "y"]:
                         for com in ["r", "i"]:
                             ind += 1
                             zeroed_params.append((layer, uc_ind, ind))
@@ -135,7 +133,8 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
-        We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
+        We will use the analytic expression of the T matrix to calculate the
+        derivative of the covariance matrices analytically.
 
         Returns:
             list: List of all analytic symbols
@@ -156,9 +155,9 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
             4,
         ]  # copies which couple to themselves (if not zeroed out in enforce_parameter_conditions)
         for cop in copies:
-            for l in ["z", "y"]:
+            for p in ["z", "y"]:
                 for com in ["r", "i"]:
-                    symbol = sympy.Symbol(f"{l}{cop}{com}", real=True)
+                    symbol = sympy.Symbol(f"{p}{cop}{com}", real=True)
                     on_diag_symbols.append(symbol)
 
         off_diag_symbols = []  # off-diagonal blocks
@@ -166,9 +165,9 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         copies_even = [2, 4, 6, 8]
         for r in copies_odd:
             for c in copies_even:
-                for l in ["p", "q", "r", "s"]:
+                for p in ["p", "q", "r", "s"]:
                     for com in ["r", "i"]:
-                        symbol = sympy.Symbol(f"{l}{r}{c}{com}", real=True)
+                        symbol = sympy.Symbol(f"{p}{r}{c}{com}", real=True)
                         off_diag_symbols.append(symbol)
 
         all_symbols = phy_virt_symbols + on_diag_symbols + off_diag_symbols
@@ -212,16 +211,16 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
             4,
         ]  # copies which couple to themselves (if not zeroed out in enforce_parameter_conditions)
         for cop in copies:
-            for l in ["z", "y"]:
-                all_params[f"{l}{cop}"] = self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
+            for p in ["z", "y"]:
+                all_params[f"{p}{cop}"] = self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
                 ind += 2
 
         copies_odd = [1, 3, 5, 7]
         copies_even = [2, 4, 6, 8]
         for r in copies_odd:
             for c in copies_even:
-                for l in ["p", "q", "r", "s"]:
-                    all_params[f"{l}{r}{c}"] = self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
+                for p in ["p", "q", "r", "s"]:
+                    all_params[f"{p}{r}{c}"] = self.symbolvec[ind] + 1.0j * self.symbolvec[ind + 1]
                     ind += 2
 
         # Extract params as variables for convenience
@@ -543,7 +542,8 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         dest_mixed[Direction.X] = np.kron(np.eye(4), mixed_X)
         dest_mixed[Direction.Y] = np.kron(np.eye(4), mixed_Y)
 
-        # We want to give the projectors for the fermionic part which don't mix copies (so as to preserve global U(1) symmetry)
+        # We want to give the projectors for the fermionic part which don't mix copies
+        # (so as to preserve global U(1) symmetry)
         unmixed_X = np.array(
             [
                 [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],

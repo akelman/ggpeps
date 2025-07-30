@@ -3,7 +3,6 @@ import logging
 import sympy
 
 import numpy as np
-from ggpeps import xnp as xnp
 
 import ggpeps
 from ggpeps import gauge, utils
@@ -85,7 +84,7 @@ class Z2System2DConfig(Config2DBase):
         self.idxarr_vec = [idxarr] * self.nlayer
         self.el_overall_factors = [
             -1j / 4
-        ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        ] * self.nlayer  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
         # The order of the parameters is [tr,yr,zr,ti,yi,zi] ({r,i} referring to the real/imaginary components)
@@ -108,7 +107,8 @@ class Z2System2DConfig(Config2DBase):
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
-        We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
+        We will use the analytic expression of the T matrix to calculate the
+        derivative of the covariance matrices analytically.
 
         This method overwrites an abstract method in System2DBase.
 
@@ -126,8 +126,10 @@ class Z2System2DConfig(Config2DBase):
     @property
     def tmat_symb(self):
         """Definition of the symbolic T matrix.
-        The definition of T here is a result of an analytic consideration of global symmetries like rotational invariance, charge conjugation invarance, etc.
-        The T matrix is given in terms of symbols to compute the derivative of the covariance matrices analytically via sympy.
+        The definition of T here is a result of an analytic consideration of global symmetries such as
+        rotational invariance, charge conjugation invarance, etc.
+        The T matrix is given in terms of symbols to compute the derivative of the covariance matrices
+        analytically via sympy.
         We do not have to type them explicitly anymore into the code.
 
         This is one of two analytic inputs into the code.
@@ -135,7 +137,8 @@ class Z2System2DConfig(Config2DBase):
 
         The mode order is: Psi, l, r, d, u
 
-        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
+        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it
+        eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
         The permutation matrices are prone for errors.
 
         This method overwrites an abstract method in System2DBase.
@@ -160,8 +163,10 @@ class Z2System2DConfig(Config2DBase):
 
     def generate_gamma_gauge_neutral_dict(self):
         """This matrix is the covariance matrix of the ungauged projectors.
-        The mode order is {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2}, where the underscore notation explicitly denotes Majorana modes and not sites.
-        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The mode order is {l_1, l_2, r_1, r_2}/{d_1, d_2, u_1, u_2},
+        where the underscore notation explicitly denotes Majorana modes and not sites.
+        The sites are picked such that the left mode is right of the right modes,
+        i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
         This method overwrites an abstract method in System2DBase.
