@@ -498,7 +498,7 @@ class TestSystemBaseDimensions(unittest.TestCase):
 
     def test_grad_norm_vec(self):
 
-        grad_over_norm_vec = self.system_z2_2c.compute_grad_norm_vec()
+        grad_over_norm_vec = self.system_z2_2c.grad_over_norm_vec
         actual_shape = grad_over_norm_vec.shape
 
         target_shape = self.system_z2_2c.cfg.param_shape()

@@ -142,7 +142,7 @@ class ExactEvaluator(Evaluator):
                     data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
                     data["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
                     data["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
-                    data["grad_norm"].append(self.system.compute_grad_norm_vec())
+                    data["grad_norm"].append(self.system.grad_over_norm_vec)
 
             # TODO: handle this better - boundary should not be here!
             if ggpeps.PREFERRED_BACKEND == "jax":

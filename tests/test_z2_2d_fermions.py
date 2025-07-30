@@ -1325,7 +1325,7 @@ class TestTransVariance(unittest.TestCase):
         config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         system_z2.update_gauge_full_system(config)
 
-        deriv_ana = system_z2.compute_grad_norm_vec()
+        deriv_ana = system_z2.grad_over_norm_vec
         symbolvec = system_z2.symbolvec
 
         for layerind in range(self.system_z2.cfg.nlayer):

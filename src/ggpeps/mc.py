@@ -199,7 +199,7 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
             self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
             self.obsdict["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
-            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
+            self.obsdict["grad_norm"].append(self.system.grad_over_norm_vec)
 
         return
 
