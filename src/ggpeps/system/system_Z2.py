@@ -649,8 +649,7 @@ class Z2System2D(System2DBase):
             # we could just calculate it for one even and one odd site and multiply by the size of the system
             for site in range(self.cfg.lattice.size):
                 site_ind = 2 * site  # index into covariance matrix
-                x, y = self.cfg.lattice.ind2coord(site)
-                site_factor = (-1) ** (x + y)  # even or odd sublattice
+                site_factor = self.cfg.lattice.sublattice_factors[site]  # even or odd sublattice
                 mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
                 layer_chem_energy += site_factor * mass_site
                 layer_chem_energy += 0.5  # constant offset which arises from particle-hole transformation
@@ -675,8 +674,7 @@ class Z2System2D(System2DBase):
             # we could just calculate it for one even and one odd site and multiply by the size of the system
             for site in range(self.cfg.lattice.size):
                 site_ind = 2 * site  # index into covariance matrix
-                x, y = self.cfg.lattice.ind2coord(site)
-                site_factor = (-1) ** (x + y)  # even or odd sublattice
+                site_factor = self.cfg.lattice.sublattice_factors[site]  # even or odd sublattice
 
                 for uc_ind in range(self.cfg.unitcell_size):
                     for symbol_ind, symbol in enumerate(self.symbolvec):

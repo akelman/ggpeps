@@ -67,6 +67,9 @@ class Lattice2D:
         self.nplaquettes = nx * ny
         self.size = nx * ny  # number of sites/plaquettes
 
+        # Sublattice factors: 1 on the even sublattice, -1 on the odd sublattice
+        self.sublattice_factors = [(-1) ** np.sum(self.ind2coord(site)) for site in range(self.size)]
+
         # We trust the user not to modify these
         if gf_num_of_rows == -2:  # we fix a chess tree
             self.fixed_tree = self.generate_chess_tree()
