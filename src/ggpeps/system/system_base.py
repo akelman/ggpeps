@@ -351,15 +351,7 @@ class System2DBase(ABC):
         # is the matrix of derivatives of gamma_out[lay] wrt the parameter at that (lay, uc_ind, symbol)
         self._d_gamma_out_symbolvec: Optional[xnp.ndarray] = None
 
-        self._grad_over_norm_dict: Optional[dict[tuple[int, int, sympy.Symbol], float]] = {
-            (lay, uc_ind, symb): None
-            for lay, uc_ind, symb in it.product(
-                range(self.cfg.nlayer),
-                range(self.cfg.unitcell_size),
-                self.symbolvec,
-            )
-        }
-        self._grad_over_norm_vec: Optional[xnp.ndarray] = None  # vector form of _grad_over_norm_dict
+        self._grad_over_norm_vec: Optional[xnp.ndarray] = None
 
         # Observables
         self._energy: Optional[float] = None
@@ -408,14 +400,6 @@ class System2DBase(ABC):
         self._mass_energy_op_grad_vec = None
         self._int_energy_op_grad_vec = None
         self._chem_energy_op_grad_vec = None
-        self._grad_over_norm_dict = {
-            (lay, uc_ind, symb): None
-            for lay, uc_ind, symb in it.product(
-                range(self.cfg.nlayer),
-                range(self.cfg.unitcell_size),
-                self.symbolvec,
-            )
-        }
         self._grad_over_norm_vec = None
 
         self._covmat_out_virt_vec = None
@@ -1410,20 +1394,17 @@ class System2DBase(ABC):
         Returns:
             float: Value of the gradient divided by the norm of the state
         """
-        if self._grad_over_norm_dict[(layerind, uc_ind, symb)] is None:
-            diff = self.wi_gamma_in_vec[layerind].inv()
-            # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
-            offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
-            # Extract only the part of the virtual-virtual correlations
-            _, _, deriv_d = utils.extract_partial_covmats(self.gamma_maj_sys_deriv_vec(symb)[layerind, uc_ind], offset)
-            mat_d_inv = self.mat_d_inv_vec[layerind]
+        diff = self.wi_gamma_in_vec[layerind].inv()
+        # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
+        offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
+        # Extract only the part of the virtual-virtual correlations
+        _, _, deriv_d = utils.extract_partial_covmats(self.gamma_maj_sys_deriv_vec(symb)[layerind, uc_ind], offset)
+        mat_d_inv = self.mat_d_inv_vec[layerind]
 
-            # TODO: We might save one matrix-matrix multiplication here
-            # The deriv_d and mat_d_inv are constant
-            self._grad_over_norm_dict[(layerind, uc_ind, symb)] = utils.compute_grad_over_norm(
-                self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv
-            )
-        return self._grad_over_norm_dict[(layerind, uc_ind, symb)]
+        # TODO: We might save one matrix-matrix multiplication here
+        # The deriv_d and mat_d_inv are constant
+        res = utils.compute_grad_over_norm(self.gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv)
+        return res
 
     @property
     def grad_over_norm_vec(self) -> xnp.ndarray:
