@@ -1217,7 +1217,7 @@ class System2DBase(ABC):
 
                 # Compute gradient
                 dest_grad = backend.array_assign(
-                    dest_grad, symbol_ind, self.compute_grad_over_norm(layerind, uc_ind, symbol)
+                    dest_grad, symbol_ind, self.compute_grad_over_norm(layerind, uc_ind, symbol_ind)
                 )
         return dest_grad
 
@@ -1381,13 +1381,14 @@ class System2DBase(ABC):
             cumval += 0.5 * detval
         return cumval
 
-    def compute_grad_over_norm(self, layerind: int, uc_ind: int, symb: sympy.Symbol) -> float:
+    def compute_grad_over_norm(self, layerind: int, uc_ind: int, symb_ind: int) -> float:
         """Compute the quotient of derivative of the norm over the norm itself.
         We can avoid a lot of factors by computing the quotient directly.
 
         Args:
-            var (sympy.Symbol): Name of the variable
-            layerind (int): Index of the layer
+            layerind (int): layer index
+            uc_ind (int): unit cell index
+            symb_ind (int): index into symbolvec of parameter wrt which to take the derivative
 
         Returns:
             float: Value of the gradient divided by the norm of the state
@@ -1396,7 +1397,9 @@ class System2DBase(ABC):
         # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
         offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
         # Extract only the part of the virtual-virtual correlations
-        _, _, deriv_d = utils.extract_partial_covmats(self.gamma_maj_sys_deriv_vec(symb)[layerind, uc_ind], offset)
+        _, _, deriv_d = utils.extract_partial_covmats(
+            self.gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symb_ind], offset
+        )
         mat_d_inv = self.mat_d_inv_vec[layerind]
 
         # TODO: We might save one matrix-matrix multiplication here

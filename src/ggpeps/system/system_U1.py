@@ -309,7 +309,7 @@ class U1System2D(System2DBase):
                 dest.append(el_energy_layer)
 
                 ###################### Calculation of the derivative ########################
-                for symbol in self.symbolvec:
+                for symbol_ind, symbol in enumerate(self.symbolvec):
                     deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
                     d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
                     d_gamma_out = (
@@ -325,7 +325,7 @@ class U1System2D(System2DBase):
                         0.25 * (d_covmat_out_virt[0, 1] + d_covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                     )
                     # Summand with derivative of norms
-                    trace_def = self.compute_grad_over_norm(layerind, 0, symbol)
+                    trace_def = self.compute_grad_over_norm(layerind, 0, symbol_ind)
                     trace_mod = self._compute_grad_over_norm(
                         gamma_in_sys_mod,
                         diff_d_inv_gamma_inv,
