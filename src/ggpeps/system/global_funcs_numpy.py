@@ -4,7 +4,6 @@ import numpy as np
 from pfapack import pfaffian as pf
 
 import ggpeps
-import ggpeps.utils as utils
 from ggpeps.system.backend_base import BackendBase
 
 

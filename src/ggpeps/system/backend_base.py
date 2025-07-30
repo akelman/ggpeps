@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
 
-from ggpeps import xnp as xnp
-
 
 class BackendBase(ABC):
     """Abstract base class for the backend.

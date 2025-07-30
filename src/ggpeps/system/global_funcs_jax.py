@@ -4,7 +4,7 @@ from functools import partial
 
 import jax
 import jax.numpy as jnp
-from jax import jit, device_put
+from jax import jit
 
 # The following line ensures that JAX is configured to 64-bit precision.
 # Without this line, some of the precision tests do not pass.
@@ -12,8 +12,6 @@ jax.config.update("jax_enable_x64", True)
 
 import py_pfaffian.jax
 
-import ggpeps
-import ggpeps.utils as utils
 from ggpeps.system.backend_base import BackendBase
 
 
