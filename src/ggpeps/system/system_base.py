@@ -579,6 +579,35 @@ class System2DBase(ABC):
             gamma_maj_sys_vec.append(dest)
         return xnp.array(gamma_maj_sys_vec)
 
+    def _compute_d_gamma_out_symbolvec(self):
+        dim_gamma_out = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
+        shape = (self.cfg.nlayer, self.cfg.unitcell_size, len(self.symbolvec), dim_gamma_out, dim_gamma_out)
+        d_gamma_out_symbolvec = xnp.full(shape, xnp.nan)
+
+        for layer in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            for uc_ind in range(self.cfg.unitcell_size):
+                offset = dim_gamma_out
+
+                for ind, symbol in enumerate(self.symbolvec):
+                    mat_b = self.mat_b_vec[layer]
+                    deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_layvec_ucvec_symbvec[layer, uc_ind, ind]
+                    d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                    diff_d_gamma_inv = self.wi_gamma_out_vec[layer].inv()
+                    d_gamma_out = (
+                        d_mat_a
+                        + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                        + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
+                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                    )
+
+                    d_gamma_out_symbolvec = backend.array_assign(
+                        d_gamma_out_symbolvec, (layer, uc_ind, ind), d_gamma_out
+                    )
+
+        d_gamma_out_symbolvec = xnp.array(d_gamma_out_symbolvec)
+        return d_gamma_out_symbolvec
+
+    @property
     def d_gamma_out_symbolvec(self) -> xnp.ndarray:
         """Return a vector containing the derivatives of gamma_out for each symbol.
 
@@ -589,31 +618,7 @@ class System2DBase(ABC):
                    wrt the parameter at that (lay, uc_ind, symbol)
         """
         if self._d_gamma_out_symbolvec is None:
-            dim_gamma_out = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
-            shape = (self.cfg.nlayer, self.cfg.unitcell_size, len(self.symbolvec), dim_gamma_out, dim_gamma_out)
-            self._d_gamma_out_symbolvec = xnp.full(shape, xnp.nan)
-
-            for layer in range(self.cfg.num_pg_layer, self.cfg.nlayer):
-                for uc_ind in range(self.cfg.unitcell_size):
-                    offset = dim_gamma_out
-
-                    for ind, symbol in enumerate(self.symbolvec):
-                        mat_b = self.mat_b_vec[layer]
-                        deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_layvec_ucvec_symbvec[layer, uc_ind, ind]
-                        d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
-                        diff_d_gamma_inv = self.wi_gamma_out_vec[layer].inv()
-                        d_gamma_out = (
-                            d_mat_a
-                            + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
-                            + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
-                            - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ xnp.transpose(mat_b)
-                        )
-
-                        self._d_gamma_out_symbolvec = backend.array_assign(
-                            self._d_gamma_out_symbolvec, (layer, uc_ind, ind), d_gamma_out
-                        )
-
-            self._d_gamma_out_symbolvec = xnp.array(self._d_gamma_out_symbolvec)
+            self._d_gamma_out_symbolvec = self._compute_d_gamma_out_symbolvec()
         return self._d_gamma_out_symbolvec
 
     @property
@@ -1953,7 +1958,7 @@ class System2DBase(ABC):
                 self.cfg.num_fermionic_layer,
                 self.cfg.unitcell_size,
                 tuple(self.cfg.symbolvec),
-                self.d_gamma_out_symbolvec(),
+                self.d_gamma_out_symbolvec,
                 self.cfg.zeroed_params,
                 use_trans_inv=True,
             )

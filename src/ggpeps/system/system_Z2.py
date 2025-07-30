@@ -610,7 +610,7 @@ class Z2System2D(System2DBase):
                         # we can skip it for parameters that are forced by the ansatz to be zero
                         if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
 
-                            d_gamma_out = self.d_gamma_out_symbolvec()[layer_ind, uc_ind, symbol_ind]
+                            d_gamma_out = self.d_gamma_out_symbolvec[layer_ind, uc_ind, symbol_ind]
                             grad = (
                                 0.5
                                 * cos_factor_hor
@@ -685,7 +685,7 @@ class Z2System2D(System2DBase):
                         # we can skip it for parameters that are forced by the ansatz to be zero
                         if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
 
-                            d_gamma_out = self.d_gamma_out_symbolvec()[layer_ind, uc_ind, symbol_ind]
+                            d_gamma_out = self.d_gamma_out_symbolvec[layer_ind, uc_ind, symbol_ind]
                             grad = 0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
                             gradients = backend.array_add(gradients, (layer_ind, uc_ind, symbol_ind), grad)
 
