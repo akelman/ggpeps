@@ -24,9 +24,9 @@ def main(args):
                 df_tmp = pd.read_pickle(fname)
                 df_tmp["type"] = "EC"
                 df_tmp["err"] = np.nan  # Append an empty column to make merges work
-                if not "nlayer" in df_tmp.columns:
+                if "nlayer" not in df_tmp.columns:
                     df_tmp["nlayer"] = utils.fname2nlayer(fname)
-                if not "ncopy" in df_tmp.columns:
+                if "ncopy" not in df_tmp.columns:
                     df_tmp["ncopy"] = utils.fname2ncopy(fname)
                 dfvec.append(df_tmp)
     if args.mc is not None:
@@ -34,9 +34,9 @@ def main(args):
             if os.path.isfile(fname):
                 df_tmp = pd.read_pickle(fname)
                 df_tmp["type"] = "MC"
-                if not "nlayer" in df_tmp.columns:
+                if "nlayer" not in df_tmp.columns:
                     df_tmp["nlayer"] = utils.fname2nlayer(fname)
-                if not "ncopy" in df_tmp.columns:
+                if "ncopy" not in df_tmp.columns:
                     df_tmp["ncopy"] = utils.fname2ncopy(fname)
                 dfvec.append(df_tmp)
     df_mc_ec = pd.concat(dfvec)

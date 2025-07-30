@@ -1,15 +1,11 @@
 import sympy
 import logging
-from typing import List
 
 import numpy as np
-from ggpeps import xnp as xnp
-from ggpeps import xscipy as xscipy
 
 import ggpeps
 from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
-from ggpeps.system.global_funcs import *
 
 from .system_base import Config2DBase
 from .system_base import get_pfaffian_arrays
@@ -27,8 +23,10 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
     Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di].
     Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
-    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
-    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
+    Mode order of gamma_dirac:
+        {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
+    Mode order of gamma_maj:
+        {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
     """
 
     _nparams = 20
@@ -51,6 +49,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         enforce_u1_symmetry=True,
     ):
         super().__init__(
+            gauge.ZNGauge(2),
             lattice,
             g_el,
             g_mag,
@@ -90,10 +89,9 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         # set to True if you want to enforce U(1) symmetry in the fermionic layers
         # (set to False to allow fermionic number to float between sectors)
         self.u1_symmetry = enforce_u1_symmetry
-
         # We store a list of the parameters forced to be zero by the ansatz
         # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
+        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
@@ -110,8 +108,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
         self.el_overall_factors = [
             -1 / 16
-        ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2)
+        ] * self.nlayer  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.
@@ -159,9 +156,9 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
                     coord = (layer_ind, uc_ind, ind)
                     zeroed_params.append(coord)
 
-        return zeroed_params
+        return tuple(zeroed_params)
 
-    def _create_symbolvec(self) -> List[sympy.Symbol]:
+    def _create_symbolvec(self) -> list[sympy.Symbol]:
         """Define all symbols of the T matrix as symbols.
         We will use the analytic expression of the T matrix to calculate the derivative
         of the covariance matrices analytically.
@@ -331,7 +328,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         This method overwrites an abstract method in System2DBase.
 
         Returns:
-            List[xnp.ndarray]: Covariance matrices of the ungauged projector on a single link
+            list[xnp.ndarray]: Covariance matrices of the ungauged projector on a single link
         """
 
         # 2 if for 2D lattice

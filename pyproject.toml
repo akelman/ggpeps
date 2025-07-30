@@ -8,7 +8,7 @@ dynamic = ["version"]
 name = "ggpeps"  
 description = "A Python package to work with Gauged Gaussian Projected Entangled Pair States (GGPEPS)"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 #license = {file = "LICENSE.txt"}
 
@@ -66,10 +66,12 @@ dependencies = [
   "jax",
   "jaxlib",
   "ray",
+  # py-pfaffian is not available on PyPI, so we get it from GitHub:
+  "py-pfaffian @ git+https://github.com/Nuclear-Physics-with-Machine-Learning/PyPfaffian.git@main"
 ]
 
 [project.optional-dependencies]
-dev = ["check-manifest", "seaborn"]
+dev = ["check-manifest", "seaborn", "black"]
 test = ["coverage", "nox"]
 
 [tool.setuptools_scm]
@@ -77,6 +79,12 @@ version_file = "src/ggpeps/_version.py"
 
 [tool.black]
 line-length = 119
+
+[[tool.mypy.overrides]]
+# mark packages which do not have typing data, 
+# see: https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-library-stubs-or-py-typed-marker
+module = ["numba.*", "pfapack.*"]
+ignore_missing_imports = true
 
 #[project.urls]
 #"Homepage" = ""

@@ -5,23 +5,25 @@ import gzip
 import pickle
 import logging
 import subprocess  # Start process for git hash
-from typing import Optional
+from typing import Optional, Union
 
 import numba as nb
+import pandas as pd
 from scipy.sparse import issparse
 from scipy.linalg import svd, block_diag
 
 import numpy as np
+import jax.numpy as jnp
 from ggpeps import xnp as xnp
-import pandas as pd
-
-from pfapack import pfaffian as pf
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
 import ggpeps
 import ggpeps.measurement as meas
+from ggpeps.system.global_funcs import backend
+from ggpeps.system.global_funcs_jax import derivative_pfaffian_jax
+from ggpeps.system.global_funcs_numpy import derivative_pfaffian_numpy
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -33,7 +35,10 @@ pauliz = np.array([[1, 0], [0, -1]])
 # ========== Utility Functions ====================
 
 
-def setup_logger(logger: logging.Logger, log_file: str, level: str, runner_msg: str = ""):
+def setup_logger(logger: logging.Logger, log_file: str, level: str, runner_msg: str = "") -> None:
+    """
+    Setup the logger to log to a file and stdout/stderr.
+    """
     log_file_handler = logging.FileHandler(log_file)
     h_stdout = logging.StreamHandler(stream=sys.stdout)
     h_stderr = logging.StreamHandler(stream=sys.stderr)
@@ -48,7 +53,7 @@ def setup_logger(logger: logging.Logger, log_file: str, level: str, runner_msg: 
     return
 
 
-def fname2nlayer(fname):
+def fname2nlayer(fname: str) -> Optional[int]:
     """Extract the number of layers from a filename"""
     pattern = r"(?<=nlayer_)[\d]*"
     result = re.search(pattern, fname)
@@ -58,7 +63,7 @@ def fname2nlayer(fname):
         return None
 
 
-def fname2ncopy(fname):
+def fname2ncopy(fname: str) -> Optional[int]:
     """Extract the number of copies from a filename"""
     pattern = r"(?<=ncopy_)[\d]*"
     result = re.search(pattern, fname)
@@ -68,7 +73,7 @@ def fname2ncopy(fname):
         return None
 
 
-def fname2g(fname):
+def fname2g(fname: str) -> Optional[float]:
     """Extract the coupling from a filename"""
     pattern = r"(?<=g_)[\d]*\.[\d]*"
     result = re.search(pattern, fname)
@@ -78,7 +83,7 @@ def fname2g(fname):
         return None
 
 
-def fname2gel(fname):
+def fname2gel(fname: str) -> Optional[float]:
     """Extract the electric coupling from a filename"""
     pattern = r"(?<=gel_)[\d]*\.[\d]*"
     result = re.search(pattern, fname)
@@ -88,18 +93,21 @@ def fname2gel(fname):
         return None
 
 
-def fname2L(fname):
+def fname2L(fname: str) -> Optional[int]:
     """Extract the system size from a filename"""
     pattern = r"(?<=L_)[\d]*"
     result = re.search(pattern, fname)
-    return int(result.group(0))
+    if result is not None:
+        return int(result.group(0))
+    else:
+        return None
 
 
-def isclose(x, y, rtol=1.0e-5, atol=1.0e-8):
+def isclose(x: float, y: float, rtol: float = 1.0e-5, atol: float = 1.0e-8) -> bool:
     return abs(x - y) <= atol + rtol * abs(y)
 
 
-def load_matrix_dat_fmt(path, is_complex=True):
+def load_matrix_dat_fmt(path: str, is_complex: bool = True) -> np.ndarray:
     """Load matrix format exported from C++.
 
     Args:
@@ -130,7 +138,7 @@ def load_matrix_dat_fmt(path, is_complex=True):
     return np.array(dest)
 
 
-def merge_measurements(meas1: meas.Measurement, meas2: meas.Measurement):
+def merge_measurements(meas1: meas.Measurement, meas2: meas.Measurement) -> meas.Measurement:
     """Merge two measurements by merging their timeseries
 
     Args:
@@ -146,8 +154,15 @@ def merge_measurements(meas1: meas.Measurement, meas2: meas.Measurement):
     return dest
 
 
-def mergeDict(dict1, dict2):
-    """Left Merge dictionaries that contain only lists and append lists if values are common"""
+def mergeDict(dict1: dict, dict2: dict) -> dict:
+    """Left Merge dictionaries that contain only lists and append lists if values are common
+
+    Args:
+        dict1 (dict): First dictionary
+        dict2 (dict): Second dictionary
+    Returns:
+        dict: Merged dictionary
+    """
     dest = {}
     for key in dict1:
         if key in dict2:
@@ -158,7 +173,7 @@ def mergeDict(dict1, dict2):
     return dest
 
 
-def print_columns(listvals, padding=4, header=False):
+def print_columns(listvals: list[list], padding: int = 4, header: bool = False) -> None:
     """Print a multi-dimensional list in a table
 
     Args:
@@ -173,8 +188,8 @@ def print_columns(listvals, padding=4, header=False):
             print("")
 
 
-def sizeof_fmt(num, suffix="B"):
-    """Pretty print a size as mutliples of 1024."""
+def sizeof_fmt(num: float, suffix: str = "B") -> str:
+    """Print nicely a size as multiples of 1024."""
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
         if abs(num) < 1024.0:
             return "%3.1f %s%s" % (num, unit, suffix)
@@ -182,7 +197,7 @@ def sizeof_fmt(num, suffix="B"):
     return "%3.1f %s%s" % (num, "Yi", suffix)
 
 
-def get_git_hash():
+def get_git_hash() -> str:
     """Get the git hash of the current commit in the repository.
 
     Returns:
@@ -197,7 +212,23 @@ def get_git_hash():
     return githash.decode("utf-8").strip()
 
 
-def select_except(arr, ind: int):
+def extract_partial_covmats(mat: xnp.ndarray, corner: int):
+    """Extract the partial covariance matrices from a gaussian mapping
+
+    Args:
+        mat (xnp.ndarray): Full covariance matrix
+        corner (int): Index of the top left element of the bottom right matrix
+
+    Returns:
+        tuple: Matrices (A,B,D)
+    """
+    mat_a = mat[:corner, :corner]
+    mat_b = mat[:corner, corner:]
+    mat_d = mat[corner:, corner:]
+    return mat_a, mat_b, mat_d
+
+
+def select_except(arr: Union[list, xnp.ndarray], ind: int) -> xnp.ndarray:
     """Return all elements of a list except the indicated one
 
     Args:
@@ -205,45 +236,58 @@ def select_except(arr, ind: int):
         ind (int): index
 
     Returns:
-        np.array: Array with all elements of arr except for arr[ind]
+        xnp.ndarray: Array with all elements of arr except for arr[ind]
     """
     # This function works only on the outer-most layer
     if isinstance(arr, list):
         arr = xnp.asarray(arr)
     mask = xnp.ones(len(arr), dtype=bool)
-    if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
-        mask = mask.at[ind].set(False)
-    else:
-        mask[ind] = False
-    return arr[mask]  # TODO: fix for JAX
+    mask = backend.array_assign(mask, ind, False)
+    return arr[mask]  # TODO: fix for JAX jit
 
 
-def multiply_except(arr, ind: int):
-    """Product of all array values except for arr[ind]
+def multiply_except(arr: Union[xnp.ndarray, list], ind: int) -> float:
+    """Multiply all array values except for arr[ind]
 
     Args:
-        arr (list/np.arr): list of values
+        arr (list/xnp.ndarray): list of values
         ind (int): index
 
     Returns:
         float: Multiplication of all array values except for arr[ind]
     """
     if len(arr) > 1:
-        others = select_except(arr, ind)
-        return xnp.prod(others)
+        mask = xnp.ones(len(arr), dtype=bool)
+        mask = backend.array_assign(mask, ind, False)
+        prod_other = xnp.where(mask, arr, 1.0).prod()
+        return prod_other
     else:
         # It does not make sense to execute this function with only one element
         return arr[0]
 
 
 @nb.njit(cache=True)
-def pfaffian_explicit_4x4_masked(mat, ind):
+def pfaffian_explicit_4x4_masked(
+    mat: xnp.ndarray, ind: Union[tuple[int, int, int, int], list[int], xnp.ndarray]
+) -> float:
+    """
+    Calculate the Pfaffian of a 4x4 block of a matrix explicitly using the indices provided (the indices from which the block is sliced).
+    Args:
+        mat (xnp.ndarray): Input matrix
+        ind (Union[tuple[int,int,int,int], list[int], xnp.ndarray[int]]): Indices for the 4x4 block
+    """
     i0, i1, i2, i3 = ind
     return (mat[i0, i1] * mat[i2, i3]) - (mat[i0, i2] * mat[i1, i3]) + (mat[i1, i2] * mat[i0, i3])
 
 
 @nb.njit(cache=True)
-def pfaffian_explicit_4x4(mat):
+def pfaffian_explicit_4x4(mat: xnp.ndarray) -> float:
+    """Calculate the Pfaffian of a 4x4 matrix explicitly.
+    Args:
+        mat (np.ndarray): 4x4 matrix
+    Returns:
+        float: Pfaffian value
+    """
     return (mat[0, 1] * mat[2, 3]) - (mat[0, 2] * mat[1, 3]) + (mat[1, 2] * mat[0, 3])
 
 
@@ -257,29 +301,31 @@ def derivative_pfaffian_covariance_mat(pfarr, matvec, d_matvec):
     return dest
 
 
-def derivative_pfaffian(mat, d_mat, pfaval=None):
+def derivative_pfaffian(mat: xnp.ndarray, d_mat: xnp.ndarray, pfaval=None) -> float:
     """Compute the derivative of a Pfaffian of a matrix A.
-    The explicit derivative dA/dx is given as a second argument
+        The explicit derivative dA/dx is given as a second argument
 
-    The given formula is only valid if A is not singular.
+        The given formula is only valid if A is not singular.
 
-    Args:
-        mat (np.ndarray): Input Matrix A
-        d_mat (np.ndarray): Derivative dA/dx
+        Args:
+            mat (xnp.ndarray): Input Matrix A
+            d_mat (xnp.ndarray): Derivative dA/dx
 
-    Returns:
-        np.ndarray: d(Pf(A))/dx
+        Returns:
+    <<<<<<< HEAD
+            xnp.ndarray: d(Pf(A))/dx
+    =======
+            float: d(Pf(A))/dx
+    >>>>>>> dev
     """
-    if pfaval is None:
-        pfaval = pf.pfaffian(mat)
-
-    if not isclose(pfaval, 0):
-        return 0.5 * pfaval * xnp.trace(xnp.linalg.inv(mat) @ d_mat)
+    # We assume the types of all the provided arguments match
+    if isinstance(mat, jnp.ndarray):
+        return derivative_pfaffian_jax(mat, d_mat, pfaval=pfaval)
     else:
-        return 0.0
+        return derivative_pfaffian_numpy(mat, d_mat, pfaval=pfaval)
 
 
-def get_obs_mean_df(df: pd.DataFrame, obs: str) -> float:
+def get_obs_mean_df(df, obs):
     """Get the mean of an observable from the summary dataframe.
 
     Args:
@@ -287,12 +333,12 @@ def get_obs_mean_df(df: pd.DataFrame, obs: str) -> float:
         df (pd.DataFrame): Summary dataframe.
 
     Returns:
-        float: Mean value of the observable.
+        float or xnp.ndarray: Mean value of the observable.
     """
     return df.loc[df["name"] == obs, "mean"].values[0]
 
 
-def save_summary_df(df, fname_summary: str):
+def save_summary_df(df: pd.DataFrame, fname_summary: str) -> None:
     """Save the evaluation summary to a given filename
 
     Args:
@@ -329,7 +375,7 @@ def is_symmetric(mat):
         return xnp.allclose(xnp.transpose(mat), mat)
 
 
-def is_permutation(mat):
+def is_permutation(mat: xnp.ndarray) -> bool:
     """Returns true if the matrix is a permutation matrix."""
     n, m = mat.shape
     if issparse(mat):
@@ -339,10 +385,10 @@ def is_permutation(mat):
         id = xnp.allclose(xnp.eye(n), mat @ xnp.transpose(mat))
         sum_rows = xnp.all(xnp.sum(mat, axis=0) == 1)
         sum_cols = xnp.all(xnp.sum(mat, axis=1) == 1)
-        return square and id and sum_rows and sum_cols
+        return bool(square and id and sum_rows and sum_cols)
 
 
-def is_antisymmetric(mat, rtol: float = 1e-5, atol: float = 1e-8):
+def is_antisymmetric(mat, rtol=1e-5, atol=1e-8):
     """Returns true if the matrix mat is anti-symmetric."""
     if issparse(mat):
         return xnp.allclose(mat.todense(), -mat.T.todense(), rtol=rtol, atol=atol)
@@ -350,7 +396,7 @@ def is_antisymmetric(mat, rtol: float = 1e-5, atol: float = 1e-8):
         return xnp.allclose(-xnp.transpose(mat), mat, rtol=rtol, atol=atol)
 
 
-def is_covmat(mat: np.ndarray, rtol: float = 1e-5, atol: float = 1e-8) -> bool:
+def is_covmat(mat: xnp.ndarray, rtol: float = 1e-5, atol: float = 1e-8) -> bool:
     """Returns true if the given matrix satisfies all the conditions to be a covariance matrix."""
     m, n = mat.shape
     if (
@@ -365,22 +411,22 @@ def is_covmat(mat: np.ndarray, rtol: float = 1e-5, atol: float = 1e-8) -> bool:
     return False
 
 
-def anti_symmetrize(mat):
+def anti_symmetrize(mat: xnp.ndarray) -> xnp.ndarray:
     """Force a matrix to be anti-symmetirc."""
     return 0.5 * (mat - mat.T)
 
 
-def get_nonzero_fraction(mat):
+def get_nonzero_fraction(mat: xnp.ndarray):
     """Returns fraction of non-zero elements."""
     return xnp.count_nonzero(mat) / xnp.prod(mat.shape)
 
 
-def herm_conj(mat):
+def herm_conj(mat: xnp.ndarray) -> xnp.ndarray:
     """Returns the hermitian conjugate of a matrix."""
     return xnp.conjugate(xnp.transpose(mat))
 
 
-def commutator(mat1, mat2):
+def commutator(mat1: xnp.ndarray, mat2: xnp.ndarray) -> xnp.ndarray:
     """Calculate the commutator of two matrices
 
     Args:
@@ -393,7 +439,7 @@ def commutator(mat1, mat2):
     return (mat1 @ mat2) - (mat2 @ mat1)
 
 
-def anticommutator(mat1, mat2):
+def anticommutator(mat1: xnp.ndarray, mat2: xnp.ndarray) -> xnp.ndarray:
     """Calculate the anti-commutator of two matrices
 
     Args:
@@ -409,8 +455,8 @@ def anticommutator(mat1, mat2):
 # =========== Covariance Utility Funcitons ===========
 
 
-def tmat_to_covariance_matrix(tmat: np.ndarray) -> np.ndarray:
-    """Transforms a T matrix into the corresponding covariance matrix in terms of Dirac modes.
+def tmat_to_covariance_matrix(tmat: xnp.ndarray) -> xnp.ndarray:
+    r"""Transform a T matrix into the corresponding covariance matrix in terms of Dirac modes.
     This function assumes that the fiducial operator has a certain form: A=exp(T_{ij}a_i^\dagger a_j^\dagger)
 
     Args:
@@ -429,7 +475,7 @@ def tmat_to_covariance_matrix(tmat: np.ndarray) -> np.ndarray:
     return 1.0j * xnp.block([[lt, rt], [lb, rb]])
 
 
-def generate_smat(n: int):
+def generate_smat(n: int) -> xnp.ndarray:
     r"""Generate matrix to transform Dirac modes into Majorana modes.
     The function assumes the modes order of [a_1, a_2,....., a_n, a_1^\dagger,.....,a_n^\dagger].
 
@@ -444,53 +490,119 @@ def generate_smat(n: int):
     return xnp.block([halfmat, xnp.conjugate(halfmat)])
 
 
+def compute_grad_over_norm(
+    gamma_in_sys: np.ndarray,
+    diff: np.ndarray,
+    deriv_d: np.ndarray,
+    mat_d_inv: np.ndarray,
+    method: str = "hadamard",
+) -> float:
+    r"""Compute the gradient of the norm divided by the norm.
+    The expression of deriv_d given to this function decides which derivative is computed.
+
+    The gradient of the norm divided by the norm is given by
+        -0.5 * np.trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
+    which is very expensive to calculate.
+    To reduce the number of expensive matrix multiplications, we use the fact that
+        Tr(A @ B.T) = \sum_ij a_ij b_ij
+    i.e. trace of a square matrix which is the product of two real matrices can be rewritten as
+    the sum of entry-wise products of their elements, i.e. as the sum of all elements of their Hadamard product [1].
+    Note that for current systems, the input matrices are always real, but this should be checked if the system changes
+    (e.g. for other groups).
+
+    When using a GPU it is faster to do all the matrix multiplications
+    and then take the trace.
+
+    The choice of which method to use is given by the `method` parameter.
+
+    Refs:
+        [1] Trace, Wikipedia, https://en.wikipedia.org/wiki/Trace_(linear_algebra)#Trace_of_a_product
+
+    Args:
+        gamma_in_sys (np.ndarray): Gauged covariance matrix of the projectors
+        diff (np.ndarray): (D^{-1} - gamma_in_sys)^{-1}
+        deriv_d (np.ndarray): dD/d{alpha}: Derivative of the virtual-virtual covariance matrix
+        mat_d_inv (np.ndarray): Inverse of D: D^{-1}
+        method (str, optional): Method to use to compute the gradient over norm.
+
+    Returns:
+        float: Gradient of the norm divided by the norm.
+    """
+    if method == "hadamard":
+        A = gamma_in_sys @ deriv_d
+        B = mat_d_inv @ diff
+        dest = -0.5 * (A * B.T).sum()
+    elif method == "trace":
+        dest = -0.5 * xnp.trace(xnp.matmul(xnp.matmul(gamma_in_sys, deriv_d), xnp.matmul(mat_d_inv, diff)))
+    else:
+        raise ValueError(f"Unknown method {method} for computing the gradient over norm.")
+    return dest
+
+
 # =========================== Cache Server =================================
 
 
 class CacheServer:
     """Storage Server for arbitrary data that can be stored in dictionaries"""
 
-    def __init__(self):
-        self.store = {}
+    def __init__(self) -> None:
+        self.store: dict = {}
 
-    def add(self, name, mat):
+    def add(self, name: str, mat) -> None:
         self.store[name] = mat
 
-    def get(self, name):
+    def get(self, name: str) -> Optional[xnp.ndarray]:
+        """Get data from the cache server by name."""
         try:
             return self.store[name]
         except KeyError:
             return None
 
-    def load(self, fname):
+    def load(self, fname: str) -> None:
+        """Load data from pkl file into the cache server."""
         if os.path.isfile(fname):
             with gzip.open(fname, "rb") as infile:
                 self.store = pickle.load(infile)
 
-    def save(self, fname):
+    def save(self, fname: str) -> None:
+        """Save the cache server to a pkl file."""
         # We only save if the file does not exist yet
         if not os.path.isfile(fname):
             with gzip.open(fname, "wb") as outfile:
                 pickle.dump(self.store, outfile)
 
-    def list(self):
+    def list(self) -> None:
+        """Print the keys of the cache server."""
         print(self.store.keys)
 
-    def __str__(self):
-        print(f"CacheServer: {len(self.store)} Entries")
+    def __str__(self) -> str:
+        """Print the number of entries in the cache server."""
+        return f"CacheServer: {len(self.store)} Entries"
 
 
 # =========================== WoodburyInverter ===============================
 
 
 class WoodburyInverter:
-    def __init__(self, mat):
+    def __init__(self, mat: xnp.ndarray):
         self.ainv = xnp.linalg.inv(mat)
 
-    def inv(self):
+    def inv(self) -> xnp.ndarray:
         return self.ainv
 
-    def update(self, u, c, v):
+    def update(self, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> xnp.ndarray:
+        """Update the inverse of a matrix A using the Woodbury formula.
+        The formula is: (A+UCV)^{-1}=A^{-1} - A^{-1}U(C^{-1}+VA^{-1}U)^{-1}VA^{-1}.
+        Args:
+            u (np.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
+                                    used to place the update C to match the dimensions of M.
+            v (np.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
+                                    used to place the update C to match the dimensions of M.
+            c (np.ndarray): Local update matrix C
+        Returns:
+            np.ndarray: Updated inverse matrix (A+UCV)^{-1}
+
+        """
         # We ware updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
         if not xnp.allclose(c, 0):
             # We cannot update with C being zero since this matrix has no inverse
@@ -498,21 +610,32 @@ class WoodburyInverter:
             self.ainv -= ((self.ainv @ u) @ xnp.linalg.inv(cinv + v @ self.ainv @ u)) @ (v @ self.ainv)
         return self.ainv
 
-    def update_index(self, m, indi, indj):
-        # Construct two matrices to shift M to the correct position in A
+    def update_index(self, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
+        """
+        Update the inverse of the matrix A using the Woodbury formula, given indices indicating the positions in A
+        where the update M is placed. This is done by generating the U and V matrix for the upddate method.
+
+        Args:
+            m (np.ndarray): M matrix - The local update matrix to A.
+            indi (int): Index in the first dimension of A where the update m is placed.
+            indj (int): Index in the second dimension of A where the update m is placed.
+        Returns:
+            np.ndarray: Updated inverse matrix (A+UMV)^{-1}
+        """
+        # Construct two matrices to shift m to the correct position in A
         if not xnp.allclose(m, 0):
-            # We cannot update with C being zero since this matrix has no inverse
+            # We cannot update with m being zero since this matrix has no inverse
             m_m, n_m = m.shape
             m_a, n_a = self.ainv.shape
             idmat = xnp.eye(m_m, n_m)
             u = xnp.zeros((m_a, m_m))
             v = xnp.zeros((n_m, n_a))
-            if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
-                u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
-                v = v.at[0:m_m, indj : indj + n_m].set(idmat)
-            else:
-                u[indi : indi + m_m, 0:n_m] = idmat  # TODO: fix for JAX - DONE
-                v[0:m_m, indj : indj + n_m] = idmat
+
+            inds_u = (slice(indi, indi + m_m), slice(0, n_m))
+            u = backend.array_assign(u, inds_u, idmat)
+
+            inds_v = (slice(0, m_m), slice(indj, indj + n_m))
+            v = backend.array_assign(v, inds_v, idmat)
             return self.update(u, m, v)
         else:
             return self.inv()
@@ -520,10 +643,21 @@ class WoodburyInverter:
 
 # =========================== IncDeterminant ===============================
 class IncDeterminant:
-    def __init__(self, a):
+    def __init__(self, a: xnp.ndarray) -> None:
         self.detval = xnp.linalg.det(a)
 
-    def update(self, ainv, u, c, v, store=True):
+    def update(self, ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray, store: bool = True) -> float:
+        """Update the determinant of a matrix A using the matrix determinant lemma.
+        The formula is: det(A+UCV)=det(A) * det(C^{-1}+VA^{-1}U) * det(C).
+        Args:
+            ainv (np.ndarray): Inverse of the matrix A
+            u (np.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
+                                    used to place the update C to match the dimensions of A.
+            c (np.ndarray): Local update matrix C
+            v (np.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
+                                    used to place the update C to match the dimensions of A.
+            store (bool, optional): Store the updated determinant value. Defaults to True.
+        """
         # We ware updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
         dest = self.detval
         if not xnp.allclose(c, 0):
@@ -533,26 +667,7 @@ class IncDeterminant:
                 self.detval = dest
         return dest
 
-    def det(self):
-        return self.detval
-
-
-def update_index(self, ainv, m, indi, indj, store=True):
-    # Construct two matrices to shift M to the correct position in A
-    if not xnp.allclose(m, 0):
-        m_m, n_m = m.shape
-        m_a, n_a = ainv.shape
-        idmat = xnp.eye(m_m, n_m)
-        u = xnp.zeros(m_a, m_m)
-        v = xnp.zeros(n_m, n_a)
-        if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
-            u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
-            v = v.at[0:m_m, indj : indj + n_m].set(idmat)
-        else:
-            u[indi : indi + m_m, 0:n_m] = idmat  # TODO: fix for JAX - DONE
-            v[0:m_m, indj : indj + n_m] = idmat
-        return self.update(ainv, u, m, v, store)
-    else:
+    def det(self) -> float:
         return self.detval
 
 
@@ -560,15 +675,26 @@ def update_index(self, ainv, m, indi, indj, store=True):
 
 
 class IncLogAbsDeterminant:
-    def __init__(self, a):
+    def __init__(self, a: xnp.ndarray) -> None:
         # We are not using the sign right now.
         # We know that the sign has to be positive
         self.sign, self.detval = xnp.linalg.slogdet(a)
 
-    def det(self):
+    def det(self) -> float:
         return self.detval
 
-    def update(self, ainv, u, c, v, store=True):
+    def update(self, ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray, store: bool = True) -> float:
+        """Update the log of the determinant of a matrix A using the matrix determinant lemma.
+        The formula is: det(A+UCV)=det(A) * det(C^{-1}+VA^{-1}U) * det(C).
+        Args:
+            ainv (np.ndarray): Inverse of the matrix A
+            u (np.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
+                                    used to place the update C to match the dimensions of A.
+            c (np.ndarray): Local update matrix C
+            v (np.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
+                                    used to place the update C to match the dimensions of A.
+            store (bool, optional): Store the updated determinant value. Defaults to True.
+        """
         # We are updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
         dest = self.detval
         converged = True
@@ -585,7 +711,17 @@ class IncLogAbsDeterminant:
                 self.detval = dest
         return dest
 
-    def update_index(self, ainv, m, indi, indj, store=True):
+    def update_index(self, ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int, store: bool = True) -> float:
+        """Update the log of the determinant of a matrix A using the matrix determinant lemma,
+        given indices indicating the positions in A where the update M is placed.
+        This is done by generating the U and V matrix for the update method.
+        Args:
+            ainv (np.ndarray): Inverse of the matrix A
+            m (np.ndarray): M matrix - The local update matrix to A.
+            indi (int): Index in the first dimension of A where the update m is placed.
+            indj (int): Index in the second dimension of A where the update m is placed
+            store (bool, optional): Store the updated determinant value. Defaults to True."""
+
         # Construct two matrices to shift M to the correct position in A
         if not xnp.allclose(m, 0):
             # We cannot update if m is zero because we cannot invert it
@@ -594,12 +730,12 @@ class IncLogAbsDeterminant:
             idmat = xnp.eye(m_m, n_m)
             u = xnp.zeros((m_a, m_m))
             v = xnp.zeros((n_m, n_a))
-            if ggpeps.PREFERRED_BACKEND == "jax":  # TODO: handle based on type checking instead
-                u = u.at[indi : indi + m_m, 0:n_m].set(idmat)
-                v = v.at[0:m_m, indj : indj + n_m].set(idmat)
-            else:
-                u[indi : indi + m_m, 0:n_m] = idmat  # TODO: fix for JAX - DONE
-                v[0:m_m, indj : indj + n_m] = idmat
+
+            inds_u = (slice(indi, indi + m_m), slice(0, n_m))
+            u = backend.array_assign(u, inds_u, idmat)
+
+            inds_v = (slice(0, m_m), slice(indj, indj + n_m))
+            v = backend.array_assign(v, inds_v, idmat)
             return self.update(ainv, u, m, v, store)
         else:
             return self.det()
@@ -675,15 +811,23 @@ class BgbTransform:
 # ========= Rebinning Functions ====================
 
 
-def autocorr_fft(arr):
+def autocorr_fft(arr: np.ndarray) -> np.ndarray:
+    """Calculate autocorrelation of a timeseries using FFT (which is much faster than doing it naively).
+    Args:
+        arr (np.ndarray): Timeseries of a measurement
+    Returns:
+        np.ndarray: Autocorrelation of the timeseries"""
     arr = arr - np.mean(arr)
+    if np.allclose(arr, 0.0):
+        # If the timeseries is constant, the autocorrelation is maximal - all ones.
+        return np.ones(arr.shape)
     fft_vals = np.fft.fft(arr)
     spectrum = fft_vals * np.conjugate(fft_vals)
     dest = np.fft.ifft(spectrum)
     return dest / dest[0]
 
 
-def rebin_array(a, R):
+def rebin_array(a: Union[list, np.ndarray], R: Union[int, float]) -> np.ndarray:
     """Rebin an array into bins of length R"""
     if isinstance(a, list):
         a = np.asarray(a)
@@ -710,7 +854,7 @@ def rebin_array(a, R):
     return dest
 
 
-def rebin_error(arr):
+def rebin_error(arr: Union[np.ndarray, list]) -> tuple[list, list, list, list]:
     """Rebin the given error to avoid autocorrelation in the error estimation
 
     Args:
@@ -735,7 +879,7 @@ def rebin_error(arr):
     return rangevals, meanarr, eomarr, stdarr
 
 
-def rebin_eom(arr, num_of_bins=20):
+def rebin_eom(arr: Union[np.ndarray, list], num_of_bins=20) -> Union[float, np.ndarray]:
     """Calculate the error on the mean (EOM) by rebinning.
     As a heuristic for the EOM we use that the biggest bin will give the best estimate.
     We do not rebin to the maximal extent, but use the heuristic of taking the largest
@@ -755,15 +899,15 @@ def rebin_eom(arr, num_of_bins=20):
         data_rebin = rebin_array(arr, binsize)
     else:
         # We cannot rebin if we have too few data. We will just return the normal EOM
-        data_rebin = arr
+        data_rebin = np.asarray(arr)
     eom = np.std(data_rebin, ddof=1, axis=0) / np.sqrt(len(data_rebin))
     return eom
 
 
-def autocorr_rebin_eom(arr):
+def autocorr_rebin_eom(arr: Union[np.ndarray, list]):
     """Calculate the autocorrelation, find the corrrelation decay time
     (when the auto-correlation decays below 1/100),
-    and calculate the error using bins with the correlation time size
+    and calculate the error using bins of the decay time size
 
     Args:
         arr (np.ndarray): Timeseries of a measurement
@@ -774,7 +918,7 @@ def autocorr_rebin_eom(arr):
             decay_time: float with the decay time (in terms of step number) of the autocorrelation
     """
     N = len(arr)
-    autocorr_array = autocorr_fft(arr)
+    autocorr_array = autocorr_fft(np.asarray(arr))
     for i in range(len(autocorr_array)):  # find first two elements below 1/100
         if i >= N / 10:  # limit the number of bins to a minimum of 10.
             eom = rebin_eom(arr, 10)
@@ -785,9 +929,10 @@ def autocorr_rebin_eom(arr):
             eom = rebin_eom(arr, num_of_bins)
             decay_time = i
             return eom, decay_time
+    return
 
 
-def autocorr_rebin_data(arr):
+def autocorr_rebin_data(arr: np.ndarray) -> tuple[np.ndarray, int]:
     """
     Rebin the data to remove autocorrelation.
     The binsize is determined by the first two elements of the autocorrelation function that are below 1/100.
@@ -810,7 +955,7 @@ def autocorr_rebin_data(arr):
     return rebinned_array, binsize
 
 
-def jackknife_resampling(data):
+def jackknife_resampling(data: np.ndarray) -> np.ndarray:
     """Generate jackknife resamples of the data."""
     n = len(data)
     indices = np.arange(n)
@@ -820,8 +965,11 @@ def jackknife_resampling(data):
     return resamples
 
 
-def jacknife_gradient_error_propagation(op_datavec, op_grad_datavec, grad_norm_datavec):
-    """Calculate the error propagation of the gradient of an observable using jackknife resampling.
+def jacknife_gradient_error_propagation(
+    op_datavec: np.ndarray, op_grad_datavec: np.ndarray, grad_norm_datavec: np.ndarray
+) -> float:
+    """Calculate the error propagation of a specific component of the gradient of an observable using jackknife resampling.
+    Without rebinning (we usually use this after rebinning the data)
 
     Args:
         op_datavec (np.ndarray): Timeseries of the observable - rebinned data, i.e., not autocorrelation
@@ -847,8 +995,9 @@ def jacknife_gradient_error_propagation(op_datavec, op_grad_datavec, grad_norm_d
     return np.sqrt((n - 1) * np.mean((grad_jacknife - mean_grad) ** 2))
 
 
-def compute_grad_err(op_datavec, op_grad_datavec, grad_norm_datavec):
-    """Compute the error of the gradient of an observable.
+def compute_grad_err(op_datavec: np.ndarray, op_grad_datavec: np.ndarray, grad_norm_datavec: np.ndarray) -> float:
+    """Compute the error of a specific component of the gradient of an observable.
+       Here we rebin the data to avoid autocorrelation.
 
     Args:
         op_datavec(np.ndarray): Timeseries of the observable
@@ -882,8 +1031,8 @@ def compute_grad_err(op_datavec, op_grad_datavec, grad_norm_datavec):
     )
 
 
-def compute_grad_mean(op_datavec, op_grad_datavec, grad_norm_datavec):
-    """Compute the mean of the gradient of an observable.
+def compute_grad_mean(op_datavec: np.ndarray, op_grad_datavec: np.ndarray, grad_norm_datavec: np.ndarray) -> float:
+    """Compute the mean of a gradient component of an observable.
 
     Args:
         op_datavec(np.ndarray): Timeseries of the observable
@@ -970,6 +1119,7 @@ def show_eigenvalues(mat):
 
 
 def get_couplings_from_foldername(fname: str) -> str:
+    """Extract the couplings from a folder name."""
     couplings = ["g", "el", "mag", "int", "mass"]
     res = ""
     for arg in couplings:
@@ -987,7 +1137,7 @@ def get_couplings_from_foldername(fname: str) -> str:
     return res
 
 
-def extract_params_from_results_file(fname: str, dest_dir: Optional[str] = "") -> bool:
+def extract_params_from_results_file(fname: str, dest_dir: str = "") -> bool:
     """Extract parameters from a results file and save to a new .npy file
 
     Args:
@@ -1023,7 +1173,7 @@ def extract_params_from_results_file(fname: str, dest_dir: Optional[str] = "") -
     return True
 
 
-def extract_params_from_run(source_dir, dest_dir):
+def extract_params_from_run(source_dir: str, dest_dir: str) -> None:
     """Extracts all the parameters from the results files of a run (with varying
     couplings), and stores them as .npy files.
 
@@ -1044,7 +1194,7 @@ def extract_params_from_run(source_dir, dest_dir):
 # ========== Testing Functions ====================
 
 
-def compare_array_elementwise(testcase, ref, res, print_vals=True):
+def compare_array_elementwise(testcase, ref: np.ndarray, res: np.ndarray, print_vals: bool = True) -> None:
     testcase.assertEqual(ref.shape, res.shape)
     if print_vals:
         for i in range(ref.shape[0]):

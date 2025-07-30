@@ -8,6 +8,7 @@ import logging
 import numpy as np
 from scipy.optimize import minimize
 from scipy.special import logsumexp
+import pandas as pd
 
 import ggpeps
 from ggpeps.caching import Cache
@@ -21,7 +22,15 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class MinimizerResult:
-    def __init__(self, paramvec, energygrad, method, value, converged, message):
+    def __init__(
+        self,
+        paramvec: np.ndarray,
+        energygrad: Optional[np.ndarray],
+        method: str,
+        value: float,
+        converged: bool,
+        message: str,
+    ) -> None:
         self.paramvec = paramvec
         self.energygrad = energygrad
         self.method = method
@@ -29,7 +38,7 @@ class MinimizerResult:
         self.converged = converged
         self.message = message
 
-    def __str__(self):
+    def __str__(self) -> str:
         dest = "==== Minimizer Result ====\n"
         dest += f"converged: {self.converged}\n"
         dest += f"Value: {self.value}\n"
@@ -62,19 +71,19 @@ class Minimizer:
     no_grad_methods: list[str] = ["POWELL", "NELDER-MEAD"]
     supported_scipy_methods = grad_methods[:-2] + no_grad_methods
 
-    def __init__(self, cfg: MinimizerConfig, evaluator_manager: EvaluatorManager):
+    def __init__(self, cfg: MinimizerConfig, evaluator_manager: EvaluatorManager) -> None:
         self.cfg: MinimizerConfig = cfg
         # We use the polymorphism of python classes.
         # Below, we will have to be careful to only call valid functions
         self.evaluator_manager: EvaluatorManager = evaluator_manager
         self.last_paramvec: Optional[np.ndarray] = None
-        self.last_result: Optional[Evaluator] = None
+        self.last_result: Optional[pd.DataFrame] = None
         self.min_result: Optional[MinimizerResult] = None
 
         # Cache for the energy values and gradients
         self.cache: Cache = ggpeps.global_vars["cache"]
 
-    def minimize(self):
+    def minimize(self) -> Optional[MinimizerResult]:
         if self.cfg.method == "CUSTOM":
             return self.minimize_custom()
         elif self.cfg.method == "NEVMC":
@@ -86,6 +95,12 @@ class Minimizer:
             return None
 
     def minimize_custom(self) -> MinimizerResult:
+        """
+        Minimize the energy using a custom method.
+
+        Returns:
+            MinimizerResult: The result of the minimization.
+        """
         paramvec = self.evaluator_manager.system_cfg.paramvec
 
         for ind in range(self.cfg.max_iter):
@@ -125,7 +140,7 @@ class Minimizer:
                 return self.min_result
 
             # Adapt the parametervec according to the gradient
-            # TODO: Implement stochastic reconfiguration
+            # TODO: Implement  stochasticreconfiguration
 
             # We have to use the internal name of the paramvec if we write to it since it is a property and not just an array
 
@@ -145,9 +160,22 @@ class Minimizer:
         return self.min_result
 
     def minimize_scipy(self) -> MinimizerResult:
+        """
+        Minimize the energy using scipy's optimization methods.
+
+        Returns:
+            MinimizerResult: The result of the minimization.
+        """
 
         # Energy wrapper
-        def energy_wrapper(flattened_paramvec):
+        def energy_wrapper(flattened_paramvec: np.ndarray) -> float:
+            """
+            Wrapper for the energy
+            Args:
+                flattened_paramvec (np.ndarray): parameters, arranged as a 1D array
+            Returns:
+                energy (float): value of the total energy
+            """
             # Check if value is stored in cache (e.g. from previous minimization)
             energy = self.cache.load_obs_from_local_cache(flattened_paramvec, "energy")
             if energy is not None:
@@ -177,7 +205,7 @@ class Minimizer:
             return energy
 
         # Jacobian wrapper
-        def gradient_wrapper(flattened_paramvec):
+        def gradient_wrapper(flattened_paramvec: np.ndarray) -> np.ndarray:
             """Wrapper for the gradient of the total energy
 
             Args:
@@ -220,14 +248,14 @@ class Minimizer:
         # Use the random initialization from the system.initialize as first guess.
         # We might want to change this later.
         flattened_paramvec = np.reshape(self.evaluator_manager.system_cfg.paramvec, (-1))
-        min_result = minimize(
+        min_result = minimize(  # type: ignore
             energy_wrapper,
             flattened_paramvec,
-            method=self.cfg.method,
+            method=self.cfg.method,  # TODO: fix type hint - this must be a literal of the supported methods, not a string to pass type checker
             jac=gradient_wrapper if self.cfg.method in self.grad_methods else None,
             tol=self.cfg.tol,
             callback=lambda x: print_callback(x, self),
-            options=options_dict,
+            options=options_dict,  # TODO: this also causes a type error, but unclear why
         )
         flattened_paramvec = min_result.x
         if self.cfg.method in self.no_grad_methods:
@@ -253,6 +281,14 @@ class Minimizer:
         return dest
 
     def save(self, output_dir: str = ".") -> None:
+        """
+        Save the minimization results to the output directory.
+        Args:
+            output_dir (str): Directory to save the results.
+
+            Returns:
+                None
+        """
         if self.min_result is not None:
             sys_cfg = self.evaluator_manager.system_cfg
 
@@ -401,8 +437,15 @@ def NEVMC_print_callback(x, res):
 ### end NEVMC ###
 
 
-def print_callback(x, minimizer):
+def print_callback(x: int, minimizer: Minimizer) -> None:
+    """Print the current status of the minimization process.
 
+    Args:
+        x (int): Current iteration number.
+        minimizer (Minimizer): The minimizer instance containing the results.
+    Returns:
+        None
+    """
     res = minimizer.last_result
     paramvec = minimizer.evaluator_manager.system_cfg.paramvec
 

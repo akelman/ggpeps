@@ -1,4 +1,3 @@
-import sympy
 import logging
 
 import numpy as np
@@ -12,127 +11,23 @@ import ggpeps.lattice as lat
 from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
-from .system_base import (
-    Config2DBase,
-    System2DBase,
-    calculate_lognorm_inc,
-)
-from ggpeps.system.global_funcs import compute_grad_over_norm, extract_partial_covmats
+from ggpeps.system import U1System2DConfig
+from .system_base import System2DBase
+from ggpeps.system.global_funcs import backend
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 ################### U1MultilayerSystem2D ###################
 
 
-class U1System2DConfig(Config2DBase):
-    _nparams = 3
-    ncopy = 1
-    nvirtmodes_link = 8
-    nvirtmodes_link = 4
-    nphysmodes_site = 1  # number of physical modes per site
-
-    def __init__(
-        self,
-        lattice,
-        g_el,
-        g_mag,
-        g_int,
-        g_mass,
-        g_chem,
-        num_pg_layer=1,
-        num_fermionic_layer=0,
-        unitcell_size=1,
-    ):
-        # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
-        super().__init__(
-            lattice,
-            g_el,
-            g_mag,
-            g_int,
-            g_mass,
-            g_chem,
-            num_pg_layer,
-            num_fermionic_layer,
-        )
-
-        # Translation invariance
-        if unitcell_size not in [1]:
-            logger.error(
-                "This ansatz only supports unitcell_size = 1. \
-                This can be adapted by adding in a specification in the config to map sites to parameters."
-            )
-            raise ValueError("Invalid unitcell_size.")
-        self.site_params_dict = {
-            site: 0 for site in range(self.lattice.size)
-        }  # map from site to index of independent parameters
-        self.unitcell_size = 1
-        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(3)
-
-        # We store a list of the parameters forced to be zero by the ansatz
-        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
-
-    def make_pure_gauge(self):
-        # The order of the parameters is [t,y,z]
-        # Here we set the t parameters to zero for the pure gauge layers (which is all the layers)
-        assert self.nlayer == self.num_pg_layer
-        for lay in range(self.nlayer):
-            for uc_ind in range(self.unitcell_size):
-                self.paramvec[lay, uc_ind, 0] = 0
-
-    def get_zeroed_params(self):
-        """This should really call make_pure_gauge() - i.e. return the indices which are set to zero there.
-        However, some tests which use this ansatz do not actually satisfy the pure gauge condition
-        - they use this ansatz with nonzero t params, and test against hard-coded values.
-        (This works because make_pure_gauge() is often not called in the executaion path of those tests).
-        To preserve compatibility with those tests, we do not call make_pure_gauge() here.
-        """
-        zeroed_params = []
-        return zeroed_params
-
-    def _create_symbolvec(self):
-        t = sympy.Symbol("t", real=True)
-        y = sympy.Symbol("y", real=True)
-        z = sympy.Symbol("z", real=True)
-        return [t, y, z]
-
-    def compute_tmat_symb_single(self):
-        [t, y, z] = self.symbolvec
-        etap = sympy.exp(1.0j * sympy.pi / 4.0)
-        zsqrt = z / sympy.sqrt(2)
-        tmat_symb_single = sympy.Matrix(
-            [
-                [t, etap**2 * t, etap * t, etap**3 * t],
-                [0, y, zsqrt, zsqrt],
-                [-y, 0, -zsqrt, zsqrt],
-                [-zsqrt, zsqrt, 0, y],
-                [-zsqrt, -zsqrt, -y, 0],
-            ]
-        )
-        return tmat_symb_single
-
-    @property
-    def tmat_symb(self):
-        tmat_symb = sympy.zeros(9, 9)
-        tmat_symb_single = self.compute_tmat_symb_single()
-        tmat_symb[0:5, 5:] = tmat_symb_single
-        tmat_symb[5:, 0:5] = -tmat_symb_single.T
-        return tmat_symb
-
-    def generate_gamma_gauge_neutral_dict(self):
-        # Note: unlike in the Z2 case, here we can ignore the direction of the link
-        dest = [0] * 2
-        dest[Direction.X] = np.real(1.0j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
-        dest[Direction.Y] = np.real(1.0j * np.kron(np.kron(utils.pauliy, utils.paulix), utils.paulix))
-        return [dest] * self.nlayer
-
-
 class U1System2D(System2DBase):
     """NOTE: The mode ordering of the T matrix in this class is different from all other classes in this repo.
     Order of the paramvec: [t,y,z]
     Mode order of T: {p,l,r,u,d}
-    Mode Order of gamma_dirac:  {p, l+, l-, r+, r-, d+, d-, u+, u-, psi_dag, l+_dag, l-_dag, r+_dag, r-_dag, d+_dag, d-_dag, u+_dag, u-_dag}
-    Mode Order of gamma_maj: {p_1,p_2,l+_1, l+_2, l-_1, l-_2, r+_1, r+_2, r-_1, r-_2, d+_1, d+_2, d-_1, d-_2, u+_1, u+_2, u-_1, u-_2}
+    Mode Order of gamma_dirac:
+        {p, l+, l-, r+, r-, d+, d-, u+, u-, psi_dag, l+_dag, l-_dag, r+_dag, r-_dag, d+_dag, d-_dag, u+_dag, u-_dag}
+    Mode Order of gamma_maj:
+        {p_1,p_2,l+_1, l+_2, l-_1, l-_2, r+_1, r+_2, r-_1, r-_2, d+_1, d+_2, d-_1, d-_2, u+_1, u+_2, u-_1, u-_2}
     The subscript indices are Majorana mode indices here."""
 
     def __init__(self, cfg: U1System2DConfig):
@@ -201,7 +96,7 @@ class U1System2D(System2DBase):
             id = np.eye(nsites)
             # Extract the parts of the covariance matrix
             # The 2 is the number of physical fermionic Majorana modes
-            amat, bmat, dmat = extract_partial_covmats(covmat, 2)
+            amat, bmat, dmat = utils.extract_partial_covmats(covmat, 2)
             # Expand them
             amat_sys = np.kron(id, amat)
             bmat_sys = np.kron(id, bmat)
@@ -230,10 +125,12 @@ class U1System2D(System2DBase):
 
         The vertex indices are written as <number>, the link indices are written as "<number>".
 
-        For a 2x2 system, gamma_in has the order {l_1, r_0, l_0, r_1, l_3, r_2, l_2, r_3, d_2, u_0, d_0, u_2, d_3, u_1, d_1, d_3}.
-        The modes are named as <mode letter>_<vertex site>. Each constitent in the list above labels two Majorana modes.
+        For a 2x2 system, gamma_in has the order:
+            {l_1, r_0, l_0, r_1, l_3, r_2, l_2, r_3, d_2, u_0, d_0, u_2, d_3, u_1, d_1, d_3}.
+        The modes are named as <mode letter>_<vertex site>.
+        Each constitent in the list above labels two Majorana modes.
 
-        TODO: This function could probably be replaced by the general one in System2DBase, but this has not been tested.
+        TODO: This function could probably be replaced by the general one in System2DBase, but this has not been tested
         """
 
         size = self.cfg.lattice.size  # number of sites
@@ -263,7 +160,8 @@ class U1System2D(System2DBase):
         wi_gamma_out_mod_vec = [utils.WoodburyInverter(mat_d - gamma_in_sys_mod) for mat_d in self.mat_d_mod_vec]
         incdet_mod_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec_mod]
 
-        # Though for this ansatz gamma_in_sys does not vary between layers, it is convenient to have gamma_in_sys_vec available as a vector with length = nlayers
+        # Though for this ansatz gamma_in_sys does not vary between layers,
+        # it is convenient to have gamma_in_sys_vec available as a vector with length = nlayers
         # for general methods in system base
         gamma_in_sys_vec = [gamma_in_sys] * self.cfg.nlayer
 
@@ -295,10 +193,8 @@ class U1System2D(System2DBase):
 
     def update_gauge_ind(self, link_ind, theta):
         # Update the gaugefield
-        if ggpeps.PREFERRED_BACKEND == "jax":
-            self._gaugefieldvec = self._gaugefieldvec.at[link_ind].set(theta)
-        else:
-            self._gaugefieldvec[link_ind] = theta
+        self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
+
         # There are two directions per vertex
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
@@ -343,11 +239,17 @@ class U1System2D(System2DBase):
         self.invalidate_gauge_update()
 
     ################## Observables ######################
-    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv=True):
+    def _compute_mass_energy_op_vec(self, use_trans_inv=True):
         raise NotImplementedError("The mass term has not yet been implemented for U1.")
 
-        dest, dest_grad = 0, 0  # Needs to be calculated properly
-        return dest, dest_grad
+        dest = 0
+        return dest
+
+    def _compute_mass_energy_grad(self, use_trans_inv=True):
+        raise NotImplementedError("The mass gradient term has not yet been implemented for U1.")
+
+        dest_grad = 0
+        return dest_grad
 
     def _compute_mag_energy_op(self, use_trans_inv=True):
         if use_trans_inv:
@@ -388,8 +290,8 @@ class U1System2D(System2DBase):
                 ###################### Calculation of <P> ########################
                 covmat_out = mat_a + mat_b @ self.wi_gamma_out_mod_vec[layerind].inv() @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_link_offset:, -single_link_offset:]
-                # For the modified norm, we still have to take into account the other contributions from the unmodified parts
-                norm_mod = calculate_lognorm_inc(
+                # For the modified norm, we still have to take into account the contributions from the unmodified parts
+                norm_mod = self._calculate_lognorm_inc(
                     [self.incdet_mod_vec[layerind]],
                     [self.det_mat_d_mod_vec[layerind]],
                     gamma_in_sys_mod.shape[0],
@@ -399,7 +301,8 @@ class U1System2D(System2DBase):
                 # all_factors=True)
                 norm_mod += np.sum(utils.select_except(lognormvec_default_inc, layerind))
                 # The matrix elements yield only the real part of <P>
-                # el_energy_layer = 0.25*( covmat_out_virt[0, 1] + covmat_out_virt[2, 3] + 1.j*covmat_out_virt[0,2] - 1.j*covmat_out_virt[0,3]) * np.exp(norm_mod - lognorm_default)
+                # el_energy_layer = 0.25*( covmat_out_virt[0, 1] + covmat_out_virt[2, 3] + 1.j*covmat_out_virt[0,2]
+                #   - 1.j*covmat_out_virt[0,3]) * np.exp(norm_mod - lognorm_default)
                 el_energy_layer = (
                     0.25 * (covmat_out_virt[0, 1] + covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                 )
@@ -408,7 +311,7 @@ class U1System2D(System2DBase):
                 ###################### Calculation of the derivative ########################
                 for symbol in self.symbolvec:
                     deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
-                    d_mat_a, d_mat_b, d_mat_d = extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                    d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
                     d_gamma_out = (
                         d_mat_a
                         + d_mat_b @ diff_d_gamma_inv @ np.transpose(mat_b)
@@ -422,8 +325,8 @@ class U1System2D(System2DBase):
                         0.25 * (d_covmat_out_virt[0, 1] + d_covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                     )
                     # Summand with derivative of norms
-                    trace_def = self.compute_grad_over_norm(symbol, layerind)
-                    trace_mod = compute_grad_over_norm(
+                    trace_def = self.compute_grad_over_norm(layerind, 0, symbol)
+                    trace_mod = self._compute_grad_over_norm(
                         gamma_in_sys_mod,
                         diff_d_inv_gamma_inv,
                         d_mat_d,
@@ -510,7 +413,7 @@ class U1System2D(System2DBase):
                 diff_try = gamma_in_try - mat_d_inv
                 overlap_diff_gauge = pf.pfaffian(
                     np.array(diff_try)
-                )  # When using jax, this line produces garbage unless diff_try is first cast to numpy, which causes a test to fail. TODO: investigate why
+                )  # When using jax, this line produces garbage unless diff_try is first cast to numpy
                 dest.append(prefactor * np.real(overlap_diff_gauge) / overlap_same_gauge)
             # TODO: Implement gradient
             dest_grad = np.asarray([[None] * len(self.symbolvec)] * self.cfg.nlayer)
@@ -543,16 +446,24 @@ class U1System2D(System2DBase):
         else:
             return self._compute_el_energy_op_and_grad_gaussian()[1]
 
-    def _compute_int_energy_op_vec_and_grad(self):
+    def _compute_int_energy_op_vec(self):
         # This function is not implemented yet!
         raise NotImplementedError("The interaction energy is not implemented yet for U(1).")
 
-    def _compute_chem_energy_op_vec_and_grad(self):
-        """Calculate the chemical potential energy operator and its gradient."""
+    def _compute_int_energy_grad(self):
+        # This function is not implemented yet!
+        raise NotImplementedError("The interaction energy is not implemented yet for U(1).")
+
+    def _compute_chem_energy_op_vec(self):
+        """Calculate the chemical potential energy operator."""
+        raise NotImplementedError("The chemical potential energy is not implemented yet for U(1).")
+
+    def _compute_chem_energy_grad(self):
+        """Calculate the chemical potential energy gradient."""
         raise NotImplementedError("The chemical potential energy is not implemented yet for U(1).")
 
     def _meson_string_vec(self, path):
-        """Compute a layer resolved meson string for the given path.
+        r"""Compute a layer resolved meson string for the given path.
         This is \psi^dagger (start) * String * \psi(end) before particle-hole,
         and assumes that start and end are on the same sublattice.
 
@@ -564,3 +475,6 @@ class U1System2D(System2DBase):
         """
         meson_op_vec = xnp.zeros(self.cfg.nlayer)
         return xnp.array(meson_op_vec)
+
+    def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
+        return 0.0  # Not implemented

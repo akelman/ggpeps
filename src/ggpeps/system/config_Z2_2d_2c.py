@@ -2,7 +2,6 @@ import sympy
 import logging
 
 import numpy as np
-from ggpeps import xnp as xnp
 
 import ggpeps
 from ggpeps import utils, gauge
@@ -45,7 +44,17 @@ class Z2System2D2CConfig(Config2DBase):
         if num_fermionic_layer != 0:
             # This ansatz does not support fermionic layers
             raise ValueError("The Z2System2D2C ansatz does not support fermionic layers.")
-        super().__init__(lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0)
+        super().__init__(
+            gauge.ZNGauge(2),
+            lattice,
+            g_el,
+            g_mag,
+            g_int,
+            g_mass,
+            g_chem,
+            num_pg_layer,
+            0,
+        )
 
         # Translation invariance
         if unitcell_size not in [1]:
@@ -62,10 +71,9 @@ class Z2System2D2CConfig(Config2DBase):
         if not enforce_u1_symmetry:
             logger.error("This ansatz does not support the relaxation of U(1) symmetry.")
             raise ValueError("Invalid enforce_u1_symmetry.")
-
         # We store a list of the parameters forced to be zero by the ansatz
         # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
+        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # This is for pure-gauge only atm
         self.num_pg_layer = self.nlayer
@@ -81,11 +89,13 @@ class Z2System2D2CConfig(Config2DBase):
         self.idxarr_vec = [idxarr_lay_pg] * self.nlayer
         self.el_overall_factors = [
             -1 / 16
-        ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2)
+        ] * self.nlayer  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
-        """Ensure the system stays as pure_gauge. Setting the t parameters to zero automatically ensures they remain zero, since the derivative includes a factor of t."""
+        """Ensure the system stays as pure_gauge.
+        Setting the t parameters to zero automatically ensures they remain zero,
+        since the derivative includes a factor of t."""
+
         # The order of the parameters is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
         # Here we set the t parameters to zero for the pure gauge layers (which is all the layers)
         assert self.nlayer == self.num_pg_layer
@@ -97,18 +107,19 @@ class Z2System2D2CConfig(Config2DBase):
                 self.paramvec[lay, uc_ind, 13] = 0  # Set t2i to 0
 
     def get_zeroed_params(self):
-        """This should really call make_pure_gauge() - i.e. return the indices which are set to zero there.
+        """This should really use make_pure_gauge() - i.e. return the indices which are set to zero there.
         However, some tests which use this ansatz do not actually satisfy the pure gauge condition
         - they use this ansatz with nonzero t params, and test against hard-coded values.
-        (This works because make_pure_gauge() is often not called in the executaion path of those tests).
+        (This works because make_pure_gauge() is often not called in the execution path of those tests).
         To preserve compatibility with those tests, we do not call make_pure_gauge() here.
         """
         zeroed_params = []
-        return zeroed_params
+        return tuple(zeroed_params)
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
-        We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
+        We will use the analytic expression of the T matrix to calculate
+        the derivative of the covariance matrices analytically.
 
         Returns:
             list: List of all analytic symbols
@@ -160,8 +171,10 @@ class Z2System2D2CConfig(Config2DBase):
     @property
     def tmat_symb(self):
         """Definition of the symbolic T matrix.
-        The definition of T here is a result of an analytic consideration of global symmetries like rotational invariance, charge conjugation invarance, etc.
-        The T matrix is given in terms of symbols to compute the derivative of the covariance matrices analytically via sympy.
+        The definition of T here is a result of an analytic consideration of global symmetries such as
+        rotational invariance, charge conjugation invarance, etc.
+        The T matrix is given in terms of symbols to compute the derivative of the covariance matrices
+        analytically via sympy.
         We do not have to type them explicitly anymore into the code.
 
         This is one of two analytic inputs into the code.
@@ -169,7 +182,8 @@ class Z2System2D2CConfig(Config2DBase):
 
         The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2
 
-        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
+        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it eliminates
+        the need for a lot of permutation matrices in the conversion from T to gamma_maj.
         The permutation matrices are prone for errors.
 
         Returns:
@@ -254,17 +268,19 @@ class Z2System2D2CConfig(Config2DBase):
 
     def generate_gamma_gauge_neutral_dict(self):
         """Generate the the covariance matrix of the ungauged projectors.
-        The morde order is {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}.
+        The morde order is:
+            {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}/{d1_1, d1_2, u1_1, u1_2,d2_1, d2_2, u2_1, u2_2}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
         We order first by link and then by copy.
         Modes of copy one are coupled to modes of copy 2. The projectors mix copies.
-        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The sites are picked such that the left mode is right of the right modes,
+        i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
         This method overwrites an abstract method in System2DBase.
 
         Returns:
-            List[np.ndarray]: Covariance matrix of the ungauged projector on a single link
+            list[np.ndarray]: Covariance matrix of the ungauged projector on a single link
         """
         dest = [0] * 2
         dest[Direction.X] = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix)))

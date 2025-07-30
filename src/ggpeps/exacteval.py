@@ -9,6 +9,7 @@ import pandas as pd
 import ggpeps
 import ggpeps.lattice as lattice
 from ggpeps.evaluator import Evaluator
+from ggpeps.system.system_base import System2DBase
 
 
 class ExactEvaluatorConfig:
@@ -28,7 +29,7 @@ class ExactEvaluator(Evaluator):
 
     evaluator_type: str = "exact"
 
-    def __init__(self, evaluator_cfg, system) -> None:
+    def __init__(self, evaluator_cfg: ExactEvaluatorConfig, system: System2DBase) -> None:
         super().__init__(evaluator_cfg, system)
 
     def compute_expval(self, obs: np.ndarray, normvec: np.ndarray) -> Union[float, np.ndarray]:
@@ -71,48 +72,30 @@ class ExactEvaluator(Evaluator):
             loops = self.system.cfg.lattice.generate_all_wilson_loops((0, 0), sizes)
             max_string = 1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
             strings = [self.system.cfg.lattice.generate_L_string((0, 0), (k, k)) for k in range(1, max_string)]
+
+            data: dict = {
+                "energy": [],
+                "norm": [],
+                "mag_energy": [],
+                "el_energy": [],
+                "mass_energy": [],
+                "int_energy": [],
+                "chem_energy": [],
+                "mag_energy_op": [],
+                "el_energy_op": [],
+                "mass_energy_op": [],
+                "int_energy_op": [],
+                "el_energy_op_grad": [],
+                "mass_energy_op_grad": [],
+                "int_energy_op_grad": [],
+                "chem_energy_op_grad": [],
+                "grad_norm": [],
+                "polyakov_00_x": [],
+            }
             if self.system.cfg.num_fermionic_layer > 0:
-                data: dict = {
-                    "energy": [],
-                    "norm": [],
-                    "mag_energy": [],
-                    "el_energy": [],
-                    "mass_energy": [],
-                    "int_energy": [],
-                    "chem_energy": [],
-                    "mag_energy_op": [],
-                    "el_energy_op": [],
-                    "mass_energy_op": [],
-                    "int_energy_op": [],
-                    "all_occupations": [],
-                    "average_occupation": [],
-                    "el_energy_op_grad": [],
-                    "mass_energy_op_grad": [],
-                    "int_energy_op_grad": [],
-                    "chem_energy_op_grad": [],
-                    "grad_norm": [],
-                    "polyakov_00_x": [],
-                }
-            else:  # If there are no fermionic layers, we do not compute occupations
-                data: dict = {
-                    "energy": [],
-                    "norm": [],
-                    "mag_energy": [],
-                    "el_energy": [],
-                    "mass_energy": [],
-                    "int_energy": [],
-                    "chem_energy": [],
-                    "mag_energy_op": [],
-                    "el_energy_op": [],
-                    "mass_energy_op": [],
-                    "int_energy_op": [],
-                    "el_energy_op_grad": [],
-                    "mass_energy_op_grad": [],
-                    "int_energy_op_grad": [],
-                    "chem_energy_op_grad": [],
-                    "grad_norm": [],
-                    "polyakov_00_x": [],
-                }
+                # Only compute occupations if there are fermionic layers
+                data["all_occupations"] = []
+                data["average_occupation"] = []
 
             # Wilson loops
             for k in range(len(sizes)):
@@ -280,6 +263,8 @@ class ExactEvaluator(Evaluator):
 
                 # Add for the full gradient, subject to conditions on parameterization
                 total_grad = mag_energy_grad + el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
+
+                assert isinstance(total_grad, np.ndarray)
                 self.system.cfg.enforce_parameter_conditions(total_grad)
                 dest["energy_grad"] = total_grad
 

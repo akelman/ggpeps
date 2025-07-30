@@ -1,7 +1,6 @@
 import sympy
 import logging
 import numpy as np
-import jax.numpy as jnp
 
 import ggpeps
 from ggpeps import utils, gauge
@@ -24,8 +23,10 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
 
     Order of the paramvec: see the functions that create the symbolvec.
     Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3,d3,u3,l4,r4,d4,u4}.
-    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3... and so on}.
-    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... and so on}.
+    Mode order of gamma_dirac:
+        {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3... }.
+    Mode order of gamma_maj:
+        {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... }.
     """
 
     _nparams = 2 * (4 + 2 * 4 + 4 * 3 * 2)
@@ -48,6 +49,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         enforce_u1_symmetry=True,
     ):
         super().__init__(
+            gauge.ZNGauge(2),
             lattice,
             g_el,
             g_mag,
@@ -84,10 +86,9 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         self.unitcell_size = len(set(self.site_params_dict.values()))
 
         self.u1_symmetry = enforce_u1_symmetry
-
         # We store a list of the parameters forced to be zero by the ansatz
         # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
+        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [
@@ -116,7 +117,6 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         self.el_overall_factors = [1 / 256] * (
             self.nlayer
         )  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-        self.gaugemgr: gauge.ZNGauge = gauge.ZNGauge(2)
 
     def get_zeroed_params(self) -> list[tuple[int, int, int]]:
         offset = self._nparams // 2  # offset to get index of imaginary part
@@ -153,7 +153,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
                         zeroed_params.append(real_coord)
                         zeroed_params.append(imag_coord)
 
-        return zeroed_params
+        return tuple(zeroed_params)
 
     def _create_symbolvec(self):
         """Define all symbols of the T matrix as symbols.
@@ -358,7 +358,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         This method overwrites an abstract method in System2DBase.
 
         Returns:
-            List[np.ndarray]: Covariance matrices of the ungauged projector on a single link
+            list[np.ndarray]: Covariance matrices of the ungauged projector on a single link
         """
 
         dest_mixed = [0] * 2  # mixes copies

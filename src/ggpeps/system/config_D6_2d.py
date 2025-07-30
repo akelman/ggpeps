@@ -1,18 +1,14 @@
 import sys
 import sympy
 import logging
-from typing import List
 
 import numpy as np
 from scipy.linalg import block_diag
-from ggpeps import xnp as xnp
-from ggpeps import xscipy as xscipy
 
 import ggpeps
 from ggpeps import gauge
 from ggpeps import modearray
 from ggpeps.lattice import Direction
-from ggpeps.system.global_funcs import *
 
 from .system_base import Config2DBase
 from .system_base import get_pfaffian_arrays
@@ -22,20 +18,26 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class D6System2D_Config(Config2DBase):
-    """Configuration of the D2n system in 2D with 2 copies of virtual fermions on the links per layer each copy has 2 colors.
-        Each layer can either be pure-gauge (in which case the t-params are zeroed out),
-        or fermionic (in which case the y,z-params are zeroed out).
+    """
+    Configuration of the D2n system in 2D with 2 copies of virtual fermions on the links per layer.
+    Each copy has 2 colors.
+    Each layer can either be pure-gauge (in which case the t-params are zeroed out),
+    or fermionic (in which case the y,z-params are zeroed out).
 
-        Some general notes about conventions:
+    Some general notes about conventions:
 
-        Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di].
-        Mode order of tmat: The mode order is: Psi_1,Psi_2, l1_1,l1_2, r1_1,r1_2,d1_1, d1_2, u1_1,u1_2, l2_1, l2_2, r2_1,r2_2, d2_1,d2_2, u2_1, u2_2
-        Where the modes are labelled by directin{copy}_{color}
-        Where the 1 and 2 virtual copies and the Psi are the m=0 and the 3 and 4 virtual copies and Psi2 are of the color m=1.
-        Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
-        Mode order of gamma_maj: {p_1,p_2,l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2,l3_1, l3_2, r3_1, r3_2, l4_1, l4_2, r4_1, r4_2,
-                                  ,d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u3_2,d3_1, d3_2, u3_1, u3_2, d4_1, d4_2, u4_1, u4_2}.
-    }.
+    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di].
+    Mode order of tmat: The mode order is:
+        Psi_1,Psi_2, l1_1,l1_2, r1_1,r1_2,d1_1, d1_2, u1_1,u1_2, l2_1, l2_2, r2_1,r2_2, d2_1,d2_2, u2_1, u2_2
+    Where the modes are labelled by directin{copy}_{color}
+    Where the 1 and 2 virtual copies and the Psi are the m=0,
+    and the 3 and 4 virtual copies and Psi2 are of the color m=1.
+
+    Mode order of gamma_dirac:
+        {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
+    Mode order of gamma_maj:
+        {p_1,p_2,l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2,l3_1, l3_2, r3_1, r3_2, l4_1, l4_2, r4_1, r4_2,
+        d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u3_2,d3_1, d3_2, u3_1, u3_2, d4_1, d4_2, u4_1, u4_2}.
     """
 
     _nparams = 20
@@ -60,6 +62,7 @@ class D6System2D_Config(Config2DBase):
         enforce_u1_symmetry=True,
     ):
         super().__init__(
+            gauge.D2nGauge(3),
             lattice,
             g_el,
             g_mag,
@@ -69,11 +72,12 @@ class D6System2D_Config(Config2DBase):
             num_pg_layer,
             num_fermionic_layer,
         )
+
         # Translation invariance (or variance)
         if unitcell_size not in [1]:
             logger.error(
                 "For Dn groups this ansatz only supports unitcell_size = 1. \
-                         This can be adapted by adding in a specification in the config to map sites to parameters."
+                This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             sys.exit(1)
         # map from site to index of independent parameters (default is unitcell_size = 1)
@@ -97,10 +101,9 @@ class D6System2D_Config(Config2DBase):
         # set to True if you want to enforce U(1) symmetry in the fermionic layers
         # (set to False to allow fermionic number to float between sectors)
         self.u1_symmetry = enforce_u1_symmetry
-
         # We store a list of the parameters forced to be zero by the ansatz
         # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: list[tuple[int, int, int]] = self.get_zeroed_params()
+        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
@@ -117,9 +120,7 @@ class D6System2D_Config(Config2DBase):
         self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
         self.el_overall_factors = [
             -1 / 16
-        ] * self.nlayer  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
-
-        self.gaugemgr: gauge.D2nGauge = gauge.D2nGauge(3)
+        ] * self.nlayer  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.
@@ -134,7 +135,8 @@ class D6System2D_Config(Config2DBase):
                     self.paramvec[coord] = 0
 
     def get_zeroed_params(self):
-        # The order of the parameters (for each layer) is [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
+        # The order of the parameters (for each layer) is
+        #   [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
 
         zeroed_params = []  # we'll save the indices of the zeroed parameters
 
@@ -145,29 +147,20 @@ class D6System2D_Config(Config2DBase):
                     coord = (layer_ind, uc_ind, t_ind)
                     zeroed_params.append(coord)
 
-        zero_for_fermionic_layer = [
-            3,
-            13,
-            1,
-            2,
-            4,
-            5,
-            11,
-            12,
-            14,
-            15,
-        ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
+        # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec:
+        zero_for_fermionic_layer = [3, 13, 1, 2, 4, 5, 11, 12, 14, 15]
         for layer_ind in range(self.num_pg_layer, self.nlayer):
             for uc_ind in range(self.unitcell_size):
                 for ind in zero_for_fermionic_layer:
                     coord = (layer_ind, uc_ind, ind)
                     zeroed_params.append(coord)
 
-        return zeroed_params
+        return tuple(zeroed_params)
 
-    def _create_symbolvec(self) -> List[sympy.Symbol]:
+    def _create_symbolvec(self) -> list[sympy.Symbol]:
         """Define all symbols of the T matrix as symbols.
-        We will use the analytic expression of the T matrix to calculate the derivative of the covariance matrices analytically.
+        We will use the analytic expression of the T matrix to calculate the derivative of the
+        covariance matrices analytically.
 
         Returns:
             list: List of all analytic symbols
@@ -219,16 +212,20 @@ class D6System2D_Config(Config2DBase):
     @property
     def tmat_symb(self):
         """Definition of the symbolic T matrix.
-        The definition of T here is a result of an analytic consideration of global symmetries like rotational invariance, charge conjugation invarance, etc.
-        The T matrix is given in terms of symbols to compute the derivative of the covariance matrices analytically via sympy.
+        The definition of T here is a result of an analytic consideration of global symmetries such as
+        rotational invariance, charge conjugation invarance, etc.
+        The T matrix is given in terms of symbols to compute the derivative of the covariance matrices
+        analytically via sympy.
         We do not have to type them explicitly anymore into the code.
 
         This is one of two analytic inputs into the code.
         The other input is the structure and the parametrization of the projectors.
 
-        The mode order is: Psi_1,Psi_2, l1_1, r1_1,d1_1,u1_1, l2_1, r2_1,d2_1,u2_1, l1_2, r1_2,d1_2,u1_2,l2_2, r2_2,d2_2,u2_2
+        The mode order is:
+            Psi_1,Psi_2, l1_1, r1_1,d1_1,u1_1, l2_1, r2_1,d2_1,u2_1, l1_2, r1_2,d1_2,u1_2,l2_2, r2_2,d2_2,u2_2
         Where the modes are labelled by directin{copy}_{color}.
-        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
+        The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations) because it
+        eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
         The permutation matrices are prone to errors.
 
         Returns:
@@ -312,7 +309,8 @@ class D6System2D_Config(Config2DBase):
             )
         )
         # Define the 16x16 block diagonal tmat matrix for the two different colors in the order of:
-        #  Psi1, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, Psi2, l_3, r_3, d_3, u_3, l_4, r_4, d_4, u_4, where 3 and 4 are the m=2 color
+        #  Psi1, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, Psi2, l_3, r_3, d_3, u_3, l_4, r_4, d_4, u_4,
+        # where 3 and 4 are the m=2 color
         tmat_symb = sympy.BlockDiagMatrix(tmat_symb_block, tmat_symb_block)
 
         # Convert it to a regular Matrix
@@ -357,33 +355,34 @@ class D6System2D_Config(Config2DBase):
             "d_4",
             "u_4",
         ]
-        perm = xnp.array(
+        perm = np.array(
             modearray.generate_permutation_matrix(
                 wrong_order,
                 correct_order,
             )
         )
-        tmat_symb = xnp.transpose(perm) @ tmat_symb @ perm  # permute the modes to the correct order
+        tmat_symb = np.transpose(perm) @ tmat_symb @ perm  # permute the modes to the correct order
         return tmat_symb
 
     def generate_gamma_gauge_neutral_dict(self):
-        """Generate the covariance matrix of the ungauged projectors.
+        r"""Generate the covariance matrix of the ungauged projectors.
         The mode order is
-        {l1_1_1, l1_2_1, r1_1_1, r1_2_1, l2_1_1, l2_2_1, r2_1_1, r2_2_1,l1_1_2, l1_2_2, r1_1_2, r1_2_2, l2_1_2, l2_2_2, r2_1_2, r2_2_2}
-        /{d1_1_1, d1_2_1, u1_1_1, u1_2_1,d2_1_1, d2_2_1, u2_1_1, u2_2_1, d1_1_2, d1_2_2, u1_1_2, u1_2_2, d2_1_2, d2_2_2, u2_1_2, u2_2_2}.
+        {l1_1_1,l1_2_1,r1_1_1,r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2,l1_2_2,r1_1_2,r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}
+        /{d1_1_1,d1_2_1,u1_1_1,u1_2_1,d2_1_1,d2_2_1,u2_1_1,u2_2_1,d1_1_2,d1_2_2,u1_1_2,u1_2_2,d2_1_2,d2_2_2,u2_1_2,u2_2_2}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>_<color>.
         We order first by link and then by copy.
-        The sites are picked such that the left mode is right of the right modes, i.e. they are sitting on the same link.
+        The sites are picked such that the left mode is right of the right modes,
+        i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
         This function returns the covariance matrices for ungauged projectors:
         Unlike the Z2, copies are always coupled to themselves without mixing different copies.
-        here we work in the same convention as Z2 w=exp(rl)and not w=exp(r^{\dagger}l^{\dagger}) as in some references.
+        Here we work in the same convention as Z2 w=exp(rl)and not w=exp(r^{\dagger}l^{\dagger}) as in some references.
 
         This method overwrites an abstract method in System2DBase.
 
         Returns:
-            List[xnp.ndarray]: Covariance matrices of the ungauged projector on a single link
+            list[xnp.ndarray]: Covariance matrices of the ungauged projector on a single link
         """
 
         # 2 if for 2D lattice
@@ -401,7 +400,8 @@ class D6System2D_Config(Config2DBase):
             ]
         )
         dest_unmixed[Direction.X] = block_diag(blockumixed_X, blockumixed_X)
-        # Creating the matrix in th mode order of {l1_1_1, l1_2_1, r1_1_1, r1_2_1, l2_1_1, l2_2_1, r2_1_1, r2_2_1,l1_1_2, l1_2_2, r1_1_2, r1_2_2, l2_1_2, l2_2_2, r2_1_2, r2_2_2}
+        # Creating the matrix in the mode order of
+        # {l1_1_1,l1_2_1,r1_1_1,r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2,l1_2_2,r1_1_2,r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}
         blockumixed_Y = np.array(
             [
                 [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],

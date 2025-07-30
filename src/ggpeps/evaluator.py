@@ -2,14 +2,16 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
+from ggpeps.system.system_base import System2DBase
+
 
 class Evaluator(ABC):
     """Base class for the different evaluators (ExactEvaluator and MonteCarloEvaluator)."""
 
-    def __init__(self, evaluator_cfg, system):
+    def __init__(self, evaluator_cfg, system: System2DBase):
         self.system = system
-        self.obsdict: dict = {}
         self.cfg = evaluator_cfg
+        self.obsdict: dict = {}
 
     @abstractmethod
     def evaluate(self):
@@ -20,7 +22,7 @@ class Evaluator(ABC):
 
         Returns:
             dict: Dictionary of observables
-                  Each key-val pair is of the form (obs: List) where List is a list of
+                  Each key-val pair is of the form (obs: list) where list is a list of
                   values for the observable for the simulated gauge configurations
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")

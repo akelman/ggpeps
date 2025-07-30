@@ -8,11 +8,10 @@ from ggpeps import xscipy as xscipy
 import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
-from ggpeps.system.global_funcs import *
+from ggpeps.system.global_funcs import backend
 from ggpeps import modearray
 
 from .system_base import System2DBase
-from .system_base import calculate_lognorm_inc
 
 # from ggpeps.system.global_funcs import update_gauge_ind
 
@@ -68,7 +67,7 @@ class D2nSystem2D(System2DBase):
         gamma_neutral_gauge_vec = self.gamma_gauge_neutral_vec
         if color_to_check is not None:
             ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind + 2 * color_to_check * self.cfg.nvirtmodes_link_per_color
-            rotmat = slice_matrix(
+            rotmat = backend.slice_matrix(
                 rotmat,
                 2 * self.cfg.nvirtmodes_link_per_color * color_to_check,
                 2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1),
@@ -77,7 +76,7 @@ class D2nSystem2D(System2DBase):
             )
             gamma_in_subst_layers = []
             for gamma_neutral_gauge in gamma_neutral_gauge_vec:
-                gamma_neutral_gauge_sliced = slice_matrix(
+                gamma_neutral_gauge_sliced = backend.slice_matrix(
                     gamma_neutral_gauge[dir],
                     2 * self.cfg.nvirtmodes_link_per_color * color_to_check,
                     2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1),
@@ -210,7 +209,7 @@ class D2nSystem2D(System2DBase):
         g_transpose = xnp.transpose(g)
         real_g_transpose = xnp.real(g_transpose)
         imag_g_transpose = xnp.imag(g_transpose)
-        if xnp.sum(coord) % 2 == 0:  # gauging is different for different sublattices
+        if xnp.sum(xnp.asarray(coord)) % 2 == 0:  # gauging is different for different sublattices
             rot_right = xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
                 # TODO: Generalize this to fermionic layers as well.
                 [
@@ -304,7 +303,6 @@ class D2nSystem2D(System2DBase):
             link_ind, theta, color_to_update=color_to_update
         )  # in case it was originally a singular, we update the gauge field to the final value. In the other case we can update the gauge straightforwardly
 
-    # TODO: fix for JAX - DONE, except for stuff in utils
     def update_non_singular_gauge_ind(self, link_ind, theta, color_to_update=None):
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
@@ -324,10 +322,8 @@ class D2nSystem2D(System2DBase):
             color_to_update (int, optional): Color to update. If None, both colors are updated. Defaults to None.
         """
         # Update the gaugefield
-        if ggpeps.PREFERRED_BACKEND == "jax":
-            self._gaugefieldvec = self._gaugefieldvec.at[link_ind].set(theta)
-        else:
-            self._gaugefieldvec[link_ind] = theta
+        self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
+
         # There are two directions per vertex
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(theta, coord, dir)
@@ -337,7 +333,7 @@ class D2nSystem2D(System2DBase):
             ind_mat = (
                 2 * self.cfg.nvirtmodes_link * link_ind + 2 * color_to_update * self.cfg.nvirtmodes_link_per_color
             )
-            rotmat = slice_matrix(  # In this case we slice rotmat to only contain the relevant color
+            rotmat = backend.slice_matrix(  # In this case we slice rotmat to only contain the relevant color
                 # We assume a specific ordering of the modes: (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
                 rotmat,
                 2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
@@ -350,7 +346,7 @@ class D2nSystem2D(System2DBase):
         for layer in range(self.cfg.nlayer):
             gamma_neutral_gauge = self.gamma_gauge_neutral_vec[layer][dir]
             if color_to_update is not None:
-                gamma_neutral_gauge = slice_matrix(  # In this case we slice gamma_neutral_gauge to only contain the relevant color
+                gamma_neutral_gauge = backend.slice_matrix(  # In this case we slice gamma_neutral_gauge to only contain the relevant color
                     # We assume a specific ordering of the modes: (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
                     xnp.copy(gamma_neutral_gauge),
                     2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
@@ -363,18 +359,9 @@ class D2nSystem2D(System2DBase):
                 self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer])
             )
             # Substitute in the array
-            if ggpeps.PREFERRED_BACKEND == "jax":
-                # TODO: should not modify "private" variable - make a setter?
-                self._gamma_in_sys_vec = self.gamma_in_sys_vec.at[
-                    layer,
-                    ind_mat : ind_mat + rotmat.shape[0],
-                    ind_mat : ind_mat + rotmat.shape[1],
-                ].set(gamma_in_subst)
-            else:
-                self.gamma_in_sys_vec[layer][
-                    ind_mat : ind_mat + rotmat.shape[0],
-                    ind_mat : ind_mat + rotmat.shape[1],
-                ] = gamma_in_subst
+            # TODO: should not modify "private" variable - make a setter?
+            inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
+            self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
 
         # Update the determinant
         mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
@@ -416,62 +403,7 @@ class D2nSystem2D(System2DBase):
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
 
-    # def update_gauge_ind(self, link_ind, theta):
-    #    update_gauge_ind(self, link_ind, theta)
-
     # Observables
-    def _compute_mass_energy_op_vec_and_grad(self, use_trans_inv: bool = True):
-        """Compute the mass term of the Hamiltonian for a single site.
-
-        Args:
-            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
-
-        Returns:
-            tuple: Tuple of (mass energy for a single site, gradients)
-        """
-        mass_energy_op = xnp.zeros(self.cfg.nlayer)
-        gradients = xnp.zeros(self.cfg.param_shape())
-        return mass_energy_op, gradients
-
-    def _compute_el_energy_op_vec(self, use_trans_inv: bool = True):
-        """Computation of the electric energy.
-        Since several operations needed for the computation of the gradient and the energy are similar,
-        we can reuse many intermediate steps. These are saved at the end of the function.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
-
-        Returns:
-            list: list of electric energies for a single link
-        """
-        dest = xnp.zeros(self.cfg.nlayer)
-        return xnp.asarray(dest)
-
-    def _compute_el_grad_vec(self, use_trans_inv: bool = True):
-        """Computation of the electric energy gradients.
-        We start by calculating the electric energies, since these are needed for evaluating the gradients.
-        Since several operations needed for the computation of the gradient and the energy are similar,
-        we can reuse many intermediate steps.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
-
-        Returns:
-            list: list of gradients for the full system
-        """
-
-        if not use_trans_inv:
-            # Evaluate every link of the system
-            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
-            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
-
-        gradients = xnp.zeros(self.cfg.param_shape())
-        return gradients
-
     def _compute_mag_energy_op(self, use_trans_inv: bool = True):
         """Computation of the magnetic energy operator (w/o shift).
         This operator is diagonal in the gauge field (group element) basis and can thus be computed easily.
@@ -498,29 +430,117 @@ class D2nSystem2D(System2DBase):
                     mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
         return mag_energy_bare
 
-    def _compute_int_energy_op_vec_and_grad(self):
-        """Calculate the energy and energy gradient due to the interaction of the
-        physical fermions with the gauge fields.
+    @staticmethod
+    def _compute_el_energy_op_vec(
+        lognormvec_default,
+        overall_factors,
+        idxarrs,
+        nlayer: int,
+        covmat_out_virt_vec,
+        norm_mod_vec,
+        use_trans_inv: bool = True,
+    ):
+        """Computation of the electric energy.
 
-        Note: this function assumes that U = U^dagger, which is valid only for Z2.
-        For other groups, the calculation will not be as simple.
+        This method overwrites an abstract method in System2DBase.
+        """
+        dest = xnp.zeros(nlayer)
+        return xnp.asarray(dest)
+
+    def _compute_el_grad_vec(
+        self,
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        nvirtmodes_link: int,
+        nphysmodes_site: int,
+        symbolvec: tuple,
+        overall_factors,
+        idxarr_vec,
+        el_energy_vec,
+        mat_b_mod_vec,
+        gamma_in_sys_mod_vec,
+        covmat_out_virt_vec,
+        norm_mod_vec,
+        lognorm_default_vec,
+        wi_gamma_in_mod_inv_vec,
+        wi_gamma_out_mod_inv_vec,
+        mat_d_mod_inv_vec,
+        gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+        grad_over_norm_vec,
+        zeroed_params,
+        use_trans_inv: bool = True,
+    ):
+        """Computation of the electric energy gradients.
+        We start by calculating the electric energies, since these are needed for evaluating the gradients.
+        Since several operations needed for the computation of the gradient and the energy are similar,
+        we can reuse many intermediate steps.
+
+        This method overwrites an abstract method in System2DBase.
+
+        Args:
+            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
 
         Returns:
-            tuple: Tuple of (interaction energy for a single link, gradients)
+            list: list of gradients for the full system
         """
 
-        int_energy_op = xnp.zeros(self.cfg.nlayer)
-        gradients = xnp.zeros(self.cfg.param_shape())
-        return int_energy_op, xnp.array(gradients)
+        if not use_trans_inv:
+            # Evaluate every link of the system
+            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
+            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
-    def _compute_chem_energy_op_vec_and_grad(self):
-        """Calculate the chemical potential energy operator and its gradient."""
-        chem_energy_op = xnp.zeros(self.cfg.nlayer)
         gradients = xnp.zeros(self.cfg.param_shape())
-        return chem_energy_op, gradients
+        return gradients
+
+    @staticmethod
+    def _compute_mass_energy_op_vec(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        ferm_cov_vec: xnp.ndarray,
+        use_trans_inv: bool = True,
+    ):
+        mass_energy_op = xnp.zeros(num_pg_layer + num_fermionic_layer)
+        return mass_energy_op
+
+    @staticmethod
+    def _compute_mass_energy_grad(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        symbolvec: list,
+        d_gamma_out_symbolvec: xnp.array,
+        zeroed_params: list,
+        use_trans_inv: bool = True,
+    ):
+        nlayer = num_pg_layer + num_fermionic_layer
+        param_shape = (nlayer, unitcell_size, len(symbolvec))
+        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
+        return gradients
+
+    def _compute_int_energy_op_vec(self):
+
+        int_energy_op = xnp.zeros(self.cfg.nlayer)
+        return int_energy_op
+
+    def _compute_int_energy_grad(self):
+
+        gradients = xnp.zeros(self.cfg.param_shape())
+        return gradients
+
+    def _compute_chem_energy_op_vec(self):
+        chem_energy_op = xnp.zeros(self.cfg.nlayer)
+        return chem_energy_op
+
+    def _compute_chem_energy_grad(self):
+        gradients = xnp.zeros(self.cfg.param_shape())
+        return gradients
 
     def _meson_string_vec(self, path):
-        """Compute a layer resolved meson string for the given path.
+        f"""Compute a layer resolved meson string for the given path.
         This is \psi^dagger (start) * String * \psi(end) before particle-hole,
         and assumes that start and end are on the same sublattice.
 

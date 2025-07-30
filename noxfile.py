@@ -1,4 +1,3 @@
-import os
 import nox
 
 # Define the minimal nox version required to run
@@ -16,9 +15,9 @@ def lint(session):
         "E,W,F",
         ".",
         "--extend-ignore",
-        "E203, W503",  # whitespace in slices, line break before binary operator
+        "E203, W503, E266",  # whitespace in slices, line break before binary operator, multiple leading ##
         "--max-line-length",
-        "119",
+        "120",
     )
 
 
@@ -36,6 +35,11 @@ def typing(session):
         "src/ggpeps/evaluator_manager.py",
         "src/ggpeps/evaluator.py",
         "src/ggpeps/exacteval.py",
+        "src/ggpeps/lattice.py",
+        "src/ggpeps/gauge.py",
+        "src/ggpeps/utils.py",
+        "src/ggpeps/minimizer.py",
+        "src/ggpeps/measurement.py",
     )
     # TODO: Add passing files (eventually should be entire repo)
 
