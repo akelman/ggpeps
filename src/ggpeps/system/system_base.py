@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union, Optional  # used in type hints; this approach might be deprecated in later python versions
+from typing import Union, Optional
 
 import sys
 import logging
@@ -38,7 +38,7 @@ def maybe_jit(*jit_args, **jit_kwargs):
 class Config2DBase(ABC):
     """Configuration for a system in two dimensions
 
-    This class inherits from the abstract base class to enable abstract methods that have to be overwritten in a child class.
+    This class inherits from the abstract base class to enable abstract methods that must be overwritten in a child class.
     This class cannot be instantiated directly.
     """
 
@@ -330,9 +330,10 @@ class System2DBase(ABC):
         self._gamma_gauge_neutral_vec_dirs: Optional[xnp.ndarray] = (
             None  # vec for layers (choices of projectors may be different for each layer), dirs for directions
         )
-        self._gamma_in_sys_vec: Optional[xnp.ndarray] = (
-            None  # in cases when different layers use the same projectors, all elements will point to the same gamma_in_sys
-        )
+
+        # In cases when different layers use the same projectors, all elements will point to the same gamma_in_sys:
+        self._gamma_in_sys_vec: Optional[xnp.ndarray] = None
+
         neutral_gauge = self.cfg.gaugemgr.get_neutral_gauge_value()
         self._gaugefieldvec: xnp.ndarray = xnp.array([neutral_gauge] * self.cfg.lattice.nlinks)
 
@@ -385,7 +386,8 @@ class System2DBase(ABC):
 
     def invalidate_gauge_update(self):
         """Reset the values of computed quantitities to avoid spillover from previous computations.
-        We do not need to reset quantities that are not dependent on the gauge fields, such as _gamma_maj_sys_vec, _mat_a_vec, etc.
+        We do not need to reset quantities that are not dependent on the gauge fields,
+        such as _gamma_maj_sys_vec, _mat_a_vec, etc.
         """
 
         self._ferm_covmat_vec = None
@@ -555,15 +557,12 @@ class System2DBase(ABC):
         This method is overwritten for the U1 system.
 
         Args:
-            covmats_layervec_sitevec (list[list[xnp.ndarray]]): list (per layer) of 2D covariance matrices of all sites; total shape (nlayer, nsites, nmodes, nmodes)
+            covmats_layervec_sitevec (list[list[xnp.ndarray]]):
+                list (per layer) of 2D covariance matrices of all sites; total shape (nlayer, nsites, nmodes, nmodes)
 
         Returns:
             xnp.ndarray: 2D covariance matrix of the full system
         """
-
-        # Preliminaries
-        nsites = self.cfg.lattice.size
-        id = xnp.eye(nsites)
 
         # Build permutation matrix to convert modes from site order to link order
         modes_link_order = self.get_link_based_mode_order()
@@ -837,7 +836,7 @@ class System2DBase(ABC):
                     size,
                 )
 
-                # The library pfapack (used in the electric energy) is rather picky about the anti-symmetrization (to 1e-14)
+                # The library pfapack (used in the el energy) is rather picky about the anti-symmetrization (to 1e-14)
                 covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
                 covmat_out_virt_vec.append(covmat_out_virt)
 
@@ -1485,11 +1484,11 @@ class System2DBase(ABC):
         Args:
             gaugeconfig (xnp.ndarray): Array of new values for the gauge field
         """
-        for link_ind, gauge in enumerate(gaugeconfig):
+        for link_ind, gauge_val in enumerate(gaugeconfig):
             theta = gaugeconfig[link_ind]
             if not xnp.allclose(self._gaugefieldvec[link_ind], theta):
                 # only actually do the update if it's a different gauge field
-                self.update_gauge_ind(link_ind, gauge)
+                self.update_gauge_ind(link_ind, gauge_val)
 
     def update_gauge_coord(self, coord, dir, theta):
         """Update a gauge field at a given coordinate and direction by a new value
@@ -1775,7 +1774,6 @@ class System2DBase(ABC):
             float: Interaction energy operator (w/o shift) for the whole system
         """
         if self._int_energy_op is None:
-            nsites = self.cfg.lattice.size
             self._int_energy_op = xnp.sum(self.int_energy_op_vec)
         return self._int_energy_op
 
