@@ -15,7 +15,8 @@ def lint(session):
         "E,W,F",
         ".",
         "--extend-ignore",
-        "E203, W503, E266",  # whitespace in slices, line break before binary operator, multiple leading ##
+        # whitespace in slices, line break before binary operator, multiple leading ##, imports not at top of file
+        "E203, W503, E266, E402",
         "--max-line-length",
         "120",
     )
