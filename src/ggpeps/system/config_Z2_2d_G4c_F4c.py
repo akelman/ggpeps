@@ -112,10 +112,12 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
 
         idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
         idxarr_lay_fermionic = get_pfaffian_arrays(indices_layer_fermionic, prefactors)
-        self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
+        self.idxarr_vec = tuple(
+            [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
+        )
 
-        self.el_overall_factors = [1 / 256] * (
-            self.nlayer
+        self.el_overall_factors = tuple(
+            [1 / 256] * self.nlayer
         )  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def get_zeroed_params(self) -> list[tuple[int, int, int]]:

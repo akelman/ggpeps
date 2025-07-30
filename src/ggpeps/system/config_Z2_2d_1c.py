@@ -81,10 +81,10 @@ class Z2System2DConfig(Config2DBase):
         prefactors = [[1, -1, 1.0j, 1.0j]]
         indices = [[(2, 0), (3, 1), (0, 1), (2, 3)]]
         idxarr = get_pfaffian_arrays(indices, prefactors)
-        self.idxarr_vec = [idxarr] * self.nlayer
-        self.el_overall_factors = [
-            -1j / 4
-        ] * self.nlayer  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        self.idxarr_vec = tuple([idxarr] * self.nlayer)
+        self.el_overall_factors = tuple(
+            [-1j / 4] * self.nlayer
+        )  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
         # The order of the parameters is [tr,yr,zr,ti,yi,zi] ({r,i} referring to the real/imaginary components)

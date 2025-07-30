@@ -117,10 +117,12 @@ class D6System2D_Config(Config2DBase):
         ]
         idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
         idxarr_lay_fermionic = get_pfaffian_arrays(indices_layer_fermionic, prefactors)
-        self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
-        self.el_overall_factors = [
-            -1 / 16
-        ] * self.nlayer  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        self.idxarr_vec = tuple(
+            [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
+        )
+        self.el_overall_factors = tuple(
+            [-1 / 16] * self.nlayer
+        )  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.

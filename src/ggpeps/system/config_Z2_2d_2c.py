@@ -86,10 +86,10 @@ class Z2System2D2CConfig(Config2DBase):
             [(6, 0), (7, 1), (0, 1), (6, 7)],
         ]
         idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
-        self.idxarr_vec = [idxarr_lay_pg] * self.nlayer
-        self.el_overall_factors = [
-            -1 / 16
-        ] * self.nlayer  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        self.idxarr_vec = tuple([idxarr_lay_pg] * self.nlayer)
+        self.el_overall_factors = tuple(
+            [-1 / 16] * self.nlayer
+        )  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
         """Ensure the system stays as pure_gauge.
