@@ -34,26 +34,21 @@ class TestModeArray(unittest.TestCase):
         with self.assertRaises(ValueError):
             arr_2d.modes = [["1", "1", "2", "3"], ["1", "4", "2", "3"]]
 
-    def test_number_modes(self):
+    def test_number_modes_1d(self):
         arr = np.arange(3).view(ModeArray)
-        arr_2d = np.random.rand(4, 4).view(ModeArray)
         with self.assertRaises(ValueError):
             arr.modes = [["1", "2"]]
         with self.assertRaises(ValueError):
             arr.modes = [["1", "2", "3", "4"]]
+
+    def test_number_modes_2d(self):
+        arr_2d = np.random.rand(4, 4).view(ModeArray)
         with self.assertRaises(ValueError):
             arr_2d.modes = [["1", "2"], ["1", "2", "3", "4"]]
         with self.assertRaises(ValueError):
             arr_2d.modes = [["1", "2", "3", "4"], ["1", "2"]]
         with self.assertRaises(ValueError):
             arr_2d.modes = [["1", "3"], ["1", "3", "4"]]
-
-    def test_number_modes(self):
-        arr = np.arange(3).view(ModeArray)
-        with self.assertRaises(ValueError):
-            arr.modes = [["1", "2"]]
-        with self.assertRaises(ValueError):
-            arr.modes = [["1", "2", "3", "4"]]
 
     def test_addition_scalar(self):
         d_1d = self.a_1d + 4
