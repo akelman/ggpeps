@@ -6,14 +6,11 @@ This fule contains functions to check for such singularities and find the pairs 
 """
 
 import numpy as np
-import sympy as sp
-from scipy.linalg import block_diag
 import itertools
 
 
-from ggpeps import lattice, utils
-from ggpeps import system, exacteval
-from ggpeps.modearray import generate_permutation_matrix
+from ggpeps import lattice
+from ggpeps import system
 
 
 def forbidden_pairs(system, site_coord, dir):

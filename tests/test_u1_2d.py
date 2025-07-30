@@ -7,7 +7,6 @@ from ggpeps import lattice
 from ggpeps import system
 from ggpeps import utils
 
-from ggpeps import xnp as xnp
 import jax.numpy as jnp
 
 
