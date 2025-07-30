@@ -531,7 +531,14 @@ class D2nSystem2D(System2DBase):
         gradients = xnp.zeros(self.cfg.param_shape())
         return gradients
 
-    def _compute_chem_energy_op_vec(self):
+    @staticmethod
+    def _compute_chem_energy_op_vec(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        sublattice_factors: tuple,
+        ferm_covmat_vec: xnp.ndarray,
+    ):
         chem_energy_op = xnp.zeros(self.cfg.nlayer)
         return chem_energy_op
 

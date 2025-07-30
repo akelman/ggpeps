@@ -1710,6 +1710,7 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    @staticmethod
     @abstractmethod
     def _compute_chem_energy_op_vec(self):
         """Compute the chemical potential energy (per layer).
@@ -1932,7 +1933,13 @@ class System2DBase(ABC):
             list: Layer-resolved interaction energy w/o shift
         """
         if self._chem_energy_op_vec is None:
-            self._chem_energy_op_vec = self._compute_chem_energy_op_vec()
+            self._chem_energy_op_vec = self._compute_chem_energy_op_vec(
+                self.cfg.lattice.size,
+                self.cfg.num_pg_layer,
+                self.cfg.num_fermionic_layer,
+                self.cfg.lattice.sublattice_factors,
+                self.ferm_covmat_vec,
+            )
         return self._chem_energy_op_vec
 
     # Functions that return the layer-resolved gradients of each energy operator
