@@ -1322,14 +1322,16 @@ class System2DBase(ABC):
 
     @classmethod
     def _calculate_lognorm_inc(cls, incdet_vec, det_mat_d_vec, n, all_factors: bool = False):
-        lognormvec = cls._calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=all_factors)
+        det_vec = xnp.array([incdet.det() for incdet in incdet_vec])
+        lognormvec = cls._calculate_lognormvec_inc(det_vec, det_mat_d_vec, n, all_factors=all_factors)
         return xnp.sum(lognormvec)
 
     @staticmethod
-    def _calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors: bool = False):
+    @maybe_jit(static_argnames=["n", "all_factors"])
+    def _calculate_lognormvec_inc(det_vec, det_mat_d_vec, n, all_factors: bool = False):
         dest = []
-        for ind in range(len(incdet_vec)):
-            detval = incdet_vec[ind].det()
+        for ind in range(len(det_vec)):
+            detval = det_vec[ind]
             if all_factors:
                 detval -= n * xnp.log(2)
                 detval += det_mat_d_vec[ind]
@@ -1348,12 +1350,14 @@ class System2DBase(ABC):
         Returns:
             list: Vector of the incrementally updated norms for all layers
         """
-        return self._calculate_lognormvec_inc(
-            self.incdet_vec,
+        det_vec = xnp.array([incdet.det() for incdet in self.incdet_vec])
+        res = self._calculate_lognormvec_inc(
+            det_vec,
             self.det_mat_d_vec,
             self.gamma_in_sys_vec[0].shape[0],
             all_factors=all_factors,
         )
+        return res
 
     def calculate_lognorm_inc(self, all_factors=False):
         """Update the logarithm of the norm incrementally (using IncDet and Woodbury)
