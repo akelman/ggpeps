@@ -247,7 +247,7 @@ def select_except(arr: Union[list, xnp.ndarray], ind: int) -> xnp.ndarray:
     return arr[mask]  # TODO: fix for JAX jit
 
 
-@maybe_jit
+@maybe_jit(static_argnames=[])
 def add_except(arr: xnp.ndarray, ind: int) -> float:
     """Sum all array values except for arr[ind]
 
