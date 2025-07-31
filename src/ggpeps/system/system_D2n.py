@@ -226,7 +226,7 @@ class D2nSystem2D(System2DBase):
                 ],
             )
 
-        # We have dim(representaion) left mode => 2*dim(representation) Majorana modes
+        # We have dim(representation) left mode => 2*dim(representation) Majorana modes
         dim_rep = len(g)  # dimension of the representation
         rot_left = xnp.eye(2 * dim_rep)
 
