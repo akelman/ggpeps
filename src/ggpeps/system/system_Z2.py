@@ -551,7 +551,19 @@ class Z2System2D(System2DBase):
 
         return int_energy_op
 
-    def _compute_int_energy_grad(self):
+    @staticmethod
+    def _compute_int_energy_grad(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        nparams: int,
+        gaugefieldvec: xnp.ndarray,
+        d_gamma_out_symbolvec: xnp.ndarray,
+        horizontal_neighbor_data: tuple,
+        vertical_neighbor_data: tuple,
+        zeroed_params: tuple,
+    ):
         """Calculate the energy gradient due to the interaction of the
         physical fermions with the gauge fields.
         Note: this function assumes that U = U^dagger, which is valid only for Z2.
@@ -561,48 +573,38 @@ class Z2System2D(System2DBase):
             array: gradients
         """
 
-        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+        nlayer = num_pg_layer + num_fermionic_layer
+        param_shape = (nlayer, unitcell_size, nparams)
+        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
 
-        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+        for layer_ind in range(num_pg_layer, nlayer):
 
-            for site_ind in range(self.cfg.lattice.size):
-                coord = self.cfg.lattice.ind2coord(site_ind)
-
-                # this is the index to use when accessing elements of the covariance matrix,
-                # which has 2 Majorana modes per site
-                site_ind_cov = 2 * site_ind
+            for site_ind in range(lattice_size):
+                site_ind_cov = 2 * site_ind  # index into covariance matrix, factor of 2 for Majorana modes per site
 
                 # Horizontal link
-                ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X)  # index of the horizontal link
-                neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X)  # coordinates of neighboring site
-                neighborX_ind = 2 * self.cfg.lattice.coord2ind(
-                    neighborX_coord
-                )  # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
-                gaugefield_hor = self.gaugefieldvec[
-                    ind_field_hor
-                ]  # gaugefield_hor is a matrix representation of a group element
-                theta_hor = self.cfg.gaugemgr.get_angle(gaugefield_hor)  # convert it to an angle
-                cos_factor_hor = xnp.cos(theta_hor)  # simple way to get U from gauge value
+                hor_link_ind = horizontal_neighbor_data[site_ind][0]
+                neighborX_ind = 2 * horizontal_neighbor_data[site_ind][1]  # 2 * index of neighboring site
+
+                gaugefield_hor = gaugefieldvec[hor_link_ind]  # a matrix representation of the group element
+                cos_factor_hor = xnp.real(gaugefield_hor[0][0]).astype(float)  # get U from gauge representation
 
                 # Vertical link
-                ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
-                neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
-                neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
-                gaugefield_vert = self.gaugefieldvec[ind_field_vert]
-                theta_vert = self.cfg.gaugemgr.get_angle(
-                    gaugefield_vert
-                )  # gaugefield_vert is a matrix represntation of a group element
-                cos_factor_vert = xnp.cos(theta_vert)
+                vert_link_ind = vertical_neighbor_data[site_ind][0]
+                neighborY_ind = 2 * vertical_neighbor_data[site_ind][1]
+
+                gaugefield_vert = gaugefieldvec[vert_link_ind]
+                cos_factor_vert = xnp.real(gaugefield_vert[0][0]).astype(float)
 
                 # Calculate derivatives
-                for uc_ind in range(self.cfg.unitcell_size):
-                    for symbol_ind, symbol in enumerate(self.symbolvec):
+                for uc_ind in range(unitcell_size):
+                    for symbol_ind in range(nparams):
                         # the derivative calculation is relatively compuationally expensive
                         # (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
-                        if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
+                        if (layer_ind, uc_ind, symbol_ind) not in zeroed_params:
 
-                            d_gamma_out = self.d_gamma_out_symbolvec[layer_ind, uc_ind, symbol_ind]
+                            d_gamma_out = d_gamma_out_symbolvec[layer_ind, uc_ind, symbol_ind]
                             grad = (
                                 0.5
                                 * cos_factor_hor
