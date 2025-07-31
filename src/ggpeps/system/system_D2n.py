@@ -63,7 +63,7 @@ class D2nSystem2D(System2DBase):
         """
         # There are two directions per vertex and two Majoranas per link
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord, dir)
+        rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
         gamma_neutral_gauge_vec = self.gamma_gauge_neutral_vec
         if color_to_check is not None:
             ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind + 2 * color_to_check * self.cfg.nvirtmodes_link_per_color
@@ -170,8 +170,8 @@ class D2nSystem2D(System2DBase):
         return weight
 
     # Gauging
-
-    def generate_rotmat(self, group_element: xnp.ndarray, coord: tuple, dir: Direction):
+    @classmethod
+    def generate_rotmat(cls, ncopy: int, group_element: xnp.ndarray, coord: tuple, dir: Direction):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
 
         The mode order is (as for gamma_in_neutral):
@@ -236,10 +236,12 @@ class D2nSystem2D(System2DBase):
             rot_left, rot_right
         )  # This is the rot for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
 
-        rotmat = xnp.kron(xnp.eye(self.cfg.ncopy), dest)
+        rotmat = xnp.kron(xnp.eye(ncopy), dest)
 
-        wrong_order = self.get_wrong_single_link_majorana_mode_order_by_copy_then_color()
-        correct_order_first_color_then_copy = self.get_single_link_majorana_mode_order()
+        # TODO: we should rather just order correctly from the start
+        wrong_order = cls.get_wrong_single_link_majorana_mode_order_by_copy_then_color(ncopy)
+        rep_dim = 2  # for this system, the representation dimension is always 2
+        correct_order_first_color_then_copy = cls.get_single_link_majorana_mode_order(ncopy, rep_dim)
         perm_mat = xnp.array(
             modearray.generate_permutation_matrix(
                 wrong_order,
@@ -249,6 +251,41 @@ class D2nSystem2D(System2DBase):
         rotmat = xnp.transpose(perm_mat) @ rotmat @ perm_mat
 
         return rotmat
+
+    @staticmethod
+    def get_wrong_single_link_majorana_mode_order_by_copy_then_color(num_copies: int) -> list:
+        """Generate the link-based majorana mode order for a single link. We first order by copy and then by color.
+        This is not the order we use in the code. This is just to change the generate_rotmat ordering.
+
+        Returns:
+            list: List of strings of the form <mode_letter:majorana mode>_<copy>_<color>
+        """
+
+        mode_order = []
+        num_colors = 2  # always 2 for this is system, in general: self.cfg.gaugemgr.rep_dim
+        # We demonstrate the order for a single horizontal link -
+        for copy in range(1, num_copies + 1):
+            for color in range(1, num_colors + 1):
+                mode1 = ("l1", copy, color)  # majorana mode l1
+                mode_order += [mode1]
+            for color in range(1, num_colors + 1):
+                mode2 = ("l2", copy, color)  # majorana mode l2
+                mode_order += [mode2]
+            for color in range(1, num_colors + 1):
+                mode1 = ("r1", copy, color)
+                mode_order += [mode1]
+            for color in range(1, num_colors + 1):
+                mode2 = ("r2", copy, color)
+                mode_order += [mode2]
+
+        # Convert to a list of strings
+        # This was left as a tuple above in case there was ever any use for that format
+        mode_order_str = []
+        for mode in mode_order:
+            mode_str = mode[0] + "_" + str(mode[1]) + "_" + str(mode[2])
+            mode_order_str.append(mode_str)
+
+        return mode_order_str
 
     def update_gauge_ind(self, link_ind, theta):
         """Update method that is called upon changing a gauge field.
@@ -326,7 +363,7 @@ class D2nSystem2D(System2DBase):
 
         # There are two directions per vertex
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord, dir)
+        rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
         if color_to_update is None:  # if we update both colors.
             ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         else:

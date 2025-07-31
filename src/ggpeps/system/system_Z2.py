@@ -44,8 +44,8 @@ class Z2System2D(System2DBase):
         super().__init__(cfg)
 
     ################## Gauging ##################
-
-    def generate_rotmat(self, group_element: xnp.array, coord: tuple, dir: Direction):
+    @classmethod
+    def generate_rotmat(cls, ncopy: int, group_element: xnp.array, coord: tuple, dir: Direction):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
 
         The mode order is (as for gamma_in_neutral):
@@ -62,9 +62,12 @@ class Z2System2D(System2DBase):
         i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
 
+        For this system, the rotmat does not depend on the coord or dir
+
         This method overwrites an abstract method in System2DBase.
 
         Args:
+            ncopy (int): number of copies of the ansatz
             g (fxnp.array): representation of group element
             coord (tuple): (x,y) coordinate on the lattice
             dir (lattice.Direction): direction of the link
@@ -72,10 +75,7 @@ class Z2System2D(System2DBase):
         Returns:
             xnp.ndarray: Rotation matrix for gamma_in_neutral
         """
-        theta = self.cfg.gaugemgr.get_angle(group_element)
-        # Gauging might be different depending on sublattice or link direction, but for this system it is the same
-        if dir == Direction.X and (-1) ** (coord[0] + coord[1]) == -1:
-            pass
+        theta = xnp.angle(group_element[0][0])  # equivalent to gaugemgr.get_angle(group_element)
 
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
@@ -85,7 +85,7 @@ class Z2System2D(System2DBase):
         # The mode order is lr (horizontally) or du (vertically).
         # We rotate the different copies in the SAME way.
         dest = xscipy.linalg.block_diag(rot_left, rot_right)
-        rotmat = xnp.kron(xnp.eye(self.cfg.ncopy), dest)
+        rotmat = xnp.kron(xnp.eye(ncopy), dest)
         return rotmat
 
     def update_gauge_ind(self, link_ind, theta):
@@ -107,7 +107,7 @@ class Z2System2D(System2DBase):
         # There are two directions per vertex
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord, dir)
+        rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
 
         update_vec = []
         for layer in range(self.cfg.nlayer):
