@@ -1578,7 +1578,7 @@ class System2DBase(ABC):
             gaugeconfig (xnp.ndarray): Array of new values for the gauge field
         """
         for link_ind, gauge_val in enumerate(gaugeconfig):
-            theta = gaugeconfig[link_ind]
+            theta = xnp.asarray(gaugeconfig[link_ind])
             if not xnp.allclose(self._gaugefieldvec[link_ind], theta):
                 # only actually do the update if it's a different gauge field
                 self.update_gauge_ind(link_ind, gauge_val)
