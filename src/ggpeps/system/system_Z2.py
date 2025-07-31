@@ -500,7 +500,14 @@ class Z2System2D(System2DBase):
 
         return xnp.array(gradients)
 
-    def _compute_int_energy_op_vec(self):
+    def _compute_int_energy_op_vec(
+        self,
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        gaugefieldvec: xnp.ndarray,
+        ferm_covmat_vec: xnp.ndarray,
+    ):
         """Calculate the energy due to the interaction of the
         physical fermions with the gauge fields.
         Note: this function assumes that U = U^dagger, which is valid only for Z2.
@@ -510,13 +517,14 @@ class Z2System2D(System2DBase):
             array: interaction energy for a single link
         """
 
-        int_energy_op = xnp.zeros(self.cfg.nlayer)
+        nlayer = num_pg_layer + num_fermionic_layer
+        int_energy_op = xnp.zeros(nlayer)
 
-        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+        for layer_ind in range(num_pg_layer, nlayer):
             layer_int_energy = 0.0
-            covmat = self.ferm_covmat_vec[layer_ind]
+            covmat = ferm_covmat_vec[layer_ind]
 
-            for site_ind in range(self.cfg.lattice.size):
+            for site_ind in range(lattice_size):
                 coord = self.cfg.lattice.ind2coord(site_ind)
 
                 # this is the index to use when accessing elements of the covariance matrix,
@@ -529,7 +537,7 @@ class Z2System2D(System2DBase):
                 neighborX_ind = 2 * self.cfg.lattice.coord2ind(
                     neighborX_coord
                 )  # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
-                gaugefield_hor = self.gaugefieldvec[ind_field_hor]  # a matrix representation of the group element
+                gaugefield_hor = gaugefieldvec[ind_field_hor]  # a matrix representation of the group element
                 cos_factor_hor = float(xnp.real(gaugefield_hor[0][0]))  # simple way to get U from gauge representation
                 hor_energy = 0.5 * (covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov + 1, neighborX_ind + 1])
                 layer_int_energy += hor_energy * cos_factor_hor
@@ -538,7 +546,7 @@ class Z2System2D(System2DBase):
                 ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
                 neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
                 neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
-                gaugefield_vert = self.gaugefieldvec[ind_field_vert]
+                gaugefield_vert = gaugefieldvec[ind_field_vert]
                 cos_factor_vert = float(xnp.real(gaugefield_vert[0][0]))
                 vert_energy = 0.5 * (covmat[site_ind_cov, neighborY_ind + 1] + covmat[site_ind_cov + 1, neighborY_ind])
                 layer_int_energy -= vert_energy * cos_factor_vert
