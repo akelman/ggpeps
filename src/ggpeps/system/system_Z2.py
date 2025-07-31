@@ -501,6 +501,15 @@ class Z2System2D(System2DBase):
         return xnp.array(gradients)
 
     @staticmethod
+    @maybe_jit(
+        static_argnames=[
+            "lattice_size",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "horizontal_neighbor_data",
+            "vertical_neighbor_data",
+        ],
+    )
     def _compute_int_energy_op_vec(
         lattice_size: int,
         num_pg_layer: int,
@@ -552,6 +561,18 @@ class Z2System2D(System2DBase):
         return int_energy_op
 
     @staticmethod
+    @maybe_jit(
+        static_argnames=[
+            "lattice_size",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "unitcell_size",
+            "nparams",
+            "horizontal_neighbor_data",
+            "vertical_neighbor_data",
+            "zeroed_params",
+        ],
+    )
     def _compute_int_energy_grad(
         lattice_size: int,
         num_pg_layer: int,
