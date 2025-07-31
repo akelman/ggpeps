@@ -45,6 +45,7 @@ class Z2System2D(System2DBase):
 
     ################## Gauging ##################
     @classmethod
+    @maybe_jit(static_argnames=["cls", "ncopy"])
     def generate_rotmat(cls, ncopy: int, group_element: xnp.array, coord: tuple, dir: Direction):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
 
