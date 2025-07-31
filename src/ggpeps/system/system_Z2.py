@@ -510,7 +510,7 @@ class Z2System2D(System2DBase):
             array: interaction energy for a single link
         """
 
-        int_energy_op = [0] * self.cfg.num_pg_layer
+        int_energy_op = xnp.zeros(self.cfg.nlayer)
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             layer_int_energy = 0.0
@@ -529,33 +529,21 @@ class Z2System2D(System2DBase):
                 neighborX_ind = 2 * self.cfg.lattice.coord2ind(
                     neighborX_coord
                 )  # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
-                gaugefield_hor = self.gaugefieldvec[
-                    ind_field_hor
-                ]  # gaugefield_hor is a matrix representation of a group element
-                theta_hor = self.cfg.gaugemgr.get_angle(gaugefield_hor)  # convert it to an angle
-                cos_factor_hor = xnp.cos(theta_hor)  # simple way to get U from gauge value
-                hor_link_energy = 0.5 * (
-                    covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov + 1, neighborX_ind + 1]
-                )
-                layer_int_energy += hor_link_energy * cos_factor_hor
+                gaugefield_hor = self.gaugefieldvec[ind_field_hor]  # a matrix representation of the group element
+                cos_factor_hor = float(xnp.real(gaugefield_hor[0][0]))  # simple way to get U from gauge representation
+                hor_energy = 0.5 * (covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov + 1, neighborX_ind + 1])
+                layer_int_energy += hor_energy * cos_factor_hor
 
                 # Vertical link
                 ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
                 neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
                 neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
                 gaugefield_vert = self.gaugefieldvec[ind_field_vert]
-                theta_vert = self.cfg.gaugemgr.get_angle(
-                    gaugefield_vert
-                )  # gaugefield_vert is a matrix represntation of a group element
-                cos_factor_vert = xnp.cos(theta_vert)
-                vert_link_energy = 0.5 * (
-                    covmat[site_ind_cov, neighborY_ind + 1] + covmat[site_ind_cov + 1, neighborY_ind]
-                )
-                layer_int_energy -= vert_link_energy * cos_factor_vert
+                cos_factor_vert = float(xnp.real(gaugefield_vert[0][0]))
+                vert_energy = 0.5 * (covmat[site_ind_cov, neighborY_ind + 1] + covmat[site_ind_cov + 1, neighborY_ind])
+                layer_int_energy -= vert_energy * cos_factor_vert
 
-            int_energy_op.append(layer_int_energy)
-
-        int_energy_op = xnp.asarray(int_energy_op)
+            int_energy_op = backend.array_assign(int_energy_op, layer_ind, layer_int_energy)
 
         return int_energy_op
 
