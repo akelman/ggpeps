@@ -500,13 +500,15 @@ class Z2System2D(System2DBase):
 
         return xnp.array(gradients)
 
+    @staticmethod
     def _compute_int_energy_op_vec(
-        self,
         lattice_size: int,
         num_pg_layer: int,
         num_fermionic_layer: int,
         gaugefieldvec: xnp.ndarray,
         ferm_covmat_vec: xnp.ndarray,
+        horizontal_neighbor_data: tuple,
+        vertical_neighbor_data: tuple,
     ):
         """Calculate the energy due to the interaction of the
         physical fermions with the gauge fields.
@@ -525,29 +527,24 @@ class Z2System2D(System2DBase):
             covmat = ferm_covmat_vec[layer_ind]
 
             for site_ind in range(lattice_size):
-                coord = self.cfg.lattice.ind2coord(site_ind)
-
-                # this is the index to use when accessing elements of the covariance matrix,
-                # which has 2 Majorana modes per site
-                site_ind_cov = 2 * site_ind
 
                 # Horizontal link
-                ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X)  # index of the horizontal link
-                neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X)  # coordinates of neighboring site
-                neighborX_ind = 2 * self.cfg.lattice.coord2ind(
-                    neighborX_coord
-                )  # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
-                gaugefield_hor = gaugefieldvec[ind_field_hor]  # a matrix representation of the group element
-                cos_factor_hor = float(xnp.real(gaugefield_hor[0][0]))  # simple way to get U from gauge representation
+                site_ind_cov = 2 * site_ind  # index into covariance matrix, factor of 2 for Majorana modes per site
+                hor_link_ind = horizontal_neighbor_data[site_ind][0]
+                neighborX_ind = 2 * horizontal_neighbor_data[site_ind][1]  # 2 * index of neighboring site
+
+                gaugefield_hor = gaugefieldvec[hor_link_ind]  # a matrix representation of the group element
+                cos_factor_hor = xnp.real(gaugefield_hor[0][0]).astype(float)  # get U from gauge representation
                 hor_energy = 0.5 * (covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov + 1, neighborX_ind + 1])
                 layer_int_energy += hor_energy * cos_factor_hor
 
                 # Vertical link
-                ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
-                neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
-                neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
-                gaugefield_vert = gaugefieldvec[ind_field_vert]
-                cos_factor_vert = float(xnp.real(gaugefield_vert[0][0]))
+                site_ind_cov = 2 * site_ind
+                vert_link_ind = vertical_neighbor_data[site_ind][0]
+                neighborY_ind = 2 * vertical_neighbor_data[site_ind][1]
+
+                gaugefield_vert = gaugefieldvec[vert_link_ind]
+                cos_factor_vert = xnp.real(gaugefield_vert[0][0]).astype(float)
                 vert_energy = 0.5 * (covmat[site_ind_cov, neighborY_ind + 1] + covmat[site_ind_cov + 1, neighborY_ind])
                 layer_int_energy -= vert_energy * cos_factor_vert
 

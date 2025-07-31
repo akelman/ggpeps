@@ -521,16 +521,18 @@ class D2nSystem2D(System2DBase):
         gradients = xnp.zeros(param_shape, dtype=xnp.float64)
         return gradients
 
+    @staticmethod
     def _compute_int_energy_op_vec(
-        self,
         lattice_size: int,
         num_pg_layer: int,
         num_fermionic_layer: int,
         gaugefieldvec: xnp.ndarray,
         ferm_covmat_vec: xnp.ndarray,
+        horizontal_neighbor_data: tuple,
+        vertical_neighbor_data: tuple,
     ):
 
-        int_energy_op = xnp.zeros(self.cfg.nlayer)
+        int_energy_op = xnp.zeros(num_pg_layer + num_fermionic_layer)
         return int_energy_op
 
     def _compute_int_energy_grad(self):

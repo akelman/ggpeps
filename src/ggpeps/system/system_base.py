@@ -1696,14 +1696,16 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    @staticmethod
     @abstractmethod
     def _compute_int_energy_op_vec(
-        self,
         lattice_size: int,
         num_pg_layer: int,
         num_fermionic_layer: int,
         gaugefieldvec: xnp.ndarray,
         ferm_covmat_vec: xnp.ndarray,
+        horizontal_neighbor_data: tuple,
+        vertical_neighbor_data: tuple,
     ):
         """Compute the interaction energy (per layer).
         This is an abstract method and has to be overwritten in a subclass.
@@ -1944,6 +1946,8 @@ class System2DBase(ABC):
                 self.cfg.num_fermionic_layer,
                 self.gaugefieldvec,
                 self.ferm_covmat_vec,
+                self.cfg.lattice.horizontal_neighbor_data,
+                self.cfg.lattice.vertical_neighbor_data,
             )
         return self._int_energy_op_vec
 
