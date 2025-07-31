@@ -543,7 +543,9 @@ class Z2System2D(System2DBase):
                 neighborX_ind = 2 * horizontal_neighbor_data[site_ind][1]  # 2 * index of neighboring site
 
                 gaugefield_hor = gaugefieldvec[hor_link_ind]  # a matrix representation of the group element
-                cos_factor_hor = xnp.real(gaugefield_hor[0][0]).astype(float)  # get U from gauge representation
+                cos_factor_hor = xnp.real(gaugefield_hor[0][0]).astype(
+                    float
+                )  # get U from gauge representation, this handles cosine
                 hor_energy = 0.5 * (covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov + 1, neighborX_ind + 1])
                 layer_int_energy += hor_energy * cos_factor_hor
 
@@ -608,7 +610,9 @@ class Z2System2D(System2DBase):
                 neighborX_ind = 2 * horizontal_neighbor_data[site_ind][1]  # 2 * index of neighboring site
 
                 gaugefield_hor = gaugefieldvec[hor_link_ind]  # a matrix representation of the group element
-                cos_factor_hor = xnp.real(gaugefield_hor[0][0]).astype(float)  # get U from gauge representation
+                cos_factor_hor = xnp.real(gaugefield_hor[0][0]).astype(
+                    float
+                )  # get U from gauge representation, this handles cosine
 
                 # Vertical link
                 vert_link_ind = vertical_neighbor_data[site_ind][0]
