@@ -527,9 +527,9 @@ class Z2System2D(System2DBase):
             covmat = ferm_covmat_vec[layer_ind]
 
             for site_ind in range(lattice_size):
+                site_ind_cov = 2 * site_ind  # index into covariance matrix, factor of 2 for Majorana modes per site
 
                 # Horizontal link
-                site_ind_cov = 2 * site_ind  # index into covariance matrix, factor of 2 for Majorana modes per site
                 hor_link_ind = horizontal_neighbor_data[site_ind][0]
                 neighborX_ind = 2 * horizontal_neighbor_data[site_ind][1]  # 2 * index of neighboring site
 
@@ -539,7 +539,6 @@ class Z2System2D(System2DBase):
                 layer_int_energy += hor_energy * cos_factor_hor
 
                 # Vertical link
-                site_ind_cov = 2 * site_ind
                 vert_link_ind = vertical_neighbor_data[site_ind][0]
                 neighborY_ind = 2 * vertical_neighbor_data[site_ind][1]
 
