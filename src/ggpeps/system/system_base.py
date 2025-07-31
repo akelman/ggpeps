@@ -890,21 +890,21 @@ class System2DBase(ABC):
                     all_factors=True,
                 )
 
-                norm_mod += xnp.sum(utils.select_except(lognormvec_default, layerind))
+                norm_mod += utils.add_except(lognormvec_default, layerind)
                 norm_mod_vec.append(norm_mod)
 
             self._norm_mod_vec = norm_mod_vec
         return self._norm_mod_vec
 
     @property
-    def lognorm_default_vec(self) -> list[float]:
+    def lognorm_default_vec(self) -> xnp.ndarray:
         """Compute the log of the norm of the state, with no modifications (e.g. those of the electric energy),
         including all factors.
         This function returns a vector over layers of these norms.
         This is a get function.
 
         Returns:
-            list[float]: a vector of norms
+            array: a vector of norms
         """
         if self._lognorm_default_vec is None:
             self._lognorm_default_vec = self.calculate_lognormvec_inc(all_factors=True)

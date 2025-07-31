@@ -22,6 +22,7 @@ from matplotlib.colors import LogNorm
 import ggpeps
 import ggpeps.measurement as meas
 from ggpeps.system.backend import backend
+from ggpeps.system.system_base import maybe_jit
 from ggpeps.system.backend_jax import derivative_pfaffian_jax
 from ggpeps.system.backend_numpy import derivative_pfaffian_numpy
 
@@ -244,6 +245,23 @@ def select_except(arr: Union[list, xnp.ndarray], ind: int) -> xnp.ndarray:
     mask = xnp.ones(len(arr), dtype=bool)
     mask = backend.array_assign(mask, ind, False)
     return arr[mask]  # TODO: fix for JAX jit
+
+
+@maybe_jit
+def add_except(arr: xnp.ndarray, ind: int) -> float:
+    """Sum all array values except for arr[ind]
+
+    Args:
+        arr (xnp.ndarray): list of values
+        ind (int): index
+
+    Returns:
+        float: Sum of all array values except for arr[ind]
+    """
+    mask = xnp.ones(len(arr), dtype=bool)
+    mask = backend.array_assign(mask, ind, False)
+    sum_other = xnp.where(mask, arr, 0.0).sum()
+    return sum_other
 
 
 def multiply_except(arr: Union[xnp.ndarray, list], ind: int) -> float:
