@@ -10,7 +10,7 @@ def lint(session):
     session.run(
         "flake8",
         "--exclude",
-        ".nox,*.egg,build,data",
+        ".nox,*.egg,build,data,.*",
         "--select",
         "E,W,F",
         ".",
