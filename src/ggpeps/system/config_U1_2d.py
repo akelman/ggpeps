@@ -7,7 +7,7 @@ import ggpeps
 from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
-from .system_base import Config2DBase
+from .config_base import Config2DBase
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 

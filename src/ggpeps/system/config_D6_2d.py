@@ -10,7 +10,7 @@ from ggpeps import gauge
 from ggpeps import modearray
 from ggpeps.lattice import Direction
 
-from .system_base import Config2DBase
+from .config_base import Config2DBase
 from .system_base import get_pfaffian_arrays
 
 
