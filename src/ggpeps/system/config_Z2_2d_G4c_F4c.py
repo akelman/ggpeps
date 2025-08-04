@@ -58,32 +58,15 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
+            unitcell_size,
         )
 
-        # Translation invariance (or variance)
-        # define a map from site to index of independent parameters
-        if unitcell_size == 1:
-            self.site_params_dict = {site: 0 for site in range(self.lattice.size)}
-        elif unitcell_size == 2:
-            self.site_params_dict = {}
-            for site in range(self.lattice.size):
-                x, y = self.lattice.ind2coord(site)
-                uc_ind = 1 if (x + y) % 2 else 0  # 0 for even sublattice, 1 for odd
-                self.site_params_dict[site] = uc_ind
-        elif unitcell_size == -1:
-            # no unitcell - every site has its own parameters
-            self.site_params_dict = {}
-            for site in range(self.lattice.size):
-                self.site_params_dict[site] = site
-        else:
+        if self.unitcell_size not in [1, 2, -1]:
             logger.error(
                 "This ansatz only supports unitcell_size = 1, 2, or -1 (all sites independent). \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             raise ValueError("Invalid unitcell_size.")
-
-        # number of different sets of parameters across sites (min: 1, max: num_sites)
-        self.unitcell_size = len(set(self.site_params_dict.values()))
 
         self.u1_symmetry = enforce_u1_symmetry
         # We store a list of the parameters forced to be zero by the ansatz

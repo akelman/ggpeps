@@ -71,31 +71,16 @@ class D6System2D_Config(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
+            unitcell_size,
         )
 
         # Translation invariance (or variance)
-        if unitcell_size not in [1]:
+        if self.unitcell_size not in [1]:
             logger.error(
                 "For Dn groups this ansatz only supports unitcell_size = 1. \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             sys.exit(1)
-        # map from site to index of independent parameters (default is unitcell_size = 1)
-        self.site_params_dict = {site: 0 for site in range(self.lattice.size)}
-
-        # For now, we use hard code the unitcell_size = 1 or 2 case
-        # More general ways to do so are supported - just change these lines
-        if unitcell_size == 2:
-            for site in range(self.lattice.size):
-                x, y = self.lattice.ind2coord(site)
-                uc_ind = 1 if (x + y) % 2 else 0  # 0 for even sublattice, 1 for odd
-                self.site_params_dict[site] = uc_ind
-        self.unitcell_size = len(
-            set(self.site_params_dict.values())
-        )  # number of different sets of parameters across sites (min: 1, max: num_sites)
-        if self.unitcell_size != unitcell_size:
-            # It should be impossible to reach here
-            raise ValueError("Inconsistent unitcell_size.")
 
         # U1 invariance
         # set to True if you want to enforce U(1) symmetry in the fermionic layers

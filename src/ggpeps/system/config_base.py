@@ -42,6 +42,7 @@ class Config2DBase(ABC):
         g_chem: Optional[np.ndarray],
         num_pg_layer: int = 1,
         num_fermionic_layer: int = 0,
+        unitcell_size: int = 1,
     ):
         """Constructor.
 
@@ -67,6 +68,25 @@ class Config2DBase(ABC):
         # Symbolvec - list of all the symbols, which are the same for each layer
         # (even if for some layers some are forced to zero)
         self._symbolvec: Optional[list[sympy.Symbol]] = None
+
+        # Translation invariance (or variance)
+        # define a map from site to index of independent parameters
+        if unitcell_size == 1:
+            self.site_params_dict = {site: 0 for site in range(self.lattice.size)}
+        elif unitcell_size == 2:
+            self.site_params_dict = {}
+            for site in range(self.lattice.size):
+                x, y = self.lattice.ind2coord(site)
+                uc_ind = 1 if (x + y) % 2 else 0  # 0 for even sublattice, 1 for odd
+                self.site_params_dict[site] = uc_ind
+        elif unitcell_size == -1:
+            # no unitcell - every site has its own parameters
+            self.site_params_dict = {}
+            for site in range(self.lattice.size):
+                self.site_params_dict[site] = site
+
+        # number of different sets of parameters across sites (min: 1, max: num_sites)
+        self.unitcell_size: int = len(set(self.site_params_dict.values()))
 
         # Parameters of the Hamiltonian
         self.g_el = g_el

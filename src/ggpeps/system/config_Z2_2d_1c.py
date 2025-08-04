@@ -42,29 +42,15 @@ class Z2System2DConfig(Config2DBase):
             # This ansatz does not support fermionic layers
             raise ValueError("The Z2System2D ansatz does not support fermionic layers.")
 
-        super().__init__(
-            gauge.ZNGauge(2),
-            lattice,
-            g_el,
-            g_mag,
-            g_int,
-            g_mass,
-            g_chem,
-            num_pg_layer,
-            0,
-        )
+        super().__init__(gauge.ZNGauge(2), lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0, unitcell_size)
 
         # Translation invariance
-        if unitcell_size not in [1]:
+        if self.unitcell_size not in [1]:
             logger.error(
                 "This ansatz only supports unitcell_size = 1. \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             raise ValueError("Invalid unitcell_size.")
-        self.site_params_dict = {
-            site: 0 for site in range(self.lattice.size)
-        }  # map from site to index of independent parameters
-        self.unitcell_size = 1
 
         if not enforce_u1_symmetry:
             logger.error("This ansatz does not support the relaxation of U(1) symmetry.")
