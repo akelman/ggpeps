@@ -184,11 +184,14 @@ class Config2DBase(ABC):
 
     def print_parametervec(self) -> None:
         """Printing of the parametervec, labelled by layer, unitcell index, and symbol."""
-        for lay in range(self.nlayer):
-            for uc_ind in range(self.unitcell_size):
-                for ind, symb in enumerate(self.symbolvec):
-                    val = self._paramvec[lay][uc_ind][ind]
-                    print(f"Layer {lay}, uc_ind {uc_ind}, symbol {ind} ({symb}): {val}")
+        if self.paramvec is None:
+            print("Parameter vector is not set.")
+        else:
+            for lay in range(self.nlayer):
+                for uc_ind in range(self.unitcell_size):
+                    for ind, symb in enumerate(self.symbolvec):
+                        val = self.paramvec[lay][uc_ind][ind]
+                        print(f"Layer {lay}, uc_ind {uc_ind}, symbol {ind} ({symb}): {val}")
 
     @property
     def trans_inv(self) -> bool:
