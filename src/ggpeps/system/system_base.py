@@ -90,7 +90,7 @@ class System2DBase(ABC):
         # we store intermediate values to be reused in the gradient calculation
         self._covmat_out_virt_vec: Optional[list[xnp.ndarray]] = None
         self._norm_mod_vec: Optional[list[float]] = None
-        self._lognorm_default_vec: Optional[list[float]] = None
+        self._lognorm_default_vec: Optional[xnp.ndarray] = None
 
         # Management of the gauge fields
         self._gamma_gauge_neutral_vec_dirs: Optional[xnp.ndarray] = (
@@ -261,15 +261,15 @@ class System2DBase(ABC):
         """
         if self._gamma_dirac_layervec_sitevec is None:
 
-            self._gamma_dirac_layervec_sitevec = []
+            gamma_dirac_layervec_sitevec = []
             for lay in range(self.cfg.nlayer):
 
                 gamma_dirac_lay = [
                     xnp.array(utils.tmat_to_covariance_matrix(tmat)) for tmat in self.tmat_layervec_sitevec[lay]
                 ]
-                self._gamma_dirac_layervec_sitevec.append(gamma_dirac_lay)
+                gamma_dirac_layervec_sitevec.append(gamma_dirac_lay)
 
-            self._gamma_dirac_layervec_sitevec = xnp.array(self._gamma_dirac_layervec_sitevec)
+            self._gamma_dirac_layervec_sitevec = xnp.array(gamma_dirac_layervec_sitevec)
         return self._gamma_dirac_layervec_sitevec
 
     @property
@@ -394,7 +394,6 @@ class System2DBase(ABC):
                         d_gamma_out_symbolvec, (layer, uc_ind, symbol_ind), d_gamma_out
                     )
 
-        d_gamma_out_symbolvec = xnp.array(d_gamma_out_symbolvec)
         return d_gamma_out_symbolvec
 
     @property
@@ -1135,7 +1134,7 @@ class System2DBase(ABC):
 
     @staticmethod
     @maybe_jit(static_argnames=["n", "all_factors"])
-    def _calculate_lognormvec_inc(det_vec, det_mat_d_vec, n, all_factors: bool = False):
+    def _calculate_lognormvec_inc(det_vec, det_mat_d_vec, n, all_factors: bool = False) -> xnp.ndarray:
         dest = []
         for ind in range(len(det_vec)):
             detval = det_vec[ind]
@@ -1147,7 +1146,7 @@ class System2DBase(ABC):
             dest.append(0.5 * detval)
         return xnp.array(dest)
 
-    def calculate_lognormvec_inc(self, all_factors=False):
+    def calculate_lognormvec_inc(self, all_factors=False) -> xnp.ndarray:
         """Compute the logarithm of the norm for all layers by incrementally updating the previous value
         (using IncDet and Woodbury)
 
@@ -1524,7 +1523,7 @@ class System2DBase(ABC):
         num_fermionic_layer: int,
         unitcell_size: int,
         symbolvec: tuple,
-        d_gamma_out_symbolvec: xnp.array,
+        d_gamma_out_symbolvec: xnp.ndarray,
         zeroed_params: tuple,
         use_trans_inv: bool = True,
     ):
@@ -1728,7 +1727,7 @@ class System2DBase(ABC):
         if self._el_energy_op is None:
             # The different layers can be separated into separate PEPS and then multiplied together.
             nlinks = self.cfg.lattice.nlinks
-            self._el_energy_op = nlinks * xnp.prod(self.el_energy_op_vec)
+            self._el_energy_op = nlinks * xnp.prod(self.el_energy_op_vec, dtype=float)
         return self._el_energy_op
 
     @property
