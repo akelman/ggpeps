@@ -88,7 +88,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         self.u1_symmetry = enforce_u1_symmetry
         # We store a list of the parameters forced to be zero by the ansatz
         # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
+        self.zeroed_params: tuple[tuple[int, int, int], ...] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [
@@ -120,7 +120,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
             [1 / 256] * self.nlayer
         )  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
-    def get_zeroed_params(self) -> list[tuple[int, int, int]]:
+    def get_zeroed_params(self) -> tuple[tuple[int, int, int], ...]:
         offset = self._nparams // 2  # offset to get index of imaginary part
         zeroed_params = []  # we'll save the indices of the zeroed parameters
 

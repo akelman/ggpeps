@@ -186,7 +186,7 @@ class Config2DBase(ABC):
         return self.unitcell_size == 1
 
     @abstractmethod
-    def get_zeroed_params(self) -> tuple[tuple[int, int, int]]:
+    def get_zeroed_params(self) -> tuple[tuple[int, int, int], ...]:
         """Create and return the list of parameters that are forced to zero by the ansatz.
 
         This abstract method must be overwritten by a subclass.

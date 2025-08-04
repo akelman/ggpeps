@@ -1,4 +1,5 @@
 import nox
+import glob
 
 # Define the minimal nox version required to run
 nox.needs_version = ">= 2024.3.2"
@@ -28,10 +29,9 @@ def typing(session):
 
     session.install(".")
     session.install("mypy")
-    session.run(
-        "mypy",
-        "--install-types",  # install missing types for third-party packages
-        "--non-interactive",  # don't ask user for confirmation before installing missing types
+
+    # TODO: Add passing files (eventually should be entire repo)
+    files = [
         "src/ggpeps/caching.py",
         "src/ggpeps/evaluator_manager.py",
         "src/ggpeps/evaluator.py",
@@ -41,8 +41,17 @@ def typing(session):
         "src/ggpeps/utils.py",
         "src/ggpeps/minimizer.py",
         "src/ggpeps/measurement.py",
+    ]
+
+    # Add all files in src/ggpeps/system/ starting with config
+    files += glob.glob("src/ggpeps/system/config*.py")
+
+    session.run(
+        "mypy",
+        "--install-types",  # install missing types for third-party packages
+        "--non-interactive",  # don't ask user for confirmation before installing missing types
+        *files,
     )
-    # TODO: Add passing files (eventually should be entire repo)
 
 
 @nox.session
