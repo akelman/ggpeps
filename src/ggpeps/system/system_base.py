@@ -286,6 +286,12 @@ class System2DBase(ABC):
     """
 
     def __init__(self, cfg: Config2DBase) -> None:
+        """Constructor of a Z2System2D system, for any groups, with any number of virtual or physical
+        fermions per site per link. All of the ansatz information is stored in the provided configuration.
+
+        Args:
+            cfg (Config2DBase): Configuration containing all system-related parameters
+        """
         self.cfg: Config2DBase = cfg
         self.initialize()
 
@@ -1304,10 +1310,10 @@ class System2DBase(ABC):
 
     def calculate_weight_attempt(self, link_ind: int, theta: float, all_factors=False):
         """
-        For D2n gauge groups, we overwrite this function in system implementation.
-
         Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
+
+        For D2n gauge groups, we overwrite this function in the system implementation.
 
         Args:
             link_ind (int): Link index
@@ -1562,14 +1568,45 @@ class System2DBase(ABC):
     @classmethod
     @abstractmethod
     def generate_rotmat(cls, ncopy, theta, coord, dir):
-        """Abstract method to define the rotation matrix of a single link.
-        The substitution method must ensure a consistent order of the modes.
+        """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
+
+        The mode order is (the same as for gamma_in_neutral and) provided explicitly in each subclass.
+        We order first by link, then by copy, then by color.
+
+        For pure gauge layers, modes of copy one are coupled to modes of copy 2. The projectors mix copies.
+        For fermionic layers, the projectors don't mix copies to ensure the U(1) symmetry is obeyed.
+
+        The sites are picked such that the left mode is right of the right modes,
+        i.e. they are sitting on the same link.
+        The same is true for the for the up and down modes.
+
         This method must be overwritten in a subclass.
+
+        Args:
+            ncopy (int): number of copies of the ansatz
+            g (fxnp.array): representation of group element
+            coord (tuple): (x,y) coordinate on the lattice
+            dir (lattice.Direction): direction of the link
+
+        Returns:
+            xnp.ndarray: Rotation matrix for gamma_in_neutral
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
     def update_gauge_ind(self, link_ind, theta):
+        """Update method that is called upon changing a gauge field.
+        This method is central to the algorithm since it changes the gauged projectors
+        and updates all incremental trackers of determinants and inverses.
+        The re-calculation of determinants and inverses for the norm would be
+        prohibitively expensive.
+
+        This method overwrites an abstract method in System2DBase.
+
+        Args:
+            link_ind (int): Link index to be updated
+            theta (xnp.array): New gauge field value
+        """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     def update_gauge_full_system(self, gaugeconfig):
@@ -1614,8 +1651,17 @@ class System2DBase(ABC):
     ################## Observables ######################
     @abstractmethod
     def _compute_mag_energy_op(self):
-        """Compute the bare operator (without shift) of the magnetic energy.
+        """Compute the magnetic energy operator (w/o shift).
+        This operator is diagonal in the gauge field (group element) basis and can thus
+        be computed easily.
+
         This is an abstract method and has to be overwritten in a subclass.
+
+        Args:
+            use_trans_inv (bool, optional): Use the translationally invariant computation method. Defaults to True.
+
+        Returns:
+            float: magnetic energy w/o shift for a single plaquette
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
@@ -1631,7 +1677,20 @@ class System2DBase(ABC):
         use_trans_inv: bool = True,
     ):
         """Compute the electric energy.
+
         This is an abstract method and has to be overwritten in a subclass.
+
+        Args:
+            lognormvec_default: the usual norm without any modifications
+            overall_factors: prefactors for building the required Pfaffians
+            idxarrs: indices for building the required Pfaffians
+            nlayer (int): total number of layers (pure gauge + fermionic)
+            covmat_out_virt_vec:
+            norm_mod_vec:
+            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
+
+        Returns:
+            list: list of electric energies for a single link
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
@@ -1662,7 +1721,17 @@ class System2DBase(ABC):
         use_trans_inv: bool = True,
     ):
         """Compute the electric energy gradients.
+        We start by calculating the electric energies, since these are needed for evaluating the gradients.
+        Since several operations needed for the computation of the gradient and the energy are similar,
+        we can reuse many intermediate steps.
+
         This is an abstract method and has to be overwritten in a subclass.
+
+        Args:
+            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
+
+        Returns:
+            list: list of gradients for the full system
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
@@ -1675,8 +1744,15 @@ class System2DBase(ABC):
         ferm_cov_vec: xnp.ndarray,
         use_trans_inv: bool = True,
     ):
-        """Compute the mass energy (per layer).
+        """Compute the mass term of the Hamiltonian (per layer).
+
         This is an abstract method and has to be overwritten in a subclass.
+
+        Args:
+            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
+
+        Returns:
+            array: mass energy as a vec over layers
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
@@ -1693,7 +1769,14 @@ class System2DBase(ABC):
         use_trans_inv: bool = True,
     ):
         """Compute the mass energy gradient.
+
         This is an abstract method and has to be overwritten in a subclass.
+
+        Args:
+            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
+
+        Returns:
+            array: gradients of the mass energy
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
@@ -1708,7 +1791,9 @@ class System2DBase(ABC):
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
     ):
-        """Compute the interaction energy (per layer).
+        """Compute the interaction energy (per layer) - the energy due to the interaction of the
+        physical fermions with the gauge fields.
+
         This is an abstract method and has to be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
@@ -1759,8 +1844,17 @@ class System2DBase(ABC):
 
     @abstractmethod
     def _meson_string_vec(self, path):
-        """Compute a meson string.
+        r"""Compute a layer resolved meson string for the given path.
+        This is \psi^dagger (start) * String * \psi(end) before particle-hole,
+        and assumes that start and end are on the same sublattice.
+
         This is an abstract method and has to be overwritten in a subclass.
+
+        Args:
+            path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
+
+        Returns:
+            array: meson_str_vec
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
@@ -2095,6 +2189,13 @@ class System2DBase(ABC):
     @abstractmethod
     def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
         """Compute the occupation number for the given layer and site.
+        # TODO: make this method also support specification of flavor, for use with non-Abelian gauge groups
+
+        Args:
+            lay (int): Layer index
+            site (int): Site index
+            after_ph (bool, optional): If True, compute the occupation number using the operators
+                                       defined after the particle-hole transformation. Defaults to False.
 
         Returns:
             float: the occupation number for the given layer and site

@@ -35,12 +35,6 @@ class Z2System2D(System2DBase):
     """
 
     def __init__(self, cfg):
-        """Constructor of a Z2System2D system, with any number of virtual fermions per site per link
-        (provided a valid config is given).
-
-        Args:
-            cfg (Config2DBase): Configuration containing all system-related parameters
-        """
         super().__init__(cfg)
 
     ################## Gauging ##################
@@ -56,25 +50,10 @@ class Z2System2D(System2DBase):
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
         We order first by link and then by copy.
 
-        For pure gauge layers, modes of copy one are coupled to modes of copy 2. The projectors mix copies.
-        For fermionic layers, the projectors don't mix copies to ensure the U(1) symmetry is obeyed.
-
-        The sites are picked such that the left mode is right of the right modes,
-        i.e. they are sitting on the same link.
-        The same is true for the for the up and down modes.
-
-        For this system, the rotmat does not depend on the coord or dir
+        For this system, the rotmat does not depend on the coord or dir.
 
         This method overwrites an abstract method in System2DBase.
-
-        Args:
-            ncopy (int): number of copies of the ansatz
-            g (fxnp.array): representation of group element
-            coord (tuple): (x,y) coordinate on the lattice
-            dir (lattice.Direction): direction of the link
-
-        Returns:
-            xnp.ndarray: Rotation matrix for gamma_in_neutral
+        See this method in System2DBase for further documentation.
         """
         theta = xnp.angle(group_element[0][0])  # equivalent to gaugemgr.get_angle(group_element)
 
@@ -90,18 +69,7 @@ class Z2System2D(System2DBase):
         return rotmat
 
     def update_gauge_ind(self, link_ind, theta):
-        """Update method that is called upon changing a gauge field.
-        This method is central to the algorithm since it changes the gauged projectors
-        and updates all incremental trackers of determinants and inverses.
-        The re-calculation of determinants and inverses for the norm would be
-        prohibitively expensive.
 
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            link_ind (int): Link index to be updated
-            theta (xnp.array): New gauge field value
-        """
         # Update the gaugefield
         self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
 
@@ -172,18 +140,6 @@ class Z2System2D(System2DBase):
 
     ################## Observables ##################
     def _compute_mag_energy_op(self, use_trans_inv: bool = True):
-        """Computation of the magnetic energy operator (w/o shift).
-        This operator is diagonal in the gauge field (group element) basis and can thus
-        be computed easily.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            use_trans_inv (bool, optional): Use the translationally invariant computation method. Defaults to True.
-
-        Returns:
-            float: magnetic energy w/o shift for a single plaquette
-        """
         if use_trans_inv:
             # Evaluate one plaquette and multiply by number of plaquettes
             wilson_plaquette = self.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
@@ -209,22 +165,7 @@ class Z2System2D(System2DBase):
         norm_mod_vec,
         use_trans_inv: bool = True,
     ):
-        """Computation of the electric energy.
 
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            lognormvec_default: the usual norm without any modifications
-            overall_factors: prefactors for building the required Pfaffians
-            idxarrs: indices for building the required Pfaffians
-            nlayer (int): total number of layers (pure gauge + fermionic)
-            covmat_out_virt_vec:
-            norm_mod_vec:
-            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
-
-        Returns:
-            list: list of electric energies for a single link
-        """
         if not use_trans_inv:
             # Evaluate every link of the system
             logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
@@ -304,19 +245,6 @@ class Z2System2D(System2DBase):
         zeroed_params,
         use_trans_inv: bool = True,
     ):
-        """Computation of the electric energy gradients.
-        We start by calculating the electric energies, since these are needed for evaluating the gradients.
-        Since several operations needed for the computation of the gradient and the energy are similar,
-        we can reuse many intermediate steps.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
-
-        Returns:
-            list: list of gradients for the full system
-        """
 
         if not use_trans_inv:
             # Evaluate every link of the system
@@ -411,14 +339,7 @@ class Z2System2D(System2DBase):
         ferm_cov_vec: xnp.ndarray,
         use_trans_inv: bool = True,
     ):
-        """Compute the mass term of the Hamiltonian for a single site.
 
-        Args:
-            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
-
-        Returns:
-            array: mass energy as a vec over layers
-        """
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
 
@@ -465,14 +386,7 @@ class Z2System2D(System2DBase):
         zeroed_params: tuple,
         use_trans_inv: bool = True,
     ):
-        """Compute the mass term of the Hamiltonian for a single site.
 
-        Args:
-            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
-
-        Returns:
-            array: gradients of the mass energy
-        """
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
 
@@ -520,13 +434,9 @@ class Z2System2D(System2DBase):
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
     ):
-        """Calculate the energy due to the interaction of the
-        physical fermions with the gauge fields.
-        Note: this function assumes that U = U^dagger, which is valid only for Z2.
+        """
+        Note: this function assumes that U = U^dagger, which is only valid for Z2.
         For other groups, the calculation will not be as simple.
-
-        Returns:
-            array: interaction energy for a single link
         """
 
         nlayer = num_pg_layer + num_fermionic_layer
@@ -588,13 +498,9 @@ class Z2System2D(System2DBase):
         vertical_neighbor_data: tuple,
         zeroed_params: tuple,
     ):
-        """Calculate the energy gradient due to the interaction of the
-        physical fermions with the gauge fields.
-        Note: this function assumes that U = U^dagger, which is valid only for Z2.
+        """
+        Note: this function assumes that U = U^dagger, which is only valid for Z2.
         For other groups, the calculation will not be as simple.
-
-        Returns:
-            array: gradients
         """
 
         nlayer = num_pg_layer + num_fermionic_layer
@@ -668,7 +574,6 @@ class Z2System2D(System2DBase):
         sublattice_factors: tuple,
         ferm_covmat_vec: xnp.ndarray,
     ):
-        """Calculate the chemical potential energy operator."""
 
         nlayer = num_pg_layer + num_fermionic_layer
         chem_energy_op = xnp.zeros(nlayer)
@@ -717,7 +622,6 @@ class Z2System2D(System2DBase):
         zeroed_params: tuple,
         d_gamma_out_vec: xnp.ndarray,
     ):
-        """Calculate the chemical potential energy operator gradient."""
 
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
@@ -751,16 +655,6 @@ class Z2System2D(System2DBase):
         return gradients
 
     def _meson_string_vec(self, path):
-        r"""Compute a layer resolved meson string for the given path.
-        This is \psi^dagger (start) * String * \psi(end) before particle-hole,
-        and assumes that start and end are on the same sublattice.
-
-        Args:
-            path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
-
-        Returns:
-            array: meson_str_vec
-        """
 
         meson_op_vec = [0] * self.cfg.num_pg_layer
 
@@ -794,17 +688,6 @@ class Z2System2D(System2DBase):
         return xnp.array(meson_op_vec)
 
     def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
-        """Compute the occupation number for the given layer and site.
-
-        Args:
-            lay (int): Layer index
-            site (int): Site index
-            after_ph (bool, optional): If True, compute the occupation number using the operators
-                                       defined after the particle-hole transformation. Defaults to False.
-
-        Returns:
-            float: the occupation number for the given layer and site
-        """
 
         covmat = self.ferm_covmat_vec[lay]
         site_ind = 2 * site  # index into covariance matrix
