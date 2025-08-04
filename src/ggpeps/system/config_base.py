@@ -68,8 +68,6 @@ class Config2DBase(ABC):
         self.num_fermionic_layer = num_fermionic_layer
         self.nlayer = self.num_pg_layer + self.num_fermionic_layer
 
-        self._paramvec: Optional[np.ndarray] = None
-
         # Symbolvec - list of all the symbols, which are the same for each layer
         # (even if for some layers some are forced to zero)
         self._symbolvec: Optional[list[sympy.Symbol]] = None
@@ -128,7 +126,7 @@ class Config2DBase(ABC):
         return val
 
     @property
-    def paramvec(self) -> Optional[np.ndarray]:
+    def paramvec(self) -> np.ndarray:
         return self._paramvec
 
     @paramvec.setter
