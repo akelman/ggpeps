@@ -28,8 +28,8 @@ class Config2DBase(ABC):
 
     # Ansatz settings
     # This will be overwritten by the specifications of each ansatz
-    _nparams: int = None  # number of params per site per layer
-    ncopy: int = None
+    _nparams: Optional[int] = None  # number of params per site per layer
+    ncopy: Optional[int] = None
 
     def __init__(
         self,
@@ -94,7 +94,7 @@ class Config2DBase(ABC):
         return val
 
     @property
-    def paramvec(self) -> np.ndarray:
+    def paramvec(self) -> Optional[np.ndarray]:
         return self._paramvec
 
     @paramvec.setter
