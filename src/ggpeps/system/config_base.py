@@ -49,7 +49,7 @@ class Config2DBase(ABC):
         num_fermionic_layer: int = 0,
         unitcell_size: int = 1,
         enforce_u1_symmetry: bool = True,
-    ):
+    ) -> None:
         """Constructor.
 
         Args:
@@ -131,7 +131,7 @@ class Config2DBase(ABC):
         return self._paramvec
 
     @paramvec.setter
-    def paramvec(self, val):
+    def paramvec(self, val: np.ndarray) -> None:
         if not isinstance(val, np.ndarray):
             val = np.array(val)
         if self.trans_inv and val.ndim == 2:
