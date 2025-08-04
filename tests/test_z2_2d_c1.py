@@ -1183,7 +1183,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         # The second symbol is y
         lay = 0
         uc_ind = 0
-        deriv_ana = system_z2_2_2.compute_grad_over_norm(lay, uc_ind, system_z2_2_2.symbolvec[1])
+        deriv_ana = system_z2_2_2.compute_grad_over_norm(lay, uc_ind, 1)
         lognorm_left = system_z2_2_2_left.calculate_lognorm(all_factors=True)
         lognorm_right = system_z2_2_2_right.calculate_lognorm(all_factors=True)
         deriv_num = (lognorm_right - lognorm_left) / (2 * eps)
@@ -1223,7 +1223,7 @@ class TestZ2SystemMethods(unittest.TestCase):
                 system_z2_2_2_right = system.Z2System2D(system_cfg_right)
 
                 # This is a single layer construction, we always use layer 0 to test.
-                deriv_ana = system_z2_2_2.compute_grad_over_norm(lay, uc_ind, symbolvec[ind])
+                deriv_ana = system_z2_2_2.compute_grad_over_norm(lay, uc_ind, ind)
                 norm_left = system_z2_2_2_left.calculate_lognorm(all_factors=True)
                 norm_right = system_z2_2_2_right.calculate_lognorm(all_factors=True)
                 deriv_num = (norm_right - norm_left) / (2 * eps)

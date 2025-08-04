@@ -67,6 +67,29 @@ class Lattice2D:
         self.nplaquettes = nx * ny
         self.size = nx * ny  # number of sites/plaquettes
 
+        # Sublattice factors: 1 on the even sublattice, -1 on the odd sublattice
+        self.sublattice_factors = tuple([(-1) ** np.sum(self.ind2coord(site)) for site in range(self.size)])
+
+        # Data which stores a map from site index to neighboring links and sites for use in the interaction energy
+        all_hor_data = []
+        all_vert_data = []
+        for site in range(self.size):
+            coord = self.ind2coord(site)
+
+            hor_link_ind = self.coord2ind_dir(coord, Direction.X)  # index of the horizontal link
+            neighborX_coord = self.get_neighbor(coord, Direction.X)  # coordinates of neighboring site
+            neighborX_ind = self.coord2ind(neighborX_coord)  # index of neighboring site
+            hor_data = (hor_link_ind, neighborX_ind)
+            all_hor_data.append(hor_data)
+
+            vert_link_ind = self.coord2ind_dir(coord, Direction.Y)  # index of the horizontal link
+            neighborY_coord = self.get_neighbor(coord, Direction.Y)  # coordinates of neighboring site
+            neighborY_ind = self.coord2ind(neighborY_coord)  # index of neighboring site
+            vert_data = (vert_link_ind, neighborY_ind)
+            all_vert_data.append(vert_data)
+        self.horizontal_neighbor_data: tuple[tuple[int, int], ...] = tuple(all_hor_data)
+        self.vertical_neighbor_data: tuple[tuple[int, int], ...] = tuple(all_vert_data)
+
         # We trust the user not to modify these
         if gf_num_of_rows == -2:  # we fix a chess tree
             self.fixed_tree = self.generate_chess_tree()

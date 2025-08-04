@@ -95,9 +95,9 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         ]
         idxarr_lay1 = get_pfaffian_arrays(indices_layer1, prefactors)  # pure gauge layers
         idxarr_lay2 = get_pfaffian_arrays(indices_layer2, prefactors)  # fermionic layers
-        self.idxarr_vec = [idxarr_lay1] * (self.num_pg_layer) + [idxarr_lay2]
-        self.el_overall_factors = [1 / 256**2] * (
-            self.nlayer
+        self.idxarr_vec = tuple([idxarr_lay1] * (self.num_pg_layer) + [idxarr_lay2])
+        self.el_overall_factors = tuple(
+            [1 / 256**2] * self.nlayer
         )  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def get_zeroed_params(self):

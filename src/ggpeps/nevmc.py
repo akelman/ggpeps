@@ -157,7 +157,7 @@ class NEVMC_Evaluator(Evaluator):
         polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
 
         self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
-        # self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
+        # self.obsdict["cov_ferm"].append(self.system.ferm_covmat_vec)
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
@@ -194,7 +194,7 @@ class NEVMC_Evaluator(Evaluator):
             self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
             self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
             self.obsdict["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
-            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
+            self.obsdict["grad_norm"].append(self.system.grad_over_norm_vec)
 
         return
 
@@ -428,7 +428,7 @@ class NEVMC_Evaluator(Evaluator):
         polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
 
         self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
-        # self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
+        # self.obsdict["cov_ferm"].append(self.system.ferm_covmat_vec)
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
@@ -488,7 +488,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
         self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
         self.obsdict["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
-        self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
+        self.obsdict["grad_norm"].append(self.system.grad_over_norm_vec)
         return
 
     ### end NEVMC ###

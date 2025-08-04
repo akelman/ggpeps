@@ -120,5 +120,9 @@ class BackendNumpy_Z2(BackendBase):
         return mat
 
     @staticmethod
+    def pfaffian(mat):
+        return pf.pfaffian(mat)
+
+    @staticmethod
     def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
         return calculate_lognormvec_numpy(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)

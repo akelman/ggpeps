@@ -182,7 +182,7 @@ class U1System2D(System2DBase):
         dest = block_diag(rot_left, rot_right)
         return dest
 
-    def generate_rotmat(self, group_element, coord, dir):
+    def generate_rotmat(self, ncopy, group_element, coord, dir):
         if np.sum(coord) % 2 == 0:
             gauge_field = group_element
         else:
@@ -198,7 +198,7 @@ class U1System2D(System2DBase):
         # There are two directions per vertex
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord, dir)
+        rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
         gamma_in_subst = (
             rotmat @ self.gamma_gauge_neutral_vec[0][dir] @ np.transpose(rotmat)
         )  # just use the first gamma_gauge_neutral, since they're shared by all layers
@@ -309,7 +309,7 @@ class U1System2D(System2DBase):
                 dest.append(el_energy_layer)
 
                 ###################### Calculation of the derivative ########################
-                for symbol in self.symbolvec:
+                for symbol_ind, symbol in enumerate(self.symbolvec):
                     deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
                     d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
                     d_gamma_out = (
@@ -325,7 +325,7 @@ class U1System2D(System2DBase):
                         0.25 * (d_covmat_out_virt[0, 1] + d_covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                     )
                     # Summand with derivative of norms
-                    trace_def = self.compute_grad_over_norm(layerind, 0, symbol)
+                    trace_def = self.compute_grad_over_norm(layerind, 0, symbol_ind)
                     trace_mod = self._compute_grad_over_norm(
                         gamma_in_sys_mod,
                         diff_d_inv_gamma_inv,
@@ -358,7 +358,7 @@ class U1System2D(System2DBase):
         increment = -self.gaugemgr.get_increment()
         dest = self.gamma_in_sys_vec[0].astype(complex).copy()
         adapted_no_gauge = self.generate_electric_full(increment)
-        rotmat = self.generate_rotmat(current_phase, coord, dir)
+        rotmat = self.generate_rotmat(self.cfg.ncopy, current_phase, coord, dir)
         adapted = rotmat @ adapted_no_gauge @ rotmat.transpose()
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         dest[ind_mat : ind_mat + adapted.shape[0], ind_mat : ind_mat + adapted.shape[1]] = adapted

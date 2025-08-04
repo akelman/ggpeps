@@ -22,6 +22,7 @@ from matplotlib.colors import LogNorm
 import ggpeps
 import ggpeps.measurement as meas
 from ggpeps.system.backend import backend
+from ggpeps.system.system_base import maybe_jit
 from ggpeps.system.backend_jax import derivative_pfaffian_jax
 from ggpeps.system.backend_numpy import derivative_pfaffian_numpy
 
@@ -244,6 +245,23 @@ def select_except(arr: Union[list, xnp.ndarray], ind: int) -> xnp.ndarray:
     mask = xnp.ones(len(arr), dtype=bool)
     mask = backend.array_assign(mask, ind, False)
     return arr[mask]  # TODO: fix for JAX jit
+
+
+@maybe_jit(static_argnames=[])
+def add_except(arr: xnp.ndarray, ind: int) -> float:
+    """Sum all array values except for arr[ind]
+
+    Args:
+        arr (xnp.ndarray): list of values
+        ind (int): index
+
+    Returns:
+        float: Sum of all array values except for arr[ind]
+    """
+    mask = xnp.ones(len(arr), dtype=bool)
+    mask = backend.array_assign(mask, ind, False)
+    sum_other = xnp.where(mask, arr, 0.0).sum()
+    return sum_other
 
 
 def multiply_except(arr: Union[xnp.ndarray, list], ind: int) -> float:
@@ -594,13 +612,13 @@ class WoodburyInverter:
         """Update the inverse of a matrix A using the Woodbury formula.
         The formula is: (A+UCV)^{-1}=A^{-1} - A^{-1}U(C^{-1}+VA^{-1}U)^{-1}VA^{-1}.
         Args:
-            u (np.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
+            u (xnp.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
                                     used to place the update C to match the dimensions of M.
-            v (np.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
+            v (xnp.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
                                     used to place the update C to match the dimensions of M.
-            c (np.ndarray): Local update matrix C
+            c (xnp.ndarray): Local update matrix C
         Returns:
-            np.ndarray: Updated inverse matrix (A+UCV)^{-1}
+            xnp.ndarray: Updated inverse matrix (A+UCV)^{-1}
 
         """
         # We ware updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
@@ -613,14 +631,14 @@ class WoodburyInverter:
     def update_index(self, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """
         Update the inverse of the matrix A using the Woodbury formula, given indices indicating the positions in A
-        where the update M is placed. This is done by generating the U and V matrix for the upddate method.
+        where the update M is placed. This is done by generating the U and V matrix for the update method.
 
         Args:
-            m (np.ndarray): M matrix - The local update matrix to A.
+            m (xnp.ndarray): M matrix - The local update matrix to A.
             indi (int): Index in the first dimension of A where the update m is placed.
             indj (int): Index in the second dimension of A where the update m is placed.
         Returns:
-            np.ndarray: Updated inverse matrix (A+UMV)^{-1}
+            xnp.ndarray: Updated inverse matrix (A+UMV)^{-1}
         """
         # Construct two matrices to shift m to the correct position in A
         if not xnp.allclose(m, 0):
@@ -650,11 +668,11 @@ class IncDeterminant:
         """Update the determinant of a matrix A using the matrix determinant lemma.
         The formula is: det(A+UCV)=det(A) * det(C^{-1}+VA^{-1}U) * det(C).
         Args:
-            ainv (np.ndarray): Inverse of the matrix A
-            u (np.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
+            ainv (xnp.ndarray): Inverse of the matrix A
+            u (xnp.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
                                     used to place the update C to match the dimensions of A.
-            c (np.ndarray): Local update matrix C
-            v (np.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
+            c (xnp.ndarray): Local update matrix C
+            v (xnp.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
                                     used to place the update C to match the dimensions of A.
             store (bool, optional): Store the updated determinant value. Defaults to True.
         """
@@ -687,11 +705,11 @@ class IncLogAbsDeterminant:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma.
         The formula is: det(A+UCV)=det(A) * det(C^{-1}+VA^{-1}U) * det(C).
         Args:
-            ainv (np.ndarray): Inverse of the matrix A
-            u (np.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
+            ainv (xnp.ndarray): Inverse of the matrix A
+            u (xnp.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
                                     used to place the update C to match the dimensions of A.
-            c (np.ndarray): Local update matrix C
-            v (np.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
+            c (xnp.ndarray): Local update matrix C
+            v (xnp.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
                                     used to place the update C to match the dimensions of A.
             store (bool, optional): Store the updated determinant value. Defaults to True.
         """
@@ -716,8 +734,8 @@ class IncLogAbsDeterminant:
         given indices indicating the positions in A where the update M is placed.
         This is done by generating the U and V matrix for the update method.
         Args:
-            ainv (np.ndarray): Inverse of the matrix A
-            m (np.ndarray): M matrix - The local update matrix to A.
+            ainv (xnp.ndarray): Inverse of the matrix A
+            m (xnp.ndarray): M matrix - The local update matrix to A.
             indi (int): Index in the first dimension of A where the update m is placed.
             indj (int): Index in the second dimension of A where the update m is placed
             store (bool, optional): Store the updated determinant value. Defaults to True."""

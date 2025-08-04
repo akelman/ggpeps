@@ -35,17 +35,12 @@ class Z2System2D(System2DBase):
     """
 
     def __init__(self, cfg):
-        """Constructor of a Z2System2D system, with any number of virtual fermions per site per link
-        (provided a valid config is given).
-
-        Args:
-            cfg (Config2DBase): Configuration containing all system-related parameters
-        """
         super().__init__(cfg)
 
     ################## Gauging ##################
-
-    def generate_rotmat(self, group_element: xnp.array, coord: tuple, dir: Direction):
+    @classmethod
+    @maybe_jit(static_argnames=["cls", "ncopy"])
+    def generate_rotmat(cls, ncopy: int, group_element: xnp.ndarray, coord: tuple, dir: Direction):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
 
         The mode order is (as for gamma_in_neutral):
@@ -55,27 +50,12 @@ class Z2System2D(System2DBase):
         The naming convention here is <mode letter><number of copy>_<majorana mode>.
         We order first by link and then by copy.
 
-        For pure gauge layers, modes of copy one are coupled to modes of copy 2. The projectors mix copies.
-        For fermionic layers, the projectors don't mix copies to ensure the U(1) symmetry is obeyed.
-
-        The sites are picked such that the left mode is right of the right modes,
-        i.e. they are sitting on the same link.
-        The same is true for the for the up and down modes.
+        For this system, the rotmat does not depend on the coord or dir.
 
         This method overwrites an abstract method in System2DBase.
-
-        Args:
-            g (fxnp.array): representation of group element
-            coord (tuple): (x,y) coordinate on the lattice
-            dir (lattice.Direction): direction of the link
-
-        Returns:
-            xnp.ndarray: Rotation matrix for gamma_in_neutral
+        See this method in System2DBase for further documentation.
         """
-        theta = self.cfg.gaugemgr.get_angle(group_element)
-        # Gauging might be different depending on sublattice or link direction, but for this system it is the same
-        if dir == Direction.X and (-1) ** (coord[0] + coord[1]) == -1:
-            pass
+        theta = xnp.angle(group_element[0][0])  # equivalent to gaugemgr.get_angle(group_element)
 
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
@@ -85,29 +65,18 @@ class Z2System2D(System2DBase):
         # The mode order is lr (horizontally) or du (vertically).
         # We rotate the different copies in the SAME way.
         dest = xscipy.linalg.block_diag(rot_left, rot_right)
-        rotmat = xnp.kron(xnp.eye(self.cfg.ncopy), dest)
+        rotmat = xnp.kron(xnp.eye(ncopy), dest)
         return rotmat
 
     def update_gauge_ind(self, link_ind, theta):
-        """Update method that is called upon changing a gauge field.
-        This method is central to the algorithm since it changes the gauged projectors
-        and updates all incremental trackers of determinants and inverses.
-        The re-calculation of determinants and inverses for the norm would be
-        prohibitively expensive.
 
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            link_ind (int): Link index to be updated
-            theta (xnp.array): New gauge field value
-        """
         # Update the gaugefield
         self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
 
         # There are two directions per vertex
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord, dir)
+        rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
 
         update_vec = []
         for layer in range(self.cfg.nlayer):
@@ -171,18 +140,6 @@ class Z2System2D(System2DBase):
 
     ################## Observables ##################
     def _compute_mag_energy_op(self, use_trans_inv: bool = True):
-        """Computation of the magnetic energy operator (w/o shift).
-        This operator is diagonal in the gauge field (group element) basis and can thus
-        be computed easily.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            use_trans_inv (bool, optional): Use the translationally invariant computation method. Defaults to True.
-
-        Returns:
-            float: magnetic energy w/o shift for a single plaquette
-        """
         if use_trans_inv:
             # Evaluate one plaquette and multiply by number of plaquettes
             wilson_plaquette = self.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
@@ -198,6 +155,7 @@ class Z2System2D(System2DBase):
         return mag_energy_bare
 
     @staticmethod
+    @maybe_jit(static_argnames=["overall_factors", "idxarrs", "use_trans_inv", "nlayer"])
     def _compute_el_energy_op_vec(
         lognormvec_default,
         overall_factors,
@@ -207,22 +165,7 @@ class Z2System2D(System2DBase):
         norm_mod_vec,
         use_trans_inv: bool = True,
     ):
-        """Computation of the electric energy.
 
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            lognormvec_default: the usual norm without any modifications
-            overall_factors: prefactors for building the required Pfaffians
-            idxarrs: indices for building the required Pfaffians
-            nlayer (int): total number of layers (pure gauge + fermionic)
-            covmat_out_virt_vec:
-            norm_mod_vec:
-            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
-
-        Returns:
-            list: list of electric energies for a single link
-        """
         if not use_trans_inv:
             # Evaluate every link of the system
             logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
@@ -252,7 +195,7 @@ class Z2System2D(System2DBase):
             pfvals = []  # without the prefactor
             for prefactor, ind in idxarr:
                 ind = xnp.asarray(ind)
-                pfaval = pf.pfaffian(covmat_out_virt[xnp.ix_(ind, ind)])
+                pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(ind, ind)])
                 pfarr.append(prefactor * pfaval)
                 pfvals.append(pfaval)
             el_energy_full = overall_factor * xnp.sum(xnp.array(pfarr))
@@ -302,19 +245,6 @@ class Z2System2D(System2DBase):
         zeroed_params,
         use_trans_inv: bool = True,
     ):
-        """Computation of the electric energy gradients.
-        We start by calculating the electric energies, since these are needed for evaluating the gradients.
-        Since several operations needed for the computation of the gradient and the energy are similar,
-        we can reuse many intermediate steps.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
-
-        Returns:
-            list: list of gradients for the full system
-        """
 
         if not use_trans_inv:
             # Evaluate every link of the system
@@ -409,14 +339,7 @@ class Z2System2D(System2DBase):
         ferm_cov_vec: xnp.ndarray,
         use_trans_inv: bool = True,
     ):
-        """Compute the mass term of the Hamiltonian for a single site.
 
-        Args:
-            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
-
-        Returns:
-            array: mass energy as a vec over layers
-        """
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
 
@@ -460,17 +383,10 @@ class Z2System2D(System2DBase):
         unitcell_size: int,
         symbolvec: tuple,
         d_gamma_out_symbolvec: xnp.array,
-        zeroed_params: list,
+        zeroed_params: tuple,
         use_trans_inv: bool = True,
     ):
-        """Compute the mass term of the Hamiltonian for a single site.
 
-        Args:
-            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
-
-        Returns:
-            array: gradients of the mass energy
-        """
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
 
@@ -499,117 +415,128 @@ class Z2System2D(System2DBase):
 
         return xnp.array(gradients)
 
-    def _compute_int_energy_op_vec(self):
-        """Calculate the energy due to the interaction of the
-        physical fermions with the gauge fields.
-        Note: this function assumes that U = U^dagger, which is valid only for Z2.
+    @staticmethod
+    @maybe_jit(
+        static_argnames=[
+            "lattice_size",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "horizontal_neighbor_data",
+            "vertical_neighbor_data",
+        ],
+    )
+    def _compute_int_energy_op_vec(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        gaugefieldvec: xnp.ndarray,
+        ferm_covmat_vec: xnp.ndarray,
+        horizontal_neighbor_data: tuple,
+        vertical_neighbor_data: tuple,
+    ):
+        """
+        Note: this function assumes that U = U^dagger, which is only valid for Z2.
         For other groups, the calculation will not be as simple.
-
-        Returns:
-            array: interaction energy for a single link
         """
 
-        int_energy_op = [0] * self.cfg.num_pg_layer
+        nlayer = num_pg_layer + num_fermionic_layer
+        int_energy_op = xnp.zeros(nlayer)
 
-        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+        for layer_ind in range(num_pg_layer, nlayer):
             layer_int_energy = 0.0
-            covmat = self.compute_ferm_cov()[layer_ind]
+            covmat = ferm_covmat_vec[layer_ind]
 
-            for site_ind in range(self.cfg.lattice.size):
-                coord = self.cfg.lattice.ind2coord(site_ind)
-
-                # this is the index to use when accessing elements of the covariance matrix,
-                # which has 2 Majorana modes per site
-                site_ind_cov = 2 * site_ind
+            for site_ind in range(lattice_size):
+                site_ind_cov = 2 * site_ind  # index into covariance matrix, factor of 2 for Majorana modes per site
 
                 # Horizontal link
-                ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X)  # index of the horizontal link
-                neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X)  # coordinates of neighboring site
-                neighborX_ind = 2 * self.cfg.lattice.coord2ind(
-                    neighborX_coord
-                )  # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
-                gaugefield_hor = self.gaugefieldvec[
-                    ind_field_hor
-                ]  # gaugefield_hor is a matrix representation of a group element
-                theta_hor = self.cfg.gaugemgr.get_angle(gaugefield_hor)  # convert it to an angle
-                cos_factor_hor = xnp.cos(theta_hor)  # simple way to get U from gauge value
-                hor_link_energy = 0.5 * (
-                    covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov + 1, neighborX_ind + 1]
-                )
-                layer_int_energy += hor_link_energy * cos_factor_hor
+                hor_link_ind = horizontal_neighbor_data[site_ind][0]
+                neighborX_ind = 2 * horizontal_neighbor_data[site_ind][1]  # 2 * index of neighboring site
+
+                gaugefield_hor = gaugefieldvec[hor_link_ind]  # a matrix representation of the group element
+                cos_factor_hor = xnp.real(gaugefield_hor[0][0]).astype(
+                    float
+                )  # get U from gauge representation, this handles cosine
+                hor_energy = 0.5 * (covmat[site_ind_cov, neighborX_ind] - covmat[site_ind_cov + 1, neighborX_ind + 1])
+                layer_int_energy += hor_energy * cos_factor_hor
 
                 # Vertical link
-                ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
-                neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
-                neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
-                gaugefield_vert = self.gaugefieldvec[ind_field_vert]
-                theta_vert = self.cfg.gaugemgr.get_angle(
-                    gaugefield_vert
-                )  # gaugefield_vert is a matrix represntation of a group element
-                cos_factor_vert = xnp.cos(theta_vert)
-                vert_link_energy = 0.5 * (
-                    covmat[site_ind_cov, neighborY_ind + 1] + covmat[site_ind_cov + 1, neighborY_ind]
-                )
-                layer_int_energy -= vert_link_energy * cos_factor_vert
+                vert_link_ind = vertical_neighbor_data[site_ind][0]
+                neighborY_ind = 2 * vertical_neighbor_data[site_ind][1]
 
-            int_energy_op.append(layer_int_energy)
+                gaugefield_vert = gaugefieldvec[vert_link_ind]
+                cos_factor_vert = xnp.real(gaugefield_vert[0][0]).astype(float)
+                vert_energy = 0.5 * (covmat[site_ind_cov, neighborY_ind + 1] + covmat[site_ind_cov + 1, neighborY_ind])
+                layer_int_energy -= vert_energy * cos_factor_vert
 
-        int_energy_op = xnp.asarray(int_energy_op)
+            int_energy_op = backend.array_assign(int_energy_op, layer_ind, layer_int_energy)
 
         return int_energy_op
 
-    def _compute_int_energy_grad(self):
-        """Calculate the energy gradient due to the interaction of the
-        physical fermions with the gauge fields.
-        Note: this function assumes that U = U^dagger, which is valid only for Z2.
+    @staticmethod
+    @maybe_jit(
+        static_argnames=[
+            "lattice_size",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "unitcell_size",
+            "nparams",
+            "horizontal_neighbor_data",
+            "vertical_neighbor_data",
+            "zeroed_params",
+        ],
+    )
+    def _compute_int_energy_grad(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        nparams: int,
+        gaugefieldvec: xnp.ndarray,
+        d_gamma_out_symbolvec: xnp.ndarray,
+        horizontal_neighbor_data: tuple,
+        vertical_neighbor_data: tuple,
+        zeroed_params: tuple,
+    ):
+        """
+        Note: this function assumes that U = U^dagger, which is only valid for Z2.
         For other groups, the calculation will not be as simple.
-
-        Returns:
-            array: gradients
         """
 
-        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+        nlayer = num_pg_layer + num_fermionic_layer
+        param_shape = (nlayer, unitcell_size, nparams)
+        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
 
-        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+        for layer_ind in range(num_pg_layer, nlayer):
 
-            for site_ind in range(self.cfg.lattice.size):
-                coord = self.cfg.lattice.ind2coord(site_ind)
-
-                # this is the index to use when accessing elements of the covariance matrix,
-                # which has 2 Majorana modes per site
-                site_ind_cov = 2 * site_ind
+            for site_ind in range(lattice_size):
+                site_ind_cov = 2 * site_ind  # index into covariance matrix, factor of 2 for Majorana modes per site
 
                 # Horizontal link
-                ind_field_hor = self.cfg.lattice.coord2ind_dir(coord, Direction.X)  # index of the horizontal link
-                neighborX_coord = self.cfg.lattice.get_neighbor(coord, Direction.X)  # coordinates of neighboring site
-                neighborX_ind = 2 * self.cfg.lattice.coord2ind(
-                    neighborX_coord
-                )  # index of neighboring site, factor of 2 is due to Majorana modes (2 per site)
-                gaugefield_hor = self.gaugefieldvec[
-                    ind_field_hor
-                ]  # gaugefield_hor is a matrix representation of a group element
-                theta_hor = self.cfg.gaugemgr.get_angle(gaugefield_hor)  # convert it to an angle
-                cos_factor_hor = xnp.cos(theta_hor)  # simple way to get U from gauge value
+                hor_link_ind = horizontal_neighbor_data[site_ind][0]
+                neighborX_ind = 2 * horizontal_neighbor_data[site_ind][1]  # 2 * index of neighboring site
+
+                gaugefield_hor = gaugefieldvec[hor_link_ind]  # a matrix representation of the group element
+                cos_factor_hor = xnp.real(gaugefield_hor[0][0]).astype(
+                    float
+                )  # get U from gauge representation, this handles cosine
 
                 # Vertical link
-                ind_field_vert = self.cfg.lattice.coord2ind_dir(coord, Direction.Y)
-                neighborY_coord = self.cfg.lattice.get_neighbor(coord, Direction.Y)
-                neighborY_ind = 2 * self.cfg.lattice.coord2ind(neighborY_coord)
-                gaugefield_vert = self.gaugefieldvec[ind_field_vert]
-                theta_vert = self.cfg.gaugemgr.get_angle(
-                    gaugefield_vert
-                )  # gaugefield_vert is a matrix represntation of a group element
-                cos_factor_vert = xnp.cos(theta_vert)
+                vert_link_ind = vertical_neighbor_data[site_ind][0]
+                neighborY_ind = 2 * vertical_neighbor_data[site_ind][1]
+
+                gaugefield_vert = gaugefieldvec[vert_link_ind]
+                cos_factor_vert = xnp.real(gaugefield_vert[0][0]).astype(float)
 
                 # Calculate derivatives
-                for uc_ind in range(self.cfg.unitcell_size):
-                    for symbol_ind, symbol in enumerate(self.symbolvec):
+                for uc_ind in range(unitcell_size):
+                    for symbol_ind in range(nparams):
                         # the derivative calculation is relatively compuationally expensive
                         # (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
-                        if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
+                        if (layer_ind, uc_ind, symbol_ind) not in zeroed_params:
 
-                            d_gamma_out = self.d_gamma_out_symbolvec()[layer_ind, uc_ind, symbol_ind]
+                            d_gamma_out = d_gamma_out_symbolvec[layer_ind, uc_ind, symbol_ind]
                             grad = (
                                 0.5
                                 * cos_factor_hor
@@ -630,61 +557,95 @@ class Z2System2D(System2DBase):
 
         return xnp.array(gradients)
 
-    def _compute_chem_energy_op_vec(self):
-        """Calculate the chemical potential energy operator."""
+    @staticmethod
+    @staticmethod
+    @maybe_jit(
+        static_argnames=[
+            "lattice_size",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "sublattice_factors",
+        ],
+    )
+    def _compute_chem_energy_op_vec(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        sublattice_factors: tuple,
+        ferm_covmat_vec: xnp.ndarray,
+    ):
 
-        chem_energy_op = [0] * self.cfg.num_pg_layer
+        nlayer = num_pg_layer + num_fermionic_layer
+        chem_energy_op = xnp.zeros(nlayer)
 
-        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+        for layer_ind in range(num_pg_layer, nlayer):
             # only the fermionic layers directly contribute to the chemical potential
 
             # Calculation prelimaries
-            covmat = self.compute_ferm_cov()[layer_ind]
+            covmat = ferm_covmat_vec[layer_ind]
             layer_chem_energy = 0.0
 
             # Calculate chem term
             # Since we set the system to have different parameters on the even and odd sites when using a non-zero
             # chemical potential (i.e. the system is translationally invariant by two sites),
             # we could just calculate it for one even and one odd site and multiply by the size of the system
-            for site in range(self.cfg.lattice.size):
+            for site in range(lattice_size):
                 site_ind = 2 * site  # index into covariance matrix
-                x, y = self.cfg.lattice.ind2coord(site)
-                site_factor = (-1) ** (x + y)  # even or odd sublattice
+                site_factor = sublattice_factors[site]  # even or odd sublattice
                 mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
                 layer_chem_energy += site_factor * mass_site
                 layer_chem_energy += 0.5  # constant offset which arises from particle-hole transformation
 
-            chem_energy_op.append(np.asarray(layer_chem_energy))
-
-        chem_energy_op = np.asarray(chem_energy_op)
+            chem_energy_op = backend.array_assign(chem_energy_op, layer_ind, layer_chem_energy)
 
         return chem_energy_op
 
-    def _compute_chem_energy_grad(self):
-        """Calculate the chemical potential energy operator gradient."""
+    @staticmethod
+    @maybe_jit(
+        static_argnames=[
+            "lattice_size",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "unitcell_size",
+            "symbolvec",
+            "sublattice_factors",
+            "zeroed_params",
+        ],
+    )
+    def _compute_chem_energy_grad(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        symbolvec: tuple,
+        sublattice_factors: tuple,
+        zeroed_params: tuple,
+        d_gamma_out_vec: xnp.ndarray,
+    ):
 
-        gradients = xnp.zeros(self.cfg.param_shape(), dtype=xnp.float64)
+        nlayer = num_pg_layer + num_fermionic_layer
+        param_shape = (nlayer, unitcell_size, len(symbolvec))
+        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
 
-        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+        for layer_ind in range(num_pg_layer, nlayer):
             # only the fermionic layers directly contribute to the chemical potential
 
             # Calculate chem term
             # Since we set the system to have different parameters on the even and odd sites when using a non-zero
             # chemical potential (i.e. the system is translationally invariant by two sites),
             # we could just calculate it for one even and one odd site and multiply by the size of the system
-            for site in range(self.cfg.lattice.size):
+            for site in range(lattice_size):
                 site_ind = 2 * site  # index into covariance matrix
-                x, y = self.cfg.lattice.ind2coord(site)
-                site_factor = (-1) ** (x + y)  # even or odd sublattice
+                site_factor = sublattice_factors[site]  # even or odd sublattice
 
-                for uc_ind in range(self.cfg.unitcell_size):
-                    for symbol_ind, symbol in enumerate(self.symbolvec):
+                for uc_ind in range(unitcell_size):
+                    for symbol_ind, symbol in enumerate(symbolvec):
                         # the derivative calculation is relatively compuationally expensive
                         # (though less than for electric energy)
                         # we can skip it for parameters that are forced by the ansatz to be zero
-                        if (layer_ind, uc_ind, symbol_ind) not in self.cfg.zeroed_params:
+                        if (layer_ind, uc_ind, symbol_ind) not in zeroed_params:
 
-                            d_gamma_out = self.d_gamma_out_symbolvec()[layer_ind, uc_ind, symbol_ind]
+                            d_gamma_out = d_gamma_out_vec[layer_ind, uc_ind, symbol_ind]
                             grad = 0.5 * site_factor * d_gamma_out[site_ind + 1, site_ind]
                             gradients = backend.array_add(gradients, (layer_ind, uc_ind, symbol_ind), grad)
 
@@ -694,16 +655,6 @@ class Z2System2D(System2DBase):
         return gradients
 
     def _meson_string_vec(self, path):
-        r"""Compute a layer resolved meson string for the given path.
-        This is \psi^dagger (start) * String * \psi(end) before particle-hole,
-        and assumes that start and end are on the same sublattice.
-
-        Args:
-            path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
-
-        Returns:
-            array: meson_str_vec
-        """
 
         meson_op_vec = [0] * self.cfg.num_pg_layer
 
@@ -718,7 +669,7 @@ class Z2System2D(System2DBase):
         site_ind_cov_fin = 2 * end_site_ind
 
         for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
-            covmat = self.compute_ferm_cov()[layer_ind]
+            covmat = self.ferm_covmat_vec[layer_ind]
 
             # Since for the L-shaped strings considered here the endpoints are always on the same sublattice,
             # we still have \psi^\dagger \psi after the PH transformation
@@ -737,19 +688,8 @@ class Z2System2D(System2DBase):
         return xnp.array(meson_op_vec)
 
     def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
-        """Compute the occupation number for the given layer and site.
 
-        Args:
-            lay (int): Layer index
-            site (int): Site index
-            after_ph (bool, optional): If True, compute the occupation number using the operators
-                                       defined after the particle-hole transformation. Defaults to False.
-
-        Returns:
-            float: the occupation number for the given layer and site
-        """
-
-        covmat = self.compute_ferm_cov()[lay]
+        covmat = self.ferm_covmat_vec[lay]
         site_ind = 2 * site  # index into covariance matrix
 
         x, y = self.cfg.lattice.ind2coord(site)

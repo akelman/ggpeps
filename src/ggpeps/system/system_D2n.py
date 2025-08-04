@@ -34,12 +34,6 @@ class D2nSystem2D(System2DBase):
     """
 
     def __init__(self, cfg):
-        """Constructor of a Z2System2D system, with any number of virtual fermions per site per link
-        (provided a valid config is given).
-
-        Args:
-            cfg (Config2DBase): Configuration containing all system-related parameters
-        """
         super().__init__(cfg)
 
     # Calculating weight attempt
@@ -63,7 +57,7 @@ class D2nSystem2D(System2DBase):
         """
         # There are two directions per vertex and two Majoranas per link
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord, dir)
+        rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
         gamma_neutral_gauge_vec = self.gamma_gauge_neutral_vec
         if color_to_check is not None:
             ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind + 2 * color_to_check * self.cfg.nvirtmodes_link_per_color
@@ -99,7 +93,7 @@ class D2nSystem2D(System2DBase):
 
     def calculate_weight_attempt(self, link_ind: int, theta: xnp.array, all_factors=False):
         """
-        This method overwrites an abstract method in System2DBase. For now, we need it only for the D2n systems.
+        This method overwrites a method in System2DBase. For now, we need it only for the D2n systems.
 
         Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
@@ -170,8 +164,8 @@ class D2nSystem2D(System2DBase):
         return weight
 
     # Gauging
-
-    def generate_rotmat(self, group_element: xnp.ndarray, coord: tuple, dir: Direction):
+    @classmethod
+    def generate_rotmat(cls, ncopy: int, group_element: xnp.ndarray, coord: tuple, dir: Direction):
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
 
         The mode order is (as for gamma_in_neutral):
@@ -183,25 +177,14 @@ class D2nSystem2D(System2DBase):
                 {l1_1_1, l1_2_1, r1_1_1, r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2,l1_2_2,r1_1_2,r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}
                 or (for vertical links)
                 {d1_1_1, d1_2_1, u1_1_1, u1_2_1,d2_1_1,d2_2_1,u2_1_1,u2_2_1,d1_1_2,d1_2_2,u1_1_2,u1_2_2,d2_1_2,d2_2_2,u2_1_2,u2_2_2},
-
         The naming convention here is <mode letter><number of copy>_<majorana mode>_<color>.
-        We order first by link and then by copy.
+        We order first by link and then by copy then by color.
 
-        For fermionic and pure gauge layers, the projectors don't mix copies to ensure the U(1) symmetry is obeyed.
-
-        The sites are picked such that the left mode is right of the right modes,
-        i.e. they are sitting on the same link.
-        The same is true for the for the up and down modes.
+        For both fermionic and pure gauge layers, the projectors don't mix copies.
+        This ensures the U(1) symmetry is obeyed for the fermionic layers, and is a convention for the pure gauge ones.
 
         This method overwrites an abstract method in System2DBase.
-
-        Args:
-            group_element (xnp.ndarray): Representation of group elemnt
-            coord (tuple): (x,y) coordinate on the lattice
-            dir (lattice.Direction): direction of the link
-
-        Returns:
-            xnp.ndarray: Rotation matrix for gamma_in_neutral
+        See this method in System2DBase for further documentation.
         """
         g = group_element
         # We are only rotating the right modes.
@@ -226,7 +209,7 @@ class D2nSystem2D(System2DBase):
                 ],
             )
 
-        # We have dim(representaion) left mode => 2*dim(representation) Majorana modes
+        # We have dim(representation) left mode => 2*dim(representation) Majorana modes
         dim_rep = len(g)  # dimension of the representation
         rot_left = xnp.eye(2 * dim_rep)
 
@@ -236,10 +219,12 @@ class D2nSystem2D(System2DBase):
             rot_left, rot_right
         )  # This is the rot for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
 
-        rotmat = xnp.kron(xnp.eye(self.cfg.ncopy), dest)
+        rotmat = xnp.kron(xnp.eye(ncopy), dest)
 
-        wrong_order = self.get_wrong_single_link_majorana_mode_order_by_copy_then_color()
-        correct_order_first_color_then_copy = self.get_single_link_majorana_mode_order()
+        # TODO: we should rather just order correctly from the start
+        wrong_order = cls.get_wrong_single_link_majorana_mode_order_by_copy_then_color(ncopy)
+        rep_dim = 2  # for this system, the representation dimension is always 2
+        correct_order_first_color_then_copy = cls.get_single_link_majorana_mode_order(ncopy, rep_dim)
         perm_mat = xnp.array(
             modearray.generate_permutation_matrix(
                 wrong_order,
@@ -250,11 +235,44 @@ class D2nSystem2D(System2DBase):
 
         return rotmat
 
+    @staticmethod
+    def get_wrong_single_link_majorana_mode_order_by_copy_then_color(num_copies: int) -> list:
+        """Generate the link-based majorana mode order for a single link. We first order by copy and then by color.
+        This is not the order we use in the code. This is just to change the generate_rotmat ordering.
+
+        Returns:
+            list: List of strings of the form <mode_letter:majorana mode>_<copy>_<color>
+        """
+
+        mode_order = []
+        num_colors = 2  # always 2 for this is system, in general: self.cfg.gaugemgr.rep_dim
+        # We demonstrate the order for a single horizontal link -
+        for copy in range(1, num_copies + 1):
+            for color in range(1, num_colors + 1):
+                mode1 = ("l1", copy, color)  # majorana mode l1
+                mode_order += [mode1]
+            for color in range(1, num_colors + 1):
+                mode2 = ("l2", copy, color)  # majorana mode l2
+                mode_order += [mode2]
+            for color in range(1, num_colors + 1):
+                mode1 = ("r1", copy, color)
+                mode_order += [mode1]
+            for color in range(1, num_colors + 1):
+                mode2 = ("r2", copy, color)
+                mode_order += [mode2]
+
+        # Convert to a list of strings
+        # This was left as a tuple above in case there was ever any use for that format
+        mode_order_str = []
+        for mode in mode_order:
+            mode_str = mode[0] + "_" + str(mode[1]) + "_" + str(mode[2])
+            mode_order_str.append(mode_str)
+
+        return mode_order_str
+
     def update_gauge_ind(self, link_ind, theta):
-        """Update method that is called upon changing a gauge field.
-        This method is central to the algorithm since it changes the gauged projectors
-        and updates all incremental trackers of determinants and inverses.
-        The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
+        """This method updates a gauge field on a single side. It first checks whether the update is singular,
+        and proceeds accordingly:
 
         Unlike the update_non_singular_gauge_ind method, this method checks whether the transition is singular
         (i.e., the update matrix is singular and therfore can't be inverted)
@@ -262,10 +280,6 @@ class D2nSystem2D(System2DBase):
         path and then calls the update_non_singular_gauge_ind method.
 
         This method overwrites an abstract method in System2DBase.
-
-        Args:
-            link_ind (int): Link index to be updated
-            theta (xnp.array): New gauge field value
         """
         old_theta = xnp.copy(self._gaugefieldvec[link_ind])
         singular = False
@@ -312,9 +326,8 @@ class D2nSystem2D(System2DBase):
         This method assumes that the two gauge values don't yield a singular update matrix.
         It is called by the update_gauge_ind method which takes care of not allowing singular updates.
 
-        For updatting just one color we assume a specific ordering of the modes: (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2}).
-
-        This method overwrites an abstract method in System2DBase.
+        For updatting just one color we assume a specific ordering of the modes:
+        (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2}).
 
         Args:
             link_ind (int): Link index to be updated
@@ -326,7 +339,7 @@ class D2nSystem2D(System2DBase):
 
         # There are two directions per vertex
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord, dir)
+        rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
         if color_to_update is None:  # if we update both colors.
             ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         else:
@@ -405,17 +418,6 @@ class D2nSystem2D(System2DBase):
 
     # Observables
     def _compute_mag_energy_op(self, use_trans_inv: bool = True):
-        """Computation of the magnetic energy operator (w/o shift).
-        This operator is diagonal in the gauge field (group element) basis and can thus be computed easily.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            use_trans_inv (bool, optional): Use the translationally invariant computation method. Defaults to True.
-
-        Returns:
-            float: magnetic energy w/o shift for a single plaquette
-        """
         if use_trans_inv:
             # Evaluate one plaquette and multiply by number of plaquettes
             wilson_plaquette = self.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
@@ -440,10 +442,6 @@ class D2nSystem2D(System2DBase):
         norm_mod_vec,
         use_trans_inv: bool = True,
     ):
-        """Computation of the electric energy.
-
-        This method overwrites an abstract method in System2DBase.
-        """
         dest = xnp.zeros(nlayer)
         return xnp.asarray(dest)
 
@@ -472,20 +470,6 @@ class D2nSystem2D(System2DBase):
         zeroed_params,
         use_trans_inv: bool = True,
     ):
-        """Computation of the electric energy gradients.
-        We start by calculating the electric energies, since these are needed for evaluating the gradients.
-        Since several operations needed for the computation of the gradient and the energy are similar,
-        we can reuse many intermediate steps.
-
-        This method overwrites an abstract method in System2DBase.
-
-        Args:
-            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
-
-        Returns:
-            list: list of gradients for the full system
-        """
-
         if not use_trans_inv:
             # Evaluate every link of the system
             logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
@@ -521,49 +505,69 @@ class D2nSystem2D(System2DBase):
         gradients = xnp.zeros(param_shape, dtype=xnp.float64)
         return gradients
 
-    def _compute_int_energy_op_vec(self):
+    @staticmethod
+    def _compute_int_energy_op_vec(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        gaugefieldvec: xnp.ndarray,
+        ferm_covmat_vec: xnp.ndarray,
+        horizontal_neighbor_data: tuple,
+        vertical_neighbor_data: tuple,
+    ):
 
-        int_energy_op = xnp.zeros(self.cfg.nlayer)
+        int_energy_op = xnp.zeros(num_pg_layer + num_fermionic_layer)
         return int_energy_op
 
-    def _compute_int_energy_grad(self):
-
-        gradients = xnp.zeros(self.cfg.param_shape())
+    @staticmethod
+    def _compute_int_energy_grad(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        nparams: int,
+        gaugefieldvec: xnp.ndarray,
+        d_gamma_out_symbolvec: xnp.ndarray,
+        horizontal_neighbor_data: tuple,
+        vertical_neighbor_data: tuple,
+        zeroed_params: tuple,
+    ):
+        nlayer = num_pg_layer + num_fermionic_layer
+        param_shape = (nlayer, unitcell_size, nparams)
+        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
         return gradients
 
-    def _compute_chem_energy_op_vec(self):
+    @staticmethod
+    def _compute_chem_energy_op_vec(
+        self,
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        sublattice_factors: tuple,
+        ferm_covmat_vec: xnp.ndarray,
+    ):
         chem_energy_op = xnp.zeros(self.cfg.nlayer)
         return chem_energy_op
 
-    def _compute_chem_energy_grad(self):
-        gradients = xnp.zeros(self.cfg.param_shape())
+    @staticmethod
+    def _compute_chem_energy_grad(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        unitcell_size: int,
+        symbolvec: tuple,
+        sublattice_factors: tuple,
+        zeroed_params: tuple,
+        d_gamma_out_vec: xnp.ndarray,
+    ):
+        nlayer = num_pg_layer + num_fermionic_layer
+        param_shape = (nlayer, unitcell_size, len(symbolvec))
+        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
         return gradients
 
     def _meson_string_vec(self, path):
-        f"""Compute a layer resolved meson string for the given path.
-        This is \psi^dagger (start) * String * \psi(end) before particle-hole,
-        and assumes that start and end are on the same sublattice.
-
-        Args:
-            path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
-
-        Returns:
-            array: meson_str_vec
-        """
         meson_op_vec = xnp.zeros(self.cfg.nlayer)
         return xnp.array(meson_op_vec)
 
     def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
-        """Compute the occupation number for the given layer and site.
-
-        Args:
-            lay (int): Layer index
-            site (int): Site index
-            after_ph (bool, optional): If True, compute the occupation number using the operators defined after the
-                                       particle-hole transformation. Defaults to False.
-
-        Returns:
-            float: the occupation number for the given layer and site
-        """
-
         return 0.0
