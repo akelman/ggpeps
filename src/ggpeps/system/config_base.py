@@ -28,8 +28,12 @@ class Config2DBase(ABC):
 
     # Ansatz settings
     # This will be overwritten by the specifications of each ansatz
-    _nparams: Optional[int] = None  # number of params per site per layer
-    ncopy: Optional[int] = None
+    _nparams: int  # number of params per site per layer
+    ncopy: int
+    nvirtmodes_vertex: int
+    nvirtmodes_link: int
+    nphysmodes_site: int  # number of physical modes per site
+    ncolors: int
 
     def __init__(
         self,

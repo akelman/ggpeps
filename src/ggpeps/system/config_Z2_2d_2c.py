@@ -26,6 +26,7 @@ class Z2System2D2CConfig(Config2DBase):
     nvirtmodes_vertex = 8  # We have two virtual modes per direction (4 directions x 2 modes)
     nvirtmodes_link = 4  # Number of virtual modes per link (2 copies and l/r or u/d)
     nphysmodes_site = 1  # number of physical modes per site
+    ncolors = 1
 
     def __init__(
         self,
