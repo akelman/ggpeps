@@ -14,6 +14,7 @@ from ggpeps import xscipy as xscipy
 import ggpeps
 from ggpeps import gauge
 from ggpeps.lattice import Lattice2D
+from ggpeps.system.backend import backend
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -240,15 +241,7 @@ class Config2DBase(ABC):
             self.zeroed_params = self.get_zeroed_params()
 
         for coord in self.zeroed_params:
-            if isinstance(mat, np.ndarray):  # TODO: handle jax better
-                mat[coord] = 0
-            elif isinstance(mat, jnp.ndarray):
-                mat = mat.at[coord].set(0)
-            else:
-                raise TypeError(
-                    "Unsupported type for mat in enforce_parameter_conditions: "
-                    f"{type(mat)}. Expected np.ndarray or jnp.ndarray."
-                )
+            mat = backend.array_assign(mat, coord, 0)
         return
 
     @abstractmethod
