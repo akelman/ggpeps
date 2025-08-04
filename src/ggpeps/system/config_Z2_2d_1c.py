@@ -42,7 +42,19 @@ class Z2System2DConfig(Config2DBase):
             # This ansatz does not support fermionic layers
             raise ValueError("The Z2System2D ansatz does not support fermionic layers.")
 
-        super().__init__(gauge.ZNGauge(2), lattice, g_el, g_mag, g_int, g_mass, g_chem, num_pg_layer, 0, unitcell_size)
+        super().__init__(
+            gauge.ZNGauge(2),
+            lattice,
+            g_el,
+            g_mag,
+            g_int,
+            g_mass,
+            g_chem,
+            num_pg_layer,
+            0,
+            unitcell_size,
+            enforce_u1_symmetry,
+        )
 
         # Translation invariance
         if self.unitcell_size not in [1]:
@@ -52,16 +64,9 @@ class Z2System2DConfig(Config2DBase):
             )
             raise ValueError("Invalid unitcell_size.")
 
-        if not enforce_u1_symmetry:
+        if not self.u1_symmetry:
             logger.error("This ansatz does not support the relaxation of U(1) symmetry.")
             raise ValueError("Invalid enforce_u1_symmetry.")
-
-        # This is for pure-gauge only atm
-        self.num_pg_layer = self.nlayer
-        self.num_fermionic_layer = 0
-        # We store a list of the parameters forced to be zero by the ansatz
-        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j]]

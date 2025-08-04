@@ -59,6 +59,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
             num_pg_layer,
             num_fermionic_layer,
             unitcell_size,
+            enforce_u1_symmetry,
         )
 
         if self.unitcell_size not in [1, 2, -1]:
@@ -67,11 +68,6 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             raise ValueError("Invalid unitcell_size.")
-
-        self.u1_symmetry = enforce_u1_symmetry
-        # We store a list of the parameters forced to be zero by the ansatz
-        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: tuple[tuple[int, int, int], ...] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [

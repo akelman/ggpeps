@@ -51,6 +51,7 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
             num_pg_layer,
             num_fermionic_layer,
             unitcell_size,
+            enforce_u1_symmetry,
         )
 
         # Translation invariance
@@ -61,12 +62,9 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
             )
             raise ValueError("Invalid unitcell_size.")
 
-        if not enforce_u1_symmetry:
+        if not self.u1_symmetry:
             logger.error("This ansatz does not support the relaxation of U(1) symmetry.")
             raise ValueError("Invalid enforce_u1_symmetry.")
-        # We store a list of the parameters forced to be zero by the ansatz
-        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j]] * 8

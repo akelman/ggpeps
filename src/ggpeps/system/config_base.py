@@ -43,6 +43,7 @@ class Config2DBase(ABC):
         num_pg_layer: int = 1,
         num_fermionic_layer: int = 0,
         unitcell_size: int = 1,
+        enforce_u1_symmetry: bool = True,
     ):
         """Constructor.
 
@@ -87,6 +88,15 @@ class Config2DBase(ABC):
 
         # number of different sets of parameters across sites (min: 1, max: num_sites)
         self.unitcell_size: int = len(set(self.site_params_dict.values()))
+
+        # U1 invariance
+        # set to True if you want to enforce U(1) symmetry in the fermionic layers
+        # (set to False to allow fermionic number to float between sectors)
+        self.u1_symmetry = enforce_u1_symmetry
+
+        # We store a list of the parameters forced to be zero by the ansatz
+        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
+        self.zeroed_params: tuple[tuple[int, int, int], ...] = self.get_zeroed_params()
 
         # Parameters of the Hamiltonian
         self.g_el = g_el

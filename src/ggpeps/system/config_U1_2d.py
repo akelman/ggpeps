@@ -53,10 +53,6 @@ class U1System2DConfig(Config2DBase):
             )
             raise ValueError("Invalid unitcell_size.")
 
-        # We store a list of the parameters forced to be zero by the ansatz
-        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
-
     def make_pure_gauge(self):
         # The order of the parameters is [t,y,z]
         # Here we set the t parameters to zero for the pure gauge layers (which is all the layers)
