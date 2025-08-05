@@ -163,7 +163,7 @@ class Z2System2D(System2DBase):
         covmat_out_virt_vec,
         norm_mod_vec,
         use_trans_inv: bool = True,
-    ):
+    ) -> xnp.ndarray:
 
         if not use_trans_inv:
             # Evaluate every link of the system

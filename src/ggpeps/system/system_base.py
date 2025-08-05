@@ -55,7 +55,7 @@ class System2DBase(ABC):
         self.cfg: Config2DBase = cfg
         self.initialize()
 
-    def initialize(self):
+    def initialize(self) -> None:
         """Initialization function. This function also resets the system.
         If necessary, this would also be a good spot to copy data from the configuration.
         """
@@ -111,7 +111,7 @@ class System2DBase(ABC):
         self._el_energy_op_grad_vec: Optional[xnp.ndarray] = None  # first index is layer, second index is symbol
         self._mass_energy_op_grad_vec: Optional[xnp.ndarray] = None
         self._int_energy_op_grad_vec: Optional[xnp.ndarray] = None
-        self._chem_energy_op_grad_vec = None
+        self._chem_energy_op_grad_vec: Optional[xnp.ndarray] = None
 
         # gradients of gamma_out for all symbols: _d_gamma_out_symbolvec[lay, uc_ind, symbol]
         # is the matrix of derivatives of gamma_out[lay] wrt the parameter at that (lay, uc_ind, symbol)
@@ -122,13 +122,13 @@ class System2DBase(ABC):
         # Observables
         self._energy: Optional[float] = None
         self._el_energy_op: Optional[float] = None
-        self._el_energy_op_vec: Optional[list[float]] = None
+        self._el_energy_op_vec: Optional[xnp.ndarray] = None
         self._mag_energy_op: Optional[float] = None
         self._mass_energy_op: Optional[float] = None
-        self._mass_energy_op_vec: Optional[list[float]] = None
+        self._mass_energy_op_vec: Optional[xnp.ndarray] = None
         self._int_energy_op: Optional[float] = None
-        self._int_energy_op_vec: Optional[list[float]] = None
-        self._chem_energy_op_vec = None
+        self._int_energy_op_vec: Optional[xnp.ndarray] = None
+        self._chem_energy_op_vec: Optional[xnp.ndarray] = None
         self._all_occupations: Optional[xnp.ndarray] = None
 
         # Woodbury Update and Matrix Inversion
@@ -142,7 +142,7 @@ class System2DBase(ABC):
 
         return
 
-    def invalidate_gauge_update(self):
+    def invalidate_gauge_update(self) -> None:
         """Reset the values of computed quantitities to avoid spillover from previous computations.
         We do not need to reset quantities that are not dependent on the gauge fields,
         such as _gamma_maj_sys_vec, _mat_a_vec, etc.
@@ -173,7 +173,7 @@ class System2DBase(ABC):
         self._lognorm_default_vec = None
         return
 
-    def _extract_partial_covmatvec(self, offset: int):
+    def _extract_partial_covmatvec(self, offset: int) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
         mat_a_vec = self.gamma_maj_sys_vec[:, :offset, :offset]
         mat_b_vec = self.gamma_maj_sys_vec[:, :offset, offset:]
         mat_d_vec = self.gamma_maj_sys_vec[:, offset:, offset:]
@@ -189,14 +189,14 @@ class System2DBase(ABC):
         return self.cfg.symbolvec
 
     @property
-    def tmat_symb(self):
+    def tmat_symb(self) -> sympy.Matrix:
         """Return the symbolic version of the T matrix.
         This is stored in the config for each ansatz, because it is part of the definition of the ansatz,
         and is not specific to a particular state (i.e. particular parameters).
         """
         return self.cfg.tmat_symb
 
-    def compute_tmat_deriv(self, symb: sympy.Symbol):
+    def compute_tmat_deriv(self, symb: sympy.Symbol) -> xnp.ndarray:
         """Return the derivative of the T matrix with respect to the symbol
 
         Args:
@@ -210,7 +210,7 @@ class System2DBase(ABC):
         tmat_deriv = xnp.asarray(np.asarray(sympy.diff(tmat_symb, symb)).astype(complex))
         return tmat_deriv
 
-    def _eval_tmat_symb(self, paramvec):
+    def _eval_tmat_symb(self, paramvec) -> xnp.ndarray:
         """Compute the numerical representation of the T matrix
 
         Args:
@@ -273,7 +273,7 @@ class System2DBase(ABC):
         return self._gamma_dirac_layervec_sitevec
 
     @property
-    def gamma_maj_layervec_sitevec(self):
+    def gamma_maj_layervec_sitevec(self) -> xnp.ndarray:
         r"""Return the covariance matrix in Majorana modes.
         The definition of Majorana modes used is
             \gamma_1 = c + c^\dagger
@@ -1435,7 +1435,7 @@ class System2DBase(ABC):
         covmat_out_virt_vec,
         norm_mod_vec,
         use_trans_inv: bool = True,
-    ):
+    ) -> xnp.ndarray:
         """Compute the electric energy.
 
         This is an abstract method and has to be overwritten in a subclass.
@@ -1579,7 +1579,13 @@ class System2DBase(ABC):
 
     @staticmethod
     @abstractmethod
-    def _compute_chem_energy_op_vec(self):
+    def _compute_chem_energy_op_vec(
+        lattice_size: int,
+        num_pg_layer: int,
+        num_fermionic_layer: int,
+        sublattice_factors: tuple,
+        ferm_covmat_vec: xnp.ndarray,
+    ) -> xnp.ndarray:
         """Compute the chemical potential energy (per layer).
         This is an abstract method and has to be overwritten in a subclass.
         """
@@ -1596,7 +1602,7 @@ class System2DBase(ABC):
         sublattice_factors: tuple,
         zeroed_params: tuple,
         d_gamma_out_vec: xnp.ndarray,
-    ):
+    ) -> xnp.ndarray:
         """Compute the chemical potential energy gradient.
         This is an abstract method and has to be overwritten in a subclass.
         """
@@ -1690,7 +1696,7 @@ class System2DBase(ABC):
         return int_energy
 
     @property
-    def chem_energy(self):
+    def chem_energy(self) -> float:
         """Compute chemical potential energy for the whole system
         This is a get function.
 
@@ -1759,7 +1765,7 @@ class System2DBase(ABC):
 
     # Functions that return the layer-resolved energies of each energy operator
     @property
-    def el_energy_op_vec(self):
+    def el_energy_op_vec(self) -> xnp.ndarray:
         """Compute electric energy operator w/o shift for all layers for the whole system.
         This is a get function.
 
@@ -1781,7 +1787,7 @@ class System2DBase(ABC):
         return self._el_energy_op_vec
 
     @property
-    def mass_energy_op_vec(self):
+    def mass_energy_op_vec(self) -> xnp.ndarray:
         """Compute mass energy operator w/o shift for all layers for the whole system.
         This is a get function.
 
@@ -1799,7 +1805,7 @@ class System2DBase(ABC):
         return self._mass_energy_op_vec
 
     @property
-    def int_energy_op_vec(self):
+    def int_energy_op_vec(self) -> xnp.ndarray:
         """Compute interaction energy operator w/o shift for all layers for the whole system.
         This is a get function.
 
@@ -1819,7 +1825,7 @@ class System2DBase(ABC):
         return self._int_energy_op_vec
 
     @property
-    def chem_energy_op_vec(self):
+    def chem_energy_op_vec(self) -> xnp.ndarray:
         """Compute chemical potential energy operator w/o shift for all layers for the whole system.
         This is a get function.
 
@@ -1838,7 +1844,7 @@ class System2DBase(ABC):
 
     # Functions that return the layer-resolved gradients of each energy operator
     @property
-    def el_energy_op_grad_vec(self):
+    def el_energy_op_grad_vec(self) -> xnp.ndarray:
         """Compute the gradient of the electric operator (w/o shift) for all layers
 
         Returns:
@@ -1880,7 +1886,7 @@ class System2DBase(ABC):
         return self._el_energy_op_grad_vec
 
     @property
-    def mass_energy_op_grad_vec(self):
+    def mass_energy_op_grad_vec(self) -> xnp.ndarray:
         """Compute the gradient of the mass energy operator for the whole system without shift.
         This is a get function.
 
@@ -1901,7 +1907,7 @@ class System2DBase(ABC):
         return self._mass_energy_op_grad_vec
 
     @property
-    def int_energy_op_grad_vec(self):
+    def int_energy_op_grad_vec(self) -> xnp.ndarray:
         """Compute the gradient of the interaction energy operator for the whole system without shift.
         This is a get function.
 
@@ -1924,7 +1930,7 @@ class System2DBase(ABC):
         return self._int_energy_op_grad_vec
 
     @property
-    def chem_energy_op_grad_vec(self):
+    def chem_energy_op_grad_vec(self) -> xnp.ndarray:
         """Compute the gradient of the chemical potential energy operator for the whole system without shift.
         This is a get function.
 
@@ -2251,7 +2257,7 @@ class System2DBase(ABC):
         return mode_order_str
 
 
-def get_pfaffian_arrays(modes, coefficients):
+def get_pfaffian_arrays(modes: list, coefficients: list) -> tuple:
     """Generate the arrays used for list comprehension to extract the required pfaffians, with the correct
     prefactors, used in the calculation of the electric energy and electric gradients.
 
