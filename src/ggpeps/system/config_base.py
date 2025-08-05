@@ -9,7 +9,6 @@ import sympy
 import numpy as np
 import jax.numpy as jnp
 from ggpeps import xnp as xnp
-from ggpeps import xscipy as xscipy
 
 import ggpeps
 from ggpeps import gauge
@@ -22,7 +21,8 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 class Config2DBase(ABC):
     """Configuration for a system in two dimensions
 
-    This class inherits from the abstract base class to enable abstract methods that must be overwritten in a child class.
+    This class inherits from the abstract base class to enable abstract methods that must be overwritten
+    in a child class.
     This class cannot be instantiated directly.
     """
 
@@ -288,7 +288,8 @@ class Config2DBase(ABC):
     def generate_gamma_gauge_neutral_dict(self) -> np.ndarray:
         """Abstract method to define the ungauged covariance matrix of a single link.
         The substitution method must ensure a consistent order of the modes.
-        The direction parameter controls which covariance matrix is retrieved, since these can differ between directions.
+        The direction parameter controls which covariance matrix is retrieved,
+        since these can differ between directions.
         This method must be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")

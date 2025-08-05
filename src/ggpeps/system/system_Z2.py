@@ -1,5 +1,4 @@
 import logging
-from pfapack import pfaffian as pf
 
 import numpy as np
 from ggpeps import xnp as xnp

@@ -316,7 +316,7 @@ class MonteCarloEvaluator(Evaluator):
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
-        link_ind = self.cfg.rng_state.choice(self.system.cfg.lattice.comp_tree, replace=False)
+        link_ind = self.cfg.rng_state.choice(lattice.comp_tree, replace=False)
 
         # Uniformly pick a gauge value
         theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)

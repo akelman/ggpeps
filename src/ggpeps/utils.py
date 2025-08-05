@@ -289,7 +289,9 @@ def pfaffian_explicit_4x4_masked(
     mat: xnp.ndarray, ind: Union[tuple[int, int, int, int], list[int], xnp.ndarray]
 ) -> float:
     """
-    Calculate the Pfaffian of a 4x4 block of a matrix explicitly using the indices provided (the indices from which the block is sliced).
+    Calculate the Pfaffian of a 4x4 block of a matrix explicitly using the indices provided
+    (the indices from which the block is sliced).
+
     Args:
         mat (xnp.ndarray): Input matrix
         ind (Union[tuple[int,int,int,int], list[int], xnp.ndarray[int]]): Indices for the 4x4 block
@@ -986,14 +988,15 @@ def jackknife_resampling(data: np.ndarray) -> np.ndarray:
 def jacknife_gradient_error_propagation(
     op_datavec: np.ndarray, op_grad_datavec: np.ndarray, grad_norm_datavec: np.ndarray
 ) -> float:
-    """Calculate the error propagation of a specific component of the gradient of an observable using jackknife resampling.
-    Without rebinning (we usually use this after rebinning the data)
+    """Calculate the error propagation of a specific component of the gradient of an observable
+    using jackknife resampling.
+    Without rebinning (we usually use this after rebinning the data).
 
     Args:
-        op_datavec (np.ndarray): Timeseries of the observable - rebinned data, i.e., not autocorrelation
-        op_grad_datavec (np.ndarray): Timeseries of the gradient of the observable - rebinned data, i.e., not autocorrelation
-        grad_norm_datavec (np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm of the ansatz
-        - rebinned data, i.e., not autocorrelation
+        op_datavec (np.ndarray): Timeseries of the observable - rebinned (not autocorrelation)
+        op_grad_datavec (np.ndarray): Timeseries of the gradient of the observable - rebinned (not autocorrelation)
+        grad_norm_datavec (np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the
+                                        norm of the state - rebinned (not autocorrelation)
 
     Returns:
         float: Error of the gradient of the observable
@@ -1020,7 +1023,8 @@ def compute_grad_err(op_datavec: np.ndarray, op_grad_datavec: np.ndarray, grad_n
     Args:
         op_datavec(np.ndarray): Timeseries of the observable
         op_grad_datavec(np.ndarray): Timeseries of the gradient of the observable
-        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm of the ansatz
+        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm
+
     Returns:
         float: Error of the gradient of the observable
     """
@@ -1055,7 +1059,7 @@ def compute_grad_mean(op_datavec: np.ndarray, op_grad_datavec: np.ndarray, grad_
     Args:
         op_datavec(np.ndarray): Timeseries of the observable
         op_grad_datavec(np.ndarray): Timeseries of the gradient of the observable
-        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm of the ansatz
+        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm
     Returns:
         float: Mean of the gradient of the observable
     """
@@ -1147,10 +1151,10 @@ def get_couplings_from_foldername(fname: str) -> str:
             res += f"{arg}_{result.group(0)}_"
 
     # chem - we treat this differently because it is a vector for different flavors
-    pattern = rf"(?<=chem_)(-?\d+\.\d+)_(-?\d+\.\d+)"
+    pattern = r"(?<=chem_)(-?\d+\.\d+)_(-?\d+\.\d+)"
     result = re.search(pattern, fname)
     if result is not None:
-        vals = f"_".join(result.groups())
+        vals = "_".join(result.groups())
         res += f"chem_{vals}_"
     return res
 

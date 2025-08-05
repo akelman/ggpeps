@@ -11,10 +11,9 @@ from scipy.special import logsumexp
 import pandas as pd
 
 import ggpeps
+from ggpeps import utils
 from ggpeps.caching import Cache
 from ggpeps.evaluator_manager import EvaluatorManager
-from ggpeps.evaluator import Evaluator
-from ggpeps import utils
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -116,16 +115,6 @@ class Minimizer:
             energy = utils.get_obs_mean_df(result, "energy")
             grad_paramvec = utils.get_obs_mean_df(result, "energy_grad")
 
-            # DEBUG #######################################################################################################
-            # print("Paramvec: ", self.evaluator_manager.system_cfg.paramvec)
-            # print("Energy: ", energy)
-            # print("grad_paramvec: ", grad_paramvec)
-            # if ind == 1:
-            #    exit()
-            ####################################################################################################################
-
-            # Energy and rewieghted gradient
-
             max_grad_paramvec = np.max(np.abs(grad_paramvec))
             self.last_result = result
 
@@ -149,8 +138,6 @@ class Minimizer:
 
             # Adapt the parametervec according to the gradient
             # TODO: Implement  stochasticreconfiguration
-
-            # We have to use the internal name of the paramvec if we write to it since it is a property and not just an array
 
             self.evaluator_manager.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
 
@@ -259,7 +246,7 @@ class Minimizer:
         min_result = minimize(  # type: ignore
             energy_wrapper,
             flattened_paramvec,
-            method=self.cfg.method,  # TODO: fix type hint - this must be a literal of the supported methods, not a string to pass type checker
+            method=self.cfg.method,  # TODO: fix type hint - should be literal of supported method, not a string
             jac=gradient_wrapper if self.cfg.method in self.grad_methods else None,
             tol=self.cfg.tol,
             callback=lambda x: print_callback(x, self),
@@ -275,7 +262,8 @@ class Minimizer:
             num_jac_evals = min_result.njev
         energy = min_result.fun
         converged = min_result.success
-        message = f"{min_result.message} Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {num_jac_evals}"
+        message = f"{min_result.message} "
+        message += f"Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {num_jac_evals}"
 
         dest = MinimizerResult(
             flattened_paramvec,
@@ -330,7 +318,7 @@ class Minimizer:
                 energy = result0.get_obs_mean("energy")
                 grad_paramvec = result0.get_obs_mean("energy_grad")
 
-                # DEBUG #################################################################################################################
+                # DEBUG ############################################################################################
                 # print("Paramvec: ", self.evaluator_manager.system_cfg.paramvec)
                 # print("First energy: ", energy)
                 # print("First grad_paramvec: ", grad_paramvec)
@@ -339,7 +327,7 @@ class Minimizer:
                 # print("Mass energy: ", result0.get_obs_mean("mass_energy"))
                 # print("Int energy: ", result0.get_obs_mean("int_energy"))
                 # print("Chem energy: ", result0.get_obs_mean("chem_energy"))
-                ####################################################################################################################
+                ####################################################################################################
 
                 max_grad_paramvec = np.max(np.abs(grad_paramvec))
                 self.last_result = result0_df
@@ -370,7 +358,7 @@ class Minimizer:
                 max_grad_paramvec = np.max(np.abs(grad_paramvec))
                 self.last_result = [energy, max_grad_paramvec, Wmean, free_energy]
 
-                # DEBUG ####################################################################################################################
+                # DEBUG #############################################################################################
                 # print("Paramvec: ", self.evaluator_manager.system_cfg.paramvec)
                 # print("Second energy: ", energy)
                 # print("Second grad_paramvec: ", grad_paramvec)
@@ -380,7 +368,7 @@ class Minimizer:
                 # print("Int energy: ", result1.get_obs_mean("int_energy"))
                 # print("Chem energy: ", result1.get_obs_mean("chem_energy"))
                 # exit()
-                ####################################################################################################################
+                #####################################################################################################
 
                 # Update logs
                 NEVMC_print_callback(ind, self.last_result)
@@ -394,7 +382,8 @@ class Minimizer:
                 #    self.last_paramvec, next_paramvec
                 # ):
 
-                # We copy here to get a new set of variables. We will change paramvec below and do not want to change last_paramvec
+                # We copy here to get a new set of variables.
+                # We will change paramvec below and do not want to change last_paramvec
                 self.last_paramvec = np.copy(paramvec)
 
                 # Monte Carlo part of the optimizer
@@ -460,7 +449,8 @@ class Minimizer:
 
 def NEVMC_print_callback(x, res):
 
-    message = f"Energy: {res[0]:.9f}, Max grad paramvec: {res[1]:.6f}, Work: {res[2]:.6f}, Free energy: {res[3]:.6f}, Wd: {res[2]-res[3]:.6f}"
+    message = f"Energy: {res[0]:.9f}, Max grad paramvec: {res[1]:.6f}, Work: {res[2]:.6f}, "
+    message += f"Free energy: {res[3]:.6f}, Wd: {res[2]-res[3]:.6f}"
     logger.info(message)
 
 
@@ -477,7 +467,6 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
         None
     """
     res = minimizer.last_result
-    paramvec = minimizer.evaluator_manager.system_cfg.paramvec
 
     # If caching is on, the first time we call this function, the last_result will be None
     if res is None:
@@ -492,12 +481,6 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
         grad_paramvec = None
         max_grad_paramvec = np.nan
 
-    mass_energy = utils.get_obs_mean_df(res, "mass_energy")
-    int_energy = utils.get_obs_mean_df(res, "int_energy")
-    el_energy = utils.get_obs_mean_df(res, "el_energy")
-    mag_energy = utils.get_obs_mean_df(res, "mag_energy")
-    chem_energy = utils.get_obs_mean_df(res, "chem_energy")
-
     plaquette = utils.get_obs_mean_df(res, "wilson_loop_0-0_1x1")
     mass_energy_op = utils.get_obs_mean_df(res, "mass_energy_op")
     if minimizer.evaluator_manager.system_cfg.num_fermionic_layer > 0:
@@ -507,7 +490,8 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
     else:
         avg_occ = "None"
 
-    message = f"Energy: {energy:.9f}, Total Mass: {mass_energy_op}, Occupation: {avg_occ}, Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
+    message = f"Energy: {energy:.9f}, Total Mass: {mass_energy_op}, Occupation: {avg_occ}, "
+    message += f"Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
     if minimizer.cfg.method == "CUSTOM":
         # We only have access to the iteration number if we are handling the minimization (via the CUSTOM method)
         message = f"Iter: {x:03d}, {message}"
@@ -527,9 +511,18 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
         occ_str = "None"
     logger.debug(f"Occupations: {occ_str}")
 
+    # mass_energy = utils.get_obs_mean_df(res, "mass_energy")
+    # int_energy = utils.get_obs_mean_df(res, "int_energy")
+    # el_energy = utils.get_obs_mean_df(res, "el_energy")
+    # mag_energy = utils.get_obs_mean_df(res, "mag_energy")
+    # chem_energy = utils.get_obs_mean_df(res, "chem_energy")
+
     # logger.debug(
-    #    f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f}, chem: {chem_energy:.6f}"
+    #    f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f},
+    #       chem: {chem_energy:.6f}"
     # )
+
+    # paramvec = minimizer.evaluator_manager.system_cfg.paramvec
     # logger.debug(f"Parametervec: {paramvec}")
 
     # If we're at the lowest energy seen so far, log the parameters
@@ -541,7 +534,8 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
     # There have been recent developments within scipy's handling of these callbacks.
     # See (eg): https://github.com/scipy/scipy/issues/9412
     #           https://github.com/scipy/scipy/issues/7306#issuecomment-301183706
-    # If/when this is implemented for scipy minimize, the handling of this should only be done here (not in the CUSTOM methods above)
+    # If/when this is implemented for scipy minimize, the handling of this should only be done here
+    # (not in the CUSTOM methods above)
     # if STOP_AFTER_CURRENT_ITERATION:
     #    return True
     #    raise StopIteration

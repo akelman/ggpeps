@@ -315,11 +315,10 @@ class System2DBase(ABC):
         """
 
         # Build permutation matrix to convert modes from site order to link order
+        # be careful with the convention of the permutation matrix vs its transpose; this way works with the code below
         modes_link_order = self.get_link_based_mode_order()
         modes_site_order = self.get_site_based_mode_order()
-        mat_perm_links = generate_permutation_matrix(
-            modes_site_order, modes_link_order
-        )  # be careful with the convention of the permutation matrix vs its transpose; this way works with the code below.
+        mat_perm_links = generate_permutation_matrix(modes_site_order, modes_link_order)
         sites_perm = xnp.eye(
             2 * self.cfg.lattice.nx * self.cfg.lattice.ny * self.cfg.nphysmodes_site
         )  # total number of physical fermionic majorana modes on all the sites together
@@ -647,7 +646,8 @@ class System2DBase(ABC):
             lognormvec_default = self.lognorm_default_vec
 
             for layerind in range(self.cfg.nlayer):
-                # For the modified norm, we still have to take into account the other contributions from the unmodified parts
+                # For the modified norm, we still have to take into account the other contributions
+                # from the unmodified parts
                 norm_mod = self._calculate_lognorm_inc(
                     [self.incdet_mod_vec[layerind]],
                     [self.det_mat_d_mod_vec[layerind]],
@@ -1231,7 +1231,8 @@ class System2DBase(ABC):
                 matrix of the fulll system, shape (nlayer, unitcell_size, n_symbols, gamma
             layerind (int): layer index
             uc_ind (int): unit cell index
-            symb_ind (int): index into symbolvec of parameter wrt which to take the derivative (of the given lay, uc_ind)
+            symb_ind (int): index into symbolvec of parameter wrt which to take the derivative
+                            (of the given lay, uc_ind)
 
         Returns:
             float: Value of the gradient divided by the norm of the state
