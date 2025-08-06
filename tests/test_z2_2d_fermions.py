@@ -768,6 +768,49 @@ class TestZ2System(unittest.TestCase):
         FM = res["FM_1x1"]
         self.assertAlmostEqual(FM, FM_ed, places=2)
 
+    def test_params_symmetry(self):
+        """Ensure identical results are calculated for each layer when identical params are used for the layers."""
+        lat = lattice.Lattice2D(2, 2)
+        num_pg_layer = 1
+        num_fermionic_layer = 2
+        nlayer = num_pg_layer + num_fermionic_layer
+        unitcell_size = 2
+        paramvec = np.random.rand(nlayer, unitcell_size, 20)
+        paramvec[2] = paramvec[1]
+        cfg = system.Z2System2D_G2C_F2C_Config(
+            lat,
+            1,
+            1,
+            1,
+            1,
+            [1, 1],
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
+            unitcell_size=unitcell_size,
+        )
+        cfg.paramvec = paramvec
+        system_z2 = system.Z2System2D(cfg)
+        system_z2.cfg.enforce_parameter_conditions(system_z2.cfg.paramvec)
+
+        # Test various obvservables
+        norm_vec = system_z2.calculate_lognormvec(all_factors=True)
+        self.assertTrue(np.allclose(norm_vec[1], norm_vec[2]))
+
+        el_op_vec = system_z2.el_energy_op_vec
+        self.assertTrue(np.allclose(el_op_vec[1], el_op_vec[2]))
+
+        int_op_vec = system_z2.int_energy_op_vec
+        self.assertTrue(np.allclose(int_op_vec[1], int_op_vec[2]))
+
+        mass_op_vec = system_z2.mass_energy_op_vec
+        self.assertTrue(np.allclose(mass_op_vec[1], mass_op_vec[2]))
+
+        chem_op_vec = system_z2.chem_energy_op_vec
+        self.assertTrue(np.allclose(chem_op_vec[1], chem_op_vec[2]))
+
+        chem_grads = system_z2.chem_energy_op_grad_vec
+        self.assertTrue(np.allclose(chem_grads[1], chem_grads[2]))
+
 
 class TestTransVariance(unittest.TestCase):
     """Test the ansatz when it is not translationally invariant.
