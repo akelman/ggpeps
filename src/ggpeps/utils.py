@@ -511,10 +511,10 @@ def generate_smat(n: int) -> xnp.ndarray:
 
 
 def compute_grad_over_norm(
-    gamma_in_sys: np.ndarray,
-    diff: np.ndarray,
-    deriv_d: np.ndarray,
-    mat_d_inv: np.ndarray,
+    gamma_in_sys: xnp.ndarray,
+    diff: xnp.ndarray,
+    deriv_d: xnp.ndarray,
+    mat_d_inv: xnp.ndarray,
     method: str = "hadamard",
 ) -> float:
     r"""Compute the gradient of the norm divided by the norm.
