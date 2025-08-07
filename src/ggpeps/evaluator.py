@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
+from typing import Union
 
 import logging
+import numpy as np
 import pandas as pd
 
 import ggpeps
@@ -32,7 +34,7 @@ class Evaluator(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def get_obs_mean(self, obs: str):
+    def get_obs_mean(self, obs: str) -> Union[float, np.ndarray]:
         """Get the mean value of an observable
 
         Args:

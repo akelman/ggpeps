@@ -1,3 +1,5 @@
+from typing import Union
+
 import os
 import gzip
 import pickle
@@ -396,7 +398,7 @@ class MonteCarloEvaluator(Evaluator):
 
     #### Data management functions ####
 
-    def get_obs_mean(self, obsname: str):
+    def get_obs_mean(self, obsname: str) -> Union[float, np.ndarray]:
         """Returns the mean value of an observable
 
         Args:
