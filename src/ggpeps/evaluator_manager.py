@@ -3,6 +3,7 @@ from typing import Union
 import ray
 import copy
 import logging
+import pandas as pd
 
 import ggpeps
 from ggpeps import utils
@@ -123,7 +124,7 @@ class EvaluatorManager:
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
 
-    def get_evaluator(self):
+    def get_evaluator(self) -> Evaluator:
         """Get the evaluator instance.
 
         Returns:
@@ -131,7 +132,7 @@ class EvaluatorManager:
         """
         return self.evaluator
 
-    def simulate(self, eval_args: dict = {}):
+    def simulate(self, eval_args: dict = {}) -> pd.DataFrame:
         """Simulate
 
         Args:

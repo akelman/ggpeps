@@ -1,8 +1,12 @@
 from abc import ABC, abstractmethod
 
+import logging
 import pandas as pd
 
+import ggpeps
 from ggpeps.system.system_base import System2DBase
+
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class Evaluator(ABC):
@@ -40,9 +44,14 @@ class Evaluator(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    def print_stats(self) -> None:
+        """Print a quick summary of the observables"""
+        for key in self.obsdict.keys():
+            logger.info(f"<{key}>: {self.get_obs_mean(key)}")
+
     @abstractmethod
     def summary(self) -> pd.DataFrame:
-        """Generate a summary of the simulation in the form of a pandas dataframe
+        """Generate a summary of the results of the simulation in the form of a pandas dataframe
 
         Returns:
             pd.DataFrame: Pandas dataframe with a summary of all results

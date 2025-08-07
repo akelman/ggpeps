@@ -526,15 +526,6 @@ class MonteCarloEvaluator(Evaluator):
         self.save_full(os.path.join(output_dir, fname_full))
         self.save_summary(os.path.join(output_dir, fname_summary))
 
-    #### Output (plots or on the commandline) ####
-
-    def print_stats(self) -> None:
-        """Print a quick summary of the observables"""
-        for key in self.obsdict.keys():
-            val = self.obsdict[key]
-            if val is not None and len(val) > 0:
-                logger.info(f"<{key}>: {self.obsdict[key].mean()}")
-
     def summary(self) -> pd.DataFrame:
         """Create panda dataframe file that summarizes the evaluation."""
         dest: dict = {

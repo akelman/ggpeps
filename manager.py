@@ -504,13 +504,11 @@ def main(args):
 
         start = timer()
         ex_eval.simulate()
-        dest = ex_eval.get_evaluator()
         stop = timer()
+        ec_result = ex_eval.get_evaluator()
 
-        dest_dict = dest.obsdict
-        dest.save(output_dir=args.output)
-        for key, val in dest_dict.items():
-            logger.info(f"{key}: {val}")
+        ec_result.print_stats()
+        ec_result.save(output_dir=args.output)
     elif args.mode == "min-exact":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
 
