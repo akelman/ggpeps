@@ -46,7 +46,7 @@ import signal
 INTERRUPT_EXIT_CODE = 10
 
 
-def save_state_on_exit():
+def save_state_on_exit() -> None:
     # args = ggpeps.global_vars["args"]
     cache: Cache = ggpeps.global_vars["cache"]
 
@@ -92,7 +92,7 @@ def args2logname(args, couplings: dict) -> str:
     return os.path.join(args.output, fname)
 
 
-def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomState) -> tuple[np.array, str]:
+def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomState) -> tuple[np.ndarray, str]:
     """Translate the parameters given on the commandline to a form useful in the code
 
     Args:
