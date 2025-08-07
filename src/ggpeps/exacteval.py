@@ -53,7 +53,7 @@ class ExactEvaluator(Evaluator):
         Use this function to match the interface of the MonteCarloEvaluator."""
         return self.obsdict[obs]
 
-    def evaluate(self) -> dict:
+    def evaluate(self) -> None:
         """Main evaluation function of ExactEvaluator.
         This function computes the exact expectation values <Psi|O|Psi>/<Psi|Psi> for
         a range of observables defined in the function.
@@ -268,8 +268,9 @@ class ExactEvaluator(Evaluator):
                 self.system.cfg.enforce_parameter_conditions(total_grad)
                 dest["energy_grad"] = total_grad
 
+            # Save data
             self.obsdict = dest
-        return self.obsdict
+        return
 
     def generate_config_vec(self) -> Iterator[list[np.ndarray]]:
         """Generate gauge field configurations for all links."""

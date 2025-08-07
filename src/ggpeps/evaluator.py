@@ -18,7 +18,7 @@ class Evaluator(ABC):
         self.obsdict: dict = {}
 
     @abstractmethod
-    def evaluate(self):
+    def evaluate(self) -> None:
         """Simulate the system and return the results as a dictionary of observables
 
         Raises:
