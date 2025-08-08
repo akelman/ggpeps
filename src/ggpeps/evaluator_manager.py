@@ -137,6 +137,9 @@ class EvaluatorManager:
 
         Args:
             eval_args (dict): Arguments for the evaluator (e.g. for NEVMC).
+
+        Returns:
+            pd.DataFrame: DataFrame with the results of the simulation.
         """
 
         if "mc" in self.type and self.nrunner > 0:
@@ -206,7 +209,7 @@ class EvaluatorManager:
         return result_df
 
     def collect(self, resultvec):
-        """Unify the results of multiple runners
+        """Unify the results of multiple runners into a single Evaluator.
 
         Args:
             resultvec (list): List of Estimators from the different runners

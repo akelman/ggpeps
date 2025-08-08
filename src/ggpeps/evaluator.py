@@ -21,15 +21,10 @@ class Evaluator(ABC):
 
     @abstractmethod
     def evaluate(self) -> None:
-        """Simulate the system and return the results as a dictionary of observables
+        """Simulate the system and save the results as a dictionary of observables in self.obsdict.
 
         Raises:
             NotImplementedError: raised if the method is not implemented in the subclass.
-
-        Returns:
-            dict: Dictionary of observables
-                  Each key-val pair is of the form (obs: list) where list is a list of
-                  values for the observable for the simulated gauge configurations
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
