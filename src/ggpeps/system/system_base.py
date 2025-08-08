@@ -515,10 +515,11 @@ class System2DBase(ABC):
         It is formulated in terms of Majorana modes.
         The mode ordering of the sites is identical to the site convention defined in the lattice class.
         There is a vector of A matrices if multiple layers are used; len(vec)==# of copies
+        "Physical" modes here includes the virtual modes on the link on which the electric energy is computed.
         This is a get function.
 
         Returns:
-            [xnp.ndarray]: Correlations of the physcial modes for the full system.
+            [xnp.ndarray]: Correlations of the physical modes for the full system.
         """
         if self._mat_a_mod_vec is None:
             offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site  # offset for physical modes
@@ -531,10 +532,11 @@ class System2DBase(ABC):
         """Extract the matrix for physical-virtual correlations.
         This matrix contains one link less than the original matrix (used for the electric energy computation)
         There is a vector of B matrices if multiple layers are used; len(vec)==# of copies
+        "Physical" modes here includes the virtual modes on the link on which the electric energy is computed.
         This is a get function.
 
         Returns:
-            [xnp.ndarray]: Correlations of the physcial modes with the virtual modes for the full system.
+            [xnp.ndarray]: Correlations of the physical modes with the virtual modes for the full system.
         """
         if self._mat_b_mod_vec is None:
             offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site  # offset for physical modes
