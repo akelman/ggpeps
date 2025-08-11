@@ -94,8 +94,10 @@ class Testgaugefixing(unittest.TestCase):
         evaluator_with_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_with_gf)
         evaluator_without_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_without_gf)
 
-        eval_with_gf = evaluator_with_gf.evaluate()
-        eval_without_gf = evaluator_without_gf.evaluate()
+        evaluator_with_gf.evaluate()
+        evaluator_without_gf.evaluate()
+        eval_with_gf = evaluator_with_gf.obsdict
+        eval_without_gf = evaluator_without_gf.obsdict
 
         for key, val in eval_with_gf.items():
             self.assertTrue(np.allclose(val, eval_without_gf[key], equal_nan=True))
@@ -122,8 +124,10 @@ class Testgaugefixing(unittest.TestCase):
         evaluator_with_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_with_gf)
         evaluator_without_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_without_gf)
 
-        eval_with_gf = evaluator_with_gf.evaluate()
-        eval_without_gf = evaluator_without_gf.evaluate()
+        evaluator_with_gf.evaluate()
+        evaluator_without_gf.evaluate()
+        eval_with_gf = evaluator_with_gf.obsdict
+        eval_without_gf = evaluator_without_gf.obsdict
 
         for key, val in eval_with_gf.items():
             self.assertTrue(np.allclose(val, eval_without_gf[key], equal_nan=True))
@@ -151,8 +155,10 @@ class Testgaugefixing(unittest.TestCase):
         evaluator_with_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_with_gf)
         evaluator_without_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_without_gf)
 
-        eval_with_gf = evaluator_with_gf.evaluate()
-        eval_without_gf = evaluator_without_gf.evaluate()
+        evaluator_with_gf.evaluate()
+        evaluator_without_gf.evaluate()
+        eval_with_gf = evaluator_with_gf.obsdict
+        eval_without_gf = evaluator_without_gf.obsdict
 
         for key, val in eval_with_gf.items():
             self.assertTrue(np.allclose(val, eval_without_gf[key]))

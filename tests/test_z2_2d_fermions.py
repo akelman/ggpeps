@@ -138,7 +138,8 @@ class TestZ2System(unittest.TestCase):
         ec_config.gauge_fixing = False
         self.system_z2.cfg.make_pure_gauge()  # sets t params to zero
         ex_eval = exacteval.ExactEvaluator(ec_config, self.system_z2)
-        dest_dict = ex_eval.evaluate()
+        ex_eval.evaluate()
+        dest_dict = ex_eval.obsdict
         self.assertTrue(np.allclose(0, dest_dict["mass_energy"]))
         self.assertTrue(np.allclose(0, dest_dict["int_energy"]))
 
@@ -149,7 +150,8 @@ class TestZ2System(unittest.TestCase):
         ec_config = exacteval.ExactEvaluatorConfig()
         ec_config.gauge_fixing = False
         ex_eval = exacteval.ExactEvaluator(ec_config, self.system_z2)
-        dest_dict = ex_eval.evaluate()
+        ex_eval.evaluate()
+        dest_dict = ex_eval.obsdict
         self.assertFalse(np.allclose(0, dest_dict["mass_energy"]))
         self.assertFalse(np.allclose(0, dest_dict["int_energy"]))
 
@@ -764,7 +766,8 @@ class TestZ2System(unittest.TestCase):
         sys = system_type(system_cfg)
         eval_config = exacteval.ExactEvaluatorConfig()
         ex_eval = exacteval.ExactEvaluator(eval_config, sys)
-        res = ex_eval.evaluate()
+        ex_eval.evaluate()
+        res = ex_eval.obsdict
         FM = res["FM_1x1"]
         self.assertAlmostEqual(FM, FM_ed, places=2)
 
