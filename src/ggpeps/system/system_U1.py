@@ -155,7 +155,7 @@ class U1System2D(System2DBase):
         # Initialize the modified gamma_in_sys for the full system (and trackers)
         single_link_offset = 2 * self.cfg.nvirtmodes_link
         gamma_in_sys_mod = gamma_in_sys[single_link_offset:, single_link_offset:]
-        diffvec_mod = [mat_d_inv - gamma_in_sys_mod for mat_d_inv in self.mat_d_mod_inv_vec()]
+        diffvec_mod = [mat_d_inv - gamma_in_sys_mod for mat_d_inv in self.mat_d_mod_inv_vec(self.mod_link_ind)]
         wi_gamma_in_mod_vec = [utils.WoodburyInverter(diff) for diff in diffvec_mod]
         wi_gamma_out_mod_vec = [
             utils.WoodburyInverter(mat_d - gamma_in_sys_mod) for mat_d in self.mat_d_mod_vec(self.mod_link_ind)
