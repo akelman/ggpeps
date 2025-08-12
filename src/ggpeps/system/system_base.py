@@ -768,28 +768,20 @@ class System2DBase(ABC):
             wi_gamma_in_vec.append(utils.WoodburyInverter(self.mat_d_inv_vec[layer] - gamma_in_sys))
             wi_gamma_out_vec.append(utils.WoodburyInverter(self.mat_d_vec[layer] - gamma_in_sys))
             incdet_vec.append(utils.IncLogAbsDeterminant(self.mat_d_inv_vec[layer] - gamma_in_sys))
+        gamma_in_sys_vec = xnp.array(gamma_in_sys_vec)
 
-            # Initialize the modified gamma_in_sys for the full system (and trackers)
-            ind = self.mod_link_ind
-
-            # TODO: combine this code with the gamma_in_sys_mod_vec() method
-            # Calculate the indices of gamma_in to extract
-            virt_start = 2 * self.cfg.nvirtmodes_link * ind  # start of virtual modes for the link
-            virt_end = virt_start + 2 * self.cfg.nvirtmodes_link  # end of virtual modes for the link
-            size = gamma_in_sys.shape[0]  # size of gamma_in_sys
-
-            inds = [k for k in range(virt_start, virt_end)]  # inds virt modes on link
-            virt_inds = xnp.asarray([k for k in range(size) if k not in inds])  # all other virtual modes
-
-            rows, cols = xnp.ix_(virt_inds, virt_inds)
-            gamma_in_sys_mod = gamma_in_sys[rows, cols]
-
+        # Initialize the modified gamma_in_sys and trackers for the full system
+        # We do this in a separate loop, so that we can use the full gamma_in_sys_vec which is built in the previous loop.
+        ind = self.mod_link_ind  # index of the link to exclude
+        gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(ind, gamma_in_sys_vec)
+        for layer in range(self.cfg.nlayer):
+            gamma_in_sys_mod = gamma_in_sys_mod_vec[layer]
             wi_gamma_in_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_inv_vec(ind)[layer] - gamma_in_sys_mod))
             wi_gamma_out_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_vec(ind)[layer] - gamma_in_sys_mod))
             incdet_mod_vec.append(utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec(ind)[layer] - gamma_in_sys_mod))
 
         return (
-            xnp.array(gamma_in_sys_vec),
+            gamma_in_sys_vec,
             (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec),
             (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec),
         )
@@ -880,18 +872,22 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Gauged, modified covariance matrices of the system for each layer
         """
+        gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(link_ind, self.gamma_in_sys_vec)
+        return gamma_in_sys_mod_vec
+
+    def _extract_gamma_in_sys_mod_vec(self, link_ind: int, gamma_in_sys_vec: xnp.ndarray):
         gamma_in_sys_mod_vec = []
 
         # Calculate the indices of gamma_in to extract
         virt_start = 2 * self.cfg.nvirtmodes_link * link_ind  # start of virtual modes for the link
         virt_end = virt_start + 2 * self.cfg.nvirtmodes_link  # end of virtual modes for the link
-        size = self.gamma_in_sys_vec.shape[1]  # size of gamma_in_sys
+        size = gamma_in_sys_vec.shape[1]  # size of gamma_in_sys
 
         inds = [k for k in range(virt_start, virt_end)]  # inds virt modes on link
         virt_inds = xnp.asarray([k for k in range(size) if k not in inds])  # all other virtual modes
 
         rows, cols = xnp.ix_(virt_inds, virt_inds)
-        gamma_in_sys_mod_vec = self.gamma_in_sys_vec[:, rows, cols]
+        gamma_in_sys_mod_vec = gamma_in_sys_vec[:, rows, cols]
         return gamma_in_sys_mod_vec
 
     @property
