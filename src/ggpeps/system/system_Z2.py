@@ -108,15 +108,12 @@ class Z2System2D(System2DBase):
 
         # Update the weight
         self.weight = 0.5 * np.sum(detval_vec)
+
         # Update the matrix inversion
-        [
+        for wi_gamma_in, update in zip(self.wi_gamma_in_vec, update_vec):
             wi_gamma_in.update_index(update, ind_mat, ind_mat)
-            for wi_gamma_in, update in zip(self.wi_gamma_in_vec, update_vec)
-        ]
-        [
+        for wi_gamma_out, update in zip(self.wi_gamma_out_vec, update_vec):
             wi_gamma_out.update_index(update, ind_mat, ind_mat)
-            for wi_gamma_out, update in zip(self.wi_gamma_out_vec, update_vec)
-        ]
 
         # Update the modified determinant & matrices
         mod_link_ind = self.mod_link_ind  # link_ind of the modified objects
