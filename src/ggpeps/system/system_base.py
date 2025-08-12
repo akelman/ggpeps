@@ -531,6 +531,7 @@ class System2DBase(ABC):
 
             inds = [k for k in range(phys_offset)]
             inds += [k for k in range(virt_start, virt_end)]
+            inds = xnp.asarray(inds)
 
             rows, cols = xnp.ix_(inds, inds)
             self._mat_a_mod_vec = self.gamma_maj_sys_vec[:, rows, cols]
@@ -560,6 +561,9 @@ class System2DBase(ABC):
             row_inds = phys_inds + [k for k in range(virt_start, virt_end)]
             col_inds = [k for k in range(size) if k not in row_inds]  # all other virtual modes
 
+            row_inds = xnp.asarray(row_inds)
+            col_inds = xnp.asarray(col_inds)
+
             rows, cols = xnp.ix_(row_inds, col_inds)
             self._mat_b_mod_vec = self.gamma_maj_sys_vec[:, rows, cols]
         return self._mat_b_mod_vec
@@ -585,7 +589,7 @@ class System2DBase(ABC):
 
             phys_inds = [k for k in range(phys_offset)]
             inds = phys_inds + [k for k in range(virt_start, virt_end)]  # inds of phys modes, and virt modes on link
-            virt_inds = [k for k in range(size) if k not in inds]  # all other virtual modes
+            virt_inds = xnp.asarray([k for k in range(size) if k not in inds])  # all other virtual modes
 
             rows, cols = xnp.ix_(virt_inds, virt_inds)
             self._mat_d_mod_vec = self.gamma_maj_sys_vec[:, rows, cols]
@@ -871,7 +875,7 @@ class System2DBase(ABC):
         size = self.gamma_in_sys_vec.shape[1]  # size of gamma_in_sys
 
         inds = [k for k in range(virt_start, virt_end)]  # inds of phys modes, and virt modes on link
-        virt_inds = [k for k in range(size) if k not in inds]  # all other virtual modes
+        virt_inds = xnp.asarray([k for k in range(size) if k not in inds])  # all other virtual modes
 
         rows, cols = xnp.ix_(virt_inds, virt_inds)
         gamma_in_sys_mod_vec = self.gamma_in_sys_vec[:, rows, cols]
