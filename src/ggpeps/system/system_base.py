@@ -508,6 +508,35 @@ class System2DBase(ABC):
             self._mat_d_inv_vec = xnp.linalg.inv(self.mat_d_vec)
         return self._mat_d_inv_vec
 
+    def extract_mod_covmats(self, mat: xnp.ndarray, link_ind: int) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
+        """Extract the A, B, D submatrices, but including the virtual modes on the link specified by link_ind.
+        This function can accept a 2D matrix, or a stack of 2D matrices (i.e. a 3D array).
+
+        Args:
+            mat (xnp.ndarray): The mat(s) from which to extract the submatrices.
+            link_ind (int): the link index to include in the physical-physical set.
+
+        Returns:
+            tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]: the A, B, D submatrices.
+        """
+        # Calculate the indices of mat to extract for mat_a_mod, mat_b_mod, mat_d_mod
+        phys_offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site  # end of physical modes
+        virt_start = phys_offset + 2 * self.cfg.nvirtmodes_link * link_ind  # start of virtual modes for the link
+        virt_end = virt_start + 2 * self.cfg.nvirtmodes_link  # end of virtual modes for the link
+        size = mat.shape[-1]  # size of gamma_maj_sys
+
+        # include virt modes on given link in the "physical" set
+        phys_inds = [k for k in range(phys_offset)] + [k for k in range(virt_start, virt_end)]
+        virt_inds = [k for k in range(size) if k not in phys_inds]  # all other virtual modes
+
+        phys_inds = xnp.asarray(phys_inds)
+        virt_inds = xnp.asarray(virt_inds)
+
+        mat_a_mod = mat[(..., *xnp.ix_(phys_inds, phys_inds))]
+        mat_b_mod = mat[(..., *xnp.ix_(phys_inds, virt_inds))]
+        mat_d_mod = mat[(..., *xnp.ix_(virt_inds, virt_inds))]
+        return mat_a_mod, mat_b_mod, mat_d_mod
+
     def mat_a_mod_vec(self, link_ind: int):
         """Extract the matrix for physical-physical correlations and one virtual mode.
         This shifted matrix is used for the computation of the electric energy.
@@ -525,17 +554,9 @@ class System2DBase(ABC):
             [xnp.ndarray]: Correlations of the physical modes for the full system.
         """
         if self._mat_a_mod_vec is None:
-            # Calculate the indices of gamma_maj_sys to extract for mat_a_mod
-            phys_offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site  # end of physical modes
-            virt_start = phys_offset + 2 * self.cfg.nvirtmodes_link * link_ind  # start of virtual modes for the link
-            virt_end = virt_start + 2 * self.cfg.nvirtmodes_link  # end of virtual modes for the link
-
-            inds = [k for k in range(phys_offset)]
-            inds += [k for k in range(virt_start, virt_end)]
-            inds = xnp.asarray(inds)
-
-            rows, cols = xnp.ix_(inds, inds)
-            self._mat_a_mod_vec = self.gamma_maj_sys_vec[:, rows, cols]
+            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self.extract_mod_covmats(
+                self.gamma_maj_sys_vec, link_ind
+            )
         return self._mat_a_mod_vec
 
     def mat_b_mod_vec(self, link_ind: int):
@@ -552,21 +573,9 @@ class System2DBase(ABC):
             [xnp.ndarray]: Correlations of the physical modes with the virtual modes for the full system.
         """
         if self._mat_b_mod_vec is None:
-            # Calculate the indices of gamma_maj_sys to extract for mat_b_mod
-            phys_offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site  # end of physical modes
-            virt_start = phys_offset + 2 * self.cfg.nvirtmodes_link * link_ind  # start of virtual modes for the link
-            virt_end = virt_start + 2 * self.cfg.nvirtmodes_link  # end of virtual modes for the link
-            size = self.gamma_maj_sys_vec.shape[1]  # size of gamma_maj_sys
-
-            phys_inds = [k for k in range(phys_offset)]
-            row_inds = phys_inds + [k for k in range(virt_start, virt_end)]
-            col_inds = [k for k in range(size) if k not in row_inds]  # all other virtual modes
-
-            row_inds = xnp.asarray(row_inds)
-            col_inds = xnp.asarray(col_inds)
-
-            rows, cols = xnp.ix_(row_inds, col_inds)
-            self._mat_b_mod_vec = self.gamma_maj_sys_vec[:, rows, cols]
+            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self.extract_mod_covmats(
+                self.gamma_maj_sys_vec, link_ind
+            )
         return self._mat_b_mod_vec
 
     def mat_d_mod_vec(self, link_ind: int):
@@ -582,18 +591,9 @@ class System2DBase(ABC):
             [xnp.ndarray]: Correlations of the virtual modes for the full system.
         """
         if self._mat_d_mod_vec is None:
-            # Calculate the indices of gamma_maj_sys to extract for mat_d_mod
-            phys_offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site  # end of physical modes
-            virt_start = phys_offset + 2 * self.cfg.nvirtmodes_link * link_ind  # start of virtual modes for the link
-            virt_end = virt_start + 2 * self.cfg.nvirtmodes_link  # end of virtual modes for the link
-            size = self.gamma_maj_sys_vec.shape[1]  # size of gamma_maj_sys
-
-            phys_inds = [k for k in range(phys_offset)]
-            inds = phys_inds + [k for k in range(virt_start, virt_end)]  # inds of phys modes, and virt modes on link
-            virt_inds = xnp.asarray([k for k in range(size) if k not in inds])  # all other virtual modes
-
-            rows, cols = xnp.ix_(virt_inds, virt_inds)
-            self._mat_d_mod_vec = self.gamma_maj_sys_vec[:, rows, cols]
+            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self.extract_mod_covmats(
+                self.gamma_maj_sys_vec, link_ind
+            )
         return self._mat_d_mod_vec
 
     def det_mat_d_mod_vec(self, link_ind: int):
