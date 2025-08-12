@@ -157,7 +157,9 @@ class U1System2D(System2DBase):
         gamma_in_sys_mod = gamma_in_sys[single_link_offset:, single_link_offset:]
         diffvec_mod = [mat_d_inv - gamma_in_sys_mod for mat_d_inv in self.mat_d_mod_inv_vec()]
         wi_gamma_in_mod_vec = [utils.WoodburyInverter(diff) for diff in diffvec_mod]
-        wi_gamma_out_mod_vec = [utils.WoodburyInverter(mat_d - gamma_in_sys_mod) for mat_d in self.mat_d_mod_vec()]
+        wi_gamma_out_mod_vec = [
+            utils.WoodburyInverter(mat_d - gamma_in_sys_mod) for mat_d in self.mat_d_mod_vec(self.mod_link_ind)
+        ]
         incdet_mod_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec_mod]
 
         # Though for this ansatz gamma_in_sys does not vary between layers,
@@ -282,8 +284,8 @@ class U1System2D(System2DBase):
                 # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
                 # The shifted matrices are extracted at the initalization
                 # The offset is changed such that one virtual link is attributed to the physical part
-                mat_a = self.mat_a_mod_vec()[layerind]
-                mat_b = self.mat_b_mod_vec()[layerind]
+                mat_a = self.mat_a_mod_vec(self.mod_link_ind)[layerind]
+                mat_b = self.mat_b_mod_vec(self.mod_link_ind)[layerind]
                 diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
                 diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
 
@@ -293,7 +295,7 @@ class U1System2D(System2DBase):
                 # For the modified norm, we still have to take into account the contributions from the unmodified parts
                 norm_mod = self._calculate_lognorm_inc(
                     [self.incdet_mod_vec[layerind]],
-                    [self.det_mat_d_mod_vec()[layerind]],
+                    [self.det_mat_d_mod_vec(self.mod_link_ind)[layerind]],
                     gamma_in_sys_mod.shape[0],
                     all_factors=True,
                 )

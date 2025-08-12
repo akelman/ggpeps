@@ -81,6 +81,7 @@ class System2DBase(ABC):
         self._ferm_covmat_vec: Optional[xnp.ndarray] = None
 
         # Parameter dependent quantities for the electric energy
+        self.mod_link_ind = 0  # link index for which the electric energy is computed
         self._mat_a_mod_vec: Optional[xnp.ndarray] = None
         self._mat_b_mod_vec: Optional[xnp.ndarray] = None
         self._mat_d_mod_vec: Optional[xnp.ndarray] = None
@@ -507,7 +508,7 @@ class System2DBase(ABC):
             self._mat_d_inv_vec = xnp.linalg.inv(self.mat_d_vec)
         return self._mat_d_inv_vec
 
-    def mat_a_mod_vec(self, link_ind: int = 0):
+    def mat_a_mod_vec(self, link_ind: int):
         """Extract the matrix for physical-physical correlations and one virtual mode.
         This shifted matrix is used for the computation of the electric energy.
         The mode ordering of this matrix is (p_1(0,0),p_2(0,0),p_1(1,0),p_2(1,0)....).
@@ -537,7 +538,7 @@ class System2DBase(ABC):
             self._mat_a_mod_vec = self.gamma_maj_sys_vec[:, rows, cols]
         return self._mat_a_mod_vec
 
-    def mat_b_mod_vec(self, link_ind: int = 0):
+    def mat_b_mod_vec(self, link_ind: int):
         """Extract the matrix for physical-virtual correlations.
         This matrix contains one link less than the original matrix (used for the electric energy computation)
         There is a vector of B matrices if multiple layers are used; len(vec)==# of copies
@@ -568,7 +569,7 @@ class System2DBase(ABC):
             self._mat_b_mod_vec = self.gamma_maj_sys_vec[:, rows, cols]
         return self._mat_b_mod_vec
 
-    def mat_d_mod_vec(self, link_ind: int = 0):
+    def mat_d_mod_vec(self, link_ind: int):
         """Extract the matrix for virtual-virtual correlations.
         This matrix contains one link less than the original matrix (used for the electric energy computation)
         There is a vector of D matrices if multiple layers are used; len(vec)==# of copies
@@ -595,7 +596,7 @@ class System2DBase(ABC):
             self._mat_d_mod_vec = self.gamma_maj_sys_vec[:, rows, cols]
         return self._mat_d_mod_vec
 
-    def det_mat_d_mod_vec(self, link_ind: int = 0):
+    def det_mat_d_mod_vec(self, link_ind: int):
         """
         Compute the determinant of the virtual-virtual correlation matrix for the modified matrix.
         There is a vector of determinants of D matrices if multiple layers are used; len(vec)==# of copies
@@ -611,7 +612,7 @@ class System2DBase(ABC):
             _, self._det_mat_d_mod_vec = xnp.linalg.slogdet(self.mat_d_mod_vec(link_ind))
         return self._det_mat_d_mod_vec
 
-    def mat_d_mod_inv_vec(self, link_ind: int = 0):
+    def mat_d_mod_inv_vec(self, link_ind: int):
         """Compute the inverse of modified D matrices.
         There is a vector of inverses of D matrices if multiple layers are used; len(vec)==# of copies
         This is a get function.
@@ -626,7 +627,7 @@ class System2DBase(ABC):
             self._mat_d_mod_inv_vec = xnp.linalg.inv(self.mat_d_mod_vec(link_ind))
         return self._mat_d_mod_inv_vec
 
-    def covmat_out_virt_vec(self, link_ind: int = 0) -> list[xnp.ndarray]:
+    def covmat_out_virt_vec(self, link_ind: int) -> list[xnp.ndarray]:
         """Compute the convariance matrix of the state, including physical fermions and
         the virtual fermions on the link on which the electric energy is computed.
         This function returns a vector over layers of these covariance matrices.
@@ -671,7 +672,7 @@ class System2DBase(ABC):
             self._covmat_out_virt_vec = covmat_out_virt_vec
         return self._covmat_out_virt_vec
 
-    def norm_mod_vec(self, link_ind: int = 0) -> list[float]:
+    def norm_mod_vec(self, link_ind: int) -> list[float]:
         """Compute the normalization factor for the modified covariance matrix.
         This is used to compute the electric energy.
         This function returns a vector over layers of these normalization factors.
@@ -690,7 +691,7 @@ class System2DBase(ABC):
                 norm_mod = self._calculate_lognorm_inc(
                     [self.incdet_mod_vec[layerind]],
                     [self.det_mat_d_mod_vec(link_ind)[layerind]],
-                    self.gamma_in_sys_mod_vec()[layerind].shape[0],
+                    self.gamma_in_sys_mod_vec(link_ind)[layerind].shape[0],
                     all_factors=True,
                 )
 
@@ -769,11 +770,12 @@ class System2DBase(ABC):
             incdet_vec.append(utils.IncLogAbsDeterminant(self.mat_d_inv_vec[layer] - gamma_in_sys))
 
             # Initialize the modified gamma_in_sys for the full system (and trackers)
+            ind = self.mod_link_ind
             single_link_offset = 2 * self.cfg.nvirtmodes_link
             gamma_in_sys_mod = gamma_in_sys[single_link_offset:, single_link_offset:]
-            wi_gamma_in_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_inv_vec()[layer] - gamma_in_sys_mod))
-            wi_gamma_out_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_vec()[layer] - gamma_in_sys_mod))
-            incdet_mod_vec.append(utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec()[layer] - gamma_in_sys_mod))
+            wi_gamma_in_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_inv_vec(ind)[layer] - gamma_in_sys_mod))
+            wi_gamma_out_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_vec(ind)[layer] - gamma_in_sys_mod))
+            incdet_mod_vec.append(utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec(ind)[layer] - gamma_in_sys_mod))
 
         return (
             xnp.array(gamma_in_sys_vec),
@@ -856,7 +858,7 @@ class System2DBase(ABC):
             ) = mod_tuple
         return self._wi_gamma_out_vec
 
-    def gamma_in_sys_mod_vec(self, link_ind: int = 0):
+    def gamma_in_sys_mod_vec(self, link_ind: int):
         """Get function to return the gauged gamma_in_sys_vec with a single link modification
         (to compute the electric energy),
         the covariance matrix of the links for the whole system.
@@ -1827,8 +1829,8 @@ class System2DBase(ABC):
                 self.cfg.el_overall_factors,
                 self.cfg.idxarr_vec,
                 self.cfg.nlayer,
-                self.covmat_out_virt_vec(),
-                self.norm_mod_vec(),
+                self.covmat_out_virt_vec(self.mod_link_ind),
+                self.norm_mod_vec(self.mod_link_ind),
                 use_trans_inv=True,
             )
         return self._el_energy_op_vec
@@ -1917,14 +1919,14 @@ class System2DBase(ABC):
                 self.cfg.el_overall_factors,
                 self.cfg.idxarr_vec,
                 self.el_energy_op_vec,
-                self.mat_b_mod_vec(),
-                self.gamma_in_sys_mod_vec(),
-                self.covmat_out_virt_vec(),
-                self.norm_mod_vec(),
+                self.mat_b_mod_vec(self.mod_link_ind),
+                self.gamma_in_sys_mod_vec(self.mod_link_ind),
+                self.covmat_out_virt_vec(self.mod_link_ind),
+                self.norm_mod_vec(self.mod_link_ind),
                 self.lognorm_default_vec,
                 wi_gamma_in_mod_inv_vec,
                 wi_gamma_out_mod_inv_vec,
-                self.mat_d_mod_inv_vec(),
+                self.mat_d_mod_inv_vec(self.mod_link_ind),
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
                 self.grad_over_norm_vec,
                 self.cfg.zeroed_params,

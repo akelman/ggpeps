@@ -119,7 +119,7 @@ class Z2System2D(System2DBase):
         ]
 
         # Update the modified determinant & matrices
-        mod_link_ind = 0  # link_ind of the modified objects - TODO: use the same setting as elsewhere
+        mod_link_ind = self.mod_link_ind  # link_ind of the modified objects
         if mod_link_ind != link_ind:
             # We do not update if the link is the one that is excluded in the modified objects
 
