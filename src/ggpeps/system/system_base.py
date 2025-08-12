@@ -507,8 +507,7 @@ class System2DBase(ABC):
             self._mat_d_inv_vec = xnp.linalg.inv(self.mat_d_vec)
         return self._mat_d_inv_vec
 
-    @property
-    def mat_a_mod_vec(self):
+    def mat_a_mod_vec(self, link_ind: int = 0):
         """Extract the matrix for physical-physical correlations and one virtual mode.
         This shifted matrix is used for the computation of the electric energy.
         The mode ordering of this matrix is (p_1(0,0),p_2(0,0),p_1(1,0),p_2(1,0)....).
@@ -518,73 +517,109 @@ class System2DBase(ABC):
         "Physical" modes here includes the virtual modes on the link on which the electric energy is computed.
         This is a get function.
 
+        Args:
+            link_ind (int, optional): Index of the link to include in the physical-physical set.
+
         Returns:
             [xnp.ndarray]: Correlations of the physical modes for the full system.
         """
         if self._mat_a_mod_vec is None:
-            offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site  # offset for physical modes
-            offset += 2 * self.cfg.nvirtmodes_link  # offset for virtual modes of the link
-            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._extract_partial_covmatvec(offset)
+            # Calculate the indices of gamma_maj_sys to extract for mat_a_mod
+            phys_offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site  # end of physical modes
+            virt_start = phys_offset + 2 * self.cfg.nvirtmodes_link * link_ind  # start of virtual modes for the link
+            virt_end = virt_start + 2 * self.cfg.nvirtmodes_link  # end of virtual modes for the link
+
+            inds = [k for k in range(phys_offset)]
+            inds += [k for k in range(virt_start, virt_end)]
+
+            rows, cols = xnp.ix_(inds, inds)
+            self._mat_a_mod_vec = self.gamma_maj_sys_vec[:, rows, cols]
         return self._mat_a_mod_vec
 
-    @property
-    def mat_b_mod_vec(self):
+    def mat_b_mod_vec(self, link_ind: int = 0):
         """Extract the matrix for physical-virtual correlations.
         This matrix contains one link less than the original matrix (used for the electric energy computation)
         There is a vector of B matrices if multiple layers are used; len(vec)==# of copies
         "Physical" modes here includes the virtual modes on the link on which the electric energy is computed.
         This is a get function.
 
+        Args:
+            link_ind (int, optional): Index of the link to include in the physical-physical set.
+
         Returns:
             [xnp.ndarray]: Correlations of the physical modes with the virtual modes for the full system.
         """
         if self._mat_b_mod_vec is None:
-            offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site  # offset for physical modes
-            offset += 2 * self.cfg.nvirtmodes_link  # offset for virtual modes of the link
-            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._extract_partial_covmatvec(offset)
+            # Calculate the indices of gamma_maj_sys to extract for mat_a_mod
+            phys_offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site  # end of physical modes
+            virt_start = phys_offset + 2 * self.cfg.nvirtmodes_link * link_ind  # start of virtual modes for the link
+            virt_end = virt_start + 2 * self.cfg.nvirtmodes_link  # end of virtual modes for the link
+            size = self.gamma_maj_sys_vec.shape[1]  # size of gamma_maj_sys
+
+            phys_inds = [k for k in range(phys_offset)]
+            row_inds = phys_inds + [k for k in range(virt_start, virt_end)]
+            col_inds = [k for k in range(size) if k not in row_inds]  # all other virtual modes
+
+            rows, cols = xnp.ix_(row_inds, col_inds)
+            self._mat_b_mod_vec = self.gamma_maj_sys_vec[:, rows, cols]
         return self._mat_b_mod_vec
 
-    @property
-    def mat_d_mod_vec(self):
+    def mat_d_mod_vec(self, link_ind: int = 0):
         """Extract the matrix for virtual-virtual correlations.
         This matrix contains one link less than the original matrix (used for the electric energy computation)
         There is a vector of D matrices if multiple layers are used; len(vec)==# of copies
         This is a get function.
 
+        Args:
+            link_ind (int, optional): Index of the link to include in the physical-physical set.
+
         Returns:
             [xnp.ndarray]: Correlations of the virtual modes for the full system.
         """
         if self._mat_d_mod_vec is None:
-            offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site  # offset for physical modes
-            offset += 2 * self.cfg.nvirtmodes_link  # offset for virtual modes of the link
-            self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = self._extract_partial_covmatvec(offset)
+            # Calculate the indices of gamma_maj_sys to extract for mat_a_mod
+            phys_offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site  # end of physical modes
+            virt_start = phys_offset + 2 * self.cfg.nvirtmodes_link * link_ind  # start of virtual modes for the link
+            virt_end = virt_start + 2 * self.cfg.nvirtmodes_link  # end of virtual modes for the link
+            size = self.gamma_maj_sys_vec.shape[1]  # size of gamma_maj_sys
+
+            phys_inds = [k for k in range(phys_offset)]
+            inds = phys_inds + [k for k in range(virt_start, virt_end)]  # inds of phys modes, and virt modes on link
+            virt_inds = [k for k in range(size) if k not in inds]  # all other virtual modes
+
+            rows, cols = xnp.ix_(virt_inds, virt_inds)
+            self._mat_d_mod_vec = self.gamma_maj_sys_vec[:, rows, cols]
         return self._mat_d_mod_vec
 
-    @property
-    def det_mat_d_mod_vec(self):
+    def det_mat_d_mod_vec(self, link_ind: int = 0):
         """
         Compute the determinant of the virtual-virtual correlation matrix for the modified matrix.
         There is a vector of determinants of D matrices if multiple layers are used; len(vec)==# of copies
         This is a get function.
 
+        Args:
+            link_ind (int, optional): Index of the link to include in the physical-physical set.
+
         Returns:
             list: list of log-determinants
         """
         if self._det_mat_d_mod_vec is None:
-            _, self._det_mat_d_mod_vec = xnp.linalg.slogdet(self.mat_d_mod_vec)
+            _, self._det_mat_d_mod_vec = xnp.linalg.slogdet(self.mat_d_mod_vec(link_ind))
         return self._det_mat_d_mod_vec
 
-    @property
-    def mat_d_mod_inv_vec(self):
+    def mat_d_mod_inv_vec(self, link_ind: int = 0):
         """Compute the inverse of modified D matrices.
         There is a vector of inverses of D matrices if multiple layers are used; len(vec)==# of copies
         This is a get function.
+
+        Args:
+            link_ind (int, optional): Index of the link to include in the physical-physical set.
 
         Returns:
             xnp.ndarray: List of inverses of modified D matrices
         """
         if self._mat_d_mod_inv_vec is None:
-            self._mat_d_mod_inv_vec = xnp.linalg.inv(self.mat_d_mod_vec)
+            self._mat_d_mod_inv_vec = xnp.linalg.inv(self.mat_d_mod_vec(link_ind))
         return self._mat_d_mod_inv_vec
 
     @property
@@ -609,10 +644,10 @@ class System2DBase(ABC):
             for layerind in range(self.cfg.nlayer):
 
                 # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
-                mat_a = self.mat_a_mod_vec[
+                mat_a = self.mat_a_mod_vec()[
                     layerind
                 ]  # dim: 2*nsites (for majorana) + 8 (= 4 virtual modes per link x2 for majorana)
-                mat_b = self.mat_b_mod_vec[layerind]
+                mat_b = self.mat_b_mod_vec()[layerind]
                 diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
 
                 ###################### Calculation of <P> ########################
@@ -652,7 +687,7 @@ class System2DBase(ABC):
                 # from the unmodified parts
                 norm_mod = self._calculate_lognorm_inc(
                     [self.incdet_mod_vec[layerind]],
-                    [self.det_mat_d_mod_vec[layerind]],
+                    [self.det_mat_d_mod_vec()[layerind]],
                     self.gamma_in_sys_mod_vec[layerind].shape[0],
                     all_factors=True,
                 )
@@ -734,9 +769,9 @@ class System2DBase(ABC):
             # Initialize the modified gamma_in_sys for the full system (and trackers)
             single_link_offset = 2 * self.cfg.nvirtmodes_link
             gamma_in_sys_mod = gamma_in_sys[single_link_offset:, single_link_offset:]
-            wi_gamma_in_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod))
-            wi_gamma_out_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_vec[layer] - gamma_in_sys_mod))
-            incdet_mod_vec.append(utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod))
+            wi_gamma_in_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_inv_vec()[layer] - gamma_in_sys_mod))
+            wi_gamma_out_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_vec()[layer] - gamma_in_sys_mod))
+            incdet_mod_vec.append(utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec()[layer] - gamma_in_sys_mod))
 
         return (
             xnp.array(gamma_in_sys_vec),
@@ -1872,14 +1907,14 @@ class System2DBase(ABC):
                 self.cfg.el_overall_factors,
                 self.cfg.idxarr_vec,
                 self.el_energy_op_vec,
-                self.mat_b_mod_vec,
+                self.mat_b_mod_vec(),
                 self.gamma_in_sys_mod_vec,
                 self.covmat_out_virt_vec,
                 self.norm_mod_vec,
                 self.lognorm_default_vec,
                 wi_gamma_in_mod_inv_vec,
                 wi_gamma_out_mod_inv_vec,
-                self.mat_d_mod_inv_vec,
+                self.mat_d_mod_inv_vec(),
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
                 self.grad_over_norm_vec,
                 self.cfg.zeroed_params,
