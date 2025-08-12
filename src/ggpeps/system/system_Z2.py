@@ -119,9 +119,13 @@ class Z2System2D(System2DBase):
         ]
 
         # Update the modified determinant & matrices
-        offset = 2 * self.cfg.nvirtmodes_link
-        if ind_mat - offset >= 0:
-            # We do not update if the first link is updated (it is just not there)
+        mod_link_ind = 0  # link_ind of the modified objects - TODO: use the same setting as elsewhere
+        if mod_link_ind != link_ind:
+            # We do not update if the link is the one that is excluded in the modified objects
+
+            offset = 0  # no offset if link_ind < mod_link_ind
+            if link_ind > mod_link_ind:
+                offset = 2 * self.cfg.nvirtmodes_link
 
             for wi, update, incdet in zip(self.wi_gamma_in_mod_vec, update_vec, self.incdet_mod_vec):
                 mat_inv = wi.inv()
