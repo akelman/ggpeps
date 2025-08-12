@@ -550,7 +550,7 @@ class System2DBase(ABC):
             [xnp.ndarray]: Correlations of the physical modes with the virtual modes for the full system.
         """
         if self._mat_b_mod_vec is None:
-            # Calculate the indices of gamma_maj_sys to extract for mat_a_mod
+            # Calculate the indices of gamma_maj_sys to extract for mat_b_mod
             phys_offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site  # end of physical modes
             virt_start = phys_offset + 2 * self.cfg.nvirtmodes_link * link_ind  # start of virtual modes for the link
             virt_end = virt_start + 2 * self.cfg.nvirtmodes_link  # end of virtual modes for the link
@@ -577,7 +577,7 @@ class System2DBase(ABC):
             [xnp.ndarray]: Correlations of the virtual modes for the full system.
         """
         if self._mat_d_mod_vec is None:
-            # Calculate the indices of gamma_maj_sys to extract for mat_a_mod
+            # Calculate the indices of gamma_maj_sys to extract for mat_d_mod
             phys_offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site  # end of physical modes
             virt_start = phys_offset + 2 * self.cfg.nvirtmodes_link * link_ind  # start of virtual modes for the link
             virt_end = virt_start + 2 * self.cfg.nvirtmodes_link  # end of virtual modes for the link
