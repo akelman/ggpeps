@@ -857,6 +857,9 @@ class System2DBase(ABC):
         (to compute the electric energy),
         the covariance matrix of the links for the whole system.
 
+        Args:
+            link_ind (int, optional): Index of the link to exclude.
+
         Returns:
             xnp.ndarray: Gauged, modified covariance matrices of the system for each layer
         """
@@ -871,8 +874,7 @@ class System2DBase(ABC):
         virt_inds = [k for k in range(size) if k not in inds]  # all other virtual modes
 
         rows, cols = xnp.ix_(virt_inds, virt_inds)
-        for layer in range(self.cfg.nlayer):
-            gamma_in_sys_mod_vec.append(self.gamma_in_sys_vec[layer][rows, cols])
+        gamma_in_sys_mod_vec = self.gamma_in_sys_vec[:, rows, cols]
         return gamma_in_sys_mod_vec
 
     @property
