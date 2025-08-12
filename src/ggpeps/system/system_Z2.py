@@ -281,8 +281,11 @@ class Z2System2D(System2DBase):
                         # the derivative calculation is compuationally expensive
                         # we can skip it for parameters that are forced by the ansatz to be zero
 
+                        mod_link_ind = 0  # TODO: use value defined in system
                         deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind]
-                        d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
+                        d_mat_a, d_mat_b, d_mat_d = utils.extract_mod_covmats(
+                            deriv_gamma_maj_sys, mod_link_ind, lattice_size, nphysmodes_site, nvirtmodes_link
+                        )
                         d_gamma_out = (
                             d_mat_a
                             + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
