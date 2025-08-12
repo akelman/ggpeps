@@ -876,7 +876,7 @@ class System2DBase(ABC):
         virt_end = virt_start + 2 * self.cfg.nvirtmodes_link  # end of virtual modes for the link
         size = self.gamma_in_sys_vec.shape[1]  # size of gamma_in_sys
 
-        inds = [k for k in range(virt_start, virt_end)]  # inds of phys modes, and virt modes on link
+        inds = [k for k in range(virt_start, virt_end)]  # inds virt modes on link
         virt_inds = xnp.asarray([k for k in range(size) if k not in inds])  # all other virtual modes
 
         rows, cols = xnp.ix_(virt_inds, virt_inds)
