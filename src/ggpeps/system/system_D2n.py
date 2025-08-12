@@ -453,6 +453,7 @@ class D2nSystem2D(System2DBase):
         unitcell_size: int,
         nvirtmodes_link: int,
         nphysmodes_site: int,
+        mod_link_ind: int,
         symbolvec: tuple,
         overall_factors,
         idxarr_vec,
