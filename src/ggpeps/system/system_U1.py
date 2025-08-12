@@ -272,7 +272,7 @@ class U1System2D(System2DBase):
             single_link_offset = 2 * self.cfg.nvirtmodes_link
             offset = 2 * self.cfg.lattice.size + single_link_offset
             # We have to cut one link from gamma_in_sys as well
-            gamma_in_sys_mod = self.gamma_in_sys_mod_vec[0]
+            gamma_in_sys_mod = self.gamma_in_sys_mod_vec()[0]
             nlinks = self.cfg.lattice.nlinks
             dest = []
             dest_grad = []
