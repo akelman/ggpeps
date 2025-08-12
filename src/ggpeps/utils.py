@@ -229,6 +229,38 @@ def extract_partial_covmats(mat: xnp.ndarray, corner: int):
     return mat_a, mat_b, mat_d
 
 
+def extract_mod_covmats(
+    mat: xnp.ndarray, link_ind: int, lattice_size: int, nphysmodes_site: int, nvirtmodes_link: int
+) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
+    """Extract the A, B, D submatrices, but including the virtual modes on the link specified by link_ind.
+    This function can accept a 2D matrix, or a stack of 2D matrices (i.e. a 3D array).
+
+    Args:
+        mat (xnp.ndarray): The mat(s) from which to extract the submatrices.
+        link_ind (int): the link index to include in the physical-physical set.
+
+    Returns:
+        tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]: the A, B, D submatrices.
+    """
+    # Calculate the indices of mat to extract for mat_a_mod, mat_b_mod, mat_d_mod
+    phys_offset = 2 * lattice_size * nphysmodes_site  # end of physical modes
+    virt_start = phys_offset + 2 * nvirtmodes_link * link_ind  # start of virtual modes for the link
+    virt_end = virt_start + 2 * nvirtmodes_link  # end of virtual modes for the link
+    size = mat.shape[-1]  # size of gamma_maj_sys
+
+    # include virt modes on given link in the "physical" set
+    phys_inds = [k for k in range(phys_offset)] + [k for k in range(virt_start, virt_end)]
+    virt_inds = [k for k in range(size) if k not in phys_inds]  # all other virtual modes
+
+    phys_inds = xnp.asarray(phys_inds)
+    virt_inds = xnp.asarray(virt_inds)
+
+    mat_a_mod = mat[(..., *xnp.ix_(phys_inds, phys_inds))]
+    mat_b_mod = mat[(..., *xnp.ix_(phys_inds, virt_inds))]
+    mat_d_mod = mat[(..., *xnp.ix_(virt_inds, virt_inds))]
+    return mat_a_mod, mat_b_mod, mat_d_mod
+
+
 def select_except(arr: Union[list, xnp.ndarray], ind: int) -> xnp.ndarray:
     """Return all elements of a list except the indicated one
 
