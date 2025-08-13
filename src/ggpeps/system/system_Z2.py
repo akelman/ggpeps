@@ -117,22 +117,20 @@ class Z2System2D(System2DBase):
 
         # Update the modified determinant & matrices
         mod_link_ind = self.mod_link_inds[0]  # link_ind of the modified objects
-        if mod_link_ind != link_ind:
-            # We do not update if the link is the one that is excluded in the modified objects
+        for lay in range(self.cfg.nlayer):
+            if mod_link_ind != link_ind:
+                # We do not update if the link is the one that is excluded in the modified objects
 
-            offset = 0  # no offset if link_ind < mod_link_ind
-            if link_ind > mod_link_ind:
-                offset = 2 * self.cfg.nvirtmodes_link
+                offset = 0  # no offset if link_ind < mod_link_ind
+                if link_ind > mod_link_ind:
+                    offset = 2 * self.cfg.nvirtmodes_link
 
-            for wi, update, incdet in zip(self.wi_gamma_in_mod_vec, update_vec, self.incdet_mod_vec):
-                mat_inv = wi.inv()
-                incdet.update_index(mat_inv, update, ind_mat - offset, ind_mat - offset)
+                mat_inv = self.wi_gamma_in_mod_vec[lay].inv()
+                self.incdet_mod_vec[lay].update_index(mat_inv, update_vec[lay], ind_mat - offset, ind_mat - offset)
 
-            for wi_gamma_in_mod, update in zip(self.wi_gamma_in_mod_vec, update_vec):
-                wi_gamma_in_mod.update_index(update, ind_mat - offset, ind_mat - offset)
+                self.wi_gamma_in_mod_vec[lay].update_index(update_vec[lay], ind_mat - offset, ind_mat - offset)
 
-            for wi_gamma_out_mod, update in zip(self.wi_gamma_out_mod_vec, update_vec):
-                wi_gamma_out_mod.update_index(update, ind_mat - offset, ind_mat - offset)
+                self.wi_gamma_out_mod_vec[lay].update_index(update_vec[lay], ind_mat - offset, ind_mat - offset)
 
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
