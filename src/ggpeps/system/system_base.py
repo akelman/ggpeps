@@ -859,12 +859,14 @@ class System2DBase(ABC):
         gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(self.mod_link_inds[0], self.gamma_in_sys_vec)
         return gamma_in_sys_mod_vec
 
-    def _extract_gamma_in_sys_mod_vec(self, link_ind: int, gamma_in_sys_vec: xnp.ndarray):
+    def _extract_gamma_in_sys_mod_vec(self, link_ind: int, gamma_in_sys: xnp.ndarray):
         """Get function to return the gauged gamma_in_sys_vec with a single link modification
         (to compute the electric energy), the covariance matrix of the links for the whole system.
+        This function can accept a 2D matrix, or a stack of 2D matrices (i.e. a 3D array).
 
         Args:
             link_ind (int, optional): Index of the link to exclude.
+            gamma_in_sys (xnp.ndarray): Covariance matrix of the links for the whole system, or a stack of such matrices.
 
         Returns:
             xnp.ndarray: Gauged, modified covariance matrices of the system for each layer
@@ -874,13 +876,13 @@ class System2DBase(ABC):
         # Calculate the indices of gamma_in to extract
         virt_start = 2 * self.cfg.nvirtmodes_link * link_ind  # start of virtual modes for the link
         virt_end = virt_start + 2 * self.cfg.nvirtmodes_link  # end of virtual modes for the link
-        size = gamma_in_sys_vec.shape[1]  # size of gamma_in_sys
+        size = gamma_in_sys.shape[-1]  # size of gamma_in_sys
 
         inds = [k for k in range(virt_start, virt_end)]  # inds virt modes on link
         virt_inds = xnp.asarray([k for k in range(size) if k not in inds])  # all other virtual modes
 
         rows, cols = xnp.ix_(virt_inds, virt_inds)
-        gamma_in_sys_mod_vec = gamma_in_sys_vec[:, rows, cols]
+        gamma_in_sys_mod_vec = gamma_in_sys[..., rows, cols]
         return gamma_in_sys_mod_vec
 
     @property
