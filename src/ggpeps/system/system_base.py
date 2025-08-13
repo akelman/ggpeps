@@ -137,9 +137,9 @@ class System2DBase(ABC):
         self._wi_gamma_out_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (D - gammain)^-1
         self._incdet_vec: Optional[list[utils.IncLogAbsDeterminant]] = None  # Tracks det(D^-1 - gammain)
 
-        self._wi_gamma_in_mod_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (Dmod^-1 - gammain)^-1
-        self._wi_gamma_out_mod_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (Dmod - gammain)^-1
-        self._incdet_mod_vec: Optional[list[utils.IncLogAbsDeterminant]] = None  # Tracks det(Dmod^-1 - gammain)
+        self._wi_gamma_in_mod_vec: Optional[list[list[utils.WoodburyInverter]]] = None  # Tracks (Dmod^-1 - gammain)^-1
+        self._wi_gamma_out_mod_vec: Optional[list[list[utils.WoodburyInverter]]] = None  # Tracks (Dmod - gammain)^-1
+        self._incdet_mod_vec: Optional[list[list[utils.IncLogAbsDeterminant]]] = None  # Tracks det(Dmod^-1 - gammain)
 
         return
 
@@ -622,7 +622,6 @@ class System2DBase(ABC):
             for layerind in range(self.cfg.nlayer):
                 covmat_out_linkvec = []
 
-                # TODO: this is not yet actually vectorized
                 for ind, link_ind in enumerate(self.mod_link_inds):
 
                     # Get the modified matrices, which include the virtual modes of the given link among the physical
@@ -630,7 +629,7 @@ class System2DBase(ABC):
                         layerind, ind
                     ]  # dim: 2 (for majorana) * [ nsites * nphysmodespersite (# phys modes) + 2 * ncopy (virt modes/link) ]
                     mat_b = self.mat_b_mod_vec[layerind, ind]
-                    diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
+                    diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind][ind].inv()
 
                     # Compute covmat
                     covmat_out = mat_a + mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
@@ -675,7 +674,7 @@ class System2DBase(ABC):
                     # For the modified norm, we still have to take into account the other contributions
                     # from the unmodified parts
                     norm_mod = self._calculate_lognorm_inc(
-                        [self.incdet_mod_vec[layerind]],
+                        [self.incdet_mod_vec[layerind][ind]],
                         [self.det_mat_d_mod_vec[layerind, ind]],
                         self.gamma_in_sys_mod_vec[layerind, ind].shape[0],
                         all_factors=True,
@@ -758,14 +757,23 @@ class System2DBase(ABC):
         gamma_in_sys_vec = xnp.array(gamma_in_sys_vec)
 
         # Initialize the modified gamma_in_sys and trackers for the full system
-        # We do this in a separate loop, so that we can use the full gamma_in_sys_vec which is built in the previous loop.
-        ind = self.mod_link_inds[0]  # index of the link to exclude
-        gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(self.mod_link_inds, gamma_in_sys_vec)[:, 0]
+        gamma_in_sys_mod_layervec_linkvec = self._extract_gamma_in_sys_mod_vec(self.mod_link_inds, gamma_in_sys_vec)
         for layer in range(self.cfg.nlayer):
-            gamma_in_sys_mod = gamma_in_sys_mod_vec[layer]
-            wi_gamma_in_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_inv_vec[layer, ind] - gamma_in_sys_mod))
-            wi_gamma_out_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_vec[layer, ind] - gamma_in_sys_mod))
-            incdet_mod_vec.append(utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec[layer, ind] - gamma_in_sys_mod))
+            wi_gamma_in_mod_linkvec, wi_gamma_out_mod_linkvec, incdet_mod_linkvec = [], [], []
+            for ind, link_ind in enumerate(self.mod_link_inds):
+                gamma_in_sys_mod = gamma_in_sys_mod_layervec_linkvec[layer, ind]
+                wi_gamma_in_mod_linkvec.append(
+                    utils.WoodburyInverter(self.mat_d_mod_inv_vec[layer, ind] - gamma_in_sys_mod)
+                )
+                wi_gamma_out_mod_linkvec.append(
+                    utils.WoodburyInverter(self.mat_d_mod_vec[layer, ind] - gamma_in_sys_mod)
+                )
+                incdet_mod_linkvec.append(
+                    utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec[layer, ind] - gamma_in_sys_mod)
+                )
+            wi_gamma_in_mod_vec.append(wi_gamma_in_mod_linkvec)
+            wi_gamma_out_mod_vec.append(wi_gamma_out_mod_linkvec)
+            incdet_mod_vec.append(incdet_mod_linkvec)
 
         return (
             gamma_in_sys_vec,

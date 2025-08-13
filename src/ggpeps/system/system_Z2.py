@@ -116,21 +116,27 @@ class Z2System2D(System2DBase):
             wi_gamma_out.update_index(update, ind_mat, ind_mat)
 
         # Update the modified determinant & matrices
-        mod_link_ind = self.mod_link_inds[0]  # link_ind of the modified objects
         for lay in range(self.cfg.nlayer):
-            if mod_link_ind != link_ind:
-                # We do not update if the link is the one that is excluded in the modified objects
+            for ind, mod_link_ind in enumerate(self.mod_link_inds):
+                if mod_link_ind != link_ind:
+                    # We do not update if the link is the one that is excluded in the modified objects
 
-                offset = 0  # no offset if link_ind < mod_link_ind
-                if link_ind > mod_link_ind:
-                    offset = 2 * self.cfg.nvirtmodes_link
+                    offset = 0  # no offset if link_ind < mod_link_ind
+                    if link_ind > mod_link_ind:
+                        offset = 2 * self.cfg.nvirtmodes_link
 
-                mat_inv = self.wi_gamma_in_mod_vec[lay].inv()
-                self.incdet_mod_vec[lay].update_index(mat_inv, update_vec[lay], ind_mat - offset, ind_mat - offset)
+                    mat_inv = self.wi_gamma_in_mod_vec[lay][ind].inv()
+                    self.incdet_mod_vec[lay][ind].update_index(
+                        mat_inv, update_vec[lay], ind_mat - offset, ind_mat - offset
+                    )
 
-                self.wi_gamma_in_mod_vec[lay].update_index(update_vec[lay], ind_mat - offset, ind_mat - offset)
+                    self.wi_gamma_in_mod_vec[lay][ind].update_index(
+                        update_vec[lay], ind_mat - offset, ind_mat - offset
+                    )
 
-                self.wi_gamma_out_mod_vec[lay].update_index(update_vec[lay], ind_mat - offset, ind_mat - offset)
+                    self.wi_gamma_out_mod_vec[lay][ind].update_index(
+                        update_vec[lay], ind_mat - offset, ind_mat - offset
+                    )
 
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
