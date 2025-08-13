@@ -662,7 +662,7 @@ class System2DBase(ABC):
             list[float]: a vector of modified normalization factors
         """
         if self._norm_mod_vec is None:
-            norm_mod_vec = []
+            norm_mod_layervec_linkvec = []
             lognormvec_default = self.lognorm_default_vec
 
             for layerind in range(self.cfg.nlayer):
@@ -676,16 +676,16 @@ class System2DBase(ABC):
                     # from the unmodified parts
                     norm_mod = self._calculate_lognorm_inc(
                         [self.incdet_mod_vec[layerind]],
-                        [self.det_mat_d_mod_vec[layerind]],
-                        self.gamma_in_sys_mod_vec[layerind].shape[0],
+                        [self.det_mat_d_mod_vec[layerind, ind]],
+                        self.gamma_in_sys_mod_vec[layerind, ind].shape[0],
                         all_factors=True,
                     )
 
                     norm_mod += utils.add_except(lognormvec_default, layerind)
                     norm_mod_linkvec.append(norm_mod)
-                norm_mod_vec.append(norm_mod_linkvec)
+                norm_mod_layervec_linkvec.append(norm_mod_linkvec)
 
-            self._norm_mod_vec = norm_mod_vec
+            self._norm_mod_vec = norm_mod_layervec_linkvec
         return self._norm_mod_vec
 
     @property
@@ -856,7 +856,7 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Gauged, modified covariance matrices of the system for each layer
         """
-        gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(self.mod_link_inds, self.gamma_in_sys_vec)[:, 0]
+        gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(self.mod_link_inds, self.gamma_in_sys_vec)
         return gamma_in_sys_mod_vec
 
     def _extract_gamma_in_sys_mod_vec(self, link_inds: tuple[int, ...], gamma_in_sys: xnp.ndarray):
