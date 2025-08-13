@@ -176,30 +176,36 @@ class Z2System2D(System2DBase):
         # TODO: vectorize!
         for layerind in range(nlayer):
 
+            el_energy_layer = 0.0
+
             idxarr = idxarrs[layerind]
             overall_factor = overall_factors[layerind]
 
-            ###################### Calculation of <P> ########################
+            covmat_out_virt_linkvec = covmat_out_virt_vec[layerind]
+            norm_mod_linkvec = norm_mod_vec[layerind]
 
-            covmat_out_virt = covmat_out_virt_vec[layerind]
+            # Iterate over the links
+            for covmat_out_virt, norm_mod in zip(covmat_out_virt_linkvec, norm_mod_linkvec):
 
-            norm_mod = norm_mod_vec[layerind]
-            # The matrix elements yield only the real part of <P>
-            # If we use the log formulation, we can calculate the log of single terms.
+                ###################### Calculation of <P> ########################
 
-            # Instead of writing down all the terms explicitly, we build tuples of the prefactors
-            # and the indices of the covariance matrix.
-            # Then, we compute all terms in a list comprehension.
-            pfarr = []
-            pfvals = []  # without the prefactor
-            for prefactor, ind in idxarr:
-                ind = xnp.asarray(ind)
-                pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(ind, ind)])
-                pfarr.append(prefactor * pfaval)
-                pfvals.append(pfaval)
-            el_energy_full = overall_factor * xnp.sum(xnp.array(pfarr))
+                # The matrix elements yield only the real part of <P>
+                # If we use the log formulation, we can calculate the log of single terms.
 
-            el_energy_layer = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
+                # Instead of writing down all the terms explicitly, we build tuples of the prefactors
+                # and the indices of the covariance matrix.
+                # Then, we compute all terms in a list comprehension.
+                pfarr = []
+                pfvals = []  # without the prefactor
+                for prefactor, ind in idxarr:
+                    ind = xnp.asarray(ind)
+                    pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(ind, ind)])
+                    pfarr.append(prefactor * pfaval)
+                    pfvals.append(pfaval)
+                el_energy_full = overall_factor * xnp.sum(xnp.array(pfarr))
+
+                el_energy_link = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
+                el_energy_layer += el_energy_link
             dest.append(el_energy_layer)
 
         return xnp.asarray(dest)

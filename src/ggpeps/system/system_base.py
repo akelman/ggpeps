@@ -620,28 +620,33 @@ class System2DBase(ABC):
 
             # TODO: vectorize!
             for layerind in range(self.cfg.nlayer):
+                covmat_out_linkvec = []
 
-                # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
-                mat_a = self.mat_a_mod_vec[
-                    layerind
-                ]  # dim: 2 (for majorana) * [ nsites * nphysmodespersite (# phys modes) + 2 * ncopy (virt modes/link) ]
-                mat_b = self.mat_b_mod_vec[layerind]
-                diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
+                # TODO: this is not yet actually vectorized
+                for ind, link_ind in enumerate([self.mod_link_ind]):
 
-                ###################### Calculation of <P> ########################
-                covmat_out = mat_a + mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
-                size = covmat_out.shape[1]
-                covmat_out_virt = backend.slice_matrix(
-                    covmat_out,
-                    size - single_link_offset,
-                    size,
-                    size - single_link_offset,
-                    size,
-                )
+                    # Get the modified matrices, which include the virtual modes of the given link among the physical
+                    mat_a = self.mat_a_mod_vec[
+                        layerind
+                    ]  # dim: 2 (for majorana) * [ nsites * nphysmodespersite (# phys modes) + 2 * ncopy (virt modes/link) ]
+                    mat_b = self.mat_b_mod_vec[layerind]
+                    diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
 
-                # The library pfapack (used in the el energy) is rather picky about the anti-symmetrization (to 1e-14)
-                covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
-                covmat_out_virt_vec.append(covmat_out_virt)
+                    # Compute covmat
+                    covmat_out = mat_a + mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                    size = covmat_out.shape[1]
+                    covmat_out_virt = backend.slice_matrix(
+                        covmat_out,
+                        size - single_link_offset,
+                        size,
+                        size - single_link_offset,
+                        size,
+                    )
+
+                    # The library pfapack (used in the el energy) is rather picky about the anti-symmetrization (to 1e-14)
+                    covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
+                    covmat_out_linkvec.append(covmat_out_virt)
+                covmat_out_virt_vec.append(covmat_out_linkvec)
 
             self._covmat_out_virt_vec = covmat_out_virt_vec
         return self._covmat_out_virt_vec
@@ -661,17 +666,24 @@ class System2DBase(ABC):
             lognormvec_default = self.lognorm_default_vec
 
             for layerind in range(self.cfg.nlayer):
-                # For the modified norm, we still have to take into account the other contributions
-                # from the unmodified parts
-                norm_mod = self._calculate_lognorm_inc(
-                    [self.incdet_mod_vec[layerind]],
-                    [self.det_mat_d_mod_vec[layerind]],
-                    self.gamma_in_sys_mod_vec[layerind].shape[0],
-                    all_factors=True,
-                )
 
-                norm_mod += utils.add_except(lognormvec_default, layerind)
-                norm_mod_vec.append(norm_mod)
+                norm_mod_linkvec = []
+
+                # TODO: this is not yet actually vectorized
+                for ind, link_ind in enumerate([self.mod_link_ind]):
+
+                    # For the modified norm, we still have to take into account the other contributions
+                    # from the unmodified parts
+                    norm_mod = self._calculate_lognorm_inc(
+                        [self.incdet_mod_vec[layerind]],
+                        [self.det_mat_d_mod_vec[layerind]],
+                        self.gamma_in_sys_mod_vec[layerind].shape[0],
+                        all_factors=True,
+                    )
+
+                    norm_mod += utils.add_except(lognormvec_default, layerind)
+                    norm_mod_linkvec.append(norm_mod)
+                norm_mod_vec.append(norm_mod_linkvec)
 
             self._norm_mod_vec = norm_mod_vec
         return self._norm_mod_vec
