@@ -230,35 +230,49 @@ def extract_partial_covmats(mat: xnp.ndarray, corner: int):
 
 
 def extract_mod_covmats(
-    mat: xnp.ndarray, link_ind: int, lattice_size: int, nphysmodes_site: int, nvirtmodes_link: int
+    mat: xnp.ndarray, link_inds: tuple[int, ...], lattice_size: int, nphysmodes_site: int, nvirtmodes_link: int
 ) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
     """Extract the A, B, D submatrices, but including the virtual modes on the link specified by link_ind.
     This function can accept a 2D matrix, or a stack of 2D matrices (i.e. a 3D array).
 
     Args:
         mat (xnp.ndarray): The mat(s) from which to extract the submatrices.
-        link_ind (int): the link index to include in the physical-physical set.
+        link_inds (tuple[int, ...]): a list of link indices to include in the physical-physical set.
 
     Returns:
-        tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]: the A, B, D submatrices.
+        tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]: the A, B, D submatrices, across layers and links
     """
-    # Calculate the indices of mat to extract for mat_a_mod, mat_b_mod, mat_d_mod
-    phys_offset = 2 * lattice_size * nphysmodes_site  # end of physical modes
-    virt_start = phys_offset + 2 * nvirtmodes_link * link_ind  # start of virtual modes for the link
-    virt_end = virt_start + 2 * nvirtmodes_link  # end of virtual modes for the link
-    size = mat.shape[-1]  # size of gamma_maj_sys
+    mod_a_linkvec_layervec = []
+    mod_b_linkvec_layervec = []
+    mod_d_linkvec_layervec = []
+    for link_ind in link_inds:
 
-    # include virt modes on given link in the "physical" set
-    phys_inds = [k for k in range(phys_offset)] + [k for k in range(virt_start, virt_end)]
-    virt_inds = [k for k in range(size) if k not in phys_inds]  # all other virtual modes
+        # Calculate the indices of mat to extract for mat_a_mod, mat_b_mod, mat_d_mod
+        phys_offset = 2 * lattice_size * nphysmodes_site  # end of physical modes
+        virt_start = phys_offset + 2 * nvirtmodes_link * link_ind  # start of virtual modes for the link
+        virt_end = virt_start + 2 * nvirtmodes_link  # end of virtual modes for the link
+        size = mat.shape[-1]  # size of gamma_maj_sys
 
-    phys_inds = xnp.asarray(phys_inds)
-    virt_inds = xnp.asarray(virt_inds)
+        # include virt modes on given link in the "physical" set
+        phys_inds = [k for k in range(phys_offset)] + [k for k in range(virt_start, virt_end)]
+        virt_inds = [k for k in range(size) if k not in phys_inds]  # all other virtual modes
 
-    mat_a_mod = mat[(..., *xnp.ix_(phys_inds, phys_inds))]
-    mat_b_mod = mat[(..., *xnp.ix_(phys_inds, virt_inds))]
-    mat_d_mod = mat[(..., *xnp.ix_(virt_inds, virt_inds))]
-    return mat_a_mod, mat_b_mod, mat_d_mod
+        phys_inds = xnp.asarray(phys_inds)
+        virt_inds = xnp.asarray(virt_inds)
+
+        mat_a_mod = mat[(..., *xnp.ix_(phys_inds, phys_inds))]
+        mat_b_mod = mat[(..., *xnp.ix_(phys_inds, virt_inds))]
+        mat_d_mod = mat[(..., *xnp.ix_(virt_inds, virt_inds))]
+
+        mod_a_linkvec_layervec.append(mat_a_mod)
+        mod_b_linkvec_layervec.append(mat_b_mod)
+        mod_d_linkvec_layervec.append(mat_d_mod)
+
+    # Reorder from linkvec_layervec to layervec_linkvec
+    mat_a_mod = list(zip(*mod_a_linkvec_layervec))
+    mat_b_mod = list(zip(*mod_b_linkvec_layervec))
+    mat_d_mod = list(zip(*mod_d_linkvec_layervec))
+    return xnp.asarray(mat_a_mod), xnp.asarray(mat_b_mod), xnp.asarray(mat_d_mod)
 
 
 def select_except(arr: Union[list, xnp.ndarray], ind: int) -> xnp.ndarray:

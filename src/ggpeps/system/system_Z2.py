@@ -288,7 +288,7 @@ class Z2System2D(System2DBase):
 
                         deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind]
                         d_mat_a, d_mat_b, d_mat_d = utils.extract_mod_covmats(
-                            deriv_gamma_maj_sys, mod_link_ind, lattice_size, nphysmodes_site, nvirtmodes_link
+                            deriv_gamma_maj_sys, (mod_link_ind,), lattice_size, nphysmodes_site, nvirtmodes_link
                         )
                         d_gamma_out = (
                             d_mat_a

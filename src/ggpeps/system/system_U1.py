@@ -263,6 +263,7 @@ class U1System2D(System2DBase):
         return mag_energy_bare
 
     def _compute_el_energy_op_and_grad_gaussian(self, use_trans_inv=True):
+        link_ind = self.mod_link_ind  # this function only supports calculating electric energy on one link
         if use_trans_inv:
             lognormvec_default_inc = self.calculate_lognormvec_inc(all_factors=True)
             # This is the usual norm without any modifications
@@ -282,8 +283,8 @@ class U1System2D(System2DBase):
                 # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
                 # The shifted matrices are extracted at the initalization
                 # The offset is changed such that one virtual link is attributed to the physical part
-                mat_a = self.mat_a_mod_vec[layerind]
-                mat_b = self.mat_b_mod_vec[layerind]
+                mat_a = self.mat_a_mod_vec[layerind][link_ind]
+                mat_b = self.mat_b_mod_vec[layerind][link_ind]
                 diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
                 diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
 

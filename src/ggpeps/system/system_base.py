@@ -525,7 +525,7 @@ class System2DBase(ABC):
         if self._mat_a_mod_vec is None:
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = utils.extract_mod_covmats(
                 self.gamma_maj_sys_vec,
-                self.mod_link_ind,
+                (self.mod_link_ind,),
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nvirtmodes_link,
@@ -546,7 +546,7 @@ class System2DBase(ABC):
         if self._mat_b_mod_vec is None:
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = utils.extract_mod_covmats(
                 self.gamma_maj_sys_vec,
-                self.mod_link_ind,
+                (self.mod_link_ind,),
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nvirtmodes_link,
@@ -566,7 +566,7 @@ class System2DBase(ABC):
         if self._mat_d_mod_vec is None:
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = utils.extract_mod_covmats(
                 self.gamma_maj_sys_vec,
-                self.mod_link_ind,
+                (self.mod_link_ind,),
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nvirtmodes_link,
@@ -627,9 +627,9 @@ class System2DBase(ABC):
 
                     # Get the modified matrices, which include the virtual modes of the given link among the physical
                     mat_a = self.mat_a_mod_vec[
-                        layerind
+                        layerind, ind
                     ]  # dim: 2 (for majorana) * [ nsites * nphysmodespersite (# phys modes) + 2 * ncopy (virt modes/link) ]
-                    mat_b = self.mat_b_mod_vec[layerind]
+                    mat_b = self.mat_b_mod_vec[layerind, ind]
                     diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
 
                     # Compute covmat
@@ -763,9 +763,9 @@ class System2DBase(ABC):
         gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(ind, gamma_in_sys_vec)
         for layer in range(self.cfg.nlayer):
             gamma_in_sys_mod = gamma_in_sys_mod_vec[layer]
-            wi_gamma_in_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod))
-            wi_gamma_out_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_vec[layer] - gamma_in_sys_mod))
-            incdet_mod_vec.append(utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec[layer] - gamma_in_sys_mod))
+            wi_gamma_in_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_inv_vec[layer, ind] - gamma_in_sys_mod))
+            wi_gamma_out_mod_vec.append(utils.WoodburyInverter(self.mat_d_mod_vec[layer, ind] - gamma_in_sys_mod))
+            incdet_mod_vec.append(utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec[layer, ind] - gamma_in_sys_mod))
 
         return (
             gamma_in_sys_vec,
