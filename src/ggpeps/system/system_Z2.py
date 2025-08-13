@@ -116,7 +116,7 @@ class Z2System2D(System2DBase):
             wi_gamma_out.update_index(update, ind_mat, ind_mat)
 
         # Update the modified determinant & matrices
-        mod_link_ind = self.mod_link_ind  # link_ind of the modified objects
+        mod_link_ind = self.mod_link_inds[0]  # link_ind of the modified objects
         if mod_link_ind != link_ind:
             # We do not update if the link is the one that is excluded in the modified objects
 
@@ -288,7 +288,7 @@ class Z2System2D(System2DBase):
 
                         deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind]
                         d_mat_a, d_mat_b, d_mat_d = utils.extract_mod_covmats(
-                            deriv_gamma_maj_sys, (mod_link_ind,), lattice_size, nphysmodes_site, nvirtmodes_link
+                            deriv_gamma_maj_sys, mod_link_ind, lattice_size, nphysmodes_site, nvirtmodes_link
                         )
                         d_gamma_out = (
                             d_mat_a

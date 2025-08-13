@@ -81,7 +81,7 @@ class System2DBase(ABC):
         self._ferm_covmat_vec: Optional[xnp.ndarray] = None
 
         # Parameter dependent quantities for the electric energy
-        self.mod_link_ind = 0  # link index for which the electric energy is computed - can be any horizontal link
+        self.mod_link_inds = (0,)  # link index for which the electric energy is computed - can be any horizontal link
         self._mat_a_mod_vec: Optional[xnp.ndarray] = None
         self._mat_b_mod_vec: Optional[xnp.ndarray] = None
         self._mat_d_mod_vec: Optional[xnp.ndarray] = None
@@ -525,7 +525,7 @@ class System2DBase(ABC):
         if self._mat_a_mod_vec is None:
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = utils.extract_mod_covmats(
                 self.gamma_maj_sys_vec,
-                (self.mod_link_ind,),
+                self.mod_link_inds,
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nvirtmodes_link,
@@ -546,7 +546,7 @@ class System2DBase(ABC):
         if self._mat_b_mod_vec is None:
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = utils.extract_mod_covmats(
                 self.gamma_maj_sys_vec,
-                (self.mod_link_ind,),
+                self.mod_link_inds,
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nvirtmodes_link,
@@ -566,7 +566,7 @@ class System2DBase(ABC):
         if self._mat_d_mod_vec is None:
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = utils.extract_mod_covmats(
                 self.gamma_maj_sys_vec,
-                (self.mod_link_ind,),
+                self.mod_link_inds,
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nvirtmodes_link,
@@ -623,7 +623,7 @@ class System2DBase(ABC):
                 covmat_out_linkvec = []
 
                 # TODO: this is not yet actually vectorized
-                for ind, link_ind in enumerate([self.mod_link_ind]):
+                for ind, link_ind in enumerate(self.mod_link_inds):
 
                     # Get the modified matrices, which include the virtual modes of the given link among the physical
                     mat_a = self.mat_a_mod_vec[
@@ -670,7 +670,7 @@ class System2DBase(ABC):
                 norm_mod_linkvec = []
 
                 # TODO: this is not yet actually vectorized
-                for ind, link_ind in enumerate([self.mod_link_ind]):
+                for ind, link_ind in enumerate(self.mod_link_inds):
 
                     # For the modified norm, we still have to take into account the other contributions
                     # from the unmodified parts
@@ -759,7 +759,7 @@ class System2DBase(ABC):
 
         # Initialize the modified gamma_in_sys and trackers for the full system
         # We do this in a separate loop, so that we can use the full gamma_in_sys_vec which is built in the previous loop.
-        ind = self.mod_link_ind  # index of the link to exclude
+        ind = self.mod_link_inds[0]  # index of the link to exclude
         gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(ind, gamma_in_sys_vec)
         for layer in range(self.cfg.nlayer):
             gamma_in_sys_mod = gamma_in_sys_mod_vec[layer]
@@ -856,7 +856,7 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Gauged, modified covariance matrices of the system for each layer
         """
-        gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(self.mod_link_ind, self.gamma_in_sys_vec)
+        gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(self.mod_link_inds[0], self.gamma_in_sys_vec)
         return gamma_in_sys_mod_vec
 
     def _extract_gamma_in_sys_mod_vec(self, link_ind: int, gamma_in_sys_vec: xnp.ndarray):
@@ -1916,7 +1916,7 @@ class System2DBase(ABC):
                 self.cfg.unitcell_size,
                 self.cfg.nvirtmodes_link,
                 self.cfg.nphysmodes_site,
-                self.mod_link_ind,
+                self.mod_link_inds,
                 tuple(self.cfg.symbolvec),
                 self.cfg.el_overall_factors,
                 self.cfg.idxarr_vec,
