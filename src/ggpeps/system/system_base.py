@@ -633,7 +633,7 @@ class System2DBase(ABC):
                 # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
                 mat_a = self.mat_a_mod_vec(link_ind)[
                     layerind
-                ]  # dim: 2*nsites (for majorana) + 8 (= 4 virtual modes per link x2 for majorana)
+                ]  # dim: 2 (for majorana) * [ nsites * nphysmodespersite (# phys modes) + 2 * ncopy (virt modes/link) ]
                 mat_b = self.mat_b_mod_vec(link_ind)[layerind]
                 diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
 
