@@ -1497,7 +1497,6 @@ class System2DBase(ABC):
         nlayer: int,
         covmat_out_virt_vec,
         norm_mod_vec,
-        use_trans_inv: bool = True,
     ) -> xnp.ndarray:
         """Compute the electric energy.
 
@@ -1510,7 +1509,6 @@ class System2DBase(ABC):
             nlayer (int): total number of layers (pure gauge + fermionic)
             covmat_out_virt_vec:
             norm_mod_vec:
-            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
 
         Returns:
             array: electric energies for the links specified in self.mod_link_inds for all layers
@@ -1543,7 +1541,6 @@ class System2DBase(ABC):
         gamma_maj_sys_deriv_layvec_ucvec_symbvec,
         grad_over_norm_vec,
         zeroed_params,
-        use_trans_inv: bool = True,
     ):
         """Compute the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
@@ -1553,7 +1550,6 @@ class System2DBase(ABC):
         This is an abstract method and has to be overwritten in a subclass.
 
         Args:
-            use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
 
         Returns:
             list: list of gradients for the full system
@@ -1848,7 +1844,6 @@ class System2DBase(ABC):
                 self.cfg.nlayer,
                 self.covmat_out_mod_vec,
                 self.norm_mod_vec,
-                use_trans_inv=True,
             )
         return self._el_energy_op_vec
 
@@ -1954,7 +1949,6 @@ class System2DBase(ABC):
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
                 self.grad_over_norm_vec,
                 self.cfg.zeroed_params,
-                use_trans_inv=True,
             )
         return self._el_energy_op_grad_vec
 

@@ -158,7 +158,7 @@ class Z2System2D(System2DBase):
         return mag_energy_bare
 
     @staticmethod
-    @maybe_jit(static_argnames=["overall_factors", "idxarrs", "use_trans_inv", "nlayer"])
+    @maybe_jit(static_argnames=["overall_factors", "idxarrs", "nlayer"])
     def _compute_el_energy_op_vec(
         lognormvec_default,
         overall_factors,
@@ -166,13 +166,7 @@ class Z2System2D(System2DBase):
         nlayer: int,
         covmat_out_virt_vec,
         norm_mod_vec,
-        use_trans_inv: bool = True,
     ) -> xnp.ndarray:
-
-        if not use_trans_inv:
-            # Evaluate every link of the system
-            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
-            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
         lognorm_default = xnp.sum(lognormvec_default)
 
@@ -227,7 +221,6 @@ class Z2System2D(System2DBase):
             "overall_factors",
             "idxarr_vec",
             "zeroed_params",
-            "use_trans_inv",
         ]
     )
     def _compute_el_grad_vec(
@@ -253,13 +246,7 @@ class Z2System2D(System2DBase):
         gamma_maj_sys_deriv_layvec_ucvec_symbvec,
         grad_over_norm_vec,
         zeroed_params,
-        use_trans_inv: bool = True,
     ):
-
-        if not use_trans_inv:
-            # Evaluate every link of the system
-            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
-            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
         nlayer = num_pg_layer + num_fermionic_layer
         shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))

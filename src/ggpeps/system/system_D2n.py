@@ -444,7 +444,6 @@ class D2nSystem2D(System2DBase):
         nlayer: int,
         covmat_out_virt_vec,
         norm_mod_vec,
-        use_trans_inv: bool = True,
     ):
         dest = xnp.zeros(nlayer)
         return xnp.asarray(dest)
@@ -473,13 +472,7 @@ class D2nSystem2D(System2DBase):
         gamma_maj_sys_deriv_layvec_ucvec_symbvec,
         grad_over_norm_vec,
         zeroed_params,
-        use_trans_inv: bool = True,
     ):
-        if not use_trans_inv:
-            # Evaluate every link of the system
-            logger.error("compute_el_energy: The non-translational invariant case is not implemented yet.")
-            raise NotImplementedError("The non-translational invariant case is not implemented yet.")
-
         gradients = xnp.zeros(self.cfg.param_shape())
         return gradients
 
