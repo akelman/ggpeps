@@ -460,7 +460,7 @@ class D2nSystem2D(System2DBase):
         el_energy_vec,
         mat_b_mod_vec,
         gamma_in_sys_mod_vec,
-        covmat_out_virt_vec,
+        covmat_out_mod_vec,
         norm_mod_vec,
         lognorm_default_vec,
         wi_gamma_in_mod_inv_vec,

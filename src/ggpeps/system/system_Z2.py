@@ -244,7 +244,7 @@ class Z2System2D(System2DBase):
         el_energy_vec,
         mat_b_mod_vec,
         gamma_in_sys_mod_vec,
-        covmat_out_virt_vec,
+        covmat_out_mod_vec,
         norm_mod_vec,
         lognorm_default_vec,
         wi_gamma_in_mod_inv_vec,
@@ -278,7 +278,7 @@ class Z2System2D(System2DBase):
             gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
             diff_d_inv_gamma_inv = wi_gamma_in_mod_inv_vec[layerind]
 
-            covmat_out_virt = covmat_out_virt_vec[layerind]
+            covmat_out_virt = covmat_out_mod_vec[layerind]
             norm_mod = norm_mod_vec[layerind]
             lognorm_default = xnp.sum(lognorm_default_vec)
 

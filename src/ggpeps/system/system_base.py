@@ -89,7 +89,7 @@ class System2DBase(ABC):
         self._mat_d_mod_inv_vec: Optional[xnp.ndarray] = None
         # Electric energy intermediate values - if we compute the electric energy,
         # we store intermediate values to be reused in the gradient calculation
-        self._covmat_out_virt_vec: Optional[list[xnp.ndarray]] = None
+        self._covmat_out_mod_vec: Optional[list[xnp.ndarray]] = None
         self._norm_mod_vec: Optional[list[float]] = None
         self._lognorm_default_vec: Optional[xnp.ndarray] = None
 
@@ -169,7 +169,7 @@ class System2DBase(ABC):
         self._chem_energy_op_grad_vec = None
         self._grad_over_norm_vec = None
 
-        self._covmat_out_virt_vec = None
+        self._covmat_out_mod_vec = None
         self._norm_mod_vec = None
         self._lognorm_default_vec = None
         return
@@ -601,7 +601,7 @@ class System2DBase(ABC):
         return self._mat_d_mod_inv_vec
 
     @property
-    def covmat_out_virt_vec(self) -> xnp.ndarray:
+    def covmat_out_mod_vec(self) -> xnp.ndarray:
         """Compute the convariance matrix of the state, including physical fermions and
         the virtual fermions on the link on which the electric energy is computed.
         This function returns a vector over layers of these covariance matrices.
@@ -611,8 +611,8 @@ class System2DBase(ABC):
             list[xnp.array]: a vector of covariance matrices
         """
 
-        if self._covmat_out_virt_vec is None:
-            covmat_out_virt_vec = []
+        if self._covmat_out_mod_vec is None:
+            covmat_out_mod_vec = []
 
             # Number of fermions = # of sites
             # Since we have 2 copies, we get 8 virtual fermions per site
@@ -645,10 +645,10 @@ class System2DBase(ABC):
                     # The library pfapack (used in the el energy) is rather picky about the anti-symmetrization (to 1e-14)
                     covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
                     covmat_out_linkvec.append(covmat_out_virt)
-                covmat_out_virt_vec.append(covmat_out_linkvec)
+                covmat_out_mod_vec.append(covmat_out_linkvec)
 
-            self._covmat_out_virt_vec = xnp.asarray(covmat_out_virt_vec)
-        return self._covmat_out_virt_vec
+            self._covmat_out_mod_vec = xnp.asarray(covmat_out_mod_vec)
+        return self._covmat_out_mod_vec
 
     @property
     def norm_mod_vec(self) -> list[float]:
@@ -1533,7 +1533,7 @@ class System2DBase(ABC):
         el_energy_vec,
         mat_b_mod_vec,
         gamma_in_sys_mod_vec,
-        covmat_out_virt_vec,
+        covmat_out_mod_vec,
         norm_mod_vec,
         lognorm_default_vec,
         wi_gamma_in_mod_inv_vec,
@@ -1845,7 +1845,7 @@ class System2DBase(ABC):
                 self.cfg.el_overall_factors,
                 self.cfg.idxarr_vec,
                 self.cfg.nlayer,
-                self.covmat_out_virt_vec,
+                self.covmat_out_mod_vec,
                 self.norm_mod_vec,
                 use_trans_inv=True,
             )
@@ -1938,7 +1938,7 @@ class System2DBase(ABC):
                 self.el_energy_op_vec,
                 self.mat_b_mod_vec,
                 self.gamma_in_sys_mod_vec,
-                self.covmat_out_virt_vec,
+                self.covmat_out_mod_vec,
                 self.norm_mod_vec,
                 self.lognorm_default_vec,
                 wi_gamma_in_mod_inv_vec,
