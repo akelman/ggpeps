@@ -333,11 +333,11 @@ class Z2System2D(System2DBase):
                             )
                             # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
                             d_el_energy += el_energy_vec[layerind][ind] * (trace_mod - trace_def)
-                            # Scale to system size
-                            d_el_energy *= nlinks / len(mod_link_inds)
+
                             dest_grad = backend.array_add(dest_grad, (layerind, uc_ind, symbol_ind), d_el_energy)
 
         dest_grad = xnp.asarray(dest_grad)
+        dest_grad *= nlinks / len(mod_link_inds)  # scale to system size
 
         # We have to weigh the different layers with the electric energy operator expectation of the other layers.
         # They act as a prefactor in the derivative
