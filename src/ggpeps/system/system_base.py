@@ -601,7 +601,7 @@ class System2DBase(ABC):
         return self._mat_d_mod_inv_vec
 
     @property
-    def covmat_out_virt_vec(self) -> list[xnp.ndarray]:
+    def covmat_out_virt_vec(self) -> xnp.ndarray:
         """Compute the convariance matrix of the state, including physical fermions and
         the virtual fermions on the link on which the electric energy is computed.
         This function returns a vector over layers of these covariance matrices.
@@ -647,7 +647,7 @@ class System2DBase(ABC):
                     covmat_out_linkvec.append(covmat_out_virt)
                 covmat_out_virt_vec.append(covmat_out_linkvec)
 
-            self._covmat_out_virt_vec = covmat_out_virt_vec
+            self._covmat_out_virt_vec = xnp.asarray(covmat_out_virt_vec)
         return self._covmat_out_virt_vec
 
     @property
@@ -1512,7 +1512,8 @@ class System2DBase(ABC):
             use_trans_inv (bool, optional): Use the translationally invariant implementation. Defaults to True.
 
         Returns:
-            list: list of electric energies for a single link
+            array: electric energies for the links specified in self.mod_link_inds for all layers
+                   with shape: (nlayer, len(self.mod_link_inds))
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
@@ -1797,7 +1798,8 @@ class System2DBase(ABC):
         if self._el_energy_op is None:
             # The different layers can be separated into separate PEPS and then multiplied together.
             nlinks = self.cfg.lattice.nlinks
-            self._el_energy_op = nlinks * xnp.prod(self.el_energy_op_vec, dtype=float)
+            el_energy_link_vec = xnp.prod(self.el_energy_op_vec, axis=0, dtype=float)
+            self._el_energy_op = (nlinks / len(self.mod_link_inds)) * xnp.sum(el_energy_link_vec)
         return self._el_energy_op
 
     @property

@@ -176,11 +176,11 @@ class Z2System2D(System2DBase):
 
         lognorm_default = xnp.sum(lognormvec_default)
 
-        dest = []
+        nlinks = covmat_out_virt_vec.shape[1]  # number of links on which the electric energy is computed
+        dest = xnp.zeros((nlayer, nlinks))
+
         # TODO: vectorize!
         for layerind in range(nlayer):
-
-            el_energy_layer = 0.0
 
             idxarr = idxarrs[layerind]
             overall_factor = overall_factors[layerind]
@@ -189,7 +189,7 @@ class Z2System2D(System2DBase):
             norm_mod_linkvec = norm_mod_vec[layerind]
 
             # Iterate over the links
-            for covmat_out_virt, norm_mod in zip(covmat_out_virt_linkvec, norm_mod_linkvec):
+            for ind, (covmat_out_virt, norm_mod) in enumerate(zip(covmat_out_virt_linkvec, norm_mod_linkvec)):
 
                 ###################### Calculation of <P> ########################
 
@@ -201,16 +201,15 @@ class Z2System2D(System2DBase):
                 # Then, we compute all terms in a list comprehension.
                 pfarr = []
                 pfvals = []  # without the prefactor
-                for prefactor, ind in idxarr:
-                    ind = xnp.asarray(ind)
-                    pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(ind, ind)])
+                for prefactor, inds in idxarr:
+                    inds = xnp.asarray(inds)
+                    pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds, inds)])
                     pfarr.append(prefactor * pfaval)
                     pfvals.append(pfaval)
                 el_energy_full = overall_factor * xnp.sum(xnp.array(pfarr))
 
                 el_energy_link = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
-                el_energy_layer += el_energy_link
-            dest.append(el_energy_layer)
+                dest = backend.array_assign(dest, (layerind, ind), el_energy_link)
 
         return xnp.asarray(dest)
 
