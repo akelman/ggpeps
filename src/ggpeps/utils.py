@@ -266,25 +266,25 @@ def extract_mod_covmats(
         phys_inds = xnp.asarray(phys_inds)
         virt_inds = xnp.asarray(virt_inds)
 
-        mat_a_mod = mat[(..., *xnp.ix_(phys_inds, phys_inds))]
-        mat_b_mod = mat[(..., *xnp.ix_(phys_inds, virt_inds))]
-        mat_d_mod = mat[(..., *xnp.ix_(virt_inds, virt_inds))]
+        mat_a_mod_link = mat[(..., *xnp.ix_(phys_inds, phys_inds))]
+        mat_b_mod_link = mat[(..., *xnp.ix_(phys_inds, virt_inds))]
+        mat_d_mod_link = mat[(..., *xnp.ix_(virt_inds, virt_inds))]
 
-        mod_a_linkvec_layervec.append(mat_a_mod)
-        mod_b_linkvec_layervec.append(mat_b_mod)
-        mod_d_linkvec_layervec.append(mat_d_mod)
+        mod_a_linkvec_layervec.append(mat_a_mod_link)
+        mod_b_linkvec_layervec.append(mat_b_mod_link)
+        mod_d_linkvec_layervec.append(mat_d_mod_link)
 
     # Reorder from linkvec_layervec to layervec_linkvec
-    mat_a_mod = list(zip(*mod_a_linkvec_layervec))
-    mat_b_mod = list(zip(*mod_b_linkvec_layervec))
-    mat_d_mod = list(zip(*mod_d_linkvec_layervec))
+    mat_a_mod = xnp.asarray(list(zip(*mod_a_linkvec_layervec)))
+    mat_b_mod = xnp.asarray(list(zip(*mod_b_linkvec_layervec)))
+    mat_d_mod = xnp.asarray(list(zip(*mod_d_linkvec_layervec)))
 
     if single_matrix:
         # remove fake "layer" axis
         mat_a_mod = mat_a_mod[0]
         mat_b_mod = mat_b_mod[0]
         mat_d_mod = mat_d_mod[0]
-    return xnp.asarray(mat_a_mod), xnp.asarray(mat_b_mod), xnp.asarray(mat_d_mod)
+    return mat_a_mod, mat_b_mod, mat_d_mod
 
 
 def select_except(arr: Union[list, xnp.ndarray], ind: int) -> xnp.ndarray:

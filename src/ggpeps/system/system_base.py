@@ -80,8 +80,9 @@ class System2DBase(ABC):
         # Full covariance matrix (gamma_out) of the fermions
         self._ferm_covmat_vec: Optional[xnp.ndarray] = None
 
+        # Link indices for which the electric energy is computed - can be any set of horizontal links:
+        self.mod_link_inds: tuple[int, ...] = (0,)
         # Parameter dependent quantities for the electric energy
-        self.mod_link_inds = (0,)  # link index for which the electric energy is computed - can be any horizontal link
         self._mat_a_mod_vec: Optional[xnp.ndarray] = None
         self._mat_b_mod_vec: Optional[xnp.ndarray] = None
         self._mat_d_mod_vec: Optional[xnp.ndarray] = None
@@ -903,7 +904,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list: List of incremental determinant trackers
+            list: List of lists of incremental determinant trackers, over layers and links
         """
         if self._incdet_mod_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_and_trackers()
@@ -922,7 +923,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list: List of Woodbury inverters
+            list: List of lists of Woodbury inverters, over layers and links
         """
         if self._wi_gamma_in_mod_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_and_trackers()
@@ -941,7 +942,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list: List of Woodbury inverters
+            list: List of lists of Woodbury inverters, over layers and links
         """
         if self._wi_gamma_out_mod_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_and_trackers()
