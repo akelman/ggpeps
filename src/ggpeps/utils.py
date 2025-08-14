@@ -242,6 +242,12 @@ def extract_mod_covmats(
     Returns:
         tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]: the A, B, D submatrices, across layers and links
     """
+
+    single_matrix = False
+    if mat.ndim == 2:
+        single_matrix = True
+        mat = mat[None, ...]  # add fake "layer" dimension
+
     mod_a_linkvec_layervec = []
     mod_b_linkvec_layervec = []
     mod_d_linkvec_layervec = []
@@ -272,6 +278,12 @@ def extract_mod_covmats(
     mat_a_mod = list(zip(*mod_a_linkvec_layervec))
     mat_b_mod = list(zip(*mod_b_linkvec_layervec))
     mat_d_mod = list(zip(*mod_d_linkvec_layervec))
+
+    if single_matrix:
+        # remove fake "layer" axis
+        mat_a_mod = mat_a_mod[0]
+        mat_b_mod = mat_b_mod[0]
+        mat_d_mod = mat_d_mod[0]
     return xnp.asarray(mat_a_mod), xnp.asarray(mat_b_mod), xnp.asarray(mat_d_mod)
 
 
