@@ -222,7 +222,7 @@ class Z2System2D(System2DBase):
             "unitcell_size",
             "nvirtmodes_link",
             "nphysmodes_site",
-            "mod_link_ind",
+            "mod_link_inds",
             "symbolvec",
             "overall_factors",
             "idxarr_vec",
@@ -332,7 +332,7 @@ class Z2System2D(System2DBase):
                                 mat_d_mod_inv,
                             )
                             # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
-                            d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
+                            d_el_energy += el_energy_vec[layerind][ind] * (trace_mod - trace_def)
                             # Scale to system size
                             d_el_energy *= nlinks / len(mod_link_inds)
                             dest_grad = backend.array_add(dest_grad, (layerind, uc_ind, symbol_ind), d_el_energy)
