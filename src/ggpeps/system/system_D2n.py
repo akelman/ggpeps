@@ -384,34 +384,38 @@ class D2nSystem2D(System2DBase):
                 for mat_inv, update, incdet in zip(mat_inv_vec, update_vec, self.incdet_vec)
             ]
         )
-        # Update the modified determinant
-        offset = 2 * self.cfg.nvirtmodes_link
-        if ind_mat - offset >= 0:
-            for wi, update, incdet in zip(self.wi_gamma_in_mod_vec, update_vec, self.incdet_mod_vec):
-                mat_inv = wi.inv()
-                incdet.update_index(mat_inv, update, ind_mat - offset, ind_mat - offset)
+
         # Update the weight
         self.weight = 0.5 * np.sum(detval_vec)
-        # Update the matrix inversion
-        [
-            wi_gamma_in.update_index(update, ind_mat, ind_mat)
-            for wi_gamma_in, update in zip(self.wi_gamma_in_vec, update_vec)
-        ]
-        [
-            wi_gamma_out.update_index(update, ind_mat, ind_mat)
-            for wi_gamma_out, update in zip(self.wi_gamma_out_vec, update_vec)
-        ]
 
-        if ind_mat - offset >= 0:
-            # We do not update the matrix if the first link is updated (it is just not there)
-            [
-                wi_gamma_in_mod.update_index(update, ind_mat - offset, ind_mat - offset)
-                for wi_gamma_in_mod, update in zip(self.wi_gamma_in_mod_vec, update_vec)
-            ]
-            [
-                wi_gamma_out_mod.update_index(update, ind_mat - offset, ind_mat - offset)
-                for wi_gamma_out_mod, update in zip(self.wi_gamma_out_mod_vec, update_vec)
-            ]
+        # Update the matrix inversion
+        for wi_gamma_in, update in zip(self.wi_gamma_in_vec, update_vec):
+            wi_gamma_in.update_index(update, ind_mat, ind_mat)
+        for wi_gamma_out, update in zip(self.wi_gamma_out_vec, update_vec):
+            wi_gamma_out.update_index(update, ind_mat, ind_mat)
+
+        # Update the modified determinant & matrices
+        for lay in range(self.cfg.nlayer):
+            for ind, mod_link_ind in enumerate(self.mod_link_inds):
+                if mod_link_ind != link_ind:
+                    # We do not update if the link is the one that is excluded in the modified objects
+
+                    offset = 0  # no offset if link_ind < mod_link_ind
+                    if link_ind > mod_link_ind:
+                        offset = 2 * self.cfg.nvirtmodes_link
+
+                    mat_inv = self.wi_gamma_in_mod_vec[lay][ind].inv()
+                    self.incdet_mod_vec[lay][ind].update_index(
+                        mat_inv, update_vec[lay], ind_mat - offset, ind_mat - offset
+                    )
+
+                    self.wi_gamma_in_mod_vec[lay][ind].update_index(
+                        update_vec[lay], ind_mat - offset, ind_mat - offset
+                    )
+
+                    self.wi_gamma_out_mod_vec[lay][ind].update_index(
+                        update_vec[lay], ind_mat - offset, ind_mat - offset
+                    )
 
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
