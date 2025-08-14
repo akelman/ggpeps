@@ -262,8 +262,8 @@ class Z2System2D(System2DBase):
             raise NotImplementedError("The non-translational invariant case is not implemented yet.")
 
         nlayer = num_pg_layer + num_fermionic_layer
-        param_shape = (nlayer, unitcell_size, len(symbolvec))
-        dest_grad = xnp.zeros(param_shape, dtype=xnp.float64)
+        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
+        dest_grad = xnp.zeros(shape, dtype=xnp.float64)
 
         nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
         single_link_offset = 2 * nvirtmodes_link
@@ -334,18 +334,22 @@ class Z2System2D(System2DBase):
                             # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
                             d_el_energy += el_energy_vec[layerind][ind] * (trace_mod - trace_def)
 
-                            dest_grad = backend.array_add(dest_grad, (layerind, uc_ind, symbol_ind), d_el_energy)
+                            dest_grad = backend.array_add(dest_grad, (layerind, ind, uc_ind, symbol_ind), d_el_energy)
 
         dest_grad = xnp.asarray(dest_grad)
-        dest_grad *= nlinks / len(mod_link_inds)  # scale to system size
+        dest_grad *= nlinks / len(
+            mod_link_inds
+        )  # scale to system size - currently only valid when all links should be weighed equally
 
         # We have to weigh the different layers with the electric energy operator expectation of the other layers.
-        # They act as a prefactor in the derivative
+        # They act as a prefactor in the derivative.
+        # This must be done separately over all links.
         if nlayer > 1:
-            for i in range(nlayer):
-                # this only supports the case where calculating on one link - TODO: generalize
-                prod_other_layers = utils.multiply_except(el_energy_vec[:, 0], i)
-                dest_grad = backend.array_mult(dest_grad, i, prod_other_layers)
+            for lay in range(nlayer):
+                for ind in range(len(mod_link_inds)):
+                    prod_other_layers = utils.multiply_except(el_energy_vec[:, ind], lay)
+                    dest_grad = backend.array_mult(dest_grad, (lay, ind), prod_other_layers)
+        dest_grad = xnp.sum(dest_grad, axis=1)  # sum over the links
 
         return dest_grad
 
