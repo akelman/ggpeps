@@ -237,7 +237,7 @@ class Z2System2D(System2DBase):
         unitcell_size: int,
         nvirtmodes_link: int,
         nphysmodes_site: int,
-        mod_link_ind: int,
+        mod_link_inds: tuple[int, ...],
         symbolvec: tuple,
         overall_factors,
         idxarr_vec,
@@ -265,71 +265,77 @@ class Z2System2D(System2DBase):
         param_shape = (nlayer, unitcell_size, len(symbolvec))
         dest_grad = xnp.zeros(param_shape, dtype=xnp.float64)
 
+        nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
+        single_link_offset = 2 * nvirtmodes_link
+        lognorm_default = xnp.sum(lognorm_default_vec)
+
         for layerind in range(nlayer):
 
             # Abbreviations for more readable code
-            mat_b = mat_b_mod_vec[layerind]
-            diff_d_gamma_inv = wi_gamma_out_mod_inv_vec[layerind]
-            single_link_offset = 2 * nvirtmodes_link
-            offset = 2 * lattice_size * nphysmodes_site + single_link_offset
             idxarr = idxarr_vec[layerind]
             overall_factor = overall_factors[layerind]
-            nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
-            gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind]
-            diff_d_inv_gamma_inv = wi_gamma_in_mod_inv_vec[layerind]
 
-            covmat_out_virt = covmat_out_mod_vec[layerind]
-            norm_mod = norm_mod_vec[layerind]
-            lognorm_default = xnp.sum(lognorm_default_vec)
+            for ind, mod_link_ind in enumerate(mod_link_inds):
+                mat_b = mat_b_mod_vec[layerind][ind]
+                diff_d_gamma_inv = wi_gamma_out_mod_inv_vec[layerind][ind]
+                gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind][ind]
+                diff_d_inv_gamma_inv = wi_gamma_in_mod_inv_vec[layerind][ind]
 
-            ###################### Calculation of the derivative ########################
-            for uc_ind in range(unitcell_size):
-                for symbol_ind, symbol in enumerate(symbolvec):
-                    if (layerind, uc_ind, symbol_ind) not in zeroed_params:
-                        # the derivative calculation is compuationally expensive
-                        # we can skip it for parameters that are forced by the ansatz to be zero
+                covmat_out_virt = covmat_out_mod_vec[layerind][ind]
+                norm_mod = norm_mod_vec[layerind][ind]
+                mat_d_mod_inv = mat_d_mod_inv_vec[layerind][ind]
 
-                        deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind]
-                        d_mat_a, d_mat_b, d_mat_d = utils.extract_mod_covmats(
-                            deriv_gamma_maj_sys, mod_link_ind, lattice_size, nphysmodes_site, nvirtmodes_link
-                        )
-                        d_gamma_out = (
-                            d_mat_a
-                            + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
-                            + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
-                            - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
-                        )
-                        # The virtual mode is the last link on the bottom right of the covariance matrix
-                        d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
-                        # Summand with derivative of the covariance matrix
-                        # We re-use the list comprehension from above to use the indices
-                        deriv_pfarr = xnp.array(
-                            [
-                                prefactor
-                                * utils.derivative_pfaffian(
-                                    covmat_out_virt[xnp.ix_(xnp.asarray(ind), xnp.asarray(ind))],
-                                    d_covmat_out_virt[xnp.ix_(xnp.asarray(ind), xnp.asarray(ind))],
-                                )
-                                for prefactor, ind in idxarr
+                ###################### Calculation of the derivative ########################
+                for uc_ind in range(unitcell_size):
+                    for symbol_ind, symbol in enumerate(symbolvec):
+                        if (layerind, uc_ind, symbol_ind) not in zeroed_params:
+                            # the derivative calculation is compuationally expensive
+                            # we can skip it for parameters that are forced by the ansatz to be zero
+
+                            deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[
+                                layerind, uc_ind, symbol_ind
                             ]
-                        )
-                        d_el_energy = xnp.real(overall_factor * xnp.sum(deriv_pfarr)) * xnp.exp(
-                            norm_mod - lognorm_default
-                        )
+                            mod_covmats = utils.extract_mod_covmats(
+                                deriv_gamma_maj_sys, (mod_link_ind,), lattice_size, nphysmodes_site, nvirtmodes_link
+                            )
+                            d_mat_a, d_mat_b, d_mat_d = mod_covmats[0][0], mod_covmats[1][0], mod_covmats[2][0]
+                            d_gamma_out = (
+                                d_mat_a
+                                + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                                + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
+                                - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+                            )
+                            # The virtual mode is the last link on the bottom right of the covariance matrix
+                            d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
+                            # Summand with derivative of the covariance matrix
+                            # We re-use the list comprehension from above to use the indices
+                            deriv_pfarr = xnp.array(
+                                [
+                                    prefactor
+                                    * utils.derivative_pfaffian(
+                                        covmat_out_virt[xnp.ix_(xnp.asarray(inds), xnp.asarray(inds))],
+                                        d_covmat_out_virt[xnp.ix_(xnp.asarray(inds), xnp.asarray(inds))],
+                                    )
+                                    for prefactor, inds in idxarr
+                                ]
+                            )
+                            d_el_energy = xnp.real(overall_factor * xnp.sum(deriv_pfarr)) * xnp.exp(
+                                norm_mod - lognorm_default
+                            )
 
-                        # Summand with derivative of norms
-                        trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
-                        trace_mod = utils.compute_grad_over_norm(
-                            gamma_in_sys_mod,
-                            diff_d_inv_gamma_inv,
-                            d_mat_d,
-                            mat_d_mod_inv_vec[layerind],
-                        )
-                        # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
-                        d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
-                        # Scale to system size
-                        d_el_energy *= nlinks
-                        dest_grad = backend.array_assign(dest_grad, (layerind, uc_ind, symbol_ind), d_el_energy)
+                            # Summand with derivative of norms
+                            trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
+                            trace_mod = utils.compute_grad_over_norm(
+                                gamma_in_sys_mod,
+                                diff_d_inv_gamma_inv,
+                                d_mat_d,
+                                mat_d_mod_inv,
+                            )
+                            # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
+                            d_el_energy += el_energy_vec[layerind] * (trace_mod - trace_def)
+                            # Scale to system size
+                            d_el_energy *= nlinks / len(mod_link_inds)
+                            dest_grad = backend.array_add(dest_grad, (layerind, uc_ind, symbol_ind), d_el_energy)
 
         dest_grad = xnp.asarray(dest_grad)
 
@@ -337,7 +343,8 @@ class Z2System2D(System2DBase):
         # They act as a prefactor in the derivative
         if nlayer > 1:
             for i in range(nlayer):
-                prod_other_layers = utils.multiply_except(el_energy_vec, i)
+                # this only supports the case where calculating on one link - TODO: generalize
+                prod_other_layers = utils.multiply_except(el_energy_vec[:, 0], i)
                 dest_grad = backend.array_mult(dest_grad, i, prod_other_layers)
 
         return dest_grad

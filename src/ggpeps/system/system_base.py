@@ -1526,7 +1526,7 @@ class System2DBase(ABC):
         unitcell_size: int,
         nvirtmodes_link: int,
         nphysmodes_site: int,
-        mod_link_ind: int,
+        mod_link_inds: tuple[int, ...],
         symbolvec: tuple,
         overall_factors,
         idxarr_vec,
@@ -1918,10 +1918,16 @@ class System2DBase(ABC):
         if self._el_energy_op_grad_vec is None:
             # In order to jit, we must pass arrays, not WoodburyInverter objects.
             wi_gamma_in_mod_inv_vec = xnp.asarray(
-                [self.wi_gamma_in_mod_vec[lay].inv() for lay in range(self.cfg.nlayer)]
+                [
+                    [self.wi_gamma_in_mod_vec[lay][ind].inv() for ind in range(len(self.mod_link_inds))]
+                    for lay in range(self.cfg.nlayer)
+                ]
             )
             wi_gamma_out_mod_inv_vec = xnp.asarray(
-                [self.wi_gamma_out_mod_vec[lay].inv() for lay in range(self.cfg.nlayer)]
+                [
+                    [self.wi_gamma_out_mod_vec[lay][ind].inv() for ind in range(len(self.mod_link_inds))]
+                    for lay in range(self.cfg.nlayer)
+                ]
             )
 
             self._el_energy_op_grad_vec = self._compute_el_grad_vec(
