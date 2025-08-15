@@ -1535,8 +1535,8 @@ class System2DBase(ABC):
         covmat_out_mod_vec,
         norm_mod_vec,
         lognorm_default_vec,
-        wi_gamma_in_mod_inv_vec,
-        wi_gamma_out_mod_inv_vec,
+        gamma_in_mod_inv_vec,
+        gamma_out_mod_inv_vec,
         mat_d_mod_inv_vec,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec,
         grad_over_norm_vec,
@@ -1913,13 +1913,13 @@ class System2DBase(ABC):
         """
         if self._el_energy_op_grad_vec is None:
             # In order to jit, we must pass arrays, not WoodburyInverter objects.
-            wi_gamma_in_mod_inv_vec = xnp.asarray(
+            gamma_in_mod_inv_vec = xnp.asarray(
                 [
                     [self.wi_gamma_in_mod_vec[lay][ind].inv() for ind in range(len(self.mod_link_inds))]
                     for lay in range(self.cfg.nlayer)
                 ]
             )
-            wi_gamma_out_mod_inv_vec = xnp.asarray(
+            gamma_out_mod_inv_vec = xnp.asarray(
                 [
                     [self.wi_gamma_out_mod_vec[lay][ind].inv() for ind in range(len(self.mod_link_inds))]
                     for lay in range(self.cfg.nlayer)
@@ -1943,8 +1943,8 @@ class System2DBase(ABC):
                 self.covmat_out_mod_vec,
                 self.norm_mod_vec,
                 self.lognorm_default_vec,
-                wi_gamma_in_mod_inv_vec,
-                wi_gamma_out_mod_inv_vec,
+                gamma_in_mod_inv_vec,
+                gamma_out_mod_inv_vec,
                 self.mat_d_mod_inv_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
                 self.grad_over_norm_vec,

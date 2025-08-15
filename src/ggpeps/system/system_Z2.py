@@ -240,8 +240,8 @@ class Z2System2D(System2DBase):
         covmat_out_mod_vec,
         norm_mod_vec,
         lognorm_default_vec,
-        wi_gamma_in_mod_inv_vec,
-        wi_gamma_out_mod_inv_vec,
+        gamma_in_mod_inv_vec,
+        gamma_out_mod_inv_vec,
         mat_d_mod_inv_vec,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec,
         grad_over_norm_vec,
@@ -264,9 +264,9 @@ class Z2System2D(System2DBase):
 
             for ind, mod_link_ind in enumerate(mod_link_inds):
                 mat_b = mat_b_mod_vec[layerind][ind]
-                diff_d_gamma_inv = wi_gamma_out_mod_inv_vec[layerind][ind]
+                diff_d_gamma_inv = gamma_out_mod_inv_vec[layerind][ind]
                 gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind][ind]
-                diff_d_inv_gamma_inv = wi_gamma_in_mod_inv_vec[layerind][ind]
+                diff_d_inv_gamma_inv = gamma_in_mod_inv_vec[layerind][ind]
 
                 covmat_out_virt = covmat_out_mod_vec[layerind][ind]
                 norm_mod = norm_mod_vec[layerind][ind]
