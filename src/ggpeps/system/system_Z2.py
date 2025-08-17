@@ -192,7 +192,6 @@ class Z2System2D(System2DBase):
 
                 # Instead of writing down all the terms explicitly, we build tuples of the prefactors
                 # and the indices of the covariance matrix.
-                # Then, we compute all terms in a list comprehension.
                 pf_tot = 0.0
                 for prefactor, inds in idxarr:
                     inds = xnp.asarray(inds)

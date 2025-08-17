@@ -1491,12 +1491,12 @@ class System2DBase(ABC):
     @staticmethod
     @abstractmethod
     def _compute_el_energy_op_vec(
-        lognormvec_default,
-        overall_factors,
-        idxarrs,
+        lognormvec_default: xnp.ndarray,
+        overall_factors: tuple,
+        idxarrs: tuple,
         nlayer: int,
-        covmat_out_virt_vec,
-        norm_mod_vec,
+        covmat_out_virt_vec: xnp.ndarray,
+        norm_mod_vec: xnp.ndarray,
     ) -> xnp.ndarray:
         """Compute the electric energy.
 
@@ -1527,20 +1527,20 @@ class System2DBase(ABC):
         nphysmodes_site: int,
         mod_link_inds: tuple[int, ...],
         symbolvec: tuple,
-        overall_factors,
-        idxarr_vec,
-        el_energy_vec,
-        mat_b_mod_vec,
-        gamma_in_sys_mod_vec,
-        covmat_out_mod_vec,
-        norm_mod_vec,
-        lognorm_default_vec,
-        gamma_in_mod_inv_vec,
-        gamma_out_mod_inv_vec,
-        mat_d_mod_inv_vec,
-        gamma_maj_sys_deriv_layvec_ucvec_symbvec,
-        grad_over_norm_vec,
-        zeroed_params,
+        overall_factors: tuple,
+        idxarr_vec: tuple,
+        el_energy_vec: xnp.ndarray,
+        mat_b_mod_vec: xnp.ndarray,
+        gamma_in_sys_mod_vec: xnp.ndarray,
+        covmat_out_mod_vec: xnp.ndarray,
+        norm_mod_vec: xnp.ndarray,
+        lognorm_default_vec: xnp.ndarray,
+        gamma_in_mod_inv_vec: xnp.ndarray,
+        gamma_out_mod_inv_vec: xnp.ndarray,
+        mat_d_mod_inv_vec: xnp.ndarray,
+        gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
+        grad_over_norm_vec: xnp.ndarray,
+        zeroed_params: tuple,
     ):
         """Compute the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
