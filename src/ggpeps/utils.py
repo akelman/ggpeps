@@ -213,8 +213,9 @@ def get_git_hash() -> str:
     return githash.decode("utf-8").strip()
 
 
-def extract_partial_covmats(mat: xnp.ndarray, corner: int):
-    """Extract the partial covariance matrices from a gaussian mapping
+def extract_partial_covmats(mat: xnp.ndarray, corner: int) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
+    """Extract the partial covariance matrices from a gaussian mapping.
+    This function can accept a 2D matrix, or a stack of 2D matrices (i.e. a 3D array).
 
     Args:
         mat (xnp.ndarray): Full covariance matrix
@@ -223,9 +224,9 @@ def extract_partial_covmats(mat: xnp.ndarray, corner: int):
     Returns:
         tuple: Matrices (A,B,D)
     """
-    mat_a = mat[:corner, :corner]
-    mat_b = mat[:corner, corner:]
-    mat_d = mat[corner:, corner:]
+    mat_a = mat[..., :corner, :corner]
+    mat_b = mat[..., :corner, corner:]
+    mat_d = mat[..., corner:, corner:]
     return mat_a, mat_b, mat_d
 
 

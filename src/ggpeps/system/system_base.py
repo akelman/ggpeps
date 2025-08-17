@@ -177,12 +177,6 @@ class System2DBase(ABC):
         self._lognorm_default_vec = None
         return
 
-    def _extract_partial_covmatvec(self, offset: int) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
-        mat_a_vec = self.gamma_maj_sys_vec[:, :offset, :offset]
-        mat_b_vec = self.gamma_maj_sys_vec[:, :offset, offset:]
-        mat_d_vec = self.gamma_maj_sys_vec[:, offset:, offset:]
-        return mat_a_vec, mat_b_vec, mat_d_vec
-
     @property
     def symbolvec(self) -> list[sympy.Symbol]:
         """Return the symbolvec.
@@ -453,7 +447,9 @@ class System2DBase(ABC):
         """
         if self._mat_a_vec is None:
             offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
-            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = self._extract_partial_covmatvec(offset)
+            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = utils.extract_partial_covmats(
+                self.gamma_maj_sys_vec, offset
+            )
         return self._mat_a_vec
 
     @property
@@ -467,7 +463,9 @@ class System2DBase(ABC):
         """
         if self._mat_b_vec is None:
             offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
-            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = self._extract_partial_covmatvec(offset)
+            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = utils.extract_partial_covmats(
+                self.gamma_maj_sys_vec, offset
+            )
         return self._mat_b_vec
 
     @property
@@ -481,7 +479,9 @@ class System2DBase(ABC):
         """
         if self._mat_d_vec is None:
             offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
-            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = self._extract_partial_covmatvec(offset)
+            self._mat_a_vec, self._mat_b_vec, self._mat_d_vec = utils.extract_partial_covmats(
+                self.gamma_maj_sys_vec, offset
+            )
         return self._mat_d_vec
 
     @property
