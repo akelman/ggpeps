@@ -652,7 +652,7 @@ class System2DBase(ABC):
         return self._covmat_out_mod_vec
 
     @property
-    def norm_mod_vec(self) -> list[float]:
+    def norm_mod_vec(self) -> xnp.ndarray:
         """Compute the normalization factor for the modified covariance matrix.
         This is used to compute the electric energy.
         This function returns a vector over layers of these normalization factors.
@@ -685,7 +685,7 @@ class System2DBase(ABC):
                     norm_mod_linkvec.append(norm_mod)
                 norm_mod_layervec_linkvec.append(norm_mod_linkvec)
 
-            self._norm_mod_vec = norm_mod_layervec_linkvec
+            self._norm_mod_vec = xnp.asarray(norm_mod_layervec_linkvec)
         return self._norm_mod_vec
 
     @property

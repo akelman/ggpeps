@@ -160,12 +160,12 @@ class Z2System2D(System2DBase):
     @staticmethod
     @maybe_jit(static_argnames=["overall_factors", "idxarrs", "nlayer"])
     def _compute_el_energy_op_vec(
-        lognormvec_default,
-        overall_factors,
-        idxarrs,
+        lognormvec_default: xnp.ndarray,
+        overall_factors: tuple,
+        idxarrs: tuple,
         nlayer: int,
-        covmat_out_virt_vec,
-        norm_mod_vec,
+        covmat_out_virt_vec: xnp.ndarray,
+        norm_mod_vec: xnp.ndarray,
     ) -> xnp.ndarray:
 
         lognorm_default = xnp.sum(lognormvec_default)
@@ -193,14 +193,12 @@ class Z2System2D(System2DBase):
                 # Instead of writing down all the terms explicitly, we build tuples of the prefactors
                 # and the indices of the covariance matrix.
                 # Then, we compute all terms in a list comprehension.
-                pfarr = []
-                pfvals = []  # without the prefactor
+                pf_tot = 0.0
                 for prefactor, inds in idxarr:
                     inds = xnp.asarray(inds)
                     pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds, inds)])
-                    pfarr.append(prefactor * pfaval)
-                    pfvals.append(pfaval)
-                el_energy_full = overall_factor * xnp.sum(xnp.array(pfarr))
+                    pf_tot += prefactor * pfaval
+                el_energy_full = overall_factor * pf_tot
 
                 el_energy_link = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
                 dest = backend.array_assign(dest, (layerind, ind), el_energy_link)
@@ -232,20 +230,20 @@ class Z2System2D(System2DBase):
         nphysmodes_site: int,
         mod_link_inds: tuple[int, ...],
         symbolvec: tuple,
-        overall_factors,
-        idxarr_vec,
-        el_energy_vec,
-        mat_b_mod_vec,
-        gamma_in_sys_mod_vec,
-        covmat_out_mod_vec,
-        norm_mod_vec,
-        lognorm_default_vec,
-        gamma_in_mod_inv_vec,
-        gamma_out_mod_inv_vec,
-        mat_d_mod_inv_vec,
-        gamma_maj_sys_deriv_layvec_ucvec_symbvec,
-        grad_over_norm_vec,
-        zeroed_params,
+        overall_factors: tuple,
+        idxarr_vec: tuple,
+        el_energy_vec: xnp.ndarray,
+        mat_b_mod_vec: xnp.ndarray,
+        gamma_in_sys_mod_vec: xnp.ndarray,
+        covmat_out_mod_vec: xnp.ndarray,
+        norm_mod_vec: xnp.ndarray,
+        lognorm_default_vec: xnp.ndarray,
+        gamma_in_mod_inv_vec: xnp.ndarray,
+        gamma_out_mod_inv_vec: xnp.ndarray,
+        mat_d_mod_inv_vec: xnp.ndarray,
+        gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
+        grad_over_norm_vec: xnp.ndarray,
+        zeroed_params: tuple,
     ):
 
         nlayer = num_pg_layer + num_fermionic_layer
@@ -295,20 +293,15 @@ class Z2System2D(System2DBase):
                             # The virtual mode is the last link on the bottom right of the covariance matrix
                             d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
                             # Summand with derivative of the covariance matrix
-                            # We re-use the list comprehension from above to use the indices
-                            deriv_pfarr = xnp.array(
-                                [
-                                    prefactor
-                                    * utils.derivative_pfaffian(
-                                        covmat_out_virt[xnp.ix_(xnp.asarray(inds), xnp.asarray(inds))],
-                                        d_covmat_out_virt[xnp.ix_(xnp.asarray(inds), xnp.asarray(inds))],
-                                    )
-                                    for prefactor, inds in idxarr
-                                ]
-                            )
-                            d_el_energy = xnp.real(overall_factor * xnp.sum(deriv_pfarr)) * xnp.exp(
-                                norm_mod - lognorm_default
-                            )
+                            deriv_pf_tot = 0.0
+                            for prefactor, inds in idxarr:
+                                inds = xnp.asarray(inds)
+                                deriv_pf_tot += prefactor * utils.derivative_pfaffian(
+                                    covmat_out_virt[xnp.ix_(inds, inds)],
+                                    d_covmat_out_virt[xnp.ix_(inds, inds)],
+                                )
+
+                            d_el_energy = xnp.real(overall_factor * deriv_pf_tot) * xnp.exp(norm_mod - lognorm_default)
 
                             # Summand with derivative of norms
                             trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
@@ -323,10 +316,8 @@ class Z2System2D(System2DBase):
 
                             dest_grad = backend.array_add(dest_grad, (layerind, ind, uc_ind, symbol_ind), d_el_energy)
 
-        dest_grad = xnp.asarray(dest_grad)
-        dest_grad *= nlinks / len(
-            mod_link_inds
-        )  # scale to system size - currently only valid when all links should be weighed equally
+        # scale to system size - currently only valid when all links should be weighed equally
+        dest_grad *= nlinks / len(mod_link_inds)
 
         # We have to weigh the different layers with the electric energy operator expectation of the other layers.
         # They act as a prefactor in the derivative.
