@@ -234,6 +234,7 @@ class Z2System2D(System2DBase):
         mat_b_mod_vec: xnp.ndarray,
         gamma_in_sys_mod_vec: xnp.ndarray,
         covmat_out_mod_vec: xnp.ndarray,
+        el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
         lognorm_default_vec: xnp.ndarray,
         gamma_in_mod_inv_vec: xnp.ndarray,
@@ -258,15 +259,15 @@ class Z2System2D(System2DBase):
             idxarr = idxarr_vec[layerind]
             overall_factor = overall_factors[layerind]
 
-            for ind, mod_link_ind in enumerate(mod_link_inds):
-                mat_b = mat_b_mod_vec[layerind][ind]
-                diff_d_gamma_inv = gamma_out_mod_inv_vec[layerind][ind]
-                gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind][ind]
-                diff_d_inv_gamma_inv = gamma_in_mod_inv_vec[layerind][ind]
+            for linkind, mod_link_ind in enumerate(mod_link_inds):
+                mat_b = mat_b_mod_vec[layerind][linkind]
+                diff_d_gamma_inv = gamma_out_mod_inv_vec[layerind][linkind]
+                gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind][linkind]
+                diff_d_inv_gamma_inv = gamma_in_mod_inv_vec[layerind][linkind]
 
-                covmat_out_virt = covmat_out_mod_vec[layerind][ind]
-                norm_mod = norm_mod_vec[layerind][ind]
-                mat_d_mod_inv = mat_d_mod_inv_vec[layerind][ind]
+                covmat_out_virt = covmat_out_mod_vec[layerind][linkind]
+                norm_mod = norm_mod_vec[layerind][linkind]
+                mat_d_mod_inv = mat_d_mod_inv_vec[layerind][linkind]
 
                 ###################### Calculation of the derivative ########################
                 for uc_ind in range(unitcell_size):
@@ -292,11 +293,12 @@ class Z2System2D(System2DBase):
                             d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
                             # Summand with derivative of the covariance matrix
                             deriv_pf_tot = 0.0
-                            for prefactor, inds in idxarr:
+                            for ind, (prefactor, inds) in enumerate(idxarr):
                                 inds = xnp.asarray(inds)
                                 deriv_pf_tot += prefactor * utils.derivative_pfaffian(
                                     covmat_out_virt[xnp.ix_(inds, inds)],
                                     d_covmat_out_virt[xnp.ix_(inds, inds)],
+                                    el_pfaffians[layerind, linkind, ind],
                                 )
 
                             d_el_energy = xnp.real(overall_factor * deriv_pf_tot) * xnp.exp(norm_mod - lognorm_default)
@@ -310,9 +312,11 @@ class Z2System2D(System2DBase):
                                 mat_d_mod_inv,
                             )
                             # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
-                            d_el_energy += el_energy_vec[layerind][ind] * (trace_mod - trace_def)
+                            d_el_energy += el_energy_vec[layerind][linkind] * (trace_mod - trace_def)
 
-                            dest_grad = backend.array_add(dest_grad, (layerind, ind, uc_ind, symbol_ind), d_el_energy)
+                            dest_grad = backend.array_add(
+                                dest_grad, (layerind, linkind, uc_ind, symbol_ind), d_el_energy
+                            )
 
         # scale to system size - currently only valid when all links should be weighed equally
         dest_grad *= nlinks / len(mod_link_inds)
@@ -322,9 +326,9 @@ class Z2System2D(System2DBase):
         # This must be done separately over all links.
         if nlayer > 1:
             for lay in range(nlayer):
-                for ind in range(len(mod_link_inds)):
-                    prod_other_layers = utils.multiply_except(el_energy_vec[:, ind], lay)
-                    dest_grad = backend.array_mult(dest_grad, (lay, ind), prod_other_layers)
+                for linkind in range(len(mod_link_inds)):
+                    prod_other_layers = utils.multiply_except(el_energy_vec[:, linkind], lay)
+                    dest_grad = backend.array_mult(dest_grad, (lay, linkind), prod_other_layers)
         dest_grad = xnp.sum(dest_grad, axis=1)  # sum over the links
 
         return dest_grad
