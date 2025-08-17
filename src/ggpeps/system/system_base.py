@@ -92,6 +92,7 @@ class System2DBase(ABC):
         # we store intermediate values to be reused in the gradient calculation
         self._covmat_out_mod_vec: Optional[list[xnp.ndarray]] = None
         self._norm_mod_vec: Optional[list[float]] = None
+        self._el_pfaffians: Optional[xnp.ndarray] = None
         self._lognorm_default_vec: Optional[xnp.ndarray] = None
 
         # Management of the gauge fields
@@ -172,6 +173,7 @@ class System2DBase(ABC):
 
         self._covmat_out_mod_vec = None
         self._norm_mod_vec = None
+        self._el_pfaffians = None
         self._lognorm_default_vec = None
         return
 
@@ -650,6 +652,55 @@ class System2DBase(ABC):
 
             self._covmat_out_mod_vec = xnp.asarray(covmat_out_mod_vec)
         return self._covmat_out_mod_vec
+
+    @property
+    def el_pfaffians(self) -> xnp.ndarray:
+        """Compute the pfaffians of the modified covariance matrices used for the electric energy and its derivative.
+        This function returns a vector over layers and links of these pfaffians.
+        This is a get function.
+
+        Returns:
+            xnp.array: a vector of pfaffians
+        """
+        if self._el_pfaffians is None:
+            self._el_pfaffians = self._compute_el_pfaffians(
+                self.cfg.nlayer, self.cfg.idxarr_vec, self.covmat_out_mod_vec
+            )
+        return self._el_pfaffians
+
+    @staticmethod
+    @maybe_jit(static_argnames=["nlayer", "idxarr_vec"])
+    def _compute_el_pfaffians(
+        nlayer: int,
+        idxarr_vec: tuple,
+        covmat_out_virt_vec: xnp.ndarray,
+    ) -> xnp.ndarray:
+        """Compute the pfaffians of the modified covariance matrices used for the electric energy and its derivative.
+        This function returns a vector over layers and links of these pfaffians.
+        The pfaffians are not multiplied by the prefactors included in idxarr_vec.
+
+        Returns:
+            xnp.ndarray: a vector of pfaffians
+        """
+
+        nlinks = covmat_out_virt_vec.shape[1]
+        el_pfaffians = xnp.zeros((nlayer, nlinks, len(idxarr_vec[0])))
+
+        # TODO: vectorize!
+        for layerind in range(nlayer):
+
+            idxarr = idxarr_vec[layerind]
+
+            covmat_out_virt_linkvec = covmat_out_virt_vec[layerind]
+
+            # Iterate over the links
+            for linkind, covmat_out_virt in enumerate(covmat_out_virt_linkvec):
+
+                for ind, (prefactor, inds) in enumerate(idxarr):
+                    inds = xnp.asarray(inds)
+                    pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds, inds)])
+                    el_pfaffians = backend.array_assign(el_pfaffians, (layerind, linkind, ind), pfaval)
+        return el_pfaffians
 
     @property
     def norm_mod_vec(self) -> xnp.ndarray:
@@ -1495,7 +1546,7 @@ class System2DBase(ABC):
         overall_factors: tuple,
         idxarrs: tuple,
         nlayer: int,
-        covmat_out_virt_vec: xnp.ndarray,
+        el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
     ) -> xnp.ndarray:
         """Compute the electric energy.
@@ -1507,7 +1558,7 @@ class System2DBase(ABC):
             overall_factors: prefactors for building the required Pfaffians
             idxarrs: indices for building the required Pfaffians
             nlayer (int): total number of layers (pure gauge + fermionic)
-            covmat_out_virt_vec:
+            el_pfaffians:
             norm_mod_vec:
 
         Returns:
@@ -1842,7 +1893,7 @@ class System2DBase(ABC):
                 self.cfg.el_overall_factors,
                 self.cfg.idxarr_vec,
                 self.cfg.nlayer,
-                self.covmat_out_mod_vec,
+                self.el_pfaffians,
                 self.norm_mod_vec,
             )
         return self._el_energy_op_vec

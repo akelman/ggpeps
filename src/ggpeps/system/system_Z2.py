@@ -164,13 +164,13 @@ class Z2System2D(System2DBase):
         overall_factors: tuple,
         idxarrs: tuple,
         nlayer: int,
-        covmat_out_virt_vec: xnp.ndarray,
+        el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
     ) -> xnp.ndarray:
 
         lognorm_default = xnp.sum(lognormvec_default)
 
-        nlinks = covmat_out_virt_vec.shape[1]  # number of links on which the electric energy is computed
+        nlinks = norm_mod_vec.shape[1]  # number of links on which the electric energy is computed
         dest = xnp.zeros((nlayer, nlinks))
 
         # TODO: vectorize!
@@ -179,11 +179,11 @@ class Z2System2D(System2DBase):
             idxarr = idxarrs[layerind]
             overall_factor = overall_factors[layerind]
 
-            covmat_out_virt_linkvec = covmat_out_virt_vec[layerind]
+            # covmat_out_virt_linkvec = covmat_out_virt_vec[layerind]
             norm_mod_linkvec = norm_mod_vec[layerind]
 
             # Iterate over the links
-            for ind, (covmat_out_virt, norm_mod) in enumerate(zip(covmat_out_virt_linkvec, norm_mod_linkvec)):
+            for linkind, norm_mod in enumerate(norm_mod_linkvec):
 
                 ###################### Calculation of <P> ########################
 
@@ -193,14 +193,13 @@ class Z2System2D(System2DBase):
                 # Instead of writing down all the terms explicitly, we build tuples of the prefactors
                 # and the indices of the covariance matrix.
                 pf_tot = 0.0
-                for prefactor, inds in idxarr:
-                    inds = xnp.asarray(inds)
-                    pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds, inds)])
+                for ind, (prefactor, inds) in enumerate(idxarr):
+                    pfaval = el_pfaffians[layerind, linkind, ind]
                     pf_tot += prefactor * pfaval
                 el_energy_full = overall_factor * pf_tot
 
                 el_energy_link = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
-                dest = backend.array_assign(dest, (layerind, ind), el_energy_link)
+                dest = backend.array_assign(dest, (layerind, linkind), el_energy_link)
 
         return xnp.asarray(dest)
 
