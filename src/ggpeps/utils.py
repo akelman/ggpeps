@@ -260,11 +260,11 @@ def extract_mod_covmats(
         size = mat.shape[-1]  # size of gamma_maj_sys
 
         # include virt modes on given link in the "physical" set
-        phys_inds = [k for k in range(phys_offset)] + [k for k in range(virt_start, virt_end)]
-        virt_inds = [k for k in range(size) if k not in phys_inds]  # all other virtual modes
+        phys_inds_list = [k for k in range(phys_offset)] + [k for k in range(virt_start, virt_end)]
+        virt_inds_list = [k for k in range(size) if k not in phys_inds_list]  # all other virtual modes
 
-        phys_inds = xnp.asarray(phys_inds)
-        virt_inds = xnp.asarray(virt_inds)
+        phys_inds = xnp.asarray(phys_inds_list)
+        virt_inds = xnp.asarray(virt_inds_list)
 
         mat_a_mod_link = mat[(..., *xnp.ix_(phys_inds, phys_inds))]
         mat_b_mod_link = mat[(..., *xnp.ix_(phys_inds, virt_inds))]
