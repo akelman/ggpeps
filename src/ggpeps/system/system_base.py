@@ -522,6 +522,8 @@ class System2DBase(ABC):
         "Physical" modes here includes the virtual modes on the link on which the electric energy is computed.
         This is a get function.
 
+        dim: 2 (for majorana) * [ nsites * nphysmodespersite (# phys modes) + 2 * ncopy (virt modes/link) ]
+
         Returns:
             [xnp.ndarray]: Correlations of the physical modes for the full system.
         """
@@ -628,9 +630,7 @@ class System2DBase(ABC):
                 for ind, link_ind in enumerate(self.mod_link_inds):
 
                     # Get the modified matrices, which include the virtual modes of the given link among the physical
-                    mat_a = self.mat_a_mod_vec[
-                        layerind, ind
-                    ]  # dim: 2 (for majorana) * [ nsites * nphysmodespersite (# phys modes) + 2 * ncopy (virt modes/link) ]
+                    mat_a = self.mat_a_mod_vec[layerind, ind]
                     mat_b = self.mat_b_mod_vec[layerind, ind]
                     diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind][ind].inv()
 
@@ -645,7 +645,7 @@ class System2DBase(ABC):
                         size,
                     )
 
-                    # The library pfapack (used in the el energy) is rather picky about the anti-symmetrization (to 1e-14)
+                    # pfapack (used in the el energy) is rather picky about the anti-symmetrization (to 1e-14)
                     covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
                     covmat_out_linkvec.append(covmat_out_virt)
                 covmat_out_mod_vec.append(covmat_out_linkvec)
@@ -925,8 +925,9 @@ class System2DBase(ABC):
         This function can accept a 2D matrix, or a stack of 2D matrices (i.e. a 3D array).
 
         Args:
-            link_ind (tuple[int, ...]): indices of the links to exclude (returned array will have a second axis of this length)
-            gamma_in_sys (xnp.ndarray): Covariance matrix of the links for the whole system, or a stack of such matrices.
+            link_ind (tuple[int, ...]): indices of the links to exclude
+                                        (returned array will have a second axis of this length)
+            gamma_in_sys (xnp.ndarray): Covariance matrix of the links for the whole system, or stack of such matrices.
 
         Returns:
             xnp.ndarray: Gauged, modified covariance matrices of the system for each layer and link

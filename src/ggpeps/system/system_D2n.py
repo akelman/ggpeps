@@ -1,12 +1,10 @@
 import logging
-from pfapack import pfaffian as pf
 
 import numpy as np
 from ggpeps import xnp as xnp
 from ggpeps import xscipy as xscipy
 
 import ggpeps
-from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
 from ggpeps import modearray
@@ -28,9 +26,11 @@ class D2nSystem2D(System2DBase):
 
     Order of the paramvec: see the functions that create the symbolvec in the configs.
         We split the real and the imaginary part of the parameters into independent variables.
-    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3... and so on}.
-    Mode order of gamma_dirac: {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3... and so on}.
-    Mode order of gamma_maj: {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... and so on}.
+    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3...}.
+    Mode order of gamma_dirac:
+        {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3...}.
+    Mode order of gamma_maj:
+        {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2...}.
     """
 
     def __init__(self, cfg):
@@ -114,13 +114,13 @@ class D2nSystem2D(System2DBase):
             float: Logarithm of the weight of the proposed configuration
         """
         # TODO: If we create a new state class object, avoiding singular transitions could be handled better
-        # (by keeping the previous state and then not having to update the current system back to the original gauge field)
+        # (by keeping the previous state and then not having to update the system back to the original gauge field)
         current_theta = xnp.copy(self._gaugefieldvec[link_ind])
         singular = False
         color_to_check = None
         g_transition_1, g_transition_2 = (
             self.cfg.gaugemgr.transition_pair
-        )  # The transition that connects the two unconnected subgtoups of elements that are connected by singular paths
+        )  # The transition that connects the two unconnected subgroups that are connected by singular paths
         for (
             g_tuple
         ) in self.cfg.gaugemgr.forbidden_transitions:  # check if the update matrix is expected to be singular
@@ -174,9 +174,9 @@ class D2nSystem2D(System2DBase):
                 or (for vertical links)
                 {d_1_1, d_2_1, u_1_1, u_2_1,d_1_2,d_2_2,u_1_2,u_2_2},
             2 copies:
-                {l1_1_1, l1_2_1, r1_1_1, r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2,l1_2_2,r1_1_2,r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}
+                {l1_1_1,l1_2_1,r1_1_1,r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2,l1_2_2,r1_1_2,r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}
                 or (for vertical links)
-                {d1_1_1, d1_2_1, u1_1_1, u1_2_1,d2_1_1,d2_2_1,u2_1_1,u2_2_1,d1_1_2,d1_2_2,u1_1_2,u1_2_2,d2_1_2,d2_2_2,u2_1_2,u2_2_2},
+                {d1_1_1,d1_2_1,u1_1_1,u1_2_1,d2_1_1,d2_2_1,u2_1_1,u2_2_1,d1_1_2,d1_2_2,u1_1_2,u1_2_2,d2_1_2,d2_2_2,u2_1_2,u2_2_2},
         The naming convention here is <mode letter><number of copy>_<majorana mode>_<color>.
         We order first by link and then by copy then by color.
 
@@ -193,7 +193,9 @@ class D2nSystem2D(System2DBase):
         real_g_transpose = xnp.real(g_transpose)
         imag_g_transpose = xnp.imag(g_transpose)
         if xnp.sum(xnp.asarray(coord)) % 2 == 0:  # gauging is different for different sublattices
-            rot_right = xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
+            # Note that this gauging is true only for b modes and c virtual modes
+            # (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
+            rot_right = xnp.block(
                 # TODO: Generalize this to fermionic layers as well.
                 [
                     [real_g_transpose, imag_g_transpose],
@@ -201,8 +203,10 @@ class D2nSystem2D(System2DBase):
                 ],
             )  # This is the rot_right for the mode order of {r_1_1, r_1_2,r_2_1,r_2_2}
         else:
-            rot_right = xnp.block(  # Note that this gauging is true only for b modes and c virtual modes (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
-                # TODO: Generalizze this to fermionic layers as well.
+            # Note that this gauging is true only for b modes and c virtual modes
+            # (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
+            # TODO: Generalizze this to fermionic layers as well.
+            rot_right = xnp.block(
                 [
                     [real_g_transpose, -imag_g_transpose],
                     [imag_g_transpose, real_g_transpose],
@@ -225,12 +229,14 @@ class D2nSystem2D(System2DBase):
         wrong_order = cls.get_wrong_single_link_majorana_mode_order_by_copy_then_color(ncopy)
         rep_dim = 2  # for this system, the representation dimension is always 2
         correct_order_first_color_then_copy = cls.get_single_link_majorana_mode_order(ncopy, rep_dim)
+        # Generate permutation matrix to change the modes's order to
+        # {l1_1_1,l1_2_1,r1_1_1,r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2,l1_2_2,r1_1_2,r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}.
         perm_mat = xnp.array(
             modearray.generate_permutation_matrix(
                 wrong_order,
                 correct_order_first_color_then_copy,
             )
-        )  # Generate permutation matrix to change the modes's order to {l1_1_1, l1_2_1, r1_1_1, r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2, l1_2_2, r1_1_2, r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}.
+        )
         rotmat = xnp.transpose(perm_mat) @ rotmat @ perm_mat
 
         return rotmat
@@ -285,7 +291,7 @@ class D2nSystem2D(System2DBase):
         singular = False
         g_transition_1, g_transition_2 = (
             self.cfg.gaugemgr.transition_pair
-        )  # The transition that connects the two unconnected subgtoups of elements that are connected by singular paths
+        )  # The transition that connects the two unconnected subgroups that are connected by singular paths
         for (
             g_tuple
         ) in self.cfg.gaugemgr.forbidden_transitions:  # check if the update matrix is expected to be singular
@@ -313,9 +319,9 @@ class D2nSystem2D(System2DBase):
             xnp.allclose(previous_g, g_transition_2) and xnp.allclose(theta, g_transition_1)
         ):  # in this case we update only the color m=1 (second color)
             color_to_update = 1
-        self.update_non_singular_gauge_ind(
-            link_ind, theta, color_to_update=color_to_update
-        )  # in case it was originally a singular, we update the gauge field to the final value. In the other case we can update the gauge straightforwardly
+        # In case it was originally a singular, we update the gauge field to the final value.
+        # In the other case we can update the gauge straightforwardly
+        self.update_non_singular_gauge_ind(link_ind, theta, color_to_update=color_to_update)
 
     def update_non_singular_gauge_ind(self, link_ind, theta, color_to_update=None):
         """Update method that is called upon changing a gauge field.
@@ -347,7 +353,8 @@ class D2nSystem2D(System2DBase):
                 2 * self.cfg.nvirtmodes_link * link_ind + 2 * color_to_update * self.cfg.nvirtmodes_link_per_color
             )
             rotmat = backend.slice_matrix(  # In this case we slice rotmat to only contain the relevant color
-                # We assume a specific ordering of the modes: (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
+                # We assume a specific ordering of the modes:
+                # (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
                 rotmat,
                 2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
                 2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1),
@@ -359,8 +366,10 @@ class D2nSystem2D(System2DBase):
         for layer in range(self.cfg.nlayer):
             gamma_neutral_gauge = self.gamma_gauge_neutral_vec[layer][dir]
             if color_to_update is not None:
-                gamma_neutral_gauge = backend.slice_matrix(  # In this case we slice gamma_neutral_gauge to only contain the relevant color
-                    # We assume a specific ordering of the modes: (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
+                # In this case we slice gamma_neutral_gauge to only contain the relevant color
+                gamma_neutral_gauge = backend.slice_matrix(
+                    # We assume a specific ordering of the modes:
+                    # (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
                     xnp.copy(gamma_neutral_gauge),
                     2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
                     2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1),
