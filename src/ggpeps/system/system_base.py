@@ -90,8 +90,8 @@ class System2DBase(ABC):
         self._mat_d_mod_inv_vec: Optional[xnp.ndarray] = None
         # Electric energy intermediate values - if we compute the electric energy,
         # we store intermediate values to be reused in the gradient calculation
-        self._covmat_out_mod_vec: Optional[list[xnp.ndarray]] = None
-        self._norm_mod_vec: Optional[list[float]] = None
+        self._covmat_out_mod_vec: Optional[xnp.ndarray] = None
+        self._norm_mod_vec: Optional[xnp.ndarray] = None
         self._el_pfaffians: Optional[xnp.ndarray] = None
         self._lognorm_default_vec: Optional[xnp.ndarray] = None
 
@@ -295,7 +295,7 @@ class System2DBase(ABC):
             self._gamma_maj_layervec_sitevec = xnp.real(smat @ self.gamma_dirac_layervec_sitevec @ xnp.transpose(smat))
         return self._gamma_maj_layervec_sitevec
 
-    def _expand_gamma_maj_to_system(self, covmats_layervec_sitevec):
+    def _expand_gamma_maj_to_system(self, covmats_layervec_sitevec) -> xnp.ndarray:
         """Expand the covariance matrix in Majorana modes to the full system.
         In order to obtain a structure that is convenient for further computations,
             (A    B)
@@ -305,7 +305,7 @@ class System2DBase(ABC):
         This method is overwritten for the U1 system.
 
         Args:
-            covmats_layervec_sitevec (list[list[xnp.ndarray]]):
+            covmats_layervec_sitevec (xnp.ndarray):
                 list (per layer) of 2D covariance matrices of all sites; total shape (nlayer, nsites, nmodes, nmodes)
 
         Returns:
