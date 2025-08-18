@@ -88,7 +88,10 @@ class BackendJax_Z2(BackendBase):
 
     @staticmethod
     def pfaffian(mat):
-        return py_pfaffian.jax.pfaffian(mat)
+        # The jax pfaffian implementation does not properly guard against singular matrices, in which case
+        # it returns nan's. We replace these with 0's.
+        val = py_pfaffian.jax.pfaffian(mat)
+        return jnp.where(jnp.isnan(val), 0.0, val)
 
     @staticmethod
     def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
