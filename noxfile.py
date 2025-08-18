@@ -48,6 +48,7 @@ def typing(session):
 
     session.run(
         "mypy",
+        "--enable-incomplete-feature=PreciseTupleTypes",
         "--install-types",  # install missing types for third-party packages
         "--non-interactive",  # don't ask user for confirmation before installing missing types
         *files,
