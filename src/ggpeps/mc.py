@@ -103,6 +103,7 @@ class MonteCarloEvaluator(Evaluator):
     evaluator_type = "mc"
 
     def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system: System2DBase):
+        self.obsdict: dict[str, Measurement]  # specify the type used in this class
         super().__init__(evaluator_cfg, system)
 
         self.step: int = 0
@@ -119,6 +120,7 @@ class MonteCarloEvaluator(Evaluator):
     def init_measurements(self) -> None:
         """Add empty measurement vectors to the measurement dictionary"""
         binsize = self.cfg.binsize
+        self.obsdict = {}  # reset
 
         self.obsdict["acceptance_prob"] = Measurement("Acceptance Probablity", binsize)
         self.obsdict["energy"] = Measurement("Energy", binsize)
