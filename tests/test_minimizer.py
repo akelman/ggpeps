@@ -257,8 +257,6 @@ class TestMinimizerZ2(unittest.TestCase):
         sys_right = system.Z2System2D(system_cfg_right)
 
         mc_config = MonteCarloEvaluatorConfig(warmup_steps=1000, meas_steps=10000, binsize=1, compute_grads=True)
-        mc_config.gauge_fixing = False
-
         min_config = MinimizerConfig()
 
         mc_mgr = EvaluatorManager(system.Z2System2D, system_cfg, mc_config, 0)
