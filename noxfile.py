@@ -36,11 +36,14 @@ def typing(session):
         "src/ggpeps/evaluator_manager.py",
         "src/ggpeps/evaluator.py",
         "src/ggpeps/exacteval.py",
-        "src/ggpeps/lattice.py",
         "src/ggpeps/gauge.py",
-        "src/ggpeps/utils.py",
-        "src/ggpeps/minimizer.py",
+        "src/ggpeps/lattice.py",
+        "src/ggpeps/mamatrix_container.py",
         "src/ggpeps/measurement.py",
+        "src/ggpeps/minimizer.py",
+        "src/ggpeps/modearray.py",
+        "src/ggpeps/nevmc.py",
+        "src/ggpeps/utils.py",
     ]
 
     files += glob.glob("src/ggpeps/system/config*.py")
