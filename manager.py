@@ -83,12 +83,18 @@ def args2logname(args, couplings: dict) -> str:
         str: Filename of the log file
     """
     chem_str = "_".join([f"{val:.3f}" for val in couplings["g_chem"]])
-    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_gchem_{chem_str}"
+    couplings_str = (
+        f"gel_{couplings['g_el']:.3f}_gmag_{couplings['g_mag']:.3f}_gint_{couplings['g_int']:.3f}"
+        f"_gmass_{couplings['g_mass']:.3f}_gchem_{chem_str}"
+    )
 
     if "exact" in args.mode:
         fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}.log"
     else:
-        fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}_num_pg_layer_{args.num_pg_layer}_num_fermionic_layer_{args.num_fermionic_layer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
+        fname = (
+            f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}_num_pg_layer_{args.num_pg_layer}"
+            f"_num_fermionic_layer_{args.num_fermionic_layer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
+        )
     return os.path.join(args.output, fname)
 
 

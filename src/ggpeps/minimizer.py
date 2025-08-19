@@ -288,13 +288,18 @@ class Minimizer:
         if self.min_result is not None:
             sys_cfg = self.evaluator_manager.system_cfg
 
-            chem_str = "_".join([f"{val:.3f}" for val in sys_cfg.g_chem])
+            chem_str = ",".join([f"{val:.3f}" for val in sys_cfg.g_chem])
             couplings_str = (
-                f"gel_{sys_cfg.g_el}_gmag_{sys_cfg.g_mag}_gint_{sys_cfg.g_int}_gmass_{sys_cfg.g_mass}_gchem_{chem_str}"
+                f"gel_{sys_cfg.g_el:.3f}_gmag_{sys_cfg.g_mag:.3f}_gint_{sys_cfg.g_int:.3f}"
+                f"_gmass_{sys_cfg.g_mass:.3f}_gchem_{chem_str}"
             )
 
-            fname_mc_summary = f"summary_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
-            fname_result_min = f"result_min_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}.pkl"
+            cfg_str = (
+                f"{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}"
+                f"_ncopy_{sys_cfg.ncopy:02d}_nlayer_{sys_cfg.nlayer:02d}"
+            )
+            fname_mc_summary = f"summary_min_L_{cfg_str}.pkl"
+            fname_result_min = f"result_min_L_{cfg_str}.pkl"
 
             if self.last_result is not None:
                 # last_result may be None if caching is on and the last result was not computed

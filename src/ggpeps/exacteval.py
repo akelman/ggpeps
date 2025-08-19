@@ -335,7 +335,13 @@ class ExactEvaluator(Evaluator):
 
     def save(self, output_dir: str = ".") -> None:
         """Convenience function to generate a filename and save the summary in one step"""
-        syscfg = self.system.cfg
+        sys_cfg = self.system.cfg
 
-        fname_summary = f"summary_exact_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}.pkl"
+        chem_str = ",".join([f"{val:.3f}" for val in sys_cfg.g_chem])
+        couplings_str = (
+            f"gel_{sys_cfg.g_el:.3f}_gmag_{sys_cfg.g_mag:.3f}_gint_{sys_cfg.g_int:.3f}"
+            f"_gmass_{sys_cfg.g_mass:.3f}_gchem_{chem_str}"
+        )
+
+        fname_summary = f"summary_exact_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}.pkl"
         self.save_summary(os.path.join(output_dir, fname_summary))
