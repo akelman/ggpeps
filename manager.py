@@ -367,7 +367,7 @@ def main(args):
     logger.info("============================")
 
     # Caching info
-    logger.info("======= CACHE INFO ========")
+    logger.info("======== CACHE INFO ========")
     if args.ignore_cache:
         logger.info("Cache is disabled.")
     else:
