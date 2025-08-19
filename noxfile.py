@@ -43,8 +43,8 @@ def typing(session):
         "src/ggpeps/measurement.py",
     ]
 
-    # Add all files in src/ggpeps/system/ starting with config
     files += glob.glob("src/ggpeps/system/config*.py")
+    files += glob.glob("src/ggpeps/system/backend*.py")
 
     session.run(
         "mypy",
