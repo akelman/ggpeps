@@ -27,14 +27,25 @@ class NEVMC_EvaluatorConfig:
     It is more convenient than passing an extensive number of parameters to the constructor.
     """
 
-    def __init__(self):
-        self.warmup_steps = None
+    def __init__(
+        self,
+        warmup_steps: int = 10000,
+        meas_steps: int = 10000,
+        binsize: int = 1,
+        compute_grads: bool = False,
+        update_size_per_step: int = 1,
+        warmup_log_freq: int = 5000,
+        run_log_freq: int = 20000,
+    ) -> None:
+
+        self.warmup_steps = warmup_steps
+        self.meas_steps = meas_steps
+        self.binsize = binsize
+        self.compute_grads = compute_grads
+        self.update_size_per_step = update_size_per_step  # this can be set anywhere from 1 to nlinks (inclusive)
+
         self._seed = None
         self._rng_state = None
-        self.meas_steps = None
-        self.binsize: int = 1
-        self.compute_grads: bool = False
-        self.update_size_per_step: int = 1  # this can be set anywhere from 1 to nlinks (inclusive)
 
         ### beg NEVMC ###
         self.store_gauge = []
@@ -45,8 +56,8 @@ class NEVMC_EvaluatorConfig:
         ### end NEVMC ###
 
         # Logging frequency
-        self.warmup_log_freq: int = 5000  # log every X steps
-        self.run_log_freq: int = 20000
+        self.warmup_log_freq: int = warmup_log_freq  # log every X steps
+        self.run_log_freq: int = run_log_freq
 
     @property
     def seed(self):

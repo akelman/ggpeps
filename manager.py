@@ -244,7 +244,14 @@ def main(args):
         sys.exit(1)
 
     if "nevmc" in args.mode:
-        mc_config = NEVMC_EvaluatorConfig()
+        mc_config = NEVMC_EvaluatorConfig(
+            warmup_steps=args.warmup_steps,
+            meas_steps=args.meas_steps,
+            binsize=args.binsize,
+            update_size_per_step=update_size,
+            warmup_log_freq=args.warmup_log_freq,
+            run_log_freq=args.run_log_freq,
+        )
     else:
         mc_config = MonteCarloEvaluatorConfig(
             warmup_steps=args.warmup_steps,
