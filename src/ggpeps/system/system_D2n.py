@@ -35,6 +35,7 @@ class D2nSystem2D(System2DBase):
     """
 
     def __init__(self, cfg: D6System2D_Config):
+        self.cfg: D6System2D_Config
         super().__init__(cfg)
 
     # Calculating weight attempt
@@ -449,7 +450,7 @@ class D2nSystem2D(System2DBase):
     @staticmethod
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
-        overall_factors: tuple,
+        overall_factors: tuple[float, ...],
         idxarrs: tuple,
         nlayer: int,
         el_pfaffians: xnp.ndarray,

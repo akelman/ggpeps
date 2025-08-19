@@ -161,7 +161,7 @@ class Z2System2D(System2DBase):
     @maybe_jit(static_argnames=["overall_factors", "idxarrs", "nlayer"])
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
-        overall_factors: tuple,
+        overall_factors: tuple[float, ...],
         idxarrs: tuple,
         nlayer: int,
         el_pfaffians: xnp.ndarray,

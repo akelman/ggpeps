@@ -1544,8 +1544,8 @@ class System2DBase(ABC):
     @abstractmethod
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
-        overall_factors: tuple,
-        idxarrs: tuple,
+        overall_factors: tuple[float, ...],
+        idxarrs: tuple[tuple[complex, tuple[int, ...]], ...],
         nlayer: int,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
@@ -2378,7 +2378,7 @@ class System2DBase(ABC):
         return mode_order_str
 
 
-def get_pfaffian_arrays(modes: list, coefficients: list) -> tuple:
+def get_pfaffian_arrays(modes: list, coefficients: list) -> tuple[tuple[complex, tuple[int, ...]], ...]:
     """Generate the arrays used for list comprehension to extract the required pfaffians, with the correct
     prefactors, used in the calculation of the electric energy and electric gradients.
 

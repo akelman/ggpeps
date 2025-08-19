@@ -112,6 +112,11 @@ class Config2DBase(ABC):
         else:
             self.g_chem = g_chem
 
+        # Settings for the electric energy
+        # these depend on the ansatz, so we only declare their type here
+        self.idxarr_vec: tuple[tuple[complex, tuple[int, ...]], ...]
+        self.el_overall_factors: tuple[float, ...]
+
     def __str__(self) -> str:
         """Define a string method that can be used, e.g., in filenaming.
         This string doesn't include enough information to reconstruct the config"""

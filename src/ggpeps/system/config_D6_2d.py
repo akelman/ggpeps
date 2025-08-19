@@ -61,6 +61,7 @@ class D6System2D_Config(Config2DBase):
         unitcell_size=1,
         enforce_u1_symmetry=True,
     ):
+        self.gaugemgr: gauge.D2nGauge
         super().__init__(
             gauge.D2nGauge(3),
             lattice,
