@@ -208,7 +208,7 @@ class EvaluatorManager:
 
         return result_df
 
-    def collect(self, resultvec):
+    def collect(self, resultvec: list[MonteCarloEvaluator]) -> Evaluator:
         """Unify the results of multiple runners into a single Evaluator.
 
         Args:
@@ -217,6 +217,7 @@ class EvaluatorManager:
         Returns:
             Evaluator: evaluator with information from all runners
         """
+        assert isinstance(self.cfg, MonteCarloEvaluatorConfig)
         system = self.system_cls(self.system_cfg)
         dest = MonteCarloEvaluator(self.cfg, system)
         if len(resultvec) > 1:
