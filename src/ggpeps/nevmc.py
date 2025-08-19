@@ -48,8 +48,8 @@ class NEVMC_EvaluatorConfig:
         self._rng_state = None
 
         ### beg NEVMC ###
-        self.store_gauge = []
-        self.store_weights = []
+        self.store_gauge: list = []
+        self.store_weights: list = []
         self.store_first_cfgs = 0
         self.store_first_weight = 0
         self.last_work = 0
