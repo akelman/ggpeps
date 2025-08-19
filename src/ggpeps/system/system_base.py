@@ -753,7 +753,7 @@ class System2DBase(ABC):
             self._lognorm_default_vec = self.calculate_lognormvec_inc(all_factors=True)
         return self._lognorm_default_vec
 
-    def initialize_gamma_in_and_trackers(self):
+    def initialize_gamma_in_and_trackers(self) -> tuple:
         """Initialize gamma_in (the covariance matrix of the projectors),
         as well as the trackers (Woodbury inverters and incremental determinants), which depend on gamma_in.
 
@@ -834,7 +834,7 @@ class System2DBase(ABC):
         )
 
     @property
-    def gamma_in_sys_vec(self):
+    def gamma_in_sys_vec(self) -> xnp.ndarray:
         """Get function to return the gauged gamma_in_sys_vec, the covariance matrices
         of the links for the whole system for each layer.
 
