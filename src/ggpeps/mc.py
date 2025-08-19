@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 
 import os
 import gzip
@@ -30,11 +30,11 @@ class MonteCarloEvaluatorConfig:
     It is more convenient than passing an extensive number of parameters to the constructor.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.warmup_steps = None
-        self._seed = None
-        self._rng_state = None
-        self.meas_steps = None
+        self._seed: Optional[int] = None
+        self._rng_state: Optional[np.random.RandomState] = None
+        self.meas_steps: Optional[int] = None
         self.binsize: int = 1
         self.compute_grads: bool = False
         self.update_size_per_step: int = 1  # this can be set anywhere from 1 to nlinks (inclusive)
@@ -69,21 +69,22 @@ class MonteCarloEvaluatorConfig:
             "Request to set the state directly was ignored."
         )
 
-    def get_rng_state_internal_repr(self) -> tuple:
+    def get_rng_state_internal_repr(self) -> dict:
         """Get the state of the RNG.
 
         Returns:
-            tuple[str, np.NDArray[uint32], int, int, float]
+            dict
         """
-        return self._rng_state.get_state()
+        rng_state = self.rng_state  # this will initialize the RNG if it is not set
+        return rng_state.get_state()
 
-    def set_rng_state_internal_repr(self, state_repr: tuple) -> None:
+    def set_rng_state_internal_repr(self, state_repr: dict) -> None:
         """Set the state of the RNG.
 
         Args:
-            state_repr (tuple[str, np.NDArray[uint32], int, int, float])
+            state_repr (dict)
         """
-        self._rng_state.set_state(state_repr)
+        self.rng_state.set_state(state_repr)
         return
 
     def __str__(self) -> str:
@@ -298,10 +299,13 @@ class MonteCarloEvaluator(Evaluator):
             self.step += 1
 
         # Update observables which depend on expectation values
-        if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
-            self.obsdict["variance_occupation"].extend(
-                (self.obsdict["average_occupation"].datavec - self.obsdict["average_occupation"].mean()) ** 2
-            )
+        if self.system.cfg.num_fermionic_layer > 0:
+            # We only compute occupations if there are fermionic layers
+            # TODO: this could be done much more efficiently with arrays
+            # TODO: this variance observable has not been properly tested
+            avg = self.obsdict["average_occupation"].mean()
+            vals = [np.asarray((val - avg) ** 2) for val in self.obsdict["average_occupation"].datavec]
+            self.obsdict["variance_occupation"].extend(vals)
         if self.cfg.compute_grads:
             # Update gradients which depend on expectation values
             # For interface reasons, we insert meas_steps copies of this gradient
@@ -400,7 +404,7 @@ class MonteCarloEvaluator(Evaluator):
 
     #### Data management functions ####
 
-    def get_obs_mean(self, obsname: str) -> Union[float, np.ndarray]:
+    def get_obs_mean(self, obsname: str) -> Union[None, float, np.ndarray]:
         """Returns the mean value of an observable
 
         Args:
@@ -415,8 +419,9 @@ class MonteCarloEvaluator(Evaluator):
         meas = self.obsdict[obsname]
         if meas is not None and len(meas) > 0:
             return meas.mean()
+        return None
 
-    def get_obs_mean_err(self, obsname: str) -> Union[float, np.ndarray]:
+    def get_obs_mean_err(self, obsname: str) -> Union[None, float, np.ndarray]:
         """Returns the error on the mean of an observable
 
         Args:
@@ -470,8 +475,9 @@ class MonteCarloEvaluator(Evaluator):
 
         if meas is not None and len(meas) > 0:
             return meas.mean_err()
+        return None
 
-    def get_obs_std(self, obsname: str) -> Union[float, np.ndarray]:
+    def get_obs_std(self, obsname: str) -> Union[None, float, np.ndarray]:
         """Returns the standard deviation of an observable
 
         Args:
@@ -486,8 +492,9 @@ class MonteCarloEvaluator(Evaluator):
         meas = self.obsdict[obsname]
         if meas is not None and len(meas) > 0:
             return meas.std()
+        return None
 
-    def get_obs_var(self, obsname: str) -> Union[float, np.ndarray]:
+    def get_obs_var(self, obsname: str) -> Union[None, float, np.ndarray]:
         """Returns the variance of an observable
 
         Args:
@@ -502,6 +509,7 @@ class MonteCarloEvaluator(Evaluator):
         meas = self.obsdict[obsname]
         if meas is not None and len(meas) > 0:
             return meas.var()
+        return None
 
     def save_full(self, fname_full: str) -> None:
         """Save the full MonteCarloEstimator

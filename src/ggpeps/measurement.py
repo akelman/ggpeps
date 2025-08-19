@@ -46,7 +46,7 @@ class Measurement:
         else:
             self.counter += 1
 
-    def extend(self, data: Union[xnp.ndarray, list[xnp.ndarray], list[float]]) -> None:
+    def extend(self, data: Union[list[xnp.ndarray], list[float]]) -> None:
         """Extend the internal datavec directly without binning
 
         Args:

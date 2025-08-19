@@ -29,7 +29,7 @@ class Evaluator(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def get_obs_mean(self, obs: str) -> Union[float, np.ndarray]:
+    def get_obs_mean(self, obs: str) -> Union[None, float, np.ndarray]:
         """Get the mean value of an observable
 
         Args:
