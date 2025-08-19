@@ -39,6 +39,7 @@ def typing(session):
         "src/ggpeps/gauge.py",
         "src/ggpeps/lattice.py",
         "src/ggpeps/mamatrix_container.py",
+        "src/ggpeps/mc.py",
         "src/ggpeps/measurement.py",
         "src/ggpeps/minimizer.py",
         "src/ggpeps/modearray.py",
