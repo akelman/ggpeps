@@ -207,7 +207,7 @@ class MonteCarloEvaluator(Evaluator):
 
         return
 
-    def energy_gradient_mc(self):
+    def energy_gradient_mc(self) -> np.ndarray:
         # Compute the energy gradient from the MC results
         meas_grad_over_norm = self.obsdict["grad_norm"]
 
