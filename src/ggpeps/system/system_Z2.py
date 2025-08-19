@@ -243,7 +243,7 @@ class Z2System2D(System2DBase):
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
-    ):
+    ) -> xnp.ndarray:
 
         nlayer = num_pg_layer + num_fermionic_layer
         shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))

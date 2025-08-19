@@ -788,7 +788,7 @@ class System2DBase(ABC):
         """
 
         # Initialize empty lists
-        gamma_in_sys_vec = []
+        gamma_in_sys_listvec = []
         wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec = [], [], []
         wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec = [], [], []
 
@@ -801,12 +801,12 @@ class System2DBase(ABC):
             neutral_gauge_X = xnp.kron(id, self.gamma_gauge_neutral_vec[layer][Direction.X])
             neutral_gauge_Y = xnp.kron(id, self.gamma_gauge_neutral_vec[layer][Direction.Y])
             gamma_in_sys = xscipy.linalg.block_diag(neutral_gauge_X, neutral_gauge_Y)
-            gamma_in_sys_vec.append(gamma_in_sys)
+            gamma_in_sys_listvec.append(gamma_in_sys)
 
             wi_gamma_in_vec.append(utils.WoodburyInverter(self.mat_d_inv_vec[layer] - gamma_in_sys))
             wi_gamma_out_vec.append(utils.WoodburyInverter(self.mat_d_vec[layer] - gamma_in_sys))
             incdet_vec.append(utils.IncLogAbsDeterminant(self.mat_d_inv_vec[layer] - gamma_in_sys))
-        gamma_in_sys_vec = xnp.array(gamma_in_sys_vec)
+        gamma_in_sys_vec = xnp.array(gamma_in_sys_listvec)
 
         # Initialize the modified gamma_in_sys and trackers for the full system
         gamma_in_sys_mod_layervec_linkvec = self._extract_gamma_in_sys_mod_vec(self.mod_link_inds, gamma_in_sys_vec)
@@ -909,7 +909,7 @@ class System2DBase(ABC):
         return self._wi_gamma_out_vec
 
     @property
-    def gamma_in_sys_mod_vec(self):
+    def gamma_in_sys_mod_vec(self) -> xnp.ndarray:
         """Get function to return the gauged gamma_in_sys_vec with a single link modification
         (to compute the electric energy), the covariance matrix of the links for the whole system.
 
@@ -919,7 +919,7 @@ class System2DBase(ABC):
         gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(self.mod_link_inds, self.gamma_in_sys_vec)
         return gamma_in_sys_mod_vec
 
-    def _extract_gamma_in_sys_mod_vec(self, link_inds: tuple[int, ...], gamma_in_sys: xnp.ndarray):
+    def _extract_gamma_in_sys_mod_vec(self, link_inds: tuple[int, ...], gamma_in_sys: xnp.ndarray) -> xnp.ndarray:
         """Get function to return the gauged gamma_in_sys_vec with a single link modification
         (to compute the electric energy), the covariance matrix of the links for the whole system.
         This function can accept a 2D matrix, or a stack of 2D matrices (i.e. a 3D array).
@@ -1008,7 +1008,7 @@ class System2DBase(ABC):
 
     ################## Computation of derivatives ######################
 
-    def compute_gamma_dirac_deriv(self, symb: sympy.Symbol, layerind: int, uc_ind: int):
+    def compute_gamma_dirac_deriv(self, symb: sympy.Symbol, layerind: int, uc_ind: int) -> xnp.ndarray:
         """Return the numerical derivative of the gamma_dirac, the Dirac covariance matrix of one fiducial state.
 
         Args:
@@ -1031,7 +1031,7 @@ class System2DBase(ABC):
         d_rb = -xnp.conjugate(d_lt)
         return 1.0j * xnp.block([[d_lt, d_rt], [d_lb, d_rb]])
 
-    def compute_gamma_maj_deriv(self, symb: sympy.Symbol, layerind: int, uc_ind: int):
+    def compute_gamma_maj_deriv(self, symb: sympy.Symbol, layerind: int, uc_ind: int) -> xnp.ndarray:
         """Return the numerical derivative of the gamma_maj, the Majorana covariance matrix of one fiducial state.
 
         Args:
@@ -1163,7 +1163,7 @@ class System2DBase(ABC):
     ################## Weight management ######################
 
     @property
-    def weight(self):
+    def weight(self) -> float:
         """Return the Monte Carlo weight of the current configuration.
         This function is a get function.
         If the value does not exist, it will be calculated.
@@ -1178,11 +1178,11 @@ class System2DBase(ABC):
         return self._weight
 
     @weight.setter
-    def weight(self, val):
+    def weight(self, val: float) -> None:
         """Setter of the weight"""
         self._weight = val
 
-    def calculate_weight_attempt(self, link_ind: int, theta: float, all_factors=False):
+    def calculate_weight_attempt(self, link_ind: int, theta: float, all_factors=False) -> float:
         """
         Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
@@ -1280,7 +1280,7 @@ class System2DBase(ABC):
         )
         return res
 
-    def calculate_lognorm_inc(self, all_factors=False):
+    def calculate_lognorm_inc(self, all_factors=False) -> float:
         """Update the logarithm of the norm incrementally (using IncDet and Woodbury)
 
         Args:
@@ -1292,7 +1292,7 @@ class System2DBase(ABC):
         normvec = self.calculate_lognormvec_inc(all_factors=all_factors)
         return xnp.sum(normvec)
 
-    def update_lognorm_inc(self, offset, updates, all_factors=False):
+    def update_lognorm_inc(self, offset, updates, all_factors=False) -> float:
         """Updat the logarithm of the norm incrementally with the given update.
 
         Args:
@@ -1426,12 +1426,12 @@ class System2DBase(ABC):
         # TODO: log error
 
     @property
-    def gamma_gauge_neutral_vec(self):
+    def gamma_gauge_neutral_vec(self) -> xnp.ndarray:
         if self._gamma_gauge_neutral_vec_dirs is None:
             self._gamma_gauge_neutral_vec_dirs = self._generate_gamma_gauge_neutral_dict()
         return self._gamma_gauge_neutral_vec_dirs
 
-    def _generate_gamma_gauge_neutral_dict(self):
+    def _generate_gamma_gauge_neutral_dict(self) -> xnp.ndarray:
         """Define the ungauged covariance matrix of a single link.
         The substitution method must ensure a consistent order of the modes.
         The direction parameter controls which covariance matrix is retrieved,
@@ -1594,7 +1594,7 @@ class System2DBase(ABC):
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
-    ):
+    ) -> xnp.ndarray:
         """Compute the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
         Since several operations needed for the computation of the gradient and the energy are similar,
@@ -2130,7 +2130,7 @@ class System2DBase(ABC):
                     )
         return self._all_occupations
 
-    def meson_string(self, path) -> float:
+    def meson_string(self, path: list[tuple[int, bool]]) -> float:
         """Calculate the value of a meson string given a path.
 
         Args:
@@ -2142,7 +2142,7 @@ class System2DBase(ABC):
         meson_val = xnp.sum(self._meson_string_vec(path))  # sum over layers/flavors
         return meson_val
 
-    def compute_path(self, path):
+    def compute_path(self, path: list[tuple[int, bool]]) -> float:
         """Compute the observable corresponding the path given as an argument
 
         Args:
