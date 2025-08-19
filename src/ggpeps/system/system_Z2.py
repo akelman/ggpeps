@@ -363,8 +363,6 @@ class Z2System2D(System2DBase):
 
             mass_energy_op = backend.array_assign(mass_energy_op, layer_ind, layer_mass_energy)
 
-        mass_energy_op = xnp.asarray(mass_energy_op)
-
         return mass_energy_op
 
     @staticmethod
@@ -385,10 +383,10 @@ class Z2System2D(System2DBase):
         num_fermionic_layer: int,
         unitcell_size: int,
         symbolvec: tuple,
-        d_gamma_out_symbolvec: xnp.array,
+        d_gamma_out_symbolvec: xnp.ndarray,
         zeroed_params: tuple,
         use_trans_inv: bool = True,
-    ):
+    ) -> xnp.ndarray:
 
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
@@ -576,7 +574,7 @@ class Z2System2D(System2DBase):
         num_fermionic_layer: int,
         sublattice_factors: tuple,
         ferm_covmat_vec: xnp.ndarray,
-    ):
+    ) -> xnp.ndarray:
 
         nlayer = num_pg_layer + num_fermionic_layer
         chem_energy_op = xnp.zeros(nlayer)

@@ -1182,7 +1182,7 @@ class System2DBase(ABC):
         """Setter of the weight"""
         self._weight = val
 
-    def calculate_weight_attempt(self, link_ind: int, theta: float, all_factors=False) -> float:
+    def calculate_weight_attempt(self, link_ind: int, theta: np.ndarray, all_factors=False) -> float:
         """
         Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
@@ -1641,7 +1641,7 @@ class System2DBase(ABC):
         d_gamma_out_symbolvec: xnp.ndarray,
         zeroed_params: tuple,
         use_trans_inv: bool = True,
-    ):
+    ) -> xnp.ndarray:
         """Compute the mass energy gradient.
 
         This is an abstract method and has to be overwritten in a subclass.

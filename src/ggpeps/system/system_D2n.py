@@ -10,6 +10,7 @@ from ggpeps.system.backend import backend
 from ggpeps import modearray
 
 from .system_base import System2DBase
+from .config_D6_2d import D6System2D_Config
 
 # from ggpeps.system.global_funcs import update_gauge_ind
 
@@ -33,12 +34,12 @@ class D2nSystem2D(System2DBase):
         {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2...}.
     """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg: D6System2D_Config):
         super().__init__(cfg)
 
     # Calculating weight attempt
     def calculate_weight_attempt_non_singular(
-        self, link_ind: int, theta: xnp.array, all_factors=False, color_to_check=None
+        self, link_ind: int, theta: xnp.ndarray, all_factors=False, color_to_check=None
     ):
         """
         Compute the weight of an update attempt in which the link index link_ind is substituted for theta
@@ -91,7 +92,7 @@ class D2nSystem2D(System2DBase):
         ]
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
 
-    def calculate_weight_attempt(self, link_ind: int, theta: xnp.array, all_factors=False):
+    def calculate_weight_attempt(self, link_ind: int, theta: np.ndarray, all_factors=False):
         """
         This method overwrites a method in System2DBase. For now, we need it only for the D2n systems.
 
@@ -457,8 +458,8 @@ class D2nSystem2D(System2DBase):
         dest = xnp.zeros(nlayer)
         return xnp.asarray(dest)
 
+    @staticmethod
     def _compute_el_grad_vec(
-        self,
         lattice_size: int,
         num_pg_layer: int,
         num_fermionic_layer: int,
@@ -482,8 +483,11 @@ class D2nSystem2D(System2DBase):
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
-    ):
-        gradients = xnp.zeros(self.cfg.param_shape())
+    ) -> xnp.ndarray:
+
+        nlayer = num_pg_layer + num_fermionic_layer
+        param_shape = (nlayer, unitcell_size, len(symbolvec))
+        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
         return gradients
 
     @staticmethod
@@ -503,11 +507,11 @@ class D2nSystem2D(System2DBase):
         num_pg_layer: int,
         num_fermionic_layer: int,
         unitcell_size: int,
-        symbolvec: list,
-        d_gamma_out_symbolvec: xnp.array,
-        zeroed_params: list,
+        symbolvec: tuple,
+        d_gamma_out_symbolvec: xnp.ndarray,
+        zeroed_params: tuple,
         use_trans_inv: bool = True,
-    ):
+    ) -> xnp.ndarray:
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
         gradients = xnp.zeros(param_shape, dtype=xnp.float64)
@@ -547,14 +551,14 @@ class D2nSystem2D(System2DBase):
 
     @staticmethod
     def _compute_chem_energy_op_vec(
-        self,
         lattice_size: int,
         num_pg_layer: int,
         num_fermionic_layer: int,
         sublattice_factors: tuple,
         ferm_covmat_vec: xnp.ndarray,
-    ):
-        chem_energy_op = xnp.zeros(self.cfg.nlayer)
+    ) -> xnp.ndarray:
+        nlayer = num_pg_layer + num_fermionic_layer
+        chem_energy_op = xnp.zeros(nlayer)
         return chem_energy_op
 
     @staticmethod
