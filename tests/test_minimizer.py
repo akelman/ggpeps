@@ -256,11 +256,7 @@ class TestMinimizerZ2(unittest.TestCase):
         sys_left = system.Z2System2D(system_cfg_left)
         sys_right = system.Z2System2D(system_cfg_right)
 
-        mc_config = MonteCarloEvaluatorConfig()
-        mc_config.warmup_steps = 1000
-        mc_config.meas_steps = 10000
-        mc_config.binsize = 1
-        mc_config.compute_grads = True
+        mc_config = MonteCarloEvaluatorConfig(warmup_steps=1000, meas_steps=10000, binsize=1, compute_grads=True)
         mc_config.gauge_fixing = False
 
         min_config = MinimizerConfig()

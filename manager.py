@@ -233,22 +233,27 @@ def main(args):
     utils.setup_logger(logger, log_filename, args.level)
 
     # Set up the MC Config
-    if "nevmc" in args.mode:
-        mc_config = NEVMC_EvaluatorConfig()
-    else:
-        mc_config = MonteCarloEvaluatorConfig()
-    mc_config.warmup_steps = args.warmup_steps
-    mc_config.meas_steps = args.meas_steps
-    mc_config.binsize = args.binsize
     if args.use_systemsize_updates or args.update_size == "system":
-        mc_config.update_size_per_step = 2 * L**2
+        update_size = 2 * L**2
     elif args.update_size == "halfsystem":
-        mc_config.update_size_per_step = L**2
+        update_size = L**2
     elif args.update_size.isdecimal():
-        mc_config.update_size_per_step = int(args.update_size)
+        update_size = int(args.update_size)
     else:
         logger.error("Unrecognized value for update_size.")
         sys.exit(1)
+
+    if "nevmc" in args.mode:
+        mc_config = NEVMC_EvaluatorConfig()
+    else:
+        mc_config = MonteCarloEvaluatorConfig(
+            warmup_steps=args.warmup_steps,
+            meas_steps=args.meas_steps,
+            binsize=args.binsize,
+            update_size_per_step=update_size,
+            warmup_log_freq=args.warmup_log_freq,
+            run_log_freq=args.run_log_freq,
+        )
 
     # Set up EC config
     ec_config = ExactEvaluatorConfig()
@@ -414,8 +419,6 @@ def main(args):
         logger.info(f"Update size: {mc_config.update_size_per_step} (out of {2*L**2} total links)")
         logger.info(f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)")
         logger.info("============================")
-        mc_config.warmup_log_freq = args.warmup_log_freq
-        mc_config.run_log_freq = args.run_log_freq
     if "min" in args.mode:
         logger.info("====== MINIMIZER INFO ======")
         logger.info(f"Method: {args.method.upper()}")

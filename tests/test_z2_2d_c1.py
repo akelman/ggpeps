@@ -1395,10 +1395,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=0)
         system_cfg.paramvec = paramvec
-        mc_config = MonteCarloEvaluatorConfig()
-        mc_config.warmup_steps = 10
-        mc_config.meas_steps = 10
-        mc_config.binsize = 1
+        mc_config = MonteCarloEvaluatorConfig(warmup_steps=10, meas_steps=10, binsize=1)
         mc_config.gauge_fixing = False
         mc_mgr = EvaluatorManager(system.Z2System2D, system_cfg, mc_config, 0)
         mc_result = mc_mgr.simulate()
@@ -1421,10 +1418,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         exact_ev = ExactEvaluator(exact_cfg, sys_exact)
         res = exact_ev.evaluate()
 
-        mc_config = MonteCarloEvaluatorConfig()
-        mc_config.binsize = 1
-        mc_config.meas_steps = 40000
-        mc_config.warmup_steps = 10000
+        mc_config = MonteCarloEvaluatorConfig(warmup_steps=10000, meas_steps=40000, binsize=1)
         mc_config.gauge_fixing = False
         mc = MonteCarloEvaluator(mc_config, sys_mc)
         mc.evaluate()

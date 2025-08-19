@@ -30,18 +30,30 @@ class MonteCarloEvaluatorConfig:
     It is more convenient than passing an extensive number of parameters to the constructor.
     """
 
-    def __init__(self) -> None:
-        self.warmup_steps = None
-        self._seed: Optional[int] = None
-        self._rng_state: Optional[np.random.RandomState] = None
-        self.meas_steps: Optional[int] = None
-        self.binsize: int = 1
-        self.compute_grads: bool = False
-        self.update_size_per_step: int = 1  # this can be set anywhere from 1 to nlinks (inclusive)
+    def __init__(
+        self,
+        warmup_steps: int = 10000,
+        meas_steps: int = 10000,
+        binsize: int = 1,
+        compute_grads: bool = False,
+        update_size_per_step: int = 1,
+        warmup_log_freq: int = 5000,
+        run_log_freq: int = 20000,
+    ) -> None:
+
+        self.warmup_steps = warmup_steps
+        self.meas_steps = meas_steps
+        self.binsize = binsize
+        self.compute_grads = compute_grads
+        self.update_size_per_step = update_size_per_step  # this can be set anywhere from 1 to nlinks (inclusive)
 
         # Logging frequency
-        self.warmup_log_freq: int = 5000
-        self.run_log_freq: int = 20000
+        self.warmup_log_freq: int = warmup_log_freq
+        self.run_log_freq: int = run_log_freq
+
+        # Randomness
+        self._seed: Optional[int] = None
+        self._rng_state: Optional[np.random.RandomState] = None
 
     @property
     def seed(self) -> int:

@@ -16,11 +16,7 @@ class TestMC(unittest.TestCase):
     def test_mc_observable_length_binsize1(self):
         """Ensure that the length of the observables is correct"""
 
-        mc_cfg = MonteCarloEvaluatorConfig()
-        mc_cfg.warmup_steps = 7
-        mc_cfg.meas_steps = 4
-        mc_cfg.binsize = 1
-        mc_cfg.compute_grads = True
+        mc_cfg = MonteCarloEvaluatorConfig(warmup_steps=7, meas_steps=4, binsize=1, compute_grads=True)
         mc_evaluator = MonteCarloEvaluator(mc_cfg, self.sys)
         mc_evaluator.evaluate()
 
@@ -37,11 +33,7 @@ class TestMC(unittest.TestCase):
         measurement"""
 
         binsize = 5
-        mc_cfg = MonteCarloEvaluatorConfig()
-        mc_cfg.warmup_steps = 70
-        mc_cfg.meas_steps = 40
-        mc_cfg.binsize = binsize
-        mc_cfg.compute_grads = True
+        mc_cfg = MonteCarloEvaluatorConfig(warmup_steps=70, meas_steps=40, binsize=binsize, compute_grads=True)
         mc_evaluator = MonteCarloEvaluator(mc_cfg, self.sys)
         mc_evaluator.evaluate()
 
