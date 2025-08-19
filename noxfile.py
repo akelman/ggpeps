@@ -45,6 +45,7 @@ def typing(session):
 
     files += glob.glob("src/ggpeps/system/config*.py")
     files += glob.glob("src/ggpeps/system/backend*.py")
+    files += glob.glob("src/ggpeps/system/system*.py")
 
     session.run(
         "mypy",
