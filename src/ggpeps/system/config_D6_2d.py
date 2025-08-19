@@ -73,6 +73,7 @@ class D6System2D_Config(Config2DBase):
             num_pg_layer,
             num_fermionic_layer,
             unitcell_size,
+            enforce_u1_symmetry,
         )
 
         # Translation invariance (or variance)
@@ -127,8 +128,11 @@ class D6System2D_Config(Config2DBase):
                     coord = (layer_ind, uc_ind, t_ind)
                     zeroed_params.append(coord)
 
-        # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec:
-        zero_for_fermionic_layer = [3, 13, 1, 2, 4, 5, 11, 12, 14, 15]
+        if self.u1_symmetry:
+            # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec:
+            zero_for_fermionic_layer = [3, 13, 1, 2, 4, 5, 11, 12, 14, 15]
+        else:
+            zero_for_fermionic_layer = []
         for layer_ind in range(self.num_pg_layer, self.nlayer):
             for uc_ind in range(self.unitcell_size):
                 for ind in zero_for_fermionic_layer:
