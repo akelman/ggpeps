@@ -144,12 +144,7 @@ class ExactEvaluator(Evaluator):
                     data["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
                     data["grad_norm"].append(self.system.grad_over_norm_vec)
 
-            # TODO: handle this better - boundary should not be here!
-            if ggpeps.PREFERRED_BACKEND == "jax":
-                for key, val in data.items():
-                    data[key] = np.asarray(val)
-
-            # Convert all lists to arrays
+            # Convert all lists or jax arrays to numpy arrays
             data = {key: np.asarray(data[key]) for key in data}
 
             # We need to change from log values to regular values here
