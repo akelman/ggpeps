@@ -191,7 +191,7 @@ class U1System2D(System2DBase):
         rot_minus = self._generate_rotmat_half(np.transpose(np.conj(gauge_field)))
         return block_diag(rot_plus, rot_minus)
 
-    def update_gauge_ind(self, link_ind, theta):
+    def _update_gauge_ind(self, link_ind: int, theta: xnp.ndarray) -> None:
         # Update the gaugefield
         self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
 

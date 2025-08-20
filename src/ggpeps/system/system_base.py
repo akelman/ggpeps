@@ -1409,7 +1409,7 @@ class System2DBase(ABC):
     ################## Local Gauge ######################
 
     @property
-    def gaugefieldvec(self):
+    def gaugefieldvec(self) -> xnp.ndarray:
         """Return the vector of gauge fields.
 
         Returns:
@@ -1469,14 +1469,15 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def update_gauge_ind(self, link_ind, theta):
+    def _update_gauge_ind(self, link_ind: int, theta: xnp.ndarray) -> None:
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
         and updates all incremental trackers of determinants and inverses.
         The re-calculation of determinants and inverses for the norm would be
         prohibitively expensive.
 
-        This method overwrites an abstract method in System2DBase.
+        This method is private because it should only accept xnp.ndarray as input
+        (though it may work with np.ndarrary, because jax will often convert it automatically).
 
         Args:
             link_ind (int): Link index to be updated
@@ -1484,28 +1485,44 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
-    def update_gauge_full_system(self, gaugeconfig):
-        """Replace all gauge fields on the links by the values given in gaugeconfig.
+    def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray) -> None:
+        """Update a gauge field at a given link index by a new value.
+        This function is called from outside the system, and so accepts a gauge field value as np.ndarray.
+        We convert here to xnp.ndarray.
 
         Args:
-            gaugeconfig (xnp.ndarray): Array of new values for the gauge field
+            link_ind (int): Link index of the gauge field to be updated
+            theta (np.array): New value for the gauge field
+        """
+        theta = xnp.asarray(gauge_val)
+        if not xnp.allclose(self.gaugefieldvec[link_ind], theta):
+            # only actually do the update if it's a different gauge field
+            self._update_gauge_ind(link_ind, theta)
+
+    def update_gauge_full_system(self, gaugeconfig: list[np.ndarray]) -> None:
+        """Replace all gauge fields on the links by the values given in gaugeconfig.
+        This function is called from outside the system, and so accepts a list of gauge field values as np.ndarrays.
+        We convert here to xnp.ndarrays.
+
+        Args:
+            gaugeconfig (list[np.ndarray]): Array of new values for the gauge field
         """
         for link_ind, gauge_val in enumerate(gaugeconfig):
-            theta = xnp.asarray(gaugeconfig[link_ind])
-            if not xnp.allclose(self._gaugefieldvec[link_ind], theta):
+            theta = xnp.asarray(gauge_val)
+            if not xnp.allclose(self.gaugefieldvec[link_ind], theta):
                 # only actually do the update if it's a different gauge field
-                self.update_gauge_ind(link_ind, gauge_val)
+                self._update_gauge_ind(link_ind, theta)
 
-    def update_gauge_coord(self, coord, dir, theta):
+    def update_gauge_coord(self, coord: tuple[int, int], dir: Direction, gauge_val: np.ndarray) -> None:
         """Update a gauge field at a given coordinate and direction by a new value
 
         Args:
             coord (tuple): Coordinate of the vertex
             dir (Direction): Direction of the link
-            theta (xnp.array): New value for the gauge field
+            theta (np.array): New value for the gauge field
         """
         ind = self.cfg.lattice.coord2ind_dir(coord, dir)
-        self.update_gauge_ind(ind, theta)
+        self.update_gauge_ind(ind, gauge_val)
 
     def calculate_update_gamma_in(self, offset, update_mat, gamma_in_sys):
         """Compute an update between the current gamma_in and the new gamma_in

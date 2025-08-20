@@ -67,7 +67,7 @@ class Z2System2D(System2DBase):
         rotmat = xnp.kron(xnp.eye(ncopy), dest)
         return rotmat
 
-    def update_gauge_ind(self, link_ind, theta):
+    def _update_gauge_ind(self, link_ind: int, theta: xnp.ndarray) -> None:
 
         # Update the gaugefield
         self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)

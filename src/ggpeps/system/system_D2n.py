@@ -137,7 +137,7 @@ class D2nSystem2D(System2DBase):
                 current_theta, theta
             )  # get a non singular path between the two gauge values
             for g in path:
-                self.update_gauge_ind(link_ind, g)
+                self._update_gauge_ind(link_ind, g)
             current_g = xnp.copy(path[-1])
             if (xnp.allclose(current_g, g_transition_1) and xnp.allclose(theta, g_transition_2)) or (
                 xnp.allclose(current_g, g_transition_2) and xnp.allclose(theta, g_transition_1)
@@ -149,8 +149,8 @@ class D2nSystem2D(System2DBase):
             )  # calculate the weight of the last gauge value
 
             for g in path[-2::-1]:  # go back to the original gauge field
-                self.update_gauge_ind(link_ind, g)
-            self.update_gauge_ind(link_ind, current_theta)  # go back to the original gauge field
+                self._update_gauge_ind(link_ind, g)
+            self._update_gauge_ind(link_ind, current_theta)  # go back to the original gauge field
 
         else:  # the update matrix is not singular and we can update the gauge straightforwardly
             if (xnp.allclose(current_theta, g_transition_1) and xnp.allclose(theta, g_transition_2)) or (
@@ -278,7 +278,7 @@ class D2nSystem2D(System2DBase):
 
         return mode_order_str
 
-    def update_gauge_ind(self, link_ind, theta):
+    def _update_gauge_ind(self, link_ind: int, theta: xnp.ndarray) -> None:
         """This method updates a gauge field on a single side. It first checks whether the update is singular,
         and proceeds accordingly:
 
