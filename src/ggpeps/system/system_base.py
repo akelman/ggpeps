@@ -1524,7 +1524,9 @@ class System2DBase(ABC):
         ind = self.cfg.lattice.coord2ind_dir(coord, dir)
         self.update_gauge_ind(ind, gauge_val)
 
-    def calculate_update_gamma_in(self, offset, update_mat, gamma_in_sys):
+    def calculate_update_gamma_in(
+        self, offset: int, update_mat: xnp.ndarray, gamma_in_sys: xnp.ndarray
+    ) -> xnp.ndarray:
         """Compute an update between the current gamma_in and the new gamma_in
 
         Args:
@@ -1634,7 +1636,7 @@ class System2DBase(ABC):
         num_fermionic_layer: int,
         ferm_cov_vec: xnp.ndarray,
         use_trans_inv: bool = True,
-    ):
+    ) -> xnp.ndarray:
         """Compute the mass term of the Hamiltonian (per layer).
 
         This is an abstract method and has to be overwritten in a subclass.
@@ -1681,7 +1683,7 @@ class System2DBase(ABC):
         ferm_covmat_vec: xnp.ndarray,
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
-    ):
+    ) -> xnp.ndarray:
         """Compute the interaction energy (per layer) - the energy due to the interaction of the
         physical fermions with the gauge fields.
 
@@ -1702,7 +1704,7 @@ class System2DBase(ABC):
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
         zeroed_params: tuple,
-    ):
+    ) -> xnp.ndarray:
         """Compute the interaction energy gradient.
         This is an abstract method and has to be overwritten in a subclass.
         """
@@ -1740,7 +1742,7 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def _meson_string_vec(self, path):
+    def _meson_string_vec(self, path: list[tuple[int, bool]]) -> xnp.ndarray:
         r"""Compute a layer resolved meson string for the given path.
         This is \psi^dagger (start) * String * \psi(end) before particle-hole,
         and assumes that start and end are on the same sublattice.

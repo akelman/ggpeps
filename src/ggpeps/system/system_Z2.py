@@ -201,7 +201,7 @@ class Z2System2D(System2DBase):
                 el_energy_link = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
                 dest = backend.array_assign(dest, (layerind, linkind), el_energy_link)
 
-        return xnp.asarray(dest)
+        return dest
 
     @staticmethod
     @maybe_jit(
@@ -341,7 +341,7 @@ class Z2System2D(System2DBase):
         num_fermionic_layer: int,
         ferm_cov_vec: xnp.ndarray,
         use_trans_inv: bool = True,
-    ):
+    ) -> xnp.ndarray:
 
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
@@ -414,7 +414,7 @@ class Z2System2D(System2DBase):
                     # further terms of the derivative are included higher up in the computation stack
                     # because computing them requires knowing various expectation values, which are not available here
 
-        return xnp.array(gradients)
+        return gradients
 
     @staticmethod
     @maybe_jit(
@@ -434,7 +434,7 @@ class Z2System2D(System2DBase):
         ferm_covmat_vec: xnp.ndarray,
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
-    ):
+    ) -> xnp.ndarray:
         """
         Note: this function assumes that U = U^dagger, which is only valid for Z2.
         For other groups, the calculation will not be as simple.
@@ -498,7 +498,7 @@ class Z2System2D(System2DBase):
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
         zeroed_params: tuple,
-    ):
+    ) -> xnp.ndarray:
         """
         Note: this function assumes that U = U^dagger, which is only valid for Z2.
         For other groups, the calculation will not be as simple.
@@ -556,7 +556,7 @@ class Z2System2D(System2DBase):
                             )
                             gradients = backend.array_add(gradients, (layer_ind, uc_ind, symbol_ind), grad)
 
-        return xnp.array(gradients)
+        return gradients
 
     @staticmethod
     @staticmethod
@@ -622,7 +622,7 @@ class Z2System2D(System2DBase):
         sublattice_factors: tuple,
         zeroed_params: tuple,
         d_gamma_out_vec: xnp.ndarray,
-    ):
+    ) -> xnp.ndarray:
 
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
@@ -655,9 +655,9 @@ class Z2System2D(System2DBase):
 
         return gradients
 
-    def _meson_string_vec(self, path):
+    def _meson_string_vec(self, path: list[tuple[int, bool]]) -> xnp.ndarray:
 
-        meson_op_vec = [0] * self.cfg.num_pg_layer
+        meson_op_vec = xnp.zeros(self.cfg.nlayer)
 
         # value of the fields
         path_factor = self.compute_path(path)
@@ -685,8 +685,9 @@ class Z2System2D(System2DBase):
                 )
             )
 
-            meson_op_vec.append(xnp.abs(layer_val))  # TODO: is the absolute value necessary? why?
-        return xnp.array(meson_op_vec)
+            # TODO: is the absolute value necessary? why?
+            meson_op_vec = backend.array_assign(meson_op_vec, layer_ind, xnp.abs(layer_val))
+        return meson_op_vec
 
     def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
 

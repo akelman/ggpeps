@@ -455,7 +455,7 @@ class D2nSystem2D(System2DBase):
         nlayer: int,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
-    ):
+    ) -> xnp.ndarray:
         dest = xnp.zeros(nlayer)
         return xnp.asarray(dest)
 
@@ -498,7 +498,7 @@ class D2nSystem2D(System2DBase):
         num_fermionic_layer: int,
         ferm_cov_vec: xnp.ndarray,
         use_trans_inv: bool = True,
-    ):
+    ) -> xnp.ndarray:
         mass_energy_op = xnp.zeros(num_pg_layer + num_fermionic_layer)
         return mass_energy_op
 
@@ -527,7 +527,7 @@ class D2nSystem2D(System2DBase):
         ferm_covmat_vec: xnp.ndarray,
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
-    ):
+    ) -> xnp.ndarray:
 
         int_energy_op = xnp.zeros(num_pg_layer + num_fermionic_layer)
         return int_energy_op
@@ -544,7 +544,7 @@ class D2nSystem2D(System2DBase):
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
         zeroed_params: tuple,
-    ):
+    ) -> xnp.ndarray:
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, nparams)
         gradients = xnp.zeros(param_shape, dtype=xnp.float64)
@@ -572,13 +572,13 @@ class D2nSystem2D(System2DBase):
         sublattice_factors: tuple,
         zeroed_params: tuple,
         d_gamma_out_vec: xnp.ndarray,
-    ):
+    ) -> xnp.ndarray:
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
         gradients = xnp.zeros(param_shape, dtype=xnp.float64)
         return gradients
 
-    def _meson_string_vec(self, path):
+    def _meson_string_vec(self, path: list[tuple[int, bool]]) -> xnp.ndarray:
         meson_op_vec = xnp.zeros(self.cfg.nlayer)
         return xnp.array(meson_op_vec)
 
