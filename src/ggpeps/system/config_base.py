@@ -114,8 +114,9 @@ class Config2DBase(ABC):
 
         # Settings for the electric energy
         # these depend on the ansatz, so we only declare their type here
-        self.idxarr_vec: tuple[tuple[complex, tuple[int, ...]], ...]
-        self.el_overall_factors: tuple[float, ...]
+        # TODO: this data structure is very unwieldy and should be simplified/restructured
+        self.idxarr_vec: tuple[tuple[tuple[complex, tuple[int, ...]], ...], ...]
+        self.el_overall_factors: tuple[complex, ...]
 
     def __str__(self) -> str:
         """Define a string method that can be used, e.g., in filenaming.

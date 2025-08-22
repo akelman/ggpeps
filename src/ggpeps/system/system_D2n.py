@@ -450,7 +450,7 @@ class D2nSystem2D(System2DBase):
     @staticmethod
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
-        overall_factors: tuple[float, ...],
+        overall_factors: tuple[complex, ...],
         idxarrs: tuple,
         nlayer: int,
         el_pfaffians: xnp.ndarray,

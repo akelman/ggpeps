@@ -48,7 +48,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         num_fermionic_layer=1,
         unitcell_size=1,
         enforce_u1_symmetry=True,
-    ):
+    ) -> None:
         super().__init__(
             gauge.ZNGauge(2),
             lattice,

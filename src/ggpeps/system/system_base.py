@@ -1563,8 +1563,8 @@ class System2DBase(ABC):
     @abstractmethod
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
-        overall_factors: tuple[float, ...],
-        idxarrs: tuple[tuple[complex, tuple[int, ...]], ...],
+        overall_factors: tuple[complex, ...],
+        idxarrs: tuple[tuple[tuple[complex, tuple[int, ...]], ...], ...],
         nlayer: int,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,

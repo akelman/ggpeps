@@ -40,7 +40,7 @@ class Z2System2D2CConfig(Config2DBase):
         num_fermionic_layer=0,
         unitcell_size=1,
         enforce_u1_symmetry=True,
-    ):
+    ) -> None:
         # The parameters have the following order: [[t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i...],[..next layer..],....]
         if num_fermionic_layer != 0:
             # This ansatz does not support fermionic layers
