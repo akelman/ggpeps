@@ -219,8 +219,11 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
         This function returns two different covariance matrices for ungauged projectors:
         In the first, modes of copy 1 are coupled to modes of copy 2.
-        In the second, the projectors don't mix copies.
+        In the second, the projectors don't mix copies (so as to preserve global U(1) symmetry).
         The first option is used for the pure-gauge layer, the second for the fermionic layer.
+
+        We use Kronecker products to construct the covariance matrices concisely; the result
+        is equivalent to hardcoding the matrices directly.
 
         This method overwrites an abstract method in Config2DBase.
 
@@ -228,40 +231,12 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             array: Covariance matrices of the ungauged projector on a single link
         """
 
-        # 2 if for 2D lattice
-        dest_mixed = [np.zeros((8, 8), dtype=np.float64)] * 2  # mixes copies
-        dest_unmixed = [np.zeros((8, 8), dtype=np.float64)] * 2  # does not mix copies
+        dest_mixed = []  # mixes copies
+        dest_mixed.append(np.real(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix))))  # X direction
+        dest_mixed.append(np.real(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz))))  # Y direction
 
-        # We want to give the projectors for the pure gauge part, which mix copies
-        dest_mixed[Direction.X] = np.real(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix)))
-        dest_mixed[Direction.Y] = np.real(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz)))
-
-        # We want to give the projectors for the fermionic part which don't mix copies
-        # (so as to preserve global U(1) symmetry)
-        dest_unmixed[Direction.X] = np.array(
-            [
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
-            ]
-        )
-
-        dest_unmixed[Direction.Y] = np.array(
-            [
-                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, -1.0, 0.0, -0.0, 0.0, 0.0],
-                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, -1.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-            ]
-        )
+        dest_unmixed = []  # does not mix copies
+        dest_unmixed.append(np.real(1.0j * np.kron(np.eye(2), np.kron(utils.pauliy, utils.paulix))))  # X direction
+        dest_unmixed.append(np.real(1.0j * np.kron(np.eye(2), np.kron(utils.pauliy, utils.pauliz))))  # Y direction
 
         return np.array([dest_mixed] * self.num_pg_layer + [dest_unmixed] * self.num_fermionic_layer)
