@@ -30,33 +30,12 @@ def typing(session):
     session.install(".")
     session.install("mypy")
 
-    # TODO: Add passing files (eventually should be entire repo)
-    files = [
-        "src/ggpeps/caching.py",
-        "src/ggpeps/evaluator_manager.py",
-        "src/ggpeps/evaluator.py",
-        "src/ggpeps/exacteval.py",
-        "src/ggpeps/gauge.py",
-        "src/ggpeps/lattice.py",
-        "src/ggpeps/mamatrix_container.py",
-        "src/ggpeps/mc.py",
-        "src/ggpeps/measurement.py",
-        "src/ggpeps/minimizer.py",
-        "src/ggpeps/modearray.py",
-        "src/ggpeps/nevmc.py",
-        "src/ggpeps/utils.py",
-    ]
-
-    files += glob.glob("src/ggpeps/system/config*.py")
-    files += glob.glob("src/ggpeps/system/backend*.py")
-    files += glob.glob("src/ggpeps/system/system*.py")
-
     session.run(
         "mypy",
         "--enable-incomplete-feature=PreciseTupleTypes",
         "--install-types",  # install missing types for third-party packages
         "--non-interactive",  # don't ask user for confirmation before installing missing types
-        *files,
+        "src/ggpeps/",
     )
 
 
