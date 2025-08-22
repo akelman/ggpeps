@@ -6,7 +6,6 @@ from collections.abc import Iterator
 import numpy as np
 import pandas as pd
 
-import ggpeps
 import ggpeps.lattice as lattice
 from ggpeps.evaluator import Evaluator
 from ggpeps.system.system_base import System2DBase

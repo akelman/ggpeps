@@ -12,6 +12,8 @@ __all__ = [
     "minimizer",
     "system",
     "utils",
+    "xnp",
+    "xscipy",
 ]
 
 # Global vars

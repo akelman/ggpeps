@@ -344,7 +344,6 @@ class NEVMC_Evaluator(Evaluator):
             if scanning:
                 for i in range(len(self.cfg.store_first_cfgs)):
                     self.system.update_gauge_ind(i, self.cfg.store_first_cfgs[i])
-                    tmp = self.system.weight
 
                 for i in range(len(self.cfg.store_weights)):
                     self.scan_cfgs(i)
@@ -508,13 +507,12 @@ class NEVMC_Evaluator(Evaluator):
     def update_single_site(self):
         """Update for the MC simulation.
         This updates randomly chooses a single site and updates it.
-        The update is local. The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The update is local. The new gauge field value is drawn uniformly from the distribution of possible gauge
+        fields (according to the gauge group).
 
         TODO: add gauge fixing here
         """
         # Pick a site to update
-        lattice = self.system.cfg.lattice
-        nlinks = lattice.nlinks
         link_ind = self.cfg.rng_state.choice(
             self.system.cfg.lattice.comp_tree, replace=False
         )  # we choose a link from those that are not fixed by gauge fixing
@@ -536,7 +534,8 @@ class NEVMC_Evaluator(Evaluator):
         """Update for the MC simulation.
         This updates iterates over all lattice sites and updates every site once.
         The update is local.
-        The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The new gauge field value is drawn uniformly from the distribution of possible gauge fields
+        (according to the gauge group).
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
@@ -560,7 +559,8 @@ class NEVMC_Evaluator(Evaluator):
         """Update for the MC simulation.
         This updates iterates over N lattice sites and updates every site once.
         The update is local.
-        The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The new gauge field value is drawn uniformly from the distribution of possible gauge fields
+        (according to the gauge group).
         """
         links_inds = self.cfg.rng_state.choice(
             self.system.cfg.lattice.comp_tree,
@@ -662,13 +662,24 @@ class NEVMC_Evaluator(Evaluator):
 
     def save(self, output_dir="."):
         """Convenience function to combine saving the MonteCarloEstimator and the summary of the observables"""
-        syscfg = self.system.cfg
+        sys_cfg = self.system.cfg
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
 
-        fname_full = f"data_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl.gz"
-        fname_summary = f"summary_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl"
+        chem_str = ",".join([f"{val:.3f}" for val in sys_cfg.g_chem])
+        couplings_str = (
+            f"gel_{sys_cfg.g_el:.3f}_gmag_{sys_cfg.g_mag:.3f}_gint_{sys_cfg.g_int:.3f}"
+            f"_gmass_{sys_cfg.g_mass:.3f}_gchem_{chem_str}"
+        )
 
+        fname_full = (
+            f"data_nevmc_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}"
+            f"_nlayer_{sys_cfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl.gz"
+        )
+        fname_summary = (
+            f"summary_nevmc_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}"
+            f"_nlayer_{sys_cfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl"
+        )
         self.save_full(os.path.join(output_dir, fname_full))
         self.save_summary(os.path.join(output_dir, fname_summary))
 
