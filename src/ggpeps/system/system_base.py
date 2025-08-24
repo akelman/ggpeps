@@ -2182,7 +2182,7 @@ class System2DBase(ABC):
         lattice_size: int,
         nphysmodes_site: int,
         nlayer: int,
-        wi_gamma_out_inv_vec: xnp.ndarray,
+        gamma_out_inv_vec: xnp.ndarray,
         mat_a_vec: xnp.ndarray,
         mat_b_vec: xnp.ndarray,
     ) -> xnp.ndarray:
@@ -2198,9 +2198,7 @@ class System2DBase(ABC):
         ferm_covmat_vec = xnp.full(shape, xnp.nan)
 
         for layer in range(nlayer):
-            covmat = mat_a_vec[layer] + (
-                mat_b_vec[layer] @ wi_gamma_out_inv_vec[layer] @ xnp.transpose(mat_b_vec[layer])
-            )
+            covmat = mat_a_vec[layer] + (mat_b_vec[layer] @ gamma_out_inv_vec[layer] @ xnp.transpose(mat_b_vec[layer]))
 
             ferm_covmat_vec = backend.array_assign(ferm_covmat_vec, layer, covmat)
         return ferm_covmat_vec
@@ -2210,12 +2208,12 @@ class System2DBase(ABC):
         """Compute the covariance matrix of the fermions in the system for the given layer.
         We calculate it for all layers automatically, even though it is not needed for pure-gauge layers."""
         if self._ferm_covmat_vec is None:
-            wi_gamma_out_inv_vec = [self.wi_gamma_out_vec[layer].inv() for layer in range(self.cfg.nlayer)]
+            gamma_out_inv_vec = xnp.asarray([self.wi_gamma_out_vec[layer].inv() for layer in range(self.cfg.nlayer)])
             self._ferm_covmat_vec = self._compute_ferm_cov(
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nlayer,
-                wi_gamma_out_inv_vec,
+                gamma_out_inv_vec,
                 self.mat_a_vec,
                 self.mat_b_vec,
             )
