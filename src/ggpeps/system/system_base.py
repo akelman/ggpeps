@@ -1389,9 +1389,7 @@ class System2DBase(ABC):
             xnp.ndarray: Vector of gradients of the norm with respect to all parameters
         """
         if self._grad_over_norm_vec is None:
-            wi_gamma_in_inv_vec = xnp.array(
-                [self.wi_gamma_in_vec[layerind].inv() for layerind in range(self.cfg.nlayer)]
-            )
+            gamma_in_inv_vec = xnp.array([self.wi_gamma_in_vec[layerind].inv() for layerind in range(self.cfg.nlayer)])
             self._grad_over_norm_vec = self.compute_grad_norm_vec(
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
@@ -1399,7 +1397,7 @@ class System2DBase(ABC):
                 self.cfg.unitcell_size,
                 len(self.symbolvec),
                 self.cfg.zeroed_params,
-                wi_gamma_in_inv_vec,
+                gamma_in_inv_vec,
                 self.gamma_in_sys_vec,
                 self.mat_d_inv_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
@@ -1442,7 +1440,7 @@ class System2DBase(ABC):
 
     @classmethod
     @abstractmethod
-    def generate_rotmat(cls, ncopy, theta, coord, dir):
+    def generate_rotmat(cls, ncopy: int, group_element: xnp.ndarray, coord: tuple, dir: Direction) -> xnp.ndarray:
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
 
         The mode order is (the same as for gamma_in_neutral and) provided explicitly in each subclass.
@@ -2409,7 +2407,6 @@ def get_pfaffian_arrays(modes: list, coefficients: list) -> tuple[tuple[complex,
     Args:
         modes (list of lists of tuples of ints): _description_
         coefficients (list of lists of complex floats): _description_
-        neg (float): _description_
 
     Returns:
         list: index array in the format required for the calculation of the electric energy (and electric gradients).
