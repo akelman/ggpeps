@@ -190,8 +190,8 @@ def main(args):
     PREFERRED_DEVICE = available_devices_[0]
     device_name = PREFERRED_DEVICE.device_kind.lower()
 
-    # Updated GPU detection heuristic
-    if any(x in device_name for x in ["gpu", "nvidia", "amd", "rocm"]):
+    # GPU detection
+    if any(x in device_name for x in ["gpu", "nvidia", "cuda", "amd", "rocm"]):
         ggpeps.GPU_AVAILABLE = True
         ggpeps.PREFERRED_DEVICE = PREFERRED_DEVICE
     else:
