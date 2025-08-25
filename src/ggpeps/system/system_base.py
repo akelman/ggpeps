@@ -2175,7 +2175,7 @@ class System2DBase(ABC):
         return xnp.trace(path_product)
 
     @staticmethod
-    @maybe_jit(static_argnames=["lattice_size", "nphysmodes_site", "nlayer"])
+    # @maybe_jit(static_argnames=["lattice_size", "nphysmodes_site", "nlayer"]) # causes issues on GPU; unclear reason
     def _compute_ferm_cov(
         lattice_size: int,
         nphysmodes_site: int,
