@@ -2,7 +2,7 @@
 
 
 This repository contains the code for simulations of lattice gauge theories (LGTs) with Gauged Gaussian Fermionic Projected Entangled Pair States (GGFPEPS).
-Currently, only $\mathbb{Z}_N$ theories are operational.
+Currently, $\mathbb{Z}_2$ theories are fully operational, and $D_n$ theories are a work in progress. The $U(1)$ implementation is not functional.
 
 The purpose of this README is to provide:
 1. a source of information for new team members;
@@ -48,7 +48,7 @@ For the rest of the tutorial, we assume it to be in `~/.pyenv/`.
     cd ~/.pyenv
     python -m venv ggpeps
     ```
-    Assuming you are using bash or zsh, you can activate the environment with `source ~/.pyenv/ggpeps/bin/activate`. If you are using csh, instead use `source ~/.pyenv/ggpeps/bin/activate.csh`.
+    Assuming you are using `bash` or `zsh`, you can activate the environment with `source ~/.pyenv/ggpeps/bin/activate`. If you are using `csh`, instead use `source ~/.pyenv/ggpeps/bin/activate.csh`.
     Upon activation, you will notice that your prompt changes. As long as it is prefixed by `(ggpeps)` the virtual environment is active.
     The virtual environment can be deactivated with `deactivate`.
 <br/>
@@ -80,7 +80,7 @@ For the next step, please navigate into the repo that you just downloaded and ac
     pip install .
     ```
 
-    Both commands will install the package `ggpeps` into your environment (and the necessary dependencies).
+    All commands will install the package `ggpeps` into your environment (and the necessary dependencies).
 
 You can test your installation by opening a python console (just type `python`) and executing
 ```python
@@ -90,24 +90,29 @@ ggpeps.__version__
 The result should be a version string, e.g. `0.1.dev952+ga571e99.d20240918`, which can be interpreted as: `version 0.1` on the `dev` branch, which is `952` commits ahead of master, with the git commit hash beginning `a571e99`, on the date `2024-09-18`.
 
 #### Installation with GPUs
-JAX is the library we use for running on GPUs. JAX must be installed wth jaxlib and connected to the correct versions of CUDA. The versions required will depend on what's available on a given cluster.
+Installation for use with GPUs can be tricky. JAX is the library we use for running on GPUs, and JAX must be be installed with jaxlib and connected to the GPU in the correct manner in order to function. The versions required will depend on what's available on a given cluster.
 
-First, purge any loaded modules, with `module purge`.
+Our code has been tested and works with both NVIDIA and AMD GPUs.
+
+**NVIDIA GPUs**: When working on a cluster, first, purge any loaded modules, with `module purge`.
 Then load the appropriate modules for `python` and `cuda`.
-To see the available modules, run `module avail`, to load a module run `module load <module>`, and to see a list of loaded modules run `module list`.
+To see the available modules run `module avail`, to load a module run `module load <module>`, and to see a list of loaded modules run `module list`.
 
 Once this is done, create and activate a virtual environment (as above).
 Before installing the package, run `pip install "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html`, which will install JAX and connect it to the appropriate version of CUDA.
-Then install the package as usual.
+Then install the package as usual as described above (e.g. `pip install -e .` in the appropriate directory).
 
-TODO: Add a build to `pyproject.toml` which works for JAX on systems with a GPU and CUDA.
+NOTE: It may be necessary to do this installation on a node that has access to the GPU; otherwise JAX may not include the required support for CUDA despite the use of the above command.
+
+**AMD GPUs**: For now, we have only successfully run simulations using pre-built containers with a version of JAX that connects to GPUs. This is heavily dependent on the setup on a particular cluster.
+
 
 ### Structure of the Code
 
 The repository is split into two main parts: the package `ggpeps` and utility scripts in the main folder.
 
-The package `ggpeps` contains the simulation code, i.e. the actual implementation of the physical problem.
-All scripts in the main folder call parts of the package and provide the infrastructure to manage the simulations.
+The package is contained in `src/ggpeps/` and contains the simulation code, i.e. the actual implementation of the physical problem.
+All scripts in the main folder call parts of the package and provide the infrastructure to manage the simulations. This includes `tests/`, `tools/` which contains various bash and python scripts (especially to help manage batches of simulations on a cluster), and `plot/` with various plotting scripts.
 
 The package `ggpeps` is divided into several parts:
 
@@ -122,24 +127,31 @@ The implementation of $U(1)$ is transferred from a C++ implementation and is not
 - `minimizer.py`: Minimizer class with a custom minimizer and a wrapper of the `scipy.optimize.minimize` function.
 - `utils.py`: Utility functions.
 
-Each implemented ansatz has it's own config class, each a subclass of Config2DBase (found in `system_base.py`). Currently, these are the implemented ansatz's (each located in a file of the same name):
-- `system_u1_2d`: Not working - the implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
-- `system_z2_2d`: $\mathbb{Z}_2$, 1 copy of virtual modes per layer, pure gauge.
-- `system_z2_2d_2c`: $\mathbb{Z}_2$, 2 copies of virtual modes per layer, pure gauge.
-- `system_z2_2d_G2c_F2c`: $\mathbb{Z}_2$, 2 copies of virtual modes per layer (PG and matter layers), includes matter.
-- `system_z2_2d_G4c_F4c`: $\mathbb{Z}_2$, 4 copies of virtual modes per layer (PG and matter layers), includes matter.
-- `system_z2_2d_G8c_F8c`: $\mathbb{Z}_2$, 8 copies of virtual modes per layer. This is extremely impractical to run, even for 2x2 systems, due to the large number of virtual modes; it was built for testing purposes. Because there are so many parameters, this ansatz is more systematic in handling them. Note that not all theoretically allowed parameters are included (e.g. the y,z parameters which couple a copy to itself are only created for the first four copies).
+Each implemented ansatz has it's own config class, each a subclass of Config2DBase (found in `config_base.py`). Currently, these are the implemented ansatz's (each located in a file of the same name):
+- `config_u1_2d`: Not working - the implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
+- `config_D6_2d`: $D_6$ ansatz.
+- `config_z2_2d`: $\mathbb{Z}_2$, 1 copy of virtual modes per layer, pure gauge.
+- `config_z2_2d_2c`: $\mathbb{Z}_2$, 2 copies of virtual modes per layer, pure gauge.
+- `config_z2_2d_G2c_F2c`: $\mathbb{Z}_2$, 2 copies of virtual modes per layer (PG and matter layers), includes matter.
+- `config_z2_2d_G4c_F4c`: $\mathbb{Z}_2$, 4 copies of virtual modes per layer (PG and matter layers), includes matter.
+- `config_z2_2d_G8c_F8c`: $\mathbb{Z}_2$, 8 copies of virtual modes per layer. This is extremely impractical to run, even for $2\times2$ systems, due to the large number of virtual modes; it was built for testing purposes. Because there are so many parameters, this ansatz is more systematic in handling them. Note that not all theoretically allowed parameters are included (e.g. the $y,z$ parameters which couple a copy to itself are only created for the first four copies).
 
-The pure gauge ansatz's all techincally contain a parameter for coupling to matter, but (a) it is manually set to zero, (b) other parts of the ansatz (e.g. the $\Gamma_{\text{in}}$) do not obey the symmetries required for including matter.
+Our code supports use on both CPU and GPU. To run on GPU, we use JAX ([documentation](https://docs.jax.dev/en/latest/index.html), [github](https://github.com/jax-ml/jax/blob/main/README.md)), which mostly follows the numpy syntax (see also [the Array API](https://data-apis.org/array-api/latest/index.html)).
+This is handled by importing numpy/jax as `xnp` in `ggpeps/__init__.py`, and using `xnp` throughout the code.
+The system configs only use `numpy`; they system classes use `xnp`. Objects which interface with the system (primarily `Evaluator` objects) can send numpy arrays (e.g. when updating a gauge field) but may receive jax or numpy arrays depending on the particular quantity they access.
+
+In addition the `system/backend/` directory contains functions whose syntax depends on the use of numpy/jax.
+
+NOTE: The pure gauge ansatz's all techincally contain a parameter for coupling to matter, but (a) it is manually set to zero, (b) other parts of the ansatz (e.g. the $\Gamma_{\text{in}}$) do not obey the symmetries required for including matter.
 
 ### Code Style
 Code is formatted using `black` with the default configuration, except that the maximum allowed line length is 119.
 To format your code, run `python black . --line-length 119` from the main repository directory. 
 To set up your editor to automatically format your code (e.g. on save), see [Black Editor Integrations](https://black.readthedocs.io/en/stable/integrations/editors.html). Black is listed in the package dependencies under the `dev` tag (thus it is available if the package was installed with the dev dependencies, otherwise it must be installed manually: `pip install black`).
 
-The goal of type hinting is to improve readability and reasoning about the code.
+The goal of type hinting is to improve readability and reasoning about the code. Only the `src` directory is typed.
 We use `mypy` for static type checking, though it is not strictly enforced. A `nox` session is used to validate type hints (see below for details on `nox`).
-Occasionally `assert` statements or `# type: ignore` comments are used to address type errors.
+Occasionally `assert` statements or `# type: ignore` comments are used to address type errors - the goal is to improve documentation and readability; in cases where those aims are better served by ignoring a typing error, we do so.
 
 ### Tests
 
@@ -175,14 +187,14 @@ Individual sessions can be executed with `nox -s <name of session>`.
 
 ### Ideas
 
-- Add U1 system properly
-- Add system in 3d
+- Extend to other gauge groups: $Z_N$, fix $U(1)$, finish $D_n$, etc.
+- Add support for 3D systems.
 - Add option for DMRG like cylinder compression to obtain transfer matrices
 
 ### Contributing
 
 We would be very happy to hear ideas for improving our code.
-Pull requests would be appreciated for minor improvements; for  major updates we would appreciate hearing from any contributor as early as possible.
+Pull requests would be appreciated for minor improvements; for  major updates we would appreciate hearing from any potential contributor as early as possible.
 
 
 ## Use
@@ -190,6 +202,8 @@ Pull requests would be appreciated for minor improvements; for  major updates we
 ### Data Generation
 
 The script `manager.py` is the central point for data generation. It supports different modes: `eval` and `min` where both can be evaluated with `exact` and `mc`.
+
+To run with JAX (whether on CPU or GPU), first export the environment variable: `export GGPEPS_BACKEND=jax` (it can also be set to `numpy`, but numpy will also be used by default regardless).
 
 All modes write log files to disk and to console. 
 The files are named according to the parameters that were provided via the commandline. 
