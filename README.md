@@ -204,6 +204,7 @@ Pull requests would be appreciated for minor improvements; for  major updates we
 The script `manager.py` is the central point for data generation. It supports different modes: `eval` and `min` where both can be evaluated with `exact` and `mc`.
 
 To run with JAX (whether on CPU or GPU), first export the environment variable: `export GGPEPS_BACKEND=jax` (it can also be set to `numpy`, but numpy will also be used by default regardless).
+If using multiple runners in conjuction with a GPU (we have not tested using multiple GPUs simultaneously, though this should only require small changes), then memory issues can arise. JAX preallocates 75% of GPU memory upon startup; with multiple runners, each runner tries to allocate this memory, causing a crash. This can be solved using an environment variable: `XLA_PYTHON_CLIENT_MEM_FRACTION=.XX` where `XX` should be $1/\text{nrunner}$, rounded down if necessary. Note that this only addresses preallocation, and the program may crash if a runner tries to request more memory. See the [JAX documentation on GPU Memory Allocation](https://docs.jax.dev/en/latest/gpu_memory_allocation.html) for more information.
 
 All modes write log files to disk and to console. 
 The files are named according to the parameters that were provided via the commandline. 
