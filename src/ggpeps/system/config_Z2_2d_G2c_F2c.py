@@ -81,7 +81,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         # ]
 
         # Constants used in the calculation of the electric energy on a vertical link.
-        prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
+        prefactors = [[-1, -1, 1.0j, 1.0j], [-1, -1, 1.0j, 1.0j]]
         indices_layer_pg = [
             [(2, 5), (3, 4), (4, 5), (2, 3)],
             [(6, 1), (7, 0), (0, 1), (6, 7)],

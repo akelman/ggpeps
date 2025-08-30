@@ -81,7 +81,7 @@ class System2DBase(ABC):
         self._ferm_covmat_vec: Optional[xnp.ndarray] = None
 
         # Link indices for which the electric energy is computed - can be any set of horizontal links:
-        self.mod_link_inds: tuple[int, ...] = (0,)
+        self.mod_link_inds: tuple[int, ...] = (4,)
         # Parameter dependent quantities for the electric energy
         self._mat_a_mod_vec: Optional[xnp.ndarray] = None
         self._mat_b_mod_vec: Optional[xnp.ndarray] = None
