@@ -69,16 +69,28 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             )
             raise ValueError("Invalid unitcell_size.")
 
-        # Constants used in the calculation of the electric energy
+        # # Constants used in the calculation of the electric energy on a horizontal link.
+        # prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
+        # indices_layer_pg = [
+        #     [(2, 4), (3, 5), (4, 5), (2, 3)],
+        #     [(6, 0), (7, 1), (0, 1), (6, 7)],
+        # ]
+        # indices_layer_fermionic = [
+        #     [(2, 0), (3, 1), (0, 1), (2, 3)],
+        #     [(6, 4), (7, 5), (4, 5), (6, 7)],
+        # ]
+
+        # Constants used in the calculation of the electric energy on a vertical link.
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
         indices_layer_pg = [
-            [(2, 4), (3, 5), (4, 5), (2, 3)],
-            [(6, 0), (7, 1), (0, 1), (6, 7)],
+            [(2, 5), (3, 4), (4, 5), (2, 3)],
+            [(6, 1), (7, 0), (0, 1), (6, 7)],
         ]
         indices_layer_fermionic = [
-            [(2, 0), (3, 1), (0, 1), (2, 3)],
-            [(6, 4), (7, 5), (4, 5), (6, 7)],
+            [(2, 1), (3, 0), (0, 1), (2, 3)],
+            [(6, 5), (7, 4), (4, 5), (6, 7)],
         ]
+
         idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
         idxarr_lay_fermionic = get_pfaffian_arrays(indices_layer_fermionic, prefactors)
         self.idxarr_vec = tuple(
