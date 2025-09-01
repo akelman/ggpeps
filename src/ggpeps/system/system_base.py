@@ -1904,7 +1904,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list: Layer-resolved electric energy w/o shift
+            array: Layer-resolved electric energy w/o shift of shape (nlayer, len(self.mod_link_inds))
         """
         if self._el_energy_op_vec is None:
             # This vector is the electric energy on a single link. Otherwise, we get a
@@ -1925,7 +1925,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list: Layer-resolved mass energy w/o shift
+            array: Layer-resolved mass energy w/o shift
         """
         if self._mass_energy_op_vec is None:
             self._mass_energy_op_vec = self._compute_mass_energy_op_vec(
@@ -1943,7 +1943,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list: Layer-resolved interaction energy w/o shift
+            array: Layer-resolved interaction energy w/o shift
         """
         if self._int_energy_op_vec is None:
             self._int_energy_op_vec = self._compute_int_energy_op_vec(
@@ -1963,7 +1963,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list: Layer-resolved interaction energy w/o shift
+            array: Layer-resolved interaction energy w/o shift
         """
         if self._chem_energy_op_vec is None:
             self._chem_energy_op_vec = self._compute_chem_energy_op_vec(
@@ -1981,7 +1981,7 @@ class System2DBase(ABC):
         """Compute the gradient of the electric operator (w/o shift) for all layers
 
         Returns:
-            list: List of all electric energy gradients (w/o shift)
+            array: List of all electric energy gradients (w/o shift)
         """
         if self._el_energy_op_grad_vec is None:
             # In order to jit, we must pass arrays, not WoodburyInverter objects.
