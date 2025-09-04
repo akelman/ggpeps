@@ -25,7 +25,7 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 def maybe_jit(*jit_args, **jit_kwargs):
     def decorator(func):
-        if False and ggpeps.PREFERRED_BACKEND == "jax":  # hardcoded removal of jit for our code
+        if ggpeps.PREFERRED_BACKEND == "jax":
             return jax.jit(func, *jit_args, **jit_kwargs)
         else:
             return func
