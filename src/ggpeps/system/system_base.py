@@ -2175,7 +2175,7 @@ class System2DBase(ABC):
         return xnp.trace(path_product)
 
     @staticmethod
-    @maybe_jit(static_argnames=["lattice_size", "nphysmodes_site", "nlayer"])
+    # @maybe_jit(static_argnames=["lattice_size", "nphysmodes_site", "nlayer"]) # causes issues on GPU; unclear reason
     def _compute_ferm_cov(
         lattice_size: int,
         nphysmodes_site: int,
@@ -2193,7 +2193,7 @@ class System2DBase(ABC):
         """
         dim_gamma_out = 2 * lattice_size * nphysmodes_site
         shape = (nlayer, dim_gamma_out, dim_gamma_out)
-        ferm_covmat_vec = xnp.empty(shape)  # We entirely overwrite this, so no need to initialize
+        ferm_covmat_vec = xnp.full(shape, xnp.nan)
 
         for layer in range(nlayer):
             covmat = mat_a_vec[layer] + (mat_b_vec[layer] @ gamma_out_inv_vec[layer] @ xnp.transpose(mat_b_vec[layer]))
