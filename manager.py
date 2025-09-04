@@ -373,8 +373,8 @@ def main(args):
     arr = ggpeps.xnp.array([1.2, 1.3])
     logger.info(f"Precision: {arr.dtype}")
     if isinstance(arr, jax.numpy.ndarray):
-        dev = arr.device
-        logger.info(f"JAX default device: {dev.platform}")  # general
+        # dev = arr.device
+        # logger.info(f"JAX default device: {dev.platform}")  # general
         logger.info(f"Device info: {main_device.device_kind}")  # specific
     logger.info("============================")
 
