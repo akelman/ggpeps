@@ -205,7 +205,7 @@ class Z2System2D(System2DBase):
 
                 el_energy_full = overall_factor * pf_tot
                 el_energy_link = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
-                dest = backend.array_assign(dest, (layerind, index), el_energy_link)
+                dest = backend.array_assign(dest, (layerind, link_pos), el_energy_link)
 
         return dest
 
