@@ -9,6 +9,8 @@ from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
 
+from .config_base import IdxArrVec
+
 from .system_base import System2DBase
 from .system_base import maybe_jit
 
@@ -162,7 +164,9 @@ class Z2System2D(System2DBase):
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
         overall_factors: tuple[complex, ...],
-        idxarrs: tuple,
+        idxarrs: IdxArrVec,
+        mod_link_inds: tuple[int, ...],
+        nlinks: int,
         nlayer: int,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
@@ -170,8 +174,8 @@ class Z2System2D(System2DBase):
 
         lognorm_default = xnp.sum(lognormvec_default)
 
-        nlinks = norm_mod_vec.shape[1]  # number of links on which the electric energy is computed
-        dest = xnp.zeros((nlayer, nlinks))
+        num_el_links = len(mod_link_inds)  # number of links on which the electric energy is computed
+        dest = xnp.zeros((nlayer, num_el_links))
 
         # TODO: vectorize!
         for layerind in range(nlayer):
@@ -183,7 +187,7 @@ class Z2System2D(System2DBase):
             norm_mod_linkvec = norm_mod_vec[layerind]
 
             # Iterate over the links
-            for linkind, norm_mod in enumerate(norm_mod_linkvec):
+            for index, norm_mod in enumerate(norm_mod_linkvec):
 
                 ###################### Calculation of <P> ########################
 
@@ -192,14 +196,22 @@ class Z2System2D(System2DBase):
 
                 # Instead of writing down all the terms explicitly, we build tuples of the prefactors
                 # and the indices of the covariance matrix.
+
+                if mod_link_inds[index] < nlinks / 2:
+                    # horizontal link
+                    idxarr = idxarr[0]
+                else:
+                    # vertical link
+                    idxarr = idxarr[1]
+
                 pf_tot = 0.0
                 for ind, (prefactor, inds) in enumerate(idxarr):
-                    pfaval = el_pfaffians[layerind, linkind, ind]
+                    pfaval = el_pfaffians[layerind, index, ind]
                     pf_tot += prefactor * pfaval
                 el_energy_full = overall_factor * pf_tot
 
                 el_energy_link = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
-                dest = backend.array_assign(dest, (layerind, linkind), el_energy_link)
+                dest = backend.array_assign(dest, (layerind, index), el_energy_link)
 
         return dest
 

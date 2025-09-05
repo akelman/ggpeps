@@ -17,7 +17,7 @@ import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
-from ggpeps.system.config_base import Config2DBase
+from ggpeps.system.config_base import Config2DBase, IdxArrVec
 from ggpeps.modearray import generate_permutation_matrix
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -1564,7 +1564,9 @@ class System2DBase(ABC):
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
         overall_factors: tuple[complex, ...],
-        idxarrs: tuple[tuple[tuple[complex, tuple[int, ...]], ...], ...],
+        idxarrs: IdxArrVec,
+        mod_link_inds: tuple[int, ...],
+        nlinks: int,
         nlayer: int,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
@@ -1913,6 +1915,8 @@ class System2DBase(ABC):
                 self.lognorm_default_vec,
                 self.cfg.el_overall_factors,
                 self.cfg.idxarr_vec,
+                self.mod_link_inds,
+                self.cfg.lattice.nlinks,
                 self.cfg.nlayer,
                 self.el_pfaffians,
                 self.norm_mod_vec,

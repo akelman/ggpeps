@@ -16,6 +16,12 @@ from ggpeps.lattice import Lattice2D
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
+# Type aliases for the electric energy data structures
+IdxTerm = tuple[complex, tuple[int, ...]]  # (prefactor, indices)
+IdxTermList = tuple[IdxTerm, ...]  # all terms for one direction in one layer
+IdxLayerPair = tuple[IdxTermList, IdxTermList]  # (horizontal, vertical)
+IdxArrVec = tuple[IdxLayerPair, ...]  # over layers
+
 
 ################## Config2DBase ######################
 class Config2DBase(ABC):
@@ -115,7 +121,7 @@ class Config2DBase(ABC):
         # Settings for the electric energy
         # these depend on the ansatz, so we only declare their type here
         # TODO: this data structure is very unwieldy and should be simplified/restructured
-        self.idxarr_vec: tuple[tuple[tuple[complex, tuple[int, ...]], ...], ...]
+        self.idxarr_vec: IdxArrVec
         self.el_overall_factors: tuple[complex, ...]
 
     def __str__(self) -> str:
