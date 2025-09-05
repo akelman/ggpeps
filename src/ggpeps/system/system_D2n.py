@@ -488,7 +488,7 @@ class D2nSystem2D(System2DBase):
 
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
-        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
+        gradients = xnp.zeros(param_shape)
         return gradients
 
     @staticmethod
@@ -515,7 +515,7 @@ class D2nSystem2D(System2DBase):
     ) -> xnp.ndarray:
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
-        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
+        gradients = xnp.zeros(param_shape)
         return gradients
 
     @staticmethod
@@ -547,7 +547,7 @@ class D2nSystem2D(System2DBase):
     ) -> xnp.ndarray:
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, nparams)
-        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
+        gradients = xnp.zeros(param_shape)
         return gradients
 
     @staticmethod
@@ -575,7 +575,7 @@ class D2nSystem2D(System2DBase):
     ) -> xnp.ndarray:
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
-        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
+        gradients = xnp.zeros(param_shape)
         return gradients
 
     def _meson_string_vec(self, path: list[tuple[int, bool]]) -> xnp.ndarray:

@@ -247,7 +247,7 @@ class Z2System2D(System2DBase):
 
         nlayer = num_pg_layer + num_fermionic_layer
         shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
-        dest_grad = xnp.zeros(shape, dtype=xnp.float64)
+        dest_grad = xnp.zeros(shape)
 
         nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
         single_link_offset = 2 * nvirtmodes_link
@@ -393,7 +393,7 @@ class Z2System2D(System2DBase):
 
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
-        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
+        gradients = xnp.zeros(param_shape)
 
         for layer_ind in range(num_pg_layer, nlayer):
             # only the fermionic layers directly contribute to the mass
@@ -506,7 +506,7 @@ class Z2System2D(System2DBase):
 
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, nparams)
-        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
+        gradients = xnp.zeros(param_shape)
 
         for layer_ind in range(num_pg_layer, nlayer):
 
@@ -626,7 +626,7 @@ class Z2System2D(System2DBase):
 
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
-        gradients = xnp.zeros(param_shape, dtype=xnp.float64)
+        gradients = xnp.zeros(param_shape)
 
         for layer_ind in range(num_pg_layer, nlayer):
             # only the fermionic layers directly contribute to the chemical potential
