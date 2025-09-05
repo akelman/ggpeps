@@ -161,7 +161,7 @@ class Z2System2D(System2DBase):
         return mag_energy_bare
 
     @staticmethod
-    @maybe_jit(static_argnames=["overall_factors", "idxarrs", "nlayer"])
+    @maybe_jit(static_argnames=["overall_factors", "idxarrs", "nlayer", "mod_link_inds", "nlinks"])
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
         overall_factors: tuple[complex, ...],
