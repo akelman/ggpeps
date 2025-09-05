@@ -235,7 +235,7 @@ class Z2System2D(System2DBase):
         mod_link_inds: tuple[int, ...],
         symbolvec: tuple,
         overall_factors: tuple,
-        idxarr_vec: tuple,
+        idxarr_vec: IdxArrVec,
         el_energy_vec: xnp.ndarray,
         mat_b_mod_vec: xnp.ndarray,
         gamma_in_sys_mod_vec: xnp.ndarray,
@@ -262,24 +262,28 @@ class Z2System2D(System2DBase):
         for layerind in range(nlayer):
 
             # Abbreviations for more readable code
-            idxarr = idxarr_vec[layerind]
+            layer_pairs = idxarr_vec[layerind]  # tuple of pairs: ((H,V), (H,V), ...)
             overall_factor = overall_factors[layerind]
 
-            for linkind, mod_link_ind in enumerate(mod_link_inds):
-                mat_b = mat_b_mod_vec[layerind][linkind]
-                diff_d_gamma_inv = gamma_out_mod_inv_vec[layerind][linkind]
-                gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind][linkind]
-                diff_d_inv_gamma_inv = gamma_in_mod_inv_vec[layerind][linkind]
+            for link_pos, mod_link_ind in enumerate(mod_link_inds):
+                mat_b = mat_b_mod_vec[layerind][link_pos]
+                diff_d_gamma_inv = gamma_out_mod_inv_vec[layerind][link_pos]
+                gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind][link_pos]
+                diff_d_inv_gamma_inv = gamma_in_mod_inv_vec[layerind][link_pos]
 
-                covmat_out_virt = covmat_out_mod_vec[layerind][linkind]
-                norm_mod = norm_mod_vec[layerind][linkind]
-                mat_d_mod_inv = mat_d_mod_inv_vec[layerind][linkind]
+                covmat_out_virt = covmat_out_mod_vec[layerind][link_pos]
+                norm_mod = norm_mod_vec[layerind][link_pos]
+                mat_d_mod_inv = mat_d_mod_inv_vec[layerind][link_pos]
 
                 ###################### Calculation of the derivative ########################
+
+                # choose H/V per term based on link direction
+                is_vertical = mod_link_ind >= (nlinks // 2)
+
                 for uc_ind in range(unitcell_size):
-                    for symbol_ind, symbol in enumerate(symbolvec):
+                    for symbol_ind, _ in enumerate(symbolvec):
                         if (layerind, uc_ind, symbol_ind) not in zeroed_params:
-                            # the derivative calculation is compuationally expensive
+                            # the derivative calculation is computationally expensive
                             # we can skip it for parameters that are forced by the ansatz to be zero
 
                             deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[
@@ -293,18 +297,21 @@ class Z2System2D(System2DBase):
                                 d_mat_a
                                 + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
                                 + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
-                                - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ np.transpose(mat_b)
+                                - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ xnp.transpose(mat_b)
                             )
                             # The virtual mode is the last link on the bottom right of the covariance matrix
                             d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
                             # Summand with derivative of the covariance matrix
+
                             deriv_pf_tot = 0.0
-                            for ind, (prefactor, inds) in enumerate(idxarr):
-                                inds = xnp.asarray(inds)
+                            # for ind, (prefactor, inds) in enumerate(idxarr):
+                            for term_ind, (term_h, term_v) in enumerate(layer_pairs):
+                                prefactor, inds = term_v if is_vertical else term_h
+                                inds_arr = xnp.asarray(inds)
                                 deriv_pf_tot += prefactor * utils.derivative_pfaffian(
-                                    covmat_out_virt[xnp.ix_(inds, inds)],
-                                    d_covmat_out_virt[xnp.ix_(inds, inds)],
-                                    el_pfaffians[layerind, linkind, ind],
+                                    covmat_out_virt[xnp.ix_(inds_arr, inds_arr)],
+                                    d_covmat_out_virt[xnp.ix_(inds_arr, inds_arr)],
+                                    el_pfaffians[layerind, link_pos, term_ind],
                                 )
 
                             d_el_energy = xnp.real(overall_factor * deriv_pf_tot) * xnp.exp(norm_mod - lognorm_default)
@@ -318,10 +325,10 @@ class Z2System2D(System2DBase):
                                 mat_d_mod_inv,
                             )
                             # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
-                            d_el_energy += el_energy_vec[layerind][linkind] * (trace_mod - trace_def)
+                            d_el_energy += el_energy_vec[layerind][link_pos] * (trace_mod - trace_def)
 
                             dest_grad = backend.array_add(
-                                dest_grad, (layerind, linkind, uc_ind, symbol_ind), d_el_energy
+                                dest_grad, (layerind, link_pos, uc_ind, symbol_ind), d_el_energy
                             )
 
         # scale to system size - currently only valid when all links should be weighed equally
