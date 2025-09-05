@@ -664,7 +664,11 @@ class System2DBase(ABC):
         """
         if self._el_pfaffians is None:
             self._el_pfaffians = self._compute_el_pfaffians(
-                self.cfg.nlayer, self.cfg.idxarr_vec, self.covmat_out_mod_vec
+                self.cfg.nlayer,
+                self.cfg.idxarr_vec,
+                self.mod_link_inds,
+                self.cfg.lattice.nlinks,
+                self.covmat_out_mod_vec,
             )
         return self._el_pfaffians
 
@@ -672,7 +676,9 @@ class System2DBase(ABC):
     @maybe_jit(static_argnames=["nlayer", "idxarr_vec"])
     def _compute_el_pfaffians(
         nlayer: int,
-        idxarr_vec: tuple,
+        idxarr_vec: IdxArrVec,
+        mod_link_inds: tuple[int, ...],
+        nlinks: int,
         covmat_out_virt_vec: xnp.ndarray,
     ) -> xnp.ndarray:
         """Compute the pfaffians of the modified covariance matrices used for the electric energy and its derivative.
@@ -683,23 +689,25 @@ class System2DBase(ABC):
             xnp.ndarray: a vector of pfaffians
         """
 
-        nlinks = covmat_out_virt_vec.shape[1]
-        el_pfaffians = xnp.zeros((nlayer, nlinks, len(idxarr_vec[0])))
+        num_el_links = len(mod_link_inds)  # number of links to calculate the electric energy on.
+        num_terms_per_layer = len(idxarr_vec[0])  # number of terms in each layer.
+        el_pfaffians = xnp.zeros((nlayer, num_el_links, num_terms_per_layer))
 
         # TODO: vectorize!
         for layerind in range(nlayer):
-
-            idxarr = idxarr_vec[layerind]
-
+            layer_pairs = idxarr_vec[layerind]  # tuple of pairs: ((H,V), (H,V), ...)
             covmat_out_virt_linkvec = covmat_out_virt_vec[layerind]
 
             # Iterate over the links
-            for linkind, covmat_out_virt in enumerate(covmat_out_virt_linkvec):
+            for link_pos, covmat_out_virt in enumerate(covmat_out_virt_linkvec):
+                is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
 
-                for ind, (prefactor, inds) in enumerate(idxarr):
+                # for ind, (prefactor, inds) in enumerate(layer_pairs):
+                for term_ind, (term_h, term_v) in enumerate(layer_pairs):
+                    _, inds = term_v if is_vertical else term_h
                     inds = xnp.asarray(inds)
                     pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds, inds)])
-                    el_pfaffians = backend.array_assign(el_pfaffians, (layerind, linkind, ind), pfaval)
+                    el_pfaffians = backend.array_assign(el_pfaffians, (layerind, link_pos, term_ind), pfaval)
         return el_pfaffians
 
     @property

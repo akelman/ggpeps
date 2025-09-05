@@ -100,14 +100,6 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
         self.idxarr_vec = tuple([zipped_pg] * self.num_pg_layer + [zipped_pf] * self.num_fermionic_layer)
 
-        # for i in range(16):
-        #     print(idxarr_lay_pg_h[i])
-        #     print(idxarr_lay_pg_v[i])
-        #     print(zipped_pg[i])
-        #     # print(idxarr_lay_fermionic_h[i])
-        #     # print(idxarr_lay_fermionic_v[i])
-        #     # print(self.idxarr_vec[i])
-
         self.el_overall_factors = tuple([-1 / 16] * self.nlayer)
         # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 

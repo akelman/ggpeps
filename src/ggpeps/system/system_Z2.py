@@ -1,4 +1,5 @@
 import logging
+from operator import index
 
 import numpy as np
 from ggpeps import xnp as xnp
@@ -179,16 +180,12 @@ class Z2System2D(System2DBase):
 
         # TODO: vectorize!
         for layerind in range(nlayer):
-
-            idxarr = idxarrs[layerind]
+            layer_pairs = idxarrs[layerind]  # tuple of pairs: ((H,V), (H,V), ...)
             overall_factor = overall_factors[layerind]
-
-            # covmat_out_virt_linkvec = covmat_out_virt_vec[layerind]
             norm_mod_linkvec = norm_mod_vec[layerind]
 
             # Iterate over the links
-            for index, norm_mod in enumerate(norm_mod_linkvec):
-
+            for link_pos, norm_mod in enumerate(norm_mod_linkvec):
                 ###################### Calculation of <P> ########################
 
                 # The matrix elements yield only the real part of <P>
@@ -197,19 +194,16 @@ class Z2System2D(System2DBase):
                 # Instead of writing down all the terms explicitly, we build tuples of the prefactors
                 # and the indices of the covariance matrix.
 
-                if mod_link_inds[index] < nlinks / 2:
-                    # horizontal link
-                    idxarr = idxarr[0]
-                else:
-                    # vertical link
-                    idxarr = idxarr[1]
+                is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
 
                 pf_tot = 0.0
-                for ind, (prefactor, inds) in enumerate(idxarr):
-                    pfaval = el_pfaffians[layerind, index, ind]
+                for term_ind, (term_h, term_v) in enumerate(layer_pairs):
+                    # each term_* is (prefactor, indices); pfaffians already computed per term_ind
+                    prefactor = term_v[0] if is_vertical else term_h[0]
+                    pfaval = el_pfaffians[layerind, link_pos, term_ind]
                     pf_tot += prefactor * pfaval
-                el_energy_full = overall_factor * pf_tot
 
+                el_energy_full = overall_factor * pf_tot
                 el_energy_link = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
                 dest = backend.array_assign(dest, (layerind, index), el_energy_link)
 
