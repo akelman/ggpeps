@@ -1398,9 +1398,7 @@ class System2DBase(ABC):
             xnp.ndarray: Vector of gradients of the norm with respect to all parameters
         """
         if self._grad_over_norm_vec is None:
-            wi_gamma_in_inv_vec = xnp.array(
-                [self.wi_gamma_in_vec[layerind].inv() for layerind in range(self.cfg.nlayer)]
-            )
+            gamma_in_inv_vec = xnp.array([self.wi_gamma_in_vec[layerind].inv() for layerind in range(self.cfg.nlayer)])
             self._grad_over_norm_vec = self.compute_grad_norm_vec(
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
@@ -1408,7 +1406,7 @@ class System2DBase(ABC):
                 self.cfg.unitcell_size,
                 len(self.symbolvec),
                 self.cfg.zeroed_params,
-                wi_gamma_in_inv_vec,
+                gamma_in_inv_vec,
                 self.gamma_in_sys_vec,
                 self.mat_d_inv_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
@@ -1451,7 +1449,7 @@ class System2DBase(ABC):
 
     @classmethod
     @abstractmethod
-    def generate_rotmat(cls, ncopy, theta, coord, dir):
+    def generate_rotmat(cls, ncopy: int, group_element: xnp.ndarray, coord: tuple, dir: Direction) -> xnp.ndarray:
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
 
         The mode order is (the same as for gamma_in_neutral and) provided explicitly in each subclass.
@@ -2190,12 +2188,12 @@ class System2DBase(ABC):
         return xnp.trace(path_product)
 
     @staticmethod
-    @maybe_jit(static_argnames=["lattice_size", "nphysmodes_site", "nlayer"])
+    # @maybe_jit(static_argnames=["lattice_size", "nphysmodes_site", "nlayer"]) # causes issues on AMD GPU; unclear why
     def _compute_ferm_cov(
         lattice_size: int,
         nphysmodes_site: int,
         nlayer: int,
-        wi_gamma_out_inv_vec: xnp.ndarray,
+        gamma_out_inv_vec: xnp.ndarray,
         mat_a_vec: xnp.ndarray,
         mat_b_vec: xnp.ndarray,
     ) -> xnp.ndarray:
@@ -2211,9 +2209,7 @@ class System2DBase(ABC):
         ferm_covmat_vec = xnp.full(shape, xnp.nan)
 
         for layer in range(nlayer):
-            covmat = mat_a_vec[layer] + (
-                mat_b_vec[layer] @ wi_gamma_out_inv_vec[layer] @ xnp.transpose(mat_b_vec[layer])
-            )
+            covmat = mat_a_vec[layer] + (mat_b_vec[layer] @ gamma_out_inv_vec[layer] @ xnp.transpose(mat_b_vec[layer]))
 
             ferm_covmat_vec = backend.array_assign(ferm_covmat_vec, layer, covmat)
         return ferm_covmat_vec
@@ -2223,12 +2219,12 @@ class System2DBase(ABC):
         """Compute the covariance matrix of the fermions in the system for the given layer.
         We calculate it for all layers automatically, even though it is not needed for pure-gauge layers."""
         if self._ferm_covmat_vec is None:
-            wi_gamma_out_inv_vec = [self.wi_gamma_out_vec[layer].inv() for layer in range(self.cfg.nlayer)]
+            gamma_out_inv_vec = xnp.asarray([self.wi_gamma_out_vec[layer].inv() for layer in range(self.cfg.nlayer)])
             self._ferm_covmat_vec = self._compute_ferm_cov(
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nlayer,
-                wi_gamma_out_inv_vec,
+                gamma_out_inv_vec,
                 self.mat_a_vec,
                 self.mat_b_vec,
             )
@@ -2424,7 +2420,6 @@ def get_pfaffian_arrays(modes: list, coefficients: list) -> tuple[tuple[complex,
     Args:
         modes (list of lists of tuples of ints): _description_
         coefficients (list of lists of complex floats): _description_
-        neg (float): _description_
 
     Returns:
         list: index array in the format required for the calculation of the electric energy (and electric gradients).

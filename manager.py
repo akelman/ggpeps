@@ -187,13 +187,12 @@ def main(args):
     # If GPUs are available, use the first available GPU;
     # if not, default to using the CPU.
     available_devices_ = jax.devices()  # available_gpus = jax.devices('gpu')
-    PREFERRED_DEVICE = available_devices_[0]
-    device_name = PREFERRED_DEVICE.device_kind.lower()
+    main_device = available_devices_[0]
+    device_name = main_device.device_kind.lower()
 
     # GPU detection
     if any(x in device_name for x in ["gpu", "nvidia", "cuda", "amd", "rocm"]):
         ggpeps.GPU_AVAILABLE = True
-        ggpeps.PREFERRED_DEVICE = PREFERRED_DEVICE
     else:
         ggpeps.GPU_AVAILABLE = False
 
@@ -367,15 +366,16 @@ def main(args):
     # Log backend info - GPU/CPU, JAX/NUMPY, precision, etc.
     logger.info("======= BACKEND INFO =======")
     if ggpeps.GPU_AVAILABLE:
-        # logger.info(f"Available JAX devices: {available_devices_}")
-        logger.info(f"Found GPU, using device: {ggpeps.PREFERRED_DEVICE}.")
-        # TODO: add basic GPU info
-        # logger.info(f"GPU info: {ggpeps.PREFERRED_DEVICE.device_kind}"
+        logger.info(f"Found GPU, using device: {main_device}.")
     else:
         logger.info("No GPUs found, falling back to CPU.")
     logger.info(f"Numerical backend: {ggpeps.PREFERRED_BACKEND}")
     arr = ggpeps.xnp.array([1.2, 1.3])
     logger.info(f"Precision: {arr.dtype}")
+    if isinstance(arr, jax.numpy.ndarray):
+        # dev = arr.device
+        # logger.info(f"JAX default device: {dev.platform}")  # general
+        logger.info(f"Device info: {main_device.device_kind}")  # specific
     logger.info("============================")
 
     # Caching info
