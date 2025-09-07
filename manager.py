@@ -181,7 +181,7 @@ def main(args):
     # Configure JAX
     import jax
 
-    # jax.config.update("jax_enable_x64", True)
+    jax.config.update("jax_enable_x64", True)
 
     # GPU or CPU detection (compatible with ROCm GPUs)
     # If GPUs are available, use the first available GPU;

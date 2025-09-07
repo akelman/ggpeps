@@ -8,7 +8,7 @@ from jax import jit
 
 # The following line ensures that JAX is configured to 64-bit precision.
 # Without this line, some of the precision tests do not pass.
-# jax.config.update("jax_enable_x64", True)
+jax.config.update("jax_enable_x64", True)
 
 import py_pfaffian.jax
 
