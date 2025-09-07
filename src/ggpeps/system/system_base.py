@@ -53,6 +53,11 @@ class System2DBase(ABC):
             cfg (Config2DBase): Configuration containing all system-related parameters
         """
         self.cfg: Config2DBase = cfg
+
+        # Link indices for which the electric energy is computed - can be any set of horizontal links:
+        # TODO: add input checks, make this configurable via CLI.
+        self.mod_link_inds: tuple[int, ...] = (4,)
+
         self.initialize()
 
     def initialize(self) -> None:
@@ -80,9 +85,6 @@ class System2DBase(ABC):
         # Full covariance matrix (gamma_out) of the fermions
         self._ferm_covmat_vec: Optional[xnp.ndarray] = None
 
-        # Link indices for which the electric energy is computed - can be any set of horizontal links:
-        # TODO: move to __init__, add input checks, make this configurable as a terminal command line argument.
-        self.mod_link_inds: tuple[int, ...] = (4,)
         # Parameter dependent quantities for the electric energy
         self._mat_a_mod_vec: Optional[xnp.ndarray] = None
         self._mat_b_mod_vec: Optional[xnp.ndarray] = None
