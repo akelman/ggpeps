@@ -179,22 +179,22 @@ class MonteCarloEvaluator(Evaluator):
 
         self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
         # self.obsdict["cov_ferm"].append(self.system.ferm_covmat_vec)
-        self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
-        self.obsdict["el_energy_op"].append(self.system.el_energy_op)
-        self.obsdict["int_energy_op"].append(self.system.int_energy_op)
-        self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
+        self.obsdict["mag_energy_op"].append(np.asarray(self.system.mag_energy_op))
+        self.obsdict["el_energy_op"].append(np.asarray(self.system.el_energy_op))
+        self.obsdict["int_energy_op"].append(np.asarray(self.system.int_energy_op))
+        self.obsdict["mass_energy_op"].append(np.asarray(self.system.mass_energy_op))
 
         # Most of these values could be calculated in a post-processing step
-        self.obsdict["energy"].append(self.system.energy)
-        self.obsdict["el_energy"].append(self.system.el_energy)
-        self.obsdict["mag_energy"].append(self.system.mag_energy)
-        self.obsdict["int_energy"].append(self.system.int_energy)
-        self.obsdict["mass_energy"].append(self.system.mass_energy)
-        self.obsdict["chem_energy"].append(self.system.chem_energy)
-        self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
+        self.obsdict["energy"].append(float(self.system.energy))
+        self.obsdict["el_energy"].append(float(self.system.el_energy))
+        self.obsdict["mag_energy"].append(float(self.system.mag_energy))
+        self.obsdict["int_energy"].append(float(self.system.int_energy))
+        self.obsdict["mass_energy"].append(float(self.system.mass_energy))
+        self.obsdict["chem_energy"].append(float(self.system.chem_energy))
+        self.obsdict["norm"].append(float(self.system.calculate_lognorm(all_factors=True)))
         if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
-            self.obsdict["all_occupations"].append(self.system.all_occupations)
-            self.obsdict["average_occupation"].append(self.system.average_occupation())
+            self.obsdict["all_occupations"].append(np.asarray(self.system.all_occupations))
+            self.obsdict["average_occupation"].append(np.asarray(self.system.average_occupation()))
 
         # Wilson loops
         # TODO: save sizes/loops/strings in a more efficient way, so that they are not recomputed each step
@@ -209,14 +209,14 @@ class MonteCarloEvaluator(Evaluator):
         strings = [self.system.cfg.lattice.generate_L_string((0, 0), (k, k)) for k in range(1, max_string)]
         for k in range(1, max_string):
             string_name = f"square_string_0-0_{k}x{k}"
-            self.obsdict[string_name].append(self.system.meson_string(strings[k - 1]))
+            self.obsdict[string_name].append(np.asarray(self.system.meson_string(strings[k - 1])))
 
         if self.cfg.compute_grads:
-            self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
-            self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
-            self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
-            self.obsdict["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
-            self.obsdict["grad_norm"].append(self.system.grad_over_norm_vec)
+            self.obsdict["el_energy_op_grad"].append(np.asarray(self.system.el_energy_op_grad_vec))
+            self.obsdict["int_energy_op_grad"].append(np.asarray(self.system.int_energy_op_grad_vec))
+            self.obsdict["mass_energy_op_grad"].append(np.asarray(self.system.mass_energy_op_grad_vec))
+            self.obsdict["chem_energy_op_grad"].append(np.asarray(self.system.chem_energy_op_grad_vec))
+            self.obsdict["grad_norm"].append(np.asarray(self.system.grad_over_norm_vec))
 
         return
 
