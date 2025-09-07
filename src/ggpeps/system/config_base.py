@@ -229,6 +229,16 @@ class Config2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    @abstractmethod
+    def init_el_energy_terms(self) -> None:
+        """Initialize electric-energy-related structures for this ansatz.
+
+        Implementations must set:
+            - self.idxarr_vec: IdxArrVec
+            - self.el_overall_factors: tuple[complex, ...]
+        """
+        raise NotImplementedError("Implement in subclass: must set idxarr_vec and el_overall_factors.")
+
     def enforce_parameter_conditions(self, mat: xnp.ndarray) -> None:
         """Enforce conditions on the parameters according to the requirements of the ansatz.
         Examples:
