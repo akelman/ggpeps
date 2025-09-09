@@ -71,17 +71,35 @@ class Z2System2D2CConfig(Config2DBase):
             logger.error("This ansatz does not support the relaxation of U(1) symmetry.")
             raise ValueError("Invalid enforce_u1_symmetry.")
 
-        # Constants used in the calculation of the electric energy
-        prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
-        indices_layer_pg = [
+        self.init_el_energy_terms()
+
+    def init_el_energy_terms(self) -> None:
+        """Build idxarr_vec (paired H/V terms per layer) and el_overall_factors."""
+        # Constants used in the calculation of the electric energy on a horizontal link.
+        prefactors_h = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
+        indices_layer_pg_h = [
             [(2, 4), (3, 5), (4, 5), (2, 3)],
             [(6, 0), (7, 1), (0, 1), (6, 7)],
         ]
-        idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
-        self.idxarr_vec = tuple([idxarr_lay_pg] * self.nlayer)
-        self.el_overall_factors = tuple(
-            [-1 / 16] * self.nlayer
-        )  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        idxarr_lay_pg_h = get_pfaffian_arrays(indices_layer_pg_h, prefactors_h)
+
+        # Constants used in the calculation of the electric energy on a vertical link.
+        prefactors_v = [[-1, -1, 1.0j, 1.0j], [-1, -1, 1.0j, 1.0j]]
+        indices_layer_pg_v = [
+            [(2, 5), (3, 4), (4, 5), (2, 3)],
+            [(6, 1), (7, 0), (0, 1), (6, 7)],
+        ]
+        idxarr_lay_pg_v = get_pfaffian_arrays(indices_layer_pg_v, prefactors_v)
+
+        # Pair horizontal/vertical term-lists termwise for each layer kind
+        zipped_pg = tuple(zip(idxarr_lay_pg_h, idxarr_lay_pg_v))
+
+        # Stack per-layer: first pure-gauge layers, then fermionic layers (no fermionic layers here)
+        self.idxarr_vec = tuple([zipped_pg] * self.nlayer)
+
+        # Overall prefactors per layer
+        # arises from normalization and the i^(# of modes/2) in Tr[i^# * rho * (modes)]
+        self.el_overall_factors = tuple([-1 / 16] * self.nlayer)
 
     def make_pure_gauge(self):
         """Ensure the system stays as pure_gauge.

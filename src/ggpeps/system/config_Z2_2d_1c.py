@@ -86,8 +86,8 @@ class Z2System2DConfig(Config2DBase):
         # Pair horizontal/vertical term-lists termwise for each layer kind
         zipped_pg = tuple(zip(idxarr_lay_pg_h, idxarr_lay_pg_v))
 
-        # Stack per-layer: first pure-gauge layers, then fermionic layers
-        self.idxarr_vec = tuple([zipped_pg] * self.num_pg_layer)
+        # Stack per-layer: first pure-gauge layers, then fermionic layers (no fermionic layers here)
+        self.idxarr_vec = tuple([zipped_pg] * self.nlayer)
 
         # Overall prefactors per layer
         # arises from normalization and the i^(# of modes/2) in Tr[i^# * rho * (modes)]
