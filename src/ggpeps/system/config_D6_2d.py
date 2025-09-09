@@ -84,6 +84,10 @@ class D6System2D_Config(Config2DBase):
             )
             sys.exit(1)
 
+        self.init_el_energy_terms()
+
+    def init_el_energy_terms(self) -> None:
+        """Build idxarr_vec and el_overall_factors."""
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
         indices_layer_pg = [
