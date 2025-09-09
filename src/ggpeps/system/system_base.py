@@ -56,7 +56,7 @@ class System2DBase(ABC):
 
         # Link indices for which the electric energy is computed - can be any set of horizontal links:
         # TODO: add input checks, make this configurable via CLI.
-        self.mod_link_inds: tuple[int, ...] = (4,)
+        self.mod_link_inds: tuple[int, ...] = (0,)
 
         self.initialize()
 
