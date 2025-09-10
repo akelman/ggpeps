@@ -56,12 +56,16 @@ def run_mc(
 
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
-    if "nevmc" in evaluator_class.__name__.lower():
-        mc = evaluator_class(evaluator_cfg, system, store_gauge, store_weights, store_work)
+    if evaluator_class is NEVMC_Evaluator:
+        assert isinstance(evaluator_cfg, NEVMC_EvaluatorConfig)
+        evaluator: Evaluator = NEVMC_Evaluator(evaluator_cfg, system, store_gauge, store_weights, store_work)
+    elif evaluator_class is MonteCarloEvaluator:
+        assert isinstance(evaluator_cfg, MonteCarloEvaluatorConfig)
+        evaluator = MonteCarloEvaluator(evaluator_cfg, system)
     else:
-        mc = evaluator_class(evaluator_cfg, system)
-    mc.evaluate()
-    return mc
+        raise ValueError(f"Unknown evaluator type {evaluator_class}.")
+    evaluator.evaluate()
+    return evaluator
 
 
 ####################### Evaluator Manager #######################
@@ -237,7 +241,7 @@ class EvaluatorManager:
 
         return result_df
 
-    def collect(self, resultvec: list[MonteCarloEvaluator]) -> Evaluator:
+    def collect(self, resultvec) -> Evaluator:
         """Unify the results of multiple runners into a single Evaluator.
 
         Args:
@@ -253,7 +257,8 @@ class EvaluatorManager:
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
 
-    def collect_mc(self, resultvec):
+    def collect_mc(self, resultvec: list[MonteCarloEvaluator]) -> MonteCarloEvaluator:
+        assert isinstance(self.cfg, MonteCarloEvaluatorConfig)
         system = self.system_cls(self.system_cfg)
         dest = MonteCarloEvaluator(self.cfg, system)
         if len(resultvec) > 1:
@@ -264,7 +269,8 @@ class EvaluatorManager:
             dest = resultvec[0]
         return dest
 
-    def collect_NEVMC(self, resultvec):
+    def collect_NEVMC(self, resultvec: list[NEVMC_Evaluator]) -> NEVMC_Evaluator:
+        assert isinstance(self.cfg, NEVMC_EvaluatorConfig)
         system = self.system_cls(self.system_cfg)
         dest = NEVMC_Evaluator(self.cfg, system, [], [], [])
         if len(resultvec) > 1:
