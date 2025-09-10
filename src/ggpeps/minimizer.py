@@ -317,7 +317,9 @@ class Minimizer:
 
             if ind == 0:
                 # First run at equilibrium
-                result0_df = self.evaluator_manager.simulate(eval_args={"first_warmup": True})
+                self.evaluator_manager.cfg.first_warmup = True
+                self.evaluator_manager.cfg.scanning = False
+                result0_df = self.evaluator_manager.simulate()
                 result0 = self.evaluator_manager.get_evaluator()
 
                 # Standard calculation energy and grads
@@ -333,7 +335,9 @@ class Minimizer:
                 self.evaluator_manager.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
 
                 # First reweighting: only scanning
-                self.evaluator_manager.simulate(eval_args={"scanning": True})
+                self.evaluator_manager.cfg.first_warmup = False
+                self.evaluator_manager.cfg.scanning = True
+                self.evaluator_manager.simulate()
                 result1 = self.evaluator_manager.get_evaluator()
 
                 # Compute DF
@@ -381,10 +385,14 @@ class Minimizer:
                 self.last_paramvec = np.copy(paramvec)
 
                 # Monte Carlo part of the optimizer
+                self.evaluator_manager.cfg.first_warmup = False
+                self.evaluator_manager.cfg.scanning = False
                 self.evaluator_manager.simulate()
                 result0 = self.evaluator_manager.get_evaluator()
                 self.evaluator_manager.system_cfg.paramvec = copy.deepcopy(next_paramvec)
-                self.evaluator_manager.simulate(eval_args={"scanning": True})
+                self.evaluator_manager.cfg.first_warmup = False
+                self.evaluator_manager.cfg.scanning = True
+                self.evaluator_manager.simulate()
                 result1 = self.evaluator_manager.get_evaluator()
 
                 # Compute DF

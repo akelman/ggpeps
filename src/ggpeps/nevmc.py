@@ -47,6 +47,9 @@ class NEVMC_EvaluatorConfig:
         self._seed = None
         self._rng_state = None
 
+        self.first_warmup = False
+        self.scanning = False
+
         # Logging frequency
         self.warmup_log_freq: int = warmup_log_freq  # log every X steps
         self.run_log_freq: int = run_log_freq
@@ -271,16 +274,16 @@ class NEVMC_Evaluator(Evaluator):
     #################################################################################################################
     ### beg NEVMC ###
 
-    def evaluate(self, first_warmup: bool = False, scanning: bool = False):
+    def evaluate(self):
 
-        if first_warmup:
+        if self.cfg.first_warmup:
             self.warmup()
             # warmup uses the standard update function
             self.run0(self.cfg.warmup_steps)
             self.store_work = [0] * len(self.store_weights)
 
         else:
-            if scanning:
+            if self.cfg.scanning:
                 for i in range(len(self.store_weights)):
                     self.scan_cfgs(i)
             else:

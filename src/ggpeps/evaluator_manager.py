@@ -29,7 +29,6 @@ def run_mc(
     store_weights,
     store_work,
     logger_info: dict,
-    eval_args: dict = {},
 ) -> Evaluator:
     """Worker for running part of a MC or NEVMC simulation.
 
@@ -61,7 +60,7 @@ def run_mc(
         mc = evaluator_class(evaluator_cfg, system, store_gauge, store_weights, store_work)
     else:
         mc = evaluator_class(evaluator_cfg, system)
-    mc.evaluate(**eval_args)
+    mc.evaluate()
     return mc
 
 
@@ -147,7 +146,7 @@ class EvaluatorManager:
         """
         return self.evaluator
 
-    def simulate(self, eval_args: dict = {}) -> pd.DataFrame:
+    def simulate(self) -> pd.DataFrame:
         """Simulate
 
         Args:
@@ -220,7 +219,6 @@ class EvaluatorManager:
                         local_weights,
                         local_work,
                         logger_info,
-                        eval_args=eval_args,
                     )
                 )
             resultvec = ray.get(resultvec)
@@ -228,7 +226,7 @@ class EvaluatorManager:
             result_df = self.evaluator.summary()
         else:
             self.reset_evaluator()
-            self.evaluator.evaluate(**eval_args)
+            self.evaluator.evaluate()
             result_df = self.evaluator.summary()
 
             if self.type == "nevmc":
