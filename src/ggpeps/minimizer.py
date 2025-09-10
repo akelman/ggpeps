@@ -357,7 +357,8 @@ class Minimizer:
                 max_grad_paramvec = np.max(np.abs(grad_paramvec))
                 self.last_result = [energy, max_grad_paramvec, Wmean, free_energy]
 
-                # DEBUG ####################################################################################################################
+                #################################################################################
+                # DEBUG
                 # print("Paramvec: ", self.evaluator_manager.system_cfg.paramvec)
                 # print("Second energy: ", energy)
                 # print("Second grad_paramvec: ", grad_paramvec)
@@ -367,7 +368,7 @@ class Minimizer:
                 # print("Int energy: ", result1.get_obs_mean("int_energy"))
                 # print("Chem energy: ", result1.get_obs_mean("chem_energy"))
                 # exit()
-                ####################################################################################################################
+                #################################################################################
 
                 # Update logs
                 NEVMC_print_callback(ind, self.last_result)
