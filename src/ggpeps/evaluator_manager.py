@@ -171,8 +171,8 @@ class EvaluatorManager:
             # system_cfg_id = ray.put(self.system_cfg)
             reduced_meas_steps = self.cfg.meas_steps // self.nrunner
             logger.info(
-                f"Starting {self.nrunner} ray runners with {reduced_meas_steps} measurement steps each \
-                (total: {self.nrunner * reduced_meas_steps})."
+                f"Starting {self.nrunner} ray runners with {reduced_meas_steps} measurement steps each "
+                f"(total: {self.nrunner * reduced_meas_steps})."
             )
 
             for i in range(self.nrunner):
