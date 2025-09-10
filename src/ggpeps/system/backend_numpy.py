@@ -1,5 +1,7 @@
 ############## NUMPY CPU VERSIONS ##############
 
+from typing import Optional
+
 import numpy as np
 from pfapack import pfaffian as pf
 
@@ -7,7 +9,7 @@ import ggpeps
 from ggpeps.system.backend_base import BackendBase
 
 
-def derivative_pfaffian_numpy(mat, d_mat, pfaval=None):
+def derivative_pfaffian_numpy(mat: np.ndarray, d_mat: np.ndarray, pfaval: Optional[float] = None) -> float:
     """Compute the derivative of a Pfaffian of a matrix A.
     The explicit derivative dA/dx is given as a second argument
 
@@ -18,7 +20,7 @@ def derivative_pfaffian_numpy(mat, d_mat, pfaval=None):
         d_mat (np.ndarray): Derivative dA/dx
 
     Returns:
-        np.ndarray: d(Pf(A))/dx
+        float: d(Pf(A))/dx
     """
     if pfaval is None:
         pfaval = pf.pfaffian(mat)
@@ -30,10 +32,10 @@ def derivative_pfaffian_numpy(mat, d_mat, pfaval=None):
 
 
 def calculate_lognormvec_numpy(
-    gamma_in_sys_vec: list[np.ndarray],
-    mat_d_vec: list[np.ndarray],
+    gamma_in_sys_vec: np.ndarray,
+    mat_d_vec: np.ndarray,
     all_factors: bool = False,
-) -> float:
+) -> np.ndarray:
     # This is still the plain formula, without any update mechanism
     nlayer = len(mat_d_vec)
     dest = np.zeros(nlayer)
@@ -53,46 +55,6 @@ def calculate_lognormvec_numpy(
 
     # The factor 1/2 is the square-root
     return dest / 2
-
-
-def compute_grad_over_norm_numpy(
-    gamma_in_sys: np.ndarray,
-    diff: np.ndarray,
-    deriv_d: np.ndarray,
-    mat_d_inv: np.ndarray,
-) -> float:
-    r"""Compute the gradient of the norm divided by the norm.
-    The expression of deriv_d given to this function decides which derivative is computed
-
-    The gradient of the norm divided by the norm is given by
-        -0.5 * np.trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
-    which is very expensive to calculate.
-    To reduce the number of expensive matrix multiplications, we use the fact that
-        Tr(A @ B.T) = \sum_ij a_ij b_ij
-    i.e. trace of a square matrix which is the product of two real matrices can be rewritten as
-    the sum of entry-wise products of their elements, i.e. as the sum of all elements of their Hadamard product [1].
-    Note that for current systems, the input matrices are always real, but this should be checked if the system changes
-    (e.g. for other groups).
-
-    When using a GPU (in which case this function is not used) it is faster to do all the matrix multiplications
-    and then take the trace.
-
-    Refs:
-        [1] Trace, Wikipedia, https://en.wikipedia.org/wiki/Trace_(linear_algebra)#Trace_of_a_product
-
-    Args:
-        gamma_in_sys (np.ndarray): Gauged covariance matrix of the projectors
-        diff (np.ndarray): (D^{-1} - gamma_in_sys)^{-1}
-        deriv_d (np.ndarray): dD/d{alpha}: Derivative of the virtual-virtual covariance matrix
-        mat_d_inv (np.ndarray): Inverse of D: D^{-1}
-
-    Returns:
-        float: Gradient of the norm divided by the norm.
-    """
-    A = gamma_in_sys @ deriv_d
-    B = mat_d_inv @ diff
-    dest = -0.5 * (A * B.T).sum()
-    return dest
 
 
 class BackendNumpy_Z2(BackendBase):
@@ -118,6 +80,10 @@ class BackendNumpy_Z2(BackendBase):
     def array_mult(mat, inds, val):
         mat[inds] *= val
         return mat
+
+    @staticmethod
+    def pfaffian(mat):
+        return pf.pfaffian(mat)
 
     @staticmethod
     def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):

@@ -67,6 +67,29 @@ class Lattice2D:
         self.nplaquettes = nx * ny
         self.size = nx * ny  # number of sites/plaquettes
 
+        # Sublattice factors: 1 on the even sublattice, -1 on the odd sublattice
+        self.sublattice_factors = tuple([(-1) ** np.sum(self.ind2coord(site)) for site in range(self.size)])
+
+        # Data which stores a map from site index to neighboring links and sites for use in the interaction energy
+        all_hor_data = []
+        all_vert_data = []
+        for site in range(self.size):
+            coord = self.ind2coord(site)
+
+            hor_link_ind = self.coord2ind_dir(coord, Direction.X)  # index of the horizontal link
+            neighborX_coord = self.get_neighbor(coord, Direction.X)  # coordinates of neighboring site
+            neighborX_ind = self.coord2ind(neighborX_coord)  # index of neighboring site
+            hor_data = (hor_link_ind, neighborX_ind)
+            all_hor_data.append(hor_data)
+
+            vert_link_ind = self.coord2ind_dir(coord, Direction.Y)  # index of the horizontal link
+            neighborY_coord = self.get_neighbor(coord, Direction.Y)  # coordinates of neighboring site
+            neighborY_ind = self.coord2ind(neighborY_coord)  # index of neighboring site
+            vert_data = (vert_link_ind, neighborY_ind)
+            all_vert_data.append(vert_data)
+        self.horizontal_neighbor_data: tuple[tuple[int, int], ...] = tuple(all_hor_data)
+        self.vertical_neighbor_data: tuple[tuple[int, int], ...] = tuple(all_vert_data)
+
         # We trust the user not to modify these
         if gf_num_of_rows == -2:  # we fix a chess tree
             self.fixed_tree = self.generate_chess_tree()
@@ -538,8 +561,11 @@ class PermutationBuilderGMS2DU1:
     """Build a permutation matrix for gamma_maj_sys for the U1 parametrization
      The default mode-order of the elementary T matrix is {p,l,r,u,d}.
      We double this T matrix to accomodate for positive and negative modes.
-     By building the Dirac covariance matrix from it and transforming it to a Majorana matrix, we obtain a mode-order of {p_1,p_2,l+_1, l+_2, l-_1, l-_2, r+_1, r+_2, r-_1, r-_2, d+_1, d+_2, d-_1, d-_2, u+_1, u+_2, u-_1, u-_2}.
-     The covariance matrix of the projectors is chosen such that modes from adherent vertices can be modified together, i.e. it is ordered by links.
+     By building the Dirac covariance matrix from it and transforming it to a Majorana matrix,
+     we obtain a mode-order of
+        {p_1,p_2,l+_1, l+_2, l-_1, l-_2, r+_1, r+_2, r-_1, r-_2, d+_1, d+_2, d-_1, d-_2, u+_1, u+_2, u-_1, u-_2}.
+     The covariance matrix of the projectors is chosen such that modes from adherent vertices can be modified together,
+     i.e. it is ordered by links.
      The order of the links is first along x and then along y. In the case of a 2x2 lattice, it reads
 
      |         |
@@ -553,7 +579,8 @@ class PermutationBuilderGMS2DU1:
 
      The vertex indices are written as <number>, the link indices are written as "<number>".
 
-     Before the transformation the covariance matrix of the gamma_maj_sys has the order (taking the 2x2 system as an example for concreteness)
+     Before the transformation the covariance matrix of the gamma_maj_sys has the order
+     (taking the 2x2 system as an example for concreteness)
      { l1_0, r1_0, d1_0, u1_0, l2_0, r2_0, d2_0, u2_0,
        l1_1, r1_1, d1_1, u1_1, l2_1, r2_1, d2_1, u2_1,
        l1_2, r1_2, d1_2, u1_2, l2_2, r2_2, d2_2, u2_2,
@@ -632,6 +659,7 @@ class PermutationBuilderGMS2DU1:
 
 
 if __name__ == "__main__":
+
     # print("Lattice 2d, 3x2")
     # lat_3x2 = Lattice2D(4, 5)
     # print(lat_3x2)

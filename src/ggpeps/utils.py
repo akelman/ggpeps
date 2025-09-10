@@ -21,9 +21,10 @@ from matplotlib.colors import LogNorm
 
 import ggpeps
 import ggpeps.measurement as meas
-from ggpeps.system.global_funcs import backend
-from ggpeps.system.global_funcs_jax import derivative_pfaffian_jax
-from ggpeps.system.global_funcs_numpy import derivative_pfaffian_numpy
+from ggpeps.system.backend import backend
+from ggpeps.system.system_base import maybe_jit
+from ggpeps.system.backend_jax import derivative_pfaffian_jax
+from ggpeps.system.backend_numpy import derivative_pfaffian_numpy
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -212,8 +213,9 @@ def get_git_hash() -> str:
     return githash.decode("utf-8").strip()
 
 
-def extract_partial_covmats(mat: xnp.ndarray, corner: int):
-    """Extract the partial covariance matrices from a gaussian mapping
+def extract_partial_covmats(mat: xnp.ndarray, corner: int) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
+    """Extract the partial covariance matrices from a gaussian mapping.
+    This function can accept a 2D matrix, or a stack of 2D matrices (i.e. a 3D array).
 
     Args:
         mat (xnp.ndarray): Full covariance matrix
@@ -222,10 +224,68 @@ def extract_partial_covmats(mat: xnp.ndarray, corner: int):
     Returns:
         tuple: Matrices (A,B,D)
     """
-    mat_a = mat[:corner, :corner]
-    mat_b = mat[:corner, corner:]
-    mat_d = mat[corner:, corner:]
+    mat_a = mat[..., :corner, :corner]
+    mat_b = mat[..., :corner, corner:]
+    mat_d = mat[..., corner:, corner:]
     return mat_a, mat_b, mat_d
+
+
+def extract_mod_covmats(
+    mat: xnp.ndarray, link_inds: tuple[int, ...], lattice_size: int, nphysmodes_site: int, nvirtmodes_link: int
+) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
+    """Extract the A, B, D submatrices, but including the virtual modes on the link specified by link_ind.
+    This function can accept a 2D matrix, or a stack of 2D matrices (i.e. a 3D array).
+
+    Args:
+        mat (xnp.ndarray): The mat(s) from which to extract the submatrices.
+        link_inds (tuple[int, ...]): a list of link indices to include in the physical-physical set.
+
+    Returns:
+        tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]: the A, B, D submatrices, across layers and links
+    """
+
+    single_matrix = False
+    if mat.ndim == 2:
+        single_matrix = True
+        mat = mat[None, ...]  # add fake "layer" dimension
+
+    mod_a_linkvec_layervec = []
+    mod_b_linkvec_layervec = []
+    mod_d_linkvec_layervec = []
+    for link_ind in link_inds:
+
+        # Calculate the indices of mat to extract for mat_a_mod, mat_b_mod, mat_d_mod
+        phys_offset = 2 * lattice_size * nphysmodes_site  # end of physical modes
+        virt_start = phys_offset + 2 * nvirtmodes_link * link_ind  # start of virtual modes for the link
+        virt_end = virt_start + 2 * nvirtmodes_link  # end of virtual modes for the link
+        size = mat.shape[-1]  # size of gamma_maj_sys
+
+        # include virt modes on given link in the "physical" set
+        phys_inds_list = [k for k in range(phys_offset)] + [k for k in range(virt_start, virt_end)]
+        virt_inds_list = [k for k in range(size) if k not in phys_inds_list]  # all other virtual modes
+
+        phys_inds = xnp.asarray(phys_inds_list)
+        virt_inds = xnp.asarray(virt_inds_list)
+
+        mat_a_mod_link = mat[(..., *xnp.ix_(phys_inds, phys_inds))]
+        mat_b_mod_link = mat[(..., *xnp.ix_(phys_inds, virt_inds))]
+        mat_d_mod_link = mat[(..., *xnp.ix_(virt_inds, virt_inds))]
+
+        mod_a_linkvec_layervec.append(mat_a_mod_link)
+        mod_b_linkvec_layervec.append(mat_b_mod_link)
+        mod_d_linkvec_layervec.append(mat_d_mod_link)
+
+    # Reorder from linkvec_layervec to layervec_linkvec
+    mat_a_mod = xnp.asarray(list(zip(*mod_a_linkvec_layervec)))
+    mat_b_mod = xnp.asarray(list(zip(*mod_b_linkvec_layervec)))
+    mat_d_mod = xnp.asarray(list(zip(*mod_d_linkvec_layervec)))
+
+    if single_matrix:
+        # remove fake "layer" axis
+        mat_a_mod = mat_a_mod[0]
+        mat_b_mod = mat_b_mod[0]
+        mat_d_mod = mat_d_mod[0]
+    return mat_a_mod, mat_b_mod, mat_d_mod
 
 
 def select_except(arr: Union[list, xnp.ndarray], ind: int) -> xnp.ndarray:
@@ -244,6 +304,23 @@ def select_except(arr: Union[list, xnp.ndarray], ind: int) -> xnp.ndarray:
     mask = xnp.ones(len(arr), dtype=bool)
     mask = backend.array_assign(mask, ind, False)
     return arr[mask]  # TODO: fix for JAX jit
+
+
+@maybe_jit(static_argnames=[])
+def add_except(arr: xnp.ndarray, ind: int) -> float:
+    """Sum all array values except for arr[ind]
+
+    Args:
+        arr (xnp.ndarray): list of values
+        ind (int): index
+
+    Returns:
+        float: Sum of all array values except for arr[ind]
+    """
+    mask = xnp.ones(len(arr), dtype=bool)
+    mask = backend.array_assign(mask, ind, False)
+    sum_other = xnp.where(mask, arr, 0.0).sum()
+    return sum_other
 
 
 def multiply_except(arr: Union[xnp.ndarray, list], ind: int) -> float:
@@ -271,7 +348,9 @@ def pfaffian_explicit_4x4_masked(
     mat: xnp.ndarray, ind: Union[tuple[int, int, int, int], list[int], xnp.ndarray]
 ) -> float:
     """
-    Calculate the Pfaffian of a 4x4 block of a matrix explicitly using the indices provided (the indices from which the block is sliced).
+    Calculate the Pfaffian of a 4x4 block of a matrix explicitly using the indices provided
+    (the indices from which the block is sliced).
+
     Args:
         mat (xnp.ndarray): Input matrix
         ind (Union[tuple[int,int,int,int], list[int], xnp.ndarray[int]]): Indices for the 4x4 block
@@ -491,10 +570,10 @@ def generate_smat(n: int) -> xnp.ndarray:
 
 
 def compute_grad_over_norm(
-    gamma_in_sys: np.ndarray,
-    diff: np.ndarray,
-    deriv_d: np.ndarray,
-    mat_d_inv: np.ndarray,
+    gamma_in_sys: xnp.ndarray,
+    diff: xnp.ndarray,
+    deriv_d: xnp.ndarray,
+    mat_d_inv: xnp.ndarray,
     method: str = "hadamard",
 ) -> float:
     r"""Compute the gradient of the norm divided by the norm.
@@ -594,13 +673,13 @@ class WoodburyInverter:
         """Update the inverse of a matrix A using the Woodbury formula.
         The formula is: (A+UCV)^{-1}=A^{-1} - A^{-1}U(C^{-1}+VA^{-1}U)^{-1}VA^{-1}.
         Args:
-            u (np.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
+            u (xnp.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
                                     used to place the update C to match the dimensions of M.
-            v (np.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
+            v (xnp.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
                                     used to place the update C to match the dimensions of M.
-            c (np.ndarray): Local update matrix C
+            c (xnp.ndarray): Local update matrix C
         Returns:
-            np.ndarray: Updated inverse matrix (A+UCV)^{-1}
+            xnp.ndarray: Updated inverse matrix (A+UCV)^{-1}
 
         """
         # We ware updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
@@ -613,14 +692,14 @@ class WoodburyInverter:
     def update_index(self, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """
         Update the inverse of the matrix A using the Woodbury formula, given indices indicating the positions in A
-        where the update M is placed. This is done by generating the U and V matrix for the upddate method.
+        where the update M is placed. This is done by generating the U and V matrix for the update method.
 
         Args:
-            m (np.ndarray): M matrix - The local update matrix to A.
+            m (xnp.ndarray): M matrix - The local update matrix to A.
             indi (int): Index in the first dimension of A where the update m is placed.
             indj (int): Index in the second dimension of A where the update m is placed.
         Returns:
-            np.ndarray: Updated inverse matrix (A+UMV)^{-1}
+            xnp.ndarray: Updated inverse matrix (A+UMV)^{-1}
         """
         # Construct two matrices to shift m to the correct position in A
         if not xnp.allclose(m, 0):
@@ -650,11 +729,11 @@ class IncDeterminant:
         """Update the determinant of a matrix A using the matrix determinant lemma.
         The formula is: det(A+UCV)=det(A) * det(C^{-1}+VA^{-1}U) * det(C).
         Args:
-            ainv (np.ndarray): Inverse of the matrix A
-            u (np.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
+            ainv (xnp.ndarray): Inverse of the matrix A
+            u (xnp.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
                                     used to place the update C to match the dimensions of A.
-            c (np.ndarray): Local update matrix C
-            v (np.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
+            c (xnp.ndarray): Local update matrix C
+            v (xnp.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
                                     used to place the update C to match the dimensions of A.
             store (bool, optional): Store the updated determinant value. Defaults to True.
         """
@@ -687,11 +766,11 @@ class IncLogAbsDeterminant:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma.
         The formula is: det(A+UCV)=det(A) * det(C^{-1}+VA^{-1}U) * det(C).
         Args:
-            ainv (np.ndarray): Inverse of the matrix A
-            u (np.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
+            ainv (xnp.ndarray): Inverse of the matrix A
+            u (xnp.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
                                     used to place the update C to match the dimensions of A.
-            c (np.ndarray): Local update matrix C
-            v (np.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
+            c (xnp.ndarray): Local update matrix C
+            v (xnp.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
                                     used to place the update C to match the dimensions of A.
             store (bool, optional): Store the updated determinant value. Defaults to True.
         """
@@ -716,8 +795,8 @@ class IncLogAbsDeterminant:
         given indices indicating the positions in A where the update M is placed.
         This is done by generating the U and V matrix for the update method.
         Args:
-            ainv (np.ndarray): Inverse of the matrix A
-            m (np.ndarray): M matrix - The local update matrix to A.
+            ainv (xnp.ndarray): Inverse of the matrix A
+            m (xnp.ndarray): M matrix - The local update matrix to A.
             indi (int): Index in the first dimension of A where the update m is placed.
             indj (int): Index in the second dimension of A where the update m is placed
             store (bool, optional): Store the updated determinant value. Defaults to True."""
@@ -968,14 +1047,15 @@ def jackknife_resampling(data: np.ndarray) -> np.ndarray:
 def jacknife_gradient_error_propagation(
     op_datavec: np.ndarray, op_grad_datavec: np.ndarray, grad_norm_datavec: np.ndarray
 ) -> float:
-    """Calculate the error propagation of a specific component of the gradient of an observable using jackknife resampling.
-    Without rebinning (we usually use this after rebinning the data)
+    """Calculate the error propagation of a specific component of the gradient of an observable
+    using jackknife resampling.
+    Without rebinning (we usually use this after rebinning the data).
 
     Args:
-        op_datavec (np.ndarray): Timeseries of the observable - rebinned data, i.e., not autocorrelation
-        op_grad_datavec (np.ndarray): Timeseries of the gradient of the observable - rebinned data, i.e., not autocorrelation
-        grad_norm_datavec (np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm of the ansatz
-        - rebinned data, i.e., not autocorrelation
+        op_datavec (np.ndarray): Timeseries of the observable - rebinned (not autocorrelation)
+        op_grad_datavec (np.ndarray): Timeseries of the gradient of the observable - rebinned (not autocorrelation)
+        grad_norm_datavec (np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the
+                                        norm of the state - rebinned (not autocorrelation)
 
     Returns:
         float: Error of the gradient of the observable
@@ -1002,7 +1082,8 @@ def compute_grad_err(op_datavec: np.ndarray, op_grad_datavec: np.ndarray, grad_n
     Args:
         op_datavec(np.ndarray): Timeseries of the observable
         op_grad_datavec(np.ndarray): Timeseries of the gradient of the observable
-        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm of the ansatz
+        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm
+
     Returns:
         float: Error of the gradient of the observable
     """
@@ -1037,7 +1118,7 @@ def compute_grad_mean(op_datavec: np.ndarray, op_grad_datavec: np.ndarray, grad_
     Args:
         op_datavec(np.ndarray): Timeseries of the observable
         op_grad_datavec(np.ndarray): Timeseries of the gradient of the observable
-        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm of the ansatz
+        grad_norm_datavec(np.ndarray): Timeseries of the gradient of the norm of the ansatz divided by the norm
     Returns:
         float: Mean of the gradient of the observable
     """
@@ -1129,10 +1210,10 @@ def get_couplings_from_foldername(fname: str) -> str:
             res += f"{arg}_{result.group(0)}_"
 
     # chem - we treat this differently because it is a vector for different flavors
-    pattern = rf"(?<=chem_)(-?\d+\.\d+)_(-?\d+\.\d+)"
+    pattern = r"(?<=chem_)(-?\d+\.\d+)_(-?\d+\.\d+)"
     result = re.search(pattern, fname)
     if result is not None:
-        vals = f"_".join(result.groups())
+        vals = "_".join(result.groups())
         res += f"chem_{vals}_"
     return res
 

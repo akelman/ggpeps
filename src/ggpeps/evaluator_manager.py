@@ -3,11 +3,13 @@ from typing import Union
 import ray
 import copy
 import logging
+import pandas as pd
 
 import ggpeps
 from ggpeps import utils
 from ggpeps.evaluator import Evaluator
-from ggpeps.system.system_base import System2DBase, Config2DBase
+from ggpeps.system.config_base import Config2DBase
+from ggpeps.system.system_base import System2DBase
 from ggpeps.exacteval import ExactEvaluator, ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluator, MonteCarloEvaluatorConfig
 from ggpeps.nevmc import NEVMC_Evaluator, NEVMC_EvaluatorConfig
@@ -137,7 +139,7 @@ class EvaluatorManager:
         else:
             raise ValueError(f"Unknown evaluator type {self.type}")
 
-    def get_evaluator(self):
+    def get_evaluator(self) -> Evaluator:
         """Get the evaluator instance.
 
         Returns:
@@ -145,11 +147,14 @@ class EvaluatorManager:
         """
         return self.evaluator
 
-    def simulate(self, eval_args: dict = {}):
+    def simulate(self, eval_args: dict = {}) -> pd.DataFrame:
         """Simulate
 
         Args:
             eval_args (dict): Arguments for the evaluator (e.g. for NEVMC).
+
+        Returns:
+            pd.DataFrame: DataFrame with the results of the simulation.
         """
 
         if "mc" in self.type and self.nrunner > 0:  # includes "mc" and "nevmc"
@@ -234,8 +239,8 @@ class EvaluatorManager:
 
         return result_df
 
-    def collect(self, resultvec):
-        """Unify the results of multiple runners
+    def collect(self, resultvec: list[MonteCarloEvaluator]) -> Evaluator:
+        """Unify the results of multiple runners into a single Evaluator.
 
         Args:
             resultvec (list): List of Estimators from the different runners

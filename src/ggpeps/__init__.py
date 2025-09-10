@@ -1,5 +1,23 @@
+from typing import Any
+
+__all__ = [
+    "caching",
+    "evaluator_manager",
+    "evaluator",
+    "exacteval",
+    "gauge",
+    "lattice",
+    "mc",
+    "measurement",
+    "minimizer",
+    "system",
+    "utils",
+    "xnp",
+    "xscipy",
+]
+
 # Global vars
-global_vars = {}
+global_vars: dict[str, Any] = {}
 
 # Logger setup
 LOGGER_NAME = "ggpeps"
@@ -26,8 +44,8 @@ if PREFERRED_BACKEND == "numpy":
     import numpy as xnp
     import scipy as xscipy
 elif PREFERRED_BACKEND == "jax":
-    import jax.numpy as xnp
-    import jax.scipy as xscipy
+    import jax.numpy as xnp  # type: ignore[no-redef]
+    import jax.scipy as xscipy  # type: ignore[no-redef]
 else:
     raise ValueError(f"Unknown backend: {PREFERRED_BACKEND}")
 

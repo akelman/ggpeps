@@ -13,7 +13,7 @@ from ggpeps.lattice import Direction
 
 from ggpeps.system import U1System2DConfig
 from .system_base import System2DBase
-from ggpeps.system.global_funcs import backend
+from ggpeps.system.backend import backend
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -182,7 +182,7 @@ class U1System2D(System2DBase):
         dest = block_diag(rot_left, rot_right)
         return dest
 
-    def generate_rotmat(self, group_element, coord, dir):
+    def generate_rotmat(self, ncopy, group_element, coord, dir):
         if np.sum(coord) % 2 == 0:
             gauge_field = group_element
         else:
@@ -191,14 +191,14 @@ class U1System2D(System2DBase):
         rot_minus = self._generate_rotmat_half(np.transpose(np.conj(gauge_field)))
         return block_diag(rot_plus, rot_minus)
 
-    def update_gauge_ind(self, link_ind, theta):
+    def _update_gauge_ind(self, link_ind: int, theta: xnp.ndarray) -> None:
         # Update the gaugefield
         self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
 
         # There are two directions per vertex
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(theta, coord, dir)
+        rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
         gamma_in_subst = (
             rotmat @ self.gamma_gauge_neutral_vec[0][dir] @ np.transpose(rotmat)
         )  # just use the first gamma_gauge_neutral, since they're shared by all layers
@@ -263,6 +263,7 @@ class U1System2D(System2DBase):
         return mag_energy_bare
 
     def _compute_el_energy_op_and_grad_gaussian(self, use_trans_inv=True):
+        link_ind = self.mod_link_inds[0]  # this function only supports calculating electric energy on one link
         if use_trans_inv:
             lognormvec_default_inc = self.calculate_lognormvec_inc(all_factors=True)
             # This is the usual norm without any modifications
@@ -272,7 +273,7 @@ class U1System2D(System2DBase):
             single_link_offset = 2 * self.cfg.nvirtmodes_link
             offset = 2 * self.cfg.lattice.size + single_link_offset
             # We have to cut one link from gamma_in_sys as well
-            gamma_in_sys_mod = self.gamma_in_sys_mod_vec[0]
+            gamma_in_sys_mod = self.gamma_in_sys_mod_vec()[0]
             nlinks = self.cfg.lattice.nlinks
             dest = []
             dest_grad = []
@@ -282,8 +283,8 @@ class U1System2D(System2DBase):
                 # We shift the first virtual link (0,0,X) towards the physical modes to trace out everything else
                 # The shifted matrices are extracted at the initalization
                 # The offset is changed such that one virtual link is attributed to the physical part
-                mat_a = self.mat_a_mod_vec[layerind]
-                mat_b = self.mat_b_mod_vec[layerind]
+                mat_a = self.mat_a_mod_vec[layerind][link_ind]
+                mat_b = self.mat_b_mod_vec[layerind][link_ind]
                 diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
                 diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
 
@@ -309,7 +310,7 @@ class U1System2D(System2DBase):
                 dest.append(el_energy_layer)
 
                 ###################### Calculation of the derivative ########################
-                for symbol in self.symbolvec:
+                for symbol_ind, symbol in enumerate(self.symbolvec):
                     deriv_gamma_maj_sys = self.gamma_maj_sys_deriv_vec(symbol)[layerind]
                     d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
                     d_gamma_out = (
@@ -325,12 +326,12 @@ class U1System2D(System2DBase):
                         0.25 * (d_covmat_out_virt[0, 1] + d_covmat_out_virt[2, 3]) * np.exp(norm_mod - lognorm_default)
                     )
                     # Summand with derivative of norms
-                    trace_def = self.compute_grad_over_norm(layerind, 0, symbol)
+                    trace_def = self.compute_grad_over_norm(layerind, 0, symbol_ind)
                     trace_mod = self._compute_grad_over_norm(
                         gamma_in_sys_mod,
                         diff_d_inv_gamma_inv,
                         d_mat_d,
-                        self.mat_d_mod_inv_vec[layerind],
+                        self.mat_d_mod_inv_vec()[layerind],
                     )
                     d_el_energy += dest[layerind] * (trace_mod - trace_def)
                     # Scale to system size
@@ -358,7 +359,7 @@ class U1System2D(System2DBase):
         increment = -self.gaugemgr.get_increment()
         dest = self.gamma_in_sys_vec[0].astype(complex).copy()
         adapted_no_gauge = self.generate_electric_full(increment)
-        rotmat = self.generate_rotmat(current_phase, coord, dir)
+        rotmat = self.generate_rotmat(self.cfg.ncopy, current_phase, coord, dir)
         adapted = rotmat @ adapted_no_gauge @ rotmat.transpose()
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         dest[ind_mat : ind_mat + adapted.shape[0], ind_mat : ind_mat + adapted.shape[1]] = adapted

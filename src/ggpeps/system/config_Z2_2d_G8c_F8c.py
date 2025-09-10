@@ -7,7 +7,7 @@ import ggpeps
 from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
-from .system_base import Config2DBase
+from .config_base import Config2DBase
 from .system_base import get_pfaffian_arrays
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -25,7 +25,8 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
     ncopy = 8
     nvirtmodes_vertex = 32
     nvirtmodes_link = 16
-    nphysmodes_site = 1  # number of physical modes per site
+    nphysmodes_site = 1
+    ncolors = 1
 
     def __init__(
         self,
@@ -39,7 +40,7 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         num_fermionic_layer=1,
         unitcell_size=1,
         enforce_u1_symmetry=True,
-    ):
+    ) -> None:
         super().__init__(
             gauge.ZNGauge(2),
             lattice,
@@ -50,26 +51,21 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
+            unitcell_size,
+            enforce_u1_symmetry,
         )
 
         # Translation invariance
-        if unitcell_size not in [1]:
+        if self.unitcell_size not in [1]:
             logger.error(
                 "This ansatz only supports unitcell_size = 1. \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             raise ValueError("Invalid unitcell_size.")
-        self.site_params_dict = {
-            site: 0 for site in range(self.lattice.size)
-        }  # map from site to index of independent parameters
-        self.unitcell_size = 1
 
-        if not enforce_u1_symmetry:
+        if not self.u1_symmetry:
             logger.error("This ansatz does not support the relaxation of U(1) symmetry.")
             raise ValueError("Invalid enforce_u1_symmetry.")
-        # We store a list of the parameters forced to be zero by the ansatz
-        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j]] * 8
@@ -95,9 +91,9 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         ]
         idxarr_lay1 = get_pfaffian_arrays(indices_layer1, prefactors)  # pure gauge layers
         idxarr_lay2 = get_pfaffian_arrays(indices_layer2, prefactors)  # fermionic layers
-        self.idxarr_vec = [idxarr_lay1] * (self.num_pg_layer) + [idxarr_lay2]
-        self.el_overall_factors = [1 / 256**2] * (
-            self.nlayer
+        self.idxarr_vec = tuple([idxarr_lay1] * (self.num_pg_layer) + [idxarr_lay2])
+        self.el_overall_factors = tuple(
+            [1 / 256**2] * self.nlayer
         )  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def get_zeroed_params(self):

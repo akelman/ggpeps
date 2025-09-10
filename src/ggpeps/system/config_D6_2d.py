@@ -10,7 +10,7 @@ from ggpeps import gauge
 from ggpeps import modearray
 from ggpeps.lattice import Direction
 
-from .system_base import Config2DBase
+from .config_base import Config2DBase
 from .system_base import get_pfaffian_arrays
 
 
@@ -60,7 +60,8 @@ class D6System2D_Config(Config2DBase):
         num_fermionic_layer=0,
         unitcell_size=1,
         enforce_u1_symmetry=True,
-    ):
+    ) -> None:
+        self.gaugemgr: gauge.D2nGauge
         super().__init__(
             gauge.D2nGauge(3),
             lattice,
@@ -71,39 +72,17 @@ class D6System2D_Config(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
+            unitcell_size,
+            enforce_u1_symmetry,
         )
 
         # Translation invariance (or variance)
-        if unitcell_size not in [1]:
+        if self.unitcell_size not in [1]:
             logger.error(
                 "For Dn groups this ansatz only supports unitcell_size = 1. \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             sys.exit(1)
-        # map from site to index of independent parameters (default is unitcell_size = 1)
-        self.site_params_dict = {site: 0 for site in range(self.lattice.size)}
-
-        # For now, we use hard code the unitcell_size = 1 or 2 case
-        # More general ways to do so are supported - just change these lines
-        if unitcell_size == 2:
-            for site in range(self.lattice.size):
-                x, y = self.lattice.ind2coord(site)
-                uc_ind = 1 if (x + y) % 2 else 0  # 0 for even sublattice, 1 for odd
-                self.site_params_dict[site] = uc_ind
-        self.unitcell_size = len(
-            set(self.site_params_dict.values())
-        )  # number of different sets of parameters across sites (min: 1, max: num_sites)
-        if self.unitcell_size != unitcell_size:
-            # It should be impossible to reach here
-            raise ValueError("Inconsistent unitcell_size.")
-
-        # U1 invariance
-        # set to True if you want to enforce U(1) symmetry in the fermionic layers
-        # (set to False to allow fermionic number to float between sectors)
-        self.u1_symmetry = enforce_u1_symmetry
-        # We store a list of the parameters forced to be zero by the ansatz
-        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
@@ -117,10 +96,12 @@ class D6System2D_Config(Config2DBase):
         ]
         idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
         idxarr_lay_fermionic = get_pfaffian_arrays(indices_layer_fermionic, prefactors)
-        self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
-        self.el_overall_factors = [
-            -1 / 16
-        ] * self.nlayer  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        self.idxarr_vec = tuple(
+            [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
+        )
+        self.el_overall_factors = tuple(
+            [-1 / 16] * self.nlayer
+        )  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.
@@ -147,8 +128,11 @@ class D6System2D_Config(Config2DBase):
                     coord = (layer_ind, uc_ind, t_ind)
                     zeroed_params.append(coord)
 
-        # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec:
-        zero_for_fermionic_layer = [3, 13, 1, 2, 4, 5, 11, 12, 14, 15]
+        if self.u1_symmetry:
+            # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec:
+            zero_for_fermionic_layer = [3, 13, 1, 2, 4, 5, 11, 12, 14, 15]
+        else:
+            zero_for_fermionic_layer = []
         for layer_ind in range(self.num_pg_layer, self.nlayer):
             for uc_ind in range(self.unitcell_size):
                 for ind in zero_for_fermionic_layer:

@@ -5,9 +5,8 @@ import numpy as np
 
 import ggpeps
 from ggpeps import utils, gauge
-from ggpeps.lattice import Direction
 
-from .system_base import Config2DBase
+from .config_base import Config2DBase
 from .system_base import get_pfaffian_arrays
 
 
@@ -33,7 +32,8 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
     ncopy = 2
     nvirtmodes_vertex = 8
     nvirtmodes_link = 4
-    nphysmodes_site = 1  # number of physical modes per site
+    nphysmodes_site = 1
+    ncolors = 1
 
     def __init__(
         self,
@@ -47,7 +47,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         num_fermionic_layer=1,
         unitcell_size=1,
         enforce_u1_symmetry=True,
-    ):
+    ) -> None:
         super().__init__(
             gauge.ZNGauge(2),
             lattice,
@@ -58,40 +58,16 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
+            unitcell_size,
+            enforce_u1_symmetry,
         )
 
-        # Translation invariance (or variance)
-        # define a map from site to index of independent parameters
-        if unitcell_size == 1:
-            self.site_params_dict = {site: 0 for site in range(self.lattice.size)}
-        elif unitcell_size == 2:
-            self.site_params_dict = {}
-            for site in range(self.lattice.size):
-                x, y = self.lattice.ind2coord(site)
-                uc_ind = 1 if (x + y) % 2 else 0  # 0 for even sublattice, 1 for odd
-                self.site_params_dict[site] = uc_ind
-        elif unitcell_size == -1:
-            # no unitcell - every site has its own parameters
-            self.site_params_dict = {}
-            for site in range(self.lattice.size):
-                self.site_params_dict[site] = site
-        else:
+        if self.unitcell_size not in [1, 2, -1]:
             logger.error(
                 "This ansatz only supports unitcell_size = 1, 2, or -1 (all sites independent). \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             raise ValueError("Invalid unitcell_size.")
-
-        # number of different sets of parameters across sites (min: 1, max: num_sites)
-        self.unitcell_size = len(set(self.site_params_dict.values()))
-
-        # U1 invariance
-        # set to True if you want to enforce U(1) symmetry in the fermionic layers
-        # (set to False to allow fermionic number to float between sectors)
-        self.u1_symmetry = enforce_u1_symmetry
-        # We store a list of the parameters forced to be zero by the ansatz
-        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
@@ -105,12 +81,14 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         ]
         idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
         idxarr_lay_fermionic = get_pfaffian_arrays(indices_layer_fermionic, prefactors)
-        self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
-        self.el_overall_factors = [
-            -1 / 16
-        ] * self.nlayer  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        self.idxarr_vec = tuple(
+            [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
+        )
+        self.el_overall_factors = tuple(
+            [-1 / 16] * self.nlayer
+        )  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
-    def make_pure_gauge(self):
+    def make_pure_gauge(self) -> None:
         """Make the ansatz pure gauge by setting t-params to zero.
 
         This function is obsolete for this ansatz, and is kept for some tests.
@@ -122,7 +100,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
                     coord = (layer_ind, uc_ind, t_ind)
                     self.paramvec[coord] = 0
 
-    def get_zeroed_params(self):
+    def get_zeroed_params(self) -> tuple[tuple[int, int, int], ...]:
         # The order of the parameters (for each layer) is:
         # [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
 
@@ -136,18 +114,8 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
                     zeroed_params.append(coord)
 
         if self.u1_symmetry:
-            zero_for_fermionic_layer = [
-                3,
-                13,
-                1,
-                2,
-                4,
-                5,
-                11,
-                12,
-                14,
-                15,
-            ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
+            # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
+            zero_for_fermionic_layer = [3, 13, 1, 2, 4, 5, 11, 12, 14, 15]
         else:
             zero_for_fermionic_layer = []
         for layer_ind in range(self.num_pg_layer, self.nlayer):
@@ -187,31 +155,10 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         bi = sympy.Symbol("bi", real=True)
         ci = sympy.Symbol("ci", real=True)
         di = sympy.Symbol("di", real=True)
-        return [
-            t1r,
-            y1r,
-            z1r,
-            t2r,
-            y2r,
-            z2r,
-            ar,
-            br,
-            cr,
-            dr,
-            t1i,
-            y1i,
-            z1i,
-            t2i,
-            y2i,
-            z2i,
-            ai,
-            bi,
-            ci,
-            di,
-        ]
+        return [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i, z1i, t2i, y2i, z2i, ai, bi, ci, di]
 
     @property
-    def tmat_symb(self):
+    def tmat_symb(self) -> sympy.Matrix:
         """Definition of the symbolic T matrix.
         The definition of T here is a result of an analytic consideration of global
         symmetries like rotational invariance, charge conjugation invarance, etc.
@@ -231,28 +178,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         Returns:
             sympy.Matrix: Analytic T matrix of the fiducial state
         """
-        [
-            t1r,
-            y1r,
-            z1r,
-            t2r,
-            y2r,
-            z2r,
-            ar,
-            br,
-            cr,
-            dr,
-            t1i,
-            y1i,
-            z1i,
-            t2i,
-            y2i,
-            z2i,
-            ai,
-            bi,
-            ci,
-            di,
-        ] = self.symbolvec
+        [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i, z1i, t2i, y2i, z2i, ai, bi, ci, di] = self.symbolvec
         t1 = t1r + 1.0j * t1i
         y1 = y1r + 1.0j * y1i
         z1 = z1r + 1.0j * z1i
@@ -266,49 +192,19 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         tmat_symb = sympy.Matrix(
             [
                 [0, -1.0j * t1, 1.0j * t1, t1, -t1, -1.0j * t2, 1.0j * t2, t2, -t2],
-                [
-                    1.0j * t1,
-                    0,
-                    1.0j * y1,
-                    z1,
-                    1.0j * z1,
-                    -1.0j * a,
-                    -1.0j * c,
-                    -1.0j * b,
-                    -1.0j * d,
-                ],
-                [
-                    -1.0j * t1,
-                    -1.0j * y1,
-                    0,
-                    -1.0j * z1,
-                    -z1,
-                    1.0j * c,
-                    1.0j * a,
-                    1.0j * d,
-                    1.0j * b,
-                ],
+                [1.0j * t1, 0, 1.0j * y1, z1, 1.0j * z1, -1.0j * a, -1.0j * c, -1.0j * b, -1.0j * d],
+                [-1.0j * t1, -1.0j * y1, 0, -1.0j * z1, -z1, 1.0j * c, 1.0j * a, 1.0j * d, 1.0j * b],
                 [-t1, -z1, 1.0j * z1, 0, -y1, d, b, a, c],
                 [t1, -1.0j * z1, z1, y1, 0, -b, -d, -c, -a],
                 [1.0j * t2, 1.0j * a, -1.0j * c, -d, b, 0, 1.0j * y2, z2, 1.0j * z2],
-                [
-                    -1.0j * t2,
-                    1.0j * c,
-                    -1.0j * a,
-                    -b,
-                    d,
-                    -1.0j * y2,
-                    0,
-                    -1.0j * z2,
-                    -z2,
-                ],
+                [-1.0j * t2, 1.0j * c, -1.0j * a, -b, d, -1.0j * y2, 0, -1.0j * z2, -z2],
                 [-t2, 1.0j * b, -1.0j * d, -a, c, -z2, 1.0j * z2, 0, -y2],
                 [t2, 1.0j * d, -1.0j * b, -c, a, -1.0j * z2, z2, y2, 0],
             ]
         )
         return tmat_symb
 
-    def generate_gamma_gauge_neutral_dict(self):
+    def generate_gamma_gauge_neutral_dict(self) -> np.ndarray:
         """Generate the covariance matrix of the ungauged projectors.
         The mode order is
             {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2}
@@ -322,49 +218,24 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
         This function returns two different covariance matrices for ungauged projectors:
         In the first, modes of copy 1 are coupled to modes of copy 2.
-        In the second, the projectors don't mix copies.
+        In the second, the projectors don't mix copies (so as to preserve global U(1) symmetry).
         The first option is used for the pure-gauge layer, the second for the fermionic layer.
 
-        This method overwrites an abstract method in System2DBase.
+        We use Kronecker products to construct the covariance matrices concisely; the result
+        is equivalent to hardcoding the matrices directly.
+
+        This method overwrites an abstract method in Config2DBase.
 
         Returns:
-            list[xnp.ndarray]: Covariance matrices of the ungauged projector on a single link
+            array: Covariance matrices of the ungauged projector on a single link
         """
 
-        # 2 if for 2D lattice
-        dest_mixed = [0] * 2  # mixes copies
-        dest_unmixed = [0] * 2  # does not mix copies
+        dest_mixed = []  # mixes copies
+        dest_mixed.append(np.real(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix))))  # X direction
+        dest_mixed.append(np.real(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz))))  # Y direction
 
-        # We want to give the projectors for the pure gauge part, which mix copies
-        dest_mixed[Direction.X] = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix)))
-        dest_mixed[Direction.Y] = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz)))
-
-        # We want to give the projectors for the fermionic part which don't mix copies
-        # (so as to preserve global U(1) symmetry)
-        dest_unmixed[Direction.X] = np.array(
-            [
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
-            ]
-        )
-
-        dest_unmixed[Direction.Y] = np.array(
-            [
-                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, -1.0, 0.0, -0.0, 0.0, 0.0],
-                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, -1.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-            ]
-        )
+        dest_unmixed = []  # does not mix copies
+        dest_unmixed.append(np.real(1.0j * np.kron(np.eye(2), np.kron(utils.pauliy, utils.paulix))))  # X direction
+        dest_unmixed.append(np.real(1.0j * np.kron(np.eye(2), np.kron(utils.pauliy, utils.pauliz))))  # Y direction
 
         return np.array([dest_mixed] * self.num_pg_layer + [dest_unmixed] * self.num_fermionic_layer)

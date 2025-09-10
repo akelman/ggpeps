@@ -46,7 +46,7 @@ import signal
 INTERRUPT_EXIT_CODE = 10
 
 
-def save_state_on_exit():
+def save_state_on_exit() -> None:
     # args = ggpeps.global_vars["args"]
     cache: Cache = ggpeps.global_vars["cache"]
 
@@ -83,16 +83,22 @@ def args2logname(args, couplings: dict) -> str:
         str: Filename of the log file
     """
     chem_str = "_".join([f"{val:.3f}" for val in couplings["g_chem"]])
-    couplings_str = f"gel_{couplings['g_el']}_gmag_{couplings['g_mag']}_gint_{couplings['g_int']}_gmass_{couplings['g_mass']}_gchem_{chem_str}"
+    couplings_str = (
+        f"gel_{couplings['g_el']:.3f}_gmag_{couplings['g_mag']:.3f}_gint_{couplings['g_int']:.3f}"
+        f"_gmass_{couplings['g_mass']:.3f}_gchem_{chem_str}"
+    )
 
     if "exact" in args.mode:
         fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}.log"
     else:
-        fname = f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}_num_pg_layer_{args.num_pg_layer}_num_fermionic_layer_{args.num_fermionic_layer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
+        fname = (
+            f"log_{args.mode}_L_{args.L}x{args.L}_{couplings_str}_num_pg_layer_{args.num_pg_layer}"
+            f"_num_fermionic_layer_{args.num_fermionic_layer}_wsteps_{args.warmup_steps}_msteps_{args.meas_steps}.log"
+        )
     return os.path.join(args.output, fname)
 
 
-def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomState) -> tuple[np.array, str]:
+def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomState) -> tuple[np.ndarray, str]:
     """Translate the parameters given on the commandline to a form useful in the code
 
     Args:
@@ -181,13 +187,12 @@ def main(args):
     # If GPUs are available, use the first available GPU;
     # if not, default to using the CPU.
     available_devices_ = jax.devices()  # available_gpus = jax.devices('gpu')
-    PREFERRED_DEVICE = available_devices_[0]
-    device_name = PREFERRED_DEVICE.device_kind.lower()
+    main_device = available_devices_[0]
+    device_name = main_device.device_kind.lower()
 
-    # Updated GPU detection heuristic
-    if any(x in device_name for x in ["gpu", "nvidia", "amd", "rocm"]):
+    # GPU detection
+    if any(x in device_name for x in ["gpu", "nvidia", "cuda", "amd", "rocm"]):
         ggpeps.GPU_AVAILABLE = True
-        ggpeps.PREFERRED_DEVICE = PREFERRED_DEVICE
     else:
         ggpeps.GPU_AVAILABLE = False
 
@@ -227,22 +232,34 @@ def main(args):
     utils.setup_logger(logger, log_filename, args.level)
 
     # Set up the MC Config
-    if "nevmc" in args.mode:
-        mc_config = NEVMC_EvaluatorConfig()
-    else:
-        mc_config = MonteCarloEvaluatorConfig()
-    mc_config.warmup_steps = args.warmup_steps
-    mc_config.meas_steps = args.meas_steps
-    mc_config.binsize = args.binsize
     if args.use_systemsize_updates or args.update_size == "system":
-        mc_config.update_size_per_step = 2 * L**2
+        update_size = 2 * L**2
     elif args.update_size == "halfsystem":
-        mc_config.update_size_per_step = L**2
+        update_size = L**2
     elif args.update_size.isdecimal():
-        mc_config.update_size_per_step = int(args.update_size)
+        update_size = int(args.update_size)
     else:
         logger.error("Unrecognized value for update_size.")
         sys.exit(1)
+
+    if "nevmc" in args.mode:
+        mc_config = NEVMC_EvaluatorConfig(
+            warmup_steps=args.warmup_steps,
+            meas_steps=args.meas_steps,
+            binsize=args.binsize,
+            update_size_per_step=update_size,
+            warmup_log_freq=args.warmup_log_freq,
+            run_log_freq=args.run_log_freq,
+        )
+    else:
+        mc_config = MonteCarloEvaluatorConfig(
+            warmup_steps=args.warmup_steps,
+            meas_steps=args.meas_steps,
+            binsize=args.binsize,
+            update_size_per_step=update_size,
+            warmup_log_freq=args.warmup_log_freq,
+            run_log_freq=args.run_log_freq,
+        )
 
     # Set up EC config
     ec_config = ExactEvaluatorConfig()
@@ -349,19 +366,20 @@ def main(args):
     # Log backend info - GPU/CPU, JAX/NUMPY, precision, etc.
     logger.info("======= BACKEND INFO =======")
     if ggpeps.GPU_AVAILABLE:
-        # logger.info(f"Available JAX devices: {available_devices_}")
-        logger.info(f"Found GPU, using device: {ggpeps.PREFERRED_DEVICE}.")
-        # TODO: add basic GPU info
-        # logger.info(f"GPU info: {ggpeps.PREFERRED_DEVICE.device_kind}"
+        logger.info(f"Found GPU, using device: {main_device}.")
     else:
         logger.info("No GPUs found, falling back to CPU.")
     logger.info(f"Numerical backend: {ggpeps.PREFERRED_BACKEND}")
     arr = ggpeps.xnp.array([1.2, 1.3])
     logger.info(f"Precision: {arr.dtype}")
+    if isinstance(arr, jax.numpy.ndarray):
+        # dev = arr.device
+        # logger.info(f"JAX default device: {dev.platform}")  # general
+        logger.info(f"Device info: {main_device.device_kind}")  # specific
     logger.info("============================")
 
     # Caching info
-    logger.info("======= CACHE INFO ========")
+    logger.info("======== CACHE INFO ========")
     if args.ignore_cache:
         logger.info("Cache is disabled.")
     else:
@@ -408,8 +426,6 @@ def main(args):
         logger.info(f"Update size: {mc_config.update_size_per_step} (out of {2*L**2} total links)")
         logger.info(f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)")
         logger.info("============================")
-        mc_config.warmup_log_freq = args.warmup_log_freq
-        mc_config.run_log_freq = args.run_log_freq
     if "min" in args.mode:
         logger.info("====== MINIMIZER INFO ======")
         logger.info(f"Method: {args.method.upper()}")
@@ -504,13 +520,11 @@ def main(args):
 
         start = timer()
         ex_eval.simulate()
-        dest = ex_eval.get_evaluator()
         stop = timer()
+        ec_result = ex_eval.get_evaluator()
 
-        dest_dict = dest.obsdict
-        dest.save(output_dir=args.output)
-        for key, val in dest_dict.items():
-            logger.info(f"{key}: {val}")
+        ec_result.print_stats()
+        ec_result.save(output_dir=args.output)
     elif args.mode == "min-exact":
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with exact contractions
 

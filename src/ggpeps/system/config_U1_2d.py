@@ -7,7 +7,7 @@ import ggpeps
 from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
-from .system_base import Config2DBase
+from .config_base import Config2DBase
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -18,6 +18,7 @@ class U1System2DConfig(Config2DBase):
     nvirtmodes_link = 8
     nvirtmodes_link = 4
     nphysmodes_site = 1  # number of physical modes per site
+    ncolors = 1
 
     def __init__(
         self,
@@ -42,22 +43,16 @@ class U1System2DConfig(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
+            unitcell_size,
         )
 
         # Translation invariance
-        if unitcell_size not in [1]:
+        if self.unitcell_size not in [1]:
             logger.error(
                 "This ansatz only supports unitcell_size = 1. \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             raise ValueError("Invalid unitcell_size.")
-        self.site_params_dict = {
-            site: 0 for site in range(self.lattice.size)
-        }  # map from site to index of independent parameters
-        self.unitcell_size = 1
-        # We store a list of the parameters forced to be zero by the ansatz
-        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
     def make_pure_gauge(self):
         # The order of the parameters is [t,y,z]

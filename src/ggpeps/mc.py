@@ -1,3 +1,5 @@
+from typing import Union, Optional
+
 import os
 import gzip
 import pickle
@@ -28,18 +30,30 @@ class MonteCarloEvaluatorConfig:
     It is more convenient than passing an extensive number of parameters to the constructor.
     """
 
-    def __init__(self):
-        self.warmup_steps = None
-        self._seed = None
-        self._rng_state = None
-        self.meas_steps = None
-        self.binsize: int = 1
-        self.compute_grads: bool = False
-        self.update_size_per_step: int = 1  # this can be set anywhere from 1 to nlinks (inclusive)
+    def __init__(
+        self,
+        warmup_steps: int = 10000,
+        meas_steps: int = 10000,
+        binsize: int = 1,
+        compute_grads: bool = False,
+        update_size_per_step: int = 1,
+        warmup_log_freq: int = 5000,
+        run_log_freq: int = 20000,
+    ) -> None:
+
+        self.warmup_steps = warmup_steps
+        self.meas_steps = meas_steps
+        self.binsize = binsize
+        self.compute_grads = compute_grads
+        self.update_size_per_step = update_size_per_step  # this can be set anywhere from 1 to nlinks (inclusive)
 
         # Logging frequency
-        self.warmup_log_freq: int = 5000
-        self.run_log_freq: int = 20000
+        self.warmup_log_freq: int = warmup_log_freq
+        self.run_log_freq: int = run_log_freq
+
+        # Randomness
+        self._seed: Optional[int] = None
+        self._rng_state: Optional[np.random.RandomState] = None
 
     @property
     def seed(self) -> int:
@@ -67,21 +81,22 @@ class MonteCarloEvaluatorConfig:
             "Request to set the state directly was ignored."
         )
 
-    def get_rng_state_internal_repr(self) -> tuple:
+    def get_rng_state_internal_repr(self) -> dict:
         """Get the state of the RNG.
 
         Returns:
-            tuple[str, np.NDArray[uint32], int, int, float]
+            dict
         """
-        return self._rng_state.get_state()
+        rng_state = self.rng_state  # this will initialize the RNG if it is not set
+        return rng_state.get_state()
 
-    def set_rng_state_internal_repr(self, state_repr: tuple) -> None:
+    def set_rng_state_internal_repr(self, state_repr: dict) -> None:
         """Set the state of the RNG.
 
         Args:
-            state_repr (tuple[str, np.NDArray[uint32], int, int, float])
+            state_repr (dict)
         """
-        self._rng_state.set_state(state_repr)
+        self.rng_state.set_state(state_repr)
         return
 
     def __str__(self) -> str:
@@ -101,6 +116,7 @@ class MonteCarloEvaluator(Evaluator):
     evaluator_type = "mc"
 
     def __init__(self, evaluator_cfg: MonteCarloEvaluatorConfig, system: System2DBase):
+        self.obsdict: dict[str, Measurement]  # specify the type used in this class
         super().__init__(evaluator_cfg, system)
 
         self.step: int = 0
@@ -117,6 +133,7 @@ class MonteCarloEvaluator(Evaluator):
     def init_measurements(self) -> None:
         """Add empty measurement vectors to the measurement dictionary"""
         binsize = self.cfg.binsize
+        self.obsdict = {}  # reset
 
         self.obsdict["acceptance_prob"] = Measurement("Acceptance Probablity", binsize)
         self.obsdict["energy"] = Measurement("Energy", binsize)
@@ -161,23 +178,23 @@ class MonteCarloEvaluator(Evaluator):
         polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
 
         self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
-        # self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
-        self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
-        self.obsdict["el_energy_op"].append(self.system.el_energy_op)
-        self.obsdict["int_energy_op"].append(self.system.int_energy_op)
-        self.obsdict["mass_energy_op"].append(self.system.mass_energy_op)
+        # self.obsdict["cov_ferm"].append(self.system.ferm_covmat_vec)
+        self.obsdict["mag_energy_op"].append(np.asarray(self.system.mag_energy_op))
+        self.obsdict["el_energy_op"].append(np.asarray(self.system.el_energy_op))
+        self.obsdict["int_energy_op"].append(np.asarray(self.system.int_energy_op))
+        self.obsdict["mass_energy_op"].append(np.asarray(self.system.mass_energy_op))
 
         # Most of these values could be calculated in a post-processing step
-        self.obsdict["energy"].append(self.system.energy)
-        self.obsdict["el_energy"].append(self.system.el_energy)
-        self.obsdict["mag_energy"].append(self.system.mag_energy)
-        self.obsdict["int_energy"].append(self.system.int_energy)
-        self.obsdict["mass_energy"].append(self.system.mass_energy)
-        self.obsdict["chem_energy"].append(self.system.chem_energy)
-        self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
+        self.obsdict["energy"].append(float(self.system.energy))
+        self.obsdict["el_energy"].append(float(self.system.el_energy))
+        self.obsdict["mag_energy"].append(float(self.system.mag_energy))
+        self.obsdict["int_energy"].append(float(self.system.int_energy))
+        self.obsdict["mass_energy"].append(float(self.system.mass_energy))
+        self.obsdict["chem_energy"].append(float(self.system.chem_energy))
+        self.obsdict["norm"].append(float(self.system.calculate_lognorm(all_factors=True)))
         if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
-            self.obsdict["all_occupations"].append(self.system.all_occupations)
-            self.obsdict["average_occupation"].append(self.system.average_occupation())
+            self.obsdict["all_occupations"].append(np.asarray(self.system.all_occupations))
+            self.obsdict["average_occupation"].append(np.asarray(self.system.average_occupation()))
 
         # Wilson loops
         # TODO: save sizes/loops/strings in a more efficient way, so that they are not recomputed each step
@@ -192,18 +209,18 @@ class MonteCarloEvaluator(Evaluator):
         strings = [self.system.cfg.lattice.generate_L_string((0, 0), (k, k)) for k in range(1, max_string)]
         for k in range(1, max_string):
             string_name = f"square_string_0-0_{k}x{k}"
-            self.obsdict[string_name].append(self.system.meson_string(strings[k - 1]))
+            self.obsdict[string_name].append(np.asarray(self.system.meson_string(strings[k - 1])))
 
         if self.cfg.compute_grads:
-            self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
-            self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
-            self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
-            self.obsdict["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
-            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
+            self.obsdict["el_energy_op_grad"].append(np.asarray(self.system.el_energy_op_grad_vec))
+            self.obsdict["int_energy_op_grad"].append(np.asarray(self.system.int_energy_op_grad_vec))
+            self.obsdict["mass_energy_op_grad"].append(np.asarray(self.system.mass_energy_op_grad_vec))
+            self.obsdict["chem_energy_op_grad"].append(np.asarray(self.system.chem_energy_op_grad_vec))
+            self.obsdict["grad_norm"].append(np.asarray(self.system.grad_over_norm_vec))
 
         return
 
-    def energy_gradient_mc(self):
+    def energy_gradient_mc(self) -> np.ndarray:
         # Compute the energy gradient from the MC results
         meas_grad_over_norm = self.obsdict["grad_norm"]
 
@@ -294,10 +311,13 @@ class MonteCarloEvaluator(Evaluator):
             self.step += 1
 
         # Update observables which depend on expectation values
-        if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
-            self.obsdict["variance_occupation"].extend(
-                (self.obsdict["average_occupation"].datavec - self.obsdict["average_occupation"].mean()) ** 2
-            )
+        if self.system.cfg.num_fermionic_layer > 0:
+            # We only compute occupations if there are fermionic layers
+            # TODO: this could be done much more efficiently with arrays
+            # TODO: this variance observable has not been properly tested
+            avg = self.obsdict["average_occupation"].mean()
+            vals = [np.asarray((val - avg) ** 2) for val in self.obsdict["average_occupation"].datavec]
+            self.obsdict["variance_occupation"].extend(vals)
         if self.cfg.compute_grads:
             # Update gradients which depend on expectation values
             # For interface reasons, we insert meas_steps copies of this gradient
@@ -316,7 +336,7 @@ class MonteCarloEvaluator(Evaluator):
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
-        link_ind = self.cfg.rng_state.choice(self.system.cfg.lattice.comp_tree, replace=False)
+        link_ind = self.cfg.rng_state.choice(lattice.comp_tree, replace=False)
 
         # Uniformly pick a gauge value
         theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
@@ -396,7 +416,7 @@ class MonteCarloEvaluator(Evaluator):
 
     #### Data management functions ####
 
-    def get_obs_mean(self, obsname: str):
+    def get_obs_mean(self, obsname: str) -> Union[None, float, np.ndarray]:
         """Returns the mean value of an observable
 
         Args:
@@ -405,13 +425,15 @@ class MonteCarloEvaluator(Evaluator):
         Returns:
             float: Mean value of the observable
         """
-        if obsname in self.obsdict.keys():
-            meas = self.obsdict[obsname]
-            if meas is not None and len(meas) > 0:
-                return meas.mean()
+        if obsname not in self.obsdict.keys():
+            raise ValueError(f"Observable {obsname} not found in the measurement dictionary.")
+
+        meas = self.obsdict[obsname]
+        if meas is not None and len(meas) > 0:
+            return meas.mean()
         return None
 
-    def get_obs_mean_err(self, obsname: str):
+    def get_obs_mean_err(self, obsname: str) -> Union[None, float, np.ndarray]:
         """Returns the error on the mean of an observable
 
         Args:
@@ -420,52 +442,54 @@ class MonteCarloEvaluator(Evaluator):
         Returns:
             float: Error on mean of observable
         """
-        if obsname in self.obsdict.keys():
-            meas = self.obsdict[obsname]
-            if obsname == "energy_grad":
-                nlayer, unitcell_size, nparams = self.system.cfg.param_shape()
-                dest = np.zeros((nlayer, unitcell_size, nparams))
-                energy_obsvec = np.asarray(self.obsdict["energy"].get_timeseries())
-                el_energy_grad = np.asarray(self.obsdict["el_energy_op_grad"].get_timeseries())
-                g_el = self.system.cfg.g_el
-                el_energy_grad = -2 * g_el * el_energy_grad
+        if obsname not in self.obsdict.keys():
+            raise ValueError(f"Observable {obsname} not found in the measurement dictionary.")
 
-                mass_energy_grad = np.asarray(self.obsdict["mass_energy_op_grad"].get_timeseries())
-                g_mass = self.system.cfg.g_mass
-                mass_energy_grad = g_mass * mass_energy_grad
-                int_energy_grad = np.asarray(self.obsdict["int_energy_op_grad"].get_timeseries())
-                g_int = self.system.cfg.g_int
-                int_energy_grad = g_int * int_energy_grad
+        meas = self.obsdict[obsname]
+        if obsname == "energy_grad":
+            nlayer, unitcell_size, nparams = self.system.cfg.param_shape()
+            dest = np.zeros((nlayer, unitcell_size, nparams))
+            energy_obsvec = np.asarray(self.obsdict["energy"].get_timeseries())
+            el_energy_grad = np.asarray(self.obsdict["el_energy_op_grad"].get_timeseries())
+            g_el = self.system.cfg.g_el
+            el_energy_grad = -2 * g_el * el_energy_grad
 
-                chem_energy_grad = np.copy(np.asarray(self.obsdict["chem_energy_op_grad"].get_timeseries()))
-                for lay in range(self.system.cfg.num_pg_layer, self.system.cfg.nlayer):
-                    # the gradients must be scaled by the chemical potential
-                    ind = lay - self.system.cfg.num_pg_layer
-                    chem_energy_grad[lay] *= self.system.cfg.g_chem[ind]
+            mass_energy_grad = np.asarray(self.obsdict["mass_energy_op_grad"].get_timeseries())
+            g_mass = self.system.cfg.g_mass
+            mass_energy_grad = g_mass * mass_energy_grad
+            int_energy_grad = np.asarray(self.obsdict["int_energy_op_grad"].get_timeseries())
+            g_int = self.system.cfg.g_int
+            int_energy_grad = g_int * int_energy_grad
 
-                energy_grad_obsvec = el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
-                grad_norm_obsvec = np.asarray(self.obsdict["grad_norm"].get_timeseries())
+            chem_energy_grad = np.copy(np.asarray(self.obsdict["chem_energy_op_grad"].get_timeseries()))
+            for lay in range(self.system.cfg.num_pg_layer, self.system.cfg.nlayer):
+                # the gradients must be scaled by the chemical potential
+                ind = lay - self.system.cfg.num_pg_layer
+                chem_energy_grad[lay] *= self.system.cfg.g_chem[ind]
 
-                zeroed_params = self.system.cfg.get_zeroed_params()
-                for layer in range(nlayer):
-                    for unit_cell in range(unitcell_size):
-                        for grad_ind in range(nparams):
-                            if (layer, unit_cell, grad_ind) in zeroed_params:
-                                # If this is the a forced zeroed component, the error is 0.0
-                                dest[layer, unit_cell, grad_ind] = 0.0
-                            else:
-                                energy_grad_component = energy_grad_obsvec[:, layer, unit_cell, grad_ind]
-                                grad_norm_component = grad_norm_obsvec[:, layer, unit_cell, grad_ind]
-                                dest[layer, unit_cell, grad_ind] = utils.compute_grad_err(
-                                    energy_obsvec, energy_grad_component, grad_norm_component
-                                )
-                return dest
+            energy_grad_obsvec = el_energy_grad + mass_energy_grad + int_energy_grad + chem_energy_grad
+            grad_norm_obsvec = np.asarray(self.obsdict["grad_norm"].get_timeseries())
 
-            if meas is not None and len(meas) > 0:
-                return meas.mean_err()
+            zeroed_params = self.system.cfg.get_zeroed_params()
+            for layer in range(nlayer):
+                for unit_cell in range(unitcell_size):
+                    for grad_ind in range(nparams):
+                        if (layer, unit_cell, grad_ind) in zeroed_params:
+                            # If this is the a forced zeroed component, the error is 0.0
+                            dest[layer, unit_cell, grad_ind] = 0.0
+                        else:
+                            energy_grad_component = energy_grad_obsvec[:, layer, unit_cell, grad_ind]
+                            grad_norm_component = grad_norm_obsvec[:, layer, unit_cell, grad_ind]
+                            dest[layer, unit_cell, grad_ind] = utils.compute_grad_err(
+                                energy_obsvec, energy_grad_component, grad_norm_component
+                            )
+            return dest
+
+        if meas is not None and len(meas) > 0:
+            return meas.mean_err()
         return None
 
-    def get_obs_std(self, obsname: str):
+    def get_obs_std(self, obsname: str) -> Union[None, float, np.ndarray]:
         """Returns the standard deviation of an observable
 
         Args:
@@ -474,13 +498,15 @@ class MonteCarloEvaluator(Evaluator):
         Returns:
             float: Standard deviation of an observable
         """
-        if obsname in self.obsdict.keys():
-            meas = self.obsdict[obsname]
-            if meas is not None and len(meas) > 0:
-                return meas.std()
+        if obsname not in self.obsdict.keys():
+            raise ValueError(f"Observable {obsname} not found in the measurement dictionary.")
+
+        meas = self.obsdict[obsname]
+        if meas is not None and len(meas) > 0:
+            return meas.std()
         return None
 
-    def get_obs_var(self, obsname: str):
+    def get_obs_var(self, obsname: str) -> Union[None, float, np.ndarray]:
         """Returns the variance of an observable
 
         Args:
@@ -489,10 +515,12 @@ class MonteCarloEvaluator(Evaluator):
         Returns:
             float: Variance of the observable
         """
-        if obsname in self.obsdict.keys():
-            meas = self.obsdict[obsname]
-            if meas is not None and len(meas) > 0:
-                return meas.var()
+        if obsname not in self.obsdict.keys():
+            raise ValueError(f"Observable {obsname} not found in the measurement dictionary.")
+
+        meas = self.obsdict[obsname]
+        if meas is not None and len(meas) > 0:
+            return meas.var()
         return None
 
     def save_full(self, fname_full: str) -> None:
@@ -513,27 +541,27 @@ class MonteCarloEvaluator(Evaluator):
         """Convenience function to combine saving the MonteCarloEstimator and the
         summary of the observables"""
 
-        syscfg = self.system.cfg
+        sys_cfg = self.system.cfg
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
 
-        chem_str = ",".join([f"{val:.3f}" for val in syscfg.g_chem])
-        couplings_str = f"gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_gmass_{syscfg.g_mass:.3f}_gchem_{chem_str}"
+        chem_str = ",".join([f"{val:.3f}" for val in sys_cfg.g_chem])
+        couplings_str = (
+            f"gel_{sys_cfg.g_el:.3f}_gmag_{sys_cfg.g_mag:.3f}_gint_{sys_cfg.g_int:.3f}"
+            f"_gmass_{sys_cfg.g_mass:.3f}_gchem_{chem_str}"
+        )
 
-        fname_full = f"data_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_{couplings_str}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl.gz"
-        fname_summary = f"summary_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_{couplings_str}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl"
+        fname_full = (
+            f"data_mc_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}"
+            f"_nlayer_{sys_cfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl.gz"
+        )
+        fname_summary = (
+            f"summary_mc_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}"
+            f"_nlayer_{sys_cfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl"
+        )
 
         self.save_full(os.path.join(output_dir, fname_full))
         self.save_summary(os.path.join(output_dir, fname_summary))
-
-    #### Output (plots or on the commandline) ####
-
-    def print_stats(self) -> None:
-        """Print a quick summary of the observables"""
-        for key in self.obsdict.keys():
-            val = self.obsdict[key]
-            if val is not None and len(val) > 0:
-                logger.info(f"<{key}>: {self.obsdict[key].mean()}")
 
     def summary(self) -> pd.DataFrame:
         """Create panda dataframe file that summarizes the evaluation."""

@@ -70,9 +70,9 @@ class TestModeArray(unittest.TestCase):
         self.assertTrue(d_1d.modes == self.a_1d.modes)
         self.assertTrue(d_2d.modes == self.a_2d.modes)
         with self.assertRaises(ValueError):
-            e = self.a_1d + self.c_1d
+            _ = self.a_1d + self.c_1d
         with self.assertRaises(ValueError):
-            e = self.a_2d + self.c_2d
+            _ = self.a_2d + self.c_2d
 
     def test_multiplication_scalar(self):
         d_1d = self.a_1d * 2
@@ -99,9 +99,9 @@ class TestModeArray(unittest.TestCase):
         self.assertTrue(d_2d.modes == self.a_2d.modes)
 
         with self.assertRaises(ValueError):
-            e = self.a_1d * self.c_1d
+            _ = self.a_1d * self.c_1d
         with self.assertRaises(ValueError):
-            e = self.a_2d * self.c_2d
+            _ = self.a_2d * self.c_2d
 
     def test_matrix_multiplication(self):
         d_2d_ab = self.a_2d @ self.b_2d
@@ -113,7 +113,7 @@ class TestModeArray(unittest.TestCase):
         self.assertTrue(np.allclose(ref_2d_ad, np.asarray(d_2d_ad)))
 
         with self.assertRaises(ValueError):
-            e = self.a_2d @ self.c_2d
+            _ = self.a_2d @ self.c_2d
 
     def test_matmul_output_modes(self):
         d_2d_ab = self.a_2d @ self.b_2d

@@ -6,7 +6,6 @@ from collections.abc import Iterator
 import numpy as np
 import pandas as pd
 
-import ggpeps
 import ggpeps.lattice as lattice
 from ggpeps.evaluator import Evaluator
 from ggpeps.system.system_base import System2DBase
@@ -53,7 +52,7 @@ class ExactEvaluator(Evaluator):
         Use this function to match the interface of the MonteCarloEvaluator."""
         return self.obsdict[obs]
 
-    def evaluate(self) -> dict:
+    def evaluate(self) -> None:
         """Main evaluation function of ExactEvaluator.
         This function computes the exact expectation values <Psi|O|Psi>/<Psi|Psi> for
         a range of observables defined in the function.
@@ -142,14 +141,9 @@ class ExactEvaluator(Evaluator):
                     data["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
                     data["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
                     data["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
-                    data["grad_norm"].append(self.system.compute_grad_norm_vec())
+                    data["grad_norm"].append(self.system.grad_over_norm_vec)
 
-            # TODO: handle this better - boundary should not be here!
-            if ggpeps.PREFERRED_BACKEND == "jax":
-                for key, val in data.items():
-                    data[key] = np.asarray(val)
-
-            # Convert all lists to arrays
+            # Convert all lists or jax arrays to numpy arrays
             data = {key: np.asarray(data[key]) for key in data}
 
             # We need to change from log values to regular values here
@@ -268,8 +262,9 @@ class ExactEvaluator(Evaluator):
                 self.system.cfg.enforce_parameter_conditions(total_grad)
                 dest["energy_grad"] = total_grad
 
+            # Save data
             self.obsdict = dest
-        return self.obsdict
+        return
 
     def generate_config_vec(self) -> Iterator[list[np.ndarray]]:
         """Generate gauge field configurations for all links."""
@@ -334,7 +329,13 @@ class ExactEvaluator(Evaluator):
 
     def save(self, output_dir: str = ".") -> None:
         """Convenience function to generate a filename and save the summary in one step"""
-        syscfg = self.system.cfg
+        sys_cfg = self.system.cfg
 
-        fname_summary = f"summary_exact_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}.pkl"
+        chem_str = ",".join([f"{val:.3f}" for val in sys_cfg.g_chem])
+        couplings_str = (
+            f"gel_{sys_cfg.g_el:.3f}_gmag_{sys_cfg.g_mag:.3f}_gint_{sys_cfg.g_int:.3f}"
+            f"_gmass_{sys_cfg.g_mass:.3f}_gchem_{chem_str}"
+        )
+
+        fname_summary = f"summary_exact_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}.pkl"
         self.save_summary(os.path.join(output_dir, fname_summary))

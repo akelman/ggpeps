@@ -10,12 +10,13 @@ def lint(session):
     session.run(
         "flake8",
         "--exclude",
-        ".nox,*.egg,build,data",
+        ".nox,*.egg,build,data,.*",
         "--select",
         "E,W,F",
         ".",
         "--extend-ignore",
-        "E203, W503, E266",  # whitespace in slices, line break before binary operator, multiple leading ##
+        # whitespace in slices, line break before binary operator, multiple leading ##, imports not at top of file
+        "E203, W503, E266, E402",
         "--max-line-length",
         "120",
     )
@@ -27,21 +28,14 @@ def typing(session):
 
     session.install(".")
     session.install("mypy")
+
     session.run(
         "mypy",
+        "--enable-incomplete-feature=PreciseTupleTypes",
         "--install-types",  # install missing types for third-party packages
         "--non-interactive",  # don't ask user for confirmation before installing missing types
-        "src/ggpeps/caching.py",
-        "src/ggpeps/evaluator_manager.py",
-        "src/ggpeps/evaluator.py",
-        "src/ggpeps/exacteval.py",
-        "src/ggpeps/lattice.py",
-        "src/ggpeps/gauge.py",
-        "src/ggpeps/utils.py",
-        "src/ggpeps/minimizer.py",
-        "src/ggpeps/measurement.py",
+        "src/ggpeps/",
     )
-    # TODO: Add passing files (eventually should be entire repo)
 
 
 @nox.session

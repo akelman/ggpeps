@@ -94,8 +94,10 @@ class Testgaugefixing(unittest.TestCase):
         evaluator_with_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_with_gf)
         evaluator_without_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_without_gf)
 
-        eval_with_gf = evaluator_with_gf.evaluate()
-        eval_without_gf = evaluator_without_gf.evaluate()
+        evaluator_with_gf.evaluate()
+        evaluator_without_gf.evaluate()
+        eval_with_gf = evaluator_with_gf.obsdict
+        eval_without_gf = evaluator_without_gf.obsdict
 
         for key, val in eval_with_gf.items():
             self.assertTrue(np.allclose(val, eval_without_gf[key], equal_nan=True))
@@ -122,8 +124,10 @@ class Testgaugefixing(unittest.TestCase):
         evaluator_with_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_with_gf)
         evaluator_without_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_without_gf)
 
-        eval_with_gf = evaluator_with_gf.evaluate()
-        eval_without_gf = evaluator_without_gf.evaluate()
+        evaluator_with_gf.evaluate()
+        evaluator_without_gf.evaluate()
+        eval_with_gf = evaluator_with_gf.obsdict
+        eval_without_gf = evaluator_without_gf.obsdict
 
         for key, val in eval_with_gf.items():
             self.assertTrue(np.allclose(val, eval_without_gf[key], equal_nan=True))
@@ -151,8 +155,10 @@ class Testgaugefixing(unittest.TestCase):
         evaluator_with_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_with_gf)
         evaluator_without_gf = exacteval.ExactEvaluator(ExactEvaluatorConfig(), system_without_gf)
 
-        eval_with_gf = evaluator_with_gf.evaluate()
-        eval_without_gf = evaluator_without_gf.evaluate()
+        evaluator_with_gf.evaluate()
+        evaluator_without_gf.evaluate()
+        eval_with_gf = evaluator_with_gf.obsdict
+        eval_without_gf = evaluator_without_gf.obsdict
 
         for key, val in eval_with_gf.items():
             self.assertTrue(np.allclose(val, eval_without_gf[key]))
@@ -177,11 +183,7 @@ class Testgaugefixing(unittest.TestCase):
         system_without_gf = system.Z2System2D(cfg_without_gf)
 
         # MC evaluation
-        mc_config = MonteCarloEvaluatorConfig()
-        mc_config.warmup_steps = 20000
-        mc_config.meas_steps = 20000
-        mc_config.binsize = 1
-        mc_config.update_size_per_step = 2
+        mc_config = MonteCarloEvaluatorConfig(warmup_steps=20000, meas_steps=20000, binsize=1, update_size_per_step=2)
 
         mc_evaluator_with_gf = MonteCarloEvaluator(mc_config, system_with_gf)
         mc_config.gauge_fixing = True

@@ -8,7 +8,7 @@ import ggpeps
 from ggpeps import gauge, utils
 from ggpeps.lattice import Direction
 
-from .system_base import Config2DBase
+from .config_base import Config2DBase
 from .system_base import get_pfaffian_arrays
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -23,6 +23,7 @@ class Z2System2DConfig(Config2DBase):
     nvirtmodes_vertex = 4  # We have one virtual mode per direction (1 mode x 4 directions)
     nvirtmodes_link = 2  # We have two virtual modes per link (l/r or u/d)
     nphysmodes_site = 1  # number of physical modes per site
+    ncolors = 1
 
     def __init__(
         self,
@@ -36,7 +37,7 @@ class Z2System2DConfig(Config2DBase):
         num_fermionic_layer=0,
         unitcell_size=1,
         enforce_u1_symmetry=True,
-    ):
+    ) -> None:
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         if num_fermionic_layer != 0:
             # This ansatz does not support fermionic layers
@@ -52,39 +53,30 @@ class Z2System2DConfig(Config2DBase):
             g_chem,
             num_pg_layer,
             0,
+            unitcell_size,
+            enforce_u1_symmetry,
         )
 
         # Translation invariance
-        if unitcell_size not in [1]:
+        if self.unitcell_size not in [1]:
             logger.error(
                 "This ansatz only supports unitcell_size = 1. \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             raise ValueError("Invalid unitcell_size.")
-        self.site_params_dict = {
-            site: 0 for site in range(self.lattice.size)
-        }  # map from site to index of independent parameters
-        self.unitcell_size = 1
 
-        if not enforce_u1_symmetry:
+        if not self.u1_symmetry:
             logger.error("This ansatz does not support the relaxation of U(1) symmetry.")
             raise ValueError("Invalid enforce_u1_symmetry.")
-
-        # This is for pure-gauge only atm
-        self.num_pg_layer = self.nlayer
-        self.num_fermionic_layer = 0
-        # We store a list of the parameters forced to be zero by the ansatz
-        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j]]
         indices = [[(2, 0), (3, 1), (0, 1), (2, 3)]]
         idxarr = get_pfaffian_arrays(indices, prefactors)
-        self.idxarr_vec = [idxarr] * self.nlayer
-        self.el_overall_factors = [
-            -1j / 4
-        ] * self.nlayer  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        self.idxarr_vec = tuple([idxarr] * self.nlayer)
+        self.el_overall_factors = tuple(
+            [-1j / 4] * self.nlayer
+        )  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
     def make_pure_gauge(self):
         # The order of the parameters is [tr,yr,zr,ti,yi,zi] ({r,i} referring to the real/imaginary components)

@@ -62,8 +62,8 @@ class TestD2nSystem(unittest.TestCase):
     def test_covmat_for_no_fermions(self):
         """Ensure the correct covariance matrix is generated when t = 0."""
         self.system_D6.cfg.make_pure_gauge()
-        covmat_layer1 = self.system_D6.compute_ferm_cov()[0]
-        covmat_layer2 = self.system_D6.compute_ferm_cov()[1]
+        covmat_layer1 = self.system_D6.ferm_covmat_vec[0]
+        covmat_layer2 = self.system_D6.ferm_covmat_vec[1]
         expected_covmat = np.array(
             [
                 [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -91,8 +91,8 @@ class TestD2nSystem(unittest.TestCase):
         config = np.array([identity] * 7 + [other_gauge] * 1)
         self.system_D6.update_gauge_full_system(config)
 
-        covmat_layer1 = self.system_D6.compute_ferm_cov()[0]
-        covmat_layer2 = self.system_D6.compute_ferm_cov()[1]
+        covmat_layer1 = self.system_D6.ferm_covmat_vec[0]
+        covmat_layer2 = self.system_D6.ferm_covmat_vec[1]
         expected_covmat = np.array(
             [
                 [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -118,8 +118,8 @@ class TestD2nSystem(unittest.TestCase):
         config = np.array([identity] * 7 + [other_gauge] * 1)
         self.system_D6.update_gauge_full_system(config)
 
-        covmat_layer1 = self.system_D6.compute_ferm_cov()[0]
-        # covmat_layer2 = self.system_D6.compute_ferm_cov(layer=1)
+        covmat_layer1 = self.system_D6.ferm_covmat_vec[0]
+        # covmat_layer2 = self.system_D6.ferm_covmat_vec[1]
         self.assertTrue(utils.is_covmat(covmat_layer1))
         # self.assertTrue(utils.is_covmat(covmat_layer2))
 
@@ -1038,7 +1038,7 @@ class TestD2nSystem(unittest.TestCase):
 #                 )
 #                 config[ind] = np.pi
 #                 self.system_z2.update_gauge_full_system(config)
-#                 covmat = self.system_z2.compute_ferm_cov(lay)
+#                 covmat = self.system_z2.ferm_covmat_vec[lay]
 
 #                 site_ind = 2 * site
 #                 mat = covmat[site_ind : site_ind + 2, site_ind : site_ind + 2]
@@ -1082,7 +1082,7 @@ class TestD2nSystem(unittest.TestCase):
 #                 )
 #                 config[ind] = np.pi
 #                 self.system_z2.update_gauge_full_system(config)
-#                 covmat = self.system_z2.compute_ferm_cov(lay)
+#                 covmat = self.system_z2.ferm_covmat_vec[lay]
 
 #                 site_ind = 2 * site  # index into covariance matrix
 #                 mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])

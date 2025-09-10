@@ -22,7 +22,8 @@ class TestMinimizerZ2(unittest.TestCase):
         sys = system.Z2System2D(system_cfg)
         exact_cfg = ExactEvaluatorConfig()
         exact_ev = ExactEvaluator(exact_cfg, sys)
-        res = exact_ev.evaluate()
+        exact_ev.evaluate()
+        res = exact_ev.obsdict
 
         uc_ind = 0
 
@@ -63,8 +64,10 @@ class TestMinimizerZ2(unittest.TestCase):
                 exact_ev_left = ExactEvaluator(exact_cfg, sys_left)
                 exact_ev_right = ExactEvaluator(exact_cfg, sys_right)
 
-                res_left = exact_ev_left.evaluate()
-                res_right = exact_ev_right.evaluate()
+                exact_ev_left.evaluate()
+                exact_ev_right.evaluate()
+                res_left = exact_ev_left.obsdict
+                res_right = exact_ev_right.obsdict
 
                 mag_energy_deriv_num = (res_right["mag_energy"] - res_left["mag_energy"]) / (2 * eps)
                 mag_energy_deriv_ana = res["mag_energy_grad"][0, uc_ind, ind]
@@ -80,7 +83,8 @@ class TestMinimizerZ2(unittest.TestCase):
         sys = system.Z2System2D(system_cfg)
         exact_cfg = ExactEvaluatorConfig()
         exact_ev = ExactEvaluator(exact_cfg, sys)
-        res = exact_ev.evaluate()
+        exact_ev.evaluate()
+        res = exact_ev.obsdict
 
         uc_ind = 0
 
@@ -122,8 +126,10 @@ class TestMinimizerZ2(unittest.TestCase):
                     exact_ev_left = ExactEvaluator(exact_cfg, sys_left)
                     exact_ev_right = ExactEvaluator(exact_cfg, sys_right)
 
-                    res_left = exact_ev_left.evaluate()
-                    res_right = exact_ev_right.evaluate()
+                    exact_ev_left.evaluate()
+                    exact_ev_right.evaluate()
+                    res_left = exact_ev_left.obsdict
+                    res_right = exact_ev_right.obsdict
 
                     mag_energy_deriv_num = (res_right["mag_energy"] - res_left["mag_energy"]) / (2 * eps)
                     mag_energy_deriv_ana = res["mag_energy_grad"][layer, uc_ind, ind]
@@ -139,7 +145,8 @@ class TestMinimizerZ2(unittest.TestCase):
         sys = system.Z2System2D(system_cfg)
         exact_cfg = ExactEvaluatorConfig()
         exact_ev = ExactEvaluator(exact_cfg, sys)
-        res = exact_ev.evaluate()
+        exact_ev.evaluate()
+        res = exact_ev.obsdict
 
         uc_ind = 0
 
@@ -161,8 +168,10 @@ class TestMinimizerZ2(unittest.TestCase):
                 exact_ev_left = ExactEvaluator(exact_cfg, sys_left)
                 exact_ev_right = ExactEvaluator(exact_cfg, sys_right)
 
-                res_left = exact_ev_left.evaluate()
-                res_right = exact_ev_right.evaluate()
+                exact_ev_left.evaluate()
+                exact_ev_right.evaluate()
+                res_left = exact_ev_left.obsdict
+                res_right = exact_ev_right.obsdict
 
                 el_energy_deriv_num = (res_right["el_energy"] - res_left["el_energy"]) / (2 * eps)
                 el_energy_deriv_ana = res["el_energy_grad"][0, uc_ind, ind]
@@ -179,7 +188,8 @@ class TestMinimizerZ2(unittest.TestCase):
         sys = system.Z2System2D(system_cfg)
         exact_cfg = ExactEvaluatorConfig()
         exact_ev = ExactEvaluator(exact_cfg, sys)
-        res = exact_ev.evaluate()
+        exact_ev.evaluate()
+        res = exact_ev.obsdict
 
         uc_ind = 0
 
@@ -220,8 +230,10 @@ class TestMinimizerZ2(unittest.TestCase):
                     exact_ev_left = ExactEvaluator(exact_cfg, sys_left)
                     exact_ev_right = ExactEvaluator(exact_cfg, sys_right)
 
-                    res_left = exact_ev_left.evaluate()
-                    res_right = exact_ev_right.evaluate()
+                    exact_ev_left.evaluate()
+                    exact_ev_right.evaluate()
+                    res_left = exact_ev_left.obsdict
+                    res_right = exact_ev_right.obsdict
 
                     el_energy_deriv_num = (res_right["el_energy"] - res_left["el_energy"]) / (2 * eps)
                     el_energy_deriv_ana = res["el_energy_grad"][layerind, uc_ind, ind]
@@ -244,13 +256,7 @@ class TestMinimizerZ2(unittest.TestCase):
         sys_left = system.Z2System2D(system_cfg_left)
         sys_right = system.Z2System2D(system_cfg_right)
 
-        mc_config = MonteCarloEvaluatorConfig()
-        mc_config.warmup_steps = 1000
-        mc_config.meas_steps = 10000
-        mc_config.binsize = 1
-        mc_config.compute_grads = True
-        mc_config.gauge_fixing = False
-
+        mc_config = MonteCarloEvaluatorConfig(warmup_steps=1000, meas_steps=10000, binsize=1, compute_grads=True)
         min_config = MinimizerConfig()
 
         mc_mgr = EvaluatorManager(system.Z2System2D, system_cfg, mc_config, 0)

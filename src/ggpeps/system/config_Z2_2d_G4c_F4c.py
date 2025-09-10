@@ -6,7 +6,7 @@ import ggpeps
 from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
-from .system_base import Config2DBase
+from .config_base import Config2DBase
 from .system_base import get_pfaffian_arrays
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -33,7 +33,8 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
     ncopy = 4
     nvirtmodes_vertex = 16
     nvirtmodes_link = 8
-    nphysmodes_site = 1  # number of physical modes per site
+    nphysmodes_site = 1
+    ncolors = 1
 
     def __init__(
         self,
@@ -47,7 +48,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         num_fermionic_layer=1,
         unitcell_size=1,
         enforce_u1_symmetry=True,
-    ):
+    ) -> None:
         super().__init__(
             gauge.ZNGauge(2),
             lattice,
@@ -58,37 +59,16 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
+            unitcell_size,
+            enforce_u1_symmetry,
         )
 
-        # Translation invariance (or variance)
-        # define a map from site to index of independent parameters
-        if unitcell_size == 1:
-            self.site_params_dict = {site: 0 for site in range(self.lattice.size)}
-        elif unitcell_size == 2:
-            self.site_params_dict = {}
-            for site in range(self.lattice.size):
-                x, y = self.lattice.ind2coord(site)
-                uc_ind = 1 if (x + y) % 2 else 0  # 0 for even sublattice, 1 for odd
-                self.site_params_dict[site] = uc_ind
-        elif unitcell_size == -1:
-            # no unitcell - every site has its own parameters
-            self.site_params_dict = {}
-            for site in range(self.lattice.size):
-                self.site_params_dict[site] = site
-        else:
+        if self.unitcell_size not in [1, 2, -1]:
             logger.error(
                 "This ansatz only supports unitcell_size = 1, 2, or -1 (all sites independent). \
                 This can be adapted by adding in a specification in the config to map sites to parameters."
             )
             raise ValueError("Invalid unitcell_size.")
-
-        # number of different sets of parameters across sites (min: 1, max: num_sites)
-        self.unitcell_size = len(set(self.site_params_dict.values()))
-
-        self.u1_symmetry = enforce_u1_symmetry
-        # We store a list of the parameters forced to be zero by the ansatz
-        # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
-        self.zeroed_params: tuple[tuple[int, int, int]] = self.get_zeroed_params()
 
         # Constants used in the calculation of the electric energy
         prefactors = [
@@ -112,13 +92,15 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
 
         idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
         idxarr_lay_fermionic = get_pfaffian_arrays(indices_layer_fermionic, prefactors)
-        self.idxarr_vec = [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
+        self.idxarr_vec = tuple(
+            [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
+        )
 
-        self.el_overall_factors = [1 / 256] * (
-            self.nlayer
+        self.el_overall_factors = tuple(
+            [1 / 256] * self.nlayer
         )  # this arises due to normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
 
-    def get_zeroed_params(self) -> list[tuple[int, int, int]]:
+    def get_zeroed_params(self) -> tuple[tuple[int, int, int], ...]:
         offset = self._nparams // 2  # offset to get index of imaginary part
         zeroed_params = []  # we'll save the indices of the zeroed parameters
 

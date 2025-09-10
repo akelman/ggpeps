@@ -65,8 +65,8 @@ class TestZ2System(unittest.TestCase):
     def test_covmat_for_no_fermions(self):
         """Ensure the correct covariance matrix is generated when t = 0."""
         self.system_z2.cfg.make_pure_gauge()
-        covmat_layer1 = self.system_z2.compute_ferm_cov()[0]  # covmat of layer 1
-        covmat_layer2 = self.system_z2.compute_ferm_cov()[1]  # covmat of layer 2
+        covmat_layer1 = self.system_z2.ferm_covmat_vec[0]  # covmat of layer 1
+        covmat_layer2 = self.system_z2.ferm_covmat_vec[1]  # covmat of layer 2
         expected_covmat = np.array(
             [
                 [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -93,8 +93,8 @@ class TestZ2System(unittest.TestCase):
         config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         self.system_z2.update_gauge_full_system(config)
 
-        covmat_layer1 = self.system_z2.compute_ferm_cov()[0]
-        covmat_layer2 = self.system_z2.compute_ferm_cov()[1]
+        covmat_layer1 = self.system_z2.ferm_covmat_vec[0]
+        covmat_layer2 = self.system_z2.ferm_covmat_vec[1]
         expected_covmat = np.array(
             [
                 [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -119,8 +119,8 @@ class TestZ2System(unittest.TestCase):
         config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         self.system_z2.update_gauge_full_system(config)
 
-        covmat_layer1 = self.system_z2.compute_ferm_cov()[0]
-        covmat_layer2 = self.system_z2.compute_ferm_cov()[1]
+        covmat_layer1 = self.system_z2.ferm_covmat_vec[0]
+        covmat_layer2 = self.system_z2.ferm_covmat_vec[1]
         self.assertTrue(utils.is_covmat(covmat_layer1))
         self.assertTrue(utils.is_covmat(covmat_layer2))
 
@@ -138,7 +138,8 @@ class TestZ2System(unittest.TestCase):
         ec_config.gauge_fixing = False
         self.system_z2.cfg.make_pure_gauge()  # sets t params to zero
         ex_eval = exacteval.ExactEvaluator(ec_config, self.system_z2)
-        dest_dict = ex_eval.evaluate()
+        ex_eval.evaluate()
+        dest_dict = ex_eval.obsdict
         self.assertTrue(np.allclose(0, dest_dict["mass_energy"]))
         self.assertTrue(np.allclose(0, dest_dict["int_energy"]))
 
@@ -149,7 +150,8 @@ class TestZ2System(unittest.TestCase):
         ec_config = exacteval.ExactEvaluatorConfig()
         ec_config.gauge_fixing = False
         ex_eval = exacteval.ExactEvaluator(ec_config, self.system_z2)
-        dest_dict = ex_eval.evaluate()
+        ex_eval.evaluate()
+        dest_dict = ex_eval.obsdict
         self.assertFalse(np.allclose(0, dest_dict["mass_energy"]))
         self.assertFalse(np.allclose(0, dest_dict["int_energy"]))
 
@@ -764,9 +766,53 @@ class TestZ2System(unittest.TestCase):
         sys = system_type(system_cfg)
         eval_config = exacteval.ExactEvaluatorConfig()
         ex_eval = exacteval.ExactEvaluator(eval_config, sys)
-        res = ex_eval.evaluate()
+        ex_eval.evaluate()
+        res = ex_eval.obsdict
         FM = res["FM_1x1"]
         self.assertAlmostEqual(FM, FM_ed, places=2)
+
+    def test_params_symmetry(self):
+        """Ensure identical results are calculated for each layer when identical params are used for the layers."""
+        lat = lattice.Lattice2D(2, 2)
+        num_pg_layer = 1
+        num_fermionic_layer = 2
+        nlayer = num_pg_layer + num_fermionic_layer
+        unitcell_size = 2
+        paramvec = np.random.rand(nlayer, unitcell_size, 20)
+        paramvec[2] = paramvec[1]
+        cfg = system.Z2System2D_G2C_F2C_Config(
+            lat,
+            1,
+            1,
+            1,
+            1,
+            [1, 1],
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
+            unitcell_size=unitcell_size,
+        )
+        cfg.paramvec = paramvec
+        system_z2 = system.Z2System2D(cfg)
+        system_z2.cfg.enforce_parameter_conditions(system_z2.cfg.paramvec)
+
+        # Test various obvservables
+        norm_vec = system_z2.calculate_lognormvec(all_factors=True)
+        self.assertTrue(np.allclose(norm_vec[1], norm_vec[2]))
+
+        el_op_vec = system_z2.el_energy_op_vec
+        self.assertTrue(np.allclose(el_op_vec[1], el_op_vec[2]))
+
+        int_op_vec = system_z2.int_energy_op_vec
+        self.assertTrue(np.allclose(int_op_vec[1], int_op_vec[2]))
+
+        mass_op_vec = system_z2.mass_energy_op_vec
+        self.assertTrue(np.allclose(mass_op_vec[1], mass_op_vec[2]))
+
+        chem_op_vec = system_z2.chem_energy_op_vec
+        self.assertTrue(np.allclose(chem_op_vec[1], chem_op_vec[2]))
+
+        chem_grads = system_z2.chem_energy_op_grad_vec
+        self.assertTrue(np.allclose(chem_grads[1], chem_grads[2]))
 
 
 class TestTransVariance(unittest.TestCase):
@@ -1025,7 +1071,7 @@ class TestTransVariance(unittest.TestCase):
             flux_gauge = self.system_z2.cfg.gaugemgr.get_representation(np.pi)
             config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
             self.system_z2.update_gauge_full_system(config)
-            covmat = self.system_z2.compute_ferm_cov()[lay]
+            covmat = self.system_z2.ferm_covmat_vec[lay]
             self.assertTrue(utils.is_covmat(covmat))
 
     def test_covmat_site_dependence(self):
@@ -1044,7 +1090,7 @@ class TestTransVariance(unittest.TestCase):
                 ind = self.system_z2.cfg.lattice.coord2ind_dir((x, y), lattice.Direction.X)
                 config[ind] = flux_gauge
                 self.system_z2.update_gauge_full_system(config)
-                covmat = self.system_z2.compute_ferm_cov()[lay]
+                covmat = self.system_z2.ferm_covmat_vec[lay]
 
                 site_ind = 2 * site
                 mat = covmat[site_ind : site_ind + 2, site_ind : site_ind + 2]
@@ -1086,7 +1132,7 @@ class TestTransVariance(unittest.TestCase):
                 ind = self.system_z2.cfg.lattice.coord2ind_dir((x, y), lattice.Direction.X)
                 config[ind] = flux_gauge
                 self.system_z2.update_gauge_full_system(config)
-                covmat = self.system_z2.compute_ferm_cov()[lay]
+                covmat = self.system_z2.ferm_covmat_vec[lay]
 
                 site_ind = 2 * site  # index into covariance matrix
                 mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
@@ -1325,7 +1371,7 @@ class TestTransVariance(unittest.TestCase):
         config = np.array([neutral_gauge] * 7 + [flux_gauge] * 1)
         system_z2.update_gauge_full_system(config)
 
-        deriv_ana = system_z2.compute_grad_norm_vec()
+        deriv_ana = system_z2.grad_over_norm_vec
         symbolvec = system_z2.symbolvec
 
         for layerind in range(self.system_z2.cfg.nlayer):

@@ -1,8 +1,14 @@
 from abc import ABC, abstractmethod
+from typing import Union
 
+import logging
+import numpy as np
 import pandas as pd
 
+import ggpeps
 from ggpeps.system.system_base import System2DBase
+
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class Evaluator(ABC):
@@ -14,21 +20,16 @@ class Evaluator(ABC):
         self.obsdict: dict = {}
 
     @abstractmethod
-    def evaluate(self):
-        """Simulate the system and return the results as a dictionary of observables
+    def evaluate(self) -> None:
+        """Simulate the system and save the results as a dictionary of observables in self.obsdict.
 
         Raises:
             NotImplementedError: raised if the method is not implemented in the subclass.
-
-        Returns:
-            dict: Dictionary of observables
-                  Each key-val pair is of the form (obs: list) where list is a list of
-                  values for the observable for the simulated gauge configurations
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def get_obs_mean(self, obs: str):
+    def get_obs_mean(self, obs: str) -> Union[None, float, np.ndarray]:
         """Get the mean value of an observable
 
         Args:
@@ -40,9 +41,14 @@ class Evaluator(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
+    def print_stats(self) -> None:
+        """Print a quick summary of the observables"""
+        for key in self.obsdict.keys():
+            logger.info(f"<{key}>: {self.get_obs_mean(key)}")
+
     @abstractmethod
     def summary(self) -> pd.DataFrame:
-        """Generate a summary of the simulation in the form of a pandas dataframe
+        """Generate a summary of the results of the simulation in the form of a pandas dataframe
 
         Returns:
             pd.DataFrame: Pandas dataframe with a summary of all results

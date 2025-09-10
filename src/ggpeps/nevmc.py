@@ -27,18 +27,29 @@ class NEVMC_EvaluatorConfig:
     It is more convenient than passing an extensive number of parameters to the constructor.
     """
 
-    def __init__(self):
-        self.warmup_steps = None
+    def __init__(
+        self,
+        warmup_steps: int = 10000,
+        meas_steps: int = 10000,
+        binsize: int = 1,
+        compute_grads: bool = False,
+        update_size_per_step: int = 1,
+        warmup_log_freq: int = 5000,
+        run_log_freq: int = 20000,
+    ) -> None:
+
+        self.warmup_steps = warmup_steps
+        self.meas_steps = meas_steps
+        self.binsize = binsize
+        self.compute_grads = compute_grads
+        self.update_size_per_step = update_size_per_step  # this can be set anywhere from 1 to nlinks (inclusive)
+
         self._seed = None
         self._rng_state = None
-        self.meas_steps = None
-        self.binsize: int = 1
-        self.compute_grads: bool = False
-        self.update_size_per_step: int = 1  # this can be set anywhere from 1 to nlinks (inclusive)
 
         # Logging frequency
-        self.warmup_log_freq: int = 5000  # log every X steps
-        self.run_log_freq: int = 20000
+        self.warmup_log_freq: int = warmup_log_freq  # log every X steps
+        self.run_log_freq: int = run_log_freq
 
     @property
     def seed(self):
@@ -157,7 +168,7 @@ class NEVMC_Evaluator(Evaluator):
         polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
 
         self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
-        # self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
+        # self.obsdict["cov_ferm"].append(self.system.ferm_covmat_vec)
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
@@ -194,7 +205,7 @@ class NEVMC_Evaluator(Evaluator):
             self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
             self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
             self.obsdict["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
-            self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
+            self.obsdict["grad_norm"].append(self.system.grad_over_norm_vec)
 
         return
 
@@ -440,7 +451,7 @@ class NEVMC_Evaluator(Evaluator):
         polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
 
         self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
-        # self.obsdict["cov_ferm"].append(self.system.compute_ferm_cov())
+        # self.obsdict["cov_ferm"].append(self.system.ferm_covmat_vec)
         self.obsdict["mag_energy_op"].append(self.system.mag_energy_op)
         self.obsdict["el_energy_op"].append(self.system.el_energy_op)
         self.obsdict["int_energy_op"].append(self.system.int_energy_op)
@@ -500,7 +511,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["int_energy_op_grad"].append(self.system.int_energy_op_grad_vec)
         self.obsdict["mass_energy_op_grad"].append(self.system.mass_energy_op_grad_vec)
         self.obsdict["chem_energy_op_grad"].append(self.system.chem_energy_op_grad_vec)
-        self.obsdict["grad_norm"].append(self.system.compute_grad_norm_vec())
+        self.obsdict["grad_norm"].append(self.system.grad_over_norm_vec)
         return
 
     ### end NEVMC ###
@@ -509,13 +520,12 @@ class NEVMC_Evaluator(Evaluator):
     def update_single_site(self):
         """Update for the MC simulation.
         This updates randomly chooses a single site and updates it.
-        The update is local. The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The update is local. The new gauge field value is drawn uniformly from the distribution of possible gauge
+        fields (according to the gauge group).
 
         TODO: add gauge fixing here
         """
         # Pick a site to update
-        lattice = self.system.cfg.lattice
-        nlinks = lattice.nlinks
         link_ind = self.cfg.rng_state.choice(
             self.system.cfg.lattice.comp_tree, replace=False
         )  # we choose a link from those that are not fixed by gauge fixing
@@ -537,7 +547,8 @@ class NEVMC_Evaluator(Evaluator):
         """Update for the MC simulation.
         This updates iterates over all lattice sites and updates every site once.
         The update is local.
-        The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The new gauge field value is drawn uniformly from the distribution of possible gauge fields
+        (according to the gauge group).
         """
         # Pick a site to update
         lattice = self.system.cfg.lattice
@@ -561,7 +572,8 @@ class NEVMC_Evaluator(Evaluator):
         """Update for the MC simulation.
         This updates iterates over N lattice sites and updates every site once.
         The update is local.
-        The new gauge field value is drawn uniformly from the distribution of possible gauge fields (according to the gauge group).
+        The new gauge field value is drawn uniformly from the distribution of possible gauge fields
+        (according to the gauge group).
         """
         links_inds = self.cfg.rng_state.choice(
             self.system.cfg.lattice.comp_tree,
@@ -663,13 +675,24 @@ class NEVMC_Evaluator(Evaluator):
 
     def save(self, output_dir="."):
         """Convenience function to combine saving the MonteCarloEstimator and the summary of the observables"""
-        syscfg = self.system.cfg
+        sys_cfg = self.system.cfg
         meas_steps = self.cfg.meas_steps
         warmup_steps = self.cfg.warmup_steps
 
-        fname_full = f"data_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl.gz"
-        fname_summary = f"summary_mc_L_{syscfg.lattice.nx:02d}-{syscfg.lattice.ny:02d}_gel_{syscfg.g_el:.3f}_gmag_{syscfg.g_mag:.3f}_gint_{syscfg.g_int:.3f}_nlayer_{syscfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl"
+        chem_str = ",".join([f"{val:.3f}" for val in sys_cfg.g_chem])
+        couplings_str = (
+            f"gel_{sys_cfg.g_el:.3f}_gmag_{sys_cfg.g_mag:.3f}_gint_{sys_cfg.g_int:.3f}"
+            f"_gmass_{sys_cfg.g_mass:.3f}_gchem_{chem_str}"
+        )
 
+        fname_full = (
+            f"data_nevmc_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}"
+            f"_nlayer_{sys_cfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl.gz"
+        )
+        fname_summary = (
+            f"summary_nevmc_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}"
+            f"_nlayer_{sys_cfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl"
+        )
         self.save_full(os.path.join(output_dir, fname_full))
         self.save_summary(os.path.join(output_dir, fname_summary))
 
