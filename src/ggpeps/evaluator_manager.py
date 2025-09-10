@@ -175,63 +175,12 @@ class EvaluatorManager:
             eval_args (dict): Arguments for the evaluator (e.g. for NEVMC).
         """
 
-        if self.type == "nevmc" and self.nrunner > 0:
-            assert isinstance(self.cfg, NEVMC_EvaluatorConfig)
-
-            resultvec = []
-            reduced_meas_steps = self.cfg.meas_steps // self.nrunner
-            logger.info(
-                f"Starting {self.nrunner} ray runners with {reduced_meas_steps} measurement steps each (total: {self.nrunner * reduced_meas_steps})."
-            )
-
-            for i in range(self.nrunner):
-                cfg = copy.deepcopy(self.cfg)
-                cfg.seed = self.cfg.seed + i
-                cfg.meas_steps = reduced_meas_steps
-
-                logger_info = {
-                    "filename": ggpeps.logger_file,
-                    "logger_level": ggpeps.global_vars["args"].level,
-                }
-
-                cpu_frac = 1 / ggpeps.global_vars["args"].nrunner  # multiplied by the number of available cpus?
-                gpu_frac = 0.0
-                if ggpeps.GPU_AVAILABLE:
-                    gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
-                evaluator_class = self.get_evaluator_class()
-
-                local_gauge = self.store_gauge[i * reduced_meas_steps : (i + 1) * reduced_meas_steps]
-                local_weights = self.store_weights[i * reduced_meas_steps : (i + 1) * reduced_meas_steps]
-                local_work = self.store_work[i * reduced_meas_steps : (i + 1) * reduced_meas_steps]
-
-                run_mc_modified = run_nevmc.options(
-                    num_gpus=gpu_frac
-                )  # according to the ray documentation, we should also specify num_cpus
-                resultvec.append(
-                    run_mc_modified.remote(
-                        i,
-                        evaluator_class,
-                        cfg,
-                        self.system_cls,
-                        self.system_cfg,
-                        local_gauge,
-                        local_weights,
-                        local_work,
-                        logger_info,
-                        eval_args=eval_args,
-                    )
-                )
-
-            resultvec = ray.get(resultvec)
-            self.evaluator = self.collect_NEVMC(resultvec)
-            result_df = self.evaluator.summary()
-
-        elif "mc" in self.type and self.nrunner > 0:
+        if "mc" in self.type and self.nrunner > 0:  # includes "mc" and "nevmc"
             """Start the simulation of the runners.
-            Currently only Monte Carlo is supported (the exacteval implementation currently only supports one runner),
-            and multiple runners cannot be resumed from where they left off.
+            Currently only Monte Carlo (or NEVMC) is supported (exacteval currently only supports one runner),
+            and multiple runners cannot be resumed from where they left off in the middle of an eval.
             """
-            assert isinstance(self.cfg, MonteCarloEvaluatorConfig)
+            assert isinstance(self.cfg, MonteCarloEvaluatorConfig) or isinstance(self.cfg, NEVMC_EvaluatorConfig)
 
             resultvec = []
             # system_cfg_id = ray.put(self.system_cfg)
@@ -266,22 +215,50 @@ class EvaluatorManager:
                     gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
                 evaluator_class = self.get_evaluator_class()
 
-                run_mc_modified = run_mc.options(
-                    num_gpus=gpu_frac
-                )  # TODO: according to the ray documentation, we should also specify num_cpus
-                resultvec.append(
-                    run_mc_modified.remote(
-                        i,
-                        evaluator_class,
-                        cfg,
-                        self.system_cls,
-                        self.system_cfg,
-                        logger_info,
-                        eval_args=eval_args,
+                if "nevmc" in self.type:
+                    local_gauge = self.store_gauge[i * reduced_meas_steps : (i + 1) * reduced_meas_steps]
+                    local_weights = self.store_weights[i * reduced_meas_steps : (i + 1) * reduced_meas_steps]
+                    local_work = self.store_work[i * reduced_meas_steps : (i + 1) * reduced_meas_steps]
+
+                    run_mc_modified = run_nevmc.options(
+                        num_gpus=gpu_frac
+                    )  # according to the ray documentation, we should also specify num_cpus
+
+                    resultvec.append(
+                        run_mc_modified.remote(
+                            i,
+                            evaluator_class,
+                            cfg,
+                            self.system_cls,
+                            self.system_cfg,
+                            local_gauge,
+                            local_weights,
+                            local_work,
+                            logger_info,
+                            eval_args=eval_args,
+                        )
                     )
-                )
+                else:
+                    run_mc_modified = run_mc.options(
+                        num_gpus=gpu_frac
+                    )  # TODO: according to the ray documentation, we should also specify num_cpus
+
+                    resultvec.append(
+                        run_mc_modified.remote(
+                            i,
+                            evaluator_class,
+                            cfg,
+                            self.system_cls,
+                            self.system_cfg,
+                            logger_info,
+                            eval_args=eval_args,
+                        )
+                    )
             resultvec = ray.get(resultvec)
-            self.evaluator = self.collect(resultvec)
+            if "nevmc" in self.type:
+                self.evaluator = self.collect_NEVMC(resultvec)
+            else:
+                self.evaluator = self.collect(resultvec)
             result_df = self.evaluator.summary()
         else:
             self.reset_evaluator()
