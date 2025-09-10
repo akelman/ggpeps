@@ -23,10 +23,13 @@ def run_mc(
     evaluator_cfg: Union[MonteCarloEvaluatorConfig, NEVMC_EvaluatorConfig],
     system_cls: type[System2DBase],
     system_cfg: Config2DBase,
+    store_gauge,
+    store_weights,
+    store_work,
     logger_info: dict,
     eval_args: dict = {},
 ) -> Evaluator:
-    """Worker for running part of a MC simulation.
+    """Worker for running part of a MC or NEVMC simulation.
 
     Args:
         runner_id (int): Runner ID
@@ -35,6 +38,9 @@ def run_mc(
         system_cls (type[System2DBase]): a system class type (must inherit from System2DBase)
         system_cfg (Config2DBase): the system config
         logger_info (dict): configs for the logger (logger needs to be set up in each worker)
+        store_gauge,
+        store_weights,
+        store_work,
         eval_args (dict): Arguments for the evaluator
 
     Returns:
@@ -49,39 +55,10 @@ def run_mc(
 
     system = system_cls(copy.deepcopy(system_cfg))
     system.initialize()
-    mc = evaluator_class(evaluator_cfg, system)
-    mc.evaluate(**eval_args)
-    return mc
-
-
-@ray.remote
-def run_nevmc(
-    runner_id: int,
-    evaluator_class: type[NEVMC_Evaluator],
-    evaluator_cfg: Union[NEVMC_EvaluatorConfig],
-    system_cls,
-    system_cfg,
-    store_gauge,
-    store_weights,
-    store_work,
-    logger_info: dict,
-    eval_args: dict = {},
-):
-    """Worker for running part of a NEVMC simulation.
-
-    Returns:
-        NEVMC_Evaluator
-    """
-
-    # Setup logger
-    logger_file = logger_info["filename"]
-    level = logger_info["logger_level"]
-    logger = logging.getLogger(ggpeps.LOGGER_NAME)
-    utils.setup_logger(logger, logger_file, level, runner_msg=f"Runner {runner_id}-")
-
-    system = system_cls(copy.deepcopy(system_cfg))
-    system.initialize()
-    mc = evaluator_class(evaluator_cfg, system, store_gauge, store_weights, store_work)
+    if "nevmc" in evaluator_class.__name__.lower():
+        mc = evaluator_class(evaluator_cfg, system, store_gauge, store_weights, store_work)
+    else:
+        mc = evaluator_class(evaluator_cfg, system)
     mc.evaluate(**eval_args)
     return mc
 
@@ -215,45 +192,32 @@ class EvaluatorManager:
                     gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
                 evaluator_class = self.get_evaluator_class()
 
+                run_mc_modified = run_mc.options(
+                    num_gpus=gpu_frac
+                )  # TODO: according to the ray documentation, we should also specify num_cpus
+
+                local_gauge = []
+                local_weights = []
+                local_work = []
                 if "nevmc" in self.type:
                     local_gauge = self.store_gauge[i * reduced_meas_steps : (i + 1) * reduced_meas_steps]
                     local_weights = self.store_weights[i * reduced_meas_steps : (i + 1) * reduced_meas_steps]
                     local_work = self.store_work[i * reduced_meas_steps : (i + 1) * reduced_meas_steps]
 
-                    run_mc_modified = run_nevmc.options(
-                        num_gpus=gpu_frac
-                    )  # according to the ray documentation, we should also specify num_cpus
-
-                    resultvec.append(
-                        run_mc_modified.remote(
-                            i,
-                            evaluator_class,
-                            cfg,
-                            self.system_cls,
-                            self.system_cfg,
-                            local_gauge,
-                            local_weights,
-                            local_work,
-                            logger_info,
-                            eval_args=eval_args,
-                        )
+                resultvec.append(
+                    run_mc_modified.remote(
+                        i,
+                        evaluator_class,
+                        cfg,
+                        self.system_cls,
+                        self.system_cfg,
+                        local_gauge,
+                        local_weights,
+                        local_work,
+                        logger_info,
+                        eval_args=eval_args,
                     )
-                else:
-                    run_mc_modified = run_mc.options(
-                        num_gpus=gpu_frac
-                    )  # TODO: according to the ray documentation, we should also specify num_cpus
-
-                    resultvec.append(
-                        run_mc_modified.remote(
-                            i,
-                            evaluator_class,
-                            cfg,
-                            self.system_cls,
-                            self.system_cfg,
-                            logger_info,
-                            eval_args=eval_args,
-                        )
-                    )
+                )
             resultvec = ray.get(resultvec)
             if "nevmc" in self.type:
                 self.evaluator = self.collect_NEVMC(resultvec)
