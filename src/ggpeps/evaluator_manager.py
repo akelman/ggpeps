@@ -219,10 +219,7 @@ class EvaluatorManager:
                     )
                 )
             resultvec = ray.get(resultvec)
-            if "nevmc" in self.type:
-                self.evaluator = self.collect_NEVMC(resultvec)
-            else:
-                self.evaluator = self.collect(resultvec)
+            self.evaluator = self.collect(resultvec)
             result_df = self.evaluator.summary()
         else:
             self.reset_evaluator()
@@ -246,6 +243,14 @@ class EvaluatorManager:
         Returns:
             Evaluator: evaluator with information from all runners
         """
+        if "nevmc" in self.type:
+            return self.collect_NEVMC(resultvec)
+        elif "mc" in self.type:
+            return self.collect_mc(resultvec)
+        else:
+            raise ValueError(f"Unknown evaluator type {self.type}")
+
+    def collect_mc(self, resultvec):
         system = self.system_cls(self.system_cfg)
         dest = MonteCarloEvaluator(self.cfg, system)
         if len(resultvec) > 1:
@@ -257,14 +262,6 @@ class EvaluatorManager:
         return dest
 
     def collect_NEVMC(self, resultvec):
-        """Unify the results of multiple runners
-
-        Args:
-            resultvec (list): List of Estimators from the different runners
-
-        Returns:
-            Estimator: estimator with information from all runners
-        """
         system = self.system_cls(self.system_cfg)
         dest = NEVMC_Evaluator(self.cfg, system, [], [], [])
         if len(resultvec) > 1:
