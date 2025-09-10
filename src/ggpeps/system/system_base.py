@@ -45,7 +45,7 @@ class System2DBase(ABC):
     This class cannot be instantiated directly.
     """
 
-    def __init__(self, cfg: Config2DBase) -> None:
+    def __init__(self, cfg: Config2DBase, mod_link_inds: Optional[tuple[int, ...]] = None) -> None:
         """Constructor of a Z2System2D system, for any groups, with any number of virtual or physical
         fermions per site per link. All of the ansatz information is stored in the provided configuration.
 
@@ -54,10 +54,13 @@ class System2DBase(ABC):
         """
         self.cfg: Config2DBase = cfg
 
-        # Link indices for which the electric energy is computed - can be any set of horizontal links:
+        # Link indices for which the electric energy is computed - can be any set of links.
+        # Default is a single link (0), but allow an override from the caller.
         # TODO: add input checks, make this configurable via CLI.
         self.mod_link_inds: tuple[int, ...] = (0,)
-
+        if mod_link_inds is not None:
+            self.mod_link_inds = tuple(mod_link_inds)
+        print(f"Electric energy computed on links {self.mod_link_inds}")
         self.initialize()
 
     def initialize(self) -> None:

@@ -1,5 +1,6 @@
 import logging
 from operator import index
+from typing import Optional
 
 import numpy as np
 from ggpeps import xnp as xnp
@@ -36,8 +37,8 @@ class Z2System2D(System2DBase):
         {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2...and so on}
     """
 
-    def __init__(self, cfg):
-        super().__init__(cfg)
+    def __init__(self, cfg, *, mod_link_inds: Optional[tuple[int, ...]] = None):
+        super().__init__(cfg, mod_link_inds=mod_link_inds)
 
     ################## Gauging ##################
     @classmethod
