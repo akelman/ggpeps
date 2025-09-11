@@ -9,7 +9,6 @@ import sys
 import logging
 import platform
 from timeit import default_timer as timer
-from functools import partial
 
 # Ensure that logs are not deduplicated, i.e. allow the same log message to be printed from different workers
 os.environ["RAY_DEDUP_LOGS"] = "0"
@@ -293,8 +292,6 @@ def main(args):
     # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.gauge_group == "Z2":
         system_type = Z2System2D
-        if getattr(args, "el_links", None) is not None:
-            system_type = partial(system_type, mod_link_inds=tuple(args.el_links))
 
         if args.ncopy == 1:
             # Z2 system with one copy of virtual fermions on the links and no support for fermions
@@ -376,8 +373,8 @@ def main(args):
     arr = ggpeps.xnp.array([1.2, 1.3])
     logger.info(f"Precision: {arr.dtype}")
     if isinstance(arr, jax.numpy.ndarray):
-        dev = arr.device
-        logger.info(f"JAX default device: {dev.platform}")  # general
+        # dev = arr.device
+        # logger.info(f"JAX default device: {dev.platform}")  # general
         logger.info(f"Device info: {main_device.device_kind}")  # specific
     logger.info("============================")
 
@@ -833,12 +830,6 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
         help="Ignore the cache and do not load or save it. Overrides other cache settings.",
-    )
-    parser.add_argument(
-        "--el_links",
-        nargs="+",
-        type=int,
-        help="Indices of links on which to compute the electric energy (e.g. --el_links 2 7 3)",
     )
 
     # Arguments for ray
