@@ -281,7 +281,7 @@ def main(args):
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L, args.gauge_fixing)
 
-    # Normalize to tuple and validate
+    # Links on which to compute the electric energy - convert to tuple and validate
     el_links = tuple(args.el_links)
 
     # 2D with PBC: horizontal + vertical links
