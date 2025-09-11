@@ -120,7 +120,7 @@ class Z2System2D(System2DBase):
 
         # Update the modified determinant & matrices
         for lay in range(self.cfg.nlayer):
-            for ind, mod_link_ind in enumerate(self.mod_link_inds):
+            for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
                 if mod_link_ind != link_ind:
                     # We do not update if the link is the one that is excluded in the modified objects
 

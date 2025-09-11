@@ -35,6 +35,7 @@ class Z2System2DConfig(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=0,
+        mod_link_inds=(0,),
         unitcell_size=1,
         enforce_u1_symmetry=True,
     ) -> None:
@@ -53,6 +54,7 @@ class Z2System2DConfig(Config2DBase):
             g_chem,
             num_pg_layer,
             0,
+            mod_link_inds,
             unitcell_size,
             enforce_u1_symmetry,
         )

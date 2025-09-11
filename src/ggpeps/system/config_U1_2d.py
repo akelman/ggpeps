@@ -30,6 +30,7 @@ class U1System2DConfig(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=0,
+        mod_link_inds=(0,),
         unitcell_size=1,
     ):
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
@@ -43,6 +44,7 @@ class U1System2DConfig(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
+            mod_link_inds,
             unitcell_size,
         )
 
