@@ -335,7 +335,6 @@ def main(args):
         sys.exit(1)
 
     # Create the system configuration of the appropriate type
-    print("############################################################ the electric link indices:", el_links)
     system_cfg = cfg_class(
         lattice,
         g_el,
