@@ -385,9 +385,12 @@ class TestSystemBaseDimensions(unittest.TestCase):
         pg_layers = 1
         fermionic_layers = 1
         nlayers = pg_layers + fermionic_layers
+        mod_link_inds = (0,)
         unitcell_size = 2
         paramvec2C = np.random.rand(nlayers, unitcell_size, 20)
-        cfg2C = system.Z2System2D_G2C_F2C_Config(lat, 0, 0, 0, 0, None, pg_layers, fermionic_layers, unitcell_size)
+        cfg2C = system.Z2System2D_G2C_F2C_Config(
+            lat, 0, 0, 0, 0, None, pg_layers, fermionic_layers, mod_link_inds, unitcell_size
+        )
         cfg2C.paramvec = paramvec2C
         self.system_z2_2c = system.Z2System2D(cfg2C)
 

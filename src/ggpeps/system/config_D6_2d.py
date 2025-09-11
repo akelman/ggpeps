@@ -58,6 +58,7 @@ class D6System2D_Config(Config2DBase):
         g_chem,
         num_pg_layer=2,
         num_fermionic_layer=0,
+        mod_link_inds=(0,),
         unitcell_size=1,
         enforce_u1_symmetry=True,
     ) -> None:
@@ -72,6 +73,7 @@ class D6System2D_Config(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
+            mod_link_inds,
             unitcell_size,
             enforce_u1_symmetry,
         )
@@ -84,6 +86,10 @@ class D6System2D_Config(Config2DBase):
             )
             sys.exit(1)
 
+        self.init_el_energy_terms()
+
+    def init_el_energy_terms(self) -> None:
+        """Build idxarr_vec and el_overall_factors."""
         # Constants used in the calculation of the electric energy
         prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
         indices_layer_pg = [

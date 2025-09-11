@@ -16,6 +16,12 @@ from ggpeps.lattice import Lattice2D
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
+# Type aliases for the electric energy data structures
+IdxTerm = tuple[complex, tuple[int, ...]]  # (prefactor, indices)
+IdxTermList = tuple[IdxTerm, ...]  # all terms for one direction in one layer
+IdxLayerPair = tuple[IdxTermList, IdxTermList]  # (horizontal, vertical)
+IdxArrVec = tuple[IdxLayerPair, ...]  # over layers
+
 
 ################## Config2DBase ######################
 class Config2DBase(ABC):
@@ -46,6 +52,7 @@ class Config2DBase(ABC):
         g_chem: Optional[np.ndarray],
         num_pg_layer: int = 1,
         num_fermionic_layer: int = 0,
+        mod_link_inds: tuple[int, ...] = (0,),
         unitcell_size: int = 1,
         enforce_u1_symmetry: bool = True,
     ) -> None:
@@ -60,6 +67,9 @@ class Config2DBase(ABC):
             g_chem (Optional[np.array]): chemical potential for the fermions. If None, all are set to zero.
             num_pg_layer (int, optional): number of pure gauge layers. Defaults to 1.
             num_fermionic_layer (int, optional): number of fermionic layers. Defaults to 0.
+            mod_link_inds (tuple[int, ...], optional): indices of links on which to compute the electric energy.
+                Defaults to (0,).
+            unitcell_size (int, optional): size of the unit cell for translation invariance.
         """
 
         self.gaugemgr = gaugemgr
@@ -67,6 +77,9 @@ class Config2DBase(ABC):
         self.num_pg_layer = num_pg_layer
         self.num_fermionic_layer = num_fermionic_layer
         self.nlayer = self.num_pg_layer + self.num_fermionic_layer
+
+        # Link indices for which the electric energy is computed - can be any set of horizontal links:
+        self.mod_link_inds = mod_link_inds
 
         # Symbolvec - list of all the symbols, which are the same for each layer
         # (even if for some layers some are forced to zero)
@@ -115,7 +128,7 @@ class Config2DBase(ABC):
         # Settings for the electric energy
         # these depend on the ansatz, so we only declare their type here
         # TODO: this data structure is very unwieldy and should be simplified/restructured
-        self.idxarr_vec: tuple[tuple[tuple[complex, tuple[int, ...]], ...], ...]
+        self.idxarr_vec: IdxArrVec
         self.el_overall_factors: tuple[complex, ...]
 
     def __str__(self) -> str:
@@ -222,6 +235,16 @@ class Config2DBase(ABC):
             tuple: is a tuple of tuples (layer, unitcell index, symbol index).
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
+    def init_el_energy_terms(self) -> None:
+        """Initialize electric-energy-related structures for this ansatz.
+
+        Implementations must set:
+            - self.idxarr_vec: IdxArrVec
+            - self.el_overall_factors: tuple[complex, ...]
+        """
+        raise NotImplementedError("Implement in subclass: must set idxarr_vec and el_overall_factors.")
 
     def enforce_parameter_conditions(self, mat: xnp.ndarray) -> None:
         """Enforce conditions on the parameters according to the requirements of the ansatz.

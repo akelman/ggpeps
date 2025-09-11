@@ -263,7 +263,7 @@ class U1System2D(System2DBase):
         return mag_energy_bare
 
     def _compute_el_energy_op_and_grad_gaussian(self, use_trans_inv=True):
-        link_ind = self.mod_link_inds[0]  # this function only supports calculating electric energy on one link
+        link_ind = self.cfg.mod_link_inds[0]  # this function only supports calculating electric energy on one link
         if use_trans_inv:
             lognormvec_default_inc = self.calculate_lognormvec_inc(all_factors=True)
             # This is the usual norm without any modifications

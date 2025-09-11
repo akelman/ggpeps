@@ -281,6 +281,17 @@ def main(args):
     # We are focussing on 2 dimensions for the moment
     lattice = lat.Lattice2D(L, L, args.gauge_fixing)
 
+    # Links on which to compute the electric energy - convert to tuple and validate
+    el_links = tuple(args.el_links)
+
+    # 2D with PBC: horizontal + vertical links
+    illegal_ind = [i for i in el_links if i < 0 or i >= lattice.nlinks]
+    if illegal_ind:
+        logger.error(
+            f"--el_links contains out-of-range indices {illegal_ind}; allowed range is [0, {lattice.nlinks-1}]"
+        )
+        sys.exit(1)
+
     # in python > 3.12 there is a flag to indicate deprecation, but we want to maintain support for earlier versions.
     if args.fermions:
         logger.warning(
@@ -333,6 +344,7 @@ def main(args):
         g_chem,
         num_pg_layer=args.num_pg_layer,
         num_fermionic_layer=args.num_fermionic_layer,
+        mod_link_inds=el_links,
         unitcell_size=args.unitcell_size,
         enforce_u1_symmetry=not args.relax_u1,
     )
@@ -830,6 +842,15 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
         help="Ignore the cache and do not load or save it. Overrides other cache settings.",
+    )
+    parser.add_argument(
+        "--el_links",
+        "--el-link",
+        dest="el_links",
+        type=int,
+        nargs="+",
+        default=(0,),
+        help="Indices of links (zero-based) on which to compute the electric energy. Example: --el_links 2 7 3",
     )
 
     # Arguments for ray

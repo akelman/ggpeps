@@ -45,6 +45,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=1,
+        mod_link_inds=(0,),
         unitcell_size=1,
         enforce_u1_symmetry=True,
     ) -> None:
@@ -58,6 +59,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             g_chem,
             num_pg_layer,
             num_fermionic_layer,
+            mod_link_inds,
             unitcell_size,
             enforce_u1_symmetry,
         )
@@ -69,24 +71,46 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             )
             raise ValueError("Invalid unitcell_size.")
 
-        # Constants used in the calculation of the electric energy
-        prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
-        indices_layer_pg = [
+        self.init_el_energy_terms()
+
+    def init_el_energy_terms(self) -> None:
+        """Build idxarr_vec (paired H/V terms per layer) and el_overall_factors."""
+        # Constants used in the calculation of the electric energy on a horizontal link.
+        prefactors_h = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
+        indices_layer_pg_h = [
             [(2, 4), (3, 5), (4, 5), (2, 3)],
             [(6, 0), (7, 1), (0, 1), (6, 7)],
         ]
-        indices_layer_fermionic = [
+        indices_layer_fermionic_h = [
             [(2, 0), (3, 1), (0, 1), (2, 3)],
             [(6, 4), (7, 5), (4, 5), (6, 7)],
         ]
-        idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
-        idxarr_lay_fermionic = get_pfaffian_arrays(indices_layer_fermionic, prefactors)
-        self.idxarr_vec = tuple(
-            [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
-        )
-        self.el_overall_factors = tuple(
-            [-1 / 16] * self.nlayer
-        )  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        idxarr_lay_pg_h = get_pfaffian_arrays(indices_layer_pg_h, prefactors_h)
+        idxarr_lay_fermionic_h = get_pfaffian_arrays(indices_layer_fermionic_h, prefactors_h)
+
+        # Constants used in the calculation of the electric energy on a vertical link.
+        prefactors_v = [[-1, -1, 1.0j, 1.0j], [-1, -1, 1.0j, 1.0j]]
+        indices_layer_pg_v = [
+            [(2, 5), (3, 4), (4, 5), (2, 3)],
+            [(6, 1), (7, 0), (0, 1), (6, 7)],
+        ]
+        indices_layer_fermionic_v = [
+            [(2, 1), (3, 0), (0, 1), (2, 3)],
+            [(6, 5), (7, 4), (4, 5), (6, 7)],
+        ]
+        idxarr_lay_pg_v = get_pfaffian_arrays(indices_layer_pg_v, prefactors_v)
+        idxarr_lay_fermionic_v = get_pfaffian_arrays(indices_layer_fermionic_v, prefactors_v)
+
+        # Pair horizontal/vertical term-lists termwise for each layer kind
+        zipped_pg = tuple(zip(idxarr_lay_pg_h, idxarr_lay_pg_v))
+        zipped_pf = tuple(zip(idxarr_lay_fermionic_h, idxarr_lay_fermionic_v))
+
+        # Stack per-layer: first pure-gauge layers, then fermionic layers
+        self.idxarr_vec = tuple([zipped_pg] * self.num_pg_layer + [zipped_pf] * self.num_fermionic_layer)
+
+        # Overall prefactors per layer
+        # arises from normalization and the i^(# of modes/2) in Tr[i^# * rho * (modes)]
+        self.el_overall_factors = tuple([-1 / 16] * self.nlayer)
 
     def make_pure_gauge(self) -> None:
         """Make the ansatz pure gauge by setting t-params to zero.

@@ -17,7 +17,7 @@ import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
-from ggpeps.system.config_base import Config2DBase
+from ggpeps.system.config_base import Config2DBase, IdxArrVec
 from ggpeps.modearray import generate_permutation_matrix
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -80,8 +80,6 @@ class System2DBase(ABC):
         # Full covariance matrix (gamma_out) of the fermions
         self._ferm_covmat_vec: Optional[xnp.ndarray] = None
 
-        # Link indices for which the electric energy is computed - can be any set of horizontal links:
-        self.mod_link_inds: tuple[int, ...] = (0,)
         # Parameter dependent quantities for the electric energy
         self._mat_a_mod_vec: Optional[xnp.ndarray] = None
         self._mat_b_mod_vec: Optional[xnp.ndarray] = None
@@ -530,7 +528,7 @@ class System2DBase(ABC):
         if self._mat_a_mod_vec is None:
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = utils.extract_mod_covmats(
                 self.gamma_maj_sys_vec,
-                self.mod_link_inds,
+                self.cfg.mod_link_inds,
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nvirtmodes_link,
@@ -551,7 +549,7 @@ class System2DBase(ABC):
         if self._mat_b_mod_vec is None:
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = utils.extract_mod_covmats(
                 self.gamma_maj_sys_vec,
-                self.mod_link_inds,
+                self.cfg.mod_link_inds,
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nvirtmodes_link,
@@ -571,7 +569,7 @@ class System2DBase(ABC):
         if self._mat_d_mod_vec is None:
             self._mat_a_mod_vec, self._mat_b_mod_vec, self._mat_d_mod_vec = utils.extract_mod_covmats(
                 self.gamma_maj_sys_vec,
-                self.mod_link_inds,
+                self.cfg.mod_link_inds,
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nvirtmodes_link,
@@ -627,7 +625,7 @@ class System2DBase(ABC):
             for layerind in range(self.cfg.nlayer):
                 covmat_out_linkvec = []
 
-                for ind, link_ind in enumerate(self.mod_link_inds):
+                for ind, link_ind in enumerate(self.cfg.mod_link_inds):
 
                     # Get the modified matrices, which include the virtual modes of the given link among the physical
                     mat_a = self.mat_a_mod_vec[layerind, ind]
@@ -664,15 +662,21 @@ class System2DBase(ABC):
         """
         if self._el_pfaffians is None:
             self._el_pfaffians = self._compute_el_pfaffians(
-                self.cfg.nlayer, self.cfg.idxarr_vec, self.covmat_out_mod_vec
+                self.cfg.nlayer,
+                self.cfg.idxarr_vec,
+                self.cfg.mod_link_inds,
+                self.cfg.lattice.nlinks,
+                self.covmat_out_mod_vec,
             )
         return self._el_pfaffians
 
     @staticmethod
-    @maybe_jit(static_argnames=["nlayer", "idxarr_vec"])
+    @maybe_jit(static_argnames=["nlayer", "idxarr_vec", "mod_link_inds", "nlinks"])
     def _compute_el_pfaffians(
         nlayer: int,
-        idxarr_vec: tuple,
+        idxarr_vec: IdxArrVec,
+        mod_link_inds: tuple[int, ...],
+        nlinks: int,
         covmat_out_virt_vec: xnp.ndarray,
     ) -> xnp.ndarray:
         """Compute the pfaffians of the modified covariance matrices used for the electric energy and its derivative.
@@ -683,23 +687,25 @@ class System2DBase(ABC):
             xnp.ndarray: a vector of pfaffians
         """
 
-        nlinks = covmat_out_virt_vec.shape[1]
-        el_pfaffians = xnp.zeros((nlayer, nlinks, len(idxarr_vec[0])))
+        num_el_links = len(mod_link_inds)  # number of links to calculate the electric energy on.
+        num_terms_per_layer = len(idxarr_vec[0])  # number of terms in each layer.
+        el_pfaffians = xnp.zeros((nlayer, num_el_links, num_terms_per_layer))
 
         # TODO: vectorize!
         for layerind in range(nlayer):
-
-            idxarr = idxarr_vec[layerind]
-
+            layer_pairs = idxarr_vec[layerind]  # tuple of pairs: ((H,V), (H,V), ...)
             covmat_out_virt_linkvec = covmat_out_virt_vec[layerind]
 
             # Iterate over the links
-            for linkind, covmat_out_virt in enumerate(covmat_out_virt_linkvec):
+            for link_pos, covmat_out_virt in enumerate(covmat_out_virt_linkvec):
+                is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
 
-                for ind, (prefactor, inds) in enumerate(idxarr):
+                # for ind, (prefactor, inds) in enumerate(layer_pairs):
+                for term_ind, (term_h, term_v) in enumerate(layer_pairs):
+                    _, inds = term_v if is_vertical else term_h
                     inds = xnp.asarray(inds)
                     pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds, inds)])
-                    el_pfaffians = backend.array_assign(el_pfaffians, (layerind, linkind, ind), pfaval)
+                    el_pfaffians = backend.array_assign(el_pfaffians, (layerind, link_pos, term_ind), pfaval)
         return el_pfaffians
 
     @property
@@ -721,7 +727,7 @@ class System2DBase(ABC):
                 norm_mod_linkvec = []
 
                 # TODO: this is not yet actually vectorized
-                for ind, link_ind in enumerate(self.mod_link_inds):
+                for ind, link_ind in enumerate(self.cfg.mod_link_inds):
 
                     # For the modified norm, we still have to take into account the other contributions
                     # from the unmodified parts
@@ -809,10 +815,12 @@ class System2DBase(ABC):
         gamma_in_sys_vec = xnp.array(gamma_in_sys_listvec)
 
         # Initialize the modified gamma_in_sys and trackers for the full system
-        gamma_in_sys_mod_layervec_linkvec = self._extract_gamma_in_sys_mod_vec(self.mod_link_inds, gamma_in_sys_vec)
+        gamma_in_sys_mod_layervec_linkvec = self._extract_gamma_in_sys_mod_vec(
+            self.cfg.mod_link_inds, gamma_in_sys_vec
+        )
         for layer in range(self.cfg.nlayer):
             wi_gamma_in_mod_linkvec, wi_gamma_out_mod_linkvec, incdet_mod_linkvec = [], [], []
-            for ind, link_ind in enumerate(self.mod_link_inds):
+            for ind, link_ind in enumerate(self.cfg.mod_link_inds):
                 gamma_in_sys_mod = gamma_in_sys_mod_layervec_linkvec[layer, ind]
                 wi_gamma_in_mod_linkvec.append(
                     utils.WoodburyInverter(self.mat_d_mod_inv_vec[layer, ind] - gamma_in_sys_mod)
@@ -916,7 +924,7 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Gauged, modified covariance matrices of the system for each layer
         """
-        gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(self.mod_link_inds, self.gamma_in_sys_vec)
+        gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(self.cfg.mod_link_inds, self.gamma_in_sys_vec)
         return gamma_in_sys_mod_vec
 
     def _extract_gamma_in_sys_mod_vec(self, link_inds: tuple[int, ...], gamma_in_sys: xnp.ndarray) -> xnp.ndarray:
@@ -1562,7 +1570,9 @@ class System2DBase(ABC):
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
         overall_factors: tuple[complex, ...],
-        idxarrs: tuple[tuple[tuple[complex, tuple[int, ...]], ...], ...],
+        idxarrs: IdxArrVec,
+        mod_link_inds: tuple[int, ...],
+        nlinks: int,
         nlayer: int,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
@@ -1580,8 +1590,8 @@ class System2DBase(ABC):
             norm_mod_vec:
 
         Returns:
-            array: electric energies for the links specified in self.mod_link_inds for all layers
-                   with shape: (nlayer, len(self.mod_link_inds))
+            array: electric energies for the links specified in self.cfg.mod_link_inds for all layers
+                   with shape: (nlayer, len(self.cfg.mod_link_inds))
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
@@ -1866,7 +1876,7 @@ class System2DBase(ABC):
             # The different layers can be separated into separate PEPS and then multiplied together.
             nlinks = self.cfg.lattice.nlinks
             el_energy_link_vec = xnp.prod(self.el_energy_op_vec, axis=0, dtype=float)
-            self._el_energy_op = (nlinks / len(self.mod_link_inds)) * xnp.sum(el_energy_link_vec)
+            self._el_energy_op = (nlinks / len(self.cfg.mod_link_inds)) * xnp.sum(el_energy_link_vec)
         return self._el_energy_op
 
     @property
@@ -1902,7 +1912,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list: Layer-resolved electric energy w/o shift
+            array: Layer-resolved electric energy w/o shift of shape (nlayer, len(self.cfg.mod_link_inds))
         """
         if self._el_energy_op_vec is None:
             # This vector is the electric energy on a single link. Otherwise, we get a
@@ -1911,6 +1921,8 @@ class System2DBase(ABC):
                 self.lognorm_default_vec,
                 self.cfg.el_overall_factors,
                 self.cfg.idxarr_vec,
+                self.cfg.mod_link_inds,
+                self.cfg.lattice.nlinks,
                 self.cfg.nlayer,
                 self.el_pfaffians,
                 self.norm_mod_vec,
@@ -1923,7 +1935,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list: Layer-resolved mass energy w/o shift
+            array: Layer-resolved mass energy w/o shift
         """
         if self._mass_energy_op_vec is None:
             self._mass_energy_op_vec = self._compute_mass_energy_op_vec(
@@ -1941,7 +1953,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list: Layer-resolved interaction energy w/o shift
+            array: Layer-resolved interaction energy w/o shift
         """
         if self._int_energy_op_vec is None:
             self._int_energy_op_vec = self._compute_int_energy_op_vec(
@@ -1961,7 +1973,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list: Layer-resolved interaction energy w/o shift
+            array: Layer-resolved interaction energy w/o shift
         """
         if self._chem_energy_op_vec is None:
             self._chem_energy_op_vec = self._compute_chem_energy_op_vec(
@@ -1979,19 +1991,19 @@ class System2DBase(ABC):
         """Compute the gradient of the electric operator (w/o shift) for all layers
 
         Returns:
-            list: List of all electric energy gradients (w/o shift)
+            array: List of all electric energy gradients (w/o shift)
         """
         if self._el_energy_op_grad_vec is None:
             # In order to jit, we must pass arrays, not WoodburyInverter objects.
             gamma_in_mod_inv_vec = xnp.asarray(
                 [
-                    [self.wi_gamma_in_mod_vec[lay][ind].inv() for ind in range(len(self.mod_link_inds))]
+                    [self.wi_gamma_in_mod_vec[lay][ind].inv() for ind in range(len(self.cfg.mod_link_inds))]
                     for lay in range(self.cfg.nlayer)
                 ]
             )
             gamma_out_mod_inv_vec = xnp.asarray(
                 [
-                    [self.wi_gamma_out_mod_vec[lay][ind].inv() for ind in range(len(self.mod_link_inds))]
+                    [self.wi_gamma_out_mod_vec[lay][ind].inv() for ind in range(len(self.cfg.mod_link_inds))]
                     for lay in range(self.cfg.nlayer)
                 ]
             )
@@ -2003,7 +2015,7 @@ class System2DBase(ABC):
                 self.cfg.unitcell_size,
                 self.cfg.nvirtmodes_link,
                 self.cfg.nphysmodes_site,
-                self.mod_link_inds,
+                self.cfg.mod_link_inds,
                 tuple(self.cfg.symbolvec),
                 self.cfg.el_overall_factors,
                 self.cfg.idxarr_vec,

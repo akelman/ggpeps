@@ -35,6 +35,7 @@ class Z2System2DConfig(Config2DBase):
         g_chem,
         num_pg_layer=1,
         num_fermionic_layer=0,
+        mod_link_inds=(0,),
         unitcell_size=1,
         enforce_u1_symmetry=True,
     ) -> None:
@@ -53,6 +54,7 @@ class Z2System2DConfig(Config2DBase):
             g_chem,
             num_pg_layer,
             0,
+            mod_link_inds,
             unitcell_size,
             enforce_u1_symmetry,
         )
@@ -69,14 +71,29 @@ class Z2System2DConfig(Config2DBase):
             logger.error("This ansatz does not support the relaxation of U(1) symmetry.")
             raise ValueError("Invalid enforce_u1_symmetry.")
 
-        # Constants used in the calculation of the electric energy
-        prefactors = [[1, -1, 1.0j, 1.0j]]
-        indices = [[(2, 0), (3, 1), (0, 1), (2, 3)]]
-        idxarr = get_pfaffian_arrays(indices, prefactors)
-        self.idxarr_vec = tuple([idxarr] * self.nlayer)
-        self.el_overall_factors = tuple(
-            [-1j / 4] * self.nlayer
-        )  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        self.init_el_energy_terms()
+
+    def init_el_energy_terms(self) -> None:
+        """Build idxarr_vec (paired H/V terms per layer) and el_overall_factors."""
+        # Constants used in the calculation of the electric energy on a horizontal link.
+        prefactors_h = [[1, -1, 1.0j, 1.0j]]
+        indices_layer_pg_h = [[(2, 0), (3, 1), (0, 1), (2, 3)]]
+        idxarr_lay_pg_h = get_pfaffian_arrays(indices_layer_pg_h, prefactors_h)
+
+        # Constants used in the calculation of the electric energy on a vertical link.
+        prefactors_v = [[-1, -1, 1.0j, 1.0j]]
+        indices_layer_pg_v = [[(2, 1), (3, 0), (0, 1), (2, 3)]]
+        idxarr_lay_pg_v = get_pfaffian_arrays(indices_layer_pg_v, prefactors_v)
+
+        # Pair horizontal/vertical term-lists termwise for each layer kind
+        zipped_pg = tuple(zip(idxarr_lay_pg_h, idxarr_lay_pg_v))
+
+        # Stack per-layer: first pure-gauge layers, then fermionic layers (no fermionic layers here)
+        self.idxarr_vec = tuple([zipped_pg] * self.nlayer)
+
+        # Overall prefactors per layer
+        # arises from normalization and the i^(# of modes/2) in Tr[i^# * rho * (modes)]
+        self.el_overall_factors = tuple([-1j / 4] * self.nlayer)
 
     def make_pure_gauge(self):
         # The order of the parameters is [tr,yr,zr,ti,yi,zi] ({r,i} referring to the real/imaginary components)
