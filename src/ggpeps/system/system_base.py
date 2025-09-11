@@ -46,7 +46,7 @@ class System2DBase(ABC):
     """
 
     def __init__(self, cfg: Config2DBase) -> None:
-        """Constructor of a Z2System2D system, for any groups, with any number of virtual or physical
+        """Constructor of a 2D system, for any group, with any number of virtual or physical
         fermions per site per link. All of the ansatz information is stored in the provided configuration.
 
         Args:

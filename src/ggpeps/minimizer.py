@@ -310,39 +310,34 @@ class Minimizer:
     ### beg NEVMC ###
 
     def minimize_NEVMC(self):
+
         paramvec = self.evaluator_manager.system_cfg.paramvec
 
         for ind in range(self.cfg.max_iter):
 
             if ind == 0:
                 # First run at equilibrium
-                result0_df = self.evaluator_manager.simulate(eval_args={"first_warmup": True})
+                self.evaluator_manager.cfg.first_warmup = True
+                self.evaluator_manager.cfg.scanning = False
+                result0_df = self.evaluator_manager.simulate()
                 result0 = self.evaluator_manager.get_evaluator()
 
                 # Standard calculation energy and grads
                 energy = result0.get_obs_mean("energy")
                 grad_paramvec = result0.get_obs_mean("energy_grad")
 
-                # DEBUG ############################################################################################
-                # print("Paramvec: ", self.evaluator_manager.system_cfg.paramvec)
-                # print("First energy: ", energy)
-                # print("First grad_paramvec: ", grad_paramvec)
-                # print("El energy: ", result0.get_obs_mean("el_energy"))
-                # print("Mag energy: ", result0.get_obs_mean("mag_energy"))
-                # print("Mass energy: ", result0.get_obs_mean("mass_energy"))
-                # print("Int energy: ", result0.get_obs_mean("int_energy"))
-                # print("Chem energy: ", result0.get_obs_mean("chem_energy"))
-                ####################################################################################################
-
                 max_grad_paramvec = np.max(np.abs(grad_paramvec))
                 self.last_result = result0_df
                 # Update logs
                 print_callback(ind, self)
+
                 # Standard minimization
                 self.evaluator_manager.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
 
                 # First reweighting: only scanning
-                self.evaluator_manager.simulate(eval_args={"scanning": True})
+                self.evaluator_manager.cfg.first_warmup = False
+                self.evaluator_manager.cfg.scanning = True
+                self.evaluator_manager.simulate()
                 result1 = self.evaluator_manager.get_evaluator()
 
                 # Compute DF
@@ -356,14 +351,14 @@ class Minimizer:
                 # Reweight energy
                 EnergyExpW = result1.obsdict["energy"].__mul__(expW)
                 energy = EnergyExpW.mean()
-
                 # Compute reweighted gradients
                 grad_paramvec = result1.NEVMC_energy_gradient_mc(expW)
 
                 max_grad_paramvec = np.max(np.abs(grad_paramvec))
                 self.last_result = [energy, max_grad_paramvec, Wmean, free_energy]
 
-                # DEBUG #############################################################################################
+                #################################################################################
+                # DEBUG
                 # print("Paramvec: ", self.evaluator_manager.system_cfg.paramvec)
                 # print("Second energy: ", energy)
                 # print("Second grad_paramvec: ", grad_paramvec)
@@ -373,12 +368,11 @@ class Minimizer:
                 # print("Int energy: ", result1.get_obs_mean("int_energy"))
                 # print("Chem energy: ", result1.get_obs_mean("chem_energy"))
                 # exit()
-                #####################################################################################################
+                #################################################################################
 
                 # Update logs
                 NEVMC_print_callback(ind, self.last_result)
 
-                ### TODO modify this function, it is not printing the reweighted results
                 next_paramvec = copy.deepcopy(self.evaluator_manager.system_cfg.paramvec)
                 next_paramvec -= self.cfg.alpha * grad_paramvec
 
@@ -392,10 +386,14 @@ class Minimizer:
                 self.last_paramvec = np.copy(paramvec)
 
                 # Monte Carlo part of the optimizer
+                self.evaluator_manager.cfg.first_warmup = False
+                self.evaluator_manager.cfg.scanning = False
                 self.evaluator_manager.simulate()
                 result0 = self.evaluator_manager.get_evaluator()
                 self.evaluator_manager.system_cfg.paramvec = copy.deepcopy(next_paramvec)
-                self.evaluator_manager.simulate(eval_args={"scanning": True})
+                self.evaluator_manager.cfg.first_warmup = False
+                self.evaluator_manager.cfg.scanning = True
+                self.evaluator_manager.simulate()
                 result1 = self.evaluator_manager.get_evaluator()
 
                 # Compute DF
