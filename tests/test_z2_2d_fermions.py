@@ -5,7 +5,7 @@ import numpy as np
 import sympy as sp
 import jax.numpy as jnp
 
-from ggpeps import lattice, utils
+from ggpeps import lattice, utils, gauge
 from ggpeps import system, exacteval
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.modearray import generate_permutation_matrix
@@ -1536,3 +1536,97 @@ class TestFullGrads(unittest.TestCase):
                             deriv_num,
                             places=5,
                         )
+
+
+class TestElectricEnergyUniformityRandomk(unittest.TestCase):
+    """
+    Pick k random (unique) subsets of links with varying sizes and verify that
+    the per-link electric energy (mean over the selected links) is identical
+    across all of them for a translationally invariant, neutral-gauge setup.
+    """
+
+    def setUp(self):
+        # Fixed lattice: 2x2 with PBC -> nlinks = 8
+        self.lat = lattice.Lattice2D(2, 2)
+        self.num_pg_layer = 1
+        self.num_fermionic_layer = 1
+        self.nlayer = self.num_pg_layer + self.num_fermionic_layer
+        self.unitcell_size = 1  # translation invariance
+
+        # Reproducible random params shared by all systems in this test
+        rng = np.random.RandomState(1234)
+        # Z2 G2C_F2C has 20 parameters per layer and unit-cell slot
+        self.paramvec = rng.rand(self.nlayer, self.unitcell_size, 20)
+
+        # Build a neutral gauge configuration once
+        zn = gauge.ZNGauge(2)
+        neutral = zn.get_neutral_gauge_value()
+        self.neutral_config = np.array([neutral] * self.lat.nlinks)
+
+    def _energy_for_subset(self, link_inds: tuple[int, ...]) -> float:
+        """Return the mean per selected link (sys.el_energy_op) for the given subset."""
+        cfg = system.Z2System2D_G2C_F2C_Config(
+            self.lat,
+            g_el=1.0,
+            g_mag=0.0,
+            g_int=0.0,
+            g_mass=0.0,
+            g_chem=None,
+            num_pg_layer=self.num_pg_layer,
+            num_fermionic_layer=self.num_fermionic_layer,
+            unitcell_size=self.unitcell_size,
+            mod_link_inds=tuple(sorted(link_inds)),
+        )
+        cfg.paramvec = np.copy(self.paramvec)
+        sys = system.Z2System2D(cfg)
+        sys.update_gauge_full_system(self.neutral_config)
+        return float(sys.el_energy_op)  # mean over the selected links
+
+    def _random_unique_subsets(self, nlinks: int, k: int, seed: int = 2025):
+        """
+        Generate k unique random non-empty subsets with varying sizes in [1..nlinks].
+        Ensures at least two different sizes appear (if nlinks >= 2).
+        """
+        rng = np.random.RandomState(seed)
+        subsets = set()
+        # Try a reasonable number of attempts to avoid rare infinite loops
+        attempts, max_attempts = 0, 10000
+
+        while len(subsets) < k and attempts < max_attempts:
+            s = rng.randint(1, nlinks + 1)  # size in [1..nlinks]
+            choice = tuple(sorted(rng.choice(nlinks, size=s, replace=False)))
+            subsets.add(choice)
+            attempts += 1
+
+        # Ensure size diversity when possible (nlinks >= 2)
+        if nlinks >= 2:
+            sizes_present = {len(t) for t in subsets}
+            if len(sizes_present) == 1:
+                # Force-inject another size
+                if 1 not in sizes_present:
+                    subsets.add((0,))  # singleton
+                if nlinks not in sizes_present:
+                    subsets.add(tuple(range(nlinks)))  # full set
+                # Trim back to k if we overshot
+                subsets = set(list(subsets)[:k])
+
+        # If we somehow fell short, pad deterministically
+        while len(subsets) < k:
+            # cycle sizes 1..nlinks deterministically
+            s = (len(subsets) % nlinks) + 1
+            # take first s indices
+            subsets.add(tuple(range(s)))
+
+        return list(subsets)[:k]
+
+    def test_el_energy_uniform_over_k_random_subsets(self):
+        nlinks = self.lat.nlinks
+        k = 30
+
+        subsets = self._random_unique_subsets(nlinks, k, seed=2025)
+        print(subsets)
+        # Compute per-link energies for each subset and compare
+        energies = [self._energy_for_subset(sub) for sub in subsets]
+        base = energies[0]
+        for e in energies[1:]:
+            self.assertAlmostEqual(e, base, places=12)
