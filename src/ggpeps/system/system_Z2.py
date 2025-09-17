@@ -203,8 +203,7 @@ class Z2System2D(System2DBase):
                     pfaval = el_pfaffians[layerind, link_pos, term_ind]
                     pf_tot += prefactor * pfaval
 
-                el_energy_full = overall_factor * pf_tot
-                el_energy_link = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
+                el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
                 dest = backend.array_assign(dest, (layerind, link_pos), el_energy_link)
 
         return dest

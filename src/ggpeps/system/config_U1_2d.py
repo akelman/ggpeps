@@ -57,7 +57,7 @@ class U1System2DConfig(Config2DBase):
             raise ValueError("Invalid unitcell_size.")
 
     def init_el_energy_terms(self) -> None:
-        """Build idxarr_vec and el_overall_factors."""
+        """Build idxarr_vec."""
 
     def make_pure_gauge(self):
         # The order of the parameters is [t,y,z]

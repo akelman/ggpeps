@@ -242,9 +242,8 @@ class Config2DBase(ABC):
 
         Implementations must set:
             - self.idxarr_vec: IdxArrVec
-            - self.el_overall_factors: tuple[complex, ...]
         """
-        raise NotImplementedError("Implement in subclass: must set idxarr_vec and el_overall_factors.")
+        raise NotImplementedError("Implement in subclass: must set idxarr_vec.")
 
     def enforce_parameter_conditions(self, mat: xnp.ndarray) -> None:
         """Enforce conditions on the parameters according to the requirements of the ansatz.

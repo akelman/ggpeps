@@ -1283,3 +1283,176 @@ def compare_array_elementwise(testcase, ref: np.ndarray, res: np.ndarray, print_
                 if not np.isclose(ref[i, j], res[i, j]):
                     print(f"{i},{j}: ref: {ref[i,j]}, res:{res[i,j]}")
     testcase.assertTrue(np.allclose(ref, res))
+
+
+# ==================== ZN Gauged Projector Terms ====================
+from collections import defaultdict
+from typing import List, Tuple, Literal
+import cmath
+import math
+import numpy as np
+
+Layer = Literal["pure_gauge", "physical"]
+Orientation = Literal["horizontal", "vertical"]
+"""Layer type selector.
+- "physical"   : sigma(j) = j (identity)
+- "pure_gauge" : sigma swaps each pair (2a-1 <-> 2a) for a = 1..k/2.
+"""
+
+
+def make_sigma(k: int, layer: Layer) -> List[int]:
+    if not (k == 1 or k % 2 == 0):
+        raise ValueError("k must be 1 or even (odd k>1 is not supported).")
+    elif layer == "physical":
+        return list(range(1, k + 1))
+    elif layer == "pure_gauge":
+        if k == 1:
+            return [1]
+        s = [0] * k
+        for a in range(1, k // 2 + 1):
+            i, j = 2 * a - 1, 2 * a
+            s[i - 1] = j
+            s[j - 1] = i
+        return s
+    else:
+        raise ValueError("layer must be 'pure_gauge' or 'physical'")
+
+
+def bracket_terms(
+    j: int,
+    sigma_j: int,
+    eta2: complex,
+    phi: float,
+) -> List[Tuple[complex, Tuple[int, ...]]]:
+    """
+    Build the 8 terms for bracket j (no operator reordering), in the
+    4^(-k) * product.
+    """
+    a = 4 * j - 2
+    b = 4 * j - 1
+    c = 4 * sigma_j - 4
+    d = 4 * sigma_j - 3
+    eip = cmath.exp(1j * phi)
+
+    raw_terms = [
+        ((eta2.real), (a, c)),  # + Re(eta^2) * c_a c_c
+        (-(eta2.imag), (a, d)),  # - Im(eta^2) * c_a c_d
+        (-(eta2.imag), (b, c)),  # - Im(eta^2) * c_b c_c
+        (-(eta2.real), (b, d)),  # - Re(eta^2) * c_b c_d
+        (0.5j * (eip + 3.0), (c, d)),  # + i(e^{i phi}+3)/2 * c_c c_d
+        (0.5j * (eip + 3.0), (a, b)),  # + i(e^{i phi}+3)/2 * c_a c_b
+        (-0.5 * (eip + 1.0), (a, b, c, d)),  # - (e^{i phi}+1)/2 * c_a c_b c_c c_d
+        (0.5 * (eip + 1.0), ()),  # + (e^{i phi}+1)/2
+    ]
+
+    # Snap small real/imag parts and drop zeros to reduce work upstream
+    terms: List[Tuple[complex, Tuple[int, ...]]] = []
+    for coef, inds in raw_terms:
+        snapped = _snap_complex(coef)  # uses hard-coded tolerance
+        if snapped != 0.0:
+            terms.append((snapped, inds))
+    return terms
+
+
+def _snap_complex(z: complex) -> complex | float:
+    TOL = 1e-12  # hard-coded absolute tolerance
+    if abs(z) <= TOL:
+        return 0.0
+    zr = 0.0 if abs(z.real) <= TOL else z.real
+    zi = 0.0 if abs(z.imag) <= TOL else z.imag
+    if zr == 0.0 and zi == 0.0:
+        return 0.0
+    return zr if zi == 0.0 else complex(zr, zi)
+
+
+def _pfaffian_wick_phase(mon: Tuple[int, ...]) -> complex | float:
+    """
+    Return i^(-len(mon)/2) for an even-length Majorana monomial.
+    """
+    n = len(mon)
+    if n % 2 != 0:
+        raise ValueError(f"Monomial length is odd ({n}); expected even.")
+    m = n // 2
+    r = m % 4  # map exponent class for i^(-m)
+    if r == 0:
+        return 1.0
+    elif r == 1:
+        return -1j
+    elif r == 2:
+        return -1.0
+    else:  # r == 3
+        return 1j
+
+
+def generate_gauged_projector_terms(
+    ncopy: int,
+    layer: Layer,
+    orientation: Orientation,
+    group_order: int,
+) -> Tuple[Tuple[Tuple[complex, Tuple[int, ...]], ...], complex]:
+    sigma = make_sigma(ncopy, layer)
+
+    # Map orientation -> eta^2
+    if orientation == "horizontal":
+        eta2 = 1.0
+    elif orientation == "vertical":
+        eta2 = 1j
+    else:
+        raise ValueError("orientation must be 'horizontal' or 'vertical'")
+
+    phi = (2.0 * np.pi) / group_order
+
+    # Accumulator of partial expansions: monomial tuple -> coefficient
+    acc = defaultdict(complex)
+    acc[()] = 1.0  # multiplicative identity (empty monomial)
+
+    # Multiply in each bracket
+    for j in range(1, ncopy + 1):
+        terms_j = bracket_terms(j, sigma[j - 1], eta2, phi)
+        new_acc = defaultdict(complex)
+        for indsA, coefA in acc.items():
+            for coefB, indsB in terms_j:
+                new_acc[indsA + indsB] += coefA * coefB
+        acc = new_acc
+
+    # Apply global prefactor
+    pref = 4 ** (-ncopy)
+    for mon in list(acc.keys()):
+        acc[mon] *= pref
+
+    # Split constant vs others and build the output
+    constant = _snap_complex(acc.pop((), 0.0))
+    items = [(mon, coef) for mon, coef in acc.items() if coef != 0.0]
+
+    # Multiply each coefficient by i^(-len(mon)/2), the Pfaffian-Wick phase
+    phased_items: List[Tuple[Tuple[int, ...], complex | float]] = []
+    for mon, coef in items:
+        factor = _pfaffian_wick_phase(mon)
+        new_coef = _snap_complex(coef * factor)
+        if new_coef != 0.0:
+            phased_items.append((mon, new_coef))
+
+    # Sort terms by monomial length (shorter first) then lexicographic tuple order for deterministic output.
+    phased_items.sort(key=lambda kv: (len(kv[0]), kv[0]))
+    indecies = tuple((coef, mon) for mon, coef in phased_items)
+
+    return indecies, constant
+
+
+# if __name__ == "__main__":
+#     # Example parameters
+#     ncopy = 2
+#     layer = "pure_gauge"
+#     orientation = "horizontal"   # or "vertical"
+#     group_order = 2              # phi = 2*pi/N (so N=2 -> phi=pi)
+
+#     indecies, constant = generate_gauged_projector_terms(
+#         ncopy=ncopy,
+#         layer=layer,
+#         orientation=orientation,
+#         group_order=group_order,
+#     )
+#     print("=" * 100)
+#     print(f"Layer: {layer}, orientation: {orientation}, N: {group_order}")
+#     print("indecies =", indecies)
+#     print("constant =", constant)
