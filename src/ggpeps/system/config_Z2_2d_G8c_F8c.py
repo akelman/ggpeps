@@ -87,10 +87,6 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
         # Stack per-layer: first pure-gauge layers, then fermionic layers
         self.idxarr_vec = tuple([zipped_pg] * self.num_pg_layer + [zipped_pf] * self.num_fermionic_layer)
 
-        # Overall prefactors per layer
-        # arises from normalization and the i^(# of modes/2) in Tr[i^# * rho * (modes)]
-        self.el_overall_factors = tuple([1] * self.nlayer)
-
     def get_zeroed_params(self):
         zeroed_params = []  # we'll save the indices of the zeroed parameters
 

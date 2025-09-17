@@ -89,10 +89,6 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         # Stack per-layer: first pure-gauge layers, then fermionic layers
         self.idxarr_vec = tuple([zipped_pg] * self.num_pg_layer + [zipped_pf] * self.num_fermionic_layer)
 
-        # Overall prefactors per layer
-        # arises from normalization and the i^(# of modes/2) in Tr[i^# * rho * (modes)]
-        self.el_overall_factors = tuple([1] * self.nlayer)
-
     def make_pure_gauge(self) -> None:
         """Make the ansatz pure gauge by setting t-params to zero.
 

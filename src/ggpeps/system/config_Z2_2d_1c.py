@@ -86,10 +86,6 @@ class Z2System2DConfig(Config2DBase):
         # Stack per-layer: first pure-gauge layers, then fermionic layers (no fermionic layers here)
         self.idxarr_vec = tuple([zipped_pg] * self.nlayer)
 
-        # Overall prefactors per layer
-        # arises from normalization and the i^(# of modes/2) in Tr[i^# * rho * (modes)]
-        self.el_overall_factors = tuple([1] * self.nlayer)
-
     def make_pure_gauge(self):
         # The order of the parameters is [tr,yr,zr,ti,yi,zi] ({r,i} referring to the real/imaginary components)
         for lay in range(self.nlayer):

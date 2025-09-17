@@ -129,7 +129,6 @@ class Config2DBase(ABC):
         # these depend on the ansatz, so we only declare their type here
         # TODO: this data structure is very unwieldy and should be simplified/restructured
         self.idxarr_vec: IdxArrVec
-        self.el_overall_factors: tuple[complex, ...]
 
     def __str__(self) -> str:
         """Define a string method that can be used, e.g., in filenaming.

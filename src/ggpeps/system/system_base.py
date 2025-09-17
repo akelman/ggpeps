@@ -1569,7 +1569,6 @@ class System2DBase(ABC):
     @abstractmethod
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
-        overall_factors: tuple[complex, ...],
         idxarrs: IdxArrVec,
         mod_link_inds: tuple[int, ...],
         nlinks: int,
@@ -1583,7 +1582,6 @@ class System2DBase(ABC):
 
         Args:
             lognormvec_default: the usual norm without any modifications
-            overall_factors: prefactors for building the required Pfaffians
             idxarrs: indices for building the required Pfaffians
             nlayer (int): total number of layers (pure gauge + fermionic)
             el_pfaffians:
@@ -1606,7 +1604,6 @@ class System2DBase(ABC):
         nphysmodes_site: int,
         mod_link_inds: tuple[int, ...],
         symbolvec: tuple,
-        overall_factors: tuple,
         idxarr_vec: tuple,
         el_energy_vec: xnp.ndarray,
         mat_b_mod_vec: xnp.ndarray,
@@ -1919,7 +1916,6 @@ class System2DBase(ABC):
             # power of nlinks in the product and the electric energy term (with prefactors) gets negative
             self._el_energy_op_vec = self._compute_el_energy_op_vec(
                 self.lognorm_default_vec,
-                self.cfg.el_overall_factors,
                 self.cfg.idxarr_vec,
                 self.cfg.mod_link_inds,
                 self.cfg.lattice.nlinks,
@@ -2017,7 +2013,6 @@ class System2DBase(ABC):
                 self.cfg.nphysmodes_site,
                 self.cfg.mod_link_inds,
                 tuple(self.cfg.symbolvec),
-                self.cfg.el_overall_factors,
                 self.cfg.idxarr_vec,
                 self.el_energy_op_vec,
                 self.mat_b_mod_vec,
