@@ -1437,22 +1437,3 @@ def generate_gauged_projector_terms(
     indecies = tuple((coef, mon) for mon, coef in phased_items)
 
     return indecies, constant
-
-
-# if __name__ == "__main__":
-#     # Example parameters
-#     ncopy = 2
-#     layer = "pure_gauge"
-#     orientation = "horizontal"   # or "vertical"
-#     group_order = 2              # phi = 2*pi/N (so N=2 -> phi=pi)
-
-#     indecies, constant = generate_gauged_projector_terms(
-#         ncopy=ncopy,
-#         layer=layer,
-#         orientation=orientation,
-#         group_order=group_order,
-#     )
-#     print("=" * 100)
-#     print(f"Layer: {layer}, orientation: {orientation}, N: {group_order}")
-#     print("indecies =", indecies)
-#     print("constant =", constant)

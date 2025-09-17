@@ -1624,7 +1624,6 @@ class TestElectricEnergyUniformityRandomk(unittest.TestCase):
         k = 30
 
         subsets = self._random_unique_subsets(nlinks, k, seed=2025)
-        print(subsets)
         # Compute per-link energies for each subset and compare
         energies = [self._energy_for_subset(sub) for sub in subsets]
         base = energies[0]
