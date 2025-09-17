@@ -5,12 +5,15 @@ import gzip
 import pickle
 import logging
 import subprocess  # Start process for git hash
-from typing import Optional, Union
+from typing import Optional, Union, Literal
 
+import cmath
 import numba as nb
 import pandas as pd
 from scipy.sparse import issparse
 from scipy.linalg import svd, block_diag
+
+from collections import defaultdict
 
 import numpy as np
 import jax.numpy as jnp
@@ -27,6 +30,7 @@ from ggpeps.system.backend_jax import derivative_pfaffian_jax
 from ggpeps.system.backend_numpy import derivative_pfaffian_numpy
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
+
 
 # Global constants
 paulix = np.array([[0, 1], [1, 0]])
@@ -1286,21 +1290,33 @@ def compare_array_elementwise(testcase, ref: np.ndarray, res: np.ndarray, print_
 
 
 # ==================== ZN Gauged Projector Terms ====================
-from collections import defaultdict
-from typing import List, Tuple, Literal
-import cmath
-import math
-import numpy as np
-
 Layer = Literal["pure_gauge", "physical"]
-Orientation = Literal["horizontal", "vertical"]
 """Layer type selector.
 - "physical"   : sigma(j) = j (identity)
 - "pure_gauge" : sigma swaps each pair (2a-1 <-> 2a) for a = 1..k/2.
 """
 
+Orientation = Literal["horizontal", "vertical"]
+"""Orientation type selector.
+- "horizontal": sets eta^2 = 1
+- "vertical"  : sets eta^2 = i
+"""
 
-def make_sigma(k: int, layer: Layer) -> List[int]:
+
+def make_sigma(k: int, layer: Layer) -> list[int]:
+    """
+    Build the link-pairing permutation sigma for the chosen layer.
+
+    Args:
+        k (int): Number of copies (must be 1 or even).
+        layer (Layer): Layer type; 'physical' uses identity, 'pure_gauge' swaps (2a-1<->2a).
+
+    Returns:
+        list[int]: 1-based permutation list where entry j equals sigma(j).
+
+    Raises:
+        ValueError: If k is invalid or layer is not one of {'pure_gauge','physical'}.
+    """
     if not (k == 1 or k % 2 == 0):
         raise ValueError("k must be 1 or even (odd k>1 is not supported).")
     elif layer == "physical":
@@ -1318,15 +1334,19 @@ def make_sigma(k: int, layer: Layer) -> List[int]:
         raise ValueError("layer must be 'pure_gauge' or 'physical'")
 
 
-def bracket_terms(
-    j: int,
-    sigma_j: int,
-    eta2: complex,
-    phi: float,
-) -> List[Tuple[complex, Tuple[int, ...]]]:
+def bracket_terms(j: int, sigma_j: int, eta2: complex, phi: float) -> list[tuple[complex, tuple[int, ...]]]:
     """
-    Build the 8 terms for bracket j (no operator reordering), in the
-    4^(-k) * product.
+    Assemble the 8-term bracket for copy j without operator reordering.
+
+    Args:
+        j (int): Copy index (1-based).
+        sigma_j (int): Value of sigma(j) (1-based).
+        eta2 (complex): Orientation-dependent parameter (eta^2).
+        phi (float): Phase angle; 2*pi/N.
+
+    Returns:
+        list[tuple[complex, tuple[int, ...]]]:
+            List of (coefficient, indices) terms for this bracket after snapping negligible coefficients.
     """
     a = 4 * j - 2
     b = 4 * j - 1
@@ -1346,15 +1366,24 @@ def bracket_terms(
     ]
 
     # Snap small real/imag parts and drop zeros to reduce work upstream
-    terms: List[Tuple[complex, Tuple[int, ...]]] = []
+    terms: list[tuple[complex, tuple[int, ...]]] = []
     for coef, inds in raw_terms:
-        snapped = _snap_complex(coef)  # uses hard-coded tolerance
+        snapped = _snap_complex(coef)
         if snapped != 0.0:
             terms.append((snapped, inds))
     return terms
 
 
-def _snap_complex(z: complex) -> complex | float:
+def _snap_complex(z: complex) -> complex:
+    """
+    Component-wise zeroing of tiny real/imag parts.
+
+    Args:
+        z (complex): Input complex number.
+
+    Returns:
+        complex: Cleaned complex with near-zero components set to 0.0, or 0.0 if |z| is below tolerance.
+    """
     TOL = 1e-12  # hard-coded absolute tolerance
     if abs(z) <= TOL:
         return 0.0
@@ -1365,9 +1394,18 @@ def _snap_complex(z: complex) -> complex | float:
     return zr if zi == 0.0 else complex(zr, zi)
 
 
-def _pfaffian_wick_phase(mon: Tuple[int, ...]) -> complex | float:
+def _pfaffian_wick_phase(mon: tuple[int, ...]) -> complex:
     """
-    Return i^(-len(mon)/2) for an even-length Majorana monomial.
+    Compute the Pfaffian-Wick phase i^(-len(mon)/2) for an even Majorana monomial.
+
+    Args:
+        mon (tuple[int, ...]): Ordered Majorana index tuple (even length).
+
+    Returns:
+        complex: One of {1, -1j, -1, 1j}, equal to i^(-len(mon)/2).
+
+    Raises:
+        ValueError: If len(mon) is odd.
     """
     n = len(mon)
     if n % 2 != 0:
@@ -1389,7 +1427,30 @@ def generate_gauged_projector_terms(
     layer: Layer,
     orientation: Orientation,
     group_order: int,
-) -> Tuple[Tuple[Tuple[complex, Tuple[int, ...]], ...], complex]:
+) -> tuple[tuple[tuple[complex, tuple[int, ...]], ...], complex]:
+    """
+    Expand the Z_N-gauged projector product and collect terms.
+
+    - Builds 4^{-ncopy} * prod_{j=1}^{ncopy} [eight-term bracket] with no operator reordering,
+    - maps orientation to eta^2 (horizontal->1, vertical->i),
+    - sets phi = (2*pi)/group_order,
+    - multiplies each monomial by the Pfaffian-Wick phase,
+    - returns the sparse polynomial representation.
+
+    Args:
+        ncopy (int): Number of copies (1 or even).
+        layer (Layer): 'physical' or 'pure_gauge' (controls sigma).
+        orientation (Orientation): 'horizontal' (eta^2=1) or 'vertical' (eta^2=i).
+        group_order (int): N in Z_N; phi = 2*pi/N.
+
+    Returns:
+        tuple[tuple[tuple[complex, tuple[int, ...]], ...], complex]:
+            (indecies, constant), where indecies is a tuple of (coefficient, monomial indices) sorted by length
+            then lexicographically, and constant is the scalar constant term.
+
+    Raises:
+        ValueError: On invalid layer/orientation or invalid ncopy.
+    """
     sigma = make_sigma(ncopy, layer)
 
     # Map orientation -> eta^2
@@ -1425,7 +1486,7 @@ def generate_gauged_projector_terms(
     items = [(mon, coef) for mon, coef in acc.items() if coef != 0.0]
 
     # Multiply each coefficient by i^(-len(mon)/2), the Pfaffian-Wick phase
-    phased_items: List[Tuple[Tuple[int, ...], complex | float]] = []
+    phased_items: list[tuple[tuple[int, ...], complex]] = []
     for mon, coef in items:
         factor = _pfaffian_wick_phase(mon)
         new_coef = _snap_complex(coef * factor)
