@@ -43,7 +43,7 @@ def main(args, save_path=None):
                         g_int = dumpobj["mc"].system.cfg.g_int
                         int_energy_grad = g_int * int_energy_grad
 
-                        chem_energy_grad = dumpobj["mc"].obsdict["chem_energy_op_grad"].get_timeseries()
+                        chem_energy_grad = np.copy(dumpobj["mc"].obsdict["chem_energy_op_grad"].get_timeseries())
                         for lay in range(dumpobj["mc"].system.cfg.num_pg_layer, dumpobj["mc"].system.cfg.nlayer):
                             # the gradients must be scaled by the chemical potential
                             ind = lay - dumpobj["mc"].system.cfg.num_pg_layer
@@ -86,9 +86,9 @@ def main(args, save_path=None):
                         for grad_ind in args.grad_ind:
                             # if it is a gradient, we plot the graph for the specific index and layer num.
                             # We also need to compute the dynamic mean and eom differently.
-                            energy_grad_obsvec_sliced = energy_grad_obsvec[:, layer, grad_ind]
+                            energy_grad_obsvec_sliced = energy_grad_obsvec[:, layer, args.unit_cell, grad_ind]
 
-                            grad_norm_obsvec_sliced = grad_norm_obsvec[:, layer, grad_ind]
+                            grad_norm_obsvec_sliced = grad_norm_obsvec[:, layer, args.unit_cell, grad_ind]
                             dyn_mean, dyn_eom = compute_dynamic_eom_mean_grad(
                                 energy_obsvec,
                                 energy_grad_obsvec_sliced,
@@ -102,7 +102,7 @@ def main(args, save_path=None):
                                 label="layer " + str(layer) + ", grad_ind " + str(grad_ind),
                             )
                             axvec[1].plot(step_numbers[1:], dyn_eom, "o")
-                            axvec[2].plot(step_numbers[1:], dyn_eom, "o")
+                            axvec[2].plot(time[1:], dyn_eom, "o")
 
                 else:
                     print(
@@ -121,7 +121,7 @@ def main(args, save_path=None):
                     label=args.pkl_fname[i],
                 )
                 axvec[1].plot(step_numbers[1:], dyn_eom[1:])
-                axvec[2].plot(step_numbers[1:], dyn_eom[1:])
+                axvec[2].plot(time[1:], dyn_eom[1:])
         else:
             print(
                 f"Files '{args.pkl_fname[i]}' or '{args.log_fname[i]}' not found.",
@@ -136,9 +136,9 @@ def main(args, save_path=None):
     # axvec[1].set_yscale("log")
     # axvec[1].set_xscale("log")
     axvec[2].set_ylabel(f"EOM {args.obs}")
-    axvec[2].set_yscale("log")
-    axvec[2].set_xscale("log")
-    axvec[2].set_xlabel("step number [sec]")
+    # axvec[2].set_yscale("log")
+    # axvec[2].set_xscale("log")
+    axvec[2].set_xlabel("time [sec]")
 
     # f.tight_layout()
     if save_path:
@@ -201,6 +201,12 @@ if __name__ == "__main__":
         help="Layer number - when calculating gradient",
     )
     parser.add_argument("--log_fname", nargs="+", help="MC log file - on debug mode")
+    parser.add_argument(
+        "--unit_cell",
+        type=int,
+        default=0,
+        help="Unit cell index for which to plot the gradient (default: 0)",
+    )
 
     args = parser.parse_args()
 

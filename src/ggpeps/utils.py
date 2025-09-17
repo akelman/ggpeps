@@ -1024,7 +1024,10 @@ def autocorr_rebin_data(arr: np.ndarray) -> tuple[np.ndarray, int]:
     N = len(arr)
     autocorr_array = autocorr_fft(arr)
     for i in range(len(autocorr_array)):  # find first two elements below 1/100
-        if i >= N / 10:  # limit the number of binsto a minimum of 10.
+        if len(autocorr_array) < 10:
+            binsize = 1
+            break
+        elif i >= N / 10:  # limit the number of bins to a minimum of 10.
             binsize = i
             break
         elif autocorr_array[i] <= 1 / 100 and autocorr_array[i + 1] <= 1 / 100:
