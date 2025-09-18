@@ -425,6 +425,7 @@ def main(args):
     logger.info(f"g_chem: {chem_str}")
     logger.info(f"Rebinning EOM: {Measurement.use_rebinning}")
     logger.info(f"Loaded parameters from: {param_source}")
+    logger.info(f"Parameter names (per layer/site): {system_cfg.symbolvec}")
     logger.info(f"Starting parameters: {paramvec}")
     logger.info("============================")
 
