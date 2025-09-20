@@ -9,7 +9,6 @@ from ggpeps import gauge, utils
 from ggpeps.lattice import Direction
 
 from .config_base import Config2DBase
-from .system_base import get_pfaffian_arrays
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -74,26 +73,18 @@ class Z2System2DConfig(Config2DBase):
         self.init_el_energy_terms()
 
     def init_el_energy_terms(self) -> None:
-        """Build idxarr_vec (paired H/V terms per layer) and el_overall_factors."""
+        """Build idxarr_vec (paired H/V terms per layer)."""
         # Constants used in the calculation of the electric energy on a horizontal link.
-        prefactors_h = [[1, -1, 1.0j, 1.0j]]
-        indices_layer_pg_h = [[(2, 0), (3, 1), (0, 1), (2, 3)]]
-        idxarr_lay_pg_h = get_pfaffian_arrays(indices_layer_pg_h, prefactors_h)
+        idxarr_lay_pg_h, _ = utils.generate_gauged_projector_terms(self.ncopy, "pure_gauge", "horizontal", 2)
 
         # Constants used in the calculation of the electric energy on a vertical link.
-        prefactors_v = [[-1, -1, 1.0j, 1.0j]]
-        indices_layer_pg_v = [[(2, 1), (3, 0), (0, 1), (2, 3)]]
-        idxarr_lay_pg_v = get_pfaffian_arrays(indices_layer_pg_v, prefactors_v)
+        idxarr_lay_pg_v, _ = utils.generate_gauged_projector_terms(self.ncopy, "pure_gauge", "vertical", 2)
 
         # Pair horizontal/vertical term-lists termwise for each layer kind
         zipped_pg = tuple(zip(idxarr_lay_pg_h, idxarr_lay_pg_v))
 
         # Stack per-layer: first pure-gauge layers, then fermionic layers (no fermionic layers here)
         self.idxarr_vec = tuple([zipped_pg] * self.nlayer)
-
-        # Overall prefactors per layer
-        # arises from normalization and the i^(# of modes/2) in Tr[i^# * rho * (modes)]
-        self.el_overall_factors = tuple([-1j / 4] * self.nlayer)
 
     def make_pure_gauge(self):
         # The order of the parameters is [tr,yr,zr,ti,yi,zi] ({r,i} referring to the real/imaginary components)

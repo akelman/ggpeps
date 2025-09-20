@@ -11,7 +11,6 @@ from ggpeps import modearray
 from ggpeps.lattice import Direction
 
 from .config_base import Config2DBase
-from .system_base import get_pfaffian_arrays
 
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -89,25 +88,7 @@ class D6System2D_Config(Config2DBase):
         self.init_el_energy_terms()
 
     def init_el_energy_terms(self) -> None:
-        """Build idxarr_vec and el_overall_factors."""
-        # Constants used in the calculation of the electric energy
-        prefactors = [[1, -1, 1.0j, 1.0j], [1, -1, 1.0j, 1.0j]]
-        indices_layer_pg = [
-            [(2, 4), (3, 5), (4, 5), (2, 3)],
-            [(6, 0), (7, 1), (0, 1), (6, 7)],
-        ]
-        indices_layer_fermionic = [
-            [(2, 0), (3, 1), (0, 1), (2, 3)],
-            [(6, 4), (7, 5), (4, 5), (6, 7)],
-        ]
-        idxarr_lay_pg = get_pfaffian_arrays(indices_layer_pg, prefactors)
-        idxarr_lay_fermionic = get_pfaffian_arrays(indices_layer_fermionic, prefactors)
-        self.idxarr_vec = tuple(
-            [idxarr_lay_pg] * self.num_pg_layer + [idxarr_lay_fermionic] * self.num_fermionic_layer
-        )
-        self.el_overall_factors = tuple(
-            [-1 / 16] * self.nlayer
-        )  # arises from normalization and the i^(# of modes/2) in the expression Tr[i^# * rho * (modes)]
+        """Build idxarr_vec."""
 
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.

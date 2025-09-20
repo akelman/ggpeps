@@ -129,7 +129,6 @@ class Config2DBase(ABC):
         # these depend on the ansatz, so we only declare their type here
         # TODO: this data structure is very unwieldy and should be simplified/restructured
         self.idxarr_vec: IdxArrVec
-        self.el_overall_factors: tuple[complex, ...]
 
     def __str__(self) -> str:
         """Define a string method that can be used, e.g., in filenaming.
@@ -242,9 +241,8 @@ class Config2DBase(ABC):
 
         Implementations must set:
             - self.idxarr_vec: IdxArrVec
-            - self.el_overall_factors: tuple[complex, ...]
         """
-        raise NotImplementedError("Implement in subclass: must set idxarr_vec and el_overall_factors.")
+        raise NotImplementedError("Implement in subclass: must set idxarr_vec.")
 
     def enforce_parameter_conditions(self, mat: xnp.ndarray) -> None:
         """Enforce conditions on the parameters according to the requirements of the ansatz.

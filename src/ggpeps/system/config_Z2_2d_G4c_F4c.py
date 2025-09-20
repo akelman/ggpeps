@@ -7,7 +7,6 @@ from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
 from .config_base import Config2DBase
-from .system_base import get_pfaffian_arrays
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -75,50 +74,14 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         self.init_el_energy_terms()
 
     def init_el_energy_terms(self) -> None:
-        """Build idxarr_vec (paired H/V terms per layer) and el_overall_factors."""
+        """Build idxarr_vec (paired H/V terms per layer)."""
         # Constants used in the calculation of the electric energy on a horizontal link.
-        prefactors_h = [
-            [1, -1, 1.0j, 1.0j],
-            [1, -1, 1.0j, 1.0j],
-            [1, -1, 1.0j, 1.0j],
-            [1, -1, 1.0j, 1.0j],
-        ]
-        indices_layer_pg_h = [
-            [(2, 4), (3, 5), (4, 5), (2, 3)],
-            [(6, 0), (7, 1), (0, 1), (6, 7)],
-            [(10, 12), (11, 13), (12, 13), (10, 11)],
-            [(14, 8), (15, 9), (8, 9), (14, 15)],
-        ]
-        indices_layer_fermionic_h = [
-            [(2, 0), (3, 1), (0, 1), (2, 3)],
-            [(6, 4), (7, 5), (4, 5), (6, 7)],
-            [(10, 8), (11, 9), (8, 9), (10, 11)],
-            [(14, 12), (15, 13), (12, 13), (14, 15)],
-        ]
-        idxarr_lay_pg_h = get_pfaffian_arrays(indices_layer_pg_h, prefactors_h)
-        idxarr_lay_fermionic_h = get_pfaffian_arrays(indices_layer_fermionic_h, prefactors_h)
+        idxarr_lay_pg_h, _ = utils.generate_gauged_projector_terms(self.ncopy, "pure_gauge", "horizontal", 2)
+        idxarr_lay_fermionic_h, _ = utils.generate_gauged_projector_terms(self.ncopy, "physical", "horizontal", 2)
 
         # Constants used in the calculation of the electric energy on a vertical link.
-        prefactors_v = [
-            [-1, -1, 1.0j, 1.0j],
-            [-1, -1, 1.0j, 1.0j],
-            [-1, -1, 1.0j, 1.0j],
-            [-1, -1, 1.0j, 1.0j],
-        ]
-        indices_layer_pg_v = [
-            [(2, 5), (3, 4), (4, 5), (2, 3)],
-            [(6, 1), (7, 0), (0, 1), (6, 7)],
-            [(10, 13), (11, 12), (12, 13), (10, 11)],
-            [(14, 9), (15, 8), (8, 9), (14, 15)],
-        ]
-        indices_layer_fermionic_v = [
-            [(2, 1), (3, 0), (0, 1), (2, 3)],
-            [(6, 5), (7, 4), (4, 5), (6, 7)],
-            [(10, 9), (11, 8), (8, 9), (10, 11)],
-            [(14, 13), (15, 12), (12, 13), (14, 15)],
-        ]
-        idxarr_lay_pg_v = get_pfaffian_arrays(indices_layer_pg_v, prefactors_v)
-        idxarr_lay_fermionic_v = get_pfaffian_arrays(indices_layer_fermionic_v, prefactors_v)
+        idxarr_lay_pg_v, _ = utils.generate_gauged_projector_terms(self.ncopy, "pure_gauge", "vertical", 2)
+        idxarr_lay_fermionic_v, _ = utils.generate_gauged_projector_terms(self.ncopy, "physical", "vertical", 2)
 
         # Pair horizontal/vertical term-lists termwise for each layer kind
         zipped_pg = tuple(zip(idxarr_lay_pg_h, idxarr_lay_pg_v))
@@ -126,10 +89,6 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
 
         # Stack per-layer: first pure-gauge layers, then fermionic layers
         self.idxarr_vec = tuple([zipped_pg] * self.num_pg_layer + [zipped_pf] * self.num_fermionic_layer)
-
-        # Overall prefactors per layer
-        # arises from normalization and the i^(# of modes/2) in Tr[i^# * rho * (modes)]
-        self.el_overall_factors = tuple([1 / 256] * self.nlayer)
 
     def get_zeroed_params(self) -> tuple[tuple[int, int, int], ...]:
         offset = self._nparams // 2  # offset to get index of imaginary part

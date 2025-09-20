@@ -161,10 +161,9 @@ class Z2System2D(System2DBase):
         return mag_energy_bare
 
     @staticmethod
-    @maybe_jit(static_argnames=["overall_factors", "idxarrs", "nlayer", "mod_link_inds", "nlinks"])
+    @maybe_jit(static_argnames=["idxarrs", "nlayer", "mod_link_inds", "nlinks"])
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
-        overall_factors: tuple[complex, ...],
         idxarrs: IdxArrVec,
         mod_link_inds: tuple[int, ...],
         nlinks: int,
@@ -181,7 +180,6 @@ class Z2System2D(System2DBase):
         # TODO: vectorize!
         for layerind in range(nlayer):
             layer_pairs = idxarrs[layerind]  # tuple of pairs: ((H,V), (H,V), ...)
-            overall_factor = overall_factors[layerind]
             norm_mod_linkvec = norm_mod_vec[layerind]
 
             # Iterate over the links
@@ -203,8 +201,7 @@ class Z2System2D(System2DBase):
                     pfaval = el_pfaffians[layerind, link_pos, term_ind]
                     pf_tot += prefactor * pfaval
 
-                el_energy_full = overall_factor * pf_tot
-                el_energy_link = xnp.real(el_energy_full) * xnp.exp(norm_mod - lognorm_default)
+                el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
                 dest = backend.array_assign(dest, (layerind, link_pos), el_energy_link)
 
         return dest
@@ -220,7 +217,6 @@ class Z2System2D(System2DBase):
             "nphysmodes_site",
             "mod_link_inds",
             "symbolvec",
-            "overall_factors",
             "idxarr_vec",
             "zeroed_params",
         ]
@@ -234,7 +230,6 @@ class Z2System2D(System2DBase):
         nphysmodes_site: int,
         mod_link_inds: tuple[int, ...],
         symbolvec: tuple,
-        overall_factors: tuple,
         idxarr_vec: IdxArrVec,
         el_energy_vec: xnp.ndarray,
         mat_b_mod_vec: xnp.ndarray,
@@ -263,7 +258,6 @@ class Z2System2D(System2DBase):
 
             # Abbreviations for more readable code
             layer_pairs = idxarr_vec[layerind]  # tuple of pairs: ((H,V), (H,V), ...)
-            overall_factor = overall_factors[layerind]
 
             for link_pos, mod_link_ind in enumerate(mod_link_inds):
                 mat_b = mat_b_mod_vec[layerind][link_pos]
@@ -314,7 +308,7 @@ class Z2System2D(System2DBase):
                                     el_pfaffians[layerind, link_pos, term_ind],
                                 )
 
-                            d_el_energy = xnp.real(overall_factor * deriv_pf_tot) * xnp.exp(norm_mod - lognorm_default)
+                            d_el_energy = xnp.real(deriv_pf_tot) * xnp.exp(norm_mod - lognorm_default)
 
                             # Summand with derivative of norms
                             trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
