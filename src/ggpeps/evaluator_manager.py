@@ -113,6 +113,9 @@ class EvaluatorManager:
         # Set the evaluator
         self.evaluator: Evaluator = self.reset_evaluator()
 
+        # track number of evaluations
+        self.iter = 0
+
     def reset_evaluator(self) -> Evaluator:
         """Reset the evaluator to a new instance with the current configuration."""
 
@@ -235,9 +238,9 @@ class EvaluatorManager:
             self.evaluator.evaluate()
             result_df = self.evaluator.summary()
 
-            iter = 1
+            self.iter += 1
             if ggpeps.PREFERRED_BACKEND == "jax":
-                jax.profiler.save_device_memory_profile(f"memory_{iter}.prof")
+                jax.profiler.save_device_memory_profile(f"memory_{self.iter}.prof")
 
             if self.type == "nevmc":
                 assert isinstance(self.evaluator, NEVMC_Evaluator)
