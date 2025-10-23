@@ -119,6 +119,10 @@ class EvaluatorManager:
     def reset_evaluator(self) -> Evaluator:
         """Reset the evaluator to a new instance with the current configuration."""
 
+        # Free memory - test to debug GPU memory issues
+        del self.evaluator.system
+        del self.evaluator
+
         system = self.system_cls(self.system_cfg)
         system.initialize()
 
@@ -239,7 +243,7 @@ class EvaluatorManager:
             result_df = self.evaluator.summary()
 
             self.iter += 1
-            if ggpeps.PREFERRED_BACKEND == "jax":
+            if False and ggpeps.PREFERRED_BACKEND == "jax":
                 jax.profiler.save_device_memory_profile(f"memory_{self.iter}.prof")
 
             if self.type == "nevmc":
