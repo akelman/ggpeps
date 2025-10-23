@@ -5,6 +5,8 @@ import copy
 import logging
 import pandas as pd
 
+import jax
+
 import ggpeps
 from ggpeps import utils
 from ggpeps.evaluator import Evaluator
@@ -232,6 +234,10 @@ class EvaluatorManager:
             self.reset_evaluator()
             self.evaluator.evaluate()
             result_df = self.evaluator.summary()
+
+            iter = 1
+            if ggpeps.PREFERRED_BACKEND == "jax":
+                jax.profiler.save_device_memory_profile(f"memory_{iter}.prof")
 
             if self.type == "nevmc":
                 assert isinstance(self.evaluator, NEVMC_Evaluator)
