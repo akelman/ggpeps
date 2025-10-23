@@ -120,8 +120,9 @@ class EvaluatorManager:
         """Reset the evaluator to a new instance with the current configuration."""
 
         # Free memory - test to debug GPU memory issues
-        del self.evaluator.system
-        del self.evaluator
+        if hasattr(self, "evaluator"):
+            del self.evaluator.system
+            del self.evaluator
 
         system = self.system_cls(self.system_cfg)
         system.initialize()
