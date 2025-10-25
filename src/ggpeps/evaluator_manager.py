@@ -6,6 +6,7 @@ import logging
 import pandas as pd
 
 import jax
+import gc
 
 import ggpeps
 from ggpeps import utils
@@ -123,6 +124,9 @@ class EvaluatorManager:
         if hasattr(self, "evaluator"):
             del self.evaluator.system
             del self.evaluator
+        if ggpeps.PREFERRED_BACKEND == "jax":
+            jax.clear_backends()
+        gc.collect()
 
         system = self.system_cls(self.system_cfg)
         system.initialize()
