@@ -114,19 +114,18 @@ class EvaluatorManager:
         # Set the evaluator
         self.evaluator: Evaluator = self.reset_evaluator()
 
-        # track number of evaluations
-        self.iter = 0
-
     def reset_evaluator(self) -> Evaluator:
         """Reset the evaluator to a new instance with the current configuration."""
 
-        # Free memory - test to debug GPU memory issues
-        if hasattr(self, "evaluator"):
-            del self.evaluator.system
-            del self.evaluator
         if ggpeps.PREFERRED_BACKEND == "jax":
+            # On GPUs, minimizations can lead to seg-faults, which seem to be caused by OOM issues
+            # Clearing this memory here solves the problem
+            # TODO: diagnose this further, and determine if there is a better solution
+            if hasattr(self, "evaluator"):
+                del self.evaluator.system
+                del self.evaluator
             jax.clear_backends()
-        gc.collect()
+            gc.collect()
 
         system = self.system_cls(self.system_cfg)
         system.initialize()
@@ -246,10 +245,6 @@ class EvaluatorManager:
             self.reset_evaluator()
             self.evaluator.evaluate()
             result_df = self.evaluator.summary()
-
-            self.iter += 1
-            if False and ggpeps.PREFERRED_BACKEND == "jax":
-                jax.profiler.save_device_memory_profile(f"memory_{self.iter}.prof")
 
             if self.type == "nevmc":
                 assert isinstance(self.evaluator, NEVMC_Evaluator)
