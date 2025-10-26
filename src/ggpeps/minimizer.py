@@ -190,11 +190,11 @@ class Minimizer:
             #   it is important to save energy and gradients (even though the last_paramvec stores both)
             #   so that if the computation is interrupted (which loses the last_paramvec),
             #   we can still use the cached values
-            energy = utils.get_obs_mean_df(self.last_result, "energy")
-            self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy)
             if self.evaluator_manager.cfg.compute_grads:
                 parametergrad = utils.get_obs_mean_df(self.last_result, "energy_grad")
                 self.cache.add_obs_to_cache(flattened_paramvec, "energy_grad", parametergrad)
+            energy = utils.get_obs_mean_df(self.last_result, "energy")
+            self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy, save_to_file=True)
             # logger.debug(f"Calculated energy: {energy}")
 
             return energy
@@ -230,7 +230,7 @@ class Minimizer:
             energy = utils.get_obs_mean_df(self.last_result, "energy")
             self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy)
             parametergrad = utils.get_obs_mean_df(self.last_result, "energy_grad")
-            self.cache.add_obs_to_cache(flattened_paramvec, "energy_grad", parametergrad)
+            self.cache.add_obs_to_cache(flattened_paramvec, "energy_grad", parametergrad, save_to_file=True)
 
             return parametergrad.reshape((-1))
 
