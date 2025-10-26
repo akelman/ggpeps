@@ -1306,7 +1306,7 @@ Orientation = Literal["horizontal", "vertical"]
 """
 
 
-def make_sigma(k: int, layer: Layer) -> list[int]:
+def make_sigma(ncopy: int, layer: Layer) -> list[int]:
     """
     Build the link-pairing permutation sigma for the chosen layer.
 
@@ -1320,15 +1320,15 @@ def make_sigma(k: int, layer: Layer) -> list[int]:
     Raises:
         ValueError: If k is invalid or layer is not one of {'pure_gauge','physical'}.
     """
-    if not (k == 1 or k % 2 == 0):
+    if not (ncopy == 1 or ncopy % 2 == 0):
         raise ValueError("k must be 1 or even (odd k>1 is not supported).")
     elif layer == "physical":
-        return list(range(1, k + 1))
+        return list(range(1, ncopy + 1))
     elif layer == "pure_gauge":
-        if k == 1:
+        if ncopy == 1:
             return [1]
-        s = [0] * k
-        for a in range(1, k // 2 + 1):
+        s = [0] * ncopy
+        for a in range(1, ncopy // 2 + 1):
             i, j = 2 * a - 1, 2 * a
             s[i - 1] = j
             s[j - 1] = i
@@ -1337,7 +1337,7 @@ def make_sigma(k: int, layer: Layer) -> list[int]:
         raise ValueError("layer must be 'pure_gauge' or 'physical'")
 
 
-def bracket_terms(j: int, sigma_j: int, eta2: complex, phi: float) -> list[tuple[complex, tuple[int, ...]]]:
+def bracket_terms(copy: int, sigma_j: int, eta2: complex, phi: float) -> list[tuple[complex, tuple[int, ...]]]:
     """
     Assemble the 8-term bracket for copy j without operator reordering.
 
@@ -1351,8 +1351,8 @@ def bracket_terms(j: int, sigma_j: int, eta2: complex, phi: float) -> list[tuple
         list[tuple[complex, tuple[int, ...]]]:
             List of (coefficient, indices) terms for this bracket after snapping negligible coefficients.
     """
-    a = 4 * j - 2
-    b = 4 * j - 1
+    a = 4 * copy - 2
+    b = 4 * copy - 1
     c = 4 * sigma_j - 4
     d = 4 * sigma_j - 3
     eip = cmath.exp(1j * phi)
@@ -1498,6 +1498,6 @@ def generate_gauged_projector_terms(
 
     # Sort terms by monomial length (shorter first) then lexicographic tuple order for deterministic output.
     phased_items.sort(key=lambda kv: (len(kv[0]), kv[0]))
-    indecies = tuple((coef, mon) for mon, coef in phased_items)
+    indices = tuple((coef, mon) for mon, coef in phased_items)
 
-    return indecies, constant
+    return indices, constant
