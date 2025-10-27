@@ -124,7 +124,7 @@ class EvaluatorManager:
             if hasattr(self, "evaluator"):
                 del self.evaluator.system
                 del self.evaluator
-            jax.clear_backends()
+            jax.clear_caches()
             gc.collect()
 
         system = self.system_cls(self.system_cfg)
