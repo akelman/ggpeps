@@ -118,9 +118,9 @@ class EvaluatorManager:
         """Reset the evaluator to a new instance with the current configuration."""
 
         if ggpeps.PREFERRED_BACKEND == "jax":
-            # On GPUs, minimizations can lead to seg-faults, which seem to be caused by OOM issues
-            # Clearing this memory here solves the problem
-            # TODO: diagnose this further, and determine if there is a better solution
+            # On GPUs, minimizations can lead to seg-faults, which seem to be caused by OOM issues.
+            # Clearing this memory here helps address the problem, but does not solve it completely.
+            # TODO: diagnose this further, and determine if there is a better solution.
             if hasattr(self, "evaluator"):
                 del self.evaluator.system
                 del self.evaluator
