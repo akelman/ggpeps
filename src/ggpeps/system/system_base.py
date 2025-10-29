@@ -3,7 +3,6 @@ from typing import Optional
 
 import sys
 import logging
-import itertools as it
 
 import sympy
 from scipy.linalg import block_diag

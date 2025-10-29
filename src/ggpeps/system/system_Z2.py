@@ -1,5 +1,4 @@
 import logging
-from operator import index
 
 import numpy as np
 from ggpeps import xnp as xnp
