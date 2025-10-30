@@ -423,6 +423,7 @@ def main(args):
     logger.info(f"g_mass: {g_mass}")
     chem_str = ", ".join([f"{val:.3f}" for val in g_chem])
     logger.info(f"g_chem: {chem_str}")
+    logger.info(f"Electric energy measured on links: {el_links}")
     logger.info(f"Rebinning EOM: {Measurement.use_rebinning}")
     logger.info(f"Loaded parameters from: {param_source}")
     logger.info(f"Parameter names (per layer/site): {system_cfg.symbolvec}")
