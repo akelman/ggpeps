@@ -458,6 +458,11 @@ def main(args):
             )
         if not args.relax_u1:
             logger.warning("There is a non-zero chemical potential, but U1 invariance. This may be unintended.")
+    if args.unitcell_size > len(args.el_links) and not np.allclose(g_el, 0):
+        logger.warning(
+            "The unit cell size is larger than the number of links on which the electric energy is evaluated. "
+            "This may be unintended."
+        )
 
     # Set up cache
     # and save the command line arguments to ggpeps global variable so that they are available everywhere
