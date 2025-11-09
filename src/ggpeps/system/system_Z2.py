@@ -565,7 +565,6 @@ class Z2System2D(System2DBase):
         return gradients
 
     @staticmethod
-    @staticmethod
     @maybe_jit(
         static_argnames=[
             "lattice_size",
