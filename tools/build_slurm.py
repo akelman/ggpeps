@@ -7,15 +7,7 @@ def name_from_path(prefix, path):
 
 
 def folder2arg(foldername, arg):
-    if "chem" in arg:
-        # allow for multiple chemical potentials, separated by underscores
-        pattern = rf"(?<={arg}_)(-?\d+\.\d+)_(-?\d+\.\d+)"
-    else:
-        # match the argument name followed by an underscore and then capture everything until the next underscore
-        pattern = rf"(?<={arg}_)([^_]+)"
-    result = re.search(pattern, foldername)
-
-    # handle gauge_fixing separately
+    # handle gauge_fixing separately, since it is not a numeric argument
     if arg == "gf":
         if result is not None:
             if result.group(0) == "T":
@@ -29,8 +21,13 @@ def folder2arg(foldername, arg):
         else:
             return ""
 
+    # allow for any number of numeric values (ints or floats) separated by underscores
+    pattern = rf"(?<={arg}_)(-?\d+(?:\.\d+)?(?:_-?\d+(?:\.\d+)?)*)"
+
+    result = re.search(pattern, foldername)
+
     if result is not None:
-        vals = f" ".join(result.groups())
+        vals = " ".join(result.group(1).split("_"))
         return f"--{arg} {vals}"
     else:
         return ""
