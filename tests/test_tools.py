@@ -42,3 +42,28 @@ class TestTools(unittest.TestCase):
         self.assertEqual(elmag_str, "--g -1.3")
         self.assertEqual(mass_str, "--mass 1")
         self.assertEqual(chem_str, "--chem 1.0 -2.0")
+
+    def test_build_slurm_gf_extraction(self):
+        """Test that arguments are correctly extracted from folder names for gauge fixing."""
+
+        dirname = "L_2_g_1.3_int_1.4_mass_1.5_chem_1.0_2.0_3.0_gf_T"
+        size_str = build_slurm.folder2arg(dirname, "L")
+        elmag_str = build_slurm.folder2arg(dirname, "g")
+        int_str = build_slurm.folder2arg(dirname, "int")
+        mass_str = build_slurm.folder2arg(dirname, "mass")
+        chem_str = build_slurm.folder2arg(dirname, "chem")
+        self.assertEqual(size_str, "--L 2")
+        self.assertEqual(elmag_str, "--g 1.3")
+        self.assertEqual(int_str, "--int 1.4")
+        self.assertEqual(mass_str, "--mass 1.5")
+        self.assertEqual(chem_str, "--chem 1.0 2.0 3.0")
+        gf_str = build_slurm.folder2arg(dirname, "gf")
+        self.assertEqual(gf_str, "--gauge_fixing")
+
+        dirname = "L_2_g_1.3_int_1.4_mass_1.5_chem_1.0_2.0_3.0_gf_F"
+        gf_str = build_slurm.folder2arg(dirname, "gf")
+        self.assertEqual(gf_str, "")
+
+        dirname = "L_2_g_1.3_int_1.4_mass_1.5_chem_1.0_2.0_3.0_gf_c"
+        gf_str = build_slurm.folder2arg(dirname, "gf")
+        self.assertEqual(gf_str, "--gauge_fixing -2")

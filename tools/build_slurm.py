@@ -9,6 +9,8 @@ def name_from_path(prefix, path):
 def folder2arg(foldername, arg):
     # handle gauge_fixing separately, since it is not a numeric argument
     if arg == "gf":
+        pattern = rf"(?<={arg}_)([^_]+)"
+        result = re.search(pattern, foldername)
         if result is not None:
             if result.group(0) == "T":
                 return f"--gauge_fixing"
