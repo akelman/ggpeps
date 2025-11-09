@@ -13,11 +13,11 @@ def folder2arg(foldername, arg):
         result = re.search(pattern, foldername)
         if result is not None:
             if result.group(0) == "T":
-                return f"--gauge_fixing"
+                return "--gauge_fixing"
             elif result.group(0) == "F":
                 return ""  # relies on the fact that the default value for gauge_fixing is False
             elif result.group(0) == "c":
-                return f"--gauge_fixing -2"
+                return "--gauge_fixing -2"
             else:
                 return f"--gauge_fixing {result.group(0)}"
         else:
