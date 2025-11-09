@@ -34,3 +34,11 @@ class TestTools(unittest.TestCase):
         dirname = "g_1.3_int_1.4_mass_1_chem_1.0"
         mass_str = build_slurm.folder2arg(dirname, "mass")
         self.assertEqual(mass_str, "--mass 1")
+
+        dirname = "g_-1.3_int_1.4_mass_1_chem_1.0_-2.0"
+        elmag_str = build_slurm.folder2arg(dirname, "g")
+        mass_str = build_slurm.folder2arg(dirname, "mass")
+        chem_str = build_slurm.folder2arg(dirname, "chem")
+        self.assertEqual(elmag_str, "--g -1.3")
+        self.assertEqual(mass_str, "--mass 1")
+        self.assertEqual(chem_str, "--chem 1.0 -2.0")
