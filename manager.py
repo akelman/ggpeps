@@ -759,6 +759,21 @@ if __name__ == "__main__":
         "-1 if --gauge_fixing is used without a value - fix a maximal tree, "
         "-2 to gauge fix like a chess boars, or any integer if we fix a specific number of rows.",
     )
+    parser.add_argument(
+        "--el_links",
+        "--el-link",
+        dest="el_links",
+        type=int,
+        nargs="+",
+        default=(0,),
+        help="Indices of links (zero-based) on which to compute the electric energy. Example: --el_links 2 7 3",
+    )
+    parser.add_argument(
+        "--compute_grads",
+        action="store_true",
+        default=False,
+        help="Compute grads even if in eval mode",
+    )
 
     # Monte Carlo settings
     parser.add_argument(
@@ -786,12 +801,6 @@ if __name__ == "__main__":
         type=str,
         default="1",
         help="The number of spins to update in each step (can be an integer, or one of: system, halfsystem)",
-    )
-    parser.add_argument(
-        "--compute_grads",
-        action="store_true",
-        default=False,
-        help="Compute grads even if in eval mode",
     )
 
     # Arguments for the minimizer
@@ -849,15 +858,6 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
         help="Ignore the cache and do not load or save it. Overrides other cache settings.",
-    )
-    parser.add_argument(
-        "--el_links",
-        "--el-link",
-        dest="el_links",
-        type=int,
-        nargs="+",
-        default=(0,),
-        help="Indices of links (zero-based) on which to compute the electric energy. Example: --el_links 2 7 3",
     )
 
     # Arguments for ray
