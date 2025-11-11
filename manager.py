@@ -673,7 +673,7 @@ if __name__ == "__main__":
         ],
         help="Mode of the program",
     )
-    parser.add_argument("gauge_group", type=str, choices=["Z2", "D6"])
+    parser.add_argument("gauge_group", type=str, choices=["Z2", "D6"], help="gauge group")
 
     parser.add_argument("--L", type=int, help="Size of the square system (one side)")
 
@@ -754,7 +754,7 @@ if __name__ == "__main__":
         const=-1,  # Value when argument is used without a value
         type=int,  # Convert the input to an integer if provided
         default=0,  # Default value when argument is not used
-        help="Gauge fixing:"
+        help="Gauge fixing: "
         "0 if not provided (default), "
         "-1 if --gauge_fixing is used without a value - fix a maximal tree, "
         "-2 to gauge fix like a chess boars, or any integer if we fix a specific number of rows.",
