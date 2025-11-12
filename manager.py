@@ -471,7 +471,7 @@ def main(args):
         if os.path.isfile(args.load_cache):
             cache.load_cache_file(args.load_cache)
         else:
-            logger.error(f"Unable to find cache file {args.load_cache}.")
+            logger.warning(f"Unable to find cache file {args.load_cache}.")
     if args.save_cache_dest is not None and not cache.disable_cache:
         if not os.path.isabs(args.save_cache_dest):
             # Save the cache filename as an absolute path (so that it can be used throughout the code,
