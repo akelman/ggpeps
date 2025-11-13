@@ -199,25 +199,28 @@ def main(args):
     # Set up the simulation
     L = args.L
     g = args.g
-    if args.g_el is None and g is not None:
-        g_el = g / 2.0
-    else:
-        g_el = args.g_el
-    if args.g_mag is None:
-        if g is not None:
-            g_mag = 1.0 / (2 * g)
+
+    if args.g is not None:
+        if np.allclose(g, 0.0):
+            g_el = 0.0
+            g_mag = 0.0
         else:
-            g_mag = 1 / (4 * g_el)
-    else:
+            g_el = g / 2.0
+            g_mag = 1.0 / (2 * g)
+
+    if args.g_el is not None:
+        # manually specified g_el takes precedence
+        g_el = args.g_el
+    if args.g_mag is not None:
+        # manually specified g_mag takes precedence
         g_mag = args.g_mag
+
     g_int = args.g_int
     g_mass = args.g_mass
     if args.g_chem is None:
         g_chem = np.zeros(args.num_fermionic_layer)
     else:
         g_chem = np.array(args.g_chem)
-    if len(g_chem) != args.num_fermionic_layer:
-        raise ValueError("The number of chemical potentials must match the number of fermionic layers.")
     couplings = {
         "g_el": g_el,
         "g_mag": g_mag,
@@ -225,6 +228,8 @@ def main(args):
         "g_mass": g_mass,
         "g_chem": g_chem,
     }
+    if len(g_chem) != args.num_fermionic_layer:
+        raise ValueError("The number of chemical potentials must match the number of fermionic layers.")
 
     # Set up the logger
     log_filename = args2logname(args, couplings)
