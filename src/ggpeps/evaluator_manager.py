@@ -5,9 +5,6 @@ import copy
 import logging
 import pandas as pd
 
-import jax
-import gc
-
 import ggpeps
 from ggpeps import utils
 from ggpeps.evaluator import Evaluator
