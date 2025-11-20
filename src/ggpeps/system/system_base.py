@@ -2181,7 +2181,7 @@ class System2DBase(ABC):
         return xnp.trace(path_product)
 
     @staticmethod
-    # @maybe_jit(static_argnames=["lattice_size", "nphysmodes_site", "nlayer"]) # causes issues on AMD GPU; unclear why
+    @maybe_jit(static_argnames=["lattice_size", "nphysmodes_site", "nlayer"])
     def _compute_ferm_cov(
         lattice_size: int,
         nphysmodes_site: int,

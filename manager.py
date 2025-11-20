@@ -486,6 +486,12 @@ def main(args):
     ggpeps.global_vars["args"] = args
     ggpeps.global_vars["cache"] = cache
 
+    # Start profiling trace
+    if ggpeps.PREFERRED_BACKEND == "jax" and args.profile_jax:
+        jax.profiler.start_trace("./profile_results")
+    elif args.profile_jax:
+        logger.warning("JAX profiling requested but JAX is not the preferred backend; skipping profiling.")
+
     # Call different functions depending on the mode specified via CLI
     if args.mode == "eval-mc":
         # Evaluate observables for a given set of parameters with Monte Carlo
@@ -653,6 +659,10 @@ def main(args):
     logger.info("========== TIME ============")
     logger.info(f"The simulation took {stop - start}s.")
     logger.info("============================\n\n")  # add new lines to separate from next run
+
+    # End profiling trace
+    if ggpeps.PREFERRED_BACKEND == "jax" and args.profile_jax:
+        jax.profiler.stop_trace()
 
 
 if __name__ == "__main__":
@@ -867,6 +877,9 @@ if __name__ == "__main__":
 
     # Arguments for ray
     parser.add_argument("--nrunner", type=int, default=0, help="Number of parallel MC runners")
+
+    # Profiling
+    parser.add_argument("--profile_jax", action="store_true", default=False, help="Profile the JAX execution")
 
     args = parser.parse_args()
     main(args)
