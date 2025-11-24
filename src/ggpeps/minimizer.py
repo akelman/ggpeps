@@ -524,14 +524,6 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
         f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, int: {int_energy:.6f}, mass: {mass_energy:.6f}, chem: {chem_energy:.6f}"
     )
 
-    # paramvec = minimizer.evaluator_manager.system_cfg.paramvec
-    # logger.debug(f"Parametervec: {paramvec}")
-
-    # If we're at the lowest energy seen so far, log the parameters
-    # if current_iter == 0 or energy < lowest_energy:
-    #    lowest_energy = energy
-    #    #logger.info(f"New best energy. Parametervec: {paramvec}")
-
     # If python recieves a signal to stop computation gracefully, we catch it here.
     # There have been recent developments within scipy's handling of these callbacks.
     # See (eg): https://github.com/scipy/scipy/issues/9412
