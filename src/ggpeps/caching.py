@@ -44,6 +44,11 @@ class Cache:
             pickle.dump(self.cache_data, outfile)
         return
 
+    def num_energy_items(self) -> int:
+        """Return the number of energy's stored in the cache."""
+        num_items = len(self.cache_data["energy"].keys())
+        return num_items
+
     def add_obj_to_cache(self, obj_name: str, obj_val) -> None:
         if self.disable_cache:
             return
