@@ -514,16 +514,15 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
         occ_str = "None"
     logger.debug(f"Occupations: {occ_str}")
 
-    # mass_energy = utils.get_obs_mean_df(res, "mass_energy")
-    # int_energy = utils.get_obs_mean_df(res, "int_energy")
-    # el_energy = utils.get_obs_mean_df(res, "el_energy")
-    # mag_energy = utils.get_obs_mean_df(res, "mag_energy")
-    # chem_energy = utils.get_obs_mean_df(res, "chem_energy")
+    el_energy = utils.get_obs_mean_df(res, "el_energy")
+    mag_energy = utils.get_obs_mean_df(res, "mag_energy")
+    int_energy = utils.get_obs_mean_df(res, "int_energy")
+    mass_energy = utils.get_obs_mean_df(res, "mass_energy")
+    chem_energy = utils.get_obs_mean_df(res, "chem_energy")
 
-    # logger.debug(
-    #    f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, mass: {mass_energy:.6f}, int: {int_energy:.6f},
-    #       chem: {chem_energy:.6f}"
-    # )
+    logger.debug(
+        f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, int: {int_energy:.6f}, mass: {mass_energy:.6f}, chem: {chem_energy:.6f}"
+    )
 
     # paramvec = minimizer.evaluator_manager.system_cfg.paramvec
     # logger.debug(f"Parametervec: {paramvec}")
