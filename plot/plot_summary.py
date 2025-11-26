@@ -146,13 +146,13 @@ def main(args):
                     # Handle case where chosen values are an array
                     yaxis_values = yaxis_values.apply(lambda x: x[*args.obs_ind])
 
-                # set data label
+                # Set data label
                 if not args.diff and isinstance(group["mean"].iloc[0], np.ndarray):
                     data_label = f"{type_}, obs={obs}, inds={args.obs_ind}, L={L}"
                 else:
                     data_label = f"{type_}, obs={obs}, L={L}"
 
-                # show errors for MC
+                # Show errors for MC
                 if type_ == "MC":
                     error = group["err"]  # this will not work for array observables
                 else:
@@ -163,6 +163,7 @@ def main(args):
                 if type_ == "MC":
                     marker_fmt = "x"
 
+                # Plot
                 if type_ == "ED":
                     ax.plot(
                         xaxis_values,
@@ -194,6 +195,7 @@ def main(args):
     ax.set_title(args.title)
     f.tight_layout()
 
+    # Output
     if not args.no_save:
         if args.diff:
             f.savefig(f"summary_diff_{'-'.join(args.obs)}.pdf")
