@@ -273,7 +273,15 @@ if __name__ == "__main__":
         default="0",
         help="If --xaxis quantity is an array, use this index",
     )
-    parser.add_argument("--obs", type=str, nargs="+", default=["energy"], help="Observables to plot")
+    parser.add_argument(
+        "--obs",
+        type=str,
+        nargs="+",
+        default=["energy"],
+        help="Observables to plot. Each observable can simple name the observable, "
+        "or if the observable represents an array, be in the form obs_name[inds], "
+        "where the appropriate inds will be plotted.",
+    )
 
     parser.add_argument("--title", type=str, default="", help="Title for plot", dest="title")
 
