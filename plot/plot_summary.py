@@ -182,6 +182,7 @@ def main(args):
     else:
         ax.set_ylabel("Value", fontsize=10)
     ax.legend(fontsize=8)
+    ax.set_title(args.title)
     f.tight_layout()
 
     if not args.no_save:
@@ -237,6 +238,7 @@ if __name__ == "__main__":
         default=0,
         help="If observables is an array, plot this index",
     )
+    parser.add_argument("--title", type=str, default="", help="Title for plot", dest="title")
 
     args = parser.parse_args()
 
