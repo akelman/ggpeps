@@ -137,8 +137,10 @@ def main(args):
 
                 if isinstance(group["mean"].iloc[0], np.ndarray):
                     yaxis_values = group["mean"].apply(lambda x: x[*args.obs_ind])
+                    data_label = f"{type_}, obs={obs}, inds={args.obs_ind}, L={L}"
                 else:
                     yaxis_values = group["mean"]
+                    data_label = f"{type_}, obs={obs}, L={L}"
 
                 # show errors for MC
                 if type_ == "MC":
@@ -158,13 +160,13 @@ def main(args):
                         group["diff"],
                         fmt="o",
                         yerr=error,
-                        label=f"{type_}, obs={obs}, L={L}",
+                        label=data_label,
                     )
                 elif type_ == "ED":
                     ax.plot(
                         xaxis_values,
                         yaxis_values,
-                        label=f"ED, obs={obs}, L={L}",
+                        label=data_label,
                         c=observable_colors[obs],
                     )
                 else:
@@ -173,7 +175,7 @@ def main(args):
                         yaxis_values,
                         fmt=marker_fmt,
                         yerr=error,
-                        label=f"{type_}, obs={obs}, L={L}",
+                        label=data_label,
                         c=observable_colors[obs],
                     )
 
