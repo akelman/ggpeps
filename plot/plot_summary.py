@@ -121,9 +121,9 @@ def main(args):
             df_filtered = df[df["name"] == obs]
             df_filtered.reset_index(drop=True, inplace=True)
 
-            if df_diff is not None:
-                df_diff_filtered = df_diff[df_diff["name"] == obs]
-                df_diff_filtered.reset_index(drop=True, inplace=True)
+            if args.diff:
+                df_filtered = df_diff[df_diff["name"] == obs]
+                df_filtered.reset_index(drop=True, inplace=True)
 
             for name, group in df_filtered.groupby(["type", "L", "nlayer", "ncopy"]):
 
@@ -135,15 +135,18 @@ def main(args):
                 else:
                     xaxis_values = group[args.xaxis]
 
-                if isinstance(group["mean"].iloc[0], np.ndarray):
+                if args.diff:
+                    yaxis_values = group["diff"]
+                elif isinstance(group["mean"].iloc[0], np.ndarray):
                     yaxis_values = group["mean"].apply(lambda x: x[*args.obs_ind])
+                else:
+                    yaxis_values = group["mean"]
+
+                # set data label
+                if not args.diff and isinstance(group["mean"].iloc[0], np.ndarray):
                     data_label = f"{type_}, obs={obs}, inds={args.obs_ind}, L={L}"
                 else:
                     data_label = f"{type_}, obs={obs}, L={L}"
-                    if args.diff:
-                        yaxis_values = group["diff"]
-                    else:
-                        yaxis_values = group["mean"]
 
                 # show errors for MC
                 if type_ == "MC":
