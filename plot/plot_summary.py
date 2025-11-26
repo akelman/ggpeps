@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 
 import numpy as np
@@ -7,6 +8,34 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from ggpeps import utils
+
+
+def parse_observables(observables: list[str]):
+    """Given a list of strings, parse them into observable names and indices.
+    The indices are used when the observable is an array.
+
+    Example input: ["energy", "occupations[0,1]", "magnetization[2]"]
+    Example outplut: [("energy", None), ("occupations", (0,1)), ("magnetization", (2,))]
+
+    Args:
+        observables (list[str]): observables to parse
+
+    Returns:
+        list[(str, tuple[int])]: parsed observables
+    """
+    pattern = re.compile(r"([a-zA-Z0-9_]+)(\[(.*?)\])?")  # captures name + inside brackets
+
+    parsed_observables = []
+
+    for item in observables:
+        name, _, inside = pattern.fullmatch(item).groups()
+
+        if inside is not None:
+            idx = tuple([int(i) for i in inside.split(",")])
+        else:
+            idx = None
+        parsed_observables.append((name, idx))
+    return parsed_observables
 
 
 def len_arr(x):
@@ -111,12 +140,14 @@ def main(args):
         else:
             print(f"File {args.exact} not found. Skipping.")
 
+    parsed_obs = parse_observables(args.obs)
     palette = sns.color_palette("husl", n_colors=len(args.obs))
-    observable_colors = dict(zip(args.obs, palette))
+    observable_colors = dict(zip(parsed_obs, palette))
 
     # Plot
     f, ax = plt.subplots(1, 1)
-    for obs in args.obs:
+    for parsed_ob in parsed_obs:
+        obs, idx = parsed_ob
         if obs in obsnamevec:
             df_filtered = df[df["name"] == obs]
             df_filtered.reset_index(drop=True, inplace=True)
@@ -144,11 +175,11 @@ def main(args):
 
                 if isinstance(yaxis_values.iloc[0], np.ndarray):
                     # Handle case where chosen values are an array
-                    yaxis_values = yaxis_values.apply(lambda x: x[*args.obs_ind])
+                    yaxis_values = yaxis_values.apply(lambda x: x[*idx])
 
                 # Set data label
                 if not args.diff and isinstance(group["mean"].iloc[0], np.ndarray):
-                    data_label = f"{type_}, obs={obs}, inds={args.obs_ind}, L={L}"
+                    data_label = f"{type_}, obs={obs}, inds={idx}, L={L}"
                 else:
                     data_label = f"{type_}, obs={obs}, L={L}"
 
@@ -169,7 +200,7 @@ def main(args):
                         xaxis_values,
                         yaxis_values,
                         label=data_label,
-                        c=observable_colors[obs],
+                        c=observable_colors[parsed_ob],
                     )
                 else:
                     ax.errorbar(
@@ -178,7 +209,7 @@ def main(args):
                         fmt=marker_fmt,
                         yerr=error,
                         label=data_label,
-                        c=observable_colors[obs],
+                        c=observable_colors[parsed_ob],
                     )
 
     # Set axis properties
@@ -243,13 +274,7 @@ if __name__ == "__main__":
         help="If --xaxis quantity is an array, use this index",
     )
     parser.add_argument("--obs", type=str, nargs="+", default=["energy"], help="Observables to plot")
-    parser.add_argument(
-        "--obs_ind",
-        type=int,
-        nargs="+",
-        default=0,
-        help="If observables is an array, plot this index",
-    )
+
     parser.add_argument("--title", type=str, default="", help="Title for plot", dest="title")
 
     args = parser.parse_args()
