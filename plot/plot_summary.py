@@ -146,6 +146,12 @@ def main(args):
                 else:
                     error = None
 
+                # Set marker
+                if type_ == "MC":
+                    marker_fmt = "x"
+                elif type_ == "EC":
+                    marker_fmt = "o"
+
                 if args.diff:
                     ax.errorbar(
                         xaxis_values,
@@ -165,7 +171,7 @@ def main(args):
                     ax.errorbar(
                         xaxis_values,
                         yaxis_values,
-                        fmt="o",
+                        fmt=marker_fmt,
                         yerr=error,
                         label=f"{type_}, obs={obs}, L={L}",
                         c=observable_colors[obs],
