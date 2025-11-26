@@ -129,18 +129,22 @@ def main(args):
 
                 type_, L, nlayer, ncopy = name
 
+                # Get x axis values
                 if isinstance(group[args.xaxis].iloc[0], np.ndarray):
                     # Handle case where chosen values are an array
                     xaxis_values = group[args.xaxis].apply(lambda x: x[args.xaxis_ind])
                 else:
                     xaxis_values = group[args.xaxis]
 
+                # Get y axis values
                 if args.diff:
                     yaxis_values = group["diff"]
-                elif isinstance(group["mean"].iloc[0], np.ndarray):
-                    yaxis_values = group["mean"].apply(lambda x: x[*args.obs_ind])
                 else:
                     yaxis_values = group["mean"]
+
+                if isinstance(yaxis_values.iloc[0], np.ndarray):
+                    # Handle case where chosen values are an array
+                    yaxis_values = yaxis_values.apply(lambda x: x[*args.obs_ind])
 
                 # set data label
                 if not args.diff and isinstance(group["mean"].iloc[0], np.ndarray):
