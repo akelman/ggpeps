@@ -136,7 +136,7 @@ def main(args):
                     xaxis_values = group[args.xaxis]
 
                 if isinstance(group["mean"].iloc[0], np.ndarray):
-                    yaxis_values = group["mean"].apply(lambda x: x[args.obs_ind])
+                    yaxis_values = group["mean"].apply(lambda x: x[*args.obs_ind])
                 else:
                     yaxis_values = group["mean"]
 
@@ -241,6 +241,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--obs_ind",
         type=int,
+        nargs="+",
         default=0,
         help="If observables is an array, plot this index",
     )
