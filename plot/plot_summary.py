@@ -129,8 +129,8 @@ def main(args):
 
                 type_, L, nlayer, ncopy = name
 
-                # Handle case where chosen values are an array
                 if isinstance(group[args.xaxis].iloc[0], np.ndarray):
+                    # Handle case where chosen values are an array
                     xaxis_values = group[args.xaxis].apply(lambda x: x[args.xaxis_ind])
                 else:
                     xaxis_values = group[args.xaxis]
@@ -139,8 +139,11 @@ def main(args):
                     yaxis_values = group["mean"].apply(lambda x: x[*args.obs_ind])
                     data_label = f"{type_}, obs={obs}, inds={args.obs_ind}, L={L}"
                 else:
-                    yaxis_values = group["mean"]
                     data_label = f"{type_}, obs={obs}, L={L}"
+                    if args.diff:
+                        yaxis_values = group["diff"]
+                    else:
+                        yaxis_values = group["mean"]
 
                 # show errors for MC
                 if type_ == "MC":
@@ -149,20 +152,11 @@ def main(args):
                     error = None
 
                 # Set marker
+                marker_fmt = "o"
                 if type_ == "MC":
                     marker_fmt = "x"
-                elif type_ == "EC":
-                    marker_fmt = "o"
 
-                if args.diff:
-                    ax.errorbar(
-                        xaxis_values,
-                        group["diff"],
-                        fmt="o",
-                        yerr=error,
-                        label=data_label,
-                    )
-                elif type_ == "ED":
+                if type_ == "ED":
                     ax.plot(
                         xaxis_values,
                         yaxis_values,
