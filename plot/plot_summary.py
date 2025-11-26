@@ -144,7 +144,7 @@ def main(args):
 
                 # show errors for MC
                 if type_ == "MC":
-                    error = group["err"]
+                    error = group["err"]  # this will not work for array observables
                 else:
                     error = None
 
