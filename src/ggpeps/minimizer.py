@@ -287,6 +287,10 @@ class Minimizer:
                 self.cache.add_obs_to_cache(flattened_paramvec, "energy_grad", parametergrad)
             # logger.debug(f"Calculated energy: {energy}")
 
+            # Save the best result
+            if self.best_result is None or energy < utils.get_obs_mean_df(self.best_result, "energy"):
+                self.best_result = utils.deepcopy_summary_df(self.last_result)
+
             return energy
 
         # Jacobian wrapper
@@ -322,6 +326,10 @@ class Minimizer:
             parametergrad = utils.get_obs_mean_df(self.last_result, "energy_grad")
             self.cache.add_obs_to_cache(flattened_paramvec, "energy_grad", parametergrad)
 
+            # Save the best result
+            if self.best_result is None or energy < utils.get_obs_mean_df(self.best_result, "energy"):
+                self.best_result = utils.deepcopy_summary_df(self.last_result)
+
             return parametergrad.reshape((-1))
 
         # Manage settings for different minimization algorithms
@@ -356,10 +364,10 @@ class Minimizer:
         message += f"Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {num_jac_evals}"
 
         dest = MinimizerResult(
-            flattened_paramvec,
-            flattened_energygrad,
+            utils.get_obs_mean_df(self.best_result, "energy", column="paramvec"),
+            utils.get_obs_mean_df(self.best_result, "energy_grad"),
             self.cfg.method,
-            energy,
+            utils.get_obs_mean_df(self.best_result, "energy"),
             converged,
             message,
         )
@@ -392,9 +400,9 @@ class Minimizer:
             fname_mc_summary = f"summary_min_L_{cfg_str}.pkl"
             fname_result_min = f"result_min_L_{cfg_str}.pkl"
 
-            if self.last_result is not None:
-                # last_result may be None if caching is on and the last result was not computed
-                utils.save_summary_df(self.last_result, os.path.join(output_dir, fname_mc_summary))
+            if self.best_result is not None:
+                # result may be None if caching is on and the last result was not computed
+                utils.save_summary_df(self.best_result, os.path.join(output_dir, fname_mc_summary))
             with open(os.path.join(output_dir, fname_result_min), "wb") as outfile:
                 pickle.dump(self.min_result, outfile)
 
