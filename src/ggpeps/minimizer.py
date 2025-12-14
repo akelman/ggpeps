@@ -76,7 +76,8 @@ class Minimizer:
         # Below, we will have to be careful to only call valid functions
         self.evaluator_manager: EvaluatorManager = evaluator_manager
         self.last_paramvec: Optional[np.ndarray] = None
-        self.last_result: Optional[pd.DataFrame] = None  # track the result of the most recent evaluation
+        self.last_result: Optional[pd.DataFrame] = None  # track the most recent evaluation
+        self.best_result: Optional[pd.DataFrame] = None  # track the best evaluation (lowest energy) seen so far
         self.min_result: Optional[MinimizerResult] = None
 
         # Cache for the energy values and gradients
@@ -122,6 +123,10 @@ class Minimizer:
 
             max_grad_paramvec = np.max(np.abs(grad_paramvec))
 
+            # Save the best result
+            if self.best_result is None or energy < utils.get_obs_mean_df(self.best_result, "energy"):
+                self.best_result = utils.deepcopy_summary_df(result)
+
             # Update logs
             print_callback(ind, self)
 
@@ -131,10 +136,10 @@ class Minimizer:
                 logger.info(message)
 
                 self.min_result = MinimizerResult(
-                    paramvec,
-                    grad_paramvec,
+                    utils.get_obs_mean_df(self.best_result, "energy", column="paramvec"),
+                    utils.get_obs_mean_df(self.best_result, "energy_grad"),
                     self.cfg.method,
-                    energy,
+                    utils.get_obs_mean_df(self.best_result, "energy"),
                     True,
                     message,
                 )
@@ -149,10 +154,10 @@ class Minimizer:
         logger.warning(message)
 
         self.min_result = MinimizerResult(
-            paramvec,
-            grad_paramvec,
+            utils.get_obs_mean_df(self.best_result, "energy", column="paramvec"),
+            utils.get_obs_mean_df(self.best_result, "energy_grad"),
             self.cfg.method,
-            energy,
+            utils.get_obs_mean_df(self.best_result, "energy"),
             False,
             message,
         )
@@ -172,8 +177,6 @@ class Minimizer:
         beta1 = 0.9
         beta2 = 0.999
         eps = 1e-8
-
-        best_result = None
 
         paramvec = self.evaluator_manager.system_cfg.paramvec
 
@@ -196,8 +199,9 @@ class Minimizer:
             energy = utils.get_obs_mean_df(result, "energy")
             grad_paramvec = utils.get_obs_mean_df(result, "energy_grad")
 
-            if best_result is None or energy < utils.get_obs_mean_df(best_result, "energy"):
-                best_result = utils.deepcopy_summary_df(result)
+            # Save the best result
+            if self.best_result is None or energy < utils.get_obs_mean_df(self.best_result, "energy"):
+                self.best_result = utils.deepcopy_summary_df(result)
 
             m = beta1 * m + (1 - beta1) * grad_paramvec
             v = beta2 * v + (1 - beta2) * (grad_paramvec * grad_paramvec)
@@ -216,10 +220,10 @@ class Minimizer:
                 logger.info(message)
 
                 self.min_result = MinimizerResult(
-                    utils.get_obs_mean_df(best_result, "energy", column="paramvec"),
-                    utils.get_obs_mean_df(best_result, "energy_grad"),
+                    utils.get_obs_mean_df(self.best_result, "energy", column="paramvec"),
+                    utils.get_obs_mean_df(self.best_result, "energy_grad"),
                     self.cfg.method,
-                    utils.get_obs_mean_df(best_result, "energy"),
+                    utils.get_obs_mean_df(self.best_result, "energy"),
                     True,
                     message,
                 )
@@ -231,10 +235,10 @@ class Minimizer:
         logger.warning(message)
 
         self.min_result = MinimizerResult(
-            utils.get_obs_mean_df(best_result, "energy", column="paramvec"),
-            utils.get_obs_mean_df(best_result, "energy_grad"),
+            utils.get_obs_mean_df(self.best_result, "energy", column="paramvec"),
+            utils.get_obs_mean_df(self.best_result, "energy_grad"),
             self.cfg.method,
-            utils.get_obs_mean_df(best_result, "energy"),
+            utils.get_obs_mean_df(self.best_result, "energy"),
             False,
             message,
         )
