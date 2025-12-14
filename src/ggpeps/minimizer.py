@@ -141,7 +141,7 @@ class Minimizer:
                 return self.min_result
 
             # Adapt the parametervec according to the gradient
-            # TODO: Implement  stochasticreconfiguration
+            # TODO: Implement stochastic reconfiguration
 
             self.evaluator_manager.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
 
