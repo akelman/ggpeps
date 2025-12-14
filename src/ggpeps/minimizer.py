@@ -66,7 +66,7 @@ class MinimizerConfig:
 
 
 class Minimizer:
-    grad_methods: list[str] = ["CG", "BFGS", "L-BFGS-B", "TNC", "CUSTOM", "NEVMC"]
+    grad_methods: list[str] = ["CG", "BFGS", "L-BFGS-B", "TNC", "CUSTOM", "ADAM", "NEVMC"]
     no_grad_methods: list[str] = ["POWELL", "NELDER-MEAD"]
     supported_scipy_methods = grad_methods[:-2] + no_grad_methods
 
@@ -85,6 +85,8 @@ class Minimizer:
     def minimize(self) -> Optional[MinimizerResult]:
         if self.cfg.method == "CUSTOM":
             return self.minimize_custom()
+        if self.cfg.method == "ADAM":
+            return self.minimize_adam()
         elif self.cfg.method == "NEVMC":
             return self.minimize_NEVMC()
         elif self.cfg.method in self.supported_scipy_methods:
@@ -95,7 +97,7 @@ class Minimizer:
 
     def minimize_custom(self) -> MinimizerResult:
         """
-        Minimize the energy using a custom method.
+        Minimize the energy using a custom vanilla gradient descent method.
 
         Returns:
             MinimizerResult: The result of the minimization.
@@ -140,6 +142,82 @@ class Minimizer:
             # TODO: Implement  stochasticreconfiguration
 
             self.evaluator_manager.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
+
+        message = "Reached maximum number of iterations without convergence."
+        logger.warning(message)
+
+        self.min_result = MinimizerResult(
+            paramvec,
+            grad_paramvec,
+            self.cfg.method,
+            energy,
+            False,
+            message,
+        )
+        return self.min_result
+
+    def minimize_adam(self) -> MinimizerResult:
+        """
+        Minimize the energy using a custom adam implementation.
+
+        Returns:
+            MinimizerResult: The result of the minimization.
+        """
+        # TODO: once the entire evalutor is jax jit compatible, we can use the optax adam implementation
+        # which is also jit compatible.
+
+        # Adam parameters -- TODO: make configurable
+        beta1 = 0.9
+        beta2 = 0.999
+        eps = 1e-8
+
+        paramvec = self.evaluator_manager.system_cfg.paramvec
+
+        m = np.zeros_like(paramvec)
+        v = np.zeros_like(paramvec)
+
+        for ind in range(1, self.cfg.max_iter + 1):
+            if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
+                # We copy here to get a new set of variables.
+                # We will change paramvec below and do not want to change last_paramvec
+                self.last_paramvec = np.copy(paramvec)
+
+                # Monte Carlo part of the optimizer
+                result = self.evaluator_manager.simulate()
+
+            # Energy and gradient
+            energy = utils.get_obs_mean_df(result, "energy")
+            grad_paramvec = utils.get_obs_mean_df(result, "energy_grad")
+
+            m = beta1 * m + (1 - beta1) * grad_paramvec
+            v = beta2 * v + (1 - beta2) * (grad_paramvec * grad_paramvec)
+
+            m_hat = m / (1 - beta1**ind)
+            v_hat = v / (1 - beta2**ind)
+
+            step = self.cfg.alpha * m_hat / (np.sqrt(v_hat) + eps)
+
+            self.last_result = result
+
+            # Update logs
+            print_callback(ind, self)
+
+            # Check if the maximum of the gradient is smaller than convergence tolerance
+            if np.linalg.norm(step) < abs(self.cfg.tol):
+                message = f"Reached convergence: step < {self.cfg.tol}"
+                logger.info(message)
+
+                self.min_result = MinimizerResult(
+                    paramvec,
+                    grad_paramvec,
+                    self.cfg.method,
+                    energy,
+                    True,
+                    message,
+                )
+                return self.min_result
+
+            self.evaluator_manager.system_cfg.paramvec -= step
 
         message = "Reached maximum number of iterations without convergence."
         logger.warning(message)
