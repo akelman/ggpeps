@@ -76,7 +76,7 @@ class Minimizer:
         # Below, we will have to be careful to only call valid functions
         self.evaluator_manager: EvaluatorManager = evaluator_manager
         self.last_paramvec: Optional[np.ndarray] = None
-        self.last_result: Optional[pd.DataFrame] = None
+        self.last_result: Optional[pd.DataFrame] = None  # track the result of the most recent evaluation
         self.min_result: Optional[MinimizerResult] = None
 
         # Cache for the energy values and gradients
@@ -173,6 +173,10 @@ class Minimizer:
         beta2 = 0.999
         eps = 1e-8
 
+        best_energy = None
+        best_grad = None
+        best_paramvec = None
+
         paramvec = self.evaluator_manager.system_cfg.paramvec
 
         m = np.zeros_like(paramvec)
@@ -194,6 +198,11 @@ class Minimizer:
             energy = utils.get_obs_mean_df(result, "energy")
             grad_paramvec = utils.get_obs_mean_df(result, "energy_grad")
 
+            if best_energy is None or energy < best_energy:
+                best_energy = energy
+                best_grad = np.copy(grad_paramvec)
+                best_paramvec = np.copy(paramvec)
+
             m = beta1 * m + (1 - beta1) * grad_paramvec
             v = beta2 * v + (1 - beta2) * (grad_paramvec * grad_paramvec)
 
@@ -205,16 +214,16 @@ class Minimizer:
             # Update logs
             print_callback(ind, self)
 
-            # Check if the maximum of the gradient is smaller than convergence tolerance
+            # Check if the maximum of the planned step is smaller than convergence tolerance
             if np.linalg.norm(step) < abs(self.cfg.tol):
                 message = f"Reached convergence: step < {self.cfg.tol}. Total evals: {num_evals}."
                 logger.info(message)
 
                 self.min_result = MinimizerResult(
-                    paramvec,
-                    grad_paramvec,
+                    best_paramvec,
+                    best_grad,
                     self.cfg.method,
-                    energy,
+                    best_energy,
                     True,
                     message,
                 )
@@ -226,10 +235,10 @@ class Minimizer:
         logger.warning(message)
 
         self.min_result = MinimizerResult(
-            paramvec,
-            grad_paramvec,
+            best_paramvec,
+            best_grad,
             self.cfg.method,
-            energy,
+            best_energy,
             False,
             message,
         )
@@ -604,6 +613,7 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
     logger.debug(
         f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, int: {int_energy:.6f}, mass: {mass_energy:.6f}, chem: {chem_energy:.6f}"
     )
+    # logger.debug(f"Paramvec: {utils.get_obs_mean_df(res, 'energy', column='paramvec')}")
 
     # If python recieves a signal to stop computation gracefully, we catch it here.
     # There have been recent developments within scipy's handling of these callbacks.
