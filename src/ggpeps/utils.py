@@ -432,6 +432,24 @@ def save_summary_df(df: pd.DataFrame, fname_summary: str) -> None:
     df.to_pickle(fname_summary)
 
 
+def deepcopy_summary_df(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Deep copy a summary DataFrame, including numpy arrays in paramvec, mean, err, etc.
+
+    Args:
+        df: DataFrame of the format returned by Evaluator.summary()
+
+    Returns:
+        A fully independent copy of the DataFrame.
+    """
+    df_copy = df.copy(deep=True)  # does not make deep copies of np.ndarrays in the dataframe
+
+    for col in df.columns:
+        df_copy[col] = df_copy[col].apply(lambda x: np.copy(x) if isinstance(x, np.ndarray) else x)
+
+    return df_copy
+
+
 # =========== Matrix Evaluation Functions ====================
 
 

@@ -173,9 +173,7 @@ class Minimizer:
         beta2 = 0.999
         eps = 1e-8
 
-        best_energy = None
-        best_grad = None
-        best_paramvec = None
+        best_result = None
 
         paramvec = self.evaluator_manager.system_cfg.paramvec
 
@@ -198,10 +196,8 @@ class Minimizer:
             energy = utils.get_obs_mean_df(result, "energy")
             grad_paramvec = utils.get_obs_mean_df(result, "energy_grad")
 
-            if best_energy is None or energy < best_energy:
-                best_energy = energy
-                best_grad = np.copy(grad_paramvec)
-                best_paramvec = np.copy(paramvec)
+            if best_result is None or energy < utils.get_obs_mean_df(best_result, "energy"):
+                best_result = utils.deepcopy_summary_df(result)
 
             m = beta1 * m + (1 - beta1) * grad_paramvec
             v = beta2 * v + (1 - beta2) * (grad_paramvec * grad_paramvec)
@@ -220,10 +216,10 @@ class Minimizer:
                 logger.info(message)
 
                 self.min_result = MinimizerResult(
-                    best_paramvec,
-                    best_grad,
+                    utils.get_obs_mean_df(best_result, "energy", column="paramvec"),
+                    utils.get_obs_mean_df(best_result, "energy_grad"),
                     self.cfg.method,
-                    best_energy,
+                    utils.get_obs_mean_df(best_result, "energy"),
                     True,
                     message,
                 )
@@ -235,10 +231,10 @@ class Minimizer:
         logger.warning(message)
 
         self.min_result = MinimizerResult(
-            best_paramvec,
-            best_grad,
+            utils.get_obs_mean_df(best_result, "energy", column="paramvec"),
+            utils.get_obs_mean_df(best_result, "energy_grad"),
             self.cfg.method,
-            best_energy,
+            utils.get_obs_mean_df(best_result, "energy"),
             False,
             message,
         )
