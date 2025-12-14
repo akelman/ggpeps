@@ -450,8 +450,8 @@ def main(args):
         logger.info(f"Method: {args.method.upper()}")
         logger.info(f"Max Iterations: {args.maxiter}")
         logger.info(f"Convergence tolerance: {args.tol}")
-        if args.method.upper() == "CUSTOM" or args.method.upper() == "NEVMC":
-            # this is not used by the scipy minimizer, but by the custom and NEVMC minimizer
+        if args.method.upper() in ["CUSTOM", "ADAM", "NEVMC"]:
+            # the learning rate is not used by the scipy minimizers
             logger.info(f"Learning rate: {args.alpha}")
         logger.info("============================")
 

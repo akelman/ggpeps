@@ -53,7 +53,7 @@ class MinimizerConfig:
     def __init__(self) -> None:
         self.max_iter: int = 100
         self.tol: float = 1e-5  # convergence tol (e.g. stop when grad falls below tol)
-        self.alpha: float = 1e-2
+        self.alpha: float = 1e-2  # learning rate
         self._method: str = "CG"
 
     @property
@@ -68,7 +68,7 @@ class MinimizerConfig:
 class Minimizer:
     grad_methods: list[str] = ["CG", "BFGS", "L-BFGS-B", "TNC", "CUSTOM", "ADAM", "NEVMC"]
     no_grad_methods: list[str] = ["POWELL", "NELDER-MEAD"]
-    supported_scipy_methods = grad_methods[:-2] + no_grad_methods
+    supported_scipy_methods = grad_methods[:-3] + no_grad_methods
 
     def __init__(self, cfg: MinimizerConfig, evaluator_manager: EvaluatorManager) -> None:
         self.cfg: MinimizerConfig = cfg
@@ -104,7 +104,8 @@ class Minimizer:
         """
         paramvec = self.evaluator_manager.system_cfg.paramvec
 
-        for ind in range(self.cfg.max_iter):
+        num_evals = 0
+        for ind in range(1, self.cfg.max_iter + 1):
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
                 # We copy here to get a new set of variables.
                 # We will change paramvec below and do not want to change last_paramvec
@@ -112,20 +113,21 @@ class Minimizer:
 
                 # Monte Carlo part of the optimizer
                 result = self.evaluator_manager.simulate()
+                self.last_result = result
+                num_evals += 1
 
             # Energy and gradient
             energy = utils.get_obs_mean_df(result, "energy")
             grad_paramvec = utils.get_obs_mean_df(result, "energy_grad")
 
             max_grad_paramvec = np.max(np.abs(grad_paramvec))
-            self.last_result = result
 
             # Update logs
             print_callback(ind, self)
 
             # Check if the maximum of the gradient is smaller than convergence tolerance
             if max_grad_paramvec < abs(self.cfg.tol):
-                message = f"Reached convergence: max grad paramvec < {self.cfg.tol}"
+                message = f"Reached convergence: max grad paramvec < {self.cfg.tol}. Total evals: {num_evals}."
                 logger.info(message)
 
                 self.min_result = MinimizerResult(
@@ -143,7 +145,7 @@ class Minimizer:
 
             self.evaluator_manager.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
 
-        message = "Reached maximum number of iterations without convergence."
+        message = f"Reached maximum number of iterations without convergence. Total evals: {num_evals}."
         logger.warning(message)
 
         self.min_result = MinimizerResult(
@@ -176,6 +178,7 @@ class Minimizer:
         m = np.zeros_like(paramvec)
         v = np.zeros_like(paramvec)
 
+        num_evals = 0
         for ind in range(1, self.cfg.max_iter + 1):
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, paramvec):
                 # We copy here to get a new set of variables.
@@ -184,6 +187,8 @@ class Minimizer:
 
                 # Monte Carlo part of the optimizer
                 result = self.evaluator_manager.simulate()
+                self.last_result = result
+                num_evals += 1
 
             # Energy and gradient
             energy = utils.get_obs_mean_df(result, "energy")
@@ -197,14 +202,12 @@ class Minimizer:
 
             step = self.cfg.alpha * m_hat / (np.sqrt(v_hat) + eps)
 
-            self.last_result = result
-
             # Update logs
             print_callback(ind, self)
 
             # Check if the maximum of the gradient is smaller than convergence tolerance
             if np.linalg.norm(step) < abs(self.cfg.tol):
-                message = f"Reached convergence: step < {self.cfg.tol}"
+                message = f"Reached convergence: step < {self.cfg.tol}. Total evals: {num_evals}."
                 logger.info(message)
 
                 self.min_result = MinimizerResult(
@@ -219,7 +222,7 @@ class Minimizer:
 
             self.evaluator_manager.system_cfg.paramvec -= step
 
-        message = "Reached maximum number of iterations without convergence."
+        message = f"Reached maximum number of iterations without convergence. Total evals: {num_evals}."
         logger.warning(message)
 
         self.min_result = MinimizerResult(
@@ -573,8 +576,8 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
 
     message = f"Energy: {energy:.9f}, Total Mass: {mass_energy_op}, Occupation: {avg_occ}, "
     message += f"Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
-    if minimizer.cfg.method == "CUSTOM":
-        # We only have access to the iteration number if we are handling the minimization (via the CUSTOM method)
+    if minimizer.cfg.method in ["CUSTOM", "ADAM"]:
+        # We only have access to the iteration number if we are using our own minimizer implementation
         message = f"Iter: {x:03d}, {message}"
     if "mc" in minimizer.evaluator_manager.type:
         # Acceptance probability is only defined for MC
