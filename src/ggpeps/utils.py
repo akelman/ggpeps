@@ -408,17 +408,18 @@ def derivative_pfaffian(mat: xnp.ndarray, d_mat: xnp.ndarray, pfaval=None) -> fl
         return derivative_pfaffian_numpy(mat, d_mat, pfaval=pfaval)
 
 
-def get_obs_mean_df(df, obs):
-    """Get the mean of an observable from the summary dataframe.
+def get_obs_mean_df(df: pd.DataFrame, obs: str, column: str = "mean"):
+    """Get the <column> (mean, err, paramvec, etc) of an observable from the summary dataframe.
 
     Args:
-        obs (str): Name of the observable.
         df (pd.DataFrame): Summary dataframe.
+        obs (str): Name of the observable.
+        column (str, optional): Column to extract. Defaults to "mean".
 
     Returns:
         float or xnp.ndarray: Mean value of the observable.
     """
-    return df.loc[df["name"] == obs, "mean"].values[0]
+    return df.loc[df["name"] == obs, column].values[0]
 
 
 def save_summary_df(df: pd.DataFrame, fname_summary: str) -> None:
