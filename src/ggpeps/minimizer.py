@@ -369,11 +369,12 @@ class Minimizer:
     def save(self, output_dir: str = ".") -> None:
         """
         Save the minimization results to the output directory.
+
         Args:
             output_dir (str): Directory to save the results.
 
-            Returns:
-                None
+        Returns:
+            None
         """
         if self.min_result is not None:
             sys_cfg = self.evaluator_manager.system_cfg
@@ -556,6 +557,7 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
     Args:
         x (int): Current iteration number.
         minimizer (Minimizer): The minimizer instance containing the results.
+
     Returns:
         None
     """
