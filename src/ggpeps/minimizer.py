@@ -177,6 +177,7 @@ class Minimizer:
         beta1 = 0.9
         beta2 = 0.999
         eps = 1e-8
+        lr = self.cfg.alpha
 
         paramvec = self.evaluator_manager.system_cfg.paramvec
 
@@ -209,7 +210,8 @@ class Minimizer:
             m_hat = m / (1 - beta1**ind)
             v_hat = v / (1 - beta2**ind)
 
-            step = self.cfg.alpha * m_hat / (np.sqrt(v_hat) + eps)
+            step = lr * m_hat / (np.sqrt(v_hat) + eps)
+            # lr = lr / (1 + ind / 100)
 
             # Update logs
             print_callback(ind, self)
