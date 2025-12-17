@@ -1311,7 +1311,7 @@ def make_sigma(ncopy: int, layer: Layer) -> list[int]:
     Build the link-pairing permutation sigma for the chosen layer.
 
     Args:
-        k (int): Number of copies (must be 1 or even).
+        ncopy (int): Number of copies (must be 1 or even).
         layer (Layer): Layer type; 'physical' uses identity, 'pure_gauge' swaps (2a-1<->2a).
 
     Returns:
