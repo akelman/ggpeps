@@ -1313,16 +1313,16 @@ def make_sigma(ncopy: int, layer: Layer) -> list[int]:
 
     Args:
         ncopy (int): Number of copies (must be 1 or even).
-        layer (Layer): Layer type; 'physical' uses identity, 'pure_gauge' swaps (2a-1<->2a).
+        layer (Layer): Layer type; 'physical' uses identity, 'pure_gauge' swaps (2a-1 <-> 2a).
 
     Returns:
         list[int]: 1-based permutation list where entry j equals sigma(j).
 
     Raises:
-        ValueError: If k is invalid or layer is not one of {'pure_gauge','physical'}.
+        ValueError: If ncopy is invalid or layer is not one of {'pure_gauge', 'physical'}.
     """
     if not (ncopy == 1 or ncopy % 2 == 0):
-        raise ValueError("k must be 1 or even (odd k>1 is not supported).")
+        raise ValueError("ncopy must be 1 or even (odd ncopy>1 is not supported).")
     elif layer == "physical":
         return list(range(1, ncopy + 1))
     elif layer == "pure_gauge":
@@ -1338,7 +1338,7 @@ def make_sigma(ncopy: int, layer: Layer) -> list[int]:
         raise ValueError("layer must be 'pure_gauge' or 'physical'")
 
 
-def bracket_terms(copy: int, sigma_j: int, eta2: complex, phi: float) -> list[tuple[complex, tuple[int, ...]]]:
+def bracket_terms(j: int, sigma_j: int, eta2: complex, phi: float) -> list[tuple[complex, tuple[int, ...]]]:
     """
     Assemble the 8-term bracket for copy j without operator reordering.
 
@@ -1352,8 +1352,8 @@ def bracket_terms(copy: int, sigma_j: int, eta2: complex, phi: float) -> list[tu
         list[tuple[complex, tuple[int, ...]]]:
             List of (coefficient, indices) terms for this bracket after snapping negligible coefficients.
     """
-    a = 4 * copy - 2
-    b = 4 * copy - 1
+    a = 4 * j - 2
+    b = 4 * j - 1
     c = 4 * sigma_j - 4
     d = 4 * sigma_j - 3
     eip = cmath.exp(1j * phi)
@@ -1386,7 +1386,7 @@ def _snap_complex(z: complex) -> complex:
         z (complex): Input complex number.
 
     Returns:
-        complex: Cleaned complex with near-zero components set to 0.0, or 0.0 if |z| is below tolerance.
+        complex: Cleaned complex with near-zero components set to 0.0, or 0.0 if abs(z) is below tolerance.
     """
     TOL = 1e-12  # hard-coded absolute tolerance
     if abs(z) <= TOL:
@@ -1406,7 +1406,7 @@ def _pfaffian_wick_phase(mon: tuple[int, ...]) -> complex:
         mon (tuple[int, ...]): Ordered Majorana index tuple (even length).
 
     Returns:
-        complex: One of {1, -1j, -1, 1j}, equal to i^(-len(mon)/2).
+        complex: One of {1, -1j, -1, 1j}, equal to i^(-len(mon)//2).
 
     Raises:
         ValueError: If len(mon) is odd.
@@ -1435,8 +1435,8 @@ def generate_gauged_projector_terms(
     """
     Expand the Z_N-gauged projector product and collect terms.
 
-    - Builds 4^{-ncopy} * prod_{j=1}^{ncopy} [eight-term bracket] with no operator reordering,
-    - maps orientation to eta^2 (horizontal->1, vertical->i),
+    - Builds 4^(-ncopy) * product_{j=1}^{ncopy} [eight-term bracket] with no operator reordering,
+    - maps orientation to eta^2 (horizontal -> 1, vertical -> i),
     - sets phi = (2*pi)/group_order,
     - multiplies each monomial by the Pfaffian-Wick phase,
     - returns the sparse polynomial representation.
@@ -1444,13 +1444,13 @@ def generate_gauged_projector_terms(
     Args:
         ncopy (int): Number of copies (1 or even).
         layer (Layer): 'physical' or 'pure_gauge' (controls sigma).
-        orientation (Orientation): 'horizontal' (eta^2=1) or 'vertical' (eta^2=i).
+        orientation (Orientation): 'horizontal' (eta^2 = 1) or 'vertical' (eta^2 = i).
         group_order (int): N in Z_N; phi = 2*pi/N.
 
     Returns:
         tuple[tuple[tuple[complex, tuple[int, ...]], ...], complex]:
-            (indecies, constant), where indecies is a tuple of (coefficient, monomial indices) sorted by length
-            then lexicographically, and constant is the scalar constant term.
+            (indices, constant), where indices is a tuple of (coefficient, monomial indices), sorted by length
+            then lexicographically; constant is the scalar constant term.
 
     Raises:
         ValueError: On invalid layer/orientation or invalid ncopy.
