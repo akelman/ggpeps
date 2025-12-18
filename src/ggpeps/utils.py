@@ -5,7 +5,7 @@ import gzip
 import pickle
 import logging
 import subprocess  # Start process for git hash
-from typing import Optional, Union, Literal
+from typing import Optional, Union, Literal, DefaultDict
 
 import cmath
 import numba as nb
@@ -31,6 +31,7 @@ from ggpeps.system.backend_numpy import derivative_pfaffian_numpy
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
+MonomialAccumulator = DefaultDict[tuple[int, ...], complex]
 
 # Global constants
 paulix = np.array([[0, 1], [1, 0]])
@@ -1457,6 +1458,7 @@ def generate_gauged_projector_terms(
     sigma = make_sigma(ncopy, layer)
 
     # Map orientation -> eta^2
+    eta2: Union[float, complex]
     if orientation == "horizontal":
         eta2 = 1.0
     elif orientation == "vertical":
@@ -1467,13 +1469,13 @@ def generate_gauged_projector_terms(
     phi = (2.0 * np.pi) / group_order
 
     # Accumulator of partial expansions: monomial tuple -> coefficient
-    acc = defaultdict(complex)
+    acc: MonomialAccumulator = defaultdict(complex)
     acc[()] = 1.0  # multiplicative identity (empty monomial)
 
     # Multiply in each bracket
     for j in range(1, ncopy + 1):
         terms_j = bracket_terms(j, sigma[j - 1], eta2, phi)
-        new_acc = defaultdict(complex)
+        new_acc: MonomialAccumulator = defaultdict(complex)
         for indsA, coefA in acc.items():
             for coefB, indsB in terms_j:
                 new_acc[indsA + indsB] += coefA * coefB
