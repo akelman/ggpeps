@@ -6,7 +6,7 @@ import ggpeps
 from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
-from .config_base import Config2DBase
+from .config_base import Config2DBase, generate_gauged_projector_terms
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -76,12 +76,12 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
     def init_el_energy_terms(self) -> None:
         """Build idxarr_vec (paired H/V terms per layer)."""
         # Constants used in the calculation of the electric energy on a horizontal link.
-        idxarr_lay_pg_h, _ = utils.generate_gauged_projector_terms(self.ncopy, "pure_gauge", "horizontal", 2)
-        idxarr_lay_fermionic_h, _ = utils.generate_gauged_projector_terms(self.ncopy, "physical", "horizontal", 2)
+        idxarr_lay_pg_h, _ = generate_gauged_projector_terms(self.ncopy, "pure_gauge", "horizontal", 2)
+        idxarr_lay_fermionic_h, _ = generate_gauged_projector_terms(self.ncopy, "physical", "horizontal", 2)
 
         # Constants used in the calculation of the electric energy on a vertical link.
-        idxarr_lay_pg_v, _ = utils.generate_gauged_projector_terms(self.ncopy, "pure_gauge", "vertical", 2)
-        idxarr_lay_fermionic_v, _ = utils.generate_gauged_projector_terms(self.ncopy, "physical", "vertical", 2)
+        idxarr_lay_pg_v, _ = generate_gauged_projector_terms(self.ncopy, "pure_gauge", "vertical", 2)
+        idxarr_lay_fermionic_v, _ = generate_gauged_projector_terms(self.ncopy, "physical", "vertical", 2)
 
         # Pair horizontal/vertical term-lists termwise for each layer kind
         zipped_pg = tuple(zip(idxarr_lay_pg_h, idxarr_lay_pg_v))
