@@ -320,3 +320,222 @@ class Config2DBase(ABC):
         This method must be overwritten in a subclass.
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+
+# ==================== ZN Gauged Projector Terms ====================
+import cmath
+from collections import defaultdict
+from typing import Optional, Union, Literal, DefaultDict
+
+MonomialAccumulator = DefaultDict[tuple[int, ...], complex]
+
+
+Layer = Literal["pure_gauge", "physical"]
+"""Layer type selector.
+- "physical"   : sigma(j) = j (identity)
+- "pure_gauge" : sigma swaps each pair (2a-1 <-> 2a) for a = 1..k/2.
+"""
+
+Orientation = Literal["horizontal", "vertical"]
+"""Orientation type selector.
+- "horizontal": sets eta^2 = 1
+- "vertical"  : sets eta^2 = i
+"""
+
+
+def make_sigma(ncopy: int, layer: Layer) -> list[int]:
+    """
+    Build the link-pairing permutation sigma for the chosen layer.
+
+    Args:
+        ncopy (int): Number of copies (must be 1 or even).
+        layer (Layer): Layer type; 'physical' uses identity, 'pure_gauge' swaps (2a-1 <-> 2a).
+
+    Returns:
+        list[int]: 1-based permutation list where entry j equals sigma(j).
+
+    Raises:
+        ValueError: If ncopy is invalid or layer is not one of {'pure_gauge', 'physical'}.
+    """
+    if not (ncopy == 1 or ncopy % 2 == 0):
+        raise ValueError("ncopy must be 1 or even (odd ncopy>1 is not supported).")
+    elif layer == "physical":
+        return list(range(1, ncopy + 1))
+    elif layer == "pure_gauge":
+        if ncopy == 1:
+            return [1]
+        s = [0] * ncopy
+        for a in range(1, ncopy // 2 + 1):
+            i, j = 2 * a - 1, 2 * a
+            s[i - 1] = j
+            s[j - 1] = i
+        return s
+    else:
+        raise ValueError("layer must be 'pure_gauge' or 'physical'")
+
+
+def bracket_terms(j: int, sigma_j: int, eta2: complex, phi: float) -> list[tuple[complex, tuple[int, ...]]]:
+    """
+    Assemble the 8-term bracket for copy j without operator reordering.
+
+    Args:
+        j (int): Copy index (1-based).
+        sigma_j (int): Value of sigma(j) (1-based).
+        eta2 (complex): Orientation-dependent parameter (eta^2).
+        phi (float): Phase angle; 2*pi/N.
+
+    Returns:
+        list[tuple[complex, tuple[int, ...]]]:
+            List of (coefficient, indices) terms for this bracket after snapping negligible coefficients.
+    """
+    a = 4 * j - 2
+    b = 4 * j - 1
+    c = 4 * sigma_j - 4
+    d = 4 * sigma_j - 3
+    eip = cmath.exp(1j * phi)
+
+    raw_terms = [
+        ((eta2.real), (a, c)),  # + Re(eta^2) * c_a c_c
+        (-(eta2.imag), (a, d)),  # - Im(eta^2) * c_a c_d
+        (-(eta2.imag), (b, c)),  # - Im(eta^2) * c_b c_c
+        (-(eta2.real), (b, d)),  # - Re(eta^2) * c_b c_d
+        (0.5j * (eip + 3.0), (c, d)),  # + i(e^{i phi}+3)/2 * c_c c_d
+        (0.5j * (eip + 3.0), (a, b)),  # + i(e^{i phi}+3)/2 * c_a c_b
+        (-0.5 * (eip + 1.0), (a, b, c, d)),  # - (e^{i phi}+1)/2 * c_a c_b c_c c_d
+        (0.5 * (eip + 1.0), ()),  # + (e^{i phi}+1)/2
+    ]
+
+    # Snap small real/imag parts and drop zeros to reduce work upstream
+    terms: list[tuple[complex, tuple[int, ...]]] = []
+    for coef, inds in raw_terms:
+        snapped = _snap_complex(coef)
+        if snapped != 0.0:
+            terms.append((snapped, inds))
+    return terms
+
+
+def _snap_complex(z: complex) -> complex:
+    """
+    Component-wise zeroing of tiny real/imag parts.
+
+    Args:
+        z (complex): Input complex number.
+
+    Returns:
+        complex: Cleaned complex with near-zero components set to 0.0, or 0.0 if abs(z) is below tolerance.
+    """
+    TOL = 1e-12  # hard-coded absolute tolerance
+    if abs(z) <= TOL:
+        return 0.0
+    zr = 0.0 if abs(z.real) <= TOL else z.real
+    zi = 0.0 if abs(z.imag) <= TOL else z.imag
+    if zr == 0.0 and zi == 0.0:
+        return 0.0
+    return zr if zi == 0.0 else complex(zr, zi)
+
+
+def _pfaffian_wick_phase(mon: tuple[int, ...]) -> complex:
+    """
+    Compute the Pfaffian-Wick phase i^(-len(mon)/2) for an even Majorana monomial.
+
+    Args:
+        mon (tuple[int, ...]): Ordered Majorana index tuple (even length).
+
+    Returns:
+        complex: One of {1, -1j, -1, 1j}, equal to i^(-len(mon)//2).
+
+    Raises:
+        ValueError: If len(mon) is odd.
+    """
+    n = len(mon)
+    if n % 2 != 0:
+        raise ValueError(f"Monomial length is odd ({n}); expected even.")
+    m = n // 2
+    r = m % 4  # map exponent class for i^(-m)
+    if r == 0:
+        return 1.0
+    elif r == 1:
+        return -1j
+    elif r == 2:
+        return -1.0
+    else:  # r == 3
+        return 1j
+
+
+def generate_gauged_projector_terms(
+    ncopy: int,
+    layer: Layer,
+    orientation: Orientation,
+    group_order: int,
+) -> tuple[tuple[tuple[complex, tuple[int, ...]], ...], complex]:
+    """
+    Expand the Z_N-gauged projector product and collect terms.
+
+    - Builds 4^(-ncopy) * product_{j=1}^{ncopy} [eight-term bracket] with no operator reordering,
+    - maps orientation to eta^2 (horizontal -> 1, vertical -> i),
+    - sets phi = (2*pi)/group_order,
+    - multiplies each monomial by the Pfaffian-Wick phase,
+    - returns the sparse polynomial representation.
+
+    Args:
+        ncopy (int): Number of copies (1 or even).
+        layer (Layer): 'physical' or 'pure_gauge' (controls sigma).
+        orientation (Orientation): 'horizontal' (eta^2 = 1) or 'vertical' (eta^2 = i).
+        group_order (int): N in Z_N; phi = 2*pi/N.
+
+    Returns:
+        tuple[tuple[tuple[complex, tuple[int, ...]], ...], complex]:
+            (indices, constant), where indices is a tuple of (coefficient, monomial indices), sorted by length
+            then lexicographically; constant is the scalar constant term.
+
+    Raises:
+        ValueError: On invalid layer/orientation or invalid ncopy.
+    """
+    sigma = make_sigma(ncopy, layer)
+
+    # Map orientation -> eta^2
+    eta2: Union[float, complex]
+    if orientation == "horizontal":
+        eta2 = 1.0
+    elif orientation == "vertical":
+        eta2 = 1j
+    else:
+        raise ValueError("orientation must be 'horizontal' or 'vertical'")
+
+    phi = (2.0 * np.pi) / group_order
+
+    # Accumulator of partial expansions: monomial tuple -> coefficient
+    acc: MonomialAccumulator = defaultdict(complex)
+    acc[()] = 1.0  # multiplicative identity (empty monomial)
+
+    # Multiply in each bracket
+    for j in range(1, ncopy + 1):
+        terms_j = bracket_terms(j, sigma[j - 1], eta2, phi)
+        new_acc: MonomialAccumulator = defaultdict(complex)
+        for indsA, coefA in acc.items():
+            for coefB, indsB in terms_j:
+                new_acc[indsA + indsB] += coefA * coefB
+        acc = new_acc
+
+    # Apply global prefactor
+    pref = 4 ** (-ncopy)
+    for mon in list(acc.keys()):
+        acc[mon] *= pref
+
+    # Split constant vs others and build the output
+    constant = _snap_complex(acc.pop((), 0.0))
+    items = [(mon, coef) for mon, coef in acc.items() if coef != 0.0]
+
+    # Multiply each coefficient by i^(-len(mon)/2), the Pfaffian-Wick phase
+    phased_items: list[tuple[tuple[int, ...], complex]] = []
+    for mon, coef in items:
+        factor = _pfaffian_wick_phase(mon)
+        new_coef = _snap_complex(coef * factor)
+        if new_coef != 0.0:
+            phased_items.append((mon, new_coef))
+
+    # Sort terms by monomial length (shorter first) then lexicographic tuple order for deterministic output.
+    phased_items.sort(key=lambda kv: (len(kv[0]), kv[0]))
+    indices = tuple((coef, mon) for mon, coef in phased_items)
+
+    return indices, constant
