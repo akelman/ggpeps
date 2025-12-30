@@ -11,6 +11,10 @@ from ggpeps import modearray
 
 from .system_base import System2DBase
 from .config_D6_2d import D6System2D_Config
+from .config_base import IdxArrVec
+
+
+from .system_base import maybe_jit
 
 # from ggpeps.system.global_funcs import update_gauge_ind
 
@@ -448,15 +452,49 @@ class D2nSystem2D(System2DBase):
         return mag_energy_bare
 
     @staticmethod
+    @maybe_jit(static_argnames=["idxarrs", "nlayer", "mod_link_inds", "nlinks"])
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
-        idxarrs: tuple,
+        idxarrs: IdxArrVec,
+        mod_link_inds: tuple[int, ...],
+        nlinks: int,
         nlayer: int,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
     ) -> xnp.ndarray:
-        dest = xnp.zeros(nlayer)
-        return xnp.asarray(dest)
+
+        lognorm_default = xnp.sum(lognormvec_default)
+
+        num_el_links = len(mod_link_inds)  # number of links on which the electric energy is computed
+        dest = xnp.zeros((nlayer, num_el_links))
+
+        # TODO: vectorize!
+        for layerind in range(nlayer):
+            layer_pairs = idxarrs[layerind]  # tuple of pairs: ((H,V), (H,V), ...)
+            norm_mod_linkvec = norm_mod_vec[layerind]
+
+            # Iterate over the links
+            for link_pos, norm_mod in enumerate(norm_mod_linkvec):
+                ###################### Calculation of <\sum_j f_j |jmn><jmn|> ########################
+                # The matrix elements yield only the real part of <P>
+                # If we use the log formulation, we can calculate the log of single terms.
+
+                # Instead of writing down all the terms explicitly, we build tuples of the prefactors
+                # and the indices of the covariance matrix.
+
+                is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
+
+                pf_tot = 0.0
+                for term_ind, (term_h, term_v) in enumerate(layer_pairs):
+                    # each term_* is (prefactor, indices); pfaffians already computed per term_ind
+                    prefactor = term_v[0] if is_vertical else term_h[0]
+                    pfaval = el_pfaffians[layerind, link_pos, term_ind]
+                    pf_tot += prefactor * pfaval
+
+                el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
+                dest = backend.array_assign(dest, (layerind, link_pos), el_energy_link)
+
+        return dest
 
     @staticmethod
     def _compute_el_grad_vec(
