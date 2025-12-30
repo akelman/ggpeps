@@ -570,3 +570,26 @@ def generate_gauged_projector_terms(
     indices = tuple((coef, mon) for mon, coef in phased_items)
 
     return indices, constant
+
+
+def _get_cov_matrix_idx(color, copy, direction, majorana, ncolors, ncopies, ndirections=2):
+    """Helper function to get the index in the covariance matrix for a given mode.
+
+    Args:
+        color (int): color index (1 to ncolors) - 1-based
+        copy (int): copy index (1 to ncopies) - 1-based
+        direction (int): direction index (1 to ndirections) - 1-based
+        majorana (int): Majorana index (1 to 2) - 1-based
+        ncolors (int): number of colors
+        ncopies (int): number of copies
+        ndirections (int, optional): number of directions (system's spatial dimension). Defaults to 2.
+    Returns:
+        int: index in the covariance matrix - 1-based
+    """
+    idx = (
+        (color - 1) * (ncopies * ndirections * 2)
+        + (copy - 1) * (ndirections * 2)
+        + (direction - 1) * 2
+        + (majorana - 1)
+    )
+    return idx + 1  # convert to 1-based index
