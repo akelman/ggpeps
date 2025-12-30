@@ -404,17 +404,18 @@ def derivative_pfaffian(mat: xnp.ndarray, d_mat: xnp.ndarray, pfaval=None) -> fl
         return derivative_pfaffian_numpy(mat, d_mat, pfaval=pfaval)
 
 
-def get_obs_mean_df(df, obs):
-    """Get the mean of an observable from the summary dataframe.
+def get_obs_mean_df(df: pd.DataFrame, obs: str, column: str = "mean"):
+    """Get the <column> (mean, err, paramvec, etc) of an observable from the summary dataframe.
 
     Args:
-        obs (str): Name of the observable.
         df (pd.DataFrame): Summary dataframe.
+        obs (str): Name of the observable.
+        column (str, optional): Column to extract. Defaults to "mean".
 
     Returns:
         float or xnp.ndarray: Mean value of the observable.
     """
-    return df.loc[df["name"] == obs, "mean"].values[0]
+    return df.loc[df["name"] == obs, column].values[0]
 
 
 def save_summary_df(df: pd.DataFrame, fname_summary: str) -> None:
@@ -425,6 +426,24 @@ def save_summary_df(df: pd.DataFrame, fname_summary: str) -> None:
         fname_summary (str): Output filename for the summary
     """
     df.to_pickle(fname_summary)
+
+
+def deepcopy_summary_df(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Deep copy a summary DataFrame, including numpy arrays in paramvec, mean, err, etc.
+
+    Args:
+        df: DataFrame of the format returned by Evaluator.summary()
+
+    Returns:
+        A fully independent copy of the DataFrame.
+    """
+    df_copy = df.copy(deep=True)  # does not make deep copies of np.ndarrays in the dataframe
+
+    for col in df.columns:
+        df_copy[col] = df_copy[col].apply(lambda x: np.copy(x) if isinstance(x, np.ndarray) else x)
+
+    return df_copy
 
 
 # =========== Matrix Evaluation Functions ====================
