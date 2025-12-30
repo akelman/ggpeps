@@ -150,6 +150,9 @@ class Minimizer:
 
             self.evaluator_manager.system_cfg.paramvec -= self.cfg.alpha * grad_paramvec
 
+        # helps with static type checking
+        assert self.best_result is not None
+
         message = f"Reached maximum number of iterations without convergence. Total evals: {num_evals}."
         logger.warning(message)
 
@@ -236,6 +239,9 @@ class Minimizer:
         message = f"Reached maximum number of iterations without convergence. Total evals: {num_evals}."
         logger.warning(message)
 
+        # helps with static type checking
+        assert self.best_result is not None
+
         self.min_result = MinimizerResult(
             utils.get_obs_mean_df(self.best_result, "energy", column="paramvec"),
             utils.get_obs_mean_df(self.best_result, "energy_grad"),
@@ -270,7 +276,7 @@ class Minimizer:
                 return energy
 
             if self.last_paramvec is None or not np.allclose(self.last_paramvec, flattened_paramvec):
-                # We only set the parametervec and start the simulation if the parametervec is new
+                # We only set the parametervec and do a simulation if the parametervec is new
                 self.last_paramvec = flattened_paramvec
                 self.evaluator_manager.system_cfg.paramvec = np.reshape(
                     flattened_paramvec,
@@ -278,8 +284,11 @@ class Minimizer:
                 )
                 self.last_result = self.evaluator_manager.simulate()
 
+            # helps with static type checking
+            assert self.last_result is not None
+
             # Save to cache -
-            #   it is important to save energy and gradients (even though the last_paramvec stores both)
+            #   it is important to save energy and gradients (even though the last_result stores both)
             #   so that if the computation is interrupted (which loses the last_paramvec),
             #   we can still use the cached values
             energy = utils.get_obs_mean_df(self.last_result, "energy")
@@ -321,6 +330,9 @@ class Minimizer:
                     self.evaluator_manager.system_cfg.param_shape(),
                 )
                 self.last_result = self.evaluator_manager.simulate()
+
+            # helps with static type checking
+            assert self.last_result is not None
 
             # Save to cache
             energy = utils.get_obs_mean_df(self.last_result, "energy")
@@ -364,6 +376,9 @@ class Minimizer:
         converged = min_result.success
         message = f"{min_result.message} "
         message += f"Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {num_jac_evals}"
+
+        # helps with static type checking
+        assert self.best_result is not None
 
         dest = MinimizerResult(
             utils.get_obs_mean_df(self.best_result, "energy", column="paramvec"),
