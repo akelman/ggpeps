@@ -381,7 +381,17 @@ def make_sigma(ncopy: int, layer: Layer) -> list[int]:
         raise ValueError("layer must be 'pure_gauge' or 'physical'")
 
 
-def bracket_terms(j: int, sigma_j: int, eta2: complex, phi: float) -> list[tuple[complex, tuple[int, ...]]]:
+def bracket_terms(
+    copy: int,
+    sigma_copy: int,
+    eta2: complex,
+    phi: float,
+    color: int,
+    ncolors: int,
+    ncopies: int,
+    group_element: xnp.ndarray,
+    site,
+) -> list[tuple[complex, tuple[int, ...]]]:
     """
     Assemble the 8-term bracket for copy j without operator reordering.
 
@@ -411,30 +421,71 @@ def bracket_terms(j: int, sigma_j: int, eta2: complex, phi: float) -> list[tuple
         list[tuple[complex, tuple[int, ...]]]:
             List of (coefficient, indices) terms for this bracket after snapping negligible coefficients.
     """
-    a = 4 * j - 2
-    b = 4 * j - 1
-    c = 4 * sigma_j - 4
-    d = 4 * sigma_j - 3
+    # a = 4 * j - 2
+    # b = 4 * j - 1
+    # c = 4 * sigma_j - 4
+    # d = 4 * sigma_j - 3
+    a = _get_cov_matrix_idx(color, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
+    b = _get_cov_matrix_idx(color, copy, direction=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
+    c = _get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=1, ncolors=ncolors, ncopies=ncopies)
+    d = _get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=2, ncolors=ncolors, ncopies=ncopies)
 
     eip = cmath.exp(1j * phi)
     eta2_bar = complex(eta2).conjugate()
 
     # coefficient definitions for the c_i symbols:
-    A1 = -0.5j * (eta2_bar + eip * eta2)  # -i/2 (eta_bar^2 + e^{i phi} eta^2)
-    A2 = 0.5 * (eta2_bar - eip * eta2)  # 1/2 (eta_bar^2 - e^{i phi} eta^2)
-    A3 = 0.5 * (1.0 + eip)  # (1 + e^{i phi})/2
-    A4 = 0.5j * (1.0 - eip)  # i/2 (1 - e^{i phi})
+    # A1 = -0.5j * (eta2_bar + eip * eta2)  # -i/2 (eta_bar^2 + e^{i phi} eta^2)
+    # A2 = 0.5 * (eta2_bar - eip * eta2)  # 1/2 (eta_bar^2 - e^{i phi} eta^2)
+    # A3 = 0.5 * (1.0 + eip)  # (1 + e^{i phi})/2
+    # A4 = 0.5j * (1.0 - eip)  # i/2 (1 - e^{i phi})
 
+    # raw_terms = [
+    #     (A2, (a, c)),  # + A2 c_a c_c
+    #     (A1, (a, d)),  # + A1 c_a c_d
+    #     (A1, (b, c)),  # + A1 c_b c_c
+    #     (-A2, (b, d)),  # - A2 c_b c_d
+    #     (A4, (c, d)),  # + A4 c_c c_d
+    #     (A4, (a, b)),  # + A4 c_a c_b
+    #     (-A3, (a, b, c, d)),  # - A3 c_a c_b c_c c_d
+    #     (A3, ()),  # + A3
+    # ]
     raw_terms = [
-        (A2, (a, c)),  # + A2 c_a c_c
-        (A1, (a, d)),  # + A1 c_a c_d
-        (A1, (b, c)),  # + A1 c_b c_c
-        (-A2, (b, d)),  # - A2 c_b c_d
-        (A4, (c, d)),  # + A4 c_c c_d
-        (A4, (a, b)),  # + A4 c_a c_b
-        (-A3, (a, b, c, d)),  # - A3 c_a c_b c_c c_d
-        (A3, ()),  # + A3
+        (0.5, ()),
+        (0.5 * 1j, (c, d)),
+        (0.5 * 1j, (a, b)),
+        (-0.5, (c, d, a, b)),
+        (0.5 * eta2_bar, (a, c)),
+        (-0.5 * eta2_bar, (b, d))(-0.5 * 1j * eta2_bar, (a, d)),
+        (-0.5 * 1j * eta2_bar, (b, c)),
     ]
+    if site % 2 == 0:  # TODO: implement for fermionic modes that transform with the conjugate representation,
+        # i.e., d modes in the conventions here https://journals.aps.org/prd/abstract/10.1103/PhysRevD.110.054511
+        gauging_matrix = group_element
+    else:
+        gauging_matrix = xnp.conjugate(group_element)
+
+    for m in range(1, ncolors + 1):
+        a_m = _get_cov_matrix_idx(m, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
+        b_m = _get_cov_matrix_idx(m, copy, direction=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
+        matrix_element = gauging_matrix[m - 1][color - 1]
+        raw_terms += [
+            (0.25 * eta2 * matrix_element, (c, a_m)),
+            (-0.25 * eta2 * matrix_element, (d, b_m)),
+            (1j * 0.25 * eta2 * matrix_element, (c, b_m)),
+            (1j * 0.25 * eta2 * matrix_element, (d, a_m)),
+            (1j * 0.25 * eta2 * matrix_element, (c, a_m, a, b)),
+            (-1j * 0.25 * eta2 * matrix_element, (d, b_m, a, b)),
+            (-0.25 * eta2 * matrix_element, (c, b_m, a, b)),
+            (-0.25 * eta2 * matrix_element, (d, a_m, a, b)),
+            (0.25 * matrix_element, (a_m, a)),
+            (-1j * 0.25 * matrix_element, (a_m, b)),
+            (1j * 0.25 * matrix_element, (b_m, a)),
+            (0.25 * matrix_element, (b_m, b)),
+            (-1j * 0.25 * matrix_element, (c, d, a_m, a)),
+            (-0.25 * matrix_element, (c, d, a_m, b)),
+            (0.25 * matrix_element, (c, d, b_m, a)),
+            (-1j * 0.25 * matrix_element, (c, d, b_m, b)),
+        ]
 
     # Snap small real/imag parts and drop zeros to reduce work upstream
     terms: list[tuple[complex, tuple[int, ...]]] = []
@@ -540,6 +591,9 @@ def generate_gauged_projector_terms(
     acc[()] = 1.0  # multiplicative identity (empty monomial)
 
     # Multiply in each bracket
+    # TODO: sum over group elements h, after doing so, I should add two tests:
+    # 1. Take away terms with c^2, wehere c is a majorana mode
+    # 2. check if I have any terms that have the same majorana modes and combine them
     for j in range(1, ncopy + 1):
         terms_j = bracket_terms(j, sigma[j - 1], eta2, phi)
         new_acc: MonomialAccumulator = defaultdict(complex)
@@ -580,7 +634,7 @@ def _get_cov_matrix_idx(
     Args:
         color (int): color index (1 to ncolors) - 1-based
         copy (int): copy index (1 to ncopies) - 1-based
-        direction (int): direction index (1 to ndirections) - 1-based
+        direction (int): direction index (1 to ndirections) - 1-based. for ndirections=2 - 1 to left or down and 2 to right or up.
         majorana (int): Majorana index (1 to 2) - 1-based
         ncolors (int): number of colors
         ncopies (int): number of copies
