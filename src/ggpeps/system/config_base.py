@@ -323,6 +323,13 @@ class Config2DBase(ABC):
 
 
 # ==================== ZN Gauged Projector Terms ====================
+
+# NOTE / TODO (ZN electric energy, staggering):
+# For the ZN electric-energy expression to be valid, the phase in the gauged projector must be
+# taken as +phi or -phi depending on the parity of the site x from which the link omega = omega(x, k) originates.
+# This parity-dependent +/-phi staggering is NOT implemented in this module yet; any ZN electric-energy
+# calculation using these terms must implement it (e.g., by passing a site-parity-dependent signed phi).
+
 import cmath
 from collections import defaultdict
 from typing import Optional, Union, Literal, DefaultDict
@@ -378,6 +385,22 @@ def bracket_terms(j: int, sigma_j: int, eta2: complex, phi: float) -> list[tuple
     """
     Assemble the 8-term bracket for copy j without operator reordering.
 
+    Implements the resulting expansion from the Z_N notes:
+        A2 c_a c_c + A1 c_a c_d + A1 c_b c_c - A2 c_b c_d
+        + A4 c_c c_d + A4 c_a c_b - A3 c_a c_b c_c c_d + A3
+
+    with:
+        A1 = -i/2 * (eta_bar^2 + e^{i phi} eta^2)
+        A2 = 1/2 * (eta_bar^2 - e^{i phi} eta^2)
+        A3 = 1/2 * (1 + e^{i phi})
+        A4 = i/2 * (1 - e^{i phi})
+
+    and:
+        a = 4 * j - 2
+        b = 4 * j - 1
+        c = 4 * sigma_j - 4
+        d = 4 * sigma_j - 3
+
     Args:
         j (int): Copy index (1-based).
         sigma_j (int): Value of sigma(j) (1-based).
@@ -392,17 +415,25 @@ def bracket_terms(j: int, sigma_j: int, eta2: complex, phi: float) -> list[tuple
     b = 4 * j - 1
     c = 4 * sigma_j - 4
     d = 4 * sigma_j - 3
+
     eip = cmath.exp(1j * phi)
+    eta2_bar = complex(eta2).conjugate()
+
+    # coefficient definitions for the c_i symbols:
+    A1 = -0.5j * (eta2_bar + eip * eta2)  # -i/2 (eta_bar^2 + e^{i phi} eta^2)
+    A2 = 0.5 * (eta2_bar - eip * eta2)  # 1/2 (eta_bar^2 - e^{i phi} eta^2)
+    A3 = 0.5 * (1.0 + eip)  # (1 + e^{i phi})/2
+    A4 = 0.5j * (1.0 - eip)  # i/2 (1 - e^{i phi})
 
     raw_terms = [
-        ((eta2.real), (a, c)),  # + Re(eta^2) * c_a c_c
-        (-(eta2.imag), (a, d)),  # - Im(eta^2) * c_a c_d
-        (-(eta2.imag), (b, c)),  # - Im(eta^2) * c_b c_c
-        (-(eta2.real), (b, d)),  # - Re(eta^2) * c_b c_d
-        (0.5j * (eip + 3.0), (c, d)),  # + i(e^{i phi}+3)/2 * c_c c_d
-        (0.5j * (eip + 3.0), (a, b)),  # + i(e^{i phi}+3)/2 * c_a c_b
-        (-0.5 * (eip + 1.0), (a, b, c, d)),  # - (e^{i phi}+1)/2 * c_a c_b c_c c_d
-        (0.5 * (eip + 1.0), ()),  # + (e^{i phi}+1)/2
+        (A2, (a, c)),  # + A2 c_a c_c
+        (A1, (a, d)),  # + A1 c_a c_d
+        (A1, (b, c)),  # + A1 c_b c_c
+        (-A2, (b, d)),  # - A2 c_b c_d
+        (A4, (c, d)),  # + A4 c_c c_d
+        (A4, (a, b)),  # + A4 c_a c_b
+        (-A3, (a, b, c, d)),  # - A3 c_a c_b c_c c_d
+        (A3, ()),  # + A3
     ]
 
     # Snap small real/imag parts and drop zeros to reduce work upstream
