@@ -355,12 +355,12 @@ class Minimizer:
         flattened_paramvec = min_result.x
         if self.cfg.method in self.no_grad_methods:
             # these methods do not use the gradient
-            flattened_energygrad = None
+            # flattened_energygrad = None
             num_jac_evals = 0
         else:
-            flattened_energygrad = min_result.jac
+            # flattened_energygrad = min_result.jac
             num_jac_evals = min_result.njev
-        energy = min_result.fun
+        # energy = min_result.fun
         converged = min_result.success
         message = f"{min_result.message} "
         message += f"Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {num_jac_evals}"
@@ -623,7 +623,8 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
     chem_energy = utils.get_obs_mean_df(res, "chem_energy")
 
     logger.debug(
-        f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, int: {int_energy:.6f}, mass: {mass_energy:.6f}, chem: {chem_energy:.6f}"
+        f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, int: {int_energy:.6f}, mass: {mass_energy:.6f}, "
+        f"chem: {chem_energy:.6f}"
     )
     # logger.debug(f"Paramvec: {utils.get_obs_mean_df(res, 'energy', column='paramvec')}")
 
