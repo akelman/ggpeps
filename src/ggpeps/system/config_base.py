@@ -572,7 +572,9 @@ def generate_gauged_projector_terms(
     return indices, constant
 
 
-def _get_cov_matrix_idx(color, copy, direction, majorana, ncolors, ncopies, ndirections=2):
+def _get_cov_matrix_idx(
+    color: int, copy: int, direction: int, majorana: int, ncolors: int, ncopies: int, ndirections: int = 2
+) -> int:
     """Helper function to get the index in the covariance matrix for a given mode.
 
     Args:
