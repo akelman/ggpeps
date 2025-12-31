@@ -17,6 +17,7 @@ class ZNGauge:
         self.n = n
         self.rep_dim = 1  # Each group element is represented as a 1×1 matrix.
         self.forbidden_transitions: list = []  # List of forbidden transitions - Empty for Z_N gauge group.
+        self.group_order = n
 
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> np.ndarray:
         """
@@ -51,6 +52,81 @@ class ZNGauge:
             np.ndarray: 1x1 complex matrix representing the group element.
         """
         return np.array([[np.exp(1.0j * theta)]])
+
+    def get_irrep(self, irrep_label: int, group_element: np.ndarray) -> np.ndarray:
+        """
+        Return the irreducible representation matrix for a given irrep label.
+
+        In Z_N, each irrep is one-dimensional and corresponds to a phase factor
+        exp(i * (2 * pi * j * m) / N), where m is the group element index and
+        j is the irrep label.
+
+        Args:
+            irrep_label (int): Label of the irrep, an integer in [0, N - 1].
+            group_element (np.ndarray): 1x1 matrix representing a Z_N group element.
+        Returns:
+            np.ndarray: 1x1 complex matrix representing the irrep of the group element.
+        """
+        theta = self.get_angle(group_element)
+        return np.array([[np.exp(1.0j * theta * irrep_label)]])
+
+    def get_possible_irrep_labels(self):
+        """
+        Generate all irrep labels representations of the Z_N group.
+
+        Each irrep is one-dimensional and corresponds to a phase factor
+        exp(i * (2 * pi * j * m) / N), where j is the irrep label.
+
+        Returns:
+            list[int]: List of irrep labels from 0 to N - 1.
+        """
+        return list(range(self.n))
+
+    def get_electric_energy_factor(self, irrep_label: int) -> float:
+        """
+        Return the electric energy factor for a given irrep label in Z_N.
+
+        The electric energy factor is defined as:
+            f(j) = 2 * cos(2 * pi * j / N)
+
+        Args:
+            irrep_label (int): Label of the irrep, an integer in [0, N - 1].
+
+        Returns:
+            float: Electric energy factor for the specified irrep.
+        """
+        increment = self.get_increment()
+        angle = irrep_label * increment
+        return 2.0 * np.cos(angle)
+
+    def get_irrep_character(self, group_element: np.ndarray, irrep_label: int) -> complex:
+        """
+        Return the character of the irrep for the inverse group element h_inv.
+
+        In Z_N, the character of a one-dimensional irrep is simply the value of the irrep
+        evaluated at the group element.
+
+        Args:
+            h_inv (np.ndarray): 1x1 matrix representing the inverse group element.
+            irrep (int): Label of the irrep, an integer in [0, N - 1].
+        Returns:
+            complex: Character of the irrep evaluated at h_inv.
+        """
+        theta = self.get_angle(group_element)
+        return np.exp(1.0j * theta * irrep_label)
+
+    def get_irrep_dimension(self, irrep_label: int) -> int:
+        """
+        Return the dimension of the specified irrep in Z_N.
+
+        All irreps of Z_N are one-dimensional.
+
+        Args:
+            irrep_label (int): Label of the irrep, an integer in [0, N - 1].
+        Returns:
+            int: Dimension of the specified irrep (always 1 for Z_N).
+        """
+        return 1
 
     def get_neutral_gauge_value(self) -> np.ndarray:
         """
@@ -160,6 +236,7 @@ class D2nGauge:
         """
         self.n = n
         self.rep_dim = 2
+        self.group_order = 2 * n
         self.forbidden_transitions = [
             (self.get_representation(p0, 0), self.get_representation(p1, 1))
             for p0 in range(self.n)
