@@ -101,16 +101,16 @@ class ZNGauge:
 
     def get_irrep_character(self, group_element: np.ndarray, irrep_label: int) -> complex:
         """
-        Return the character of the irrep for the inverse group element h_inv.
+        Return the character of the irrep for the inverse group element group_element.
 
         In Z_N, the character of a one-dimensional irrep is simply the value of the irrep
         evaluated at the group element.
 
         Args:
-            h_inv (np.ndarray): 1x1 matrix representing the inverse group element.
+            group_element (np.ndarray): 1x1 matrix representing the inverse group element.
             irrep (int): Label of the irrep, an integer in [0, N - 1].
         Returns:
-            complex: Character of the irrep evaluated at h_inv.
+            complex: Character of the irrep evaluated at group_element.
         """
         theta = self.get_angle(group_element)
         return np.exp(1.0j * theta * irrep_label)
@@ -277,6 +277,179 @@ class D2nGauge:
             )
         return representation
 
+    def get_irrep(self, irrep_label: int, group_element: np.ndarray) -> np.ndarray:
+        """
+        Return the irreducible representation matrix for a given irrep label.
+
+        The irreps are labelled as follows:
+        j=0: D^j(p,q)=1
+        j=1 (\bar{0}): D^j(p,q)=(-1)^q
+
+        if n is even:
+         j=2 (1): D^j(p,q)=(-1)^p
+         j=3 (\bar{1}): D^j(p,q)=(-1)^q * (-1)^p
+         j=4,...,(n+4)/2 (2_1,...2_{(n-2)/2}) (overall (n-2)/2 2D irreps): D^j(p,q)= [[cos(2π(j-3)p/n), -sin(2π(j-3)p/n)],
+                                [sin(2π(j-3)p/n),  cos(2π(j-3)p/n)]] for q=0
+                    D^j(p,q)= [[cos(2π(j-3)p/n),  sin(2π(j-3)p/n)],
+                                [sin(2π(j-3)p/n), -cos(2π(j-3)p/n)]] for q=1
+        if n is odd:
+         j=2,...,(n+1)/2 (2_1,...2_{(n-1)/2}) (overall (n-1)/2 2D irreps): D^j(p,q)= [[cos(2π(j-2)p/n), -sin(2π(j-2)p/n)],
+                                [sin(2π(j-1)p/n),  cos(2π(j-1)p/n)]] for q=0
+                    D^j(p,q)= [[cos(2π(j-1)p/n),  sin(2π(j-1)p/n)],
+                                [sin(2π(j-1)p/n), -cos(2π(j-1)p/n)]] for q=1
+
+        Args:
+            irrep_label (int): Label of the irrep.
+            group_element (np.ndarray): matrix representing a D_2N group element.
+        Returns:
+            np.ndarray: matrix representing the irrep of the group element.
+        """
+        q = self.get_reflection_index(group_element)
+        p = self.get_rotation_index(group_element)
+        if irrep_label == 0:
+            irrep = np.array([[1]])
+        elif irrep_label == 1:
+            irrep = np.array([[(-1) ** q]])
+        if self.n % 2 == 0:  # n is even
+            if irrep_label == 2:
+                irrep = np.array([[(-1) ** p]])
+            elif irrep_label == 3:
+                irrep = np.array([[(-1) ** q * (-1) ** p]])
+            else:  # 2D irreps
+                j_2d = irrep_label - 4 + 1
+                theta = (2.0 * np.pi * j_2d * p) / self.n
+                if q == 0:
+                    irrep = np.array(
+                        [
+                            [np.cos(theta), -np.sin(theta)],
+                            [np.sin(theta), np.cos(theta)],
+                        ],
+                    )
+                else:  # q==1
+                    irrep = np.array(
+                        [
+                            [np.cos(theta), np.sin(theta)],
+                            [np.sin(theta), -np.cos(theta)],
+                        ],
+                    )
+        else:  # n is odd
+            if irrep_label >= 2:  # 2D irreps
+                j_2d = irrep_label - 2 + 1
+                theta = (2.0 * np.pi * j_2d * p) / self.n
+                if q == 0:
+                    irrep = np.array(
+                        [
+                            [np.cos(theta), -np.sin(theta)],
+                            [np.sin(theta), np.cos(theta)],
+                        ],
+                    )
+                else:  # q==1
+                    irrep = np.array(
+                        [
+                            [np.cos(theta), np.sin(theta)],
+                            [np.sin(theta), -np.cos(theta)],
+                        ],
+                    )
+            else:
+                raise ValueError("Invalid irrep label for D2n group")
+        return irrep
+
+    def get_possible_irrep_labels(self):
+        """
+        Generate all irrep labels representations of the D_2N group.
+        The irreps are labelled as follows:
+        j=0: D^j(p,q)=1
+        j=1 (\bar{0}): D^j(p,q)=(-1)^q
+
+        if n is even:
+         j=2 (1): D^j(p,q)=(-1)^p
+         j=3 (\bar{1}): D^j(p,q)=(-1)^q * (-1)^p
+         j=4,...,(n+4)/2 (2_1,...2_{(n-2)/2}) (overall (n-2)/2 2D irreps): D^j(p,q)= [[cos(2π(j-3)p/n), -sin(2π(j-3)p/n)],
+                                [sin(2π(j-3)p/n),  cos(2π(j-3)p/n)]] for q=0
+                    D^j(p,q)= [[cos(2π(j-3)p/n),  sin(2π(j-3)p/n)],
+                                [sin(2π(j-3)p/n), -cos(2π(j-3)p/n)]] for q=1
+        if n is odd:
+         j=2,...,(n+1)/2 (2_1,...2_{(n-1)/2}) (overall (n-1)/2 2D irreps): D^j(p,q)= [[cos(2π(j-2)p/n), -sin(2π(j-2)p/n)],
+                                [sin(2π(j-1)p/n),  cos(2π(j-1)p/n)]] for q=0
+                    D^j(p,q)= [[cos(2π(j-1)p/n),  sin(2π(j-1)p/n)],
+                                [sin(2π(j-1)p/n), -cos(2π(j-1)p/n)]] for q=1
+
+        Returns:
+            list[int]: List of irrep labels from 0 to N - 1.
+        """
+        if self.n % 2 == 0:
+            return list(range((self.n + 6) // 2))
+        return list(range((self.n + 3) // 2))
+
+    def get_electric_energy_factor(self, irrep_label: int) -> float:
+        """
+        Return the electric energy factor for a given irrep label in Z_N.
+
+        The electric energy factor is defined as:
+            f(j) = 2 * cos(2 * pi * j / N)
+
+        Args:
+            irrep_label (int): Label of the irrep, an integer in [0, N - 1].
+
+        Returns:
+            float: Electric energy factor for the specified irrep.
+        """
+        if self.n == 3:
+            if irrep_label == 0:
+                return -3.0
+            elif irrep_label == 1:
+                return 3.0
+            else:
+                return 0.0
+        elif self.n == 4:
+            if irrep_label == 0:
+                return -6.0
+            elif irrep_label == 1:
+                return 2.0
+            elif irrep_label == 2:
+                return 2.0
+            elif irrep_label == 3:
+                return 2.0
+            else:
+                return 0.0
+        else:
+            raise NotImplementedError("Electric energy factors not implemented for D2n with n>4")
+
+    def get_irrep_character(self, group_element: np.ndarray, irrep_label: int) -> complex:
+        """
+        Return the character of the irrep for the inverse group element group_element.
+
+        Args:
+            group_element (np.ndarray): 2x2 matrix representing the group element.
+            irrep_label (int): Label of the irrep.
+        Returns:
+            complex: Character of the irrep evaluated at h.
+        """
+
+        return np.trace(self.get_irrep(irrep_label, group_element))
+
+    def get_irrep_dimension(self, irrep_label: int) -> int:
+        """
+        Return the dimension of the specified irrep in D_2N.
+
+        All irreps of Z_N are one-dimensional.
+
+        Args:
+            irrep_label (int): Label of the irrep.
+        Returns:
+            int: Dimension of the specified irrep.
+        """
+        if self.n % 2 == 0:
+            if irrep_label in [0, 1, 2, 3]:
+                return 1
+            else:
+                return 2
+        else:
+            if irrep_label in [0, 1]:
+                return 1
+            else:
+                return 2
+
     def get_nonsingular_path(self, g_old: np.ndarray, g_new: np.ndarray) -> list[np.ndarray]:
         """
         Return a list of intermediate group elements for a non-singular transition from g_old to g_new.
@@ -335,6 +508,22 @@ class D2nGauge:
             return 1
         else:
             raise ValueError("Gauge value not in D2n group")
+
+    def get_rotation_index(self, g: np.ndarray) -> int:
+        """
+        Extract the rotation index p from the D_2n group element matrix.
+
+        The rotation index p is determined from the angle theta of the rotation part of the matrix.
+        Args:
+            g (np.ndarray): A 2x2 matrix representing a D_2n group element (has to be the faithful fundamental representation of get_representation).
+        Returns:
+            int: Rotation index p in {0, 1, ..., n-1}.
+        """
+        cos_theta = g[0, 0]
+        sin_theta = g[1, 0]
+        theta = np.atan2(sin_theta, cos_theta)
+        p = int(round((theta * self.n) / (2.0 * np.pi))) % self.n
+        return p
 
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> np.ndarray:
         """
