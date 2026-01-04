@@ -5,7 +5,7 @@ import gzip
 import pickle
 import logging
 import subprocess  # Start process for git hash
-from typing import Optional, Union
+from typing import Any, Optional, Union, cast
 
 import numba as nb
 import pandas as pd
@@ -441,7 +441,9 @@ def deepcopy_summary_df(df: pd.DataFrame) -> pd.DataFrame:
     df_copy = df.copy(deep=True)  # does not make deep copies of np.ndarrays in the dataframe
 
     for col in df.columns:
-        df_copy[col] = df_copy[col].apply(lambda x: np.copy(x) if isinstance(x, np.ndarray) else x)
+        for idx, val in df_copy[col].items():
+            if isinstance(val, np.ndarray):
+                df_copy.at[idx, col] = cast(Any, np.copy(val))
 
     return df_copy
 

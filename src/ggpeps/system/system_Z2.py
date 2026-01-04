@@ -193,7 +193,7 @@ class Z2System2D(System2DBase):
 
                 is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
 
-                pf_tot = 0.0
+                pf_tot: complex = 0.0j
                 for term_ind, (term_h, term_v) in enumerate(layer_pairs):
                     # each term_* is (prefactor, indices); pfaffians already computed per term_ind
                     prefactor = term_v[0] if is_vertical else term_h[0]
@@ -296,7 +296,7 @@ class Z2System2D(System2DBase):
                             d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
                             # Summand with derivative of the covariance matrix
 
-                            deriv_pf_tot = 0.0
+                            deriv_pf_tot: complex = 0.0j
                             # for ind, (prefactor, inds) in enumerate(idxarr):
                             for term_ind, (term_h, term_v) in enumerate(layer_pairs):
                                 prefactor, inds = term_v if is_vertical else term_h

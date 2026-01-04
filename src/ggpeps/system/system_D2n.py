@@ -11,6 +11,7 @@ from ggpeps import modearray
 
 from .system_base import System2DBase
 from .config_D6_2d import D6System2D_Config
+from .config_base import IdxArrVec
 
 # from ggpeps.system.global_funcs import update_gauge_ind
 
@@ -450,7 +451,9 @@ class D2nSystem2D(System2DBase):
     @staticmethod
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
-        idxarrs: tuple,
+        idxarrs: IdxArrVec,
+        mod_link_inds: tuple[int, ...],
+        nlinks: int,
         nlayer: int,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,

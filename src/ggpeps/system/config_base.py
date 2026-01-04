@@ -18,9 +18,9 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 # Type aliases for the electric energy data structures
 IdxTerm = tuple[complex, tuple[int, ...]]  # (prefactor, indices)
-IdxTermList = tuple[IdxTerm, ...]  # all terms for one direction in one layer
-IdxLayerPair = tuple[IdxTermList, IdxTermList]  # (horizontal, vertical)
-IdxArrVec = tuple[IdxLayerPair, ...]  # over layers
+IdxTermPair = tuple[IdxTerm, IdxTerm]  # (term_h, term_v) for one term
+IdxLayerTerms = tuple[IdxTermPair, ...]  # all (term_h, term_v) pairs for one layer
+IdxArrVec = tuple[IdxLayerTerms, ...]  # over layers
 
 
 ################## Config2DBase ######################

@@ -701,9 +701,9 @@ class System2DBase(ABC):
 
                 # for ind, (prefactor, inds) in enumerate(layer_pairs):
                 for term_ind, (term_h, term_v) in enumerate(layer_pairs):
-                    _, inds = term_v if is_vertical else term_h
-                    inds = xnp.asarray(inds)
-                    pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds, inds)])
+                    _, inds_tup = term_v if is_vertical else term_h
+                    inds_arr = xnp.asarray(inds_tup)
+                    pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds_arr, inds_arr)])
                     el_pfaffians = backend.array_assign(el_pfaffians, (layerind, link_pos, term_ind), pfaval)
         return el_pfaffians
 
