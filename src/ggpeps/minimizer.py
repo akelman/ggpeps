@@ -569,7 +569,7 @@ class Minimizer:
 def NEVMC_print_callback(x, res):
 
     message = f"Energy: {res[0]:.9f}, Max grad paramvec: {res[1]:.6f}, Work: {res[2]:.6f}, "
-    message += f"Free energy: {res[3]:.6f}, Wd: {res[2]-res[3]:.6f}"
+    message += f"Free energy: {res[3]:.6f}, Wd: {res[2] - res[3]:.6f}"
     logger.info(message)
 
 

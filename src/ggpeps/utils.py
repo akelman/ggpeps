@@ -1305,5 +1305,5 @@ def compare_array_elementwise(testcase, ref: np.ndarray, res: np.ndarray, print_
         for i in range(ref.shape[0]):
             for j in range(ref.shape[1]):
                 if not np.isclose(ref[i, j], res[i, j]):
-                    print(f"{i},{j}: ref: {ref[i,j]}, res:{res[i,j]}")
+                    print(f"{i},{j}: ref: {ref[i, j]}, res:{res[i, j]}")
     testcase.assertTrue(np.allclose(ref, res))

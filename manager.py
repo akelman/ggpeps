@@ -293,7 +293,7 @@ def main(args):
     illegal_ind = [i for i in el_links if i < 0 or i >= lattice.nlinks]
     if illegal_ind:
         logger.error(
-            f"--el_links contains out-of-range indices {illegal_ind}; allowed range is [0, {lattice.nlinks-1}]"
+            f"--el_links contains out-of-range indices {illegal_ind}; allowed range is [0, {lattice.nlinks - 1}]"
         )
         sys.exit(1)
 
@@ -442,7 +442,7 @@ def main(args):
         logger.info(f"Warmup steps: {mc_config.warmup_steps}")
         logger.info(f"Measurement steps: {mc_config.meas_steps}")
         logger.info(f"Bin size: {mc_config.binsize}")
-        logger.info(f"Update size: {mc_config.update_size_per_step} (out of {2*L**2} total links)")
+        logger.info(f"Update size: {mc_config.update_size_per_step} (out of {2 * L ** 2} total links)")
         logger.info(f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)")
         logger.info("============================")
     if "min" in args.mode:
