@@ -209,10 +209,12 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
 
         # Define the form blocks of the T matrix -
         # physical-virtual, virtual-virtual within the same copy, and virtual-virtual between copies
-        Block_1 = sympy.Matrix(
-            [-1.0j * params["t1"], 1.0j * params["t1"], params["t1"], -params["t1"]]
-        ).T  # this is a row matrix (because of the transpose)
 
+        # a) Physical-virtual
+        # this is a row matrix (because of the transpose)
+        Block_1 = sympy.Matrix([-1.0j * params["t1"], 1.0j * params["t1"], params["t1"], -params["t1"]]).T
+
+        # b) Virtual-virtual within the same copy
         Block_2 = sympy.Matrix(
             [
                 [0, 1.0j * params["y1"], params["z1"], 1.0j * params["z1"]],
@@ -222,6 +224,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
             ]
         )
 
+        # c) Virtual-virtual between two different copies
         Block_3 = sympy.Matrix(
             [
                 [
@@ -241,14 +244,17 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
             ]
         )
 
-        # Generate all the blocks for all copies
+        # Generate all the blocks for all copies:
+        # a) Physical-virtual blocks
         t_blocks = [Block_1.subs(params["t1"], params[f"t{i}"]) for i in range(1, self.ncopy + 1)]
 
+        # b) Virtual-virtual within the same copy
         yz_blocks = [
             Block_2.subs([(params["y1"], params[f"y{i}"]), (params["z1"], params[f"z{i}"])])
             for i in range(1, self.ncopy + 1)
         ]
 
+        # c) Virtual-virtual between different copies
         abcd_blocks = []
         for cop1 in range(1, self.ncopy + 1):
             for cop2 in range(cop1 + 1, self.ncopy + 1):
