@@ -2,6 +2,7 @@ import unittest
 from unittest import skip
 
 import numpy as np
+import pandas as pd
 import jax.numpy as jnp
 from pfapack import pfaffian as pf
 
@@ -104,6 +105,65 @@ class TestUtils(unittest.TestCase):
             derivative_ana = utils.derivative_pfaffian(mat_rand, deriv_mat)
             derivative_numeric = (pf.pfaffian(mat_rand_right) - pf.pfaffian(mat_rand_left)) / (2 * eps)
             self.assertAlmostEqual(derivative_numeric, derivative_ana)
+
+    @staticmethod
+    def _make_summary_df() -> pd.DataFrame:
+        """Create a small 'summary-like' DataFrame that contains both scalars and ndarray objects in cells."""
+        return pd.DataFrame(
+            {
+                "name": ["obs0", "obs1", "obs2"],
+                "mean": [1.0, 2.0, 3.0],
+                "err": [0.1, 0.2, 0.3],
+                # Store ndarrays in object-dtype cells (this is what deepcopy_summary_df is meant to handle)
+                "paramvec": [
+                    np.array([1.0, 2.0, 3.0]),
+                    np.array([], dtype=float),
+                    np.array([[1, 2], [3, 4]]),
+                ],
+                "meta": ["a", "b", "c"],
+            },
+            index=["row0", "row1", "row2"],
+        )
+
+    def test_df_copy_deep_true_does_not_deepcopy_ndarray_cells(self):
+        """pandas.DataFrame.copy(deep=True) does not deepcopy Python objects stored in cells (e.g. ndarrays)."""
+        df = self._make_summary_df()
+
+        df_copy = df.copy(deep=True)
+
+        # The ndarray objects are the *same* objects (shared references)
+        self.assertIs(df.at["row0", "paramvec"], df_copy.at["row0", "paramvec"])
+        self.assertIs(df.at["row1", "paramvec"], df_copy.at["row1", "paramvec"])
+        self.assertIs(df.at["row2", "paramvec"], df_copy.at["row2", "paramvec"])
+
+        # Mutating the array inside the copy mutates the original as well (evidence of shared reference)
+        df_copy.at["row0", "paramvec"][0] = 999.0
+        self.assertEqual(df.at["row0", "paramvec"][0], 999.0)
+
+    def test_deepcopy_summary_df_deepcopies_ndarray_cells(self):
+        """utils.deepcopy_summary_df should make the DataFrame independent, including ndarray-valued cells."""
+        df = self._make_summary_df()
+
+        df_deep = utils.deepcopy_summary_df(df)
+
+        # Scalars are equal
+        self.assertTrue(df[["mean", "err"]].equals(df_deep[["mean", "err"]]))
+        self.assertTrue(df[["name", "meta"]].equals(df_deep[["name", "meta"]]))
+
+        # ndarray objects are *not* the same objects anymore
+        self.assertIsNot(df.at["row0", "paramvec"], df_deep.at["row0", "paramvec"])
+        self.assertIsNot(df.at["row1", "paramvec"], df_deep.at["row1", "paramvec"])
+        self.assertIsNot(df.at["row2", "paramvec"], df_deep.at["row2", "paramvec"])
+
+        # Contents are identical
+        self.assertTrue(np.array_equal(df.at["row0", "paramvec"], df_deep.at["row0", "paramvec"]))
+        self.assertTrue(np.array_equal(df.at["row1", "paramvec"], df_deep.at["row1", "paramvec"]))
+        self.assertTrue(np.array_equal(df.at["row2", "paramvec"], df_deep.at["row2", "paramvec"]))
+
+        # Mutating the deep-copied array does NOT affect the original
+        df_deep.at["row0", "paramvec"][0] = 123.0
+        self.assertNotEqual(df.at["row0", "paramvec"][0], 123.0)
+        self.assertEqual(df_deep.at["row0", "paramvec"][0], 123.0)
 
 
 class TestBGBTransform(unittest.TestCase):

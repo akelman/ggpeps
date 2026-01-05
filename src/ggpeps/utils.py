@@ -5,7 +5,7 @@ import gzip
 import pickle
 import logging
 import subprocess  # Start process for git hash
-from typing import Any, Optional, Union, cast
+from typing import Optional, Union
 
 import numba as nb
 import pandas as pd
@@ -443,7 +443,13 @@ def deepcopy_summary_df(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.columns:
         for idx, val in df_copy[col].items():
             if isinstance(val, np.ndarray):
-                df_copy.at[idx, col] = cast(Any, np.copy(val))
+                # We intentionally store np.ndarray objects inside DataFrame cells (object dtype) in the summary.
+                # pandas supports this at runtime, but pandas-stubs types `.at[...]` as scalar-only, so mypy flags
+                # assigning an ndarray to a cell.
+                # It is safe to ignore here because (1) we guard with `isinstance(val, np.ndarray)`, and
+                # (2) the assignment preserves the existing runtime behavior while preventing shared ndarray
+                # references between `df` and `df_copy`.
+                df_copy.at[idx, col] = np.copy(val)  # type: ignore[assignment]
 
     return df_copy
 
