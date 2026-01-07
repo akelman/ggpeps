@@ -73,13 +73,20 @@ class Z2System2D_G8C_F8C_Config(Config2DBase):
     def init_el_energy_terms(self) -> None:
         """Build idxarr_vec (paired H/V terms per layer)."""
         # Constants used in the calculation of the electric energy on a horizontal link.
-        idxarr_lay_pg_h, _ = generate_gauged_projector_terms(self.ncopy, "pure_gauge", "horizontal", 2)
-        idxarr_lay_fermionic_h, _ = generate_gauged_projector_terms(self.ncopy, "physical", "horizontal", 2)
+        idxarr_lay_pg_h, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "pure_gauge", "horizontal", self.gaugemgr
+        )
+        idxarr_lay_fermionic_h, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "physical", "horizontal", self.gaugemgr
+        )
 
         # Constants used in the calculation of the electric energy on a vertical link.
-        idxarr_lay_pg_v, _ = generate_gauged_projector_terms(self.ncopy, "pure_gauge", "vertical", 2)
-        idxarr_lay_fermionic_v, _ = generate_gauged_projector_terms(self.ncopy, "physical", "vertical", 2)
-
+        idxarr_lay_pg_v, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "pure_gauge", "vertical", self.gaugemgr
+        )
+        idxarr_lay_fermionic_v, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "physical", "vertical", self.gaugemgr
+        )
         # Pair horizontal/vertical term-lists termwise for each layer kind
         zipped_pg = tuple(zip(idxarr_lay_pg_h, idxarr_lay_pg_v))
         zipped_pf = tuple(zip(idxarr_lay_fermionic_h, idxarr_lay_fermionic_v))
