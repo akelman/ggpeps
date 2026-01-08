@@ -1259,12 +1259,12 @@ def extract_params_from_results_file(fname: str, dest_dir: str = "") -> bool:
                 # Deal with renaming
                 if hasattr(data, "paramvec"):
                     np.save(
-                        os.path.join(dest_dir, f"{couplings}extracted_paramvec.npy"),
+                        os.path.join(dest_dir, f"{couplings}_extracted_paramvec.npy"),
                         data.paramvec,
                     )
                 elif hasattr(data, "parametervec"):
                     np.save(
-                        os.path.join(dest_dir, f"{couplings}extracted_paramvec.npy"),
+                        os.path.join(dest_dir, f"{couplings}_extracted_paramvec.npy"),
                         data.parametervec,
                     )
     else:
