@@ -183,7 +183,7 @@ class Z2System2D(System2DBase):
 
             # Iterate over the links
             for link_pos, norm_mod in enumerate(norm_mod_linkvec):
-                ###################### Calculation of <P> ########################
+                ###################### Calculation of <P + P^\dagger> ########################
 
                 # The matrix elements yield only the real part of <P>
                 # If we use the log formulation, we can calculate the log of single terms.
@@ -200,7 +200,9 @@ class Z2System2D(System2DBase):
                     pfaval = el_pfaffians[layerind, link_pos, term_ind]
                     pf_tot += prefactor * pfaval
 
-                el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
+                el_energy_link = xnp.real(pf_tot) * xnp.exp(
+                    norm_mod - lognorm_default
+                )  # There's no reason for pf_tot to be real here, but after summing over all gauge configurations it should be.
                 dest = backend.array_assign(dest, (layerind, link_pos), el_energy_link)
 
         return dest
