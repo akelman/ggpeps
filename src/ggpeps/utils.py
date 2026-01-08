@@ -1227,7 +1227,7 @@ def folder2arg(foldername: str, arg: str) -> list[str]:
 def get_couplings_from_foldername(fname: str, couplings: Optional[list[str]] = None) -> str:
     """Extract the couplings from a folder name and format."""
     if couplings is None:
-        couplings = ["g", "el", "mag", "int", "mass", "chem"]
+        couplings = ["g", "int", "mass", "chem"]
 
     res = ""
     for arg in couplings:
