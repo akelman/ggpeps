@@ -1,43 +1,39 @@
 import os
-import re
+
+import ggpeps.utils as utils
 
 
 def name_from_path(prefix, path):
     return prefix + path
 
 
-def folder2arg(foldername, arg):
-    # handle gauge_fixing separately, since it is not a numeric argument
-    if arg == "gf":
-        pattern = rf"(?<={arg}_)([^_]+)"
-        result = re.search(pattern, foldername)
-        if result is not None:
-            if result.group(0) == "T":
-                return "--gauge_fixing"
-            elif result.group(0) == "F":
-                return ""  # relies on the fact that the default value for gauge_fixing is False
-            elif result.group(0) == "c":
-                return "--gauge_fixing -2"
-            else:
-                return f"--gauge_fixing {result.group(0)}"
-        else:
-            return ""
-
-    # allow for any number of numeric values (ints or floats) separated by underscores
-    pattern = rf"(?<={arg}_)(-?\d+(?:\.\d+)?(?:_-?\d+(?:\.\d+)?)*)"
-
-    result = re.search(pattern, foldername)
-
-    if result is not None:
-        vals = " ".join(result.group(1).split("_"))
-        return f"--{arg} {vals}"
-    else:
+def format_arg(folder: str, arg: str) -> str:
+    vals = utils.folder2arg(folder, arg)
+    if len(vals) == 0:
         return ""
 
+    if arg == "gf":
+        if len(vals) != 1:
+            raise ValueError("Gauge fixing argument should have a single value")
+        val = vals[0]
+        if val == "T":
+            return "--gauge_fixing"
+        elif val == "F":
+            return ""  # relies on the fact that the default value for gauge_fixing is False
+        elif val == "c":
+            return "--gauge_fixing -2"
+        else:
+            return f"--gauge_fixing {val}"
 
-def format_slurmfile(slurmfile, name, folder, time, command, args, num_threads):
+    formatted = "--" + arg + " " + " ".join(vals)
+    return formatted
+
+
+def format_slurmfile(
+    slurmfile: str, name: str, folder: str, time: str, command: str, args: list, num_threads: str
+) -> str:
     for arg in args:
-        command += " " + folder2arg(folder, arg)
+        command += " " + format_arg(folder, arg)
     return slurmfile.format(jobname=name, time=time, command=command, ncpu=num_threads)
 
 
@@ -104,7 +100,7 @@ if __name__ == "__main__":
         dest="args",
         nargs="+",
         help="args to parse from filepath",
-        default=["el", "mag", "int", "mass"],
+        default=["g", "int", "mass", "chem"],
     )
     parser.add_argument(
         "-n",

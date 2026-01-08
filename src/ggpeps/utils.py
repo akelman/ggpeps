@@ -1227,25 +1227,38 @@ def show_eigenvalues(mat):
 
 
 # ========== Workflow & Tooling Functions ====================
+def folder2arg(foldername: str, arg: str) -> list[str]:
+    """Extract from a string formatted in the form arg1_val_val_arg2_val_val... the values
+    corresponding to 'arg', as a list."""
+
+    if arg == "gf" or arg == "gauge_fixing":
+        # handle gauge_fixing separately, since it does not take a numeric value
+        pattern = rf"(?<={arg}_)([^_]+)"
+    else:
+        # allow for any number of numeric values (ints or floats) separated by underscores
+        pattern = rf"(?<={arg}_)(-?\d+(?:\.\d+)?(?:_-?\d+(?:\.\d+)?)*)"
+
+    result = re.search(pattern, foldername)
+
+    if result is not None:
+        vals = result.group(1).split("_")
+    else:
+        vals = []
+    return vals
 
 
-def get_couplings_from_foldername(fname: str) -> str:
-    """Extract the couplings from a folder name."""
-    couplings = ["g", "el", "mag", "int", "mass"]
+def get_couplings_from_foldername(fname: str, couplings: Optional[list[str]] = None) -> str:
+    """Extract the couplings from a folder name and format."""
+    if couplings is None:
+        couplings = ["g", "int", "mass", "chem"]
+
     res = ""
     for arg in couplings:
-        pattern = rf"(?<={arg}_)[\d]*.[\d]*"
-        result = re.search(pattern, fname)
-        if result is not None:
-            res += f"{arg}_{result.group(0)}_"
+        vals = folder2arg(fname, arg)
+        if len(vals) >= 1:
+            res += f"{arg}_{'_'.join(vals)}_"
 
-    # chem - we treat this differently because it is a vector for different flavors
-    pattern = r"(?<=chem_)(-?\d+\.\d+)_(-?\d+\.\d+)"
-    result = re.search(pattern, fname)
-    if result is not None:
-        vals = "_".join(result.groups())
-        res += f"chem_{vals}_"
-    return res
+    return res.strip("_")
 
 
 def extract_params_from_results_file(fname: str, dest_dir: str = "") -> bool:
@@ -1269,12 +1282,12 @@ def extract_params_from_results_file(fname: str, dest_dir: str = "") -> bool:
                 # Deal with renaming
                 if hasattr(data, "paramvec"):
                     np.save(
-                        os.path.join(dest_dir, f"{couplings}extracted_paramvec.npy"),
+                        os.path.join(dest_dir, f"{couplings}_extracted_paramvec.npy"),
                         data.paramvec,
                     )
                 elif hasattr(data, "parametervec"):
                     np.save(
-                        os.path.join(dest_dir, f"{couplings}extracted_paramvec.npy"),
+                        os.path.join(dest_dir, f"{couplings}_extracted_paramvec.npy"),
                         data.parametervec,
                     )
     else:

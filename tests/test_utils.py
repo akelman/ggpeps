@@ -14,6 +14,13 @@ import py_pfaffian.jax
 
 class TestUtils(unittest.TestCase):
 
+    def test_couplings_from_foldername(self):
+        """Test that couplings are correctly extracted from folder names."""
+
+        dirname = "L_2_g_1.3_int_1.4_mass_1.5_chem_1.0_2.0_3.0"
+        couplings = utils.get_couplings_from_foldername(dirname)
+        self.assertEqual(couplings, "g_1.3_int_1.4_mass_1.5_chem_1.0_2.0_3.0")
+
     def test_generate_smat(self):
         N = 10
         smat = utils.generate_smat(N)
