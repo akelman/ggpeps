@@ -64,6 +64,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
     def test_generate_gauged_projector_terms_small_cases(self):
         # Expected outputs for ncopy in {1,2}, layer in {pure_gauge, physical},
         # orientation in {horizontal, vertical}, group_order = 2.
+        # We compare ALL terms, including those with coefficients with zero real part.
         expected = {
             (1, "pure_gauge", "horizontal"): (
                 (
@@ -197,6 +198,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                         orientation=orientation,
                         gaugemgr=gaugemgr,
                         site=0,
+                        drop_real_zero=False,
                     )
                     exp_ind, exp_const = expected[(ncopy, layer, orientation)]
                     self._assert_terms_equal(got_ind, got_const, exp_ind, exp_const)

@@ -541,6 +541,7 @@ def generate_gauged_projector_terms(
     orientation: Orientation,
     gaugemgr: Union[gauge.ZNGauge, gauge.D2nGauge],
     site: int = 0,
+    drop_real_zero: bool = True,
 ) -> tuple[tuple[tuple[complex, tuple[int, ...]], ...], complex]:
     """
     Expand the gauged projector product and collect terms.
@@ -567,6 +568,7 @@ def generate_gauged_projector_terms(
         orientation (Orientation): 'horizontal' (eta^2 = 1) or 'vertical' (eta^2 = i).
         gaugemgr (Union[gauge.ZNGauge, gauge.D2nGauge]): Gauge manager handling group structure and irreps.
         site (int, optional): Site index (used for parity-dependent conjugation). Defaults to 0.
+        drop_real_zero (bool, optional): Whether to drop terms with zero real part in coefficients. Defaults to True.
 
     Returns:
         tuple[tuple[tuple[complex, tuple[int, ...]], ...], complex]:
@@ -638,12 +640,10 @@ def generate_gauged_projector_terms(
         if new_coef != 0.0:
             phased_items.append((mon, new_coef))
 
-    # Drop terms whose coefficient is purely imaginary (after snapping). TODO: explain why.
-    # phased_items = [
-    #     (mon, coef)
-    #     for mon, coef in phased_items
-    #     if not (isinstance(coef, complex) and coef.real == 0.0 and coef.imag != 0.0)
-    # ]
+    # Drop terms for which the coefficient has zero real part
+    # TODO: explain why this is allowed / desired
+    if drop_real_zero:
+        phased_items = [(mon, coef) for mon, coef in phased_items if np.abs(np.real(coef)) > 1e-5]
 
     # Sort terms by monomial length (shorter first) then lexicographic tuple order for deterministic output.
     phased_items.sort(key=lambda kv: (len(kv[0]), kv[0]))
