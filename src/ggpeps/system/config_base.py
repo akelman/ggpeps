@@ -638,6 +638,13 @@ def generate_gauged_projector_terms(
         if new_coef != 0.0:
             phased_items.append((mon, new_coef))
 
+    # Drop terms whose coefficient is purely imaginary (after snapping). TODO: explain why.
+    # phased_items = [
+    #     (mon, coef)
+    #     for mon, coef in phased_items
+    #     if not (isinstance(coef, complex) and coef.real == 0.0 and coef.imag != 0.0)
+    # ]
+
     # Sort terms by monomial length (shorter first) then lexicographic tuple order for deterministic output.
     phased_items.sort(key=lambda kv: (len(kv[0]), kv[0]))
     indices = tuple((coef, mon) for mon, coef in phased_items)
