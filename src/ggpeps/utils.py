@@ -243,49 +243,45 @@ def extract_mod_covmats(
     Returns:
         tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]: the A, B, D submatrices, across layers and links
     """
+    single_matrix = mat.ndim == 2
+    if single_matrix:
+        mat = mat[None, ...]
 
-    single_matrix = False
-    if mat.ndim == 2:
-        single_matrix = True
-        mat = mat[None, ...]  # add fake "layer" dimension
+    _, size, __ = mat.shape
 
-    mod_a_linkvec_layervec = []
-    mod_b_linkvec_layervec = []
-    mod_d_linkvec_layervec = []
+    phys_offset = 2 * lattice_size * nphysmodes_site
+
+    # Base physical mask (no virtuals yet)
+    base_phys_mask = xnp.zeros(size, dtype=bool)
+    base_phys_mask[:phys_offset] = True
+
+    A_list = []
+    B_list = []
+    D_list = []
+
     for link_ind in link_inds:
+        virt_start = phys_offset + 2 * nvirtmodes_link * link_ind
+        virt_end = virt_start + 2 * nvirtmodes_link
 
-        # Calculate the indices of mat to extract for mat_a_mod, mat_b_mod, mat_d_mod
-        phys_offset = 2 * lattice_size * nphysmodes_site  # end of physical modes
-        virt_start = phys_offset + 2 * nvirtmodes_link * link_ind  # start of virtual modes for the link
-        virt_end = virt_start + 2 * nvirtmodes_link  # end of virtual modes for the link
-        size = mat.shape[-1]  # size of gamma_maj_sys
+        phys_mask = base_phys_mask.copy()
+        phys_mask[virt_start:virt_end] = True
+        virt_mask = ~phys_mask
 
-        # include virt modes on given link in the "physical" set
-        phys_inds_list = [k for k in range(phys_offset)] + [k for k in range(virt_start, virt_end)]
-        virt_inds_list = [k for k in range(size) if k not in phys_inds_list]  # all other virtual modes
+        A_list.append(mat[..., phys_mask, :][..., :, phys_mask])  # mask rows, then columns
+        B_list.append(mat[..., phys_mask, :][..., :, virt_mask])
+        D_list.append(mat[..., virt_mask, :][..., :, virt_mask])
 
-        phys_inds = xnp.asarray(phys_inds_list)
-        virt_inds = xnp.asarray(virt_inds_list)
-
-        mat_a_mod_link = mat[(..., *xnp.ix_(phys_inds, phys_inds))]
-        mat_b_mod_link = mat[(..., *xnp.ix_(phys_inds, virt_inds))]
-        mat_d_mod_link = mat[(..., *xnp.ix_(virt_inds, virt_inds))]
-
-        mod_a_linkvec_layervec.append(mat_a_mod_link)
-        mod_b_linkvec_layervec.append(mat_b_mod_link)
-        mod_d_linkvec_layervec.append(mat_d_mod_link)
-
-    # Reorder from linkvec_layervec to layervec_linkvec
-    mat_a_mod = xnp.asarray(list(zip(*mod_a_linkvec_layervec)))
-    mat_b_mod = xnp.asarray(list(zip(*mod_b_linkvec_layervec)))
-    mat_d_mod = xnp.asarray(list(zip(*mod_d_linkvec_layervec)))
+    # Stack into (layers, links, ...)
+    A = xnp.stack(A_list, axis=1)
+    B = xnp.stack(B_list, axis=1)
+    D = xnp.stack(D_list, axis=1)
 
     if single_matrix:
-        # remove fake "layer" axis
-        mat_a_mod = mat_a_mod[0]
-        mat_b_mod = mat_b_mod[0]
-        mat_d_mod = mat_d_mod[0]
-    return mat_a_mod, mat_b_mod, mat_d_mod
+        A = A[0]
+        B = B[0]
+        D = D[0]
+
+    return A, B, D
 
 
 def select_except(arr: Union[list, xnp.ndarray], ind: int) -> xnp.ndarray:
