@@ -225,7 +225,7 @@
                 "--gauge_fixing"
             ]
         },
-        {
+                {
             "name": "D6 Eval MC L=2",
             "type": "debugpy",
             "request": "launch",
@@ -237,7 +237,7 @@
                 "--L", "2",
                 "--ncopy", "2",
                 "--num_pg_layer", "1",
-                "--g_el", "0.0",
+                "--g_el", "1.0",
                 "--g_mag", "1.0", 
                 "--g_int", "0.0",
                 "--g_mass", "0.0",
@@ -248,6 +248,30 @@
                 "--level","debug",
             ]
         },
+                {
+            "name": "D6 min MC L=2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
+            "args": [
+                "min-mc",
+                "D6",
+                "--L", "2",
+                "--ncopy", "2",
+                "--num_pg_layer", "1",
+                "--g_el", "1.0",
+                "--g_mag", "1.0", 
+                "--g_int", "0.0",
+                "--g_mass", "0.0",
+                "--ignore_cache",
+                "--seed", "2",
+                "--warmup_steps", "100",
+                "--meas_steps", "100",
+                "--level","debug",
+            ]
+        },
+
 
 
     ]
