@@ -238,6 +238,9 @@ def extract_mod_covmats(
     """Extract the A, B, D submatrices, but including the virtual modes on the link specified by link_ind.
     This function can accept a 2D matrix, or a stack of 2D matrices (i.e. a 3D array).
 
+    This function is called many times - when building the modified matrices, and when doing so in the electric
+    energy gradients. It is important that it be efficient.
+
     Args:
         mat (xnp.ndarray): The mat(s) from which to extract the submatrices.
         link_inds (tuple[int, ...]): a list of link indices to include in the physical-physical set.
