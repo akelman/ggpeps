@@ -378,20 +378,17 @@ def derivative_pfaffian_covariance_mat(pfarr, matvec, d_matvec):
 
 def derivative_pfaffian(mat: xnp.ndarray, d_mat: xnp.ndarray, pfaval=None) -> float:
     """Compute the derivative of a Pfaffian of a matrix A.
-        The explicit derivative dA/dx is given as a second argument
+    The explicit derivative dA/dx is given as a second argument
 
-        The given formula is only valid if A is not singular.
+    The given formula is only valid if A is not singular.
 
-        Args:
-            mat (xnp.ndarray): Input Matrix A
-            d_mat (xnp.ndarray): Derivative dA/dx
+    Args:
+        mat (xnp.ndarray): Input Matrix A
+        d_mat (xnp.ndarray): Derivative dA/dx
+        pfaval (float, optional): Pfaffian of mat; providing this speeds up the calculation. Defaults to None.
 
-        Returns:
-    <<<<<<< HEAD
-            xnp.ndarray: d(Pf(A))/dx
-    =======
-            float: d(Pf(A))/dx
-    >>>>>>> dev
+    Returns:
+        float: d(Pf(A))/dx
     """
     # We assume the types of all the provided arguments match
     if isinstance(mat, jnp.ndarray):
