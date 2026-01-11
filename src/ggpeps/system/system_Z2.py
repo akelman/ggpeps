@@ -273,8 +273,6 @@ class Z2System2D(System2DBase):
                 # Save the product, so that it is not recomputed for every parameter
                 prod = mat_d_mod_inv @ diff_d_inv_gamma_inv @ gamma_in_sys_mod
 
-                ###################### Calculation of the derivative ########################
-
                 # choose H/V per term based on link direction
                 is_vertical = mod_link_ind >= (nlinks // 2)
 
@@ -318,7 +316,7 @@ class Z2System2D(System2DBase):
                             trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
 
                             # Instead of computing the modified grad over the norm as:
-                            # utils.compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
+                            #    compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
                             # we have saved the product of several mats above (since they don't change),
                             # and use it here
                             trace_mod = -0.5 * utils.trace_of_product((d_mat_d, prod))
