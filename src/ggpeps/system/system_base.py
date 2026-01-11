@@ -939,22 +939,16 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Gauged, modified covariance matrices of the system for each layer and link
         """
-        gamma_in_sys_mod_linkvec_layervec = []
 
-        for ind, link_ind in enumerate(link_inds):
-            # Calculate the indices of gamma_in to extract
-            virt_start = 2 * self.cfg.nvirtmodes_link * link_ind  # start of virtual modes for the link
-            virt_end = virt_start + 2 * self.cfg.nvirtmodes_link  # end of virtual modes for the link
-            size = gamma_in_sys.shape[-1]  # size of gamma_in_sys
-
-            inds = [k for k in range(virt_start, virt_end)]  # inds virt modes on link
-            virt_inds = xnp.asarray([k for k in range(size) if k not in inds])  # all other virtual modes
-
-            rows, cols = xnp.ix_(virt_inds, virt_inds)
-            gamma_in_sys_mod = gamma_in_sys[..., rows, cols]
-            gamma_in_sys_mod_linkvec_layervec.append(gamma_in_sys_mod)
-        gamma_in_sys_mod_layervec_linkvec = list(zip(*gamma_in_sys_mod_linkvec_layervec))
-        return xnp.array(gamma_in_sys_mod_layervec_linkvec)
+        res = utils.extract_mod_covmats(
+            gamma_in_sys,
+            link_inds=link_inds,
+            lattice_size=self.cfg.lattice.size,
+            nphysmodes_site=0,  # gamma_in_sys does not know about physical modes, so they should not be accounted for
+            nvirtmodes_link=self.cfg.nvirtmodes_link,
+        )
+        gamma_in_sys_mod_linkvec_layervec = res[2]  # extract the "virtual-virtual" part
+        return gamma_in_sys_mod_linkvec_layervec
 
     @property
     def incdet_mod_vec(self):
