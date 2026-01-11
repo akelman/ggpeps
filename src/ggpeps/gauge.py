@@ -352,7 +352,6 @@ class D2nGauge:
                     )
             else:
                 raise ValueError("Invalid irrep label for D2n group")
-        return irrep
 
     def get_possible_irrep_labels(self):
         """
