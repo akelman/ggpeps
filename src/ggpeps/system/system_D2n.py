@@ -8,6 +8,7 @@ import ggpeps
 from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
 from ggpeps import modearray
+from ggpeps import utils
 
 from .system_base import System2DBase
 from .config_D6_2d import D6System2D_Config
@@ -461,6 +462,7 @@ class D2nSystem2D(System2DBase):
         nlayer: int,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
+        link_site_parity: tuple[int, ...],
     ) -> xnp.ndarray:
 
         lognorm_default = xnp.sum(lognormvec_default)
@@ -470,33 +472,58 @@ class D2nSystem2D(System2DBase):
 
         # TODO: vectorize!
         for layerind in range(nlayer):
-            layer_pairs = idxarrs[layerind]  # tuple of pairs: ((H,V), (H,V), ...)
+            layer_pairs = idxarrs[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
             norm_mod_linkvec = norm_mod_vec[layerind]
 
             # Iterate over the links
             for link_pos, norm_mod in enumerate(norm_mod_linkvec):
-                ###################### Calculation of <\sum_j f_j |jmn><jmn|> ########################
-                # The matrix elements yield only the real part of <P>
+                ###################### Calculation of <Sum_j f_j |jmn><jmn|> ########################
+
+                # The matrix elements yield only the real part of the electric energy for a specific gauge configuration, i.e., Re(F_E(G)).
                 # If we use the log formulation, we can calculate the log of single terms.
 
                 # Instead of writing down all the terms explicitly, we build tuples of the prefactors
                 # and the indices of the covariance matrix.
 
                 is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
+                site_parity = link_site_parity[link_pos]
 
-                pf_tot = 0.0
-                for term_ind, (term_h, term_v) in enumerate(layer_pairs):
+                pf_tot: complex = 0.0j
+                for term_ind, (term_h_0, term_h_1, term_v_0, term_v_1) in enumerate(layer_pairs):
                     # each term_* is (prefactor, indices); pfaffians already computed per term_ind
-                    prefactor = term_v[0] if is_vertical else term_h[0]
+
+                    # Select the correct term based on direction and site parity
+                    if is_vertical:
+                        curr_term = term_v_1 if site_parity == 1 else term_v_0
+                    else:
+                        curr_term = term_h_1 if site_parity == 1 else term_h_0
+
+                    prefactor = curr_term[0]
                     pfaval = el_pfaffians[layerind, link_pos, term_ind]
                     pf_tot += prefactor * pfaval
 
-                el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
+                el_energy_link = xnp.real(pf_tot) * xnp.exp(
+                    norm_mod - lognorm_default
+                )  # There's no reason for pf_tot to be real here, but after summing over all gauge configurations it should be.
                 dest = backend.array_assign(dest, (layerind, link_pos), el_energy_link)
 
         return dest
 
     @staticmethod
+    @maybe_jit(
+        static_argnames=[
+            "lattice_size",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "unitcell_size",
+            "nvirtmodes_link",
+            "nphysmodes_site",
+            "mod_link_inds",
+            "symbolvec",
+            "idxarr_vec",
+            "zeroed_params",
+        ]
+    )
     def _compute_el_grad_vec(
         lattice_size: int,
         num_pg_layer: int,
@@ -506,7 +533,7 @@ class D2nSystem2D(System2DBase):
         nphysmodes_site: int,
         mod_link_inds: tuple[int, ...],
         symbolvec: tuple,
-        idxarr_vec: tuple,
+        idxarr_vec: IdxArrVec,
         el_energy_vec: xnp.ndarray,
         mat_b_mod_vec: xnp.ndarray,
         gamma_in_sys_mod_vec: xnp.ndarray,
@@ -520,11 +547,111 @@ class D2nSystem2D(System2DBase):
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
+        link_site_parity: tuple[int, ...],  # The information contained in this argument is contained in mod_link_inds.
     ) -> xnp.ndarray:
 
         nlayer = num_pg_layer + num_fermionic_layer
-        param_shape = (nlayer, unitcell_size, len(symbolvec))
-        gradients = xnp.zeros(param_shape)
+        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
+        dest_grad = xnp.zeros(shape)
+
+        nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
+        single_link_offset = 2 * nvirtmodes_link
+        lognorm_default = xnp.sum(lognorm_default_vec)
+
+        for layerind in range(nlayer):
+
+            # Abbreviations for more readable code
+            layer_pairs = idxarr_vec[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
+
+            for link_pos, mod_link_ind in enumerate(mod_link_inds):
+                mat_b = mat_b_mod_vec[layerind][link_pos]
+                diff_d_gamma_inv = gamma_out_mod_inv_vec[layerind][link_pos]
+                gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind][link_pos]
+                diff_d_inv_gamma_inv = gamma_in_mod_inv_vec[layerind][link_pos]
+
+                covmat_out_virt = covmat_out_mod_vec[layerind][link_pos]
+                norm_mod = norm_mod_vec[layerind][link_pos]
+                mat_d_mod_inv = mat_d_mod_inv_vec[layerind][link_pos]
+
+                ###################### Calculation of the derivative ########################
+
+                # choose H/V per term based on link direction
+                is_vertical = mod_link_ind >= (nlinks // 2)
+                site_parity = link_site_parity[link_pos]
+
+                for uc_ind in range(unitcell_size):
+                    for symbol_ind, _ in enumerate(symbolvec):
+                        if (layerind, uc_ind, symbol_ind) not in zeroed_params:
+                            # the derivative calculation is computationally expensive
+                            # we can skip it for parameters that are forced by the ansatz to be zero
+
+                            deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[
+                                layerind, uc_ind, symbol_ind
+                            ]
+                            mod_covmats = utils.extract_mod_covmats(
+                                deriv_gamma_maj_sys, (mod_link_ind,), lattice_size, nphysmodes_site, nvirtmodes_link
+                            )
+                            d_mat_a, d_mat_b, d_mat_d = mod_covmats[0][0], mod_covmats[1][0], mod_covmats[2][0]
+                            d_gamma_out = (
+                                d_mat_a
+                                + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                                + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
+                                - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                            )
+                            # The virtual mode is the last link on the bottom right of the covariance matrix
+                            d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
+                            # Summand with derivative of the covariance matrix
+
+                            deriv_pf_tot: complex = 0.0j
+                            # for term_ind, (term_h, term_v) in enumerate(layer_pairs):
+                            # Unpack all 4 term combinations
+                            for term_ind, (term_h_0, term_h_1, term_v_0, term_v_1) in enumerate(layer_pairs):
+
+                                # Select the correct term based on direction and site parity
+                                if is_vertical:
+                                    curr_term = term_v_1 if site_parity == 1 else term_v_0
+                                else:
+                                    curr_term = term_h_1 if site_parity == 1 else term_h_0
+
+                                prefactor, inds = curr_term
+                                inds_arr = xnp.asarray(inds)
+                                deriv_pf_tot += prefactor * utils.derivative_pfaffian(
+                                    covmat_out_virt[xnp.ix_(inds_arr, inds_arr)],
+                                    d_covmat_out_virt[xnp.ix_(inds_arr, inds_arr)],
+                                    el_pfaffians[layerind, link_pos, term_ind],
+                                )
+
+                            d_el_energy = xnp.real(deriv_pf_tot) * xnp.exp(norm_mod - lognorm_default)
+
+                            # Summand with derivative of norms
+                            trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
+                            trace_mod = utils.compute_grad_over_norm(
+                                gamma_in_sys_mod,
+                                diff_d_inv_gamma_inv,
+                                d_mat_d,
+                                mat_d_mod_inv,
+                            )
+                            # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
+                            d_el_energy += el_energy_vec[layerind][link_pos] * (trace_mod - trace_def)
+
+                            dest_grad = backend.array_add(
+                                dest_grad, (layerind, link_pos, uc_ind, symbol_ind), d_el_energy
+                            )
+
+        # scale to system size - currently only valid when all links should be weighed equally
+        dest_grad *= nlinks / len(mod_link_inds)
+
+        # We have to weigh the different layers with the electric energy operator expectation of the other layers.
+        # They act as a prefactor in the derivative.
+        # This must be done separately over all links.
+        if nlayer > 1:
+            for lay in range(nlayer):
+                for linkind in range(len(mod_link_inds)):
+                    prod_other_layers = utils.multiply_except(el_energy_vec[:, linkind], lay)
+                    dest_grad = backend.array_mult(dest_grad, (lay, linkind), prod_other_layers)
+        dest_grad = xnp.sum(dest_grad, axis=1)  # sum over the links
+
+        return dest_grad
         return gradients
 
     @staticmethod
