@@ -603,20 +603,6 @@ def compute_grad_over_norm(
     The gradient of the norm divided by the norm is given by
         -0.5 * np.trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
     which is very expensive to calculate.
-    To reduce the number of expensive matrix multiplications, we use the fact that
-        Tr(A @ B.T) = \sum_ij a_ij b_ij
-    i.e. trace of a square matrix which is the product of two real matrices can be rewritten as
-    the sum of entry-wise products of their elements, i.e. as the sum of all elements of their Hadamard product [1].
-    Note that for current systems, the input matrices are always real, but this should be checked if the system changes
-    (e.g. for other groups).
-
-    When using a GPU it is faster to do all the matrix multiplications
-    and then take the trace.
-
-    The choice of which method to use is given by the `method` parameter.
-
-    Refs:
-        [1] Trace, Wikipedia, https://en.wikipedia.org/wiki/Trace_(linear_algebra)#Trace_of_a_product
 
     Args:
         gamma_in_sys (np.ndarray): Gauged covariance matrix of the projectors
@@ -635,6 +621,21 @@ def compute_grad_over_norm(
 
 def trace_of_product(mats: Sequence[xnp.ndarray], method: str = "hadamard") -> float:
     """Compute the trace of the product of an arbitrary number of matrices.
+
+    To reduce the number of expensive matrix multiplications, we use the fact that
+        Tr(A @ B.T) = \sum_ij a_ij b_ij
+    i.e. trace of a square matrix which is the product of two real matrices can be rewritten as
+    the sum of entry-wise products of their elements, i.e. as the sum of all elements of their Hadamard product [1].
+    Note that for current systems, the input matrices are always real, but this should be checked if the system changes
+    (e.g. for other groups).
+
+    When using a GPU it is faster to do all the matrix multiplications
+    and then take the trace.
+
+    The choice of which method to use is given by the `method` parameter.
+
+    Refs:
+        [1] Trace, Wikipedia, https://en.wikipedia.org/wiki/Trace_(linear_algebra)#Trace_of_a_product
 
     Args:
         mats (Sequence[xnp.ndarray]): A sequence of matrices with compatible dimensions for multiplication,
