@@ -1362,7 +1362,7 @@ class System2DBase(ABC):
 
         # TODO: We might save one matrix-matrix multiplication here
         # The deriv_d and mat_d_inv are constant
-        res = utils.compute_grad_over_norm(gamma_in_sys_vec[layerind], diff, deriv_d, mat_d_inv)
+        res = utils.compute_grad_over_norm(gamma_in_sys_vec[layerind], deriv_d, mat_d_inv, diff)
         return res
 
     def compute_grad_over_norm(self, layerind: int, uc_ind: int, symb_ind: int) -> float:

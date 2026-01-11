@@ -4,8 +4,9 @@ import sys
 import gzip
 import pickle
 import logging
+import functools
 import subprocess  # Start process for git hash
-from typing import Optional, Union
+from typing import Optional, Sequence, Union
 
 import numba as nb
 import pandas as pd
@@ -591,9 +592,9 @@ def generate_smat(n: int) -> xnp.ndarray:
 
 def compute_grad_over_norm(
     gamma_in_sys: xnp.ndarray,
-    diff: xnp.ndarray,
     deriv_d: xnp.ndarray,
     mat_d_inv: xnp.ndarray,
+    diff: xnp.ndarray,
     method: str = "hadamard",
 ) -> float:
     r"""Compute the gradient of the norm divided by the norm.
@@ -627,14 +628,32 @@ def compute_grad_over_norm(
     Returns:
         float: Gradient of the norm divided by the norm.
     """
+
+    dest = -0.5 * trace_of_product([gamma_in_sys, deriv_d, mat_d_inv, diff], method=method)
+    return dest
+
+
+def trace_of_product(mats: Sequence[xnp.ndarray], method: str = "hadamard") -> float:
+    """Compute the trace of the product of an arbitrary number of matrices.
+
+    Args:
+        mats (Sequence[xnp.ndarray]): A sequence of matrices with compatible dimensions for multiplication,
+            which result in a square matrix to allow for the trace to be defined.
+        method (str, optional): Method to use to compute the trace of the product.
+
+    Returns:
+        float: Trace of the product of the matrices
+    """
     if method == "hadamard":
-        A = gamma_in_sys @ deriv_d
-        B = mat_d_inv @ diff
-        dest = -0.5 * (A * B.T).sum()
+        ind = len(mats) // 2
+        prod1 = functools.reduce(xnp.matmul, mats[:ind])
+        prod2 = functools.reduce(xnp.matmul, mats[ind:])
+        dest = (prod1 * prod2.T).sum()
     elif method == "trace":
-        dest = -0.5 * xnp.trace(xnp.matmul(xnp.matmul(gamma_in_sys, deriv_d), xnp.matmul(mat_d_inv, diff)))
+        prod = functools.reduce(xnp.matmul, mats)
+        dest = xnp.trace(prod)
     else:
-        raise ValueError(f"Unknown method {method} for computing the gradient over norm.")
+        raise ValueError(f"Unknown method {method} for computing the trace of product.")
     return dest
 
 
