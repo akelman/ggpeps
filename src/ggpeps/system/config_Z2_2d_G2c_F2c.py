@@ -74,23 +74,52 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
     def init_el_energy_terms(self) -> None:
         """Build idxarr_vec (paired H/V terms per layer)."""
-        # Constants used in the calculation of the electric energy on a horizontal link.
-        idxarr_lay_pg_h, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, "pure_gauge", "horizontal", self.gaugemgr
+        # --- Pure Gauge Terms ---
+        # 1. Horizontal, Site 0
+        idxarr_lay_pg_h_0, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "pure_gauge", "horizontal", self.gaugemgr, site=0
         )
-        idxarr_lay_fermionic_h, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, "physical", "horizontal", self.gaugemgr
+
+        # 2. Horizontal, Site 1
+        idxarr_lay_pg_h_1, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "pure_gauge", "horizontal", self.gaugemgr, site=1
         )
-        # Constants used in the calculation of the electric energy on a vertical link.
-        idxarr_lay_pg_v, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, "pure_gauge", "vertical", self.gaugemgr
+
+        # 3. Vertical, Site 0
+        idxarr_lay_pg_v_0, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "pure_gauge", "vertical", self.gaugemgr, site=0
         )
-        idxarr_lay_fermionic_v, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, "physical", "vertical", self.gaugemgr
+
+        # 4. Vertical, Site 1
+        idxarr_lay_pg_v_1, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "pure_gauge", "vertical", self.gaugemgr, site=1
         )
+
+        # --- Fermionic Terms ---
+        # 1. Horizontal, Site 0
+        idxarr_lay_pf_h_0, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "physical", "horizontal", self.gaugemgr, site=0
+        )
+
+        # 2. Horizontal, Site 1
+        idxarr_lay_pf_h_1, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "physical", "horizontal", self.gaugemgr, site=1
+        )
+
+        # 3. Vertical, Site 0
+        idxarr_lay_pf_v_0, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "physical", "vertical", self.gaugemgr, site=0
+        )
+
+        # 4. Vertical, Site 1
+        idxarr_lay_pf_v_1, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "physical", "vertical", self.gaugemgr, site=1
+        )
+
         # Pair horizontal/vertical term-lists termwise for each layer kind
-        zipped_pg = tuple(zip(idxarr_lay_pg_h, idxarr_lay_pg_v))
-        zipped_pf = tuple(zip(idxarr_lay_fermionic_h, idxarr_lay_fermionic_v))
+        # Structure: (H0, H1, V0, V1)
+        zipped_pg = tuple(zip(idxarr_lay_pg_h_0, idxarr_lay_pg_h_1, idxarr_lay_pg_v_0, idxarr_lay_pg_v_1))
+        zipped_pf = tuple(zip(idxarr_lay_pf_h_0, idxarr_lay_pf_h_1, idxarr_lay_pf_v_0, idxarr_lay_pf_v_1))
 
         # Stack per-layer: first pure-gauge layers, then fermionic layers
         self.idxarr_vec = tuple([zipped_pg] * self.num_pg_layer + [zipped_pf] * self.num_fermionic_layer)

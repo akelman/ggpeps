@@ -73,19 +73,30 @@ class Z2System2DConfig(Config2DBase):
         self.init_el_energy_terms()
 
     def init_el_energy_terms(self) -> None:
-        """Build idxarr_vec (paired H/V terms per layer)."""
-        # Constants used in the calculation of the electric energy on a horizontal link.
-        idxarr_lay_pg_h, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, "pure_gauge", "horizontal", self.gaugemgr
+        """Build idxarr_vec (paired H/V terms per layer, for both site parities)."""
+
+        # 1. Horizontal, Site 0
+        idxarr_lay_pg_h_0, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "pure_gauge", "horizontal", self.gaugemgr, site=0
         )
 
-        # Constants used in the calculation of the electric energy on a vertical link.
-        idxarr_lay_pg_v, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, "pure_gauge", "vertical", self.gaugemgr
+        # 2. Horizontal, Site 1
+        idxarr_lay_pg_h_1, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "pure_gauge", "horizontal", self.gaugemgr, site=1
         )
 
-        # Pair horizontal/vertical term-lists termwise for each layer kind
-        zipped_pg = tuple(zip(idxarr_lay_pg_h, idxarr_lay_pg_v))
+        # 3. Vertical, Site 0
+        idxarr_lay_pg_v_0, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "pure_gauge", "vertical", self.gaugemgr, site=0
+        )
+
+        # 4. Vertical, Site 1
+        idxarr_lay_pg_v_1, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "pure_gauge", "vertical", self.gaugemgr, site=1
+        )
+
+        # Zip all four combinations: (H0, H1, V0, V1)
+        zipped_pg = tuple(zip(idxarr_lay_pg_h_0, idxarr_lay_pg_h_1, idxarr_lay_pg_v_0, idxarr_lay_pg_v_1))
 
         # Stack per-layer: first pure-gauge layers, then fermionic layers (no fermionic layers here)
         self.idxarr_vec = tuple([zipped_pg] * self.nlayer)
