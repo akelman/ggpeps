@@ -57,11 +57,10 @@ def calculate_lognormvec_numpy(
     return dest / 2
 
 
-class BackendNumpy_Z2(BackendBase):
-    """Backend for Z2 systems using numpy."""
+class BackendNumpy(BackendBase):
+    """Backend for numpy."""
 
     backend_type = "numpy"
-    gauge_group = "Z2"
 
     def __init__(self) -> None:
         pass

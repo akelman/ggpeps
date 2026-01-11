@@ -7,6 +7,7 @@ class BackendBase(ABC):
     This class defines the interface for the backend, which can be implemented
         1) using different libraries (e.g., numpy, jax)
         2) for different groups (e.g., Z2, Dn).
+    At present, backends do not differ across groups.
     """
 
     def __init__(self):

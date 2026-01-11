@@ -3,8 +3,8 @@ import numpy as np
 import jax.numpy as jnp
 
 from ggpeps import utils
-from ggpeps.system.backend_numpy import BackendNumpy_Z2
-from ggpeps.system.backend_jax import BackendJax_Z2
+from ggpeps.system.backend_numpy import BackendNumpy
+from ggpeps.system.backend_jax import BackendJax
 
 
 ############## SELECT APPROPRIATE VERSION ##############
@@ -12,8 +12,8 @@ from ggpeps.system.backend_jax import BackendJax_Z2
 
 class TestBackends(unittest.TestCase):
     def setUp(self):
-        self.jax_backend = BackendJax_Z2()
-        self.numpy_backend = BackendNumpy_Z2()
+        self.jax_backend = BackendJax()
+        self.numpy_backend = BackendNumpy()
 
     def test_pfaffians(self):
         """Test that the pfaffian function gives the same results for both backends."""

@@ -62,11 +62,10 @@ def calculate_lognormvec_jax(
     return dest / 2
 
 
-class BackendJax_Z2(BackendBase):
-    """Backend for Z2 systems using jax."""
+class BackendJax(BackendBase):
+    """Backend for jax."""
 
     backend_type = "jax"
-    gauge_group = "Z2"
 
     def __init__(self) -> None:
         pass
