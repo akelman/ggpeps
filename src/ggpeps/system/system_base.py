@@ -1122,7 +1122,7 @@ class System2DBase(ABC):
         unitcell_size: int,
         nparams: int,
         zeroed_params: list,
-        wi_gamma_in_inv_vec: xnp.ndarray,
+        gamma_in_inv_vec: xnp.ndarray,
         gamma_in_sys_vec: xnp.ndarray,
         mat_d_inv_vec: xnp.ndarray,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
@@ -1146,7 +1146,7 @@ class System2DBase(ABC):
                         grad = cls._compute_grad_over_norm(
                             lattice_size,
                             nphysmodes_site,
-                            wi_gamma_in_inv_vec,
+                            gamma_in_inv_vec,
                             gamma_in_sys_vec,
                             mat_d_inv_vec,
                             gamma_maj_sys_deriv_layvec_ucvec_symbvec,
