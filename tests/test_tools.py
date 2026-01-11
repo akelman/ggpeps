@@ -1,6 +1,5 @@
 import unittest
 
-import ggpeps.utils as utils
 from tools import build_slurm
 
 
