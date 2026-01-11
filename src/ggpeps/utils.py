@@ -240,7 +240,7 @@ def extract_mod_covmats(
     Args:
         mat (xnp.ndarray): The mat(s) from which to extract the submatrices.
         link_inds (tuple[int, ...]): a list of link indices to include in the physical-physical set.
-        lattice_size (int): the length of a side of the square lattice.
+        lattice_size (int): the size square lattice (number of sites).
         nphysmodes_site (int): number of physical modes per site.
         nvirtmodes_link (int): number of virtual modes per link.
 
