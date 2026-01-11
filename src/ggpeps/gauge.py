@@ -307,26 +307,26 @@ class D2nGauge:
         q = self.get_reflection_index(group_element)
         p = self.get_rotation_index(group_element)
         if irrep_label == 0:
-            irrep = np.array([[1]])
+            return np.array([[1]])
         elif irrep_label == 1:
-            irrep = np.array([[(-1) ** q]])
+            return np.array([[(-1) ** q]])
         if self.n % 2 == 0:  # n is even
             if irrep_label == 2:
-                irrep = np.array([[(-1) ** p]])
+                return np.array([[(-1) ** p]])
             elif irrep_label == 3:
-                irrep = np.array([[(-1) ** q * (-1) ** p]])
+                return np.array([[(-1) ** q * (-1) ** p]])
             else:  # 2D irreps
                 j_2d = irrep_label - 4 + 1
                 theta = (2.0 * np.pi * j_2d * p) / self.n
                 if q == 0:
-                    irrep = np.array(
+                    return np.array(
                         [
                             [np.cos(theta), -np.sin(theta)],
                             [np.sin(theta), np.cos(theta)],
                         ],
                     )
                 else:  # q==1
-                    irrep = np.array(
+                    return np.array(
                         [
                             [np.cos(theta), np.sin(theta)],
                             [np.sin(theta), -np.cos(theta)],
@@ -337,14 +337,14 @@ class D2nGauge:
                 j_2d = irrep_label - 2 + 1
                 theta = (2.0 * np.pi * j_2d * p) / self.n
                 if q == 0:
-                    irrep = np.array(
+                    return np.array(
                         [
                             [np.cos(theta), -np.sin(theta)],
                             [np.sin(theta), np.cos(theta)],
                         ],
                     )
                 else:  # q==1
-                    irrep = np.array(
+                    return np.array(
                         [
                             [np.cos(theta), np.sin(theta)],
                             [np.sin(theta), -np.cos(theta)],
