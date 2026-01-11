@@ -348,6 +348,7 @@ class System2DBase(ABC):
             "num_fermionic_layer",
             "unitcell_size",
             "nparams",
+            "zeroed_params",
         ]
     )
     def _compute_d_gamma_out_symbolvec(
@@ -367,16 +368,16 @@ class System2DBase(ABC):
         d_gamma_out_symbolvec = xnp.zeros(shape)
 
         for layer in range(num_pg_layer, nlayer):
-            for uc_ind in range(unitcell_size):
-                offset = dim_gamma_out
+            mat_b = mat_b_vec[layer]
+            diff_d_gamma_inv = gamma_out_inv_vec[layer]
 
+            for uc_ind in range(unitcell_size):
                 for symbol_ind in range(nparams):
                     # TODO: skip for zeroed params
 
-                    mat_b = mat_b_vec[layer]
                     deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layer, uc_ind, symbol_ind]
-                    d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, offset)
-                    diff_d_gamma_inv = gamma_out_inv_vec[layer]
+                    d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, dim_gamma_out)
+
                     d_gamma_out = (
                         d_mat_a
                         + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
