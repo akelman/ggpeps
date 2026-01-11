@@ -1102,10 +1102,9 @@ class System2DBase(ABC):
         arr = self.gamma_maj_sys_deriv_layvec_ucvec_symbvec[:, :, self.symbolvec.index(symb), :, :]
         return arr
 
-    @classmethod
+    @staticmethod
     @maybe_jit(
         static_argnames=[
-            "cls",
             "lattice_size",
             "nphysmodes_site",
             "nlayer",
@@ -1114,8 +1113,7 @@ class System2DBase(ABC):
             "zeroed_params",
         ]
     )
-    def compute_grad_norm_vec(
-        cls,
+    def compute_grad_over_norm_vec(
         lattice_size: int,
         nphysmodes_site: int,
         nlayer: int,
@@ -1127,10 +1125,23 @@ class System2DBase(ABC):
         mat_d_inv_vec: xnp.ndarray,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
     ) -> xnp.ndarray:
-        """Compute the gradient of the norm for all layers with respect to all parameters.
+        """Compute the gradient of the norm divided by the norm for all layers with respect to all parameters.
+
+        Args:
+            lattice_size (int): Number of sites in the lattice
+            nphysmodes_site (int): Number of physical modes per site
+            nlayer (int): Number of layers
+            unitcell_size (int): Size of the unit cell
+            nparams (int):
+            zeroed_params (list): List of tuples (layerind, uc_ind, symbol_ind) of parameters that are forced to be
+                zero by the ansatz
+            gamma_in_inv_vec (xnp.ndarray): Vector of inverses of gamma_in_sys
+            gamma_in_sys_vec (xnp.ndarray):
+            mat_d_inv_vec (xnp.ndarray): Vector of inverses of mat_d
+            gamma_maj_sys_deriv_layvec_ucvec_symbvec (xnp.ndarray): Array of derivatives of gamma_maj_sys
 
         Returns:
-            xnp.ndarray: Vector of gradients of the norm with respect to all parameters of all layers and unit cells.
+            xnp.ndarray: Vector of gradients of the norm divided by the norm wrt all parameters of all layers, etc.
         """
         dest_grad = xnp.zeros((nlayer, unitcell_size, nparams))
 
@@ -1143,17 +1154,18 @@ class System2DBase(ABC):
                         # we can skip it for parameters that are forced by the ansatz to be zero
 
                         # Compute gradient
-                        grad = cls._compute_grad_over_norm(
-                            lattice_size,
-                            nphysmodes_site,
-                            gamma_in_inv_vec,
-                            gamma_in_sys_vec,
-                            mat_d_inv_vec,
-                            gamma_maj_sys_deriv_layvec_ucvec_symbvec,
-                            layerind,
-                            uc_ind,
-                            symbol_ind,
+
+                        diff = gamma_in_inv_vec[layerind]
+                        offset = 2 * lattice_size * nphysmodes_site  # offset past the physical modes
+                        # Extract only the part of the virtual-virtual correlations
+                        _, __, deriv_d = utils.extract_partial_covmats(
+                            gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind], offset
                         )
+                        mat_d_inv = mat_d_inv_vec[layerind]
+
+                        # TODO: We might save one matrix-matrix multiplication here
+                        # The deriv_d and mat_d_inv are constant
+                        grad = utils.compute_grad_over_norm(gamma_in_sys_vec[layerind], deriv_d, mat_d_inv, diff)
 
                         # Save
                         inds = (layerind, uc_ind, symbol_ind)
@@ -1321,77 +1333,16 @@ class System2DBase(ABC):
             cumval += 0.5 * detval
         return cumval
 
-    @staticmethod
-    @maybe_jit(static_argnames=["lattice_size", "nphysmodes_site"])
-    def _compute_grad_over_norm(
-        lattice_size: int,
-        nphysmodes_site: int,
-        gamma_in_inv_vec: xnp.ndarray,
-        gamma_in_sys_vec: xnp.ndarray,
-        mat_d_inv_vec: xnp.ndarray,
-        gamma_maj_sys_deriv: xnp.ndarray,
-        layerind: int,
-        uc_ind: int,
-        symb_ind: int,
-    ) -> float:
-        """Compute the quotient of derivative of the norm over the norm itself.
-        We can avoid a lot of factors by computing the quotient directly.
-
-        Args:
-            lattice_size (int): Size of the lattice (number of sites)
-            nphysmodes_site (int): Number of physical modes per site
-            gamma_in_inv_vec (xnp.ndarray): Vector of inverses of gamma_in
-            gamma_in_sys_vec (xnp.ndarray):
-            mat_d_inv_vec (xnp.ndarray): Vector of inverses of D matrices
-            gamma_maj_sys_deriv (xnp.ndarray): Derivatives of the Majorana covariance
-                matrix of the fulll system, shape (nlayer, unitcell_size, n_symbols, gamma
-            layerind (int): layer index
-            uc_ind (int): unit cell index
-            symb_ind (int): index into symbolvec of parameter wrt which to take the derivative
-                            (of the given lay, uc_ind)
-
-        Returns:
-            float: Value of the gradient divided by the norm of the state
-        """
-        diff = gamma_in_inv_vec[layerind]
-        # 2 phys. Majorana modes per vertex, this is indepent of the number of copies or layers
-        offset = 2 * lattice_size * nphysmodes_site
-        # Extract only the part of the virtual-virtual correlations
-        _, _, deriv_d = utils.extract_partial_covmats(gamma_maj_sys_deriv[layerind, uc_ind, symb_ind], offset)
-        mat_d_inv = mat_d_inv_vec[layerind]
-
-        # TODO: We might save one matrix-matrix multiplication here
-        # The deriv_d and mat_d_inv are constant
-        res = utils.compute_grad_over_norm(gamma_in_sys_vec[layerind], deriv_d, mat_d_inv, diff)
-        return res
-
-    def compute_grad_over_norm(self, layerind: int, uc_ind: int, symb_ind: int) -> float:
-        """This is a wrapper for the compute_grad_over_norm function.
-        We use a wrapper so that the inner computation function can be jit-compiled."""
-        wi_gamma_in_inv_vec = xnp.array([self.wi_gamma_in_vec[layerind].inv() for layerind in range(self.cfg.nlayer)])
-        res = self._compute_grad_over_norm(
-            self.cfg.lattice.size,
-            self.cfg.nphysmodes_site,
-            wi_gamma_in_inv_vec,
-            self.gamma_in_sys_vec,
-            self.mat_d_inv_vec,
-            self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
-            layerind,
-            uc_ind,
-            symb_ind,
-        )
-        return res
-
     @property
     def grad_over_norm_vec(self) -> xnp.ndarray:
-        """Compute the gradient of the norm over all parameters for all layers and unit cells.
+        """Compute the gradient of the norm divided by the norm over all parameters for all layers and unit cells.
 
         Returns:
-            xnp.ndarray: Vector of gradients of the norm with respect to all parameters
+            xnp.ndarray: Vector of gradients of the norm divided by the norm with respect to all parameters
         """
         if self._grad_over_norm_vec is None:
             gamma_in_inv_vec = xnp.array([self.wi_gamma_in_vec[layerind].inv() for layerind in range(self.cfg.nlayer)])
-            self._grad_over_norm_vec = self.compute_grad_norm_vec(
+            self._grad_over_norm_vec = self.compute_grad_over_norm_vec(
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nlayer,
