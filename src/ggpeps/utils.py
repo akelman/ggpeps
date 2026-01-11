@@ -230,6 +230,13 @@ def extract_partial_covmats(mat: xnp.ndarray, corner: int) -> tuple[xnp.ndarray,
     return mat_a, mat_b, mat_d
 
 
+@maybe_jit(static_argnames=[])
+def extract_submatrix(matrix, row_idx, col_idx):
+    # Take the rows first, then take the columns
+    return jnp.take(jnp.take(matrix, row_idx, axis=0), col_idx, axis=1)
+
+
+@maybe_jit(static_argnames=["link_inds", "lattice_size", "nphysmodes_site", "nvirtmodes_link"])
 def extract_mod_covmats(
     mat: xnp.ndarray, link_inds: tuple[int, ...], lattice_size: int, nphysmodes_site: int, nvirtmodes_link: int
 ) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
@@ -253,7 +260,7 @@ def extract_mod_covmats(
 
     # Base physical mask (no virtuals yet)
     base_phys_mask = xnp.zeros(size, dtype=bool)
-    base_phys_mask[:phys_offset] = True
+    base_phys_mask = backend.array_assign(base_phys_mask, xnp.arange(phys_offset), jnp.ones(phys_offset, dtype=bool))
 
     A_list = []
     B_list = []
@@ -264,12 +271,21 @@ def extract_mod_covmats(
         virt_end = virt_start + 2 * nvirtmodes_link
 
         phys_mask = base_phys_mask.copy()
-        phys_mask[virt_start:virt_end] = True
+        phys_mask = backend.array_assign(
+            phys_mask, xnp.arange(virt_start, virt_end), jnp.ones(2 * nvirtmodes_link, dtype=bool)
+        )
         virt_mask = ~phys_mask
 
-        A_list.append(mat[..., phys_mask, :][..., :, phys_mask])  # mask rows, then columns
-        B_list.append(mat[..., phys_mask, :][..., :, virt_mask])
-        D_list.append(mat[..., virt_mask, :][..., :, virt_mask])
+        # A_list.append(mat[..., phys_mask, :][..., :, phys_mask])  # mask rows, then columns
+        # B_list.append(mat[..., phys_mask, :][..., :, virt_mask])
+        # D_list.append(mat[..., virt_mask, :][..., :, virt_mask])
+
+        phys_inds = xnp.nonzero(phys_mask, size=phys_offset + 2 * nvirtmodes_link, fill_value=0)[0]
+        virt_inds = xnp.nonzero(virt_mask, size=size - phys_offset - 2 * nvirtmodes_link, fill_value=0)[0]
+
+        A_list.append(mat[..., phys_inds, :][..., :, phys_inds])
+        B_list.append(mat[..., phys_inds, :][..., :, virt_inds])
+        D_list.append(mat[..., virt_inds, :][..., :, virt_inds])
 
     # Stack into (layers, links, ...)
     A = xnp.stack(A_list, axis=1)
