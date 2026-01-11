@@ -240,6 +240,9 @@ def extract_mod_covmats(
     Args:
         mat (xnp.ndarray): The mat(s) from which to extract the submatrices.
         link_inds (tuple[int, ...]): a list of link indices to include in the physical-physical set.
+        lattice_size (int): the length of a side of the square lattice.
+        nphysmodes_site (int): number of physical modes per site.
+        nvirtmodes_link (int): number of virtual modes per link.
 
     Returns:
         tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]: the A, B, D submatrices, across layers and links
@@ -260,21 +263,11 @@ def extract_mod_covmats(
         virt_start = phys_offset + 2 * nvirtmodes_link * link_ind
         virt_end = virt_start + 2 * nvirtmodes_link
 
-        phys_inds = xnp.concatenate(
-            [
-                xnp.arange(phys_offset),
-                xnp.arange(virt_start, virt_end),
-            ]
-        )
+        # Get indices of physical and virtual modes
+        phys_inds = xnp.concatenate([xnp.arange(phys_offset), xnp.arange(virt_start, virt_end)])
+        virt_inds = xnp.concatenate([xnp.arange(phys_offset, virt_start), xnp.arange(virt_end, size)])
 
-        virt_inds = xnp.concatenate(
-            [
-                xnp.arange(phys_offset, virt_start),
-                xnp.arange(virt_end, size),
-            ]
-        )
-
-        A_list.append(mat[..., phys_inds, :][..., :, phys_inds])
+        A_list.append(mat[..., phys_inds, :][..., :, phys_inds])  # get rows, then columns
         B_list.append(mat[..., phys_inds, :][..., :, virt_inds])
         D_list.append(mat[..., virt_inds, :][..., :, virt_inds])
 
