@@ -1146,26 +1146,30 @@ class System2DBase(ABC):
         dest_grad = xnp.zeros((nlayer, unitcell_size, nparams))
 
         for layerind in range(nlayer):
-            for uc_ind in range(unitcell_size):
+            offset = 2 * lattice_size * nphysmodes_site  # offset past the physical modes
+            diff = gamma_in_inv_vec[layerind]
+            mat_d_inv = mat_d_inv_vec[layerind]
+            gamma_in_sys = gamma_in_sys_vec[layerind]
 
+            # Save the product, so that it is not recomputed for every parameter
+            prod = mat_d_inv @ diff @ gamma_in_sys
+
+            for uc_ind in range(unitcell_size):
                 for symbol_ind in range(nparams):
                     if (layerind, uc_ind, symbol_ind) not in zeroed_params:
                         # the derivative calculation is computationally expensive
                         # we can skip it for parameters that are forced by the ansatz to be zero
 
-                        # Compute gradient
-
-                        diff = gamma_in_inv_vec[layerind]
-                        offset = 2 * lattice_size * nphysmodes_site  # offset past the physical modes
                         # Extract only the part of the virtual-virtual correlations
                         _, __, deriv_d = utils.extract_partial_covmats(
                             gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind], offset
                         )
-                        mat_d_inv = mat_d_inv_vec[layerind]
 
-                        # TODO: We might save one matrix-matrix multiplication here
-                        # The deriv_d and mat_d_inv are constant
-                        grad = utils.compute_grad_over_norm(gamma_in_sys_vec[layerind], deriv_d, mat_d_inv, diff)
+                        # Instead of computing the modified grad over the norm as:
+                        #   grad = utils.compute_grad_over_norm(gamma_in_sys, deriv_d, mat_d_inv, diff)
+                        # we have saved the product of several mats above (since they don't change),
+                        # and use it here:
+                        grad = -0.5 * utils.trace_of_product((deriv_d, prod))
 
                         # Save
                         inds = (layerind, uc_ind, symbol_ind)
