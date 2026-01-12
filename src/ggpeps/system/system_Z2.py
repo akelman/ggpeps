@@ -326,8 +326,8 @@ class Z2System2D(System2DBase):
                                 prefactor, inds = curr_term
                                 inds_arr = xnp.asarray(inds)
                                 deriv_pf_tot += prefactor * utils.derivative_pfaffian(
-                                    covmat_out_virt[xnp.ix_(inds_arr, inds_arr)],
-                                    d_covmat_out_virt[xnp.ix_(inds_arr, inds_arr)],
+                                    covmat_out_virt[inds_arr, :][:, inds_arr],  # this indexing is faster than np.ix_
+                                    d_covmat_out_virt[inds_arr, :][:, inds_arr],
                                     el_pfaffians[layerind, link_pos, term_ind],
                                 )
 
