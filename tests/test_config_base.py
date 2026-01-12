@@ -62,11 +62,11 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
             self._assert_complex_close(g_coef, e_coef)
 
     def test_generate_gauged_projector_terms_small_cases(self):
-        # Expected outputs for ncopy in {1,2}, layer in {pure_gauge, physical},
+        # Expected outputs for ncopy in {1,2}, layer in {mixed_copies, unmixed_copies},
         # orientation in {horizontal, vertical}, group_order = 2.
         # We compare ALL terms, including those with coefficients with zero real part.
         expected = {
-            (1, "pure_gauge", "horizontal"): (
+            (1, "mixed_copies", "horizontal"): (
                 (
                     (0.5, (0, 1)),
                     (-0.5j, (2, 0)),
@@ -75,7 +75,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (1, "pure_gauge", "vertical"): (
+            (1, "mixed_copies", "vertical"): (
                 (
                     (0.5, (0, 1)),
                     (0.5j, (2, 1)),
@@ -84,7 +84,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (1, "physical", "horizontal"): (
+            (1, "unmixed_copies", "horizontal"): (
                 (
                     (0.5, (0, 1)),
                     (-0.5j, (2, 0)),
@@ -93,7 +93,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (1, "physical", "vertical"): (
+            (1, "unmixed_copies", "vertical"): (
                 (
                     (0.5, (0, 1)),
                     (0.5j, (2, 1)),
@@ -102,7 +102,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (2, "pure_gauge", "horizontal"): (
+            (2, "mixed_copies", "horizontal"): (
                 (
                     (0.125, (2, 3, 0, 1)),
                     (-0.125j, (2, 3, 6, 0)),
@@ -123,7 +123,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (2, "pure_gauge", "vertical"): (
+            (2, "mixed_copies", "vertical"): (
                 (
                     (0.125, (2, 3, 0, 1)),
                     (0.125j, (2, 3, 6, 1)),
@@ -144,7 +144,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (2, "physical", "horizontal"): (
+            (2, "unmixed_copies", "horizontal"): (
                 (
                     (0.125, (0, 1, 4, 5)),
                     (-0.125j, (0, 1, 6, 4)),
@@ -165,7 +165,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (2, "physical", "vertical"): (
+            (2, "unmixed_copies", "vertical"): (
                 (
                     (0.125, (0, 1, 4, 5)),
                     (0.125j, (0, 1, 6, 5)),
@@ -189,12 +189,12 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
         }
         gaugemgr = gauge.ZNGauge(2)
         for ncopy in (1, 2):
-            for layer in ("pure_gauge", "physical"):
+            for layer in ("mixed_copies", "unmixed_copies"):
                 for orientation in ("horizontal", "vertical"):
                     got_ind, got_const = config_base.generate_gauged_projector_terms(
                         ncopy=ncopy,
                         ncolor=1,
-                        layer=layer,
+                        coupling_type=layer,
                         orientation=orientation,
                         gaugemgr=gaugemgr,
                         site=0,

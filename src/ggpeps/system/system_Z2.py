@@ -169,6 +169,7 @@ class Z2System2D(System2DBase):
         nlayer: int,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
+        link_site_parity: tuple[int, ...],
     ) -> xnp.ndarray:
 
         lognorm_default = xnp.sum(lognormvec_default)
@@ -178,7 +179,7 @@ class Z2System2D(System2DBase):
 
         # TODO: vectorize!
         for layerind in range(nlayer):
-            layer_pairs = idxarrs[layerind]  # tuple of pairs: ((H,V), (H,V), ...)
+            layer_pairs = idxarrs[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
             norm_mod_linkvec = norm_mod_vec[layerind]
 
             # Iterate over the links
@@ -192,11 +193,19 @@ class Z2System2D(System2DBase):
                 # and the indices of the covariance matrix.
 
                 is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
+                site_parity = link_site_parity[link_pos]
 
                 pf_tot: complex = 0.0j
-                for term_ind, (term_h, term_v) in enumerate(layer_pairs):
+                for term_ind, (term_h_0, term_h_1, term_v_0, term_v_1) in enumerate(layer_pairs):
                     # each term_* is (prefactor, indices); pfaffians already computed per term_ind
-                    prefactor = term_v[0] if is_vertical else term_h[0]
+
+                    # Select the correct term based on direction and site parity
+                    if is_vertical:
+                        curr_term = term_v_1 if site_parity == 1 else term_v_0
+                    else:
+                        curr_term = term_h_1 if site_parity == 1 else term_h_0
+
+                    prefactor = curr_term[0]
                     pfaval = el_pfaffians[layerind, link_pos, term_ind]
                     pf_tot += prefactor * pfaval
 
@@ -245,6 +254,7 @@ class Z2System2D(System2DBase):
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
+        link_site_parity: tuple[int, ...],  # The information contained in this argument is contained in mod_link_inds.
     ) -> xnp.ndarray:
 
         nlayer = num_pg_layer + num_fermionic_layer
@@ -258,7 +268,7 @@ class Z2System2D(System2DBase):
         for layerind in range(nlayer):
 
             # Abbreviations for more readable code
-            layer_pairs = idxarr_vec[layerind]  # tuple of pairs: ((H,V), (H,V), ...)
+            layer_pairs = idxarr_vec[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
 
             for link_pos, mod_link_ind in enumerate(mod_link_inds):
                 mat_b = mat_b_mod_vec[layerind][link_pos]
@@ -277,6 +287,7 @@ class Z2System2D(System2DBase):
 
                 # choose H/V per term based on link direction
                 is_vertical = mod_link_ind >= (nlinks // 2)
+                site_parity = link_site_parity[link_pos]
 
                 for uc_ind in range(unitcell_size):
                     for symbol_ind, _ in enumerate(symbolvec):
@@ -302,9 +313,17 @@ class Z2System2D(System2DBase):
                             # Summand with derivative of the covariance matrix
 
                             deriv_pf_tot: complex = 0.0j
-                            # for ind, (prefactor, inds) in enumerate(idxarr):
-                            for term_ind, (term_h, term_v) in enumerate(layer_pairs):
-                                prefactor, inds = term_v if is_vertical else term_h
+                            # for term_ind, (term_h, term_v) in enumerate(layer_pairs):
+                            # Unpack all 4 term combinations
+                            for term_ind, (term_h_0, term_h_1, term_v_0, term_v_1) in enumerate(layer_pairs):
+
+                                # Select the correct term based on direction and site parity
+                                if is_vertical:
+                                    curr_term = term_v_1 if site_parity == 1 else term_v_0
+                                else:
+                                    curr_term = term_h_1 if site_parity == 1 else term_h_0
+
+                                prefactor, inds = curr_term
                                 inds_arr = xnp.asarray(inds)
                                 deriv_pf_tot += prefactor * utils.derivative_pfaffian(
                                     covmat_out_virt[xnp.ix_(inds_arr, inds_arr)],

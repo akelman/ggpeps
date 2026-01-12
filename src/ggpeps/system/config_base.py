@@ -337,10 +337,10 @@ from typing import Optional, Union, Literal, DefaultDict
 MonomialAccumulator = DefaultDict[tuple[int, ...], complex]
 
 
-Layer = Literal["pure_gauge", "physical"]
+CouplingType = Literal["mixed_copies", "unmixed_copies"]
 """Layer type selector.
-- "physical"   : sigma(j) = j (identity)
-- "pure_gauge" : sigma swaps each pair (2a-1 <-> 2a) for a = 1..k/2.
+- "unmixed_copies"   : sigma(j) = j (identity)
+- "mixed_copies" : sigma swaps each pair (2a-1 <-> 2a) for a = 1..k/2.
 """
 
 Orientation = Literal["horizontal", "vertical"]
@@ -350,25 +350,25 @@ Orientation = Literal["horizontal", "vertical"]
 """
 
 
-def make_sigma(ncopy: int, layer: Layer) -> list[int]:
+def make_sigma(ncopy: int, coupling_type: CouplingType) -> list[int]:
     """
     Build the link-pairing permutation sigma for the chosen layer.
 
     Args:
         ncopy (int): Number of copies (must be 1 or even).
-        layer (Layer): Layer type; 'physical' uses identity, 'pure_gauge' swaps (2a-1 <-> 2a).
+        coupling_type (CouplingType): CouplingType type; 'unmixed_copies' uses identity, 'mixed_copies' swaps (2a-1 <-> 2a).
 
     Returns:
         list[int]: 1-based permutation list where entry j equals sigma(j).
 
     Raises:
-        ValueError: If ncopy is invalid or layer is not one of {'pure_gauge', 'physical'}.
+        ValueError: If ncopy is invalid or layer is not one of {'mixed_copies', 'unmixed_copies'}.
     """
     if not (ncopy == 1 or ncopy % 2 == 0):
         raise ValueError("ncopy must be 1 or even (odd ncopy>1 is not supported).")
-    elif layer == "physical":
+    elif coupling_type == "unmixed_copies":
         return list(range(1, ncopy + 1))
-    elif layer == "pure_gauge":
+    elif coupling_type == "mixed_copies":
         if ncopy == 1:
             return [1]
         s = [0] * ncopy
@@ -378,7 +378,7 @@ def make_sigma(ncopy: int, layer: Layer) -> list[int]:
             s[j - 1] = i
         return s
     else:
-        raise ValueError("layer must be 'pure_gauge' or 'physical'")
+        raise ValueError("coupling_type must be 'unmixed_copies' or 'mixed_copies'")
 
 
 def bracket_terms(
@@ -396,8 +396,8 @@ def bracket_terms(
 
     This function generates the Majorana operator polynomial corresponding to a single link
     in the projector. It includes:
-    1.  **Base Terms:** 8 terms involving the local modes (c, d) from the incoming layer
-        (sigma_copy) and (a, b) from the outgoing layer (copy).
+    1.  **Base Terms:** 8 terms involving the local modes (c, d) from the incoming coupling_type
+        (sigma_copy) and (a, b) from the outgoing coupling_type (copy).
     2.  **Gauge Mixing Terms:** A summation over all colors 'm', generating 16 terms per color.
         These terms mix the current color indices with the indices of color 'm', weighted
         by the matrix element D_{m, color}(h) (or its conjugate, depending on site parity).
@@ -537,7 +537,7 @@ def _pfaffian_wick_phase(mon: tuple[int, ...]) -> complex:
 def generate_gauged_projector_terms(
     ncopy: int,
     ncolor: int,
-    layer: Layer,
+    coupling_type: CouplingType,
     orientation: Orientation,
     gaugemgr: Union[gauge.ZNGauge, gauge.D2nGauge],
     site: int = 0,
@@ -564,7 +564,7 @@ def generate_gauged_projector_terms(
     Args:
         ncopy (int): Number of copies.
         ncolor (int): Number of colors.
-        layer (Layer): 'physical' or 'pure_gauge' (controls sigma permutation).
+        coupling_type (CouplingType): 'unmixed_copies' or 'mixed_copies' (controls sigma permutation).
         orientation (Orientation): 'horizontal' (eta^2 = 1) or 'vertical' (eta^2 = i).
         gaugemgr (Union[gauge.ZNGauge, gauge.D2nGauge]): Gauge manager handling group structure and irreps.
         site (int, optional): Site index (used for parity-dependent conjugation). Defaults to 0.
@@ -577,9 +577,9 @@ def generate_gauged_projector_terms(
             - constant: The scalar constant term of the polynomial.
 
     Raises:
-        ValueError: On invalid layer, orientation, or ncopy.
+        ValueError: On invalid coupling_type, orientation, or ncopy.
     """
-    sigma = make_sigma(ncopy, layer)
+    sigma = make_sigma(ncopy, coupling_type)
 
     # Map orientation -> eta^2
     eta2: Union[float, complex]
