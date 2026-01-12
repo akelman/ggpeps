@@ -270,8 +270,10 @@ class Z2System2D(System2DBase):
                 norm_mod = norm_mod_vec[layerind][link_pos]
                 mat_d_mod_inv = mat_d_mod_inv_vec[layerind][link_pos]
 
-                # Save the product, so that it is not recomputed for every parameter
-                prod = mat_d_mod_inv @ diff_d_inv_gamma_inv @ gamma_in_sys_mod
+                # Save products that do not need to be recomputed for every parameter
+                prod_mod_norm = mat_d_mod_inv @ diff_d_inv_gamma_inv @ gamma_in_sys_mod
+                diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)
+                b_times_diff = mat_b @ diff_d_gamma_inv
 
                 # choose H/V per term based on link direction
                 is_vertical = mod_link_ind >= (nlinks // 2)
@@ -291,9 +293,9 @@ class Z2System2D(System2DBase):
                             d_mat_a, d_mat_b, d_mat_d = mod_covmats[0][0], mod_covmats[1][0], mod_covmats[2][0]
                             d_gamma_out = (
                                 d_mat_a
-                                + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
-                                + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
-                                - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                                + d_mat_b @ diff_times_b
+                                + b_times_diff @ xnp.transpose(d_mat_b)
+                                - b_times_diff @ d_mat_d @ diff_times_b
                             )
                             # The virtual mode is the last link on the bottom right of the covariance matrix
                             d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
@@ -319,7 +321,7 @@ class Z2System2D(System2DBase):
                             #    compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
                             # we have saved the product of several mats above (since they don't change),
                             # and use it here
-                            trace_mod = -0.5 * utils.trace_of_product((d_mat_d, prod))
+                            trace_mod = -0.5 * utils.trace_of_product((d_mat_d, prod_mod_norm))
 
                             # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
                             d_el_energy += el_energy_vec[layerind][link_pos] * (trace_mod - trace_def)
