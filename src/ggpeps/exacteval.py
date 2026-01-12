@@ -1,4 +1,5 @@
 import os
+import logging
 import itertools as it
 from typing import Union
 from collections.abc import Iterator
@@ -6,9 +7,12 @@ from collections.abc import Iterator
 import numpy as np
 import pandas as pd
 
+import ggpeps
 import ggpeps.lattice as lattice
 from ggpeps.evaluator import Evaluator
 from ggpeps.system.system_base import System2DBase
+
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class ExactEvaluatorConfig:
@@ -104,7 +108,7 @@ class ExactEvaluator(Evaluator):
             for k in range(1, max_string):
                 data[f"square_string_0-0_{k}x{k}"] = []
 
-            for config in configvec:
+            for ind, config in enumerate(configvec):
                 self.system.update_gauge_full_system(config)
                 # logger.debug(f"Configuration: {config}")
 
