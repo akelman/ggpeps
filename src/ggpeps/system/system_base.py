@@ -348,7 +348,6 @@ class System2DBase(ABC):
             "num_fermionic_layer",
             "unitcell_size",
             "nparams",
-            "zeroed_params",
         ]
     )
     def _compute_d_gamma_out_symbolvec(
