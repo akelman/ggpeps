@@ -406,6 +406,7 @@ def main(args):
 
     # System info
     logger.info("======= SYSTEM INFO ========")
+    logger.info(f"Gauge group: {args.gauge_group}")
     logger.info(f"L: {L}")
     logger.info(f"# of PG layers: {system_cfg.num_pg_layer}")
     logger.info(f"# of matter layers: {system_cfg.num_fermionic_layer}")
