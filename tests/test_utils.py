@@ -172,6 +172,23 @@ class TestUtils(unittest.TestCase):
         self.assertNotEqual(df.at["row0", "paramvec"][0], 123.0)
         self.assertEqual(df_deep.at["row0", "paramvec"][0], 123.0)
 
+    def test_trace_of_product(self):
+
+        mat1 = np.random.rand(4, 4)
+        mat2 = np.random.rand(4, 4)
+        mat3 = np.random.rand(4, 4)
+        mats = (mat1, mat2, mat3)
+
+        trace_hadamard = utils.trace_of_product(mats, method="hadamard")
+        trace_trace = utils.trace_of_product(mats, method="trace")
+
+        # Manually compute the product and its trace
+        prod = mat1 @ mat2 @ mat3
+        trace_ref = np.trace(prod)
+
+        self.assertEqual(trace_hadamard, trace_ref)
+        self.assertEqual(trace_trace, trace_ref)
+
 
 class TestBGBTransform(unittest.TestCase):
     def setUp(self):

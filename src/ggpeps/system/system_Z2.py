@@ -280,7 +280,8 @@ class Z2System2D(System2DBase):
                 norm_mod = norm_mod_vec[layerind][link_pos]
                 mat_d_mod_inv = mat_d_mod_inv_vec[layerind][link_pos]
 
-                ###################### Calculation of the derivative ########################
+                # Save the product, so that it is not recomputed for every parameter
+                prod = mat_d_mod_inv @ diff_d_inv_gamma_inv @ gamma_in_sys_mod
 
                 # choose H/V per term based on link direction
                 is_vertical = mod_link_ind >= (nlinks // 2)
@@ -332,12 +333,13 @@ class Z2System2D(System2DBase):
 
                             # Summand with derivative of norms
                             trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
-                            trace_mod = utils.compute_grad_over_norm(
-                                gamma_in_sys_mod,
-                                diff_d_inv_gamma_inv,
-                                d_mat_d,
-                                mat_d_mod_inv,
-                            )
+
+                            # Instead of computing the modified grad over the norm as:
+                            #    compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
+                            # we have saved the product of several mats above (since they don't change),
+                            # and use it here
+                            trace_mod = -0.5 * utils.trace_of_product((d_mat_d, prod))
+
                             # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
                             d_el_energy += el_energy_vec[layerind][link_pos] * (trace_mod - trace_def)
 
