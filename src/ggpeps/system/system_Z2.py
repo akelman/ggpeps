@@ -281,6 +281,8 @@ class Z2System2D(System2DBase):
                 mat_d_mod_inv = mat_d_mod_inv_vec[layerind][link_pos]
 
                 # Save products that do not need to be recomputed for every parameter
+                # TODO: for the latter two products, we don't need the full matrices, only parts of them
+                # Only calculating the required parts could provide a speedup
                 prod_mod_norm = mat_d_mod_inv @ diff_d_inv_gamma_inv @ gamma_in_sys_mod
                 diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)
                 b_times_diff = mat_b @ diff_d_gamma_inv
