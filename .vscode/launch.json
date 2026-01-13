@@ -12,7 +12,7 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Tests",
+            "name": "Tests", 
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/test.py",
@@ -266,9 +266,11 @@
                 "--g_mass", "0.0",
                 "--ignore_cache",
                 "--seed", "2",
-                "--warmup_steps", "100",
-                "--meas_steps", "100",
+                "--warmup_steps", "1",
+                "--meas_steps", "2",
                 "--level","debug",
+                "--maxiter","2",
+                "--nrunner", "2"
             ]
         },
 
