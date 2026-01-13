@@ -10,7 +10,7 @@ from ggpeps import gauge
 from ggpeps import modearray
 from ggpeps.lattice import Direction
 
-from .config_base import Config2DBase
+from .config_base import Config2DBase, generate_gauged_projector_terms
 
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -88,7 +88,30 @@ class D6System2D_Config(Config2DBase):
         self.init_el_energy_terms()
 
     def init_el_energy_terms(self) -> None:
-        """Build idxarr_vec."""
+        """Build idxarr_vec (paired H/V terms per layer, for both site parities)."""
+        # Constants used in the calculation of the electric energy on a horizontal link.
+
+        idxarr_lay_h_0, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "unmixed_copies", "horizontal", self.gaugemgr, site=0
+        )
+        idxarr_lay_h_1, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "unmixed_copies", "horizontal", self.gaugemgr, site=1
+        )
+
+        # Constants used in the calculation of the electric energy on a vertical link.
+        idxarr_lay_v_0, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "unmixed_copies", "vertical", self.gaugemgr, site=0
+        )
+        idxarr_lay_v_1, _ = generate_gauged_projector_terms(
+            self.ncopy, self.ncolors, "unmixed_copies", "vertical", self.gaugemgr, site=1
+        )
+
+        # Pair horizontal/vertical term-lists termwise for each layer kind
+        # Grouping as (h0, h1, v0, v1)
+        zipped = tuple(zip(idxarr_lay_h_0, idxarr_lay_h_1, idxarr_lay_v_0, idxarr_lay_v_1))
+
+        # Stack per-layer: first pure-gauge layers, then fermionic layers
+        self.idxarr_vec = tuple([zipped] * (self.num_pg_layer + self.num_fermionic_layer))
 
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.
