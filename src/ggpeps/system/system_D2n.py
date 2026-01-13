@@ -573,8 +573,12 @@ class D2nSystem2D(System2DBase):
                 norm_mod = norm_mod_vec[layerind][link_pos]
                 mat_d_mod_inv = mat_d_mod_inv_vec[layerind][link_pos]
 
-                # Save the product, so that it is not recomputed for every parameter
-                prod = mat_d_mod_inv @ diff_d_inv_gamma_inv @ gamma_in_sys_mod
+                # Save products that do not need to be recomputed for every parameter
+                # TODO: for the latter two products, we don't need the full matrices, only parts of them
+                # Only calculating the required parts could provide a speedup
+                prod_mod_norm = mat_d_mod_inv @ diff_d_inv_gamma_inv @ gamma_in_sys_mod
+                diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)
+                b_times_diff = mat_b @ diff_d_gamma_inv
 
                 # choose H/V per term based on link direction
                 is_vertical = mod_link_ind >= (nlinks // 2)
@@ -593,15 +597,25 @@ class D2nSystem2D(System2DBase):
                                 deriv_gamma_maj_sys, (mod_link_ind,), lattice_size, nphysmodes_site, nvirtmodes_link
                             )
                             d_mat_a, d_mat_b, d_mat_d = mod_covmats[0][0], mod_covmats[1][0], mod_covmats[2][0]
-                            d_gamma_out = (
-                                d_mat_a
-                                + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
-                                + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
-                                - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+
+                            # We only need the bottom-right block of d_gamma_out, since we are only interested
+                            # in the virtual modes of the given link.
+                            # We only construct this block, providing a small speedup as compared to constructing the
+                            # full d_gamma_out matrix, and then extracting the block.
+                            k = single_link_offset
+                            d_covmat_out_virt = (
+                                d_mat_a[-k:, -k:]
+                                + d_mat_b[-k:, :] @ diff_times_b[:, -k:]
+                                + b_times_diff[-k:, :] @ xnp.transpose(d_mat_b)[:, -k:]
+                                - b_times_diff[-k:, :] @ d_mat_d @ diff_times_b[:, -k:]
                             )
-                            # The virtual mode is the last link on the bottom right of the covariance matrix
-                            d_covmat_out_virt = d_gamma_out[-single_link_offset:, -single_link_offset:]
-                            # Summand with derivative of the covariance matrix
+                            # d_gamma_out = (
+                            #    d_mat_a
+                            #    + d_mat_b @ diff_times_b
+                            #    + b_times_diff @ xnp.transpose(d_mat_b)
+                            #    - b_times_diff @ d_mat_d @ diff_times_b
+                            # )
+                            # d_covmat_out_virt = d_gamma_out[-k:, -k:] # virtual mode is the last link = bottom right
 
                             deriv_pf_tot: complex = 0.0j
                             # for term_ind, (term_h, term_v) in enumerate(layer_pairs):
