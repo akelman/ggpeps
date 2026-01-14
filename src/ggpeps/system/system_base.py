@@ -1539,7 +1539,9 @@ class System2DBase(ABC):
         nlayer: int,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
-        link_site_pairity: tuple[int],  # The information contained in this argument is contained in mod_link_inds.
+        link_site_pairity: tuple[
+            int, ...
+        ],  # The information contained in this argument is contained in mod_link_inds.
     ) -> xnp.ndarray:
         """Compute the electric energy.
 
@@ -1583,7 +1585,9 @@ class System2DBase(ABC):
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
-        link_site_pairity: tuple[int],  # The information contained in this argument is contained in mod_link_inds.
+        link_site_pairity: tuple[
+            int, ...
+        ],  # The information contained in this argument is contained in mod_link_inds.
     ) -> xnp.ndarray:
         """Compute the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.

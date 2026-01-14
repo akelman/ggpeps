@@ -18,8 +18,8 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 # Type aliases for the electric energy data structures
 IdxTerm = tuple[complex, tuple[int, ...]]  # (prefactor, indices)
-IdxTermPair = tuple[IdxTerm, IdxTerm]  # (term_h, term_v) for one term
-IdxLayerTerms = tuple[IdxTermPair, ...]  # all (term_h, term_v) pairs for one layer
+IdxTermQuad = tuple[IdxTerm, IdxTerm, IdxTerm, IdxTerm]  # (term_h0, term_h1, term_v0, term_v1) for one term
+IdxLayerTerms = tuple[IdxTermQuad, ...]  # all (term_h, term_v) pairs for one layer
 IdxArrVec = tuple[IdxLayerTerms, ...]  # over layers
 
 
@@ -587,7 +587,7 @@ def generate_gauged_projector_terms(
         raise ValueError("orientation must be 'horizontal' or 'vertical'")
 
     # Initialize the final polynomial accumulator (Sum over all h)
-    final_polynomial = defaultdict(complex)
+    final_polynomial: dict[tuple[int, ...], complex] = defaultdict(complex)
     # Multiply in each bracket
     # TODO: Fix for continious groups - the sum over irreps and group elemnts has to be computed analytically
     irreps = gaugemgr.get_possible_irrep_labels()
@@ -596,7 +596,7 @@ def generate_gauged_projector_terms(
         h_inv = xnp.conjugate(xnp.transpose(h))
         # Each term has to be multiplied by 4^{-(n_copy+ncolor)}f_j * Tr(D^j(h^{-1}))*dim(j)/|G|,
         # where f_j is the electric energy factor.
-        pref = 0.0
+        pref: complex = 0.0
         for irrep in irreps:
             irrep_character = gaugemgr.get_irrep_character(h_inv, irrep)
             electric_energy_factor = gaugemgr.get_electric_energy_factor(irrep)
