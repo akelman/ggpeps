@@ -74,9 +74,6 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         self.init_el_energy_terms()
 
     def init_el_energy_terms(self) -> None:
-        """Build idxarr_vec (paired H/V terms per layer)."""
-
-    def init_el_energy_terms(self) -> None:
         """Build idxarr_vec (paired H/V terms per layer, for both site parities)."""
         # Constants used in the calculation of the electric energy on a horizontal link.
         # Pure Gauge

@@ -211,7 +211,8 @@ class Z2System2D(System2DBase):
 
                 el_energy_link = xnp.real(pf_tot) * xnp.exp(
                     norm_mod - lognorm_default
-                )  # There's no reason for pf_tot to be real here, but after summing over all gauge configurations it should be.
+                )  # This should be rral since we take only the real coefficients in el_pfaffians.
+                # This is because after summing over all gauge configurations it should be real.
                 dest = backend.array_assign(dest, (layerind, link_pos), el_energy_link)
 
         return dest

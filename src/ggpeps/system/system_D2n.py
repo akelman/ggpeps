@@ -479,7 +479,8 @@ class D2nSystem2D(System2DBase):
             for link_pos, norm_mod in enumerate(norm_mod_linkvec):
                 ###################### Calculation of <Sum_j f_j |jmn><jmn|> ########################
 
-                # The matrix elements yield only the real part of the electric energy for a specific gauge configuration, i.e., Re(F_E(G)).
+                # The matrix elements yield only the real part of the electric energy
+                # for a specific gauge configuration, i.e., Re(F_E(G)).
                 # If we use the log formulation, we can calculate the log of single terms.
 
                 # Instead of writing down all the terms explicitly, we build tuples of the prefactors
@@ -504,7 +505,8 @@ class D2nSystem2D(System2DBase):
 
                 el_energy_link = xnp.real(pf_tot) * xnp.exp(
                     norm_mod - lognorm_default
-                )  # There's no reason for pf_tot to be real here, but after summing over all gauge configurations it should be.
+                )  # This should be rral since we take only the real coefficients in el_pfaffians.
+                # This is because after summing over all gauge configurations it should be real.
                 dest = backend.array_assign(dest, (layerind, link_pos), el_energy_link)
 
         return dest
