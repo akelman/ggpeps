@@ -63,6 +63,48 @@ def tests_jax(session):
     session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "jax"})
 
 
+@nox.session(python=["3"])
+def jax_eval(session):
+    """Run a simply eval with jax, to make sure jax with jit is working fine."""
+
+    session.install("-e", ".")
+
+    session.run(
+        "python",
+        "manager.py",
+        "eval-mc",
+        "Z2",
+        "--L",
+        "2",
+        "--g",
+        "1.0",
+        "--int",
+        "1.0",
+        "--mass",
+        "1.0",
+        "--chem",
+        "1.0",
+        "--el_links",
+        "0",
+        "1",
+        "--relax_u1",
+        "--unitcell_size",
+        "2",
+        "--ncopy",
+        "2",
+        "--num_pg_layer",
+        "1",
+        "--num_fermionic_layer",
+        "1",
+        "--warmup_steps",
+        "10",
+        "--meas_steps",
+        "10",
+        "--compute_grads",
+        env={"GGPEPS_BACKEND": "jax"},
+    )
+
+
 @nox.session
 def coverage(session):
     session.install("coverage")
