@@ -481,21 +481,21 @@ def bracket_terms(
     return terms
 
 
-def _snap_complex(z: complex) -> complex:
+def _snap_complex(z: complex, eps=1e-12) -> complex:
     """
     Component-wise zeroing of tiny real/imag parts.
 
     Args:
         z (complex): Input complex number.
+        eps (float, optional): Tolerance for zeroing components. Defaults to 1e-12.
 
     Returns:
         complex: Cleaned complex with near-zero components set to 0.0, or 0.0 if abs(z) is below tolerance.
     """
-    TOL = 1e-12  # hard-coded absolute tolerance
-    if abs(z) <= TOL:
+    if abs(z) <= eps:
         return 0.0
-    zr = 0.0 if abs(z.real) <= TOL else z.real
-    zi = 0.0 if abs(z.imag) <= TOL else z.imag
+    zr = 0.0 if abs(z.real) <= eps else z.real
+    zi = 0.0 if abs(z.imag) <= eps else z.imag
     if zr == 0.0 and zi == 0.0:
         return 0.0
     return zr if zi == 0.0 else complex(zr, zi)
