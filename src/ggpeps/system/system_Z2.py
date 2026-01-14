@@ -160,7 +160,7 @@ class Z2System2D(System2DBase):
         return mag_energy_bare
 
     @staticmethod
-    @maybe_jit(static_argnames=["idxarrs", "nlayer", "mod_link_inds", "nlinks"])
+    @maybe_jit(static_argnames=["idxarrs", "nlayer", "mod_link_inds", "nlinks", "link_site_parity"])
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
         idxarrs: IdxArrVec,
@@ -229,6 +229,7 @@ class Z2System2D(System2DBase):
             "symbolvec",
             "idxarr_vec",
             "zeroed_params",
+            "link_site_parity",
         ]
     )
     def _compute_el_grad_vec(

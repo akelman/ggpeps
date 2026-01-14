@@ -350,7 +350,7 @@ Orientation = Literal["horizontal", "vertical"]
 """
 
 
-def make_sigma(ncopy: int, coupling_type: CouplingType) -> list[int]:
+def make_sigma(ncopy: int, coupling_type: CouplingType) -> tuple[int, ...]:
     """
     Build the link-pairing permutation sigma for the chosen layer.
 
@@ -359,7 +359,7 @@ def make_sigma(ncopy: int, coupling_type: CouplingType) -> list[int]:
         coupling_type (CouplingType): CouplingType type; 'unmixed_copies' uses identity, 'mixed_copies' swaps (2a-1 <-> 2a).
 
     Returns:
-        list[int]: 1-based permutation list where entry j equals sigma(j).
+        tuple[int, ...]: 1-based permutation list where entry j equals sigma(j).
 
     Raises:
         ValueError: If ncopy is invalid or layer is not one of {'mixed_copies', 'unmixed_copies'}.
@@ -367,16 +367,16 @@ def make_sigma(ncopy: int, coupling_type: CouplingType) -> list[int]:
     if not (ncopy == 1 or ncopy % 2 == 0):
         raise ValueError("ncopy must be 1 or even (odd ncopy>1 is not supported).")
     elif coupling_type == "unmixed_copies":
-        return list(range(1, ncopy + 1))
+        return tuple(range(1, ncopy + 1))
     elif coupling_type == "mixed_copies":
         if ncopy == 1:
-            return [1]
+            return (1,)
         s = [0] * ncopy
         for a in range(1, ncopy // 2 + 1):
             i, j = 2 * a - 1, 2 * a
             s[i - 1] = j
             s[j - 1] = i
-        return s
+        return tuple(s)
     else:
         raise ValueError("coupling_type must be 'unmixed_copies' or 'mixed_copies'")
 
@@ -647,7 +647,7 @@ def generate_gauged_projector_terms(
 
     # Sort terms by monomial length (shorter first) then lexicographic tuple order for deterministic output.
     phased_items.sort(key=lambda kv: (len(kv[0]), kv[0]))
-    indices = tuple((coef, mon) for mon, coef in phased_items)
+    indices = tuple((float(coef), mon) for mon, coef in phased_items)
 
     return indices, constant
 
