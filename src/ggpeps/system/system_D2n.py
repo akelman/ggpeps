@@ -453,7 +453,7 @@ class D2nSystem2D(System2DBase):
         return mag_energy_bare
 
     @staticmethod
-    @maybe_jit(static_argnames=["idxarrs", "nlayer", "mod_link_inds", "nlinks"])
+    @maybe_jit(static_argnames=["idxarrs", "nlayer", "mod_link_inds", "nlinks", "link_site_parity"])
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
         idxarrs: IdxArrVec,
@@ -524,6 +524,7 @@ class D2nSystem2D(System2DBase):
             "symbolvec",
             "idxarr_vec",
             "zeroed_params",
+            "link_site_parity",
         ]
     )
     def _compute_el_grad_vec(
@@ -633,7 +634,7 @@ class D2nSystem2D(System2DBase):
                                 prefactor, inds = curr_term
                                 inds_arr = xnp.asarray(inds)
                                 deriv_pf_tot += prefactor * utils.derivative_pfaffian(
-                                    covmat_out_virt[inds_arr, :][:, inds_arr],
+                                    covmat_out_virt[inds_arr, :][:, inds_arr],  # this indexing is faster than np.ix_
                                     d_covmat_out_virt[inds_arr, :][:, inds_arr],
                                     el_pfaffians[layerind, link_pos, term_ind],
                                 )
@@ -647,7 +648,7 @@ class D2nSystem2D(System2DBase):
                             #    compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
                             # we have saved the product of several mats above (since they don't change),
                             # and use it here
-                            trace_mod = -0.5 * utils.trace_of_product((d_mat_d, prod))
+                            trace_mod = -0.5 * utils.trace_of_product((d_mat_d, prod_mod_norm))
 
                             # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
                             d_el_energy += el_energy_vec[layerind][link_pos] * (trace_mod - trace_def)
