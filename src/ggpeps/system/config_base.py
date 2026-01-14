@@ -630,7 +630,7 @@ def generate_gauged_projector_terms(
 
     # Split constant vs others and build the output
     constant = _snap_complex(final_polynomial.pop((), 0.0))
-    items = [(mon, coef) for mon, coef in final_polynomial.items() if coef != 0.0]
+    items = [(mon, complex(coef)) for mon, coef in final_polynomial.items() if coef != 0.0]
 
     # Multiply each coefficient by i^(-len(mon)/2), the Pfaffian-Wick phase
     phased_items: list[tuple[tuple[int, ...], complex]] = []
@@ -647,7 +647,7 @@ def generate_gauged_projector_terms(
 
     # Sort terms by monomial length (shorter first) then lexicographic tuple order for deterministic output.
     phased_items.sort(key=lambda kv: (len(kv[0]), kv[0]))
-    indices = tuple((float(coef), mon) for mon, coef in phased_items)
+    indices = tuple((coef, mon) for mon, coef in phased_items)
 
     return indices, constant
 
