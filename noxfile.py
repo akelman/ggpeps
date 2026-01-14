@@ -6,6 +6,7 @@ nox.needs_version = ">= 2024.3.2"
 
 @nox.session
 def lint(session):
+    """Check code style"""
     session.install("flake8")
     session.run(
         "flake8",
@@ -50,22 +51,22 @@ def build_and_check_dists(session):
 
 @nox.session(python=["3"])
 def tests_numpy(session):
+    """Run the unit tests with numpy backend."""
 
     session.install("-e", ".")
-
     session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "numpy"})
 
 
 @nox.session(python=["3"])
 def tests_jax(session):
+    """Run the unit tests with jax backend."""
     session.install("-e", ".")
-
     session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "jax"})
 
 
 @nox.session(python=["3"])
 def jax_eval(session):
-    """Run a simply eval with jax, to make sure jax with jit is working fine."""
+    """Run a simple eval with jax, to make sure jax with jit is working fine."""
 
     session.install("-e", ".")
 
