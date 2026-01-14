@@ -324,13 +324,7 @@ class Config2DBase(ABC):
 
 # ==================== ZN Gauged Projector Terms ====================
 
-# NOTE / TODO (ZN electric energy, staggering):
-# For the ZN electric-energy expression to be valid, the phase in the gauged projector must be
-# taken as +phi or -phi depending on the parity of the site x from which the link omega = omega(x, k) originates.
-# This parity-dependent +/-phi staggering is NOT implemented in this module yet; any ZN electric-energy
-# calculation using these terms must implement it (e.g., by passing a site-parity-dependent signed phi).
 
-import cmath
 from collections import defaultdict
 from typing import Optional, Union, Literal, DefaultDict
 
@@ -356,7 +350,8 @@ def make_sigma(ncopy: int, coupling_type: CouplingType) -> tuple[int, ...]:
 
     Args:
         ncopy (int): Number of copies (must be 1 or even).
-        coupling_type (CouplingType): CouplingType type; 'unmixed_copies' uses identity, 'mixed_copies' swaps (2a-1 <-> 2a).
+        coupling_type (CouplingType): CouplingType type; 'unmixed_copies' uses identity,
+                                                         'mixed_copies' swaps (2a-1 <-> 2a).
 
     Returns:
         tuple[int, ...]: 1-based permutation list where entry j equals sigma(j).
@@ -552,7 +547,8 @@ def generate_gauged_projector_terms(
     Sum_{h in G} [ Prefactor(h) * Product_{color=1}^{ncolor} Product_{copy=1}^{ncopy} Bracket(h, copy, color) ]
 
     where:
-    - Prefactor(h) = (1/|G|) * 4^{-(ncopy * ncolor)} * Sum_{irrep} ( dim(irrep) * chi_irrep(h^-1) * electric_energy_factor(irrep) )
+    - Prefactor(h) = (1/|G|) * 4^{-(ncopy * ncolor)} *
+                    * Sum_{irrep} ( dim(irrep) * chi_irrep(h^-1) * electric_energy_factor(irrep) )
     - Bracket(h, copy, color) is the 16-term Majorana polynomial associated with the group element h.
 
     The function performs the following steps:
@@ -660,7 +656,8 @@ def _get_cov_matrix_idx(
     Args:
         color (int): color index (1 to ncolors) - 1-based
         copy (int): copy index (1 to ncopies) - 1-based
-        direction (int): direction index (1 to ndirections) - 1-based. for ndirections=2 - 1 to left or down and 2 to right or up.
+        direction (int): direction index (1 to ndirections) - 1-based.
+                        for ndirections=2 - 1 to left or down and 2 to right or up.
         majorana (int): Majorana index (1 to 2) - 1-based
         ncolors (int): number of colors
         ncopies (int): number of copies

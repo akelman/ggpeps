@@ -288,12 +288,14 @@ class D2nGauge:
         if n is even:
          j=2 (1): D^j(p,q)=(-1)^p
          j=3 (\bar{1}): D^j(p,q)=(-1)^q * (-1)^p
-         j=4,...,(n+4)/2 (2_1,...2_{(n-2)/2}) (overall (n-2)/2 2D irreps): D^j(p,q)= [[cos(2π(j-3)p/n), -sin(2π(j-3)p/n)],
+         j=4,...,(n+4)/2 (2_1,...2_{(n-2)/2}) (overall (n-2)/2 2D irreps):
+                    D^j(p,q)= [[cos(2π(j-3)p/n), -sin(2π(j-3)p/n)],
                                 [sin(2π(j-3)p/n),  cos(2π(j-3)p/n)]] for q=0
                     D^j(p,q)= [[cos(2π(j-3)p/n),  sin(2π(j-3)p/n)],
                                 [sin(2π(j-3)p/n), -cos(2π(j-3)p/n)]] for q=1
         if n is odd:
-         j=2,...,(n+1)/2 (2_1,...2_{(n-1)/2}) (overall (n-1)/2 2D irreps): D^j(p,q)= [[cos(2π(j-2)p/n), -sin(2π(j-2)p/n)],
+         j=2,...,(n+1)/2 (2_1,...2_{(n-1)/2}) (overall (n-1)/2 2D irreps):
+                    D^j(p,q)= [[cos(2π(j-2)p/n), -sin(2π(j-2)p/n)],
                                 [sin(2π(j-1)p/n),  cos(2π(j-1)p/n)]] for q=0
                     D^j(p,q)= [[cos(2π(j-1)p/n),  sin(2π(j-1)p/n)],
                                 [sin(2π(j-1)p/n), -cos(2π(j-1)p/n)]] for q=1
@@ -363,12 +365,14 @@ class D2nGauge:
         if n is even:
          j=2 (1): D^j(p,q)=(-1)^p
          j=3 (\bar{1}): D^j(p,q)=(-1)^q * (-1)^p
-         j=4,...,(n+4)/2 (2_1,...2_{(n-2)/2}) (overall (n-2)/2 2D irreps): D^j(p,q)= [[cos(2π(j-3)p/n), -sin(2π(j-3)p/n)],
+         j=4,...,(n+4)/2 (2_1,...2_{(n-2)/2}) (overall (n-2)/2 2D irreps):
+                    D^j(p,q)= [[cos(2π(j-3)p/n), -sin(2π(j-3)p/n)],
                                 [sin(2π(j-3)p/n),  cos(2π(j-3)p/n)]] for q=0
                     D^j(p,q)= [[cos(2π(j-3)p/n),  sin(2π(j-3)p/n)],
                                 [sin(2π(j-3)p/n), -cos(2π(j-3)p/n)]] for q=1
         if n is odd:
-         j=2,...,(n+1)/2 (2_1,...2_{(n-1)/2}) (overall (n-1)/2 2D irreps): D^j(p,q)= [[cos(2π(j-2)p/n), -sin(2π(j-2)p/n)],
+         j=2,...,(n+1)/2 (2_1,...2_{(n-1)/2}) (overall (n-1)/2 2D irreps):
+                    D^j(p,q)= [[cos(2π(j-2)p/n), -sin(2π(j-2)p/n)],
                                 [sin(2π(j-1)p/n),  cos(2π(j-1)p/n)]] for q=0
                     D^j(p,q)= [[cos(2π(j-1)p/n),  sin(2π(j-1)p/n)],
                                 [sin(2π(j-1)p/n), -cos(2π(j-1)p/n)]] for q=1
@@ -514,7 +518,8 @@ class D2nGauge:
 
         The rotation index p is determined from the angle theta of the rotation part of the matrix.
         Args:
-            g (np.ndarray): A 2x2 matrix representing a D_2n group element (has to be the faithful fundamental representation of get_representation).
+            g (np.ndarray): A 2x2 matrix representing a D_2n group element
+            (has to be the faithful fundamental representation of get_representation).
         Returns:
             int: Rotation index p in {0, 1, ..., n-1}.
         """

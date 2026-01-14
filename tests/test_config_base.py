@@ -52,9 +52,8 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
 
         # 4. Sort lists for deterministic comparison
         # Sort key: length of monomial first, then the indices tuple values
-        sort_key = lambda x: (len(x[1]), x[1])
-        got_sorted = sorted(got_canonical, key=sort_key)
-        exp_sorted = sorted(exp_canonical, key=sort_key)
+        got_sorted = sorted(got_canonical, key=lambda x: (len(x[1]), x[1]))
+        exp_sorted = sorted(exp_canonical, key=lambda x: (len(x[1]), x[1]))
 
         # 5. Element-wise comparison
         for i, ((g_coef, g_mon), (e_coef, e_mon)) in enumerate(zip(got_sorted, exp_sorted)):
