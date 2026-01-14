@@ -6,6 +6,7 @@ nox.needs_version = ">= 2024.3.2"
 
 @nox.session
 def lint(session):
+    """Check code style"""
     session.install("flake8")
     session.run(
         "flake8",
@@ -50,17 +51,59 @@ def build_and_check_dists(session):
 
 @nox.session(python=["3"])
 def tests_numpy(session):
+    """Run the unit tests with numpy backend."""
 
     session.install("-e", ".")
-
     session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "numpy"})
 
 
 @nox.session(python=["3"])
 def tests_jax(session):
+    """Run the unit tests with jax backend."""
+    session.install("-e", ".")
+    session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "jax"})
+
+
+@nox.session(python=["3"])
+def jax_eval(session):
+    """Run a simple eval with jax, to make sure jax with jit is working fine."""
+
     session.install("-e", ".")
 
-    session.run("python", "-m", "unittest", env={"GGPEPS_BACKEND": "jax"})
+    session.run(
+        "python",
+        "manager.py",
+        "eval-mc",
+        "Z2",
+        "--L",
+        "2",
+        "--g",
+        "1.0",
+        "--int",
+        "1.0",
+        "--mass",
+        "1.0",
+        "--chem",
+        "1.0",
+        "--el_links",
+        "0",
+        "1",
+        "--relax_u1",
+        "--unitcell_size",
+        "2",
+        "--ncopy",
+        "2",
+        "--num_pg_layer",
+        "1",
+        "--num_fermionic_layer",
+        "1",
+        "--warmup_steps",
+        "10",
+        "--meas_steps",
+        "10",
+        "--compute_grads",
+        env={"GGPEPS_BACKEND": "jax"},
+    )
 
 
 @nox.session
