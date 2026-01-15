@@ -186,12 +186,6 @@ class Z2System2D(System2DBase):
             for link_pos, norm_mod in enumerate(norm_mod_linkvec):
                 ###################### Calculation of <P + P^\dagger> ########################
 
-                # The matrix elements yield only the real part of <P>
-                # If we use the log formulation, we can calculate the log of single terms.
-
-                # Instead of writing down all the terms explicitly, we build tuples of the prefactors
-                # and the indices of the covariance matrix.
-
                 is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
                 site_parity = link_site_parity[link_pos]
 
@@ -209,10 +203,10 @@ class Z2System2D(System2DBase):
                     pfaval = el_pfaffians[layerind, link_pos, term_ind]
                     pf_tot += prefactor * pfaval
 
-                el_energy_link = xnp.real(pf_tot) * xnp.exp(
-                    norm_mod - lognorm_default
-                )  # This should be rral since we take only the real coefficients in el_pfaffians.
-                # This is because after summing over all gauge configurations it should be real.
+                # xnp.real() is only for testing purposes, since the Pfaffian's with imaginary components are
+                # now dropped higher up in the stack.
+                el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
+
                 dest = backend.array_assign(dest, (layerind, link_pos), el_energy_link)
 
         return dest
@@ -258,6 +252,14 @@ class Z2System2D(System2DBase):
         zeroed_params: tuple,
         link_site_parity: tuple[int, ...],  # The information contained in this argument is contained in mod_link_inds.
     ) -> xnp.ndarray:
+        """In early 2026, this function was significantly optimized.
+        This was done after it was generalized in various ways over the previous months:
+            compute on multiple links, horizontal and vertical links, on different sublattices, for non-Abelian groups.
+        As a result, it is somewhat harder to read.
+        It may be easier to read the (slower and less general) version at
+            commit 1d63a6b: after generalization to multiple hor/vert links, but before many optimizations,
+        or even earlier versions.
+        """
 
         nlayer = num_pg_layer + num_fermionic_layer
         shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
@@ -318,7 +320,6 @@ class Z2System2D(System2DBase):
                             )
 
                             deriv_pf_tot: complex = 0.0j
-                            # for term_ind, (term_h, term_v) in enumerate(layer_pairs):
                             # Unpack all 4 term combinations
                             for term_ind, (term_h_0, term_h_1, term_v_0, term_v_1) in enumerate(layer_pairs):
 
@@ -336,6 +337,11 @@ class Z2System2D(System2DBase):
                                     el_pfaffians[layerind, link_pos, term_ind],
                                 )
 
+                            # In previous versions of the code, Pfaffians with complex/imaginary coefficients
+                            # were included, but dropped here. Since operators of interest (electric energy + grad)
+                            # are Hermitian, we can just take the real part here.
+                            # At present, we drop these complex/imaginary terms higher in the stack to save on
+                            # computation. We leave the xnp.real() for testing purposes.
                             d_el_energy = xnp.real(deriv_pf_tot) * xnp.exp(norm_mod - lognorm_default)
 
                             # Summand with derivative of norms
@@ -343,7 +349,8 @@ class Z2System2D(System2DBase):
 
                             # Instead of computing the modified grad over the norm as:
                             #    compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
-                            # we have saved the product of several mats above (since they don't change),
+                            #    = -0.5 * trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
+                            # we have saved the product of several mats above (since they don't change in inner loops),
                             # and use it here
                             trace_mod = -0.5 * utils.trace_of_product((d_mat_d, prod_mod_norm))
 
