@@ -34,6 +34,30 @@ def derivative_pfaffian_jax(mat: jnp.ndarray, d_mat: jnp.ndarray, pfaval: Option
     return 0.5 * pfaval * jnp.trace(jnp.linalg.inv(mat) @ d_mat)
 
 
+def derivative_pfaffian_vectorized_jax(
+    mat: jnp.ndarray, d_mat: jnp.ndarray, pfavals: Optional[jnp.ndarray] = None
+) -> jnp.ndarray:
+    """Compute the derivative of a Pfaffian of a stack of matrices A.
+    The explicit derivatives dA/dx are given as a second argument, and the pfaffians as a third.
+
+    The given formula is only valid if A is not singular.
+
+    Args:
+        mat (np.ndarray): Input matrices A
+        d_mat (np.ndarray): Derivatives dA/dx
+        pfavals (Optional[jnp.ndarray]): Pfaffian values for each matrix
+
+    Returns:
+        float: d(Pf(A))/dx
+    """
+
+    inv_mat = jnp.linalg.inv(mat)  # (N, M, M)
+    prod = inv_mat @ d_mat  # batched matrix multiply
+    traces = jnp.trace(prod, axis1=-2, axis2=-1)
+
+    return 0.5 * pfavals * traces
+
+
 @jit
 def calculate_lognormvec_jit(gamma_in_sys: jnp.ndarray, mat_d: jnp.ndarray) -> float:
     # This is still the plain formula, without any update mechanism

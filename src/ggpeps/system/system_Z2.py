@@ -7,7 +7,6 @@ from ggpeps import xscipy as xscipy
 import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
-from ggpeps.system.backend_numpy import derivative_pfaffian_numpy_vectorized
 from ggpeps.system.backend import backend
 
 from .config_base import IdxArrVec
@@ -347,7 +346,7 @@ class Z2System2D(System2DBase):
                             virts = covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
                             d_virts = d_covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
 
-                            deriv_pf_tot_vectorized = derivative_pfaffian_numpy_vectorized(
+                            deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(
                                 virts, d_virts, el_pfaffians[layerind, link_pos]
                             )
                             deriv_pf_tot = np.sum(prefactors * deriv_pf_tot_vectorized)

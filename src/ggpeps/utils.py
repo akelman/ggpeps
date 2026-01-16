@@ -400,6 +400,27 @@ def derivative_pfaffian(mat: xnp.ndarray, d_mat: xnp.ndarray, pfaval=None) -> fl
         return derivative_pfaffian_numpy(mat, d_mat, pfaval=pfaval)
 
 
+def derivative_pfaffian_vectorized(mat: xnp.ndarray, d_mat: xnp.ndarray, pfavals: xnp.ndarray) -> xnp.ndarray:
+    """Compute the derivative of a Pfaffian of a stack of matrices A.
+    The explicit derivatives dA/dx are given as a second argument, and the pfaffians as a third.
+
+    The given formula is only valid if A is not singular.
+
+    Args:
+        mat (xnp.ndarray): Input matrices A
+        d_mat (xnp.ndarray): Derivatives dA/dx
+        pfavals (xnp.ndarray): Pfaffian values for each matrix
+    Returns:
+        xnp.ndarray: an array of d(Pf(A))/dx
+    """
+
+    inv_mat = xnp.linalg.inv(mat)  # (N, M, M)
+    prod = inv_mat @ d_mat  # batched matrix multiply
+    traces = xnp.trace(prod, axis1=-2, axis2=-1)
+
+    return 0.5 * pfavals * traces
+
+
 def get_obs_mean_df(df: pd.DataFrame, obs: str, column: str = "mean"):
     """Get the <column> (mean, err, paramvec, etc) of an observable from the summary dataframe.
 

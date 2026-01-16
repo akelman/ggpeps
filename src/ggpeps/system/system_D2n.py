@@ -9,7 +9,6 @@ from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
 from ggpeps import modearray
 from ggpeps import utils
-from ggpeps.system.backend_numpy import derivative_pfaffian_numpy_vectorized
 
 from .system_base import System2DBase
 from .config_D6_2d import D6System2D_Config
@@ -657,7 +656,7 @@ class D2nSystem2D(System2DBase):
                                 virts = covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
                                 d_virts = d_covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
 
-                                deriv_pf_tot_vectorized = derivative_pfaffian_numpy_vectorized(virts, d_virts, pfafs)
+                                deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(virts, d_virts, pfafs)
                                 deriv_pf_tot += np.sum(prefactors * deriv_pf_tot_vectorized)
 
                             d_el_energy = xnp.real(deriv_pf_tot) * xnp.exp(norm_mod - lognorm_default)

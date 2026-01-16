@@ -113,6 +113,35 @@ class TestUtils(unittest.TestCase):
             derivative_numeric = (pf.pfaffian(mat_rand_right) - pf.pfaffian(mat_rand_left)) / (2 * eps)
             self.assertAlmostEqual(derivative_numeric, derivative_ana)
 
+    def test_derivative_pfaffian_vectorized(self):
+        # hard code a simple derivative matrix
+        deriv_mat = np.zeros((4, 4))
+        deriv_mat[0, 0] = 0.5
+        deriv_mat[0, 1] = 1
+        deriv_mat[1, 0] = -1
+        deriv_mat[1, 1] = 1.3
+
+        # create a stack of random antisymmetric matrices
+        mat_list = []
+        for i in range(5):
+            mat_rand = utils.anti_symmetrize(np.random.rand(4, 4))
+            mat_list.append(mat_rand)
+
+        mat_stack = xnp.array(xnp.stack(mat_list, axis=0))
+        pfavals = xnp.array([pf.pfaffian(mat) for mat in mat_list])
+
+        # compute the derivates of the pfaffians
+        derivative_ana_vec = utils.derivative_pfaffian_vectorized(mat_stack, deriv_mat, pfavals=pfavals)
+
+        # compare to unvectorized calculation
+        for i in range(5):
+            deriv = utils.derivative_pfaffian(mat_stack[i], deriv_mat, pfaval=pfavals[i])
+            self.assertAlmostEqual(deriv, derivative_ana_vec[i])
+
+        # make sure the vectorized version also works on a single matrix
+        derivative_ana_single = utils.derivative_pfaffian_vectorized(mat_stack[0], deriv_mat, pfavals=pfavals[0])
+        self.assertAlmostEqual(derivative_ana_single, derivative_ana_vec[0])
+
     @staticmethod
     def _make_summary_df() -> pd.DataFrame:
         """Create a small 'summary-like' DataFrame that contains both scalars and ndarray objects in cells."""
