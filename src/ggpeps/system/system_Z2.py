@@ -7,6 +7,7 @@ from ggpeps import xscipy as xscipy
 import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
+from ggpeps.system.backend_numpy import derivative_pfaffian_numpy_vectorized
 from ggpeps.system.backend import backend
 
 from .config_base import IdxArrVec
@@ -274,6 +275,10 @@ class Z2System2D(System2DBase):
             # Abbreviations for more readable code
             layer_pairs = idxarr_vec[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
 
+            terms = [a[0] for a in layer_pairs]  # should be better
+            inds_arr = np.asarray([inds for _, inds in terms])
+            prefactors = np.asarray([pf for pf, _ in terms])
+
             for link_pos, mod_link_ind in enumerate(mod_link_inds):
                 mat_b = mat_b_mod_vec[layerind][link_pos]
                 diff_d_gamma_inv = gamma_out_mod_inv_vec[layerind][link_pos]
@@ -319,6 +324,7 @@ class Z2System2D(System2DBase):
                                 - b_times_diff @ d_mat_d @ diff_times_b
                             )
 
+                            """
                             deriv_pf_tot: complex = 0.0j
                             # Unpack all 4 term combinations
                             for term_ind, (term_h_0, term_h_1, term_v_0, term_v_1) in enumerate(layer_pairs):
@@ -336,6 +342,15 @@ class Z2System2D(System2DBase):
                                     d_covmat_out_virt[inds_arr, :][:, inds_arr],
                                     el_pfaffians[layerind, link_pos, term_ind],
                                 )
+                            """
+
+                            virts = covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
+                            d_virts = d_covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
+
+                            deriv_pf_tot_vectorized = derivative_pfaffian_numpy_vectorized(
+                                virts, d_virts, el_pfaffians[layerind, link_pos]
+                            )
+                            deriv_pf_tot = np.sum(prefactors * deriv_pf_tot_vectorized)
 
                             # In previous versions of the code, Pfaffians with complex/imaginary coefficients
                             # were included, but dropped here. Since operators of interest (electric energy + grad)
