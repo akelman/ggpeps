@@ -9,6 +9,7 @@ from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
 from ggpeps import modearray
 from ggpeps import utils
+from ggpeps.system.backend_numpy import derivative_pfaffian_numpy_vectorized
 
 from .system_base import System2DBase
 from .config_D6_2d import D6System2D_Config
@@ -620,6 +621,7 @@ class D2nSystem2D(System2DBase):
                             # )
                             # d_covmat_out_virt = d_gamma_out[-k:, -k:] # virtual mode is the last link = bottom right
 
+                            """
                             deriv_pf_tot: complex = 0.0j
                             # for term_ind, (term_h, term_v) in enumerate(layer_pairs):
                             # Unpack all 4 term combinations
@@ -638,6 +640,25 @@ class D2nSystem2D(System2DBase):
                                     d_covmat_out_virt[inds_arr, :][:, inds_arr],
                                     el_pfaffians[layerind, link_pos, term_ind],
                                 )
+                            """
+                            deriv_pf_tot: complex = 0.0j
+                            terms = [a[0] for a in layer_pairs]  # should be better
+                            for size in (2, 4, 6):
+                                inds_arr = np.asarray([inds for _, inds in terms if len(inds) == size])
+                                prefactors = np.asarray([pf for pf, inds in terms if len(inds) == size])
+                                pfafs = np.asarray(
+                                    [
+                                        el_pfaffians[layerind, link_pos, term_ind]
+                                        for term_ind, (_, inds) in enumerate(terms)
+                                        if len(inds) == size
+                                    ]
+                                )
+
+                                virts = covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
+                                d_virts = d_covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
+
+                                deriv_pf_tot_vectorized = derivative_pfaffian_numpy_vectorized(virts, d_virts, pfafs)
+                                deriv_pf_tot += np.sum(prefactors * deriv_pf_tot_vectorized)
 
                             d_el_energy = xnp.real(deriv_pf_tot) * xnp.exp(norm_mod - lognorm_default)
 
