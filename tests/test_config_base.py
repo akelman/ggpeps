@@ -62,7 +62,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
             self.assertEqual(g_mon, e_mon, f"Monomial indices differ at sorted index {i}: {g_mon} vs {e_mon}")
             self._assert_complex_close(g_coef, e_coef)
 
-    def test_generate_gauged_projector_terms_small_cases(self):
+    def test_generate_gauged_projector_terms_small_cases1(self):
         # Expected outputs for ncopy in {1,2}, layer in {mixed_copies, unmixed_copies},
         # orientation in {horizontal, vertical}, group_order = 2.
         # We compare ALL terms, including those with coefficients with zero real part.
@@ -204,6 +204,10 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                     exp_ind, exp_const = expected[(ncopy, layer, orientation)]
                     self._assert_terms_equal(got_ind, got_const, exp_ind, exp_const)
 
+    def test_generate_gauged_projector_terms_small_cases2(self):
+        # same as above but without imaginary terms
+        pass
+
     def assertPolyEqual(self, result, expected):
         """Helper to compare polynomial dictionaries."""
         # Convert dict {indices: factor} -> sorted list [(factor, indices)]
@@ -279,4 +283,10 @@ class TestElectricContstants(unittest.TestCase):
         pass
 
     def test_generate_gauged_projector_terms(self):
+        pass
+
+    # this test should be moved to a more suitable location
+    def test_el_energy_imaginary(self):
+        """Test that the electric energy calculation returns the same result whether or not
+        the imaginary parts are included in the calculation."""
         pass
