@@ -403,6 +403,7 @@ def derivative_pfaffian(mat: xnp.ndarray, d_mat: xnp.ndarray, pfaval=None) -> fl
 def derivative_pfaffian_vectorized(mat: xnp.ndarray, d_mat: xnp.ndarray, pfavals: xnp.ndarray) -> xnp.ndarray:
     """Compute the derivative of a Pfaffian of a stack of matrices A.
     The explicit derivatives dA/dx are given as a second argument, and the pfaffians as a third.
+    The function also works if just a single matrix is provided (not a stack).
 
     The given formula is only valid if A is not singular.
 

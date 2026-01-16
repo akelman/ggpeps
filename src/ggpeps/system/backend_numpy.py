@@ -32,28 +32,6 @@ def derivative_pfaffian_numpy(mat: np.ndarray, d_mat: np.ndarray, pfaval: Option
         return 0.0
 
 
-def derivative_pfaffian_vectorized_numpy(mat: np.ndarray, d_mat: np.ndarray, pfavals: np.ndarray) -> np.ndarray:
-    """Compute the derivative of a Pfaffian of a stack of matrices A.
-    The explicit derivatives dA/dx are given as a second argument, and the pfaffians as a third.
-
-    The given formula is only valid if A is not singular.
-
-    Args:
-        mat (np.ndarray): Input matrices A
-        d_mat (np.ndarray): Derivatives dA/dx
-        pfavals (np.ndarray): Pfaffian values for each matrix
-
-    Returns:
-        np.ndarray: an array of d(Pf(A))/dx
-    """
-
-    inv_mat = np.linalg.inv(mat)  # (N, M, M)
-    prod = inv_mat @ d_mat  # batched matrix multiply
-    traces = np.trace(prod, axis1=-2, axis2=-1)
-
-    return 0.5 * pfavals * traces
-
-
 def calculate_lognormvec_numpy(
     gamma_in_sys_vec: np.ndarray,
     mat_d_vec: np.ndarray,
