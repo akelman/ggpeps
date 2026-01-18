@@ -1445,13 +1445,13 @@ class TestTransVariance(unittest.TestCase):
         config = np.copy([neutral_gauge] * nlinks)
         config[link_inds[0]] = cfg.gaugemgr.get_possible_gauge_values()[1]  # for Z2, this is the non-neutral value
         sys.update_gauge_full_system(config)
-        el_energy1 = sys.el_energy_op_vec
+        el_energy1 = np.array(sys.el_energy_op_vec)
 
         # Translate the non-neutral gauge value to the other link
         config = np.copy([neutral_gauge] * nlinks)
         config[link_inds[1]] = cfg.gaugemgr.get_possible_gauge_values()[1]  # for Z2, this is the non-neutral value
         sys.update_gauge_full_system(config)
-        el_energy2 = sys.el_energy_op_vec
+        el_energy2 = np.array(sys.el_energy_op_vec)
 
         # The electric energy values should match upon swapping links
         el_energy2[:, [0, 1]] = el_energy2[:, [1, 0]]
