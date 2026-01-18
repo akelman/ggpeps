@@ -558,7 +558,7 @@ class D2nSystem2D(System2DBase):
         dest_grad = xnp.zeros(shape)
 
         nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
-        single_link_offset = 2 * nvirtmodes_link
+        k = 2 * nvirtmodes_link  # single link offset
         lognorm_default = xnp.sum(lognorm_default_vec)
 
         for layerind in range(nlayer):
@@ -580,8 +580,8 @@ class D2nSystem2D(System2DBase):
                 # TODO: for the latter two products, we don't need the full matrices, only parts of them
                 # Only calculating the required parts could provide a speedup
                 prod_mod_norm = mat_d_mod_inv @ diff_d_inv_gamma_inv @ gamma_in_sys_mod
-                diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)
-                b_times_diff = mat_b @ diff_d_gamma_inv
+                diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)[:, -k:]  # We only need the last k columns
+                b_times_diff = mat_b[-k:, :] @ diff_d_gamma_inv  # We only need the last k rows
 
                 # choose H/V per term based on link direction
                 is_vertical = mod_link_ind >= (nlinks // 2)
@@ -605,20 +605,12 @@ class D2nSystem2D(System2DBase):
                             # in the virtual modes of the given link.
                             # We only construct this block, providing a small speedup as compared to constructing the
                             # full d_gamma_out matrix, and then extracting the block.
-                            k = single_link_offset
                             d_covmat_out_virt = (
                                 d_mat_a[-k:, -k:]
-                                + d_mat_b[-k:, :] @ diff_times_b[:, -k:]
-                                + b_times_diff[-k:, :] @ xnp.transpose(d_mat_b)[:, -k:]
-                                - b_times_diff[-k:, :] @ d_mat_d @ diff_times_b[:, -k:]
+                                + d_mat_b[-k:, :] @ diff_times_b
+                                + b_times_diff @ xnp.transpose(d_mat_b)[:, -k:]
+                                - b_times_diff @ d_mat_d @ diff_times_b
                             )
-                            # d_gamma_out = (
-                            #    d_mat_a
-                            #    + d_mat_b @ diff_times_b
-                            #    + b_times_diff @ xnp.transpose(d_mat_b)
-                            #    - b_times_diff @ d_mat_d @ diff_times_b
-                            # )
-                            # d_covmat_out_virt = d_gamma_out[-k:, -k:] # virtual mode is the last link = bottom right
 
                             """
                             deriv_pf_tot: complex = 0.0j
