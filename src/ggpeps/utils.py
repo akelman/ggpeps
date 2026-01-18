@@ -236,7 +236,9 @@ def extract_mod_covmats(
     mat: xnp.ndarray, link_inds: tuple[int, ...], lattice_size: int, nphysmodes_site: int, nvirtmodes_link: int
 ) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
     """Extract the A, B, D submatrices, but including the virtual modes on the link specified by link_ind.
-    This function can accept a 2D matrix, or a stack of 2D matrices (i.e. a 3D array).
+    This function can accept a 2D matrix, or a stack of 2D matrices (e.g. a 3D array).
+
+    mat must have the same size in the last two dimensions.
 
     This function is called many times - when building the modified matrices, and when doing so in the electric
     energy gradients. It is important that it be efficient.
@@ -249,13 +251,15 @@ def extract_mod_covmats(
         nvirtmodes_link (int): number of virtual modes per link.
 
     Returns:
-        tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]: the A, B, D submatrices, across layers and links
+        tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]: the A, B, D submatrices
+            The returned A has shape (..., len(link_inds), phys_dim, phys_dim)
+            The returned B has shape (..., len(link_inds), phys_dim, virt_dim)
+            The returned D has shape (..., len(link_inds), virt_dim, virt_dim)
+            where ... are any leading dimensions of mat, up to the last two.
+            Thus, len(shape(mat)) + 1 = len(shape(A)) = len(shape(B)) = len(shape(D))
     """
-    single_matrix = mat.ndim == 2
-    if single_matrix:
-        mat = mat[None, ...]
 
-    _, size, __ = mat.shape
+    size = mat.shape[-1]  # size of the covmat
 
     phys_offset = 2 * lattice_size * nphysmodes_site
 
@@ -276,14 +280,9 @@ def extract_mod_covmats(
         D_list.append(mat[..., virt_inds, :][..., :, virt_inds])
 
     # Stack into (layers, links, ...)
-    A = xnp.stack(A_list, axis=1)
-    B = xnp.stack(B_list, axis=1)
-    D = xnp.stack(D_list, axis=1)
-
-    if single_matrix:
-        A = A[0]
-        B = B[0]
-        D = D[0]
+    A = xnp.stack(A_list, axis=-3)  # -3 stacks at the axis before the last two, which is the dimension of mod_links
+    B = xnp.stack(B_list, axis=-3)
+    D = xnp.stack(D_list, axis=-3)
 
     return A, B, D
 
