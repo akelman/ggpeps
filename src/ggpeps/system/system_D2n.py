@@ -641,8 +641,8 @@ class D2nSystem2D(System2DBase):
                                 )
                             """
                             deriv_pf_tot: complex = 0.0j
-                            terms = [a[0] for a in layer_pairs]  # should be better
-                            for size in (2, 4, 6):
+                            terms = [a[0] for a in layer_pairs]  # should not be hardcoded; should select correct one
+                            for size in (2, 4, 6, 8, 10, 12):  # should not be hardcoded
                                 inds_arr = np.asarray([inds for _, inds in terms if len(inds) == size])
                                 prefactors = np.asarray([pf for pf, inds in terms if len(inds) == size])
                                 pfafs = np.asarray(
