@@ -113,6 +113,77 @@ class D6System2D_Config(Config2DBase):
         # Stack per-layer: first pure-gauge layers, then fermionic layers
         self.idxarr_vec = tuple([zipped] * (self.num_pg_layer + self.num_fermionic_layer))
 
+        pg_link_coeffs, pg_link_indices, pg_link_lens = [], [], []
+        ferm_link_coeffs, ferm_link_indices, ferm_link_lens = [], [], []
+        # The pg and fermionic separation is not really needed here since, unlike the Z2 case,
+        # fermionic terms look like pure gauge terms
+
+        for link_pos, mod_link_ind in enumerate(self.mod_link_inds):
+            coord, dir = self.lattice.ind2coord_dir(link_pos)
+            site_pairity = sum(coord) % 2
+            is_vertical = dir == Direction.Y
+            if is_vertical:
+                if site_pairity == 0:
+                    term = idxarr_lay_v_0
+                else:
+                    term = idxarr_lay_v_1
+            else:
+                if site_pairity == 0:
+                    term = idxarr_lay_h_0
+                else:
+                    term = idxarr_lay_h_1
+            # Bucket terms by length of indices
+            # Structure: { length: ([coeffs], [indices]) }
+            temp_buckets = {}
+
+            for coef, indices in term:
+                l = len(indices)
+                if l not in temp_buckets:
+                    temp_buckets[l] = ([], [])
+                temp_buckets[l][0].append(coef)
+                temp_buckets[l][1].append(indices)
+
+            # Sort buckets by length and convert to tuples
+            sorted_lengths = sorted(temp_buckets.keys())
+
+            # Temporary holders for the current link
+            curr_l_coeffs = []
+            curr_l_indices = []
+            curr_l_lens = []
+
+            for l in sorted_lengths:
+                c_list, i_list = temp_buckets[l]
+                curr_l_coeffs.append(tuple(c_list))
+                curr_l_indices.append(tuple(i_list))
+                curr_l_lens.append(l)  # Storing the length key itself
+
+            # Convert current link data to tuples
+            t_curr_coeffs = tuple(curr_l_coeffs)
+            t_curr_indices = tuple(curr_l_indices)
+            t_curr_lens = tuple(curr_l_lens)
+
+            # Append to PG collectors
+            pg_link_coeffs.append(t_curr_coeffs)
+            pg_link_indices.append(t_curr_indices)
+            pg_link_lens.append(t_curr_lens)
+
+            # Append to Fermionic collectors
+            ferm_link_coeffs.append(t_curr_coeffs)
+            ferm_link_indices.append(t_curr_indices)
+            ferm_link_lens.append(t_curr_lens)
+
+        pg_base_coeffs = tuple(pg_link_coeffs)
+        ferm_base_coeffs = tuple(ferm_link_coeffs)
+        self.coeffs_vec = (pg_base_coeffs,) * self.num_pg_layer + (ferm_base_coeffs,) * self.num_fermionic_layer
+
+        pg_base_indices = tuple(pg_link_indices)
+        ferm_base_indices = tuple(ferm_link_indices)
+        self.idx_vec = (pg_base_indices,) * self.num_pg_layer + (ferm_base_indices,) * self.num_fermionic_layer
+
+        pg_base_lens = tuple(pg_link_lens)
+        ferm_base_lens = tuple(ferm_link_lens)
+        self.lens_vec = (pg_base_lens,) * self.num_pg_layer + (ferm_base_lens,) * self.num_fermionic_layer
+
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.
 
