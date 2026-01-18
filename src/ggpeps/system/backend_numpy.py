@@ -18,6 +18,7 @@ def derivative_pfaffian_numpy(mat: np.ndarray, d_mat: np.ndarray, pfaval: Option
     Args:
         mat (np.ndarray): Input Matrix A
         d_mat (np.ndarray): Derivative dA/dx
+        pfaval (Optional[float]): Pfaffian value of mat, if already known. If None, it will be computed.
 
     Returns:
         float: d(Pf(A))/dx

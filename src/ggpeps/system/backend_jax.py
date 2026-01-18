@@ -24,6 +24,7 @@ def derivative_pfaffian_jax(mat: jnp.ndarray, d_mat: jnp.ndarray, pfaval: Option
     Args:
         mat (jnp.ndarray): Input Matrix A
         d_mat (jnp.ndarray): Derivative dA/dx
+        pfaval (Optional[float]): Pfaffian value of mat, if already known. If None, it will be computed.
 
     Returns:
         float: d(Pf(A))/dx
