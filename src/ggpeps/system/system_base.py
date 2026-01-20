@@ -1842,7 +1842,7 @@ class System2DBase(ABC):
         if self._el_energy_op is None:
             # The different layers can be separated into separate PEPS and then multiplied together.
             nlinks = self.cfg.lattice.nlinks
-            el_energy_link_vec = xnp.prod(self.el_energy_op_vec, axis=0, dtype=float) * 2 ** (self.cfg.nlayer - 1)
+            el_energy_link_vec = xnp.prod(self.el_energy_op_vec, axis=0, dtype=float) / (2 ** (self.cfg.nlayer - 1))
             # The 2**(nlayer-1) is a temporary fix for Z2: This compensates for the factor of 2 accumulating
             # at each layer. It ensures the factor is applied only once globally.
             self._el_energy_op = (nlinks / len(self.cfg.mod_link_inds)) * xnp.sum(el_energy_link_vec)
