@@ -372,7 +372,9 @@ class Z2System2D(System2DBase):
                 for linkind in range(len(mod_link_inds)):
                     prod_other_layers = utils.multiply_except(el_energy_vec[:, linkind], lay)
                     dest_grad = backend.array_mult(dest_grad, (lay, linkind), prod_other_layers)
-        dest_grad = xnp.sum(dest_grad, axis=1)  # sum over the links
+        dest_grad = xnp.sum(dest_grad, axis=1) / 2 ** (nlayer - 1)  # sum over the links
+        # The 2**(nlayer-1) is a temporary fix for Z2: This compensates for the factor of 2 accumulating
+        # at each layer. It ensures the factor is applied only once globally.
 
         return dest_grad
 
