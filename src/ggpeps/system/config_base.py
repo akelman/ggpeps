@@ -381,7 +381,7 @@ def bracket_terms(
         These terms mix the current color indices with the indices of color 'm', weighted
         by the matrix element D_{m, color}(h) (or its conjugate, depending on site parity).
 
-    The indices are resolved using `_get_cov_matrix_idx`:
+    The indices are resolved using `get_cov_matrix_idx`:
     - a, b: Modes for (color, copy) at direction 2 (Right/Up).
     - c, d: Modes for (color, sigma_copy) at direction 1 (Left/Down).
     - a_m, b_m: Modes for (m, copy) at direction 2.
@@ -402,18 +402,17 @@ def bracket_terms(
             A list of (coefficient, indices) tuples representing the sparse polynomial.
             Coefficients are snapped to remove numerical noise.
     """
-    a = _get_cov_matrix_idx(
-        color, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies
-    )  # r_{color, copy}^{1} or u_{color, copy}^{1}
-    b = _get_cov_matrix_idx(
-        color, copy, direction=2, majorana=2, ncolors=ncolors, ncopies=ncopies
-    )  # r_{color, copy}^{2} or u_{color, copy}^{2}
-    c = _get_cov_matrix_idx(
-        color, sigma_copy, direction=1, majorana=1, ncolors=ncolors, ncopies=ncopies
-    )  # l_{color, copy}^{1} or d_{color, copy}^{1}
-    d = _get_cov_matrix_idx(
-        color, sigma_copy, direction=1, majorana=2, ncolors=ncolors, ncopies=ncopies
-    )  # l_{color, copy}^{2} or d_{color, copy}^{2}
+    # r_{color, copy}^{1} or u_{color, copy}^{1}
+    a = get_cov_matrix_idx(color, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
+
+    # r_{color, copy}^{2} or u_{color, copy}^{2}
+    b = get_cov_matrix_idx(color, copy, direction=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
+
+    # l_{color, copy}^{1} or d_{color, copy}^{1}
+    c = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=1, ncolors=ncolors, ncopies=ncopies)
+
+    # l_{color, copy}^{2} or d_{color, copy}^{2}
+    d = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=2, ncolors=ncolors, ncopies=ncopies)
 
     eta2_bar = complex(eta2).conjugate()
 
@@ -427,15 +426,18 @@ def bracket_terms(
         (-0.5 * 1j * eta2_bar, (a, d)),
         (-0.5 * 1j * eta2_bar, (b, c)),
     ]
-    if site % 2 == 0:  # TODO: implement for fermionic modes that transform with the conjugate representation,
-        # i.e., d modes in the conventions here https://journals.aps.org/prd/abstract/10.1103/PhysRevD.110.054511
+
+    # Apply conjugation on the odd sublattice
+    # TODO: implement conjugation for copies that should transform with the conjugate representation,
+    # i.e., d modes in the conventions here https://journals.aps.org/prd/abstract/10.1103/PhysRevD.110.054511
+    if site % 2 == 0:
         gauging_matrix = group_element
     else:
         gauging_matrix = xnp.conjugate(group_element)
 
     for m in range(1, ncolors + 1):
-        a_m = _get_cov_matrix_idx(m, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
-        b_m = _get_cov_matrix_idx(m, copy, direction=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
+        a_m = get_cov_matrix_idx(m, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
+        b_m = get_cov_matrix_idx(m, copy, direction=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
         matrix_element = gauging_matrix[m - 1][color - 1]
         raw_terms += [
             (0.25 * eta2 * matrix_element, (c, a_m)),
@@ -459,13 +461,13 @@ def bracket_terms(
     # Snap small real/imag parts and drop zeros to reduce work upstream
     terms: list[tuple[complex, tuple[int, ...]]] = []
     for coef, inds in raw_terms:
-        snapped = _snap_complex(coef)
+        snapped = snap_complex(coef)
         if snapped != 0.0:
             terms.append((snapped, inds))
     return terms
 
 
-def _snap_complex(z: complex, eps=1e-12) -> complex:
+def snap_complex(z: complex, eps=1e-12) -> complex:
     """
     Component-wise zeroing of tiny real/imag parts.
 
@@ -485,7 +487,7 @@ def _snap_complex(z: complex, eps=1e-12) -> complex:
     return zr if zi == 0.0 else complex(zr, zi)
 
 
-def _pfaffian_wick_phase(mon: tuple[int, ...]) -> complex:
+def pfaffian_wick_phase(mon: tuple[int, ...]) -> complex:
     """
     Compute the Pfaffian-Wick phase i^(-len(mon)/2) for an even Majorana monomial.
 
@@ -578,7 +580,8 @@ def generate_gauged_projector_terms(
     irreps = gaugemgr.get_possible_irrep_labels()
     possible_group_elements = gaugemgr.get_possible_gauge_values()
     for h in possible_group_elements:
-        h_inv = xnp.conjugate(xnp.transpose(h))
+        h_inv = xnp.conjugate(xnp.transpose(h))  # this gives the inverse for a unitary representation
+
         # Each term has to be multiplied by 4^{-(n_copy+ncolor)}f_j * Tr(D^j(h^{-1}))*dim(j)/|G|,
         # where f_j is the electric energy factor.
         pref: complex = 0.0
@@ -590,9 +593,9 @@ def generate_gauged_projector_terms(
         pref = pref * (4 ** (-ncopy * ncolor)) / gaugemgr.group_order
 
         if not xnp.isclose(pref, 0.0):
-            acc: MonomialAccumulator = defaultdict(
-                complex
-            )  # Accumulator of partial expansions: monomial tuple -> coefficient
+            # Accumulator of partial expansions: monomial tuple -> coefficient
+            acc: MonomialAccumulator = defaultdict(complex)
+
             acc[()] = 1.0  # multiplicative identity (empty monomial)
             for color in range(1, ncolor + 1):
                 for copy in range(1, ncopy + 1):
@@ -603,21 +606,23 @@ def generate_gauged_projector_terms(
                             # Multiply polynomials (append indices, multiply coeffs)
                             new_acc[indsA + indsB] += coefA * coefB
                     acc = simplify_majorana_acc(new_acc)
+
             # After finishing the product for this h, add to the final sum weighted by pref
             for inds, coef in acc.items():
                 final_polynomial[inds] += coef * pref
+
     # Final simplification to avoid computing same pfaffian multiple times
     final_polynomial = simplify_majorana_acc(final_polynomial)
 
     # Split constant vs others and build the output
-    constant = _snap_complex(final_polynomial.pop((), 0.0))
+    constant = snap_complex(final_polynomial.pop((), 0.0))
     items = [(mon, complex(coef)) for mon, coef in final_polynomial.items() if coef != 0.0]
 
     # Multiply each coefficient by i^(-len(mon)/2), the Pfaffian-Wick phase
     phased_items: list[tuple[tuple[int, ...], complex]] = []
     for mon, coef in items:
-        factor = _pfaffian_wick_phase(mon)
-        new_coef = _snap_complex(coef * factor)
+        factor = pfaffian_wick_phase(mon)
+        new_coef = snap_complex(coef * factor)
         if new_coef != 0.0:
             phased_items.append((mon, new_coef))
 
@@ -633,7 +638,7 @@ def generate_gauged_projector_terms(
     return indices, constant
 
 
-def _get_cov_matrix_idx(
+def get_cov_matrix_idx(
     color: int, copy: int, direction: int, majorana: int, ncolors: int, ncopies: int, ndirections: int = 2
 ) -> int:
     """Get the index in the covariance matrix for a given mode.
@@ -647,6 +652,7 @@ def _get_cov_matrix_idx(
         ncolors (int): number of colors
         ncopies (int): number of copies
         ndirections (int, optional): number of directions (system's spatial dimension). Defaults to 2.
+
     Returns:
         int: index in the covariance matrix - 0-based
     """
@@ -671,7 +677,7 @@ def simplify_majorana_acc(acc):
 
     for indices, factor in acc.items():
         # Clean noise immediately
-        factor = _snap_complex(factor)
+        factor = snap_complex(factor)
         if factor == 0.0:
             continue
 
@@ -711,7 +717,7 @@ def simplify_majorana_acc(acc):
     # Final cleanup of the simplified dictionary
     final_acc = defaultdict(complex)
     for k, v in new_acc.items():
-        clean_v = _snap_complex(v)
+        clean_v = snap_complex(v)
         if clean_v != 0.0:
             final_acc[k] = clean_v
 
