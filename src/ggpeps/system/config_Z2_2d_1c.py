@@ -77,22 +77,22 @@ class Z2System2DConfig(Config2DBase):
 
         # 1. Horizontal, Site 0
         idxarr_lay_pg_h_0, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, True, "horizontal", self.gaugemgr, site=0
+            self.ncopy, self.ncolors, True, Direction.X, self.gaugemgr, site=0
         )
 
         # 2. Horizontal, Site 1
         idxarr_lay_pg_h_1, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, True, "horizontal", self.gaugemgr, site=1
+            self.ncopy, self.ncolors, True, Direction.X, self.gaugemgr, site=1
         )
 
         # 3. Vertical, Site 0
         idxarr_lay_pg_v_0, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, True, "vertical", self.gaugemgr, site=0
+            self.ncopy, self.ncolors, True, Direction.Y, self.gaugemgr, site=0
         )
 
         # 4. Vertical, Site 1
         idxarr_lay_pg_v_1, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, True, "vertical", self.gaugemgr, site=1
+            self.ncopy, self.ncolors, True, Direction.Y, self.gaugemgr, site=1
         )
 
         # Zip all four combinations: (H0, H1, V0, V1)

@@ -92,18 +92,18 @@ class D6System2D_Config(Config2DBase):
         # Constants used in the calculation of the electric energy on a horizontal link.
 
         idxarr_lay_h_0, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, False, "horizontal", self.gaugemgr, site=0
+            self.ncopy, self.ncolors, False, Direction.X, self.gaugemgr, site=0
         )
         idxarr_lay_h_1, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, False, "horizontal", self.gaugemgr, site=1
+            self.ncopy, self.ncolors, False, Direction.X, self.gaugemgr, site=1
         )
 
         # Constants used in the calculation of the electric energy on a vertical link.
         idxarr_lay_v_0, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, False, "vertical", self.gaugemgr, site=0
+            self.ncopy, self.ncolors, False, Direction.Y, self.gaugemgr, site=0
         )
         idxarr_lay_v_1, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, False, "vertical", self.gaugemgr, site=1
+            self.ncopy, self.ncolors, False, Direction.Y, self.gaugemgr, site=1
         )
 
         # Pair horizontal/vertical term-lists termwise for each layer kind

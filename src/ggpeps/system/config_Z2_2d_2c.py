@@ -77,18 +77,18 @@ class Z2System2D2CConfig(Config2DBase):
     def init_el_energy_terms(self) -> None:
         """Build idxarr_vec (paired H/V terms per layer)."""
         idxarr_lay_pg_h_0, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, True, "horizontal", self.gaugemgr, site=0
+            self.ncopy, self.ncolors, True, Direction.X, self.gaugemgr, site=0
         )
         idxarr_lay_pg_h_1, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, True, "horizontal", self.gaugemgr, site=1
+            self.ncopy, self.ncolors, True, Direction.X, self.gaugemgr, site=1
         )
 
         # Constants used in the calculation of the electric energy on a vertical link.
         idxarr_lay_pg_v_0, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, True, "vertical", self.gaugemgr, site=0
+            self.ncopy, self.ncolors, True, Direction.Y, self.gaugemgr, site=0
         )
         idxarr_lay_pg_v_1, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, True, "vertical", self.gaugemgr, site=1
+            self.ncopy, self.ncolors, True, Direction.Y, self.gaugemgr, site=1
         )
 
         # Pair horizontal/vertical term-lists termwise for each layer kind

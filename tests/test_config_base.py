@@ -6,6 +6,7 @@ from ggpeps import gauge
 from ggpeps import system
 from ggpeps import lattice
 
+from ggpeps.lattice import Direction
 
 # ==================== ZN Gauged Projector Terms: Test ====================
 
@@ -67,7 +68,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
         # orientation in {horizontal, vertical}, group_order = 2.
         # We compare ALL terms, including those with coefficients with zero real part.
         expected = {
-            (1, True, "horizontal"): (
+            (1, True, Direction.X): (
                 (
                     (0.5, (0, 1)),
                     (-0.5j, (2, 0)),
@@ -76,7 +77,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (1, True, "vertical"): (
+            (1, True, Direction.Y): (
                 (
                     (0.5, (0, 1)),
                     (0.5j, (2, 1)),
@@ -85,7 +86,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (1, False, "horizontal"): (
+            (1, False, Direction.X): (
                 (
                     (0.5, (0, 1)),
                     (-0.5j, (2, 0)),
@@ -94,7 +95,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (1, False, "vertical"): (
+            (1, False, Direction.Y): (
                 (
                     (0.5, (0, 1)),
                     (0.5j, (2, 1)),
@@ -103,7 +104,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (2, True, "horizontal"): (
+            (2, True, Direction.X): (
                 (
                     (0.125, (2, 3, 0, 1)),
                     (-0.125j, (2, 3, 6, 0)),
@@ -124,7 +125,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (2, True, "vertical"): (
+            (2, True, Direction.Y): (
                 (
                     (0.125, (2, 3, 0, 1)),
                     (0.125j, (2, 3, 6, 1)),
@@ -145,7 +146,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (2, False, "horizontal"): (
+            (2, False, Direction.X): (
                 (
                     (0.125, (0, 1, 4, 5)),
                     (-0.125j, (0, 1, 6, 4)),
@@ -166,7 +167,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (2, False, "vertical"): (
+            (2, False, Direction.Y): (
                 (
                     (0.125, (0, 1, 4, 5)),
                     (0.125j, (0, 1, 6, 5)),
@@ -191,7 +192,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
         gaugemgr = gauge.ZNGauge(2)
         for ncopy in (1, 2):
             for mix_copies in (True, False):
-                for orientation in ("horizontal", "vertical"):
+                for orientation in (Direction.X, Direction.Y):
                     got_ind, got_const = config_base.generate_gauged_projector_terms(
                         ncopy=ncopy,
                         ncolor=1,

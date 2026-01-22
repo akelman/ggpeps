@@ -12,7 +12,7 @@ from ggpeps import xnp as xnp
 
 import ggpeps
 from ggpeps import gauge
-from ggpeps.lattice import Lattice2D
+from ggpeps.lattice import Lattice2D, Direction
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -331,13 +331,6 @@ from typing import Optional, Union, Literal, DefaultDict
 MonomialAccumulator = DefaultDict[tuple[int, ...], complex]
 
 
-Orientation = Literal["horizontal", "vertical"]
-"""Orientation type selector.
-- "horizontal": sets eta^2 = 1
-- "vertical"  : sets eta^2 = i
-"""
-
-
 def make_sigma(ncopy: int, mix_copies: bool) -> tuple[int, ...]:
     """
     Build the link-pairing permutation (sigma) for a single layer.
@@ -524,7 +517,7 @@ def generate_gauged_projector_terms(
     ncopy: int,
     ncolor: int,
     mix_copies: bool,
-    orientation: Orientation,
+    orientation: Direction,
     gaugemgr: Union[gauge.ZNGauge, gauge.D2nGauge],
     site: int = 0,
     drop_real_zero: bool = True,
@@ -552,7 +545,7 @@ def generate_gauged_projector_terms(
         ncopy (int): Number of copies.
         ncolor (int): Number of colors.
         mix_copies (bool): whether to mix copies in the projectors (controls sigma permutation).
-        orientation (Orientation): 'horizontal' (eta^2 = 1) or 'vertical' (eta^2 = i).
+        orientation (Direction): 'X' (horizontal, eta^2 = 1) or 'Y' (vertical, eta^2 = i).
         gaugemgr (Union[gauge.ZNGauge, gauge.D2nGauge]): Gauge manager handling group structure and irreps.
         site (int, optional): Site index (used for parity-dependent conjugation). Defaults to 0.
         drop_real_zero (bool, optional): Whether to drop terms with zero real part in coefficients. Defaults to True.
@@ -564,18 +557,19 @@ def generate_gauged_projector_terms(
             - constant: The scalar constant term of the polynomial.
 
     Raises:
-        ValueError: On invalid orientation or ncopy.
+        ValueError: On invalid ncopy.
     """
     sigma = make_sigma(ncopy, mix_copies)
 
     # Map orientation -> eta^2
     eta2: Union[float, complex]
-    if orientation == "horizontal":
+    if orientation == Direction.X:
         eta2 = 1.0
-    elif orientation == "vertical":
+    elif orientation == Direction.Y:
         eta2 = 1j
     else:
-        raise ValueError("orientation must be 'horizontal' or 'vertical'")
+        # got Direction.Z, which is not yet supported
+        raise ValueError("Link orientation must be 'X' (horizontal) or 'Y' (vertical).")
 
     # Initialize the final polynomial accumulator (Sum over all h)
     final_polynomial: dict[tuple[int, ...], complex] = defaultdict(complex)

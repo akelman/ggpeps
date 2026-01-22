@@ -78,35 +78,35 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         # Constants used in the calculation of the electric energy on a horizontal link.
         # Pure Gauge
         idxarr_lay_pg_h_0, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, True, "horizontal", self.gaugemgr, site=0
+            self.ncopy, self.ncolors, True, Direction.X, self.gaugemgr, site=0
         )
         idxarr_lay_pg_h_1, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, True, "horizontal", self.gaugemgr, site=1
+            self.ncopy, self.ncolors, True, Direction.X, self.gaugemgr, site=1
         )
 
         # Fermionic
         idxarr_lay_fermionic_h_0, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, False, "horizontal", self.gaugemgr, site=0
+            self.ncopy, self.ncolors, False, Direction.X, self.gaugemgr, site=0
         )
         idxarr_lay_fermionic_h_1, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, False, "horizontal", self.gaugemgr, site=1
+            self.ncopy, self.ncolors, False, Direction.X, self.gaugemgr, site=1
         )
 
         # Constants used in the calculation of the electric energy on a vertical link.
         # Pure Gauge
         idxarr_lay_pg_v_0, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, True, "vertical", self.gaugemgr, site=0
+            self.ncopy, self.ncolors, True, Direction.Y, self.gaugemgr, site=0
         )
         idxarr_lay_pg_v_1, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, True, "vertical", self.gaugemgr, site=1
+            self.ncopy, self.ncolors, True, Direction.Y, self.gaugemgr, site=1
         )
 
         # Fermionic
         idxarr_lay_fermionic_v_0, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, False, "vertical", self.gaugemgr, site=0
+            self.ncopy, self.ncolors, False, Direction.Y, self.gaugemgr, site=0
         )
         idxarr_lay_fermionic_v_1, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, False, "vertical", self.gaugemgr, site=1
+            self.ncopy, self.ncolors, False, Direction.Y, self.gaugemgr, site=1
         )
 
         # Pair horizontal/vertical term-lists termwise for each layer kind
