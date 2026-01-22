@@ -18,6 +18,8 @@ class ZNGauge:
         self.rep_dim = 1  # Each group element is represented as a 1×1 matrix.
         self.forbidden_transitions: list = []  # List of forbidden transitions - Empty for Z_N gauge group.
         self.group_order = n
+        self.group_elements_for_el_energy: tuple[np.ndarray, ...] = self.get_group_elements_for_el_energy()
+        self.el_mult_factor = 2
 
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> np.ndarray:
         """
@@ -199,6 +201,10 @@ class ZNGauge:
             list[np.ndarray]: Empty list; no intermediate steps are required.
         """
         return []
+
+    def get_group_elements_for_el_energy(self) -> tuple[np.ndarray, ...]:
+        increment = self.get_increment()
+        return tuple([self.get_representation(increment)])
 
 
 class D2nGauge:
