@@ -170,44 +170,49 @@ class Z2System2D(System2DBase):
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
         link_site_parity: tuple[int, ...],
+        group_elements_for_el_energy: tuple[xnp.ndarray, ...],
     ) -> xnp.ndarray:
 
         lognorm_default = xnp.sum(lognormvec_default)
 
         num_el_links = len(mod_link_inds)  # number of links on which the electric energy is computed
-        dest = xnp.zeros((nlayer, num_el_links))
+        num_group_elements = len(group_elements_for_el_energy)
+        dest = xnp.zeros((num_group_elements, nlayer, num_el_links))
 
         # TODO: vectorize!
-        for layerind in range(nlayer):
-            layer_pairs = idxarrs[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
-            norm_mod_linkvec = norm_mod_vec[layerind]
+        for group_element_idx in range(num_group_elements):
+            # idxarrs for the specific group element, for Z_N we expect only 1 anyway
+            idxarrs_goup_element = idxarrs[group_element_idx]
+            for layerind in range(nlayer):
+                layer_pairs = idxarrs_goup_element[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
+                norm_mod_linkvec = norm_mod_vec[layerind]
 
-            # Iterate over the links
-            for link_pos, norm_mod in enumerate(norm_mod_linkvec):
-                ###################### Calculation of <P + P^\dagger> ########################
+                # Iterate over the links
+                for link_pos, norm_mod in enumerate(norm_mod_linkvec):
+                    ###################### Calculation of <P + P^\dagger> ########################
 
-                is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
-                site_parity = link_site_parity[link_pos]
+                    is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
+                    site_parity = link_site_parity[link_pos]
 
-                pf_tot: complex = 0.0j
-                for term_ind, (term_h_0, term_h_1, term_v_0, term_v_1) in enumerate(layer_pairs):
-                    # each term_* is (prefactor, indices); pfaffians already computed per term_ind
+                    pf_tot: complex = 0.0j
+                    for term_ind, (term_h_0, term_h_1, term_v_0, term_v_1) in enumerate(layer_pairs):
+                        # each term_* is (prefactor, indices); pfaffians already computed per term_ind
 
-                    # Select the correct term based on direction and site parity
-                    if is_vertical:
-                        curr_term = term_v_1 if site_parity == 1 else term_v_0
-                    else:
-                        curr_term = term_h_1 if site_parity == 1 else term_h_0
+                        # Select the correct term based on direction and site parity
+                        if is_vertical:
+                            curr_term = term_v_1 if site_parity == 1 else term_v_0
+                        else:
+                            curr_term = term_h_1 if site_parity == 1 else term_h_0
 
-                    prefactor = curr_term[0]
-                    pfaval = el_pfaffians[layerind, link_pos, term_ind]
-                    pf_tot += prefactor * pfaval
+                        prefactor = curr_term[0]
+                        pfaval = el_pfaffians[group_element_idx, layerind, link_pos, term_ind]
+                        pf_tot += prefactor * pfaval
 
-                # xnp.real() is only for testing purposes, since the Pfaffian's with imaginary components are
-                # now dropped higher up in the stack.
-                el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
+                    # xnp.real() is only for testing purposes, since the Pfaffian's with imaginary components are
+                    # now dropped higher up in the stack.
+                    el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
 
-                dest = backend.array_assign(dest, (layerind, link_pos), el_energy_link)
+                    dest = backend.array_assign(dest, (group_element_idx, layerind, link_pos), el_energy_link)
 
         return dest
 
