@@ -534,7 +534,7 @@ def generate_gauged_projector_terms(
     ncolor: int,
     coupling_type: CouplingType,
     orientation: Orientation,
-    gaugemgr: Union[gauge.ZNGauge, gauge.D2nGauge],
+    group_element: xnp.ndarray,
     site: int = 0,
     drop_real_zero: bool = True,
 ) -> tuple[tuple[tuple[complex, tuple[int, ...]], ...], complex]:
@@ -586,41 +586,26 @@ def generate_gauged_projector_terms(
     else:
         raise ValueError("orientation must be 'horizontal' or 'vertical'")
 
-    # Initialize the final polynomial accumulator (Sum over all h)
+    # Initialize the final polynomial accumulator
     final_polynomial: dict[tuple[int, ...], complex] = defaultdict(complex)
     # Multiply in each bracket
-    # TODO: Fix for continious groups - the sum over irreps and group elemnts has to be computed analytically
-    irreps = gaugemgr.get_possible_irrep_labels()
-    possible_group_elements = gaugemgr.get_possible_gauge_values()
-    for h in possible_group_elements:
-        h_inv = xnp.conjugate(xnp.transpose(h))
-        # Each term has to be multiplied by 4^{-(n_copy+ncolor)}f_j * Tr(D^j(h^{-1}))*dim(j)/|G|,
-        # where f_j is the electric energy factor.
-        pref: complex = 0.0
-        for irrep in irreps:
-            irrep_character = gaugemgr.get_irrep_character(h_inv, irrep)
-            electric_energy_factor = gaugemgr.get_electric_energy_factor(irrep)
-            dim_irrep = gaugemgr.get_irrep_dimension(irrep)
-            pref += electric_energy_factor * irrep_character * dim_irrep
-        pref = pref * (4 ** (-ncopy * ncolor)) / gaugemgr.group_order
 
-        if not xnp.isclose(pref, 0.0):
-            acc: MonomialAccumulator = defaultdict(
-                complex
-            )  # Accumulator of partial expansions: monomial tuple -> coefficient
-            acc[()] = 1.0  # multiplicative identity (empty monomial)
-            for color in range(1, ncolor + 1):
-                for copy in range(1, ncopy + 1):
-                    terms_j = bracket_terms(copy, sigma[copy - 1], eta2, color, ncolor, ncopy, h, site)
-                    new_acc: MonomialAccumulator = defaultdict(complex)
-                    for indsA, coefA in acc.items():
-                        for coefB, indsB in terms_j:
-                            # Multiply polynomials (append indices, multiply coeffs)
-                            new_acc[indsA + indsB] += coefA * coefB
-                    acc = simplify_majorana_acc(new_acc)
-            # After finishing the product for this h, add to the final sum weighted by pref
-            for inds, coef in acc.items():
-                final_polynomial[inds] += coef * pref
+    pref = 4 ** (-ncopy * ncolor)
+
+    acc: MonomialAccumulator = defaultdict(complex)  # Accumulator of partial expansions: monomial tuple -> coefficient
+    acc[()] = 1.0  # multiplicative identity (empty monomial)
+    for color in range(1, ncolor + 1):
+        for copy in range(1, ncopy + 1):
+            terms_j = bracket_terms(copy, sigma[copy - 1], eta2, color, ncolor, ncopy, group_element, site)
+            new_acc: MonomialAccumulator = defaultdict(complex)
+            for indsA, coefA in acc.items():
+                for coefB, indsB in terms_j:
+                    # Multiply polynomials (append indices, multiply coeffs)
+                    new_acc[indsA + indsB] += coefA * coefB
+            acc = simplify_majorana_acc(new_acc)
+    # After finishing the product, add to the final sum weighted by pref
+    for inds, coef in acc.items():
+        final_polynomial[inds] += coef * pref
     # Final simplification to avoid computing same pfaffian multiple times
     final_polynomial = simplify_majorana_acc(final_polynomial)
 
