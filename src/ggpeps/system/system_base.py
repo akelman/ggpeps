@@ -670,6 +670,7 @@ class System2DBase(ABC):
                 self.cfg.lattice.nlinks,
                 self.covmat_out_mod_vec,
                 link_site_pairity,
+                self.cfg.gaugemgr.group_elements_for_el_energy,
             )
         return self._el_pfaffians
 
@@ -682,6 +683,7 @@ class System2DBase(ABC):
         nlinks: int,
         covmat_out_virt_vec: xnp.ndarray,
         link_site_parity: tuple[int, ...],  # Duplicates information that is computable from mod_link_inds
+        group_elements_for_el_energy: tuple[xnp.ndarray, ...],
     ) -> xnp.ndarray:
         """Compute the pfaffians of the modified covariance matrices used for the electric energy and its derivative.
         This function returns a vector over layers and links of these pfaffians.
@@ -692,34 +694,39 @@ class System2DBase(ABC):
         """
 
         num_el_links = len(mod_link_inds)  # number of links to calculate the electric energy on.
-        num_terms_per_layer = len(idxarr_vec[0])  # number of terms in each layer.
-        el_pfaffians = xnp.zeros((nlayer, num_el_links, num_terms_per_layer))
+        num_terms_per_layer = len(idxarr_vec[0][0])  # number of terms in each layer.
+        num_group_elements = len(group_elements_for_el_energy)
+        el_pfaffians = xnp.zeros((num_group_elements, nlayer, num_el_links, num_terms_per_layer))
 
         # TODO: vectorize!
-        for layerind in range(nlayer):
-            layer_pairs = idxarr_vec[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
-            covmat_out_virt_linkvec = covmat_out_virt_vec[layerind]
+        for group_element_idx in range(num_group_elements):
+            idxarr_vec_group_element = idxarr_vec[group_element_idx]
+            for layerind in range(nlayer):
+                layer_pairs = idxarr_vec_group_element[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
+                covmat_out_virt_linkvec = covmat_out_virt_vec[layerind]
 
-            # Iterate over the links
-            for link_pos, covmat_out_virt in enumerate(covmat_out_virt_linkvec):
-                is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
-                site_parity = link_site_parity[link_pos]  # 0 or 1
+                # Iterate over the links
+                for link_pos, covmat_out_virt in enumerate(covmat_out_virt_linkvec):
+                    is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
+                    site_parity = link_site_parity[link_pos]  # 0 or 1
 
-                # Unpack the 4 stored terms
-                for term_ind, (term_h_0, term_h_1, term_v_0, term_v_1) in enumerate(layer_pairs):
+                    # Unpack the 4 stored terms
+                    for term_ind, (term_h_0, term_h_1, term_v_0, term_v_1) in enumerate(layer_pairs):
 
-                    # Select the correct term based on direction and site parity
-                    if is_vertical:
-                        curr_term = term_v_1 if site_parity == 1 else term_v_0
-                    else:
-                        curr_term = term_h_1 if site_parity == 1 else term_h_0
+                        # Select the correct term based on direction and site parity
+                        if is_vertical:
+                            curr_term = term_v_1 if site_parity == 1 else term_v_0
+                        else:
+                            curr_term = term_h_1 if site_parity == 1 else term_h_0
 
-                    # Extract indices from the selected term
-                    _, inds_tup = curr_term
-                    inds_arr = xnp.asarray(inds_tup)
+                        # Extract indices from the selected term
+                        _, inds_tup = curr_term
+                        inds_arr = xnp.asarray(inds_tup)
 
-                    pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds_arr, inds_arr)])
-                    el_pfaffians = backend.array_assign(el_pfaffians, (layerind, link_pos, term_ind), pfaval)
+                        pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds_arr, inds_arr)])
+                        el_pfaffians = backend.array_assign(
+                            el_pfaffians, (group_element_idx, layerind, link_pos, term_ind), pfaval
+                        )
 
         return el_pfaffians
 
@@ -1542,6 +1549,7 @@ class System2DBase(ABC):
         link_site_pairity: tuple[
             int, ...
         ],  # The information contained in this argument is contained in mod_link_inds.
+        group_elements_for_el_energy: tuple[xnp.ndarray, ...],
     ) -> xnp.ndarray:
         """Compute the electric energy.
 
@@ -1778,7 +1786,7 @@ class System2DBase(ABC):
             float: electric energy
         """
         nlinks = self.cfg.lattice.nlinks
-        el_energy = self.cfg.g_el * (2 * nlinks - self.el_energy_op)
+        el_energy = self.cfg.g_el * (2 * nlinks - self.cfg.gaugemgr.el_mult_factor * self.el_energy_op)
         return el_energy
 
     @property
@@ -1842,9 +1850,9 @@ class System2DBase(ABC):
         if self._el_energy_op is None:
             # The different layers can be separated into separate PEPS and then multiplied together.
             nlinks = self.cfg.lattice.nlinks
-            el_energy_link_vec = xnp.prod(self.el_energy_op_vec, axis=0, dtype=float) / (2 ** (self.cfg.nlayer - 1))
-            # The 2**(nlayer-1) is a temporary fix for Z2: This compensates for the factor of 2 accumulating
-            # at each layer. It ensures the factor is applied only once globally.
+            el_energy_link_vec = xnp.prod(self.el_energy_op_vec, axis=1, dtype=float)
+            el_energy_link_vec = xnp.sum(el_energy_link_vec, axis=0, dtype=float)  # sum over group elements
+
             self._el_energy_op = (nlinks / len(self.cfg.mod_link_inds)) * xnp.sum(el_energy_link_vec)
         return self._el_energy_op
 
@@ -1898,6 +1906,7 @@ class System2DBase(ABC):
                 self.el_pfaffians,
                 self.norm_mod_vec,
                 link_site_pairity,
+                self.cfg.gaugemgr.group_elements_for_el_energy,
             )
         return self._el_energy_op_vec
 
