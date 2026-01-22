@@ -200,7 +200,9 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                         gaugemgr=gaugemgr,
                         site=0,
                         drop_real_zero=False,
-                    )
+                    )[
+                        0
+                    ]  # For non Z_2 we will have to iterate over group elements (for Z2 there's only 1).
                     exp_ind, exp_const = expected[(ncopy, layer, orientation)]
                     self._assert_terms_equal(got_ind, got_const, exp_ind, exp_const)
 
