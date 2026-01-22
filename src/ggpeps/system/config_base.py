@@ -326,7 +326,7 @@ class Config2DBase(ABC):
 
 
 from collections import defaultdict
-from typing import Optional, Union, Literal, DefaultDict
+from typing import Optional, Union, DefaultDict
 
 MonomialAccumulator = DefaultDict[tuple[int, ...], complex]
 
