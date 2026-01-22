@@ -146,6 +146,9 @@ class Z2System2D(System2DBase):
     ################## Observables ##################
     def _compute_mag_energy_op(self, use_trans_inv: bool = False):
         if use_trans_inv:
+            if self.cfg.unitcell_size > 1:
+                raise ValueError("Cannot rely on translation invariance if unitcell size is >1.")
+
             # Evaluate one plaquette and multiply by number of plaquettes
             wilson_plaquette = self.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
             nplaq = self.cfg.lattice.nplaquettes
