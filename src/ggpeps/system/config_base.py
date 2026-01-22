@@ -331,12 +331,6 @@ from typing import Optional, Union, Literal, DefaultDict
 MonomialAccumulator = DefaultDict[tuple[int, ...], complex]
 
 
-CouplingType = Literal["mixed_copies", "unmixed_copies"]
-"""Layer type selector.
-- "unmixed_copies"   : sigma(j) = j (identity)
-- "mixed_copies" : sigma swaps each pair (2a-1 <-> 2a) for a = 1..k/2.
-"""
-
 Orientation = Literal["horizontal", "vertical"]
 """Orientation type selector.
 - "horizontal": sets eta^2 = 1
@@ -344,26 +338,24 @@ Orientation = Literal["horizontal", "vertical"]
 """
 
 
-def make_sigma(ncopy: int, coupling_type: CouplingType) -> tuple[int, ...]:
+def make_sigma(ncopy: int, mix_copies: bool) -> tuple[int, ...]:
     """
-    Build the link-pairing permutation sigma for the chosen layer.
+    Build the link-pairing permutation (sigma) for a single layer.
 
     Args:
         ncopy (int): Number of copies (must be 1 or even).
-        coupling_type (CouplingType): CouplingType type; 'unmixed_copies' uses identity,
-                                                         'mixed_copies' swaps (2a-1 <-> 2a).
+        mix_copies (bool): if True, mix copies: swaps (2a-1 <-> 2a) for a = 1..k/2.
+                            if False, don't mix copies: identity, sigma(j) = j
 
     Returns:
         tuple[int, ...]: 1-based permutation list where entry j equals sigma(j).
-
-    Raises:
-        ValueError: If ncopy is invalid or layer is not one of {'mixed_copies', 'unmixed_copies'}.
     """
     if not (ncopy == 1 or ncopy % 2 == 0):
-        raise ValueError("ncopy must be 1 or even (odd ncopy>1 is not supported).")
-    elif coupling_type == "unmixed_copies":
-        return tuple(range(1, ncopy + 1))
-    elif coupling_type == "mixed_copies":
+        # TODO: odd ncopy >1 could be allowed for unmixed copies
+        raise ValueError("ncopy must be 1 or even (odd ncopy >1 is not supported).")
+    elif not mix_copies:
+        permutation = tuple(range(1, ncopy + 1))
+    elif mix_copies:
         if ncopy == 1:
             return (1,)
         s = [0] * ncopy
@@ -371,9 +363,8 @@ def make_sigma(ncopy: int, coupling_type: CouplingType) -> tuple[int, ...]:
             i, j = 2 * a - 1, 2 * a
             s[i - 1] = j
             s[j - 1] = i
-        return tuple(s)
-    else:
-        raise ValueError("coupling_type must be 'unmixed_copies' or 'mixed_copies'")
+        permutation = tuple(s)
+    return permutation
 
 
 def bracket_terms(
@@ -532,7 +523,7 @@ def _pfaffian_wick_phase(mon: tuple[int, ...]) -> complex:
 def generate_gauged_projector_terms(
     ncopy: int,
     ncolor: int,
-    coupling_type: CouplingType,
+    mix_copies: bool,
     orientation: Orientation,
     gaugemgr: Union[gauge.ZNGauge, gauge.D2nGauge],
     site: int = 0,
@@ -560,7 +551,7 @@ def generate_gauged_projector_terms(
     Args:
         ncopy (int): Number of copies.
         ncolor (int): Number of colors.
-        coupling_type (CouplingType): 'unmixed_copies' or 'mixed_copies' (controls sigma permutation).
+        mix_copies (bool): whether to mix copies in the projectors (controls sigma permutation).
         orientation (Orientation): 'horizontal' (eta^2 = 1) or 'vertical' (eta^2 = i).
         gaugemgr (Union[gauge.ZNGauge, gauge.D2nGauge]): Gauge manager handling group structure and irreps.
         site (int, optional): Site index (used for parity-dependent conjugation). Defaults to 0.
@@ -573,9 +564,9 @@ def generate_gauged_projector_terms(
             - constant: The scalar constant term of the polynomial.
 
     Raises:
-        ValueError: On invalid coupling_type, orientation, or ncopy.
+        ValueError: On invalid orientation or ncopy.
     """
-    sigma = make_sigma(ncopy, coupling_type)
+    sigma = make_sigma(ncopy, mix_copies)
 
     # Map orientation -> eta^2
     eta2: Union[float, complex]
