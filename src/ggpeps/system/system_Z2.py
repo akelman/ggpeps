@@ -256,6 +256,7 @@ class Z2System2D(System2DBase):
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
         link_site_parity: tuple[int, ...],  # The information contained in this argument is contained in mod_link_inds.
+        group_elements_for_el_energy,
     ) -> xnp.ndarray:
         """In early 2026, this function was significantly optimized.
         This was done after it was generalized in various ways over the previous months:
@@ -265,106 +266,119 @@ class Z2System2D(System2DBase):
             commit 1d63a6b: after generalization to multiple hor/vert links, but before many optimizations,
         or even earlier versions.
         """
+        num_group_elements = len(group_elements_for_el_energy)
 
         nlayer = num_pg_layer + num_fermionic_layer
-        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
+        shape = (num_group_elements, nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
         dest_grad = xnp.zeros(shape)
 
         nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
         k = 2 * nvirtmodes_link  # single link offset
         lognorm_default = xnp.sum(lognorm_default_vec)
 
-        for layerind in range(nlayer):
+        for group_element_idx in range(num_group_elements):
+            # idxarrs for the specific group element, for Z_N we expect only 1 anyway
+            idxarrs_goup_element = idxarr_vec[group_element_idx]
 
-            # Abbreviations for more readable code
-            layer_pairs = idxarr_vec[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
+            for layerind in range(nlayer):
 
-            for link_pos, mod_link_ind in enumerate(mod_link_inds):
-                mat_b = mat_b_mod_vec[layerind][link_pos]
-                diff_d_gamma_inv = gamma_out_mod_inv_vec[layerind][link_pos]
-                gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind][link_pos]
-                diff_d_inv_gamma_inv = gamma_in_mod_inv_vec[layerind][link_pos]
+                # Abbreviations for more readable code
+                layer_pairs = idxarrs_goup_element[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
 
-                covmat_out_virt = covmat_out_mod_vec[layerind][link_pos]
-                norm_mod = norm_mod_vec[layerind][link_pos]
-                mat_d_mod_inv = mat_d_mod_inv_vec[layerind][link_pos]
+                for link_pos, mod_link_ind in enumerate(mod_link_inds):
+                    mat_b = mat_b_mod_vec[layerind][link_pos]
+                    diff_d_gamma_inv = gamma_out_mod_inv_vec[layerind][link_pos]
+                    gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind][link_pos]
+                    diff_d_inv_gamma_inv = gamma_in_mod_inv_vec[layerind][link_pos]
 
-                # Save products that do not need to be recomputed for every parameter
-                # In the matrix products, we only compute the parts that are needed below, to save the extra runtime
-                prod_mod_norm = mat_d_mod_inv @ diff_d_inv_gamma_inv @ gamma_in_sys_mod
-                diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)[:, -k:]  # We only need the last k columns
-                b_times_diff = mat_b[-k:, :] @ diff_d_gamma_inv  # We only need the last k rows
+                    covmat_out_virt = covmat_out_mod_vec[layerind][link_pos]
+                    norm_mod = norm_mod_vec[layerind][link_pos]
+                    mat_d_mod_inv = mat_d_mod_inv_vec[layerind][link_pos]
 
-                # choose H/V per term based on link direction
-                is_vertical = mod_link_ind >= (nlinks // 2)
-                site_parity = link_site_parity[link_pos]
+                    # Save products that do not need to be recomputed for every parameter
+                    # In the matrix products, we only compute the parts that are needed below, to save the extra runtime
+                    prod_mod_norm = mat_d_mod_inv @ diff_d_inv_gamma_inv @ gamma_in_sys_mod
+                    diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)[:, -k:]  # We only need the last k columns
+                    b_times_diff = mat_b[-k:, :] @ diff_d_gamma_inv  # We only need the last k rows
 
-                for uc_ind in range(unitcell_size):
-                    for symbol_ind, _ in enumerate(symbolvec):
-                        if (layerind, uc_ind, symbol_ind) not in zeroed_params:
-                            # the derivative calculation is computationally expensive
-                            # we can skip it for parameters that are forced by the ansatz to be zero
+                    # choose H/V per term based on link direction
+                    is_vertical = mod_link_ind >= (nlinks // 2)
+                    site_parity = link_site_parity[link_pos]
 
-                            deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[
-                                layerind, uc_ind, symbol_ind
-                            ]
-                            mod_covmats = utils.extract_mod_covmats(
-                                deriv_gamma_maj_sys, (mod_link_ind,), lattice_size, nphysmodes_site, nvirtmodes_link
-                            )
-                            d_mat_a, d_mat_b, d_mat_d = mod_covmats[0][0], mod_covmats[1][0], mod_covmats[2][0]
+                    for uc_ind in range(unitcell_size):
+                        for symbol_ind, _ in enumerate(symbolvec):
+                            if (layerind, uc_ind, symbol_ind) not in zeroed_params:
+                                # the derivative calculation is computationally expensive
+                                # we can skip it for parameters that are forced by the ansatz to be zero
 
-                            # We only need the bottom-right block of d_gamma_out, since we are only interested
-                            # in the virtual modes of the given link.
-                            # We only construct this block, providing a small speedup as compared to constructing the
-                            # full d_gamma_out matrix, and then extracting the block.
-                            d_covmat_out_virt = (
-                                d_mat_a[-k:, -k:]
-                                + d_mat_b[-k:, :] @ diff_times_b
-                                + b_times_diff @ xnp.transpose(d_mat_b)[:, -k:]
-                                - b_times_diff @ d_mat_d @ diff_times_b
-                            )
+                                deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[
+                                    layerind, uc_ind, symbol_ind
+                                ]
+                                mod_covmats = utils.extract_mod_covmats(
+                                    deriv_gamma_maj_sys,
+                                    (mod_link_ind,),
+                                    lattice_size,
+                                    nphysmodes_site,
+                                    nvirtmodes_link,
+                                )
+                                d_mat_a, d_mat_b, d_mat_d = mod_covmats[0][0], mod_covmats[1][0], mod_covmats[2][0]
 
-                            deriv_pf_tot: complex = 0.0j
-                            # Unpack all 4 term combinations
-                            for term_ind, (term_h_0, term_h_1, term_v_0, term_v_1) in enumerate(layer_pairs):
-
-                                # Select the correct term based on direction and site parity
-                                if is_vertical:
-                                    curr_term = term_v_1 if site_parity == 1 else term_v_0
-                                else:
-                                    curr_term = term_h_1 if site_parity == 1 else term_h_0
-
-                                prefactor, inds = curr_term
-                                inds_arr = xnp.asarray(inds)
-                                deriv_pf_tot += prefactor * utils.derivative_pfaffian(
-                                    covmat_out_virt[inds_arr, :][:, inds_arr],  # this indexing is faster than np.ix_
-                                    d_covmat_out_virt[inds_arr, :][:, inds_arr],
-                                    el_pfaffians[layerind, link_pos, term_ind],
+                                # We only need the bottom-right block of d_gamma_out, since we are only interested
+                                # in the virtual modes of the given link.
+                                # We only construct this block, providing a small speedup as compared to constructing the
+                                # full d_gamma_out matrix, and then extracting the block.
+                                d_covmat_out_virt = (
+                                    d_mat_a[-k:, -k:]
+                                    + d_mat_b[-k:, :] @ diff_times_b
+                                    + b_times_diff @ xnp.transpose(d_mat_b)[:, -k:]
+                                    - b_times_diff @ d_mat_d @ diff_times_b
                                 )
 
-                            # In previous versions of the code, Pfaffians with complex/imaginary coefficients
-                            # were included, but dropped here. Since operators of interest (electric energy + grad)
-                            # are Hermitian, we can just take the real part here.
-                            # At present, we drop these complex/imaginary terms higher in the stack to save on
-                            # computation. We leave the xnp.real() for testing purposes.
-                            d_el_energy = xnp.real(deriv_pf_tot) * xnp.exp(norm_mod - lognorm_default)
+                                deriv_pf_tot: complex = 0.0j
+                                # Unpack all 4 term combinations
+                                for term_ind, (term_h_0, term_h_1, term_v_0, term_v_1) in enumerate(layer_pairs):
 
-                            # Summand with derivative of norms
-                            trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
+                                    # Select the correct term based on direction and site parity
+                                    if is_vertical:
+                                        curr_term = term_v_1 if site_parity == 1 else term_v_0
+                                    else:
+                                        curr_term = term_h_1 if site_parity == 1 else term_h_0
 
-                            # Instead of computing the modified grad over the norm as:
-                            #    compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
-                            #    = -0.5 * trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
-                            # we have saved the product of several mats above (since they don't change in inner loops),
-                            # and use it here
-                            trace_mod = -0.5 * utils.trace_of_product((d_mat_d, prod_mod_norm))
+                                    prefactor, inds = curr_term
+                                    inds_arr = xnp.asarray(inds)
+                                    deriv_pf_tot += prefactor * utils.derivative_pfaffian(
+                                        covmat_out_virt[inds_arr, :][
+                                            :, inds_arr
+                                        ],  # this indexing is faster than np.ix_
+                                        d_covmat_out_virt[inds_arr, :][:, inds_arr],
+                                        el_pfaffians[group_element_idx, layerind, link_pos, term_ind],
+                                    )
 
-                            # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
-                            d_el_energy += el_energy_vec[layerind][link_pos] * (trace_mod - trace_def)
+                                # In previous versions of the code, Pfaffians with complex/imaginary coefficients
+                                # were included, but dropped here. Since operators of interest (electric energy + grad)
+                                # are Hermitian, we can just take the real part here.
+                                # At present, we drop these complex/imaginary terms higher in the stack to save on
+                                # computation. We leave the xnp.real() for testing purposes.
+                                d_el_energy = xnp.real(deriv_pf_tot) * xnp.exp(norm_mod - lognorm_default)
 
-                            dest_grad = backend.array_add(
-                                dest_grad, (layerind, link_pos, uc_ind, symbol_ind), d_el_energy
-                            )
+                                # Summand with derivative of norms
+                                trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
+
+                                # Instead of computing the modified grad over the norm as:
+                                #    compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
+                                #    = -0.5 * trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
+                                # we have saved the product of several mats above (since they don't change in inner loops),
+                                # and use it here
+                                trace_mod = -0.5 * utils.trace_of_product((d_mat_d, prod_mod_norm))
+
+                                # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
+                                d_el_energy += el_energy_vec[group_element_idx][layerind][link_pos] * (
+                                    trace_mod - trace_def
+                                )
+
+                                dest_grad = backend.array_add(
+                                    dest_grad, (group_element_idx, layerind, link_pos, uc_ind, symbol_ind), d_el_energy
+                                )
 
         # scale to system size - currently only valid when all links should be weighed equally
         dest_grad *= nlinks / len(mod_link_inds)
@@ -373,13 +387,13 @@ class Z2System2D(System2DBase):
         # They act as a prefactor in the derivative.
         # This must be done separately over all links.
         if nlayer > 1:
-            for lay in range(nlayer):
-                for linkind in range(len(mod_link_inds)):
-                    prod_other_layers = utils.multiply_except(el_energy_vec[:, linkind], lay)
-                    dest_grad = backend.array_mult(dest_grad, (lay, linkind), prod_other_layers)
-        dest_grad = xnp.sum(dest_grad, axis=1) / 2 ** (nlayer - 1)  # sum over the links
-        # The 2**(nlayer-1) is a temporary fix for Z2: This compensates for the factor of 2 accumulating
-        # at each layer. It ensures the factor is applied only once globally.
+            for group_idx in range(num_group_elements):
+                for lay in range(nlayer):
+                    for linkind in range(len(mod_link_inds)):
+                        prod_other_layers = utils.multiply_except(el_energy_vec[group_idx, :, linkind], lay)
+                        dest_grad = backend.array_mult(dest_grad, (group_idx, lay, linkind), prod_other_layers)
+        dest_grad = xnp.sum(dest_grad, axis=0)  # sum over group elements
+        dest_grad = xnp.sum(dest_grad, axis=1)  # sum over the links
 
         return dest_grad
 

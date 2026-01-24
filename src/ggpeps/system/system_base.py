@@ -2016,6 +2016,7 @@ class System2DBase(ABC):
                 self.grad_over_norm_vec,
                 self.cfg.zeroed_params,
                 link_site_pairity,
+                self.cfg.gaugemgr.group_elements_for_el_energy,
             )
         return self._el_energy_op_grad_vec
 
