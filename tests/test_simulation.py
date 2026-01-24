@@ -10,6 +10,7 @@ from ggpeps.caching import Cache
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 from ggpeps.exacteval import ExactEvaluatorConfig
+from ggpeps.mc import MonteCarloEvaluatorConfig
 from ggpeps.system.system_Z2 import Z2System2D
 
 
@@ -84,8 +85,8 @@ class TestZ2System(unittest.TestCase):
         ed_val = 3.4408931193537455
         self.assertAlmostEqual(result.value, ed_val, places=1)
 
-    def test_eval_against_previous_version(self):
-        """Run a full Eval and compare with a well tested previous version of the code.
+    def test_exacteval_against_previous_version(self):
+        """Run a full ExactEval and compare with a well tested previous version of the code.
         We compare against commit 566db49."""
 
         # System config
@@ -137,6 +138,79 @@ class TestZ2System(unittest.TestCase):
 
         # Evaluate
         result = ec_mgr.simulate()
+
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "energy"), 14.756365491)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "mag_energy"), 3.898945142)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "el_energy"), 6.523328736)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "int_energy"), -0.00644230479)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "mass_energy"), 3.943588498)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "chem_energy"), 0.396945419)
+        self.assertAlmostEqual(float(utils.get_obs_mean_df(result, "average_occupation")), 0.4961817739)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "wilson_loop_0-0_1x1"), 0.220211)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "square_string_0-0_1x1"), 0.08457018)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "FM_1x1"), 0.18021784)
+        idx = (0, 0, 1)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "grad_norm")[idx], -1.907041756)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "mag_energy_grad")[idx], 3.0555902689)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "el_energy_grad")[idx], 3.6992497863e-5)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "int_energy_grad")[idx], -1.064279918)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "mass_energy_grad")[idx], 0.24362347)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "chem_energy_grad")[idx], -0.0002859179)
+        self.assertAlmostEqual(utils.get_obs_mean_df(result, "energy_grad")[idx], 2.234684899)
+
+    def test_mceval_against_previous_version(self):
+        """Run a full MCEval and compare with a well tested previous version of the code.
+        We compare against the same results as found with an exacteval on commit 566db49."""
+
+        # System config
+        # Couplings
+        g = 0.8
+        g_int = 0.9
+        mass = 1.3
+        chem = [0.2]
+
+        # Ansatz settings
+        L = 2
+        num_pg_layer = 1
+        num_fermionic_layer = 1
+        nlayer = num_pg_layer + num_fermionic_layer
+        unitcell_size = 2
+        enforce_u1 = False
+        el_links = [0, 1]  # links on which to compute the electric energy
+        gauge_fixing = 0  # no guage fixing for MC
+
+        # Construct the system
+        lat = lattice.Lattice2D(L, L, gf_num_of_rows=gauge_fixing)
+
+        system_cfg = system.Z2System2D_G2C_F2C_Config(
+            lat,
+            g / 2,
+            1.0 / (2.0 * g),
+            g_int,
+            mass,
+            chem,
+            num_pg_layer,
+            num_fermionic_layer,
+            mod_link_inds=el_links,
+            unitcell_size=unitcell_size,
+            enforce_u1_symmetry=enforce_u1,
+        )  # 2 copy ansatz
+
+        # Set parameters - the comparisons below depend on the parameters
+        seed = 12
+        rngstate = np.random.RandomState(seed)
+        shape = (nlayer, unitcell_size, 20)
+        paramvec = rngstate.rand(*shape)
+        system_cfg.paramvec = paramvec
+
+        # Evaluator
+        mc_config = MonteCarloEvaluatorConfig(warmup_steps=500, meas_steps=500, binsize=1, update_size_per_step=2)
+        mc_config.compute_grads = True
+        nrunner = 0
+        mc_mgr = EvaluatorManager(Z2System2D, system_cfg, mc_config, nrunner)
+
+        # Evaluate
+        result = mc_mgr.simulate()
 
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "energy"), 14.756365491)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "mag_energy"), 3.898945142)
