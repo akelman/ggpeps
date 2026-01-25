@@ -201,7 +201,7 @@ class ZNGauge:
         """
         return []
 
-    def get_group_elements_and_factors_for_el_energy(self) -> tuple[np.ndarray, ...]:
+    def get_group_elements_and_factors_for_el_energy(self) -> tuple[float, tuple[np.ndarray, ...]]:
         """
         Compute group elements and coefficients for the electric energy term.
         We use a hardcoded version instead of the one appearing in D2n gauge,
