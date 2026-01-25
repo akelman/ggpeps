@@ -220,7 +220,7 @@ class ExactEvaluator(Evaluator):
                     - prod_expval_el
                     + self.compute_expval(np.transpose(data["el_energy_op_grad"], [1, 2, 3, 0]), normvec)
                 )
-                el_energy_grad = -2 * self.system.cfg.g_el * el_op_grad
+                el_energy_grad = -self.system.cfg.gaugemgr.el_mult_factor * self.system.cfg.g_el * el_op_grad
                 dest["el_energy_grad"] = el_energy_grad
 
                 # Mass gradient
