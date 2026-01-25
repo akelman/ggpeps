@@ -80,7 +80,7 @@ class Config2DBase(ABC):
         self.nlayer = self.num_pg_layer + self.num_fermionic_layer
 
         # Link indices for which the electric energy is computed - can be any set of horizontal links:
-        self.mod_link_inds = mod_link_inds
+        self.mod_link_inds = tuple(mod_link_inds)
 
         # Symbolvec - list of all the symbols, which are the same for each layer
         # (even if for some layers some are forced to zero)
