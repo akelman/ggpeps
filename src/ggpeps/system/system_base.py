@@ -664,16 +664,16 @@ class System2DBase(ABC):
             xnp.array: a vector of pfaffians
         """
         if self._el_pfaffians is None:
-            link_site_pairity = tuple(
+            link_site_parity = tuple(
                 sum(self.cfg.lattice.ind2coord_dir(link)[0]) % 2 for link in self.cfg.mod_link_inds
-            )  # pairity of the site associated with the link - 0 for even, 1 for odd
+            )  # parity of the site associated with the link - 0 for even, 1 for odd
             self._el_pfaffians = self._compute_el_pfaffians(
                 self.cfg.nlayer,
                 self.cfg.idxarr_vec,
                 self.cfg.mod_link_inds,
                 self.cfg.lattice.nlinks,
                 self.covmat_out_mod_vec,
-                link_site_pairity,
+                link_site_parity,
                 self.cfg.gaugemgr.group_elements_for_el_energy,
             )
         return self._el_pfaffians
@@ -1552,9 +1552,7 @@ class System2DBase(ABC):
         nlayer: int,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
-        link_site_pairity: tuple[
-            int, ...
-        ],  # The information contained in this argument is contained in mod_link_inds.
+        link_site_parity: tuple[int, ...],  # The information contained in this argument is contained in mod_link_inds.
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
     ) -> xnp.ndarray:
         """Compute the electric energy.
@@ -1599,9 +1597,7 @@ class System2DBase(ABC):
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
-        link_site_pairity: tuple[
-            int, ...
-        ],  # The information contained in this argument is contained in mod_link_inds.
+        link_site_parity: tuple[int, ...],  # The information contained in this argument is contained in mod_link_inds.
         group_elements_for_el_energy: tuple[np.ndarray, ...],
     ) -> xnp.ndarray:
         """Compute the electric energy gradients.
@@ -1901,9 +1897,9 @@ class System2DBase(ABC):
         if self._el_energy_op_vec is None:
             # This vector is the electric energy on a single link. Otherwise, we get a
             # power of nlinks in the product and the electric energy term (with prefactors) gets negative
-            link_site_pairity = tuple(
+            link_site_parity = tuple(
                 sum(self.cfg.lattice.ind2coord_dir(link)[0]) % 2 for link in self.cfg.mod_link_inds
-            )  # pairity of the site associated with the link - 0 for even, 1 for odd
+            )  # parity of the site associated with the link - 0 for even, 1 for odd
             self._el_energy_op_vec = self._compute_el_energy_op_vec(
                 self.lognorm_default_vec,
                 self.cfg.idxarr_vec,
@@ -1912,7 +1908,7 @@ class System2DBase(ABC):
                 self.cfg.nlayer,
                 self.el_pfaffians,
                 self.norm_mod_vec,
-                link_site_pairity,
+                link_site_parity,
                 self.cfg.gaugemgr.group_elements_for_el_energy,
             )
         return self._el_energy_op_vec
@@ -1995,9 +1991,9 @@ class System2DBase(ABC):
                     for lay in range(self.cfg.nlayer)
                 ]
             )
-            link_site_pairity = tuple(
+            link_site_parity = tuple(
                 sum(self.cfg.lattice.ind2coord_dir(link)[0]) % 2 for link in self.cfg.mod_link_inds
-            )  # pairity of the site associated with the link - 0 for even, 1 for odd
+            )  # parity of the site associated with the link - 0 for even, 1 for odd
 
             self._el_energy_op_grad_vec = self._compute_el_grad_vec(
                 self.cfg.lattice.size,
@@ -2022,7 +2018,7 @@ class System2DBase(ABC):
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
                 self.grad_over_norm_vec,
                 self.cfg.zeroed_params,
-                link_site_pairity,
+                link_site_parity,
                 self.cfg.gaugemgr.group_elements_for_el_energy,
             )
         return self._el_energy_op_grad_vec
