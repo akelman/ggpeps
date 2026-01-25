@@ -75,28 +75,31 @@ class Z2System2D2CConfig(Config2DBase):
         self.init_el_energy_terms()
 
     def init_el_energy_terms(self) -> None:
-        """Build idxarr_vec (paired H/V terms per layer)."""
-        idxarr_lay_pg_h_0, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, "mixed_copies", "horizontal", self.gaugemgr, site=0
-        )
-        idxarr_lay_pg_h_1, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, "mixed_copies", "horizontal", self.gaugemgr, site=1
-        )
+        """Build idxarr_vec (quad H0,H1,V0,V1 terms per layer)."""
+        result = []
+        for group_element in self.gaugemgr.group_elements_for_el_energy:
 
-        # Constants used in the calculation of the electric energy on a vertical link.
-        idxarr_lay_pg_v_0, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, "mixed_copies", "vertical", self.gaugemgr, site=0
-        )
-        idxarr_lay_pg_v_1, _ = generate_gauged_projector_terms(
-            self.ncopy, self.ncolors, "mixed_copies", "vertical", self.gaugemgr, site=1
-        )
+            idxarr_lay_pg_h_0, _ = generate_gauged_projector_terms(
+                self.ncopy, self.ncolors, "mixed_copies", "horizontal", group_element, site=0
+            )
+            idxarr_lay_pg_h_1, _ = generate_gauged_projector_terms(
+                self.ncopy, self.ncolors, "mixed_copies", "horizontal", group_element, site=1
+            )
 
-        # Pair horizontal/vertical term-lists termwise for each layer kind
-        # Structure becomes a tuple of 4 elements: (H0, H1, V0, V1)
-        zipped_pg = tuple(zip(idxarr_lay_pg_h_0, idxarr_lay_pg_h_1, idxarr_lay_pg_v_0, idxarr_lay_pg_v_1))
+            # Constants used in the calculation of the electric energy on a vertical link.
+            idxarr_lay_pg_v_0, _ = generate_gauged_projector_terms(
+                self.ncopy, self.ncolors, "mixed_copies", "vertical", group_element, site=0
+            )
+            idxarr_lay_pg_v_1, _ = generate_gauged_projector_terms(
+                self.ncopy, self.ncolors, "mixed_copies", "vertical", group_element, site=1
+            )
 
-        # Stack per-layer: first pure-gauge layers, then fermionic layers (no fermionic layers here)
-        self.idxarr_vec = tuple([zipped_pg] * self.nlayer)
+            # Pair horizontal/vertical term-lists termwise for each layer kind
+            # Structure becomes a tuple of 4 elements: (H0, H1, V0, V1)
+            zipped_pg = tuple(zip(idxarr_lay_pg_h_0, idxarr_lay_pg_h_1, idxarr_lay_pg_v_0, idxarr_lay_pg_v_1))
+            result.append(tuple([zipped_pg] * self.num_pg_layer))
+
+        self.idxarr_vec = tuple(result)
 
     def make_pure_gauge(self):
         """Ensure the system stays as pure_gauge.
