@@ -798,9 +798,9 @@ class TestZ2System(unittest.TestCase):
         # Test various obvservables
         norm_vec = system_z2.calculate_lognormvec(all_factors=True)
         self.assertTrue(np.allclose(norm_vec[1], norm_vec[2]))
-
-        el_op_vec = system_z2.el_energy_op_vec
-        self.assertTrue(np.allclose(el_op_vec[1], el_op_vec[2]))
+        for group_element_idx in range(len(system_z2.cfg.gaugemgr.group_elements_for_el_energy)):
+            el_op_vec = system_z2.el_energy_op_vec[group_element_idx]
+            self.assertTrue(np.allclose(el_op_vec[1], el_op_vec[2]))
 
         int_op_vec = system_z2.int_energy_op_vec
         self.assertTrue(np.allclose(int_op_vec[1], int_op_vec[2]))
@@ -1445,16 +1445,16 @@ class TestTransVariance(unittest.TestCase):
         config = np.copy([neutral_gauge] * nlinks)
         config[link_inds[0]] = cfg.gaugemgr.get_possible_gauge_values()[1]  # for Z2, this is the non-neutral value
         sys.update_gauge_full_system(config)
-        el_energy1 = np.array(sys.el_energy_op_vec[0])
+        el_energy1 = np.array(sys.el_energy_op_vec)
 
         # Translate the non-neutral gauge value to the other link
         config = np.copy([neutral_gauge] * nlinks)
         config[link_inds[1]] = cfg.gaugemgr.get_possible_gauge_values()[1]  # for Z2, this is the non-neutral value
         sys.update_gauge_full_system(config)
-        el_energy2 = np.array(sys.el_energy_op_vec[0])
+        el_energy2 = np.array(sys.el_energy_op_vec)
 
         # The electric energy values should match upon swapping links
-        el_energy2[:, [0, 1]] = el_energy2[:, [1, 0]]
+        el_energy2[:, :, [0, 1]] = el_energy2[:, :, [1, 0]]
         self.assertTrue(np.allclose(el_energy1, el_energy2))
 
     def test_el_energy_grads(self):
