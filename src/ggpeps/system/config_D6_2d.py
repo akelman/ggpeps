@@ -91,7 +91,7 @@ class D6System2D_Config(Config2DBase):
         """Build idxarr_vec (quad H0,H1,V0,V1 terms per layer)."""
         # Constants used in the calculation of the electric energy on a horizontal link.
         result = []
-        for group_element in self.cfg.gaugemgr.group_elements_for_el_energy:
+        for group_element in self.gaugemgr.group_elements_for_el_energy:
             idxarr_lay_h_0, _ = generate_gauged_projector_terms(
                 self.ncopy, self.ncolors, "unmixed_copies", "horizontal", group_element, site=0
             )
