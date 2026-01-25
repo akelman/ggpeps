@@ -694,7 +694,9 @@ class System2DBase(ABC):
         """
 
         num_el_links = len(mod_link_inds)  # number of links to calculate the electric energy on.
-        num_terms_per_layer = len(idxarr_vec[0][0])  # number of terms in each layer.
+        num_terms_per_layer = max(
+            len(term) for layer in idxarr_vec for term in layer
+        )  # Max terms per layer; elements may vary in term count.
         num_group_elements = len(group_elements_for_el_energy)
         el_pfaffians = xnp.zeros((num_group_elements, nlayer, num_el_links, num_terms_per_layer))
 
