@@ -370,6 +370,10 @@ class System2DBase(ABC):
             mat_b = mat_b_vec[layer]
             diff_d_gamma_inv = gamma_out_inv_vec[layer]
 
+            # Precompute terms to save time in the inner loops
+            diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)
+            b_times_diff = mat_b @ diff_d_gamma_inv
+
             for uc_ind in range(unitcell_size):
                 for symbol_ind in range(nparams):
                     # TODO: skip for zeroed params
@@ -379,9 +383,9 @@ class System2DBase(ABC):
 
                     d_gamma_out = (
                         d_mat_a
-                        + d_mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
-                        + mat_b @ diff_d_gamma_inv @ xnp.transpose(d_mat_b)
-                        - mat_b @ diff_d_gamma_inv @ d_mat_d @ diff_d_gamma_inv @ xnp.transpose(mat_b)
+                        + d_mat_b @ diff_times_b
+                        + b_times_diff @ xnp.transpose(d_mat_b)
+                        - b_times_diff @ d_mat_d @ diff_times_b
                     )
 
                     d_gamma_out_symbolvec = backend.array_assign(
