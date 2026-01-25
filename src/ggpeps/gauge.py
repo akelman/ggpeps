@@ -203,8 +203,22 @@ class ZNGauge:
         return []
 
     def get_group_elements_for_el_energy(self) -> tuple[np.ndarray, ...]:
+        """
+        Compute group elements and coefficients for the electric energy term.
+        We use a hardcoded version instead of the one appearing in D2n gauge,
+        because we will get get_representation(increment) and get_representation(-increment)
+        which can be compensated by the factor 2 appearing here
+        and taking the real part, which is done in system and in config.
+
+        Returns:
+            float: The coeefficient for the electric energy.
+                    In theory there's a coeefficient for each group element,
+                    but it could be shown that they should be equal.
+            tuple: group elements for which the electric energy term should be calculated
+        """
+
         increment = self.get_increment()
-        return tuple([self.get_representation(increment)])
+        return 2.0, tuple([self.get_representation(increment)])
 
 
 class D2nGauge:
