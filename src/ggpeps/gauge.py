@@ -18,8 +18,7 @@ class ZNGauge:
         self.rep_dim = 1  # Each group element is represented as a 1×1 matrix.
         self.forbidden_transitions: list = []  # List of forbidden transitions - Empty for Z_N gauge group.
         self.group_order = n
-        self.group_elements_for_el_energy: tuple[np.ndarray, ...] = self.get_group_elements_for_el_energy()
-        self.el_mult_factor = 2
+        self.el_mult_factor, self.group_elements_for_el_energy = self.get_group_elements_and_factors_for_el_energy()
 
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> np.ndarray:
         """
@@ -202,7 +201,7 @@ class ZNGauge:
         """
         return []
 
-    def get_group_elements_for_el_energy(self) -> tuple[np.ndarray, ...]:
+    def get_group_elements_and_factors_for_el_energy(self) -> tuple[np.ndarray, ...]:
         """
         Compute group elements and coefficients for the electric energy term.
         We use a hardcoded version instead of the one appearing in D2n gauge,
@@ -634,9 +633,3 @@ class D2nGauge:
                     f"Values found: {factor_for_el}"
                 )
         return factor_for_el[0], tuple(group_for_el_energy)
-
-
-if __name__ == "__main__":
-    a = D2nGauge(3)
-    print(a.group_elements_for_el_energy)
-    print(a.el_mult_factor)
