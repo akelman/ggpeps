@@ -20,7 +20,8 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 IdxTerm = tuple[complex, tuple[int, ...]]  # (prefactor, indices)
 IdxTermQuad = tuple[IdxTerm, IdxTerm, IdxTerm, IdxTerm]  # (term_h0, term_h1, term_v0, term_v1) for one term
 IdxLayerTerms = tuple[IdxTermQuad, ...]  # all (term_h, term_v) pairs for one layer
-IdxArrVec = tuple[IdxLayerTerms, ...]  # over layers
+IdxArrVecLayer = tuple[IdxLayerTerms, ...]  # over layers
+IdxArrVec = tuple[IdxArrVecLayer, ...]  # over group elements
 
 
 ################## Config2DBase ######################

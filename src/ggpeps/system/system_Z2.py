@@ -325,8 +325,8 @@ class Z2System2D(System2DBase):
 
                                 # We only need the bottom-right block of d_gamma_out, since we are only interested
                                 # in the virtual modes of the given link.
-                                # We only construct this block, providing a small speedup as compared to constructing the
-                                # full d_gamma_out matrix, and then extracting the block.
+                                # We only construct this block, providing a small speedup as compared
+                                # to constructing the full d_gamma_out matrix, and then extracting the block.
                                 d_covmat_out_virt = (
                                     d_mat_a[-k:, -k:]
                                     + d_mat_b[-k:, :] @ diff_times_b
@@ -365,10 +365,10 @@ class Z2System2D(System2DBase):
                                 trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
 
                                 # Instead of computing the modified grad over the norm as:
-                                #    compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
+                                # compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
                                 #    = -0.5 * trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
-                                # we have saved the product of several mats above (since they don't change in inner loops),
-                                # and use it here
+                                # we have saved the product of several mats above
+                                # (since they don't change in inner loops), and use it here
                                 trace_mod = -0.5 * utils.trace_of_product((d_mat_d, prod_mod_norm))
 
                                 # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)

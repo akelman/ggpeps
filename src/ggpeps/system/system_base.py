@@ -1596,6 +1596,7 @@ class System2DBase(ABC):
         link_site_pairity: tuple[
             int, ...
         ],  # The information contained in this argument is contained in mod_link_inds.
+        group_elements_for_el_energy: tuple[np.ndarray, ...],
     ) -> xnp.ndarray:
         """Compute the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
