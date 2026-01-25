@@ -253,6 +253,9 @@ class D2nGauge:
             self.get_representation(0, 0),
             self.get_representation(0, 1),
         )
+        factors_for_el_energy, group_elements_for_el_energy = self.get_group_elements_and_factors_for_el_energy()
+        self.group_elements_for_el_energy: tuple[np.ndarray, ...] = group_elements_for_el_energy
+        self.el_mult_factor = factors_for_el_energy
 
     def get_representation(self, p: int, q: int) -> np.ndarray:
         """
@@ -574,3 +577,52 @@ class D2nGauge:
         """
         dest = np.array([self.get_representation(p, q) for q in range(2) for p in range(self.n)])
         return dest
+
+    def get_group_elements_and_factors_for_el_energy(self):
+        """
+        Compute group elements and coefficients for the electric energy term.
+
+        Returns:
+            float: The coeefficient for the electric energy.
+                    In theory there's a coeefficient for each group element,
+                    but it could be shown that they should be equal.
+            tuple: group elements for which the electric energy term should be calculated
+
+        """
+        irreps = self.get_possible_irrep_labels()
+        group_elements = self.get_possible_gauge_values()
+        group_for_el_energy = []
+        factor_for_el = []
+        for h in group_elements:
+            pref = 0.0
+            h_inv = np.conjugate(np.transpose(h))
+            for irrep in irreps:
+                irrep_character = self.get_irrep_character(h_inv, irrep)
+                electric_energy_factor = self.get_electric_energy_factor(irrep)
+                dim_irrep = self.get_irrep_dimension(irrep)
+                pref += electric_energy_factor * irrep_character * dim_irrep
+            pref = -pref / self.group_order
+            # The minus is a convention to fit
+            # el_energy = self.cfg.g_el * (2 * nlinks - self.cfg.gaugemgr.el_mult_factor * self.el_energy_op)
+            # in system_base.
+
+            if abs(pref) > 10e-5:
+                factor_for_el.append(pref)
+                group_for_el_energy.append(h)
+                first_factor = factor_for_el[0]
+        if factor_for_el:
+            tol = 10e-5
+            if not np.allclose(factor_for_el, first_factor, atol=tol):
+                # You can change this to a warning if you don't want to stop execution
+                raise ValueError(
+                    f"Electric energy factors are not uniform within tolerance {tol}."
+                    f"These values should be equal for discrete groups."
+                    f"Values found: {factor_for_el}"
+                )
+        return factor_for_el[0], tuple(group_for_el_energy)
+
+
+if __name__ == "__main__":
+    a = D2nGauge(3)
+    print(a.group_elements_for_el_energy)
+    print(a.el_mult_factor)
