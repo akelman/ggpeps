@@ -6,6 +6,7 @@ from ggpeps import gauge
 from ggpeps import system
 from ggpeps import lattice
 
+from ggpeps.lattice import Direction
 
 # ==================== ZN Gauged Projector Terms: Test ====================
 
@@ -67,7 +68,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
         # orientation in {horizontal, vertical}, group_order = 2.
         # We compare ALL terms, including those with coefficients with zero real part.
         expected = {
-            (1, "mixed_copies", "horizontal"): (
+            (1, True, Direction.X): (
                 (
                     (0.25, (0, 1)),
                     (-0.25j, (2, 0)),
@@ -76,7 +77,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (1, "mixed_copies", "vertical"): (
+            (1, True, Direction.Y): (
                 (
                     (0.25, (0, 1)),
                     (0.25j, (2, 1)),
@@ -85,7 +86,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (1, "unmixed_copies", "horizontal"): (
+            (1, False, Direction.X): (
                 (
                     (0.25, (0, 1)),
                     (-0.25j, (2, 0)),
@@ -94,7 +95,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (1, "unmixed_copies", "vertical"): (
+            (1, False, Direction.Y): (
                 (
                     (0.25, (0, 1)),
                     (0.25j, (2, 1)),
@@ -103,7 +104,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (2, "mixed_copies", "horizontal"): (
+            (2, True, Direction.X): (
                 (
                     (0.0625, (2, 3, 0, 1)),
                     (-0.0625j, (2, 3, 6, 0)),
@@ -124,7 +125,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (2, "mixed_copies", "vertical"): (
+            (2, True, Direction.Y): (
                 (
                     (0.0625, (2, 3, 0, 1)),
                     (0.0625j, (2, 3, 6, 1)),
@@ -145,7 +146,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (2, "unmixed_copies", "horizontal"): (
+            (2, False, Direction.X): (
                 (
                     (0.0625, (0, 1, 4, 5)),
                     (-0.0625j, (0, 1, 6, 4)),
@@ -166,7 +167,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
                 ),
                 0.0,
             ),
-            (2, "unmixed_copies", "vertical"): (
+            (2, False, Direction.Y): (
                 (
                     (0.0625, (0, 1, 4, 5)),
                     (0.0625j, (0, 1, 6, 5)),
@@ -191,18 +192,18 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
         gaugemgr = gauge.ZNGauge(2)
         group_element = gaugemgr.group_elements_for_el_energy[0]  # For Z2 ther's only one element here.
         for ncopy in (1, 2):
-            for layer in ("mixed_copies", "unmixed_copies"):
-                for orientation in ("horizontal", "vertical"):
+            for mix_copies in (True, False):
+                for orientation in (Direction.X, Direction.Y):
                     got_ind, got_const = config_base.generate_gauged_projector_terms(
                         ncopy=ncopy,
                         ncolor=1,
-                        coupling_type=layer,
+                        mix_copies=mix_copies,
                         orientation=orientation,
                         group_element=group_element,
                         site=0,
                         drop_real_zero=False,
                     )
-                    exp_ind, exp_const = expected[(ncopy, layer, orientation)]
+                    exp_ind, exp_const = expected[(ncopy, mix_copies, orientation)]
                     self._assert_terms_equal(got_ind, got_const, exp_ind, exp_const)
 
     def test_generate_gauged_projector_terms_small_cases2(self):

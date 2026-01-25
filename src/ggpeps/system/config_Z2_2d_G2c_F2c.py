@@ -5,6 +5,7 @@ import numpy as np
 
 import ggpeps
 from ggpeps import utils, gauge
+from ggpeps.lattice import Direction
 
 from .config_base import Config2DBase, generate_gauged_projector_terms
 
@@ -79,43 +80,43 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
             # --- Pure Gauge Terms ---
             # 1. Horizontal, Site 0
             idxarr_lay_pg_h_0, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "mixed_copies", "horizontal", group_element, site=0
+                self.ncopy, self.ncolors, True, Direction.X, group_element, site=0
             )
 
             # 2. Horizontal, Site 1
             idxarr_lay_pg_h_1, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "mixed_copies", "horizontal", group_element, site=1
+                self.ncopy, self.ncolors, True, Direction.X, group_element, site=1
             )
 
             # 3. Vertical, Site 0
             idxarr_lay_pg_v_0, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "mixed_copies", "vertical", group_element, site=0
+                self.ncopy, self.ncolors, True, Direction.Y, group_element, site=0
             )
 
             # 4. Vertical, Site 1
             idxarr_lay_pg_v_1, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "mixed_copies", "vertical", group_element, site=1
+                self.ncopy, self.ncolors, True, Direction.Y, group_element, site=1
             )
 
             # --- Fermionic Terms ---
             # 1. Horizontal, Site 0
             idxarr_lay_pf_h_0, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "unmixed_copies", "horizontal", group_element, site=0
+                self.ncopy, self.ncolors, False, Direction.X, group_element, site=0
             )
 
             # 2. Horizontal, Site 1
             idxarr_lay_pf_h_1, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "unmixed_copies", "horizontal", group_element, site=1
+                self.ncopy, self.ncolors, False, Direction.X, group_element, site=1
             )
 
             # 3. Vertical, Site 0
             idxarr_lay_pf_v_0, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "unmixed_copies", "vertical", group_element, site=0
+                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=0
             )
 
             # 4. Vertical, Site 1
             idxarr_lay_pf_v_1, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "unmixed_copies", "vertical", group_element, site=1
+                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=1
             )
 
             # Pair horizontal/vertical term-lists termwise for each layer kind

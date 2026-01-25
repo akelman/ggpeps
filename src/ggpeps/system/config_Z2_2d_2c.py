@@ -80,18 +80,18 @@ class Z2System2D2CConfig(Config2DBase):
         for group_element in self.gaugemgr.group_elements_for_el_energy:
 
             idxarr_lay_pg_h_0, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "mixed_copies", "horizontal", group_element, site=0
+                self.ncopy, self.ncolors, True, Direction.X, group_element, site=0
             )
             idxarr_lay_pg_h_1, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "mixed_copies", "horizontal", group_element, site=1
+                self.ncopy, self.ncolors, True, Direction.X, group_element, site=1
             )
 
             # Constants used in the calculation of the electric energy on a vertical link.
             idxarr_lay_pg_v_0, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "mixed_copies", "vertical", group_element, site=0
+                self.ncopy, self.ncolors, True, Direction.Y, group_element, site=0
             )
             idxarr_lay_pg_v_1, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "mixed_copies", "vertical", group_element, site=1
+                self.ncopy, self.ncolors, True, Direction.Y, group_element, site=1
             )
 
             # Pair horizontal/vertical term-lists termwise for each layer kind

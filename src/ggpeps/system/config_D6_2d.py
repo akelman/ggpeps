@@ -93,18 +93,18 @@ class D6System2D_Config(Config2DBase):
         result = []
         for group_element in self.gaugemgr.group_elements_for_el_energy:
             idxarr_lay_h_0, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "unmixed_copies", "horizontal", group_element, site=0
+                self.ncopy, self.ncolors, False, Direction.X, group_element, site=0
             )
             idxarr_lay_h_1, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "unmixed_copies", "horizontal", group_element, site=1
+                self.ncopy, self.ncolors, False, Direction.X, group_element, site=1
             )
 
             # Constants used in the calculation of the electric energy on a vertical link.
             idxarr_lay_v_0, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "unmixed_copies", "vertical", group_element, site=0
+                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=0
             )
             idxarr_lay_v_1, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "unmixed_copies", "vertical", group_element, site=1
+                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=1
             )
 
             # Pair horizontal/vertical term-lists termwise for each layer kind

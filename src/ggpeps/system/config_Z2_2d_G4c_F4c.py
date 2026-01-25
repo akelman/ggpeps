@@ -81,35 +81,35 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
 
             # Pure Gauge
             idxarr_lay_pg_h_0, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "mixed_copies", "horizontal", group_element, site=0
+                self.ncopy, self.ncolors, True, Direction.X, group_element, site=0
             )
             idxarr_lay_pg_h_1, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "mixed_copies", "horizontal", group_element, site=1
+                self.ncopy, self.ncolors, True, Direction.X, group_element, site=1
             )
 
             # Fermionic
             idxarr_lay_fermionic_h_0, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "unmixed_copies", "horizontal", group_element, site=0
+                self.ncopy, self.ncolors, False, Direction.X, group_element, site=0
             )
             idxarr_lay_fermionic_h_1, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "unmixed_copies", "horizontal", group_element, site=1
+                self.ncopy, self.ncolors, False, Direction.X, group_element, site=1
             )
 
             # Constants used in the calculation of the electric energy on a vertical link.
             # Pure Gauge
             idxarr_lay_pg_v_0, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "mixed_copies", "vertical", group_element, site=0
+                self.ncopy, self.ncolors, True, Direction.Y, group_element, site=0
             )
             idxarr_lay_pg_v_1, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "mixed_copies", "vertical", group_element, site=1
+                self.ncopy, self.ncolors, True, Direction.Y, group_element, site=1
             )
 
             # Fermionic
             idxarr_lay_fermionic_v_0, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "unmixed_copies", "vertical", group_element, site=0
+                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=0
             )
             idxarr_lay_fermionic_v_1, _ = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, "unmixed_copies", "vertical", group_element, site=1
+                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=1
             )
 
             # Pair horizontal/vertical term-lists termwise for each layer kind
