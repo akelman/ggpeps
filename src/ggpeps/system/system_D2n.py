@@ -578,10 +578,6 @@ class D2nSystem2D(System2DBase):
                 # Abbreviations for more readable code
                 layer_pairs = idxarrs_goup_element[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
 
-                terms = [a[0] for a in layer_pairs]  # URGENT TODO: needs to use proper term!!
-                inds_arr = np.asarray([inds for _, inds in terms])
-                prefactors = np.asarray([pf for pf, _ in terms])
-
                 for link_pos, mod_link_ind in enumerate(mod_link_inds):
                     mat_b = mat_b_mod_vec[layerind][link_pos]
                     diff_d_gamma_inv = gamma_out_mod_inv_vec[layerind][link_pos]
@@ -631,13 +627,29 @@ class D2nSystem2D(System2DBase):
                                     - b_times_diff @ d_mat_d @ diff_times_b
                                 )
 
-                                virts = covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
-                                d_virts = d_covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
+                                deriv_pf_tot: complex = 0.0j
+                                terms = [
+                                    a[0] for a in layer_pairs
+                                ]  # should not be hardcoded; should select correct one
+                                for size in (2, 4, 6, 8, 10, 12):  # should not be hardcoded
+                                    # URGENT TODO: needs to use proper term!!
+                                    inds_arr = np.asarray([inds for _, inds in terms if len(inds) == size])
+                                    prefactors = np.asarray([pf for pf, inds in terms if len(inds) == size])
+                                    pfafs = np.asarray(
+                                        [
+                                            el_pfaffians[layerind, link_pos, term_ind]
+                                            for term_ind, (_, inds) in enumerate(terms)
+                                            if len(inds) == size
+                                        ]
+                                    )
 
-                                deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(
-                                    virts, d_virts, el_pfaffians[group_element_idx, layerind, link_pos]
-                                )
-                                deriv_pf_tot = np.sum(prefactors * deriv_pf_tot_vectorized)
+                                    virts = covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
+                                    d_virts = d_covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
+
+                                    deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(
+                                        virts, d_virts, pfafs
+                                    )
+                                    deriv_pf_tot += np.sum(prefactors * deriv_pf_tot_vectorized)
 
                                 # In previous versions of the code, Pfaffians with complex/imaginary coefficients
                                 # were included, but dropped here. Since operators of interest (electric energy + grad)
