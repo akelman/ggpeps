@@ -2,8 +2,11 @@ import unittest
 import numpy as np
 
 import ggpeps.system.config_base as config_base
-import ggpeps.gauge as gauge
+from ggpeps import gauge
+from ggpeps import system
+from ggpeps import lattice
 
+from ggpeps.lattice import Direction
 
 # ==================== ZN Gauged Projector Terms: Test ====================
 
@@ -60,147 +63,152 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
             self.assertEqual(g_mon, e_mon, f"Monomial indices differ at sorted index {i}: {g_mon} vs {e_mon}")
             self._assert_complex_close(g_coef, e_coef)
 
-    def test_generate_gauged_projector_terms_small_cases(self):
+    def test_generate_gauged_projector_terms_small_cases1(self):
         # Expected outputs for ncopy in {1,2}, layer in {mixed_copies, unmixed_copies},
         # orientation in {horizontal, vertical}, group_order = 2.
         # We compare ALL terms, including those with coefficients with zero real part.
         expected = {
-            (1, "mixed_copies", "horizontal"): (
+            (1, True, Direction.X): (
                 (
-                    (0.5, (0, 1)),
-                    (-0.5j, (2, 0)),
-                    (0.5, (2, 3)),
-                    (0.5j, (3, 1)),
+                    (0.25, (0, 1)),
+                    (-0.25j, (2, 0)),
+                    (0.25, (2, 3)),
+                    (0.25j, (3, 1)),
                 ),
                 0.0,
             ),
-            (1, "mixed_copies", "vertical"): (
+            (1, True, Direction.Y): (
                 (
-                    (0.5, (0, 1)),
-                    (0.5j, (2, 1)),
-                    (0.5, (2, 3)),
-                    (0.5j, (3, 0)),
+                    (0.25, (0, 1)),
+                    (0.25j, (2, 1)),
+                    (0.25, (2, 3)),
+                    (0.25j, (3, 0)),
                 ),
                 0.0,
             ),
-            (1, "unmixed_copies", "horizontal"): (
+            (1, False, Direction.X): (
                 (
-                    (0.5, (0, 1)),
-                    (-0.5j, (2, 0)),
-                    (0.5, (2, 3)),
-                    (0.5j, (3, 1)),
+                    (0.25, (0, 1)),
+                    (-0.25j, (2, 0)),
+                    (0.25, (2, 3)),
+                    (0.25j, (3, 1)),
                 ),
                 0.0,
             ),
-            (1, "unmixed_copies", "vertical"): (
+            (1, False, Direction.Y): (
                 (
-                    (0.5, (0, 1)),
-                    (0.5j, (2, 1)),
-                    (0.5, (2, 3)),
-                    (0.5j, (3, 0)),
+                    (0.25, (0, 1)),
+                    (0.25j, (2, 1)),
+                    (0.25, (2, 3)),
+                    (0.25j, (3, 0)),
                 ),
                 0.0,
             ),
-            (2, "mixed_copies", "horizontal"): (
+            (2, True, Direction.X): (
                 (
-                    (0.125, (2, 3, 0, 1)),
-                    (-0.125j, (2, 3, 6, 0)),
-                    (0.125, (2, 3, 6, 7)),
-                    (0.125j, (2, 3, 7, 1)),
-                    (-0.125j, (2, 4, 0, 1)),
-                    (-0.125, (2, 4, 6, 0)),
-                    (-0.125j, (2, 4, 6, 7)),
-                    (0.125, (2, 4, 7, 1)),
-                    (0.125j, (3, 5, 0, 1)),
-                    (0.125, (3, 5, 6, 0)),
-                    (0.125j, (3, 5, 6, 7)),
-                    (-0.125, (3, 5, 7, 1)),
-                    (0.125, (4, 5, 0, 1)),
-                    (-0.125j, (4, 5, 6, 0)),
-                    (0.125, (4, 5, 6, 7)),
-                    (0.125j, (4, 5, 7, 1)),
+                    (0.0625, (2, 3, 0, 1)),
+                    (-0.0625j, (2, 3, 6, 0)),
+                    (0.0625, (2, 3, 6, 7)),
+                    (0.0625j, (2, 3, 7, 1)),
+                    (-0.0625j, (2, 4, 0, 1)),
+                    (-0.0625, (2, 4, 6, 0)),
+                    (-0.0625j, (2, 4, 6, 7)),
+                    (0.0625, (2, 4, 7, 1)),
+                    (0.0625j, (3, 5, 0, 1)),
+                    (0.0625, (3, 5, 6, 0)),
+                    (0.0625j, (3, 5, 6, 7)),
+                    (-0.0625, (3, 5, 7, 1)),
+                    (0.0625, (4, 5, 0, 1)),
+                    (-0.0625j, (4, 5, 6, 0)),
+                    (0.0625, (4, 5, 6, 7)),
+                    (0.0625j, (4, 5, 7, 1)),
                 ),
                 0.0,
             ),
-            (2, "mixed_copies", "vertical"): (
+            (2, True, Direction.Y): (
                 (
-                    (0.125, (2, 3, 0, 1)),
-                    (0.125j, (2, 3, 6, 1)),
-                    (0.125, (2, 3, 6, 7)),
-                    (0.125j, (2, 3, 7, 0)),
-                    (0.125j, (2, 5, 0, 1)),
-                    (-0.125, (2, 5, 6, 1)),
-                    (0.125j, (2, 5, 6, 7)),
-                    (-0.125, (2, 5, 7, 0)),
-                    (0.125j, (3, 4, 0, 1)),
-                    (-0.125, (3, 4, 6, 1)),
-                    (0.125j, (3, 4, 6, 7)),
-                    (-0.125, (3, 4, 7, 0)),
-                    (0.125, (4, 5, 0, 1)),
-                    (0.125j, (4, 5, 6, 1)),
-                    (0.125, (4, 5, 6, 7)),
-                    (0.125j, (4, 5, 7, 0)),
+                    (0.0625, (2, 3, 0, 1)),
+                    (0.0625j, (2, 3, 6, 1)),
+                    (0.0625, (2, 3, 6, 7)),
+                    (0.0625j, (2, 3, 7, 0)),
+                    (0.0625j, (2, 5, 0, 1)),
+                    (-0.0625, (2, 5, 6, 1)),
+                    (0.0625j, (2, 5, 6, 7)),
+                    (-0.0625, (2, 5, 7, 0)),
+                    (0.0625j, (3, 4, 0, 1)),
+                    (-0.0625, (3, 4, 6, 1)),
+                    (0.0625j, (3, 4, 6, 7)),
+                    (-0.0625, (3, 4, 7, 0)),
+                    (0.0625, (4, 5, 0, 1)),
+                    (0.0625j, (4, 5, 6, 1)),
+                    (0.0625, (4, 5, 6, 7)),
+                    (0.0625j, (4, 5, 7, 0)),
                 ),
                 0.0,
             ),
-            (2, "unmixed_copies", "horizontal"): (
+            (2, False, Direction.X): (
                 (
-                    (0.125, (0, 1, 4, 5)),
-                    (-0.125j, (0, 1, 6, 4)),
-                    (0.125, (0, 1, 6, 7)),
-                    (0.125j, (0, 1, 7, 5)),
-                    (-0.125j, (2, 0, 4, 5)),
-                    (-0.125, (2, 0, 6, 4)),
-                    (-0.125j, (2, 0, 6, 7)),
-                    (0.125, (2, 0, 7, 5)),
-                    (0.125, (2, 3, 4, 5)),
-                    (-0.125j, (2, 3, 6, 4)),
-                    (0.125, (2, 3, 6, 7)),
-                    (0.125j, (2, 3, 7, 5)),
-                    (0.125j, (3, 1, 4, 5)),
-                    (0.125, (3, 1, 6, 4)),
-                    (0.125j, (3, 1, 6, 7)),
-                    (-0.125, (3, 1, 7, 5)),
+                    (0.0625, (0, 1, 4, 5)),
+                    (-0.0625j, (0, 1, 6, 4)),
+                    (0.0625, (0, 1, 6, 7)),
+                    (0.0625j, (0, 1, 7, 5)),
+                    (-0.0625j, (2, 0, 4, 5)),
+                    (-0.0625, (2, 0, 6, 4)),
+                    (-0.0625j, (2, 0, 6, 7)),
+                    (0.0625, (2, 0, 7, 5)),
+                    (0.0625, (2, 3, 4, 5)),
+                    (-0.0625j, (2, 3, 6, 4)),
+                    (0.0625, (2, 3, 6, 7)),
+                    (0.0625j, (2, 3, 7, 5)),
+                    (0.0625j, (3, 1, 4, 5)),
+                    (0.0625, (3, 1, 6, 4)),
+                    (0.0625j, (3, 1, 6, 7)),
+                    (-0.0625, (3, 1, 7, 5)),
                 ),
                 0.0,
             ),
-            (2, "unmixed_copies", "vertical"): (
+            (2, False, Direction.Y): (
                 (
-                    (0.125, (0, 1, 4, 5)),
-                    (0.125j, (0, 1, 6, 5)),
-                    (0.125, (0, 1, 6, 7)),
-                    (0.125j, (0, 1, 7, 4)),
-                    (0.125j, (2, 1, 4, 5)),
-                    (-0.125, (2, 1, 6, 5)),
-                    (0.125j, (2, 1, 6, 7)),
-                    (-0.125, (2, 1, 7, 4)),
-                    (0.125, (2, 3, 4, 5)),
-                    (0.125j, (2, 3, 6, 5)),
-                    (0.125, (2, 3, 6, 7)),
-                    (0.125j, (2, 3, 7, 4)),
-                    (0.125j, (3, 0, 4, 5)),
-                    (-0.125, (3, 0, 6, 5)),
-                    (0.125j, (3, 0, 6, 7)),
-                    (-0.125, (3, 0, 7, 4)),
+                    (0.0625, (0, 1, 4, 5)),
+                    (0.0625j, (0, 1, 6, 5)),
+                    (0.0625, (0, 1, 6, 7)),
+                    (0.0625j, (0, 1, 7, 4)),
+                    (0.0625j, (2, 1, 4, 5)),
+                    (-0.0625, (2, 1, 6, 5)),
+                    (0.0625j, (2, 1, 6, 7)),
+                    (-0.0625, (2, 1, 7, 4)),
+                    (0.0625, (2, 3, 4, 5)),
+                    (0.0625j, (2, 3, 6, 5)),
+                    (0.0625, (2, 3, 6, 7)),
+                    (0.0625j, (2, 3, 7, 4)),
+                    (0.0625j, (3, 0, 4, 5)),
+                    (-0.0625, (3, 0, 6, 5)),
+                    (0.0625j, (3, 0, 6, 7)),
+                    (-0.0625, (3, 0, 7, 4)),
                 ),
                 0.0,
             ),
         }
         gaugemgr = gauge.ZNGauge(2)
+        group_element = gaugemgr.group_elements_for_el_energy[0]  # For Z2 ther's only one element here.
         for ncopy in (1, 2):
-            for layer in ("mixed_copies", "unmixed_copies"):
-                for orientation in ("horizontal", "vertical"):
+            for mix_copies in (True, False):
+                for orientation in (Direction.X, Direction.Y):
                     got_ind, got_const = config_base.generate_gauged_projector_terms(
                         ncopy=ncopy,
                         ncolor=1,
-                        coupling_type=layer,
+                        mix_copies=mix_copies,
                         orientation=orientation,
-                        gaugemgr=gaugemgr,
+                        group_element=group_element,
                         site=0,
                         drop_real_zero=False,
                     )
-                    exp_ind, exp_const = expected[(ncopy, layer, orientation)]
+                    exp_ind, exp_const = expected[(ncopy, mix_copies, orientation)]
                     self._assert_terms_equal(got_ind, got_const, exp_ind, exp_const)
+
+    def test_generate_gauged_projector_terms_small_cases2(self):
+        # same as above but without imaginary terms
+        pass
 
     def assertPolyEqual(self, result, expected):
         """Helper to compare polynomial dictionaries."""
@@ -241,3 +249,46 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
         poly = {(1, 3, 1): 1.0}
         expected = {(3,): -1.0}
         self.assertPolyEqual(config_base.simplify_majorana_acc(poly), expected)
+
+
+class TestElectricContstants(unittest.TestCase):
+    """The electric energy is a fairly complicated operator.
+    This class is for testing its implementation, as well as its helper functions."""
+
+    def setUp(self):
+
+        lat = lattice.Lattice2D(2, 2)
+        num_pg_layer = 1
+        num_fermionic_layer = 1
+        nlayer = num_pg_layer + num_fermionic_layer
+        unitcell_size = 1
+        paramvec = np.random.rand(nlayer, unitcell_size, 20)
+        cfg = system.Z2System2D_G2C_F2C_Config(lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1)
+        cfg.paramvec = paramvec
+        self.system_z2 = system.Z2System2D(cfg)
+        self.system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
+
+    def test_make_sigma(self):
+        # Test for Z2, Zn, Dn
+        pass
+
+    def test_bracket_term(self):
+        pass
+
+    def test_pfaffian_wick_phase(self):
+        pass
+
+    def test_get_cov_matrix_idx(self):
+        pass
+
+    def test_simplify_majorana_acc(self):
+        pass
+
+    def test_generate_gauged_projector_terms(self):
+        pass
+
+    # this test should be moved to a more suitable location
+    def test_el_energy_imaginary(self):
+        """Test that the electric energy calculation returns the same result whether or not
+        the imaginary parts are included in the calculation."""
+        pass

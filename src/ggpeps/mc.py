@@ -241,7 +241,7 @@ class MonteCarloEvaluator(Evaluator):
             + meas_el_energy_op_grad.mean()
         )
         # Add the constants back into the expression of the electric energy
-        el_energy_grad = -self.system.cfg.g_el * el_energy_op_grad
+        el_energy_grad = -self.system.cfg.gaugemgr.el_mult_factor * self.system.cfg.g_el * el_energy_op_grad
 
         # Gradient of the interaction energy
         meas_int_energy_op = self.obsdict["int_energy_op"]

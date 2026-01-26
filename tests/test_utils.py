@@ -215,8 +215,8 @@ class TestUtils(unittest.TestCase):
         prod = mat1 @ mat2 @ mat3
         trace_ref = np.trace(prod)
 
-        self.assertEqual(trace_hadamard, trace_ref)
-        self.assertEqual(trace_trace, trace_ref)
+        self.assertAlmostEqual(trace_hadamard, trace_ref)
+        self.assertAlmostEqual(trace_trace, trace_ref)
 
 
 class TestBGBTransform(unittest.TestCase):

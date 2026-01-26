@@ -798,9 +798,9 @@ class TestZ2System(unittest.TestCase):
         # Test various obvservables
         norm_vec = system_z2.calculate_lognormvec(all_factors=True)
         self.assertTrue(np.allclose(norm_vec[1], norm_vec[2]))
-
-        el_op_vec = system_z2.el_energy_op_vec
-        self.assertTrue(np.allclose(el_op_vec[1], el_op_vec[2]))
+        for group_element_idx in range(len(system_z2.cfg.gaugemgr.group_elements_for_el_energy)):
+            el_op_vec = system_z2.el_energy_op_vec[group_element_idx]
+            self.assertTrue(np.allclose(el_op_vec[1], el_op_vec[2]))
 
         int_op_vec = system_z2.int_energy_op_vec
         self.assertTrue(np.allclose(int_op_vec[1], int_op_vec[2]))
@@ -1421,6 +1421,75 @@ class TestTransVariance(unittest.TestCase):
                         deriv_num = (val_right - val_left) / (2 * eps)
 
                         self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=3)
+
+    def test_el_energy(self):
+        link_inds = (0, 1)  # pick one from each sublattice
+        lat = lattice.Lattice2D(2, 2)
+        cfg = system.Z2System2D_G2C_F2C_Config(
+            lat,
+            g_el=1.0,
+            g_mag=0.0,
+            g_int=0.0,
+            g_mass=0.0,
+            g_chem=None,
+            num_pg_layer=1,
+            num_fermionic_layer=1,
+            unitcell_size=2,
+            mod_link_inds=tuple(sorted(link_inds)),
+        )
+        cfg.paramvec = np.random.rand(2, 2, 20)
+        sys = system.Z2System2D(cfg)
+        neutral_gauge = sys.cfg.gaugemgr.get_neutral_gauge_value()
+        nlinks = 8
+
+        config = np.copy([neutral_gauge] * nlinks)
+        config[link_inds[0]] = cfg.gaugemgr.get_possible_gauge_values()[1]  # for Z2, this is the non-neutral value
+        sys.update_gauge_full_system(config)
+        el_energy1 = np.array(sys.el_energy_op_vec)
+
+        # Translate the non-neutral gauge value to the other link
+        config = np.copy([neutral_gauge] * nlinks)
+        config[link_inds[1]] = cfg.gaugemgr.get_possible_gauge_values()[1]  # for Z2, this is the non-neutral value
+        sys.update_gauge_full_system(config)
+        el_energy2 = np.array(sys.el_energy_op_vec)
+
+        # The electric energy values should match upon swapping links
+        el_energy2[:, :, [0, 1]] = el_energy2[:, :, [1, 0]]
+        self.assertTrue(np.allclose(el_energy1, el_energy2))
+
+    def test_el_energy_grads(self):
+        link_inds = (0, 1)  # pick one from each sublattice
+        lat = lattice.Lattice2D(2, 2)
+        cfg = system.Z2System2D_G2C_F2C_Config(
+            lat,
+            g_el=1.0,
+            g_mag=0.0,
+            g_int=0.0,
+            g_mass=0.0,
+            g_chem=None,
+            num_pg_layer=1,
+            num_fermionic_layer=1,
+            unitcell_size=2,
+            mod_link_inds=tuple(sorted(link_inds)),
+        )
+        cfg.paramvec = np.random.rand(2, 2, 20)
+        sys = system.Z2System2D(cfg)
+        neutral_gauge = sys.cfg.gaugemgr.get_neutral_gauge_value()
+        nlinks = 8
+
+        config = np.copy([neutral_gauge] * nlinks)
+        config[link_inds[0]] = cfg.gaugemgr.get_possible_gauge_values()[1]  # for Z2, this is the non-neutral value
+        sys.update_gauge_full_system(config)
+        el_grad1 = sys.el_energy_op_grad_vec
+
+        # Translate the non-neutral gauge value to the other link
+        config = np.copy([neutral_gauge] * nlinks)
+        config[link_inds[1]] = cfg.gaugemgr.get_possible_gauge_values()[1]  # for Z2, this is the non-neutral value
+        sys.update_gauge_full_system(config)
+        el_grad2 = sys.el_energy_op_grad_vec
+
+        # For the grads, summing over links happens inside the grad calculation
+        self.assertTrue(np.allclose(el_grad1, el_grad2))
 
 
 class TestFullGrads(unittest.TestCase):
