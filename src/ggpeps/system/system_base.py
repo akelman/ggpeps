@@ -292,7 +292,7 @@ class System2DBase(ABC):
             self._gamma_maj_layervec_sitevec = xnp.real(smat @ self.gamma_dirac_layervec_sitevec @ xnp.transpose(smat))
         return self._gamma_maj_layervec_sitevec
 
-    def _expand_gamma_maj_to_system(self, covmats_layervec_sitevec) -> xnp.ndarray:
+    def _expand_gamma_maj_to_system(self, covmats_layervec_sitevec: xnp.ndarray) -> xnp.ndarray:
         """Expand the covariance matrix in Majorana modes to the full system.
         In order to obtain a structure that is convenient for further computations,
             (A    B)
@@ -1111,14 +1111,14 @@ class System2DBase(ABC):
                 for symb in self.symbolvec:
                     gamma_maj_deriv = self.compute_gamma_maj_deriv(symb, lay, uc_ind)
 
-                    gamma_maj_derivs_sitevec = []
+                    # _expand_gamma_maj_to_system() expects a vector over layers, so we include an extra initial axis
+                    # and then extract the first element of the output
+                    gamma_maj_derivs_sitevec = xnp.zeros((1, self.cfg.lattice.size, *gamma_maj_deriv.shape))
                     for site in range(self.cfg.lattice.size):
                         if self.cfg.site_params_dict[site] == uc_ind:
-                            gamma_maj_derivs_sitevec.append(gamma_maj_deriv)
-                        else:
-                            gamma_maj_derivs_sitevec.append(xnp.zeros_like(gamma_maj_deriv))
+                            gamma_maj_derivs_sitevec[0, site] = gamma_maj_deriv
+                    gamma_maj_sys_derivs = self._expand_gamma_maj_to_system(gamma_maj_derivs_sitevec)[0]
 
-                    gamma_maj_sys_derivs = self._expand_gamma_maj_to_system([gamma_maj_derivs_sitevec])[0]
                     arr.append(gamma_maj_sys_derivs)
                 uc_vec.append(arr)
             lay_vec.append(uc_vec)
