@@ -166,14 +166,12 @@ class Z2System2D(System2DBase):
     @maybe_jit(static_argnames=["idxarrs", "nlayer", "mod_link_inds", "nlinks", "link_site_parity"])
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
-        idxarrs: IdxArrVec,
         mod_link_inds: tuple[int, ...],
-        nlinks: int,
         nlayer: int,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
-        link_site_parity: tuple[int, ...],
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
+        coeffs_vec,
     ) -> xnp.ndarray:
 
         lognorm_default = xnp.sum(lognormvec_default)
@@ -185,31 +183,20 @@ class Z2System2D(System2DBase):
         # TODO: vectorize!
         for group_element_idx in range(num_group_elements):
             # idxarrs for the specific group element, for Z_N we expect only 1 anyway
-            idxarrs_goup_element = idxarrs[group_element_idx]
+            coeffs_group_element = coeffs_vec[group_element_idx]
             for layerind in range(nlayer):
-                layer_pairs = idxarrs_goup_element[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
+                link_coeffs = coeffs_group_element[layerind]  # tuple of tuples of coeffs
                 norm_mod_linkvec = norm_mod_vec[layerind]
 
                 # Iterate over the links
                 for link_pos, norm_mod in enumerate(norm_mod_linkvec):
                     ###################### Calculation of <P + P^\dagger> ########################
-
-                    is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
-                    site_parity = link_site_parity[link_pos]
-
-                    pf_tot: complex = 0.0j
-                    for term_ind, (term_h_0, term_h_1, term_v_0, term_v_1) in enumerate(layer_pairs):
-                        # each term_* is (prefactor, indices); pfaffians already computed per term_ind
-
-                        # Select the correct term based on direction and site parity
-                        if is_vertical:
-                            curr_term = term_v_1 if site_parity == 1 else term_v_0
-                        else:
-                            curr_term = term_h_1 if site_parity == 1 else term_h_0
-
-                        prefactor = curr_term[0]
-                        pfaval = el_pfaffians[group_element_idx, layerind, link_pos, term_ind]
-                        pf_tot += prefactor * pfaval
+                    size_coeffs = link_coeffs[link_pos]
+                    for size_ind, coeffs_term in enumerate(size_coeffs):
+                        pf_tot: complex = 0.0j
+                        for term_ind, prefactor in enumerate(coeffs_term):
+                            pfaval = el_pfaffians[group_element_idx, layerind, link_pos, size_ind, term_ind]
+                            pf_tot += prefactor * pfaval
 
                     # xnp.real() is only for testing purposes, since the Pfaffian's with imaginary components are
                     # now dropped higher up in the stack.
@@ -244,7 +231,6 @@ class Z2System2D(System2DBase):
         nphysmodes_site: int,
         mod_link_inds: tuple[int, ...],
         symbolvec: tuple,
-        idxarr_vec: IdxArrVec,
         el_energy_vec: xnp.ndarray,
         mat_b_mod_vec: xnp.ndarray,
         gamma_in_sys_mod_vec: xnp.ndarray,
@@ -258,8 +244,9 @@ class Z2System2D(System2DBase):
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
-        link_site_parity: tuple[int, ...],  # The information contained in this argument is contained in mod_link_inds.
-        group_elements_for_el_energy,
+        group_elements_for_el_energy: tuple[xnp.ndarray, ...],
+        idxarr_vec: IdxArrVec,
+        coeffs_vec,
     ) -> xnp.ndarray:
         """In early 2026, this function was significantly optimized.
         This was done after it was generalized in various ways over the previous months:
@@ -281,18 +268,19 @@ class Z2System2D(System2DBase):
 
         for group_element_idx in range(num_group_elements):
             # idxarrs for the specific group element, for Z_N we expect only 1 anyway
-            idxarrs_goup_element = idxarr_vec[group_element_idx]
+            idxarrs_group_element = idxarr_vec[group_element_idx]
+            coeffs_vec_group_element = coeffs_vec[group_element_idx]
 
             for layerind in range(nlayer):
 
                 # Abbreviations for more readable code
-                layer_pairs = idxarrs_goup_element[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
-
-                terms = [a[0] for a in layer_pairs]  # URGENT TODO: needs to use proper term!!
-                inds_arr = np.asarray([inds for _, inds in terms])
-                prefactors = np.asarray([pf for pf, _ in terms])
+                layer_idxs = idxarrs_group_element[layerind]  # tuple of tuples of indices
+                layer_coeffs = coeffs_vec_group_element[layerind]  # tuple of tuple of coeffs
 
                 for link_pos, mod_link_ind in enumerate(mod_link_inds):
+                    link_idxs = layer_idxs[link_pos]  # tuples of indices
+                    link_coeffs = layer_coeffs[link_pos]  # tuple of coeffs
+
                     mat_b = mat_b_mod_vec[layerind][link_pos]
                     diff_d_gamma_inv = gamma_out_mod_inv_vec[layerind][link_pos]
                     gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind][link_pos]
@@ -307,10 +295,6 @@ class Z2System2D(System2DBase):
                     prod_mod_norm = mat_d_mod_inv @ diff_d_inv_gamma_inv @ gamma_in_sys_mod
                     diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)[:, -k:]  # We only need the last k columns
                     b_times_diff = mat_b[-k:, :] @ diff_d_gamma_inv  # We only need the last k rows
-
-                    # choose H/V per term based on link direction
-                    is_vertical = mod_link_ind >= (nlinks // 2)
-                    site_parity = link_site_parity[link_pos]
 
                     for uc_ind in range(unitcell_size):
                         for symbol_ind, _ in enumerate(symbolvec):
@@ -341,13 +325,20 @@ class Z2System2D(System2DBase):
                                     - b_times_diff @ d_mat_d @ diff_times_b
                                 )
 
-                                virts = covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
-                                d_virts = d_covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
+                                deriv_pf_tot: complex = 0.0j
+                                for lens_ind in range(len(link_idxs)):
+                                    inds_arr = xnp.asarray(link_idxs[lens_ind])
+                                    prefactors = xnp.asarray(link_coeffs[lens_ind])
+                                    temp = el_pfaffians[group_element_idx, layerind, link_pos, lens_ind]
+                                    pfafs = temp[temp != 0]  # TODO: handle better
 
-                                deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(
-                                    virts, d_virts, el_pfaffians[group_element_idx, layerind, link_pos]
-                                )
-                                deriv_pf_tot = np.sum(prefactors * deriv_pf_tot_vectorized)
+                                    virts = covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
+                                    d_virts = d_covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
+
+                                    deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(
+                                        virts, d_virts, pfafs
+                                    )
+                                    deriv_pf_tot += xnp.sum(prefactors * deriv_pf_tot_vectorized)
 
                                 # In previous versions of the code, Pfaffians with complex/imaginary coefficients
                                 # were included, but dropped here. Since operators of interest (electric energy + grad)
