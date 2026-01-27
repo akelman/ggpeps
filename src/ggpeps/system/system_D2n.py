@@ -475,16 +475,16 @@ class D2nSystem2D(System2DBase):
             # idxarrs for the specific group element, for Z_N we expect only 1 anyway
             coeffs_group_element = coeffs_vec[group_element_idx]
             for layerind in range(nlayer):
-                link_coeffs = coeffs_group_element[layerind]  # tuple of tuples of coeffs
+                layer_coeffs = coeffs_group_element[layerind]  # tuple of tuples of coeffs
                 norm_mod_linkvec = norm_mod_vec[layerind]
 
                 # Iterate over the links
                 for link_pos, norm_mod in enumerate(norm_mod_linkvec):
-                    ###################### Calculation of <P + P^\dagger> ########################
-                    size_coeffs = link_coeffs[link_pos]
-                    for size_ind, coeffs_term in enumerate(size_coeffs):
+                    ###################### Calculation of <P> ########################
+                    link_coeffs = layer_coeffs[link_pos]
+                    for size_ind, size_term in enumerate(link_coeffs):
                         pf_tot: complex = 0.0j
-                        for term_ind, prefactor in enumerate(coeffs_term):
+                        for term_ind, prefactor in enumerate(size_term):
                             pfaval = el_pfaffians[group_element_idx, layerind, link_pos, size_ind, term_ind]
                             pf_tot += prefactor * pfaval
 
