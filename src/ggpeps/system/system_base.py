@@ -1116,7 +1116,9 @@ class System2DBase(ABC):
                     gamma_maj_derivs_sitevec = xnp.zeros((1, self.cfg.lattice.size, *gamma_maj_deriv.shape))
                     for site in range(self.cfg.lattice.size):
                         if self.cfg.site_params_dict[site] == uc_ind:
-                            gamma_maj_derivs_sitevec[0, site] = gamma_maj_deriv
+                            gamma_maj_derivs_sitevec = backend.array_assign(
+                                gamma_maj_derivs_sitevec, (0, site), gamma_maj_deriv
+                            )
                     gamma_maj_sys_derivs = self._expand_gamma_maj_to_system(gamma_maj_derivs_sitevec)[0]
 
                     arr.append(gamma_maj_sys_derivs)
