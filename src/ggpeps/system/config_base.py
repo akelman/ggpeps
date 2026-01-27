@@ -195,13 +195,8 @@ class Config2DBase(ABC):
         Returns:
             array: parameters for the given layer and site (this will be a subarray of paramvec)
         """
-        shape = self.param_shape()
-        if len(shape) == 2:
-            res = paramvec[layer]
-        else:
-            ind = 0  # TODO: modify this to account for not every site being independent
-            res = paramvec[layer][ind]
-        return res
+        uc_ind = self.site_params_dict[site]
+        return paramvec[layer][uc_ind]
 
     def print_parametervec(self) -> None:
         """Printing of the parametervec, labelled by layer, unitcell index, and symbol."""

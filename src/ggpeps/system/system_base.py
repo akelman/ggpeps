@@ -1344,7 +1344,7 @@ class System2DBase(ABC):
         )
         return res
 
-    def calculate_lognorm_inc(self, all_factors=False) -> float:
+    def calculate_lognorm_inc(self, all_factors: bool = False) -> float:
         """Update the logarithm of the norm incrementally (using IncDet and Woodbury)
 
         Args:
@@ -1420,11 +1420,7 @@ class System2DBase(ABC):
 
     @gaugefieldvec.setter
     def gaugefieldvec(self, val):
-        print(
-            "Do not set the gaugefieldvec explicitly. Use 'update_gauge_ind'.",
-            file=sys.stderr,
-        )
-        # TODO: log error
+        logger.error("Do not set the gaugefieldvec explicitly. Use 'update_gauge_ind'.")
 
     @property
     def gamma_gauge_neutral_vec(self) -> xnp.ndarray:
