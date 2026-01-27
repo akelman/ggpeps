@@ -75,31 +75,59 @@ class Z2System2D2CConfig(Config2DBase):
         self.init_el_energy_terms()
 
     def init_el_energy_terms(self) -> None:
-        """Build idxarr_vec (quad H0,H1,V0,V1 terms per layer)."""
-        result = []
-        for group_element in self.gaugemgr.group_elements_for_el_energy:
+        """Build idxa_vec and coeffs_vec."""
+        idx_vec = []
+        coeffs_vec = []
 
-            idxarr_lay_pg_h_0, _ = generate_gauged_projector_terms(
+        for group_element in self.gaugemgr.group_elements_for_el_energy:
+            # Pure Gauge (PG) ---
+            idxarr_pg_h_0, _ = generate_gauged_projector_terms(
                 self.ncopy, self.ncolors, True, Direction.X, group_element, site=0
             )
-            idxarr_lay_pg_h_1, _ = generate_gauged_projector_terms(
+            idxarr_pg_h_1, _ = generate_gauged_projector_terms(
                 self.ncopy, self.ncolors, True, Direction.X, group_element, site=1
             )
-
-            # Constants used in the calculation of the electric energy on a vertical link.
-            idxarr_lay_pg_v_0, _ = generate_gauged_projector_terms(
+            idxarr_pg_v_0, _ = generate_gauged_projector_terms(
                 self.ncopy, self.ncolors, True, Direction.Y, group_element, site=0
             )
-            idxarr_lay_pg_v_1, _ = generate_gauged_projector_terms(
+            idxarr_pg_v_1, _ = generate_gauged_projector_terms(
                 self.ncopy, self.ncolors, True, Direction.Y, group_element, site=1
             )
 
-            # Pair horizontal/vertical term-lists termwise for each layer kind
-            # Structure becomes a tuple of 4 elements: (H0, H1, V0, V1)
-            zipped_pg = tuple(zip(idxarr_lay_pg_h_0, idxarr_lay_pg_h_1, idxarr_lay_pg_v_0, idxarr_lay_pg_v_1))
-            result.append(tuple([zipped_pg] * self.num_pg_layer))
+            pg_link_coeffs, pg_link_indices = [], []
 
-        self.idxarr_vec = tuple(result)
+            for link_pos in range(len(self.mod_link_inds)):
+                coord, dir = self.lattice.ind2coord_dir(link_pos)
+                site_parity = sum(coord) % 2
+                is_vertical = dir == Direction.Y
+
+                # Select the correct base terms based on direction and parity
+                if is_vertical:
+                    if site_parity == 0:
+                        term_pg = idxarr_pg_v_0
+                    else:
+                        term_pg = idxarr_pg_v_1
+                else:
+                    if site_parity == 0:
+                        term_pg = idxarr_pg_h_0
+                    else:
+                        term_pg = idxarr_pg_h_1
+
+                pg_c, pg_i = self._bucket_sort_terms(term_pg)
+                pg_link_coeffs.append(pg_c)
+                pg_link_indices.append(pg_i)
+
+            pg_base_coeffs = tuple(pg_link_coeffs)
+
+            # Stack layers: PG layers first, then Fermionic layers
+            coeffs_vec.append((pg_base_coeffs,) * self.num_pg_layer)
+
+            pg_base_indices = tuple(pg_link_indices)
+
+            idx_vec.append((pg_base_indices,) * self.num_pg_layer)
+
+        self.idx_vec = tuple(idx_vec)
+        self.coeffs_vec = tuple(coeffs_vec)
 
     def make_pure_gauge(self):
         """Ensure the system stays as pure_gauge.

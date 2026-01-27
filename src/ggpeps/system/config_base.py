@@ -214,6 +214,34 @@ class Config2DBase(ABC):
                         val = self.paramvec[lay][uc_ind][ind]
                         print(f"Layer {lay}, uc_ind {uc_ind}, symbol {ind} ({symb}): {val}")
 
+    def _bucket_sort_terms(self, term_list):
+        """
+        Helper to bucket terms by length, sort them, and return tuple-ized structure.
+        Returns: (tuple_of_coeffs, tuple_of_indices, tuple_of_lengths)
+        """
+        # Bucket terms by length of indices
+        # Structure: { length: ([coeffs], [indices]) }
+        temp_buckets = {}
+        for coef, indices in term_list:
+            l = len(indices)
+            if l not in temp_buckets:
+                temp_buckets[l] = ([], [])
+            temp_buckets[l][0].append(coef)
+            temp_buckets[l][1].append(indices)
+
+        # Sort buckets by length
+        sorted_lengths = sorted(temp_buckets.keys())
+
+        curr_l_coeffs = []
+        curr_l_indices = []
+
+        for l in sorted_lengths:
+            c_list, i_list = temp_buckets[l]
+            curr_l_coeffs.append(tuple(c_list))
+            curr_l_indices.append(tuple(i_list))
+
+        return tuple(curr_l_coeffs), tuple(curr_l_indices)
+
     @property
     def trans_inv(self) -> bool:
         """Flag to indicate whether the system is translationally invariant.
