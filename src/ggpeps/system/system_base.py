@@ -664,17 +664,12 @@ class System2DBase(ABC):
             xnp.array: a vector of pfaffians
         """
         if self._el_pfaffians is None:
-            link_site_parity = tuple(
-                sum(self.cfg.lattice.ind2coord_dir(link)[0]) % 2 for link in self.cfg.mod_link_inds
-            )  # parity of the site associated with the link - 0 for even, 1 for odd
             self._el_pfaffians = self._compute_el_pfaffians(
                 self.cfg.nlayer,
-                self.cfg.idxarr_vec,
                 self.cfg.mod_link_inds,
-                self.cfg.lattice.nlinks,
                 self.covmat_out_mod_vec,
-                link_site_parity,
                 self.cfg.gaugemgr.group_elements_for_el_energy,
+                self.cfg.idx_vec,
             )
         return self._el_pfaffians
 
@@ -682,12 +677,10 @@ class System2DBase(ABC):
     @maybe_jit(static_argnames=["nlayer", "idxarr_vec", "mod_link_inds", "nlinks", "link_site_parity"])
     def _compute_el_pfaffians(
         nlayer: int,
-        idxarr_vec: IdxArrVec,
         mod_link_inds: tuple[int, ...],
-        nlinks: int,
         covmat_out_virt_vec: xnp.ndarray,
-        link_site_parity: tuple[int, ...],  # Duplicates information that is computable from mod_link_inds
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
+        idxarr_vec: IdxArrVec,
     ) -> xnp.ndarray:
         """Compute the pfaffians of the modified covariance matrices used for the electric energy and its derivative.
         This function returns a vector over layers and links of these pfaffians.
@@ -698,41 +691,36 @@ class System2DBase(ABC):
         """
 
         num_el_links = len(mod_link_inds)  # number of links to calculate the electric energy on.
-        num_terms_per_layer = max(
-            len(term) for layer in idxarr_vec for term in layer
-        )  # Max terms per layer; elements may vary in term count.
+        num_terms_per_size = max(
+            len(size) for group_element in idxarr_vec for layer in group_element for link in layer for size in link
+        )
+        # Max terms per layer; elements may vary in term count.
         num_group_elements = len(group_elements_for_el_energy)
-        el_pfaffians = xnp.zeros((num_group_elements, nlayer, num_el_links, num_terms_per_layer))
+        num_lens = max(len(link) for group_element in idxarr_vec for layer in group_element for link in layer)
+        # Max terms per link; elements may vary in term count.
+        el_pfaffians = xnp.zeros((num_group_elements, nlayer, num_el_links, num_lens, num_terms_per_size))
 
         # TODO: vectorize!
         for group_element_idx in range(num_group_elements):
             idxarr_vec_group_element = idxarr_vec[group_element_idx]
             for layerind in range(nlayer):
-                layer_pairs = idxarr_vec_group_element[layerind]  # tuple of quads: ((H0, H1, V0, V1), ...)
+                layer_idxs = idxarr_vec_group_element[layerind]  # tuple of tuples of indices
+
                 covmat_out_virt_linkvec = covmat_out_virt_vec[layerind]
 
                 # Iterate over the links
                 for link_pos, covmat_out_virt in enumerate(covmat_out_virt_linkvec):
-                    is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
-                    site_parity = link_site_parity[link_pos]  # 0 or 1
+                    link_idxs = layer_idxs[link_pos]
 
-                    # Unpack the 4 stored terms
-                    for term_ind, (term_h_0, term_h_1, term_v_0, term_v_1) in enumerate(layer_pairs):
-
-                        # Select the correct term based on direction and site parity
-                        if is_vertical:
-                            curr_term = term_v_1 if site_parity == 1 else term_v_0
-                        else:
-                            curr_term = term_h_1 if site_parity == 1 else term_h_0
-
-                        # Extract indices from the selected term
-                        _, inds_tup = curr_term
-                        inds_arr = xnp.asarray(inds_tup)
-
-                        pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds_arr, inds_arr)])
-                        el_pfaffians = backend.array_assign(
-                            el_pfaffians, (group_element_idx, layerind, link_pos, term_ind), pfaval
-                        )
+                    # Go over the different lengthed tuples of tuples of indices
+                    for size_idxs_ind, size_idxs in enumerate(link_idxs):
+                        size_idxs = link_idxs[size_idxs_ind]
+                        for term_ind, term in enumerate(size_idxs):
+                            inds_arr = xnp.asarray(term)
+                            pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds_arr, inds_arr)])
+                            el_pfaffians = backend.array_assign(
+                                el_pfaffians, (group_element_idx, layerind, link_pos, size_idxs_ind, term_ind), pfaval
+                            )
 
         return el_pfaffians
 
@@ -1546,14 +1534,12 @@ class System2DBase(ABC):
     @abstractmethod
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
-        idxarrs: IdxArrVec,
         mod_link_inds: tuple[int, ...],
-        nlinks: int,
         nlayer: int,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
-        link_site_parity: tuple[int, ...],  # The information contained in this argument is contained in mod_link_inds.
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
+        coeffs_vec,
     ) -> xnp.ndarray:
         """Compute the electric energy.
 
@@ -1583,7 +1569,6 @@ class System2DBase(ABC):
         nphysmodes_site: int,
         mod_link_inds: tuple[int, ...],
         symbolvec: tuple,
-        idxarr_vec: tuple,
         el_energy_vec: xnp.ndarray,
         mat_b_mod_vec: xnp.ndarray,
         gamma_in_sys_mod_vec: xnp.ndarray,
@@ -1597,8 +1582,9 @@ class System2DBase(ABC):
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
-        link_site_parity: tuple[int, ...],  # The information contained in this argument is contained in mod_link_inds.
-        group_elements_for_el_energy: tuple[np.ndarray, ...],
+        group_elements_for_el_energy: tuple[xnp.ndarray, ...],
+        idxarr_vec: IdxArrVec,
+        coeffs_vec,
     ) -> xnp.ndarray:
         """Compute the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
@@ -1897,19 +1883,14 @@ class System2DBase(ABC):
         if self._el_energy_op_vec is None:
             # This vector is the electric energy on a single link. Otherwise, we get a
             # power of nlinks in the product and the electric energy term (with prefactors) gets negative
-            link_site_parity = tuple(
-                sum(self.cfg.lattice.ind2coord_dir(link)[0]) % 2 for link in self.cfg.mod_link_inds
-            )  # parity of the site associated with the link - 0 for even, 1 for odd
             self._el_energy_op_vec = self._compute_el_energy_op_vec(
                 self.lognorm_default_vec,
-                self.cfg.idxarr_vec,
                 self.cfg.mod_link_inds,
-                self.cfg.lattice.nlinks,
                 self.cfg.nlayer,
                 self.el_pfaffians,
                 self.norm_mod_vec,
-                link_site_parity,
                 self.cfg.gaugemgr.group_elements_for_el_energy,
+                self.cfg.coeffs_vec,
             )
         return self._el_energy_op_vec
 
@@ -1991,9 +1972,6 @@ class System2DBase(ABC):
                     for lay in range(self.cfg.nlayer)
                 ]
             )
-            link_site_parity = tuple(
-                sum(self.cfg.lattice.ind2coord_dir(link)[0]) % 2 for link in self.cfg.mod_link_inds
-            )  # parity of the site associated with the link - 0 for even, 1 for odd
 
             self._el_energy_op_grad_vec = self._compute_el_grad_vec(
                 self.cfg.lattice.size,
@@ -2004,7 +1982,6 @@ class System2DBase(ABC):
                 self.cfg.nphysmodes_site,
                 self.cfg.mod_link_inds,
                 tuple(self.cfg.symbolvec),
-                self.cfg.idxarr_vec,
                 self.el_energy_op_vec,
                 self.mat_b_mod_vec,
                 self.gamma_in_sys_mod_vec,
@@ -2018,8 +1995,9 @@ class System2DBase(ABC):
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
                 self.grad_over_norm_vec,
                 self.cfg.zeroed_params,
-                link_site_parity,
                 self.cfg.gaugemgr.group_elements_for_el_energy,
+                self.cfg.idx_vec,
+                self.cfg.coeffs_vec,
             )
         return self._el_energy_op_grad_vec
 
