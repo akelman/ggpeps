@@ -482,7 +482,7 @@ class D2nSystem2D(System2DBase):
 
                 # Iterate over the links
                 for link_pos, norm_mod in enumerate(norm_mod_linkvec):
-                    ###################### Calculation of <P + P^\dagger> ########################
+                    ###################### Calculation of sum f_j |jmn><jmn| ########################
 
                     is_vertical = mod_link_inds[link_pos] >= (nlinks // 2)
                     site_parity = link_site_parity[link_pos]
