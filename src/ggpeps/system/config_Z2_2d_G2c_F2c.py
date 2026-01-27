@@ -75,6 +75,12 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
     def init_el_energy_terms(self) -> None:
         """Build idxarr_vec (quad H0,H1,V0,V1 terms per layer)."""
+        # NOTE / TODO (tests depend on this):
+        # The unit test `TestElectricEnergyDropRealZero._rebuild_idxarr_vec` in
+        # `tests/test_z2_2d_fermions.py` intentionally duplicates the logic below in order to
+        # compare el_energy_op for drop_real_zero=True/False while holding everything else fixed.
+        # If you change the construction of idxarr_vec here (ordering, layering, loops, etc.),
+        # you MUST update that test helper accordingly, otherwise the test may become misleading.
         result = []
         for group_element in self.gaugemgr.group_elements_for_el_energy:
             # --- Pure Gauge Terms ---
