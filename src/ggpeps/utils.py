@@ -414,12 +414,17 @@ def derivative_pfaffian_vectorized(mat: xnp.ndarray, d_mat: xnp.ndarray, pfavals
     Returns:
         xnp.ndarray: an array of d(Pf(A))/dx
     """
-
-    inv_mat = xnp.linalg.inv(mat)  # (N, M, M)
-    prod = inv_mat @ d_mat  # batched matrix multiply
+    mask = ~xnp.isclose(pfavals, 0.0)  # When the pfaffian is 0, the martix might be singular
+    mat_mask = mat[mask]
+    d_mat_mask = d_mat[mask]
+    inv_mat = xnp.linalg.inv(mat_mask)  # (N, M, M)
+    prod = inv_mat @ d_mat_mask  # batched matrix multiply
     traces = xnp.trace(prod, axis1=-2, axis2=-1)
 
-    return 0.5 * pfavals * traces
+    res = xnp.zeros(len(pfavals))
+    res[mask] = 0.5 * pfavals[mask] * traces
+
+    return res
 
 
 def get_obs_mean_df(df: pd.DataFrame, obs: str, column: str = "mean"):
