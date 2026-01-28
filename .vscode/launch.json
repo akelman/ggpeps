@@ -4,7 +4,6 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
         {
             "name": "Python: Current File",
             "type": "debugpy",
@@ -223,7 +222,8 @@
                 "--g_mass", "0.0",
                 "--ignore_cache",
                 "--seed", "2",
-                "--gauge_fixing"
+                "--gauge_fixing",
+                "--compute_grads",
             ]
         },
                 {
