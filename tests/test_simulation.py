@@ -391,7 +391,7 @@ class TestZ2System(unittest.TestCase):
         mass_energy = system_z2.mass_energy
         chem_energy = system_z2.chem_energy
         total_energy = system_z2.energy
-        occupations = system_z2.all_occupations
+        occupations = system_z2.occupations_before_ph
         loop = system_z2.cfg.lattice.generate_all_wilson_loops((0, 1), [(1, 1)])
         wilson_loop = system_z2.compute_path(loop[0])
         idx = (1, 1, 5)  # a random index to compare, since it's not necessary to check all components

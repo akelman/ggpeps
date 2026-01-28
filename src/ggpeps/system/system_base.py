@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-import sys
 import logging
 
 import sympy
@@ -129,7 +128,8 @@ class System2DBase(ABC):
         self._int_energy_op: Optional[float] = None
         self._int_energy_op_vec: Optional[xnp.ndarray] = None
         self._chem_energy_op_vec: Optional[xnp.ndarray] = None
-        self._all_occupations: Optional[xnp.ndarray] = None
+        self._occupations_before_ph: Optional[xnp.ndarray] = None
+        self._occupations_after_ph: Optional[xnp.ndarray] = None
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (D^-1 - gammain)^-1
@@ -160,7 +160,8 @@ class System2DBase(ABC):
         self._int_energy_op = None
         self._int_energy_op_vec = None
         self._chem_energy_op_vec = None
-        self._all_occupations = None
+        self._occupations_before_ph = None
+        self._occupations_after_ph = None
 
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad_vec = None
@@ -2140,26 +2141,50 @@ class System2DBase(ABC):
         return xnp.array(total_occ)
 
     @property
-    def all_occupations(self) -> xnp.ndarray:
-        """Compute the occupation number for all layers and sites in the system.
+    def occupations_before_ph(self) -> xnp.ndarray:
+        """Compute the occupation number before the particle-hole transformation
+        for all layers and sites in the system.
 
         Returns:
             array: the occupation number for all layers and sites, as a 2D array
         """
-        if self._all_occupations is None:
+        if self._occupations_before_ph is None:
 
             # Initialize shape
             # this ensures that is has the proper shape even when there are no fermionic layers
             # (which is needed for transposes, etc. higher up in the stack)
-            self._all_occupations = np.zeros((self.cfg.num_fermionic_layer, self.cfg.lattice.size))
+            self._occupations_before_ph = np.zeros((self.cfg.num_fermionic_layer, self.cfg.lattice.size))
 
             after_ph = False
             for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
                 for site in range(self.cfg.lattice.size):
-                    self._all_occupations[lay - self.cfg.num_pg_layer, site] = self.occupation(
+                    self._occupations_before_ph[lay - self.cfg.num_pg_layer, site] = self.occupation(
                         lay, site, after_ph=after_ph
                     )
-        return self._all_occupations
+        return self._occupations_before_ph
+
+    @property
+    def occupations_after_ph(self) -> xnp.ndarray:
+        """Compute the occupation number after the particle-hole transformation
+        for all layers and sites in the system.
+
+        Returns:
+            array: the occupation number for all layers and sites, as a 2D array
+        """
+        if self._occupations_after_ph is None:
+
+            # Initialize shape
+            # this ensures that is has the proper shape even when there are no fermionic layers
+            # (which is needed for transposes, etc. higher up in the stack)
+            self._occupations_after_ph = np.zeros((self.cfg.num_fermionic_layer, self.cfg.lattice.size))
+
+            after_ph = True
+            for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+                for site in range(self.cfg.lattice.size):
+                    self._occupations_after_ph[lay - self.cfg.num_pg_layer, site] = self.occupation(
+                        lay, site, after_ph=after_ph
+                    )
+        return self._occupations_after_ph
 
     def meson_string(self, path: list[tuple[int, bool]]) -> float:
         """Calculate the value of a meson string given a path.

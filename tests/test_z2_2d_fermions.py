@@ -1218,7 +1218,7 @@ class TestTransVariance(unittest.TestCase):
         # Use the paramvec from setUp(), and extract various values for comparison
         mass_op = self.system_z2.mass_energy_op
         chem_op = np.sum(self.system_z2.chem_energy_op_vec)
-        all_occupations = self.system_z2.all_occupations
+        all_occupations = self.system_z2.occupations_before_ph
 
         mass_offset = 0.5 * self.system_z2.cfg.lattice.size * self.system_z2.cfg.num_fermionic_layer
         mass = mass_offset

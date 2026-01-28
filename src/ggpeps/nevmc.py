@@ -187,7 +187,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
         if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
             self.obsdict["average_occupation"].append(self.system.average_occupation())
-            self.obsdict["all_occupations"].append(self.system.all_occupations)
+            self.obsdict["all_occupations"].append(self.system.occupations_before_ph)
 
         # Wilson loops
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
@@ -470,7 +470,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
         if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
             self.obsdict["average_occupation"].append(self.system.average_occupation())
-            self.obsdict["all_occupations"].append(self.system.all_occupations)
+            self.obsdict["all_occupations"].append(self.system.occupations_before_ph)
 
         # Wilson loops
         sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
@@ -507,7 +507,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["norm"].append(self.system.calculate_lognorm(all_factors=True))
         if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
             self.obsdict["average_occupation"].append(self.system.average_occupation())
-            self.obsdict["all_occupations"].append(self.system.all_occupations)
+            self.obsdict["all_occupations"].append(self.system.occupations_before_ph)
 
         #############################
         self.obsdict["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
