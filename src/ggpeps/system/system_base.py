@@ -674,7 +674,7 @@ class System2DBase(ABC):
         return self._el_pfaffians
 
     @staticmethod
-    @maybe_jit(static_argnames=["nlayer", "idxarr_vec", "mod_link_inds", "nlinks", "link_site_parity"])
+    @maybe_jit(static_argnames=["nlayer", "idxarr_vec", "mod_link_inds"])
     def _compute_el_pfaffians(
         nlayer: int,
         mod_link_inds: tuple[int, ...],
