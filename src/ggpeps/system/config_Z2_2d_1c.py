@@ -96,17 +96,17 @@ class Z2System2DConfig(Config2DBase):
 
             for link_pos in range(len(self.mod_link_inds)):
                 coord, dir = self.lattice.ind2coord_dir(link_pos)
-                site_pairity = sum(coord) % 2
+                site_parity = sum(coord) % 2
                 is_vertical = dir == Direction.Y
 
                 # Select the correct base terms based on direction and parity
                 if is_vertical:
-                    if site_pairity == 0:
+                    if site_parity == 0:
                         term_pg = idxarr_pg_v_0
                     else:
                         term_pg = idxarr_pg_v_1
                 else:
-                    if site_pairity == 0:
+                    if site_parity == 0:
                         term_pg = idxarr_pg_h_0
                     else:
                         term_pg = idxarr_pg_h_1
