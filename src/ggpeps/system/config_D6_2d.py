@@ -215,8 +215,8 @@ class D6System2D_Config(Config2DBase):
             pg_link_coeffs, pg_link_indices = [], []
             ferm_link_coeffs, ferm_link_indices = [], []
 
-            for link_pos in range(len(self.mod_link_inds)):
-                coord, dir = self.lattice.ind2coord_dir(link_pos)
+            for mod_link in self.mod_link_inds:
+                coord, dir = self.lattice.ind2coord_dir(mod_link)
                 site_parity = sum(coord) % 2
                 is_vertical = dir == Direction.Y
 
