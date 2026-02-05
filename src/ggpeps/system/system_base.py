@@ -1632,10 +1632,7 @@ class System2DBase(ABC):
     @staticmethod
     @abstractmethod
     def _compute_mass_energy_op_vec(
-        lattice_size: int,
-        num_pg_layer: int,
-        num_fermionic_layer: int,
-        ferm_cov_vec: xnp.ndarray,
+        occupations_after_ph: xnp.ndarray,
         use_trans_inv: bool = True,
     ) -> xnp.ndarray:
         """Compute the mass term of the Hamiltonian (per layer).
@@ -1643,7 +1640,7 @@ class System2DBase(ABC):
         This is an abstract method and has to be overwritten in a subclass.
 
         Args:
-            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
+            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to False.
 
         Returns:
             array: mass energy as a vec over layers
@@ -1938,11 +1935,8 @@ class System2DBase(ABC):
         """
         if self._mass_energy_op_vec is None:
             self._mass_energy_op_vec = self._compute_mass_energy_op_vec(
-                self.cfg.lattice.size,
-                self.cfg.num_pg_layer,
-                self.cfg.num_fermionic_layer,
-                self.ferm_covmat_vec,
-                use_trans_inv=True,
+                self.occupations_after_ph,
+                use_trans_inv=False,
             )
         return self._mass_energy_op_vec
 
