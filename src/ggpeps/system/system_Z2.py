@@ -192,8 +192,8 @@ class Z2System2D(System2DBase):
                 for link_pos, norm_mod in enumerate(norm_mod_linkvec):
                     ###################### Calculation of <P> ########################
                     link_coeffs = layer_coeffs[link_pos]
+                    pf_tot: complex = 0.0j
                     for size_ind, size_term in enumerate(link_coeffs):
-                        pf_tot: complex = 0.0j
                         for term_ind, prefactor in enumerate(size_term):
                             pfaval = el_pfaffians[group_element_idx, layerind, link_pos, size_ind, term_ind]
                             pf_tot += prefactor * pfaval
