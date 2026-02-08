@@ -714,7 +714,6 @@ class System2DBase(ABC):
 
                     # Go over the different lengthed tuples of tuples of indices
                     for size_idxs_ind, size_idxs in enumerate(link_idxs):
-                        size_idxs = link_idxs[size_idxs_ind]
                         for term_ind, term in enumerate(size_idxs):
                             inds_arr = xnp.asarray(term)
                             pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds_arr, inds_arr)])
