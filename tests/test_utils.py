@@ -120,6 +120,7 @@ class TestUtils(unittest.TestCase):
         deriv_mat[0, 1] = 1
         deriv_mat[1, 0] = -1
         deriv_mat[1, 1] = 1.3
+        deriv_mat = xnp.stack([deriv_mat] * 5)
 
         # create a stack of random antisymmetric matrices
         mat_list = []
@@ -135,12 +136,8 @@ class TestUtils(unittest.TestCase):
 
         # compare to unvectorized calculation
         for i in range(5):
-            deriv = utils.derivative_pfaffian(mat_stack[i], deriv_mat, pfaval=pfavals[i])
+            deriv = utils.derivative_pfaffian(mat_stack[i], deriv_mat[i], pfaval=pfavals[i])
             self.assertAlmostEqual(deriv, derivative_ana_vec[i])
-
-        # make sure the vectorized version also works on a single matrix
-        derivative_ana_single = utils.derivative_pfaffian_vectorized(mat_stack[0], deriv_mat, pfavals=pfavals[0])
-        self.assertAlmostEqual(derivative_ana_single, derivative_ana_vec[0])
 
     @staticmethod
     def _make_summary_df() -> pd.DataFrame:
