@@ -331,7 +331,8 @@ class Z2System2D(System2DBase):
                                     prefactors = xnp.asarray(link_coeffs[lens_ind])
                                     pfafs = el_pfaffians[
                                         group_element_idx, layerind, link_pos, lens_ind, : len(inds_arr)
-                                    ]  # We slice the last dimension because the el_pfaffians array is padded with zeros.
+                                    ]  # We slice the last dimension because the
+                                    # el_pfaffians array is padded with zeros.
 
                                     virts = covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
                                     d_virts = d_covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]

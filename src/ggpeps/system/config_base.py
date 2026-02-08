@@ -223,11 +223,11 @@ class Config2DBase(ABC):
         # Structure: { length: ([coeffs], [indices]) }
         temp_buckets = {}
         for coef, indices in term_list:
-            l = len(indices)
-            if l not in temp_buckets:
-                temp_buckets[l] = ([], [])
-            temp_buckets[l][0].append(coef)
-            temp_buckets[l][1].append(indices)
+            length = len(indices)
+            if length not in temp_buckets:
+                temp_buckets[length] = ([], [])
+            temp_buckets[length][0].append(coef)
+            temp_buckets[length][1].append(indices)
 
         # Sort buckets by length
         sorted_lengths = sorted(temp_buckets.keys())
@@ -235,8 +235,8 @@ class Config2DBase(ABC):
         curr_l_coeffs = []
         curr_l_indices = []
 
-        for l in sorted_lengths:
-            c_list, i_list = temp_buckets[l]
+        for length in sorted_lengths:
+            c_list, i_list = temp_buckets[length]
             curr_l_coeffs.append(tuple(c_list))
             curr_l_indices.append(tuple(i_list))
 
