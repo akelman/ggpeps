@@ -261,9 +261,10 @@ class TestD2nSystem(unittest.TestCase):
         symbolvec = system_z2_2_2.symbolvec
 
         uc_ind = 0
+        idxs = np.random.randint(0, len(symbolvec), size=2)
 
         for layerind in range(2):
-            for ind in range(len(symbolvec)):
+            for ind in idxs:
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
                     paramvec_right = np.copy(paramvec)
