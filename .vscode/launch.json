@@ -110,6 +110,7 @@
                 "--ncopy", "2",
                 "--num_pg_layer", "1",
                 "--num_fermionic_layer", "1",
+                "--el_links", "0", "1",
                 "--ignore_cache",
                 "--seed", "1438378742"
             ]

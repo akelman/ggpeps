@@ -480,7 +480,7 @@ class D2nSystem2D(System2DBase):
 
                 # Iterate over the links
                 for link_pos, norm_mod in enumerate(norm_mod_linkvec):
-                    ###################### Calculation of <P> ########################
+                    ###################### Calculation of sum f_j |jmn><jmn| ########################
                     link_coeffs = layer_coeffs[link_pos]
                     pf_tot: complex = 0.0j
                     for size_ind, size_term in enumerate(link_coeffs):

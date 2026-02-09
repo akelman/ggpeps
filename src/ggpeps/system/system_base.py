@@ -205,11 +205,11 @@ class System2DBase(ABC):
         tmat_deriv = xnp.asarray(np.asarray(sympy.diff(tmat_symb, symb)).astype(complex))
         return tmat_deriv
 
-    def _eval_tmat_symb(self, paramvec) -> xnp.ndarray:
+    def _eval_tmat_symb(self, paramvec: np.ndarray) -> xnp.ndarray:
         """Compute the numerical representation of the T matrix
 
         Args:
-            paramvec (list): list of parameter values (numerical)
+            paramvec (np.ndarray): array of parameter values (numerical)
 
         Returns:
             xnp.ndarray: T matrix with numerical values
@@ -292,7 +292,7 @@ class System2DBase(ABC):
             self._gamma_maj_layervec_sitevec = xnp.real(smat @ self.gamma_dirac_layervec_sitevec @ xnp.transpose(smat))
         return self._gamma_maj_layervec_sitevec
 
-    def _expand_gamma_maj_to_system(self, covmats_layervec_sitevec) -> xnp.ndarray:
+    def _expand_gamma_maj_to_system(self, covmats_layervec_sitevec: xnp.ndarray) -> xnp.ndarray:
         """Expand the covariance matrix in Majorana modes to the full system.
         In order to obtain a structure that is convenient for further computations,
             (A    B)
@@ -303,7 +303,7 @@ class System2DBase(ABC):
 
         Args:
             covmats_layervec_sitevec (xnp.ndarray):
-                list (per layer) of 2D covariance matrices of all sites; total shape (nlayer, nsites, nmodes, nmodes)
+                array (per layer) of 2D covariance matrices of all sites; total shape (nlayer, nsites, nmodes, nmodes)
 
         Returns:
             xnp.ndarray: 2D covariance matrix of the full system
@@ -420,7 +420,7 @@ class System2DBase(ABC):
         return self._d_gamma_out_symbolvec
 
     @property
-    def gamma_maj_sys_vec(self):
+    def gamma_maj_sys_vec(self) -> xnp.ndarray:
         """Return the covariance matrix of the full system in Majorana modes.
         The mode order is changed to fit the mode order of gamma_in.
         See documentation of gamma_in for details.
@@ -435,13 +435,15 @@ class System2DBase(ABC):
         return self._gamma_maj_sys_vec
 
     @property
-    def mat_a_vec(self):
+    def mat_a_vec(self) -> xnp.ndarray:
         """Extract the matrix for physical-physical correlations.
         The mode ordering of this matrix is (p_1(0,0),p_2(0,0),p_1(1,0),p_2(1,0)....).
         It is formulated in terms of Majorana modes.
         The mode ordering of the sites is identical to the site convention defined in the lattice class.
-        There is a vector of A matrices if multiple layers are used; len(vec)==# of copies
         This is a get function.
+
+        This is an array of A matrices - the output shape is (nlayers, dim, dim), where
+        dim = 2 (for majorana) * [ nsites * nphysmodespersite (# phys modes) ]
 
         Returns:
             [xnp.ndarray]: Correlations of the physcial modes for the full system.
@@ -454,10 +456,13 @@ class System2DBase(ABC):
         return self._mat_a_vec
 
     @property
-    def mat_b_vec(self):
+    def mat_b_vec(self) -> xnp.ndarray:
         """Extract the matrix for physical-virtual correlations.
-        There is a vector of B matrices if multiple layers are used; len(vec)==# of copies
         This is a get function.
+
+        This is an array of B matrices - the output shape is (nlayers, dim1, dim2), where
+        dim1 = 2 (for majorana) * [ nsites * nphysmodespersite (# phys modes) ]
+        dim2 = 2 (for majorana) * [ nlinks * 2 * ncopy (virt modes/link) ]
 
         Returns:
             [xnp.ndarray]: Correlations of the physcial modes with the virtual modes for the full system.
@@ -470,10 +475,12 @@ class System2DBase(ABC):
         return self._mat_b_vec
 
     @property
-    def mat_d_vec(self):
+    def mat_d_vec(self) -> xnp.ndarray:
         """Extract the matrix for virtual-virtual correlations (aka D).
-        There is a vector of D matrices if multiple layers are used; len(vec)==# of copies
         This is a get function.
+
+        This is an array of D matrices - the output shape is (nlayers, dim, dim), where
+        dim = 2 (for majorana) * [ nlinks * 2 * ncopy (virt modes/link) ]
 
         Returns:
             [xnp.ndarray]: Correlations of the virtual modes for the full system.
@@ -486,44 +493,47 @@ class System2DBase(ABC):
         return self._mat_d_vec
 
     @property
-    def det_mat_d_vec(self):
+    def det_mat_d_vec(self) -> xnp.ndarray:
         """Compute the determinant of the virtual-virtual correlation matrix.
-        There is a vector of D matrices if multiple layers are used; len(vec)==# of copies
         This is a get function.
 
+        This is an array of D matrix logdets - the output shape is (nlayers,).
+
         Returns:
-            xnp.ndarray: list of log-determinants
+            xnp.ndarray: array of log-determinants
         """
         if self._det_mat_d_vec is None:
             _, self._det_mat_d_vec = xnp.linalg.slogdet(self.mat_d_vec)
         return self._det_mat_d_vec
 
     @property
-    def mat_d_inv_vec(self):
+    def mat_d_inv_vec(self) -> xnp.ndarray:
         """Compute the vector of the inverses of the D matrix.
         The D matrix is the correlation matrix of virtual-virtual correlations.
-        There is a vector of D matrices if multiple layers are used; len(vec) = # of layers
         This is a get function.
 
+        This is a vector of D matrix inverses - the output shape is (nlayers, dim, dim), where
+        dim = 2 (for majorana) * [ nlinks * 2 * ncopy (virt modes/link) ]
+
         Returns:
-            xnp.ndarray: List of matrix inverses of the D matrix
+            xnp.ndarray: array of matrix inverses of the D matrix
         """
         if self._mat_d_inv_vec is None:
             self._mat_d_inv_vec = xnp.linalg.inv(self.mat_d_vec)
         return self._mat_d_inv_vec
 
     @property
-    def mat_a_mod_vec(self):
+    def mat_a_mod_vec(self) -> xnp.ndarray:
         """Extract the matrix for physical-physical correlations and one virtual mode.
         This shifted matrix is used for the computation of the electric energy.
         The mode ordering of this matrix is (p_1(0,0),p_2(0,0),p_1(1,0),p_2(1,0)....).
         It is formulated in terms of Majorana modes.
         The mode ordering of the sites is identical to the site convention defined in the lattice class.
-        There is a vector of A matrices if multiple layers are used; len(vec)==# of copies
         "Physical" modes here includes the virtual modes on the link on which the electric energy is computed.
         This is a get function.
 
-        dim: 2 (for majorana) * [ nsites * nphysmodespersite (# phys modes) + 2 * ncopy (virt modes/link) ]
+        This is a vector of A matrices - the output shape is (nlayers, num mod links, dim, dim), where
+        dim = 2 (for majorana) * [ nsites * nphysmodespersite (# phys modes) + 2 * ncopy (virt modes/link) ]
 
         Returns:
             [xnp.ndarray]: Correlations of the physical modes for the full system.
@@ -539,12 +549,15 @@ class System2DBase(ABC):
         return self._mat_a_mod_vec
 
     @property
-    def mat_b_mod_vec(self):
+    def mat_b_mod_vec(self) -> xnp.ndarray:
         """Extract the matrix for physical-virtual correlations.
-        This matrix contains one link less than the original matrix (used for the electric energy computation)
-        There is a vector of B matrices if multiple layers are used; len(vec)==# of copies
+        This matrix contains one link less than the original matrix (used for the electric energy computation).
         "Physical" modes here includes the virtual modes on the link on which the electric energy is computed.
         This is a get function.
+
+        This is a vector of B matrices - the output shape is (nlayers, num mod links, dim1, dim2), where
+        dim1 = 2 (for majorana) * [ nsites * nphysmodespersite (# phys modes) + 2 * ncopy (virt modes/link) ]
+        dim2 = 2 (for majorana) * [ (nlinks - 1) * 2 * ncopy (virt modes/link) ]
 
         Returns:
             [xnp.ndarray]: Correlations of the physical modes with the virtual modes for the full system.
@@ -560,11 +573,13 @@ class System2DBase(ABC):
         return self._mat_b_mod_vec
 
     @property
-    def mat_d_mod_vec(self):
+    def mat_d_mod_vec(self) -> xnp.ndarray:
         """Extract the matrix for virtual-virtual correlations.
-        This matrix contains one link less than the original matrix (used for the electric energy computation)
-        There is a vector of D matrices if multiple layers are used; len(vec)==# of copies
+        This matrix contains one link less than the original matrix (used for the electric energy computation).
         This is a get function.
+
+        This is a vector of D matrices - the output shape is (nlayers, num mod links, dim, dim), where
+        dim = 2 (for majorana) * [ (nlinks - 1) * 2 * ncopy (virt modes/link) ]
 
         Returns:
             [xnp.ndarray]: Correlations of the virtual modes for the full system.
@@ -580,27 +595,28 @@ class System2DBase(ABC):
         return self._mat_d_mod_vec
 
     @property
-    def det_mat_d_mod_vec(self):
+    def det_mat_d_mod_vec(self) -> xnp.ndarray:
         """
         Compute the determinant of the virtual-virtual correlation matrix for the modified matrix.
-        There is a vector of determinants of D matrices if multiple layers are used; len(vec)==# of copies
+        There is a vector of determinants of D matrices - the output shape is (nlayers, num mod links).
         This is a get function.
 
         Returns:
-            list: list of log-determinants
+            list: array of log-determinants
         """
         if self._det_mat_d_mod_vec is None:
             _, self._det_mat_d_mod_vec = xnp.linalg.slogdet(self.mat_d_mod_vec)
         return self._det_mat_d_mod_vec
 
     @property
-    def mat_d_mod_inv_vec(self):
+    def mat_d_mod_inv_vec(self) -> xnp.ndarray:
         """Compute the inverse of modified D matrices.
-        There is a vector of inverses of D matrices if multiple layers are used; len(vec)==# of copies
+        There is a vector of inverses of D matrices - the output shape is (nlayers, num mod links, dim, dim), where
+        dim = 2 (for majorana) * [ (nlinks - 1) * 2 * ncopy (virt modes/link) ]
         This is a get function.
 
         Returns:
-            xnp.ndarray: List of inverses of modified D matrices
+            xnp.ndarray: array of inverses of modified D matrices
         """
         if self._mat_d_mod_inv_vec is None:
             self._mat_d_mod_inv_vec = xnp.linalg.inv(self.mat_d_mod_vec)
@@ -1082,14 +1098,16 @@ class System2DBase(ABC):
                 for symb in self.symbolvec:
                     gamma_maj_deriv = self.compute_gamma_maj_deriv(symb, lay, uc_ind)
 
-                    gamma_maj_derivs_sitevec = []
+                    # _expand_gamma_maj_to_system() expects a vector over layers, so we include an extra initial axis
+                    # and then extract the first element of the output
+                    gamma_maj_derivs_sitevec = xnp.zeros((1, self.cfg.lattice.size, *gamma_maj_deriv.shape))
                     for site in range(self.cfg.lattice.size):
                         if self.cfg.site_params_dict[site] == uc_ind:
-                            gamma_maj_derivs_sitevec.append(gamma_maj_deriv)
-                        else:
-                            gamma_maj_derivs_sitevec.append(xnp.zeros_like(gamma_maj_deriv))
+                            gamma_maj_derivs_sitevec = backend.array_assign(
+                                gamma_maj_derivs_sitevec, (0, site), gamma_maj_deriv
+                            )
+                    gamma_maj_sys_derivs = self._expand_gamma_maj_to_system(gamma_maj_derivs_sitevec)[0]
 
-                    gamma_maj_sys_derivs = self._expand_gamma_maj_to_system([gamma_maj_derivs_sitevec])[0]
                     arr.append(gamma_maj_sys_derivs)
                 uc_vec.append(arr)
             lay_vec.append(uc_vec)
@@ -1313,7 +1331,7 @@ class System2DBase(ABC):
         )
         return res
 
-    def calculate_lognorm_inc(self, all_factors=False) -> float:
+    def calculate_lognorm_inc(self, all_factors: bool = False) -> float:
         """Update the logarithm of the norm incrementally (using IncDet and Woodbury)
 
         Args:
@@ -1389,11 +1407,7 @@ class System2DBase(ABC):
 
     @gaugefieldvec.setter
     def gaugefieldvec(self, val):
-        print(
-            "Do not set the gaugefieldvec explicitly. Use 'update_gauge_ind'.",
-            file=sys.stderr,
-        )
-        # TODO: log error
+        logger.error("Do not set the gaugefieldvec explicitly. Use 'update_gauge_ind'.")
 
     @property
     def gamma_gauge_neutral_vec(self) -> xnp.ndarray:
