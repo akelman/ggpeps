@@ -9,7 +9,7 @@ from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
 
-from .config_base import IdxArrVec
+from .config_base import IdxVec, CoeffsVec
 
 from .system_base import System2DBase
 from .system_base import maybe_jit
@@ -171,7 +171,7 @@ class Z2System2D(System2DBase):
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
-        coeffs_vec,
+        coeffs_vec: CoeffsVec,
     ) -> xnp.ndarray:
 
         lognorm_default = xnp.sum(lognormvec_default)
@@ -245,8 +245,8 @@ class Z2System2D(System2DBase):
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
-        idxarr_vec: IdxArrVec,
-        coeffs_vec,
+        idxarr_vec: IdxVec,
+        coeffs_vec: CoeffsVec,
     ) -> xnp.ndarray:
         """In early 2026, this function was significantly optimized.
         This was done after it was generalized in various ways over the previous months:

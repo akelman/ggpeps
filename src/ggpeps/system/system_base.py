@@ -16,7 +16,7 @@ import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
-from ggpeps.system.config_base import Config2DBase, IdxArrVec
+from ggpeps.system.config_base import Config2DBase, IdxVec, CoeffsVec
 from ggpeps.modearray import generate_permutation_matrix
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -680,7 +680,7 @@ class System2DBase(ABC):
         mod_link_inds: tuple[int, ...],
         covmat_out_virt_vec: xnp.ndarray,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
-        idxarr_vec: IdxArrVec,
+        idxarr_vec: IdxVec,
     ) -> xnp.ndarray:
         """Compute the pfaffians of the modified covariance matrices used for the electric energy and its derivative.
         This function returns a vector over layers and links of these pfaffians.
@@ -1538,7 +1538,7 @@ class System2DBase(ABC):
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
-        coeffs_vec,
+        coeffs_vec: CoeffsVec,
     ) -> xnp.ndarray:
         """Compute the electric energy.
 
@@ -1582,8 +1582,8 @@ class System2DBase(ABC):
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
-        idxarr_vec: IdxArrVec,
-        coeffs_vec,
+        idxarr_vec: IdxVec,
+        coeffs_vec: CoeffsVec,
     ) -> xnp.ndarray:
         """Compute the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.

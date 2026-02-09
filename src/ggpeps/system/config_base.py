@@ -17,11 +17,18 @@ from ggpeps.lattice import Lattice2D, Direction
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 # Type aliases for the electric energy data structures
-IdxTerm = tuple[complex, tuple[int, ...]]  # (prefactor, indices)
-IdxTermQuad = tuple[IdxTerm, IdxTerm, IdxTerm, IdxTerm]  # (term_h0, term_h1, term_v0, term_v1) for one term
-IdxLayerTerms = tuple[IdxTermQuad, ...]  # all (term_h, term_v) pairs for one layer
-IdxArrVecLayer = tuple[IdxLayerTerms, ...]  # over layers
-IdxArrVec = tuple[IdxArrVecLayer, ...]  # over group elements
+IdxTermSize = tuple[tuple[int, ...], ...]  # (tuple of tuples of indices, all inner tuples have the same size)
+IdxTermLink = tuple[IdxTermSize, ...]  # All different size terms for a specific link
+IdxTermsLayer = tuple[IdxTermLink, ...]  # all link terms for one layer
+IdxGroup = tuple[IdxTermsLayer, ...]  # Per group element
+IdxVec = tuple[IdxGroup, ...]  # over group elements
+
+CoeffsTermSize = tuple[float, ...]
+# (tuple of floats, all floates are th coefficient corresponding to inner tuples in IdxTermSize)
+CoeffsTermLink = tuple[CoeffsTermSize, ...]  # All different size terms for a specific link
+AoeffsTermsLayer = tuple[CoeffsTermLink, ...]  # all link terms for one layer
+CoeffsGroup = tuple[CoeffsTermLink, ...]  # Per group element
+CoeffsVec = tuple[CoeffsGroup, ...]  # over group elements
 
 
 ################## Config2DBase ######################
@@ -128,8 +135,8 @@ class Config2DBase(ABC):
 
         # Settings for the electric energy
         # these depend on the ansatz, so we only declare their type here
-        # TODO: this data structure is very unwieldy and should be simplified/restructured
-        self.idxarr_vec: IdxArrVec
+        self.idx_vec: IdxVec
+        self.coeffs_vec: CoeffsVec
 
     def __str__(self) -> str:
         """Define a string method that can be used, e.g., in filenaming.
@@ -269,9 +276,10 @@ class Config2DBase(ABC):
         """Initialize electric-energy-related structures for this ansatz.
 
         Implementations must set:
-            - self.idxarr_vec: IdxArrVec
+            - self.idx_vec: IdxVec
+            - self.coeffs_vec: CoeffsVec
         """
-        raise NotImplementedError("Implement in subclass: must set idxarr_vec.")
+        raise NotImplementedError("Implement in subclass: must set idx_vec and coeffs_vec.")
 
     def enforce_parameter_conditions(self, mat: xnp.ndarray) -> None:
         """Enforce conditions on the parameters according to the requirements of the ansatz.
