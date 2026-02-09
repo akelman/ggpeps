@@ -24,10 +24,10 @@ IdxGroup = tuple[IdxTermsLayer, ...]  # Per group element
 IdxVec = tuple[IdxGroup, ...]  # over group elements
 
 CoeffsTermSize = tuple[float, ...]
-# (tuple of floats, all floates are th coefficient corresponding to inner tuples in IdxTermSize)
+# (tuple of floats, all floats are the coefficient corresponding to inner tuples in IdxTermSize)
 CoeffsTermLink = tuple[CoeffsTermSize, ...]  # All different size terms for a specific link
-AoeffsTermsLayer = tuple[CoeffsTermLink, ...]  # all link terms for one layer
-CoeffsGroup = tuple[CoeffsTermLink, ...]  # Per group element
+CoeffsTermsLayer = tuple[CoeffsTermLink, ...]  # all link terms for one layer
+CoeffsGroup = tuple[CoeffsTermsLayer, ...]  # Per group element
 CoeffsVec = tuple[CoeffsGroup, ...]  # over group elements
 
 
