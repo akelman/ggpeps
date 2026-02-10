@@ -453,7 +453,7 @@ class D2nSystem2D(System2DBase):
         return mag_energy_bare
 
     @staticmethod
-    @maybe_jit(static_argnames=["idxarrs", "nlayer", "mod_link_inds"])
+    @maybe_jit(static_argnames=["mod_link_inds", "nlayer", "coeffs_vec"])
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
         mod_link_inds: tuple[int, ...],
