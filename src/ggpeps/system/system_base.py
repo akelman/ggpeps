@@ -15,7 +15,7 @@ import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
-from ggpeps.system.config_base import Config2DBase, IdxVec, CoeffsVec
+from ggpeps.system.config_base import Config2DBase, IdxVec, CoeffsVec, ConstantsVec
 from ggpeps.modearray import generate_permutation_matrix
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -1552,7 +1552,7 @@ class System2DBase(ABC):
         norm_mod_vec: xnp.ndarray,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
         coeffs_vec: CoeffsVec,
-        constants_vec,
+        constants_vec: ConstantsVec,
     ) -> xnp.ndarray:
         """Compute the electric energy.
 

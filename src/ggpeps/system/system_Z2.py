@@ -9,7 +9,7 @@ from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
 
-from .config_base import IdxVec, CoeffsVec
+from .config_base import IdxVec, CoeffsVec, ConstantsVec
 
 from .system_base import System2DBase
 from .system_base import maybe_jit
@@ -172,7 +172,7 @@ class Z2System2D(System2DBase):
         norm_mod_vec: xnp.ndarray,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
         coeffs_vec: CoeffsVec,
-        constants_vec: xnp.ndarray,
+        constants_vec: ConstantsVec,
     ) -> xnp.ndarray:
 
         lognorm_default = xnp.sum(lognormvec_default)

@@ -30,6 +30,13 @@ CoeffsTermsLayer = tuple[CoeffsTermLink, ...]  # all link terms for one layer
 CoeffsGroup = tuple[CoeffsTermsLayer, ...]  # Per group element
 CoeffsVec = tuple[CoeffsGroup, ...]  # over group elements
 
+ConstantsTermLink = complex
+# The constant added to the sum of terms in generate_gauged_projector
+# (this is the term that does not come with a Pfaffian)
+ConstantsLayer = tuple[ConstantsTermLink, ...]  # all link terms for one layer
+ConstantsGroup = tuple[ConstantsLayer, ...]  # Per group element
+ConstantsVec = tuple[ConstantsGroup, ...]  # over group elements
+
 
 ################## Config2DBase ######################
 class Config2DBase(ABC):
@@ -137,6 +144,7 @@ class Config2DBase(ABC):
         # these depend on the ansatz, so we only declare their type here
         self.idx_vec: IdxVec
         self.coeffs_vec: CoeffsVec
+        self.constants_vec: ConstantsVec
 
     def __str__(self) -> str:
         """Define a string method that can be used, e.g., in filenaming.

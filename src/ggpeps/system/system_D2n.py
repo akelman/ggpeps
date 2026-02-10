@@ -12,7 +12,7 @@ from ggpeps import utils
 
 from .system_base import System2DBase
 from .config_D6_2d import D6System2D_Config
-from .config_base import IdxVec, CoeffsVec
+from .config_base import IdxVec, CoeffsVec, ConstantsVec
 
 
 from .system_base import maybe_jit
@@ -462,7 +462,7 @@ class D2nSystem2D(System2DBase):
         norm_mod_vec: xnp.ndarray,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
         coeffs_vec: CoeffsVec,
-        constants_vec: xnp.ndarray,
+        constants_vec: ConstantsVec,
     ) -> xnp.ndarray:
 
         lognorm_default = xnp.sum(lognormvec_default)
