@@ -74,41 +74,44 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         self.init_el_energy_terms()
 
     def init_el_energy_terms(self) -> None:
-        """Build idxa_vec and coeffs_vec."""
+        """Build idx_vec, coeffs_vec and constants_vec.
+        constants_vec is expected to contain only zeros for Z2"""
         idx_vec = []
         coeffs_vec = []
+        constants_vec = []
 
         for group_element in self.gaugemgr.group_elements_for_el_energy:
             # Pure Gauge (PG) ---
-            idxarr_pg_h_0, _ = generate_gauged_projector_terms(
+            idxarr_pg_h_0, const_pg_h_0 = generate_gauged_projector_terms(
                 self.ncopy, self.ncolors, True, Direction.X, group_element, site=0
             )
-            idxarr_pg_h_1, _ = generate_gauged_projector_terms(
+            idxarr_pg_h_1, const_pg_h_1 = generate_gauged_projector_terms(
                 self.ncopy, self.ncolors, True, Direction.X, group_element, site=1
             )
-            idxarr_pg_v_0, _ = generate_gauged_projector_terms(
+            idxarr_pg_v_0, const_pg_v_0 = generate_gauged_projector_terms(
                 self.ncopy, self.ncolors, True, Direction.Y, group_element, site=0
             )
-            idxarr_pg_v_1, _ = generate_gauged_projector_terms(
+            idxarr_pg_v_1, const_pg_v_1 = generate_gauged_projector_terms(
                 self.ncopy, self.ncolors, True, Direction.Y, group_element, site=1
             )
 
             # generate fermionic terms
-            idxarr_ferm_h_0, _ = generate_gauged_projector_terms(
+            idxarr_ferm_h_0, const_ferm_h_0 = generate_gauged_projector_terms(
                 self.ncopy, self.ncolors, False, Direction.X, group_element, site=0
             )
-            idxarr_ferm_h_1, _ = generate_gauged_projector_terms(
+            idxarr_ferm_h_1, const_ferm_h_1 = generate_gauged_projector_terms(
                 self.ncopy, self.ncolors, False, Direction.X, group_element, site=1
             )
-            idxarr_ferm_v_0, _ = generate_gauged_projector_terms(
+            idxarr_ferm_v_0, const_ferm_v_0 = generate_gauged_projector_terms(
                 self.ncopy, self.ncolors, False, Direction.Y, group_element, site=0
             )
-            idxarr_ferm_v_1, _ = generate_gauged_projector_terms(
+            idxarr_ferm_v_1, const_ferm_v_1 = generate_gauged_projector_terms(
                 self.ncopy, self.ncolors, False, Direction.Y, group_element, site=1
             )
 
             pg_link_coeffs, pg_link_indices = [], []
             ferm_link_coeffs, ferm_link_indices = [], []
+            pg_link_constants, ferm_link_constants = [], []
 
             for mod_link in self.mod_link_inds:
                 coord, dir = self.lattice.ind2coord_dir(mod_link)
@@ -120,24 +123,40 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
                     if site_parity == 0:
                         term_pg = idxarr_pg_v_0
                         term_ferm = idxarr_ferm_v_0
+                        contant_pg = const_pg_v_0
+                        contant_ferm = const_ferm_v_0
                     else:
                         term_pg = idxarr_pg_v_1
                         term_ferm = idxarr_ferm_v_1
+                        contant_pg = const_pg_v_1
+                        contant_ferm = const_ferm_v_1
                 else:
                     if site_parity == 0:
                         term_pg = idxarr_pg_h_0
                         term_ferm = idxarr_ferm_h_0
+                        contant_pg = const_pg_h_0
+                        contant_ferm = const_ferm_h_0
                     else:
                         term_pg = idxarr_pg_h_1
                         term_ferm = idxarr_ferm_h_1
+                        contant_pg = const_pg_h_1
+                        contant_ferm = const_ferm_h_1
 
                 pg_c, pg_i = self._bucket_sort_terms(term_pg)
                 pg_link_coeffs.append(pg_c)
                 pg_link_indices.append(pg_i)
+                pg_link_constants.append(contant_pg)
 
                 ferm_c, ferm_i = self._bucket_sort_terms(term_ferm)
                 ferm_link_coeffs.append(ferm_c)
                 ferm_link_indices.append(ferm_i)
+                ferm_link_constants.append(contant_ferm)
+
+            pg_base_constants = tuple(pg_link_constants)
+            ferm_base_constants = tuple(ferm_link_constants)
+            constants_vec.append(
+                (pg_base_constants,) * self.num_pg_layer + (ferm_base_constants,) * self.num_fermionic_layer
+            )
 
             pg_base_coeffs = tuple(pg_link_coeffs)
             ferm_base_coeffs = tuple(ferm_link_coeffs)
@@ -152,6 +171,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
         self.idx_vec = tuple(idx_vec)
         self.coeffs_vec = tuple(coeffs_vec)
+        self.constants_vec = tuple(constants_vec)
 
     def make_pure_gauge(self) -> None:
         """Make the ansatz pure gauge by setting t-params to zero.
