@@ -414,16 +414,17 @@ def derivative_pfaffian_vectorized(mat: xnp.ndarray, d_mat: xnp.ndarray, pfavals
     Returns:
         xnp.ndarray: an array of d(Pf(A))/dx
     """
-    mask = ~xnp.isclose(pfavals, 0.0)  # When the pfaffian is 0, the martix might be singular
-    mat_mask = mat[mask]
-    d_mat_mask = d_mat[mask]
-    inv_mat = xnp.linalg.inv(mat_mask)  # (N, M, M)
-    prod = inv_mat @ d_mat_mask  # batched matrix multiply
-    traces = xnp.trace(prod, axis1=-2, axis2=-1)
+    mask = ~xnp.isclose(pfavals, 0.0)  # shape (N,)
 
-    res = xnp.zeros(len(pfavals))
-    res[mask] = 0.5 * pfavals[mask] * traces
+    # Safely invert: identity where masked out (won't contribute anyway because we multiply by mask at the end)
+    eye = xnp.eye(mat.shape[-1], dtype=mat.dtype)
+    safe_mat = xnp.where(mask[:, None, None], mat, eye)
 
+    inv_mat = xnp.linalg.inv(safe_mat)  # (N, M, M)
+    prod = inv_mat @ d_mat  # (N, M, M)
+    traces = xnp.trace(prod, axis1=-2, axis2=-1)  # (N,)
+
+    res = 0.5 * pfavals * traces * mask
     return res
 
 
