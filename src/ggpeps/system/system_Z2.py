@@ -163,7 +163,7 @@ class Z2System2D(System2DBase):
         return mag_energy_bare
 
     @staticmethod
-    @maybe_jit(static_argnames=["mod_link_inds", "nlayer", "coeffs_vec"])
+    @maybe_jit(static_argnames=["mod_link_inds", "nlayer", "coeffs_vec", "constants_vec"])
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
         mod_link_inds: tuple[int, ...],
@@ -172,6 +172,7 @@ class Z2System2D(System2DBase):
         norm_mod_vec: xnp.ndarray,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
         coeffs_vec: CoeffsVec,
+        constants_vec: xnp.ndarray,
     ) -> xnp.ndarray:
 
         lognorm_default = xnp.sum(lognormvec_default)
@@ -190,9 +191,10 @@ class Z2System2D(System2DBase):
 
                 # Iterate over the links
                 for link_pos, norm_mod in enumerate(norm_mod_linkvec):
-                    ###################### Calculation of <P> ########################
+                    ###################### Calculation of <P+P^dagger> ########################
                     link_coeffs = layer_coeffs[link_pos]
-                    pf_tot: complex = 0.0j
+                    pf_tot: complex = constants_vec[group_element_idx][layerind][link_pos]
+                    # this is the constant term in the sum, which does not come with a Pfaffian
                     for size_ind, size_term in enumerate(link_coeffs):
                         for term_ind, prefactor in enumerate(size_term):
                             pfaval = el_pfaffians[group_element_idx, layerind, link_pos, size_ind, term_ind]

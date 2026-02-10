@@ -1552,6 +1552,7 @@ class System2DBase(ABC):
         norm_mod_vec: xnp.ndarray,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
         coeffs_vec: CoeffsVec,
+        constants_vec,
     ) -> xnp.ndarray:
         """Compute the electric energy.
 
@@ -1903,6 +1904,7 @@ class System2DBase(ABC):
                 self.norm_mod_vec,
                 self.cfg.gaugemgr.group_elements_for_el_energy,
                 self.cfg.coeffs_vec,
+                self.cfg.constants_vec,
             )
         return self._el_energy_op_vec
 
