@@ -20,6 +20,12 @@ class ZNGauge:
         self.group_order = n
         self.el_mult_factor, self.group_elements_for_el_energy = self.get_group_elements_and_factors_for_el_energy()
 
+        self.el_offset = 2
+        # The maximum value of the electric energy for a specific link.
+        # To impose el_energy >= 0 in system:
+        # el_energy = self.cfg.g_el *
+        # (self.cfg.el_offset * nlinks - self.cfg.gaugemgr.el_mult_factor * self.el_energy_op)
+
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> np.ndarray:
         """
         Generate a random Z_N group element as a 1x1 complex matrix.
@@ -269,6 +275,15 @@ class D2nGauge:
         factors_for_el_energy, group_elements_for_el_energy = self.get_group_elements_and_factors_for_el_energy()
         self.group_elements_for_el_energy: tuple[np.ndarray, ...] = group_elements_for_el_energy
         self.el_mult_factor = factors_for_el_energy
+
+        if self.n == 3:
+            self.el_offset = 3
+        elif self.n == 4:
+            self.el_offset = 6
+        # The maximum value of the electric energy for a specific link.
+        # To impose el_energy >= 0 in system:
+        # el_energy = self.cfg.g_el *
+        # (self.cfg.el_offset * nlinks - self.cfg.gaugemgr.el_mult_factor * self.el_energy_op)
 
     def get_representation(self, p: int, q: int) -> np.ndarray:
         """
@@ -626,7 +641,6 @@ class D2nGauge:
         if factor_for_el:
             tol = 10e-5
             if not np.allclose(factor_for_el, first_factor, atol=tol):
-                # You can change this to a warning if you don't want to stop execution
                 raise ValueError(
                     f"Electric energy factors are not uniform within tolerance {tol}."
                     f"These values should be equal for discrete groups."

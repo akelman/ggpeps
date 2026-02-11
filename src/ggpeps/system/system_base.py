@@ -1806,7 +1806,9 @@ class System2DBase(ABC):
             float: electric energy
         """
         nlinks = self.cfg.lattice.nlinks
-        el_energy = self.cfg.g_el * (2 * nlinks - self.cfg.gaugemgr.el_mult_factor * self.el_energy_op)
+        el_energy = self.cfg.g_el * (
+            self.cfg.gaugemgr.el_offset * nlinks - self.cfg.gaugemgr.el_mult_factor * self.el_energy_op
+        )
         return el_energy
 
     @property
