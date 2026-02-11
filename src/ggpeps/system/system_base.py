@@ -732,7 +732,7 @@ class System2DBase(ABC):
                         inds_batch = xnp.asarray(size_idxs)
                         rows = inds_batch[:, :, None]
                         cols = inds_batch[:, None, :]
-                        submatrices = covmat_out_virt[rows, cols]
+                        submatrices = covmat_out_virt[rows, cols]  # shape (num_terms, size, size)
                         pfavals = xnp.array([backend.pfaffian(mat) for mat in submatrices])
                         # TODO: vectorize pfaffian calculation for JAX (using vmpap or similar)
                         el_pfaffians = backend.array_assign(
