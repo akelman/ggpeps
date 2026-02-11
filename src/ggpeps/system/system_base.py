@@ -733,17 +733,27 @@ class System2DBase(ABC):
 
                     # Go over the different lengthed tuples of tuples of indices
                     for size_idxs_ind, size_idxs in enumerate(link_idxs):
-                        for term_ind, term in enumerate(size_idxs):
-                            cache_key = (layerind, link_pos, term)
+                        inds_batch = xnp.asarray(size_idxs)
+                        rows = inds_batch[:, :, None]
+                        cols = inds_batch[:, None, :]
+                        submatrices = covmat_out_virt[rows, cols]  # shape (num_terms, size, size)
+                        pfavals = []
+                        for mat_ind, mat in enumerate(submatrices):
+                            cache_key = (layerind, link_pos, size_idxs[mat_ind])
                             if cache_key in pfaffian_memo:
                                 pfaval = pfaffian_memo[cache_key]
                             else:
-                                inds_arr = xnp.asarray(term)
-                                pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds_arr, inds_arr)])
+                                pfaval = backend.pfaffian(mat)
                                 pfaffian_memo[cache_key] = pfaval
-                            el_pfaffians = backend.array_assign(
-                                el_pfaffians, (group_element_idx, layerind, link_pos, size_idxs_ind, term_ind), pfaval
-                            )
+                            pfavals.append(pfaval)
+
+                        pfavals = xnp.asarray(pfavals)
+                        el_pfaffians = backend.array_assign(
+                            el_pfaffians,
+                            (group_element_idx, layerind, link_pos, size_idxs_ind, slice(0, len(pfavals))),
+                            pfavals,
+                        )
+
         return el_pfaffians
 
     @property
