@@ -729,12 +729,17 @@ class System2DBase(ABC):
 
                     # Go over the different lengthed tuples of tuples of indices
                     for size_idxs_ind, size_idxs in enumerate(link_idxs):
-                        for term_ind, term in enumerate(size_idxs):
-                            inds_arr = xnp.asarray(term)
-                            pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds_arr, inds_arr)])
-                            el_pfaffians = backend.array_assign(
-                                el_pfaffians, (group_element_idx, layerind, link_pos, size_idxs_ind, term_ind), pfaval
-                            )
+                        inds_batch = xnp.asarray(size_idxs)
+                        rows = inds_batch[:, :, None]
+                        cols = inds_batch[:, None, :]
+                        submatrices = covmat_out_virt[rows, cols]
+                        pfavals = xnp.array([backend.pfaffian(mat) for mat in submatrices])
+                        # TODO: vectorize pfaffian calculation for JAX (using vmpap or similar)
+                        el_pfaffians = backend.array_assign(
+                            el_pfaffians,
+                            (group_element_idx, layerind, link_pos, size_idxs_ind, slice(0, len(pfavals))),
+                            pfavals,
+                        )
 
         return el_pfaffians
 
