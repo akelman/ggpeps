@@ -194,11 +194,14 @@ class Z2System2D(System2DBase):
                     ###################### Calculation of <P+P^dagger> ########################
                     link_coeffs = layer_coeffs[link_pos]
                     pf_tot: complex = constants_vec[group_element_idx][layerind][link_pos]
-                    # this is the constant term in the sum, which does not come with a Pfaffian
+                    # this is the constant term in the sum, which does not come with a Pfaffian,
+                    # for Z2 it should be 0
                     for size_ind, size_term in enumerate(link_coeffs):
-                        for term_ind, prefactor in enumerate(size_term):
-                            pfaval = el_pfaffians[group_element_idx, layerind, link_pos, size_ind, term_ind]
-                            pf_tot += prefactor * pfaval
+                        array_size_term = xnp.asarray(size_term)
+                        current_pfaffians = el_pfaffians[
+                            group_element_idx, layerind, link_pos, size_ind, : len(size_term)
+                        ]
+                        pf_tot += xnp.dot(array_size_term, current_pfaffians)
 
                     # xnp.real() is only for testing purposes, since the Pfaffian's with imaginary components are
                     # now dropped higher up in the stack.
