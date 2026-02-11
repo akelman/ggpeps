@@ -715,6 +715,10 @@ class System2DBase(ABC):
         # Max terms per link; elements may vary in term count.
         el_pfaffians = xnp.zeros((num_group_elements, nlayer, num_el_links, num_lens, num_terms_per_size))
 
+        # Key: (layer_index, link_index, specific_indices_tuple)
+        # Value: Computed pfaffian
+        pfaffian_memo = {}
+
         # TODO: vectorize!
         for group_element_idx in range(num_group_elements):
             idxarr_vec_group_element = idxarr_vec[group_element_idx]
@@ -729,18 +733,17 @@ class System2DBase(ABC):
 
                     # Go over the different lengthed tuples of tuples of indices
                     for size_idxs_ind, size_idxs in enumerate(link_idxs):
-                        inds_batch = xnp.asarray(size_idxs)
-                        rows = inds_batch[:, :, None]
-                        cols = inds_batch[:, None, :]
-                        submatrices = covmat_out_virt[rows, cols]  # shape (num_terms, size, size)
-                        pfavals = xnp.array([backend.pfaffian(mat) for mat in submatrices])
-                        # TODO: vectorize pfaffian calculation for JAX (using vmpap or similar)
-                        el_pfaffians = backend.array_assign(
-                            el_pfaffians,
-                            (group_element_idx, layerind, link_pos, size_idxs_ind, slice(0, len(pfavals))),
-                            pfavals,
-                        )
-
+                        for term_ind, term in enumerate(size_idxs):
+                            cache_key = (layerind, link_pos, term)
+                            if cache_key in pfaffian_memo:
+                                pfaval = pfaffian_memo[cache_key]
+                            else:
+                                inds_arr = xnp.asarray(term)
+                                pfaval = backend.pfaffian(covmat_out_virt[xnp.ix_(inds_arr, inds_arr)])
+                                pfaffian_memo[cache_key] = pfaval
+                            el_pfaffians = backend.array_assign(
+                                el_pfaffians, (group_element_idx, layerind, link_pos, size_idxs_ind, term_ind), pfaval
+                            )
         return el_pfaffians
 
     @property
