@@ -807,10 +807,10 @@ class TestZ2System(unittest.TestCase):
         self.assertTrue(np.allclose(int_op_vec[1], int_op_vec[2]))
 
         mass_op_vec = system_z2.mass_energy_op_vec
-        self.assertTrue(np.allclose(mass_op_vec[1], mass_op_vec[2]))
+        self.assertTrue(np.allclose(mass_op_vec[0], mass_op_vec[1]))
 
         chem_op_vec = system_z2.chem_energy_op_vec
-        self.assertTrue(np.allclose(chem_op_vec[1], chem_op_vec[2]))
+        self.assertTrue(np.allclose(chem_op_vec[0], chem_op_vec[1]))
 
         chem_grads = system_z2.chem_energy_op_grad_vec
         self.assertTrue(np.allclose(chem_grads[1], chem_grads[2]))
