@@ -1716,6 +1716,7 @@ class System2DBase(ABC):
         num_fermionic_layer: int,
         sublattice_factors: tuple,
         ferm_covmat_vec: xnp.ndarray,
+        occupations_before_ph: xnp.ndarray,
     ) -> xnp.ndarray:
         """Compute the chemical potential energy (per layer).
         This is an abstract method and has to be overwritten in a subclass.
@@ -1834,10 +1835,11 @@ class System2DBase(ABC):
         Returns:
             float: chemical potential energy
         """
-        chem_energy = 0.0
-        for layer in range(self.cfg.num_pg_layer, self.cfg.nlayer):
-            ind = layer - self.cfg.num_pg_layer
-            chem_energy += self.cfg.g_chem[ind] * self.chem_energy_op_vec[layer]
+        # chem_energy = 0.0
+        # for layer in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+        #    ind = layer - self.cfg.num_pg_layer
+        #    chem_energy += self.cfg.g_chem[ind] * self.chem_energy_op_vec[layer]
+        chem_energy = xnp.sum(self.cfg.g_chem * self.chem_energy_op_vec)
         return chem_energy
 
     # Functions that return the energy for the operator part of a term in the Hamiltonian,
@@ -1975,6 +1977,7 @@ class System2DBase(ABC):
                 self.cfg.num_fermionic_layer,
                 self.cfg.lattice.sublattice_factors,
                 self.ferm_covmat_vec,
+                self.occupations_before_ph,
             )
         return self._chem_energy_op_vec
 

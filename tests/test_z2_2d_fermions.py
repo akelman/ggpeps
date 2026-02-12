@@ -1352,8 +1352,8 @@ class TestTransVariance(unittest.TestCase):
                         system_z2_2_2_left.update_gauge_full_system(config)
                         system_z2_2_2_right.update_gauge_full_system(config)
 
-                        val_left = system_z2_2_2_left.chem_energy_op_vec[layerind]
-                        val_right = system_z2_2_2_right.chem_energy_op_vec[layerind]
+                        val_left = system_z2_2_2_left.chem_energy_op_vec[layerind - self.system_z2.cfg.num_pg_layer]
+                        val_right = system_z2_2_2_right.chem_energy_op_vec[layerind - self.system_z2.cfg.num_pg_layer]
                         deriv_num = (val_right - val_left) / (2 * eps)
 
                         self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=3)

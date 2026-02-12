@@ -625,7 +625,10 @@ class Z2System2D(System2DBase):
         num_fermionic_layer: int,
         sublattice_factors: tuple,
         ferm_covmat_vec: xnp.ndarray,
+        occupations_before_ph: xnp.ndarray,
     ) -> xnp.ndarray:
+
+        new_chem = xnp.sum(occupations_before_ph, axis=1)
 
         nlayer = num_pg_layer + num_fermionic_layer
         chem_energy_op = xnp.zeros(nlayer)
@@ -650,7 +653,7 @@ class Z2System2D(System2DBase):
 
             chem_energy_op = backend.array_assign(chem_energy_op, layer_ind, layer_chem_energy)
 
-        return chem_energy_op
+        return new_chem
 
     @staticmethod
     @maybe_jit(
