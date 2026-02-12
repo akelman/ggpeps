@@ -692,13 +692,10 @@ class D2nSystem2D(System2DBase):
 
     @staticmethod
     def _compute_mass_energy_op_vec(
-        lattice_size: int,
-        num_pg_layer: int,
-        num_fermionic_layer: int,
-        ferm_cov_vec: xnp.ndarray,
+        occupations_after_ph: xnp.ndarray,
         use_trans_inv: bool = True,
     ) -> xnp.ndarray:
-        mass_energy_op = xnp.zeros(num_pg_layer + num_fermionic_layer)
+        mass_energy_op = xnp.sum(occupations_after_ph, axis=1)  # currently, occupations do not support color!!
         return mass_energy_op
 
     @staticmethod
@@ -751,14 +748,9 @@ class D2nSystem2D(System2DBase):
 
     @staticmethod
     def _compute_chem_energy_op_vec(
-        lattice_size: int,
-        num_pg_layer: int,
-        num_fermionic_layer: int,
-        sublattice_factors: tuple,
-        ferm_covmat_vec: xnp.ndarray,
+        occupations_before_ph: xnp.ndarray,
     ) -> xnp.ndarray:
-        nlayer = num_pg_layer + num_fermionic_layer
-        chem_energy_op = xnp.zeros(nlayer)
+        chem_energy_op = xnp.sum(occupations_before_ph, axis=1)  # currently, occupations do not support color!!
         return chem_energy_op
 
     @staticmethod
