@@ -401,7 +401,7 @@ class Z2System2D(System2DBase):
         return dest_grad
 
     @staticmethod
-    @maybe_jit(static_argnames=["lattice_size", "use_trans_inv", "num_pg_layer", "num_fermionic_layer"])
+    @maybe_jit(static_argnames=["use_trans_inv"])
     def _compute_mass_energy_op_vec(
         occupations_after_ph: xnp.ndarray,
         use_trans_inv: bool = False,
@@ -611,14 +611,7 @@ class Z2System2D(System2DBase):
         return gradients
 
     @staticmethod
-    @maybe_jit(
-        static_argnames=[
-            "lattice_size",
-            "num_pg_layer",
-            "num_fermionic_layer",
-            "sublattice_factors",
-        ],
-    )
+    @maybe_jit(static_argnames=[])
     def _compute_chem_energy_op_vec(
         occupations_before_ph: xnp.ndarray,
     ) -> xnp.ndarray:
