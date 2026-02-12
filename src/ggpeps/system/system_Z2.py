@@ -620,40 +620,12 @@ class Z2System2D(System2DBase):
         ],
     )
     def _compute_chem_energy_op_vec(
-        lattice_size: int,
-        num_pg_layer: int,
-        num_fermionic_layer: int,
-        sublattice_factors: tuple,
-        ferm_covmat_vec: xnp.ndarray,
         occupations_before_ph: xnp.ndarray,
     ) -> xnp.ndarray:
 
-        new_chem = xnp.sum(occupations_before_ph, axis=1)
+        chem_energy_op = xnp.sum(occupations_before_ph, axis=1)
 
-        nlayer = num_pg_layer + num_fermionic_layer
-        chem_energy_op = xnp.zeros(nlayer)
-
-        for layer_ind in range(num_pg_layer, nlayer):
-            # only the fermionic layers directly contribute to the chemical potential
-
-            # Calculation prelimaries
-            covmat = ferm_covmat_vec[layer_ind]
-            layer_chem_energy = 0.0
-
-            # Calculate chem term
-            # Since we set the system to have different parameters on the even and odd sites when using a non-zero
-            # chemical potential (i.e. the system is translationally invariant by two sites),
-            # we could just calculate it for one even and one odd site and multiply by the size of the system
-            for site in range(lattice_size):
-                site_ind = 2 * site  # index into covariance matrix
-                site_factor = sublattice_factors[site]  # even or odd sublattice
-                mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
-                layer_chem_energy += site_factor * mass_site
-                layer_chem_energy += 0.5  # constant offset which arises from particle-hole transformation
-
-            chem_energy_op = backend.array_assign(chem_energy_op, layer_ind, layer_chem_energy)
-
-        return new_chem
+        return chem_energy_op
 
     @staticmethod
     @maybe_jit(

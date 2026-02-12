@@ -1711,11 +1711,6 @@ class System2DBase(ABC):
     @staticmethod
     @abstractmethod
     def _compute_chem_energy_op_vec(
-        lattice_size: int,
-        num_pg_layer: int,
-        num_fermionic_layer: int,
-        sublattice_factors: tuple,
-        ferm_covmat_vec: xnp.ndarray,
         occupations_before_ph: xnp.ndarray,
     ) -> xnp.ndarray:
         """Compute the chemical potential energy (per layer).
@@ -1972,11 +1967,6 @@ class System2DBase(ABC):
         """
         if self._chem_energy_op_vec is None:
             self._chem_energy_op_vec = self._compute_chem_energy_op_vec(
-                self.cfg.lattice.size,
-                self.cfg.num_pg_layer,
-                self.cfg.num_fermionic_layer,
-                self.cfg.lattice.sublattice_factors,
-                self.ferm_covmat_vec,
                 self.occupations_before_ph,
             )
         return self._chem_energy_op_vec
