@@ -4,7 +4,7 @@ from functools import partial
 
 import jax
 import jax.numpy as jnp
-from jax import jit
+from jax import jit, vmap
 
 # The following line ensures that JAX is configured to 64-bit precision.
 # Without this line, some of the precision tests do not pass.
@@ -63,6 +63,17 @@ def calculate_lognormvec_jax(
     return dest / 2
 
 
+@jax.jit
+def jax_pfaffian(mat):
+    # The jax pfaffian implementation does not properly guard against singular matrices, in which case
+    # it returns nan's. We replace these with 0's.
+    val = py_pfaffian.jax.pfaffian(mat)
+    return jnp.where(jnp.isnan(val), 0.0, val)
+
+
+pfaffian_batched = jit(vmap(jax_pfaffian, in_axes=0, out_axes=0))
+
+
 class BackendJax(BackendBase):
     """Backend for jax."""
 
@@ -88,10 +99,11 @@ class BackendJax(BackendBase):
 
     @staticmethod
     def pfaffian(mat):
-        # The jax pfaffian implementation does not properly guard against singular matrices, in which case
-        # it returns nan's. We replace these with 0's.
-        val = py_pfaffian.jax.pfaffian(mat)
-        return jnp.where(jnp.isnan(val), 0.0, val)
+        return jax_pfaffian(mat)
+
+    @staticmethod
+    def pfaffian_vectorized(mat):
+        return pfaffian_batched(mat)
 
     @staticmethod
     def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):

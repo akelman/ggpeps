@@ -737,17 +737,9 @@ class System2DBase(ABC):
                         rows = inds_batch[:, :, None]
                         cols = inds_batch[:, None, :]
                         submatrices = covmat_out_virt[rows, cols]  # shape (num_terms, size, size)
-                        pfavals = []
-                        for mat_ind, mat in enumerate(submatrices):
-                            cache_key = (layerind, link_pos, size_idxs[mat_ind])
-                            if cache_key in pfaffian_memo:
-                                pfaval = pfaffian_memo[cache_key]
-                            else:
-                                pfaval = backend.pfaffian(mat)
-                                pfaffian_memo[cache_key] = pfaval
-                            pfavals.append(pfaval)
 
-                        pfavals = xnp.asarray(pfavals)
+                        pfavals = backend.pfaffian_vectorized(submatrices)
+
                         el_pfaffians = backend.array_assign(
                             el_pfaffians,
                             (group_element_idx, layerind, link_pos, size_idxs_ind, slice(0, len(pfavals))),
