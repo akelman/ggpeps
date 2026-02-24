@@ -715,10 +715,6 @@ class System2DBase(ABC):
         # Max terms per link; elements may vary in term count.
         el_pfaffians = xnp.zeros((num_group_elements, nlayer, num_el_links, num_lens, num_terms_per_size))
 
-        # Key: (layer_index, link_index, specific_indices_tuple)
-        # Value: Computed pfaffian
-        pfaffian_memo = {}
-
         # TODO: vectorize!
         for group_element_idx in range(num_group_elements):
             idxarr_vec_group_element = idxarr_vec[group_element_idx]
