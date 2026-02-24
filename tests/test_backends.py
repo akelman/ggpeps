@@ -3,6 +3,7 @@ import numpy as np
 import jax.numpy as jnp
 
 from ggpeps import utils
+from ggpeps.system.backend import backend
 from ggpeps.system.backend_numpy import BackendNumpy
 from ggpeps.system.backend_jax import BackendJax
 
@@ -46,3 +47,15 @@ class TestBackends(unittest.TestCase):
         pfaval_np4 = self.numpy_backend.pfaffian(mat4_np)
         pfaval_jax4 = self.jax_backend.pfaffian(mat4_jax)
         self.assertAlmostEqual(pfaval_np4, np.asarray(pfaval_jax4))
+
+    def test_vectorized_pfaffians(self):
+        """Test that the vectorized pfaffian function gives the same results for as the non-vectorized version."""
+
+        # Test with a batch of 3 random matrices
+        mats = np.random.rand(3, 4, 4)
+        mats = utils.anti_symmetrize(mats)
+
+        pfavals_vectorized = np.asarray(backend.pfaffian_vectorized(mats))
+        pfavals = np.array([backend.pfaffian(mat) for mat in mats])
+
+        self.assertTrue(np.allclose(pfavals_vectorized, pfavals))
