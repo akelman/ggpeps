@@ -25,6 +25,10 @@ cp param* "$dir"/
 shopt -u nullglob
 
 # restart the job
-sbatch slurmjob
+if [[ "$1" == "--restart" ]]; then
+  sbatch slurmjob
+  echo "Moved files into $dir and resubmitted the job."
+else
+  echo "Moved files into $dir."
+fi
 
-echo "Moved files into $dir and resubmitted the job"
