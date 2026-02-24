@@ -49,7 +49,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(6, dest)
 
     def test_anti_symmetrize(self):
-        mat = np.random.rand(10)
+        mat = np.random.rand(5, 5)
         mat_as = utils.anti_symmetrize(mat)
         self.assertTrue(utils.is_antisymmetric(mat_as))
 
