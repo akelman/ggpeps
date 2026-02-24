@@ -542,8 +542,8 @@ def is_covmat(mat: xnp.ndarray, rtol: float = 1e-5, atol: float = 1e-8) -> bool:
 
 
 def anti_symmetrize(mat: xnp.ndarray) -> xnp.ndarray:
-    """Force a matrix to be anti-symmetirc."""
-    return 0.5 * (mat - mat.T)
+    """Force a matrix (or stack of matrices) to be anti-symmetirc."""
+    return 0.5 * (mat - np.swapaxes(mat, -1, -2))
 
 
 def get_nonzero_fraction(mat: xnp.ndarray):
