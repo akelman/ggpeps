@@ -128,7 +128,8 @@ class System2DBase(ABC):
         self._int_energy_op: Optional[float] = None
         self._int_energy_op_vec: Optional[xnp.ndarray] = None
         self._chem_energy_op_vec: Optional[xnp.ndarray] = None
-        self._all_occupations: Optional[xnp.ndarray] = None
+        self._occupations_before_ph: Optional[xnp.ndarray] = None
+        self._occupations_after_ph: Optional[xnp.ndarray] = None
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (D^-1 - gammain)^-1
@@ -159,7 +160,8 @@ class System2DBase(ABC):
         self._int_energy_op = None
         self._int_energy_op_vec = None
         self._chem_energy_op_vec = None
-        self._all_occupations = None
+        self._occupations_before_ph = None
+        self._occupations_after_ph = None
 
         self._el_energy_op_grad_vec = None
         self._mass_energy_op_grad_vec = None
@@ -1622,10 +1624,7 @@ class System2DBase(ABC):
     @staticmethod
     @abstractmethod
     def _compute_mass_energy_op_vec(
-        lattice_size: int,
-        num_pg_layer: int,
-        num_fermionic_layer: int,
-        ferm_cov_vec: xnp.ndarray,
+        occupations_after_ph: xnp.ndarray,
         use_trans_inv: bool = True,
     ) -> xnp.ndarray:
         """Compute the mass term of the Hamiltonian (per layer).
@@ -1633,7 +1632,7 @@ class System2DBase(ABC):
         This is an abstract method and has to be overwritten in a subclass.
 
         Args:
-            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
+            use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to False.
 
         Returns:
             array: mass energy as a vec over layers
@@ -1704,11 +1703,7 @@ class System2DBase(ABC):
     @staticmethod
     @abstractmethod
     def _compute_chem_energy_op_vec(
-        lattice_size: int,
-        num_pg_layer: int,
-        num_fermionic_layer: int,
-        sublattice_factors: tuple,
-        ferm_covmat_vec: xnp.ndarray,
+        occupations_before_ph: xnp.ndarray,
     ) -> xnp.ndarray:
         """Compute the chemical potential energy (per layer).
         This is an abstract method and has to be overwritten in a subclass.
@@ -1829,10 +1824,11 @@ class System2DBase(ABC):
         Returns:
             float: chemical potential energy
         """
-        chem_energy = 0.0
-        for layer in range(self.cfg.num_pg_layer, self.cfg.nlayer):
-            ind = layer - self.cfg.num_pg_layer
-            chem_energy += self.cfg.g_chem[ind] * self.chem_energy_op_vec[layer]
+        # chem_energy = 0.0
+        # for layer in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+        #    ind = layer - self.cfg.num_pg_layer
+        #    chem_energy += self.cfg.g_chem[ind] * self.chem_energy_op_vec[layer]
+        chem_energy = xnp.sum(self.cfg.g_chem * self.chem_energy_op_vec)
         return chem_energy
 
     # Functions that return the energy for the operator part of a term in the Hamiltonian,
@@ -1926,11 +1922,8 @@ class System2DBase(ABC):
         """
         if self._mass_energy_op_vec is None:
             self._mass_energy_op_vec = self._compute_mass_energy_op_vec(
-                self.cfg.lattice.size,
-                self.cfg.num_pg_layer,
-                self.cfg.num_fermionic_layer,
-                self.ferm_covmat_vec,
-                use_trans_inv=True,
+                self.occupations_after_ph,
+                use_trans_inv=False,
             )
         return self._mass_energy_op_vec
 
@@ -1964,11 +1957,7 @@ class System2DBase(ABC):
         """
         if self._chem_energy_op_vec is None:
             self._chem_energy_op_vec = self._compute_chem_energy_op_vec(
-                self.cfg.lattice.size,
-                self.cfg.num_pg_layer,
-                self.cfg.num_fermionic_layer,
-                self.cfg.lattice.sublattice_factors,
-                self.ferm_covmat_vec,
+                self.occupations_before_ph,
             )
         return self._chem_energy_op_vec
 
@@ -2126,26 +2115,50 @@ class System2DBase(ABC):
         return xnp.array(total_occ)
 
     @property
-    def all_occupations(self) -> xnp.ndarray:
-        """Compute the occupation number for all layers and sites in the system.
+    def occupations_before_ph(self) -> xnp.ndarray:
+        """Compute the occupation number before the particle-hole transformation
+        for all layers and sites in the system.
 
         Returns:
             array: the occupation number for all layers and sites, as a 2D array
         """
-        if self._all_occupations is None:
+        if self._occupations_before_ph is None:
 
             # Initialize shape
             # this ensures that is has the proper shape even when there are no fermionic layers
             # (which is needed for transposes, etc. higher up in the stack)
-            self._all_occupations = np.zeros((self.cfg.num_fermionic_layer, self.cfg.lattice.size))
+            self._occupations_before_ph = np.zeros((self.cfg.num_fermionic_layer, self.cfg.lattice.size))
 
             after_ph = False
             for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
                 for site in range(self.cfg.lattice.size):
-                    self._all_occupations[lay - self.cfg.num_pg_layer, site] = self.occupation(
+                    self._occupations_before_ph[lay - self.cfg.num_pg_layer, site] = self.occupation(
                         lay, site, after_ph=after_ph
                     )
-        return self._all_occupations
+        return self._occupations_before_ph
+
+    @property
+    def occupations_after_ph(self) -> xnp.ndarray:
+        """Compute the occupation number after the particle-hole transformation
+        for all layers and sites in the system.
+
+        Returns:
+            array: the occupation number for all layers and sites, as a 2D array
+        """
+        if self._occupations_after_ph is None:
+
+            # Initialize shape
+            # this ensures that is has the proper shape even when there are no fermionic layers
+            # (which is needed for transposes, etc. higher up in the stack)
+            self._occupations_after_ph = np.zeros((self.cfg.num_fermionic_layer, self.cfg.lattice.size))
+
+            after_ph = True
+            for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+                for site in range(self.cfg.lattice.size):
+                    self._occupations_after_ph[lay - self.cfg.num_pg_layer, site] = self.occupation(
+                        lay, site, after_ph=after_ph
+                    )
+        return self._occupations_after_ph
 
     def meson_string(self, path: list[tuple[int, bool]]) -> float:
         """Calculate the value of a meson string given a path.

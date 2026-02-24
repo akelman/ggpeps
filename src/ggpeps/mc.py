@@ -193,7 +193,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["chem_energy"].append(float(self.system.chem_energy))
         self.obsdict["norm"].append(float(self.system.calculate_lognorm(all_factors=True)))
         if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
-            self.obsdict["all_occupations"].append(np.asarray(self.system.all_occupations))
+            self.obsdict["all_occupations"].append(np.asarray(self.system.occupations_before_ph))
             self.obsdict["average_occupation"].append(np.asarray(self.system.average_occupation()))
 
         # Wilson loops

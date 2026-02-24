@@ -138,7 +138,7 @@ class Config2DBase(ABC):
         elif len(g_chem) != self.num_fermionic_layer:
             raise ValueError("The number of chemical potentials must match the number of fermionic layers.")
         else:
-            self.g_chem = g_chem
+            self.g_chem = np.asarray(g_chem)
 
         # Settings for the electric energy
         # these depend on the ansatz, so we only declare their type here

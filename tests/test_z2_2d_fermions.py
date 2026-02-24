@@ -807,10 +807,10 @@ class TestZ2System(unittest.TestCase):
         self.assertTrue(np.allclose(int_op_vec[1], int_op_vec[2]))
 
         mass_op_vec = system_z2.mass_energy_op_vec
-        self.assertTrue(np.allclose(mass_op_vec[1], mass_op_vec[2]))
+        self.assertTrue(np.allclose(mass_op_vec[0], mass_op_vec[1]))
 
         chem_op_vec = system_z2.chem_energy_op_vec
-        self.assertTrue(np.allclose(chem_op_vec[1], chem_op_vec[2]))
+        self.assertTrue(np.allclose(chem_op_vec[0], chem_op_vec[1]))
 
         chem_grads = system_z2.chem_energy_op_grad_vec
         self.assertTrue(np.allclose(chem_grads[1], chem_grads[2]))
@@ -1218,7 +1218,7 @@ class TestTransVariance(unittest.TestCase):
         # Use the paramvec from setUp(), and extract various values for comparison
         mass_op = self.system_z2.mass_energy_op
         chem_op = np.sum(self.system_z2.chem_energy_op_vec)
-        all_occupations = self.system_z2.all_occupations
+        all_occupations = self.system_z2.occupations_before_ph
 
         mass_offset = 0.5 * self.system_z2.cfg.lattice.size * self.system_z2.cfg.num_fermionic_layer
         mass = mass_offset
@@ -1352,8 +1352,8 @@ class TestTransVariance(unittest.TestCase):
                         system_z2_2_2_left.update_gauge_full_system(config)
                         system_z2_2_2_right.update_gauge_full_system(config)
 
-                        val_left = system_z2_2_2_left.chem_energy_op_vec[layerind]
-                        val_right = system_z2_2_2_right.chem_energy_op_vec[layerind]
+                        val_left = system_z2_2_2_left.chem_energy_op_vec[layerind - self.system_z2.cfg.num_pg_layer]
+                        val_right = system_z2_2_2_right.chem_energy_op_vec[layerind - self.system_z2.cfg.num_pg_layer]
                         deriv_num = (val_right - val_left) / (2 * eps)
 
                         self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=3)

@@ -138,7 +138,7 @@ class ExactEvaluator(Evaluator):
                 # Occupations
                 if self.system.cfg.num_fermionic_layer > 0:  # If there are fermionic layers
                     data["average_occupation"].append(self.system.average_occupation())
-                    data["all_occupations"].append(self.system.all_occupations)
+                    data["all_occupations"].append(self.system.occupations_before_ph)
 
                 if self.cfg.compute_grads:
                     data["el_energy_op_grad"].append(self.system.el_energy_op_grad_vec)
