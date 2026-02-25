@@ -10,7 +10,8 @@ description = "A Python package to work with Gauged Gaussian Projected Entangled
 readme = "README.md"
 requires-python = ">=3.9"
 
-#license = {file = "LICENSE.txt"}
+license = "MIT"
+license-files = ["LICENSE"]
 
 keywords = ["physics", "quantum physics", "simulation", "tensor networks"]
 
@@ -29,10 +30,6 @@ classifiers = [
 
   "Intended Audience :: Physics",
   "Topic :: Simulation",
-
-  # Pick your license as you wish
-  #TODO: Fix this
-  "License :: OSI Approved :: MIT License",
 
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.9",
