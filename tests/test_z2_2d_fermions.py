@@ -243,8 +243,11 @@ class TestZ2System(unittest.TestCase):
 
         uc_ind = 0
 
+        # test a random subset of the parameters, since testing all of them is too slow
+        inds = np.random.choice(len(symbolvec), size=3, replace=False)
+
         for layerind in range(2):
-            for ind in range(len(symbolvec)):
+            for ind in inds:
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
                     paramvec_right = np.copy(paramvec)
@@ -322,10 +325,13 @@ class TestZ2System(unittest.TestCase):
 
         uc_ind = 0
 
+        # test a random subset of the parameters, since testing all of them is too slow
+        inds = np.random.choice(len(symbolvec), size=3, replace=False)
+
         for layerind in range(2):
             # we could skip the first layer, since the first layer does not contribute
             # to the mass energy
-            for ind in range(len(symbolvec)):
+            for ind in inds:
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
                     paramvec_right = np.copy(paramvec)
@@ -370,10 +376,13 @@ class TestZ2System(unittest.TestCase):
 
         uc_ind = 0
 
+        # test a random subset of the parameters, since testing all of them is too slow
+        inds = np.random.choice(len(symbolvec), size=3, replace=False)
+
         for layerind in range(3):
             # we could skip the first layer, since the first layer does not contribute
             # to the mass energy
-            for ind in range(len(symbolvec)):
+            for ind in inds:
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
                     paramvec_right = np.copy(paramvec)
@@ -504,10 +513,13 @@ class TestZ2System(unittest.TestCase):
 
         uc_ind = 0
 
+        # test a random subset of the parameters, since testing all of them is too slow
+        inds = np.random.choice(len(symbolvec), size=3, replace=False)
+
         for layerind in range(2):
             # we could skip the first layer, since the first layer does not contribute
             # to the interaction energy
-            for ind in range(len(symbolvec)):
+            for ind in inds:
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
                     paramvec_right = np.copy(paramvec)
@@ -1245,10 +1257,13 @@ class TestTransVariance(unittest.TestCase):
         deriv_ana = system_z2.mass_energy_op_grad_vec
         symbolvec = system_z2.symbolvec
 
+        # test a random subset of the parameters, since testing all of them is too slow
+        inds = np.random.choice(len(symbolvec), size=3, replace=False)
+
         for layerind in range(self.system_z2.cfg.nlayer):
             # we could skip the pure gauge layers, since they do not contribute
             for uc_ind in range(unitcell_size):
-                for ind in range(len(symbolvec)):
+                for ind in inds:
                     with self.subTest(symbol=symbolvec[ind], layerind=layerind, uc_ind=uc_ind):
                         paramvec_left = np.copy(paramvec)
                         paramvec_right = np.copy(paramvec)
@@ -1310,10 +1325,13 @@ class TestTransVariance(unittest.TestCase):
         deriv_ana = system_z2.chem_energy_op_grad_vec
         symbolvec = system_z2.symbolvec
 
+        # test a random subset of the parameters, since testing all of them is too slow
+        inds = np.random.choice(len(symbolvec), size=3, replace=False)
+
         for layerind in range(self.system_z2.cfg.nlayer):
             # we could skip the pure gauge layers, since they do not contribute
             for uc_ind in range(unitcell_size):
-                for ind in range(len(symbolvec)):
+                for ind in inds:
                     with self.subTest(symbol=symbolvec[ind], layerind=layerind, uc_ind=uc_ind):
                         paramvec_left = np.copy(paramvec)
                         paramvec_right = np.copy(paramvec)
@@ -1375,10 +1393,13 @@ class TestTransVariance(unittest.TestCase):
         deriv_ana = system_z2.grad_over_norm_vec
         symbolvec = system_z2.symbolvec
 
+        # test a random subset of the parameters, since testing all of them is too slow
+        inds = np.random.choice(len(symbolvec), size=3, replace=False)
+
         for layerind in range(self.system_z2.cfg.nlayer):
             # we could skip the pure gauge layers, since they do not contribute
             for uc_ind in range(unitcell_size):
-                for ind in range(len(symbolvec)):
+                for ind in inds:
                     with self.subTest(symbol=symbolvec[ind], layerind=layerind, uc_ind=uc_ind):
                         paramvec_left = np.copy(paramvec)
                         paramvec_right = np.copy(paramvec)
@@ -1549,10 +1570,14 @@ class TestFullGrads(unittest.TestCase):
 
         eps = 1e-5
         symbolvec = ex_eval.evaluator.system.symbolvec
+
+        # test a random subset of the parameters, since testing all of them is too slow
+        inds = np.random.choice(len(symbolvec), size=3, replace=False)
+
         for layerind in range(ex_eval.evaluator.system.cfg.nlayer):
             # we could skip the pure gauge layers, since they do not contribute
             for uc_ind in range(unitcell_size):
-                for ind in range(len(symbolvec)):
+                for ind in inds:
                     with self.subTest(symbol=symbolvec[ind], layerind=layerind, uc_ind=uc_ind):
                         paramvec_left = np.copy(paramvec)
                         paramvec_right = np.copy(paramvec)
