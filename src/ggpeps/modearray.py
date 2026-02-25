@@ -3,8 +3,10 @@ from numbers import Number
 
 # There are multiple ways to extend numpy arrays to contain an additional list of mode arrays
 # One option is a container class: https://numpy.org/doc/stable/user/basics.dispatch.html
-# Given the documentation this option looks like a class that should behave like a numpy array but is actually implemented differently.
-# We are aiming rather for a numpy array with a bit extra. The inheritance option looks more reasonable: https://numpy.org/doc/stable/user/basics.subclassing.html
+# Given the documentation this option looks like a class that should behave like a numpy array
+# but is actually implemented differently.
+# We are aiming rather for a numpy array with a bit extra.
+# The inheritance option looks more reasonable: https://numpy.org/doc/stable/user/basics.subclassing.html
 # The following code roughly follows the ideas given in the documentation "Subclassing ndarray"
 
 
@@ -61,9 +63,7 @@ class ModeArray(np.ndarray):
             return
 
         if len(val) != len(self.shape):
-            raise ValueError(
-                "The dimension of the mode array must be equal to the dimension of the data."
-            )
+            raise ValueError("The dimension of the mode array must be equal to the dimension of the data.")
 
         self._verify_modes(val)
 
@@ -111,7 +111,8 @@ class ModeArray(np.ndarray):
         if len(modes) == 2:
             if not modes[0][1] == modes[1][0]:
                 raise ValueError(
-                    "The column mode array of the first matrix must match for the row mode array of the second matrix in matrix multiplication."
+                    "The column mode array of the first matrix must match for the row mode array of the second matrix"
+                    " in matrix multiplication."
                 )
             else:
                 return [modes[0][0], modes[1][1]]
@@ -122,9 +123,7 @@ class ModeArray(np.ndarray):
                 return modes[0]
         if len(modes) == 2:
             if not modes[0] == modes[1]:
-                raise ValueError(
-                    "The mode arrays must match for elementwise multiplication."
-                )
+                raise ValueError("The mode arrays must match for elementwise multiplication.")
             else:
                 return modes[0]
         # TODO: More checks
@@ -218,7 +217,8 @@ class ModeArray(np.ndarray):
         The modes given in new_modes must be named the same way as the ones in the original matrix.
 
         Args:
-            new_modes (list): List of new mode names for the rows. This is not a list of lists, but only a list. Order matters.
+            new_modes (list): List of new mode names for the rows.
+                              This is not a list of lists, but only a list. Order matters.
         """
         self._verify_modes_permutation([new_modes, self.modes[1]])
         permutation_rows = generate_permutation_matrix(self.modes[0], new_modes)
@@ -230,7 +230,8 @@ class ModeArray(np.ndarray):
         The modes given in new_modes must be named the same way as the ones in the original matrix.
 
         Args:
-            new_modes (list): List of new mode names for columns. This is not a list of lists, but only a list. Order matters.
+            new_modes (list): List of new mode names for columns.
+                              This is not a list of lists, but only a list. Order matters.
         """
         self._verify_modes_permutation([self.modes[0], new_modes])
         permutation_cols = generate_permutation_matrix(self.modes[1], new_modes)
@@ -257,17 +258,14 @@ class ModeArray(np.ndarray):
             mode_dim = val[ind]
             mode_set = set(mode_dim)
             if len(mode_set) != len(mode_dim):
-                raise ValueError(
-                    "The names of modes must be unique, they are supposed to form a basis."
-                )
+                raise ValueError("The names of modes must be unique, they are supposed to form a basis.")
             if len(mode_set) != self.shape[ind]:
-                raise ValueError(
-                    f"The number of modes does not match the number of entries in dimension {ind}"
-                )
+                raise ValueError(f"The number of modes does not match the number of entries in dimension {ind}")
 
 
 def generate_permutation_matrix(start_modes, end_modes):
-    """This function returns a permutation that permutes columns from start order to end order (when acting on a matrix from the right):
+    """This function returns a permutation that permutes columns from start order to end order
+    (when acting on a matrix from the right):
         M -> M' = M @ P, where M' has permuted columns
     To permute rows, act with the transpose from the left:
         M -> M' = transpose(P) @ M, where M' has permuted rows
@@ -277,7 +275,8 @@ def generate_permutation_matrix(start_modes, end_modes):
         end_modes (list): the desired end mode order.
 
     Returns:
-        ModeArray: the permutation matrix that transforms from start order to end order in columns if applied from the right
+        ModeArray: permutation matrix that transforms from start order to end order
+                   in columns if applied from the right
     """
 
     # Do checks to ensure the given mode orders are valid and compatible

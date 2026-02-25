@@ -12,43 +12,47 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Tests",
+            "name": "Tests", 
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/test.py",
             "console": "integratedTerminal"
         },
         {
-            "name": "Eval MC L=2",
+            "name": "Z2 Eval MC L=2",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "console": "integratedTerminal",
             "args": [
                 "eval-mc",
+                "Z2",
                 "--L", "2",
                 "--level", "debug",
-                "--warmup_steps", "1000",
-                "--meas_steps", "1000",
+                "--warmup_steps", "100",
+                "--meas_steps", "100",
                 "--seed", "15", 
                 "--ncopy", "2",
                 "--num_pg_layer", "1",
                 "--num_fermionic_layer", "1",
-                "--g_el", "0",
-                "--g_mag", "0", 
+                "--g_el", "1",
+                "--g_mag", "1", 
                 "--g_int", "1",
                 "--g_mass", "0",
-                "--ignore_cache"
+                "--ignore_cache",
+                "--compute_grads",
+                "--seed", "2"
             ]
         },
         {
-            "name": "Eval Exact L=2",
+            "name": "Z2 Eval Exact L=2",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "console": "integratedTerminal",
             "args": [
                 "eval-exact",
+                "Z2",
                 "--L", "2",
                 "--ncopy", "2",
                 "--num_pg_layer", "1",
@@ -57,11 +61,13 @@
                 "--g_mag", "0", 
                 "--g_int", "1",
                 "--g_mass", "0",
-                "--ignore_cache"
+                "--g_chem", "1",
+                "--ignore_cache",
+                "--seed", "2"
             ]
         },
         {
-            "name": "Min MC L=2, cp=2, nl=2",
+            "name": "Z2 Min MC L=2, cp=2, nl=2",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
@@ -69,8 +75,8 @@
             "justMyCode": true,
             "args": [
                 "min-mc",
+                "Z2",
                 "--L", "2",
-                "--fermions",
                 "--g_el", "0.5",
                 "--g_mag", "0.5",
                 "--g_int", "1.0",
@@ -87,41 +93,41 @@
             ]
         },
         {
-            "name": "Minexact L=2, PG, cp=2, nl=2",
+            "name": "Z2 Minexact L=2, PG, cp=2, nl=2",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "console": "integratedTerminal",
             "args": [
                 "min-exact",
+                "Z2",
                 "--L", "2",
-                "--fermions",
-                "--g_el",
-                "1.0",
-                "--g_mag",
-                "0.0",
-                "--g_mass",
-                "0.0",
-                "--g_int",
-                "1.0",
-                "--method",
-                "BFGS",
+                "--g_el", "1.0",
+                "--g_mag", "0.0",
+                "--g_mass", "0.0",
+                "--g_int", "1.0",
+                "--method", "BFGS",
                 "--ncopy", "2",
                 "--num_pg_layer", "1",
                 "--num_fermionic_layer", "1",
-                "--ignore_cache"
+                "--el_links", "0", "1",
+                "--ignore_cache",
+                "--seed", "1438378742"
             ]
         },
         {
-            "name": "Minexact L=2, Fermions, cp=2, nl=2",
+            "name": "Z2 JAX Minexact L=2, Fermions, cp=2, nl=2",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "console": "integratedTerminal",
+            "env":{
+                "GGPEPS_BACKEND": "jax"
+            },
             "args": [
                 "min-exact",
+                "Z2",
                 "--L", "2",
-                "--fermions",
                 "--g_el", "0.0",
                 "--g_mag", "0.0",
                 "--g_mass", "0.0",
@@ -135,15 +141,37 @@
             ]
         },
         {
-            "name": "Minimize (MC) L=2, cp=2, nl=2",
+            "name": "Z2 Minexact L=2, Fermions, cp=2, nl=2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
+            "args": [
+                "min-exact",
+                "Z2",
+                "--L", "2",
+                "--g_el", "0.0",
+                "--g_mag", "0.0",
+                "--g_mass", "0.0",
+                "--g_int", "1.0",
+                "--method", "BFGS",
+                "--ncopy", "2",
+                "--num_pg_layer", "1", 
+                "--num_fermionic_layer", "1",
+                "--seed", "1438378742",
+                "--ignore_cache"
+            ]
+        },
+        {
+            "name": "Z2 Minimize (MC) L=2, cp=2, nl=2",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manager.py",
             "console": "integratedTerminal",
             "args": [
                 "min-mc",
+                "Z2",
                 "--L", "2",
-                "--fermions",
                 "--g_el", "0.5",
                 "--g_mag", "0.5",
                 "--g_int", "1.0",
@@ -158,6 +186,96 @@
                 "--seed", "2",
                 "--ignore_cache"
             ]
-        }
+        },
+        {
+            "name": "Minimize NEVMC",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
+            "args": [
+                "min-nevmc",
+                "Z2",
+                "--L", "2",
+                "--g", "2.0",
+                "--warmup_steps", "50",
+                "--meas_steps", "50",
+                "--alpha", "0.01",
+                "--seed", "2",
+                "--ignore_cache"
+            ]
+        },
+        {
+            "name": "D6 Eval Exact L=2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
+            "args": [
+                "eval-exact",
+                "D6",
+                "--L", "2",
+                "--ncopy", "2",
+                "--num_pg_layer", "1",
+                "--g_el", "0.0",
+                "--g_mag", "1.0", 
+                "--g_int", "0.0",
+                "--g_mass", "0.0",
+                "--ignore_cache",
+                "--seed", "2",
+                "--gauge_fixing",
+                "--compute_grads",
+            ]
+        },
+                {
+            "name": "D6 Eval MC L=2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
+            "args": [
+                "eval-mc",
+                "D6",
+                "--L", "2",
+                "--ncopy", "2",
+                "--num_pg_layer", "1",
+                "--g_el", "1.0",
+                "--g_mag", "1.0", 
+                "--g_int", "0.0",
+                "--g_mass", "0.0",
+                "--ignore_cache",
+                "--seed", "2",
+                "--warmup_steps", "100",
+                "--meas_steps", "100",
+                "--level","debug",
+            ]
+        },
+                {
+            "name": "D6 min MC L=2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
+            "args": [
+                "min-mc",
+                "D6",
+                "--L", "2",
+                "--ncopy", "2",
+                "--num_pg_layer", "1",
+                "--g_el", "1.0",
+                "--g_mag", "1.0", 
+                "--g_int", "0.0",
+                "--g_mass", "0.0",
+                "--ignore_cache",
+                "--seed", "2",
+                "--warmup_steps", "1",
+                "--meas_steps", "2",
+                "--level","debug",
+                "--maxiter","2",
+            ]
+        },
+
+
+
     ]
 }

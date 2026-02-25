@@ -34,26 +34,21 @@ class TestModeArray(unittest.TestCase):
         with self.assertRaises(ValueError):
             arr_2d.modes = [["1", "1", "2", "3"], ["1", "4", "2", "3"]]
 
-    def test_number_modes(self):
+    def test_number_modes_1d(self):
         arr = np.arange(3).view(ModeArray)
-        arr_2d = np.random.rand(4, 4).view(ModeArray)
         with self.assertRaises(ValueError):
             arr.modes = [["1", "2"]]
         with self.assertRaises(ValueError):
             arr.modes = [["1", "2", "3", "4"]]
+
+    def test_number_modes_2d(self):
+        arr_2d = np.random.rand(4, 4).view(ModeArray)
         with self.assertRaises(ValueError):
             arr_2d.modes = [["1", "2"], ["1", "2", "3", "4"]]
         with self.assertRaises(ValueError):
             arr_2d.modes = [["1", "2", "3", "4"], ["1", "2"]]
         with self.assertRaises(ValueError):
             arr_2d.modes = [["1", "3"], ["1", "3", "4"]]
-
-    def test_number_modes(self):
-        arr = np.arange(3).view(ModeArray)
-        with self.assertRaises(ValueError):
-            arr.modes = [["1", "2"]]
-        with self.assertRaises(ValueError):
-            arr.modes = [["1", "2", "3", "4"]]
 
     def test_addition_scalar(self):
         d_1d = self.a_1d + 4
@@ -75,9 +70,9 @@ class TestModeArray(unittest.TestCase):
         self.assertTrue(d_1d.modes == self.a_1d.modes)
         self.assertTrue(d_2d.modes == self.a_2d.modes)
         with self.assertRaises(ValueError):
-            e = self.a_1d + self.c_1d
+            _ = self.a_1d + self.c_1d
         with self.assertRaises(ValueError):
-            e = self.a_2d + self.c_2d
+            _ = self.a_2d + self.c_2d
 
     def test_multiplication_scalar(self):
         d_1d = self.a_1d * 2
@@ -104,9 +99,9 @@ class TestModeArray(unittest.TestCase):
         self.assertTrue(d_2d.modes == self.a_2d.modes)
 
         with self.assertRaises(ValueError):
-            e = self.a_1d * self.c_1d
+            _ = self.a_1d * self.c_1d
         with self.assertRaises(ValueError):
-            e = self.a_2d * self.c_2d
+            _ = self.a_2d * self.c_2d
 
     def test_matrix_multiplication(self):
         d_2d_ab = self.a_2d @ self.b_2d
@@ -118,7 +113,7 @@ class TestModeArray(unittest.TestCase):
         self.assertTrue(np.allclose(ref_2d_ad, np.asarray(d_2d_ad)))
 
         with self.assertRaises(ValueError):
-            e = self.a_2d @ self.c_2d
+            _ = self.a_2d @ self.c_2d
 
     def test_matmul_output_modes(self):
         d_2d_ab = self.a_2d @ self.b_2d
@@ -145,55 +140,39 @@ class TestModeArray(unittest.TestCase):
     def test_permute_3x3_rows_full_permute_fct(self):
         old_modes = ["1", "2", "3"]
         new_modes = ["3", "1", "2"]
-        arr = ModeArray(
-            np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), [old_modes, old_modes]
-        )
+        arr = ModeArray(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), [old_modes, old_modes])
         dest = arr.permute([new_modes, old_modes])
 
         ref_modes = [new_modes, old_modes]
         self.assertTrue(dest.modes == ref_modes)
-        self.assertTrue(
-            np.allclose(np.asarray(dest), np.asarray([[7, 8, 9], [1, 2, 3], [4, 5, 6]]))
-        )
+        self.assertTrue(np.allclose(np.asarray(dest), np.asarray([[7, 8, 9], [1, 2, 3], [4, 5, 6]])))
 
     def test_permute_3x3_cols_full_permute_fct(self):
         old_modes = ["1", "2", "3"]
         new_modes = ["3", "1", "2"]
-        arr = ModeArray(
-            np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), [old_modes, old_modes]
-        )
+        arr = ModeArray(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), [old_modes, old_modes])
         dest = arr.permute([old_modes, new_modes])
 
         ref_modes = [old_modes, new_modes]
         self.assertTrue(list(dest.modes) == ref_modes)
-        self.assertTrue(
-            np.allclose(np.asarray(dest), np.asarray([[3, 1, 2], [6, 4, 5], [9, 7, 8]]))
-        )
+        self.assertTrue(np.allclose(np.asarray(dest), np.asarray([[3, 1, 2], [6, 4, 5], [9, 7, 8]])))
 
     def test_permute_3x3_cols(self):
         old_modes = ["1", "2", "3"]
         new_modes = ["3", "1", "2"]
-        arr = ModeArray(
-            np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), [old_modes, old_modes]
-        )
+        arr = ModeArray(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), [old_modes, old_modes])
         dest = arr.permute_cols(new_modes)
 
         ref_modes = [old_modes, new_modes]
         self.assertTrue(list(dest.modes) == ref_modes)
-        self.assertTrue(
-            np.allclose(np.asarray(dest), np.asarray([[3, 1, 2], [6, 4, 5], [9, 7, 8]]))
-        )
+        self.assertTrue(np.allclose(np.asarray(dest), np.asarray([[3, 1, 2], [6, 4, 5], [9, 7, 8]])))
 
     def test_permute_3x3_rows(self):
         old_modes = ["1", "2", "3"]
         new_modes = ["3", "1", "2"]
-        arr = ModeArray(
-            np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), [old_modes, old_modes]
-        )
+        arr = ModeArray(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), [old_modes, old_modes])
         dest = arr.permute_rows(new_modes)
 
         ref_modes = [new_modes, old_modes]
         self.assertTrue(list(dest.modes) == ref_modes)
-        self.assertTrue(
-            np.allclose(np.asarray(dest), np.asarray([[7, 8, 9], [1, 2, 3], [4, 5, 6]]))
-        )
+        self.assertTrue(np.allclose(np.asarray(dest), np.asarray([[7, 8, 9], [1, 2, 3], [4, 5, 6]])))

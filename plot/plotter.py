@@ -54,9 +54,7 @@ def plot_3d(args):
     int_couplings = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
     for interaction in int_couplings:
         restrictions = {"mass": -2.0, "int": interaction}
-        xvals, yvals_dict, _ = extract_data(
-            data, args.xaxis, args.obs, restrictions, args.require_g
-        )
+        xvals, yvals_dict, _ = extract_data(data, args.xaxis, args.obs, restrictions, args.require_g)
         yvals = yvals_dict[ob]
         shift = 0  # 4*np.sqrt(2)
         yvals = [k + shift for k in yvals]
@@ -67,9 +65,7 @@ def plot_3d(args):
     poly = PolyCollection(verts, facecolors=facecolors, alpha=0.7)
     ax.add_collection3d(poly, zs=int_couplings, zdir="y")
 
-    ax.set(
-        xlim=(0, 1.5), ylim=(0, 1), zlim=(-10, 10), xlabel="el", ylabel="int", zlabel=ob
-    )
+    ax.set(xlim=(0, 1.5), ylim=(0, 1), zlim=(-10, 10), xlabel="el", ylabel="int", zlabel=ob)
 
     plt.show()
 
@@ -88,9 +84,7 @@ def plot(args):
 
     if args.ed is not None:
         data = pd.read_csv(args.ed)
-        xvals, yvals_dict, _ = extract_data(
-            data, args.xaxis, args.obs, restrictions, args.require_g
-        )
+        xvals, yvals_dict, _ = extract_data(data, args.xaxis, args.obs, restrictions, args.require_g)
 
         for ob in args.obs:
             # reorder
@@ -105,13 +99,9 @@ def plot(args):
     if args.ec is not None:
         for ind, ec_data in enumerate(args.ec):
             data = pd.read_csv(ec_data)
-            xvals, yvals_dict, _ = extract_data(
-                data, args.xaxis, args.obs, restrictions, args.require_g
-            )
+            xvals, yvals_dict, _ = extract_data(data, args.xaxis, args.obs, restrictions, args.require_g)
             for ob in args.obs:
-                ax.scatter(
-                    xvals, yvals_dict[ob], label=f"EC, obs={ob}, {args.ec_labels[ind]}"
-                )
+                ax.scatter(xvals, yvals_dict[ob], label=f"EC, obs={ob}, {args.ec_labels[ind]}")
 
     if args.mc is not None:
         for ind, mc_data in enumerate(args.mc):
@@ -185,18 +175,10 @@ if __name__ == "__main__":
         default=False,
         help="Use logarithmic scaling for y axis",
     )
-    parser.add_argument(
-        "--show", action="store_true", default=False, help="Show the plot"
-    )
-    parser.add_argument(
-        "--no-save", action="store_true", default=False, help="Do not save the plot"
-    )
-    parser.add_argument(
-        "--xaxis", type=str, default="el", help="Quantity to be plotted on the x axis"
-    )
-    parser.add_argument(
-        "--obs", type=str, nargs="+", default=["energy"], help="Observables to plot"
-    )
+    parser.add_argument("--show", action="store_true", default=False, help="Show the plot")
+    parser.add_argument("--no-save", action="store_true", default=False, help="Do not save the plot")
+    parser.add_argument("--xaxis", type=str, default="el", help="Quantity to be plotted on the x axis")
+    parser.add_argument("--obs", type=str, nargs="+", default=["energy"], help="Observables to plot")
 
     parser.add_argument("--ec_labels", nargs="+", help="Label tags for EC data")
     parser.add_argument(

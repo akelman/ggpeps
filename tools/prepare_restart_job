@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+# This script prepares a directory in which a simulation was already run
+# for a restart by moving all files from the finished simulation into a new directory,
+# and then resubmitting the job.
+# TODO: add an argument to extract the parameters from the previous run and use them for the restart.
+
+# Find the lowest N such that attemptN does not exist
+n=1
+while [[ -d "attempt$n" ]]; do
+  ((n++))
+done
+
+dir="attempt$n"
+mkdir "$dir"
+
+# Enable nullglob so unmatched globs expand to nothing
+shopt -s nullglob
+
+# Move matching files into the new directory
+mv cache* result* summary* tjob* job* err* out* log* data* "$dir"/
+cp param* "$dir"/
+
+# Optional: disable nullglob afterward
+shopt -u nullglob
+
+# restart the job
+if [[ "$1" == "--restart" ]]; then
+  sbatch slurmjob
+  echo "Moved files into $dir and resubmitted the job."
+else
+  echo "Moved files into $dir."
+fi
+

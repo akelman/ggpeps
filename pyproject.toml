@@ -8,15 +8,12 @@ dynamic = ["version"]
 name = "ggpeps"  
 description = "A Python package to work with Gauged Gaussian Projected Entangled Pair States (GGPEPS)"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 #license = {file = "LICENSE.txt"}
 
-keywords = ["physics", "quantum physics", "simulation","tensor networks"]
+keywords = ["physics", "quantum physics", "simulation", "tensor networks"]
 
-# This should be your name or the name of the organization who originally
-# authored the project, and a valid email address corresponding to the name
-# listed.
 authors = [
   {name = "Patrick Emonts", email = "emonts@lorentz.leidenuniv.nl" },
   {name = "Ariel Kelman", email = "ariel.kelman@mail.huji.ac.il" }
@@ -28,13 +25,8 @@ maintainers = [
 ]
 
 classifiers = [
-  # How mature is this project? Common values are
-  #   3 - Alpha
-  #   4 - Beta
-  #   5 - Production/Stable
   "Development Status :: 3 - Alpha",
 
-  # Indicate who your project is intended for
   "Intended Audience :: Physics",
   "Topic :: Simulation",
 
@@ -42,11 +34,7 @@ classifiers = [
   #TODO: Fix this
   "License :: OSI Approved :: MIT License",
 
-  # Specify the Python versions you support here. In particular, ensure
-  # that you indicate you support Python 3. These classifiers are *not*
-  # checked by "pip install". See instead "requires-python" key in this file.
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
@@ -66,14 +54,25 @@ dependencies = [
   "jax",
   "jaxlib",
   "ray",
+  # py-pfaffian is not available on PyPI, so we get it from GitHub:
+  "py-pfaffian @ git+https://github.com/Nuclear-Physics-with-Machine-Learning/PyPfaffian.git@main"
 ]
 
 [project.optional-dependencies]
-dev = ["check-manifest"]
-test = ["coverage"]
+dev = ["check-manifest", "seaborn", "black"]
+test = ["coverage", "nox"]
 
 [tool.setuptools_scm]
 version_file = "src/ggpeps/_version.py"
+
+[tool.black]
+line-length = 119
+
+[[tool.mypy.overrides]]
+# mark packages which do not have typing data, 
+# see: https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-library-stubs-or-py-typed-marker
+module = ["numba.*", "pfapack.*", "py_pfaffian.*", "sympy.*"]
+ignore_missing_imports = true
 
 #[project.urls]
 #"Homepage" = ""

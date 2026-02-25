@@ -1,56 +1,61 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from typing import Union
 
+import logging
 import numpy as np
+import pandas as pd
 
+import ggpeps
+from ggpeps.system.system_base import System2DBase
 
-# Currently not used
-@dataclass
-class EvaluatorResult:
-    obsdict: dict  # = {}
-    params: np.ndarray  # = None
-    # TODO: what else needs to be here? system info?
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class Evaluator(ABC):
     """Base class for the different evaluators (ExactEvaluator and MonteCarloEvaluator)."""
 
-    def __init__(self, evaluator_cfg, system):
+    def __init__(self, evaluator_cfg, system: System2DBase):
         self.system = system
-        self.obsdict: dict = None
         self.cfg = evaluator_cfg
-        self.evaluator_type: str | None = None  # exact or mc
+        self.obsdict: dict = {}
 
     @abstractmethod
-    def evaluate(self):  # -> dict
-        """Simulate the system and return the results as a dictionary of observables
+    def evaluate(self) -> None:
+        """Simulate the system and save the results as a dictionary of observables in self.obsdict.
 
         Raises:
-            NotImplementedError: _description_
-
-        Returns:
-            dict: Dictionary of observables
-                  Each key-val pair is of the form (obs: List) where List is a list of values for the observable for the simulated gauge configurations
+            NotImplementedError: raised if the method is not implemented in the subclass.
         """
-        raise NotImplementedError(
-            "This is an abstract method. Implement in child class please."
-        )
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def get_obs_mean(self, obs: str):
+    def get_obs_mean(self, obs: str) -> Union[None, float, np.ndarray]:
         """Get the mean value of an observable
 
         Args:
             obs (str): Name of the observable
 
         Returns:
-            float: Mean value of the observable
+            float or array: Mean value of the observable.
+                            If the observable is an array, the returned value is also an array.
         """
-        raise NotImplementedError(
-            "This is an abstract method. Implement in child class please."
-        )
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
-    def save_summary(self, fname_summary: str):
+    def print_stats(self) -> None:
+        """Print a quick summary of the observables"""
+        for key in self.obsdict.keys():
+            logger.info(f"<{key}>: {self.get_obs_mean(key)}")
+
+    @abstractmethod
+    def summary(self) -> pd.DataFrame:
+        """Generate a summary of the results of the simulation in the form of a pandas dataframe
+
+        Returns:
+            pd.DataFrame: Pandas dataframe with a summary of all results
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    def save_summary(self, fname_summary: str) -> None:
         """Save the summary of the computation to a given filename
 
         Args:

@@ -4,13 +4,11 @@ import numpy as np
 
 import pandas as pd
 
-pd.options.mode.use_inf_as_na = True
-
-from os.path import join
 import seaborn as sns
 import matplotlib.pyplot as plt
 from differential_heatmap import grad_heatmap
-import utils
+
+pd.options.mode.use_inf_as_na = True
 
 
 def _draw_heatmap(*args, **kwargs):
@@ -71,9 +69,7 @@ def plot_heatmap(df, obs, vmin=None, vmax=None, gradients=False):
         darr = np.asarray(d.values)
         darr = darr.astype("float64")
         if gradients:
-            im, cbar = grad_heatmap(
-                sorted(df_obs.y.unique()), sorted(df_obs.z.unique()), darr
-            )
+            im, cbar = grad_heatmap(sorted(df_obs.y.unique()), sorted(df_obs.z.unique()), darr)
             plt.xlabel("y")
             plt.ylabel("z")
             fig = plt.gcf()
@@ -123,19 +119,15 @@ def main(args):
     df = df.dropna()
 
     # Filter out all the list-valued rows (gradients)
-    df = df[
-        df["mean"].apply(
-            lambda x: not isinstance(x, list) and not isinstance(x, np.ndarray)
-        )
-    ]
+    df = df[df["mean"].apply(lambda x: not isinstance(x, list) and not isinstance(x, np.ndarray))]
     df = df.convert_dtypes()
 
     # Make explicit t, y and z columns
-    if not "y" in df.columns:
+    if "y" not in df.columns:
         df["y"] = df["paramvec"].apply(lambda x: np.squeeze(x[:, 1]))
-    if not "z" in df.columns:
+    if "z" not in df.columns:
         df["z"] = df["paramvec"].apply(lambda x: np.squeeze(x[:, 2]))
-    if not "t" in df.columns:
+    if "t" not in df.columns:
         df["t"] = df["paramvec"].apply(lambda x: np.squeeze(x[:, 0]))
 
     print(df)
@@ -146,16 +138,12 @@ def main(args):
         sys.exit(0)
     if args.obs is not None:
         if args.obs in obsverablevec:
-            plot_heatmap(
-                df, args.obs, vmin=args.vmin, vmax=args.vmax, gradients=args.gradients
-            )
+            plot_heatmap(df, args.obs, vmin=args.vmin, vmax=args.vmax, gradients=args.gradients)
         else:
             print(f"Observable '{args.obs}' has not been measured", file=sys.stderr)
     else:
         for obs in obsverablevec:
-            plot_heatmap(
-                df, obs, vmin=args.vmin, vmax=args.vmax, gradients=args.gradients
-            )
+            plot_heatmap(df, obs, vmin=args.vmin, vmax=args.vmax, gradients=args.gradients)
 
 
 if __name__ == "__main__":
@@ -167,13 +155,9 @@ if __name__ == "__main__":
     parser.add_argument("--vmax", default=None)
     parser.add_argument("--vmin", default=None)
     parser.add_argument("--obs", default=None)
-    parser.add_argument(
-        "--gradients", dest="gradients", default=False, action="store_true"
-    )
+    parser.add_argument("--gradients", dest="gradients", default=False, action="store_true")
     parser.add_argument("--list", dest="list", default=False, action="store_true")
-    parser.add_argument(
-        "--no-title", dest="notitle", default=False, action="store_true"
-    )
+    parser.add_argument("--no-title", dest="notitle", default=False, action="store_true")
 
     args = parser.parse_args()
     main(args)

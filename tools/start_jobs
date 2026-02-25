@@ -1,13 +1,20 @@
 #!/bin/bash
 set -eu
 
-for x in $@
+for x in "$@"
 do
-  if [[ -d $x ]]
+  if [[ -d "$x" ]]
   then
-    cd $x
-    echo "Starting $x"
-    sbatch slurmjob
+    cd "$x"
+
+    # Check for files starting with "result"
+    if ls result* >/dev/null 2>&1; then
+      echo "Skipping $x (result file found)"
+    else
+      echo "Starting $x"
+      sbatch slurmjob
+    fi
+
     cd ..
   else
     echo >&2 "ERROR: $x is not a directory. Skipping"

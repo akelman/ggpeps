@@ -4,7 +4,8 @@ import pandas as pd
 
 def main(args):
 
-    # cols = ['el', 'mag', 'int', 'mass', 'energy', 'el_energy', 'mag_energy', 'mass_energy', 'int_energy', 'mass_energy', 'tag']
+    # cols = ['el', 'mag', 'int', 'mass', 'energy', 'el_energy', 'mag_energy', \
+    # 'mass_energy', 'int_energy', 'mass_energy', 'tag']
     data = pd.DataFrame()
     obs = ["energy", "el_energy", "mag_energy", "int_energy", "mass_energy", "norm"]
 
@@ -14,7 +15,7 @@ def main(args):
             vals = df.loc[:, "mean"]
             try:
                 error = df.loc[:, "err"]
-            except:
+            except Exception:
                 error = vals
             keys = df.loc[:, "name"]
             tag = args.tag
@@ -52,9 +53,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--files", nargs="+", help="Directory")
     parser.add_argument("--out", help="Output CSV file")
-    parser.add_argument(
-        "--tag", type=str, default="", help="Tag to add to each row of the CSV file"
-    )
+    parser.add_argument("--tag", type=str, default="", help="Tag to add to each row of the CSV file")
 
     args = parser.parse_args()
 

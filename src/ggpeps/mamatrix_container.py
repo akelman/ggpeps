@@ -1,6 +1,5 @@
 import numpy as np
 import numpy.lib.mixins
-from numbers import Number
 
 HANDLED_FUNCTIONS = {}
 
@@ -18,7 +17,7 @@ def implements(np_function):
 @implements(np.sum)
 def sum(arr):
     "Implementation of np.sum for MAArray objects"
-    return np.sum(self._data)
+    return np.sum(arr)
 
 
 class MAArray(numpy.lib.mixins.NDArrayOperatorsMixin):
@@ -59,7 +58,7 @@ class MAArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
 
 def _unpack_mamatrix_data(val):
-    if isinstance(val, MAMatrix):
+    if isinstance(val, MAArray):
         return val._data
     return val
 

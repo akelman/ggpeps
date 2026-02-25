@@ -1,13 +1,11 @@
 import os
-import re
 import sys
-from ggpeps import utils
+import gzip
 import pickle
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 
-import gzip
+from ggpeps import utils
 
 
 def main(args):
@@ -18,9 +16,7 @@ def main(args):
             if ext == ".gz":
                 with gzip.open(fname, "rb") as infile:
                     dumpobj = pickle.load(infile)
-                    obsvec = np.asarray(
-                        dumpobj["mc"].obsdict[args.obs].get_timeseries()
-                    )
+                    obsvec = np.asarray(dumpobj["mc"].obsdict[args.obs].get_timeseries())
             elif ext == ".txt":
                 obsvec = np.genfromtxt(fname)
             else:
