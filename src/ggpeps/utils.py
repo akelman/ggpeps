@@ -233,7 +233,12 @@ def extract_partial_covmats(mat: xnp.ndarray, corner: int) -> tuple[xnp.ndarray,
 
 @maybe_jit(static_argnames=["link_inds", "lattice_size", "nphysmodes_site", "nvirtmodes_link"])
 def extract_mod_covmats(
-    mat: xnp.ndarray, link_inds: tuple[int, ...], lattice_size: int, nphysmodes_site: int, nvirtmodes_link: int
+    mat: xnp.ndarray,
+    link_inds: tuple[int, ...],
+    lattice_size: int,
+    nphysmodes_site: int,
+    nvirtmodes_link: int,
+    ax: int = -3,
 ) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
     """Extract the A, B, D submatrices, but including the virtual modes on the link specified by link_ind.
     This function can accept a 2D matrix, or a stack of 2D matrices (e.g. a 3D array).
@@ -242,6 +247,8 @@ def extract_mod_covmats(
 
     This function is called many times - when building the modified matrices, and when doing so in the electric
     energy gradients. It is important that it be efficient.
+    Many variations of this function have been tested, at this is fastest found so far, at least for numpy (jax
+    was not as heavily tested).
 
     Args:
         mat (xnp.ndarray): The mat(s) from which to extract the submatrices.
@@ -249,13 +256,14 @@ def extract_mod_covmats(
         lattice_size (int): the size of the lattice (number of sites).
         nphysmodes_site (int): number of physical modes per site.
         nvirtmodes_link (int): number of virtual modes per link.
+        ax (int): axis along which to stack the results (default is -3, i.e. the axis before the last two
 
     Returns:
         tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]: the A, B, D submatrices
-            The returned A has shape (..., len(link_inds), phys_dim, phys_dim)
-            The returned B has shape (..., len(link_inds), phys_dim, virt_dim)
-            The returned D has shape (..., len(link_inds), virt_dim, virt_dim)
-            where ... are any leading dimensions of mat, up to the last two.
+            The returned A has shape (..., len(link_inds), ..., phys_dim, phys_dim)
+            The returned B has shape (..., len(link_inds),..., phys_dim, virt_dim)
+            The returned D has shape (..., len(link_inds), ..., virt_dim, virt_dim)
+            where ... are the other dimensions of mat, determined by the value of ax.
             Thus, len(shape(mat)) + 1 = len(shape(A)) = len(shape(B)) = len(shape(D))
     """
 
@@ -280,9 +288,9 @@ def extract_mod_covmats(
         D_list.append(mat[..., virt_inds, :][..., :, virt_inds])
 
     # Stack into (layers, links, ...)
-    A = xnp.stack(A_list, axis=-3)  # -3 stacks at the axis before the last two, which is the dimension of mod_links
-    B = xnp.stack(B_list, axis=-3)
-    D = xnp.stack(D_list, axis=-3)
+    A = xnp.stack(A_list, axis=ax)  # -3 stacks at the axis before the last two
+    B = xnp.stack(B_list, axis=ax)
+    D = xnp.stack(D_list, axis=ax)
 
     return A, B, D
 
