@@ -231,7 +231,7 @@ def extract_partial_covmats(mat: xnp.ndarray, corner: int) -> tuple[xnp.ndarray,
     return mat_a, mat_b, mat_d
 
 
-@maybe_jit(static_argnames=["link_inds", "lattice_size", "nphysmodes_site", "nvirtmodes_link"])
+@maybe_jit(static_argnames=["link_inds", "lattice_size", "nphysmodes_site", "nvirtmodes_link", "ax"])
 def extract_mod_covmats(
     mat: xnp.ndarray,
     link_inds: tuple[int, ...],
