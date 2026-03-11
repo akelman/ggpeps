@@ -301,23 +301,73 @@ class Z2System2D(System2DBase):
                     diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)[:, -k:]  # We only need the last k columns
                     b_times_diff = mat_b[-k:, :] @ diff_d_gamma_inv  # We only need the last k rows
 
+                    mod_covmats1 = utils.extract_mod_covmats(
+                        gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind],
+                        (mod_link_ind,),
+                        lattice_size,
+                        nphysmodes_site,
+                        nvirtmodes_link,
+                        ax=0,
+                    )
+                    d_mat_a_vec = mod_covmats1[0][0]  # [:, :, 0, :, :]
+                    d_mat_b_vec = mod_covmats1[1][0]
+                    d_mat_d_vec = mod_covmats1[2][0]
+
+                    d_covmat_out_virt_vec = (
+                        d_mat_a_vec[:, :, -k:, -k:]
+                        + d_mat_b_vec[:, :, -k:, :] @ diff_times_b
+                        + b_times_diff @ xnp.swapaxes(d_mat_b_vec, -1, -2)[:, :, :, -k:]
+                        - b_times_diff @ d_mat_d_vec[:, :] @ diff_times_b
+                    )
+
+                    deriv_pf_tot_vec = xnp.zeros((unitcell_size, len(symbolvec)))
+
+                    for lens_ind in range(len(link_idxs)):
+                        inds_arr = xnp.asarray(link_idxs[lens_ind])
+                        prefactors = xnp.asarray(link_coeffs[lens_ind])
+                        pfafs = el_pfaffians[
+                            group_element_idx, layerind, link_pos, lens_ind, : len(inds_arr)
+                        ]  # We slice the last dimension because the
+                        # el_pfaffians array is padded with zeros.
+
+                        virts = covmat_out_virt[None, None, inds_arr[:, :, None], inds_arr[:, None, :]]
+                        d_virts = d_covmat_out_virt_vec[:, :, inds_arr[:, :, None], inds_arr[:, None, :]]
+
+                        deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(virts, d_virts, pfafs)
+                        deriv_pf_tot_vec += xnp.sum(prefactors * deriv_pf_tot_vectorized, axis=-1)
+
+                    # In previous versions of the code, Pfaffians with complex/imaginary coefficients
+                    # were included, but dropped here. Since operators of interest (electric energy + grad)
+                    # are Hermitian, we can just take the real part here.
+                    # At present, we drop these complex/imaginary terms higher in the stack to save on
+                    # computation. We leave the xnp.real() for testing purposes.
+                    d_el_energy_vec = xnp.real(deriv_pf_tot_vec) * xnp.exp(norm_mod - lognorm_default)
+
+                    # Summand with derivative of norms
+                    trace_def1 = grad_over_norm_vec[layerind]
+
+                    # Instead of computing the modified grad over the norm as:
+                    # compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
+                    #    = -0.5 * trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
+                    # we have saved the product of several mats above
+                    # (since they don't change in inner loops), and use it here
+                    trace_mod1 = -0.5 * xnp.trace(d_mat_d_vec @ prod_mod_norm[None, None, ...], axis1=-2, axis2=-1)
+
+                    # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
+                    d_el_energy_vec += el_energy_vec[group_element_idx][layerind][link_pos] * (trace_mod1 - trace_def1)
+
+                    dest_grad = backend.array_add(dest_grad, (group_element_idx, layerind, link_pos), d_el_energy_vec)
+
+                    """
                     for uc_ind in range(unitcell_size):
                         for symbol_ind, _ in enumerate(symbolvec):
                             if (layerind, uc_ind, symbol_ind) not in zeroed_params:
                                 # the derivative calculation is computationally expensive
                                 # we can skip it for parameters that are forced by the ansatz to be zero
 
-                                deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[
-                                    layerind, uc_ind, symbol_ind
-                                ]
-                                mod_covmats = utils.extract_mod_covmats(
-                                    deriv_gamma_maj_sys,
-                                    (mod_link_ind,),
-                                    lattice_size,
-                                    nphysmodes_site,
-                                    nvirtmodes_link,
-                                )
-                                d_mat_a, d_mat_b, d_mat_d = mod_covmats[0][0], mod_covmats[1][0], mod_covmats[2][0]
+                                d_mat_a = d_mat_a_vec[uc_ind, symbol_ind]
+                                d_mat_b = d_mat_b_vec[uc_ind, symbol_ind]
+                                d_mat_d = d_mat_d_vec[uc_ind, symbol_ind]
 
                                 # We only need the bottom-right block of d_gamma_out, since we are only interested
                                 # in the virtual modes of the given link.
@@ -372,6 +422,7 @@ class Z2System2D(System2DBase):
                                 dest_grad = backend.array_add(
                                     dest_grad, (group_element_idx, layerind, link_pos, uc_ind, symbol_ind), d_el_energy
                                 )
+                                """
 
         # scale to system size - currently only valid when all links should be weighed equally
         dest_grad *= nlinks / len(mod_link_inds)
