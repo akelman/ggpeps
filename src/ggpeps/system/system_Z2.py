@@ -276,6 +276,37 @@ class Z2System2D(System2DBase):
             idxarrs_group_element = idxarr_vec[group_element_idx]
             coeffs_vec_group_element = coeffs_vec[group_element_idx]
 
+            # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
+            d_mat_a_vec_vec, d_mat_b_vec_vec, d_mat_d_vec_vec = utils.extract_mod_covmats(
+                gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+                mod_link_inds,
+                lattice_size,
+                nphysmodes_site,
+                nvirtmodes_link,
+                ax=1,
+            )
+
+            # (nlayer, nmodlinks, mod_virt_dim, mod_virt_dim)
+            prod_mod_norm_vec = mat_d_mod_inv_vec @ gamma_in_mod_inv_vec @ gamma_in_sys_mod_vec
+            # (nlayer, nmodlinks, mod_virt_dim, link_dim), take only the last k columns
+            diff_times_b_vec = gamma_out_mod_inv_vec @ xnp.swapaxes(mat_b_mod_vec, -1, -2)[:, :, :, -k:]
+            # (nlayer, nmodlinks, link_dim, mod_virt_dim), take only the last k rows
+            b_times_diff_vec = mat_b_mod_vec[:, :, -k:, :] @ gamma_out_mod_inv_vec
+
+            # Expand to shape (nlayer, nmodlinks, 1, 1, dim1, dim2) so that broadcasting over unitcell_size
+            # and n_symbols works correctly below
+            prod_mod_norm_vec = xnp.expand_dims(prod_mod_norm_vec, axis=(2, 3))
+            diff_times_b_vec = xnp.expand_dims(diff_times_b_vec, axis=(2, 3))
+            b_times_diff_vec = xnp.expand_dims(b_times_diff_vec, axis=(2, 3))
+
+            # shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim, dim)
+            d_covmat_out_virt_vec_vec = (
+                d_mat_a_vec_vec[:, :, :, :, -k:, -k:]
+                + d_mat_b_vec_vec[:, :, :, :, -k:, :] @ diff_times_b_vec[:, :]
+                + b_times_diff_vec @ xnp.swapaxes(d_mat_b_vec_vec, -1, -2)[:, :, :, :, :, -k:]
+                - b_times_diff_vec @ d_mat_d_vec_vec[:, :, :, :] @ diff_times_b_vec
+            )
+
             for layerind in range(nlayer):
 
                 # Abbreviations for more readable code
@@ -284,40 +315,16 @@ class Z2System2D(System2DBase):
 
                 for link_pos, mod_link_ind in enumerate(mod_link_inds):
 
-                    mat_b = mat_b_mod_vec[layerind][link_pos]
-                    diff_d_gamma_inv = gamma_out_mod_inv_vec[layerind][link_pos]
-                    gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind][link_pos]
-                    diff_d_inv_gamma_inv = gamma_in_mod_inv_vec[layerind][link_pos]
-
                     covmat_out_virt = covmat_out_mod_vec[layerind][link_pos]
                     norm_mod = norm_mod_vec[layerind][link_pos]
-                    mat_d_mod_inv = mat_d_mod_inv_vec[layerind][link_pos]
 
                     # Save products that do not need to be recomputed for every parameter
                     # In the matrix products, we only compute the parts that are needed below, to save the extra runtime
-                    prod_mod_norm = mat_d_mod_inv @ diff_d_inv_gamma_inv @ gamma_in_sys_mod
-                    diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)[:, -k:]  # We only need the last k columns
-                    b_times_diff = mat_b[-k:, :] @ diff_d_gamma_inv  # We only need the last k rows
-
-                    mod_covmats = utils.extract_mod_covmats(
-                        gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind],
-                        (mod_link_ind,),
-                        lattice_size,
-                        nphysmodes_site,
-                        nvirtmodes_link,
-                        ax=0,
-                    )
-                    d_mat_a_vec = mod_covmats[0][0]  # [:, :, 0, :, :]
-                    d_mat_b_vec = mod_covmats[1][0]
-                    d_mat_d_vec = mod_covmats[2][0]
+                    prod_mod_norm = prod_mod_norm_vec[layerind, link_pos]
+                    d_mat_d_vec = d_mat_d_vec_vec[layerind, link_pos]
 
                     # shape: (unitcell_size, n_symbols, dim, dim)
-                    d_covmat_out_virt_vec = (
-                        d_mat_a_vec[:, :, -k:, -k:]
-                        + d_mat_b_vec[:, :, -k:, :] @ diff_times_b
-                        + b_times_diff @ xnp.swapaxes(d_mat_b_vec, -1, -2)[:, :, :, -k:]
-                        - b_times_diff @ d_mat_d_vec[:, :] @ diff_times_b
-                    )
+                    d_covmat_out_virt_vec = d_covmat_out_virt_vec_vec[layerind, link_pos]
 
                     deriv_pf_tot_vec = xnp.zeros((unitcell_size, len(symbolvec)))
 
@@ -350,10 +357,10 @@ class Z2System2D(System2DBase):
                     #    = -0.5 * trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
                     # we have saved the product of several mats above
                     # (since they don't change in inner loops), and use it here
-                    trace_mod1 = -0.5 * xnp.trace(d_mat_d_vec @ prod_mod_norm[None, None, ...], axis1=-2, axis2=-1)
+                    trace_mod = -0.5 * xnp.trace(d_mat_d_vec @ prod_mod_norm, axis1=-2, axis2=-1)
 
                     # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
-                    d_el_energy_vec += el_energy_vec[group_element_idx][layerind][link_pos] * (trace_mod1 - trace_def)
+                    d_el_energy_vec += el_energy_vec[group_element_idx][layerind][link_pos] * (trace_mod - trace_def)
 
                     dest_grad = backend.array_add(dest_grad, (group_element_idx, layerind, link_pos), d_el_energy_vec)
 
