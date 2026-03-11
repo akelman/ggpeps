@@ -283,8 +283,6 @@ class Z2System2D(System2DBase):
                 layer_coeffs = coeffs_vec_group_element[layerind]  # tuple of tuple of coeffs
 
                 for link_pos, mod_link_ind in enumerate(mod_link_inds):
-                    link_idxs = layer_idxs[link_pos]  # tuples of indices
-                    link_coeffs = layer_coeffs[link_pos]  # tuple of coeffs
 
                     mat_b = mat_b_mod_vec[layerind][link_pos]
                     diff_d_gamma_inv = gamma_out_mod_inv_vec[layerind][link_pos]
@@ -301,7 +299,7 @@ class Z2System2D(System2DBase):
                     diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)[:, -k:]  # We only need the last k columns
                     b_times_diff = mat_b[-k:, :] @ diff_d_gamma_inv  # We only need the last k rows
 
-                    mod_covmats1 = utils.extract_mod_covmats(
+                    mod_covmats = utils.extract_mod_covmats(
                         gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind],
                         (mod_link_ind,),
                         lattice_size,
@@ -309,10 +307,11 @@ class Z2System2D(System2DBase):
                         nvirtmodes_link,
                         ax=0,
                     )
-                    d_mat_a_vec = mod_covmats1[0][0]  # [:, :, 0, :, :]
-                    d_mat_b_vec = mod_covmats1[1][0]
-                    d_mat_d_vec = mod_covmats1[2][0]
+                    d_mat_a_vec = mod_covmats[0][0]  # [:, :, 0, :, :]
+                    d_mat_b_vec = mod_covmats[1][0]
+                    d_mat_d_vec = mod_covmats[2][0]
 
+                    # shape: (unitcell_size, n_symbols, dim, dim)
                     d_covmat_out_virt_vec = (
                         d_mat_a_vec[:, :, -k:, -k:]
                         + d_mat_b_vec[:, :, -k:, :] @ diff_times_b
@@ -322,9 +321,9 @@ class Z2System2D(System2DBase):
 
                     deriv_pf_tot_vec = xnp.zeros((unitcell_size, len(symbolvec)))
 
-                    for lens_ind in range(len(link_idxs)):
-                        inds_arr = xnp.asarray(link_idxs[lens_ind])
-                        prefactors = xnp.asarray(link_coeffs[lens_ind])
+                    for lens_ind in range(len(layer_idxs[link_pos])):
+                        inds_arr = xnp.asarray(layer_idxs[link_pos][lens_ind])
+                        prefactors = xnp.asarray(layer_coeffs[link_pos][lens_ind])
                         pfafs = el_pfaffians[
                             group_element_idx, layerind, link_pos, lens_ind, : len(inds_arr)
                         ]  # We slice the last dimension because the
@@ -344,7 +343,7 @@ class Z2System2D(System2DBase):
                     d_el_energy_vec = xnp.real(deriv_pf_tot_vec) * xnp.exp(norm_mod - lognorm_default)
 
                     # Summand with derivative of norms
-                    trace_def1 = grad_over_norm_vec[layerind]
+                    trace_def = grad_over_norm_vec[layerind]
 
                     # Instead of computing the modified grad over the norm as:
                     # compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
@@ -354,7 +353,7 @@ class Z2System2D(System2DBase):
                     trace_mod1 = -0.5 * xnp.trace(d_mat_d_vec @ prod_mod_norm[None, None, ...], axis1=-2, axis2=-1)
 
                     # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
-                    d_el_energy_vec += el_energy_vec[group_element_idx][layerind][link_pos] * (trace_mod1 - trace_def1)
+                    d_el_energy_vec += el_energy_vec[group_element_idx][layerind][link_pos] * (trace_mod1 - trace_def)
 
                     dest_grad = backend.array_add(dest_grad, (group_element_idx, layerind, link_pos), d_el_energy_vec)
 
