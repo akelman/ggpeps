@@ -247,6 +247,9 @@ class Z2System2D(System2DBase):
         gamma_out_mod_inv_vec: xnp.ndarray,
         mat_d_mod_inv_vec: xnp.ndarray,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
+        d_mat_a_vec_vec,
+        d_mat_b_vec_vec,
+        d_mat_d_vec_vec,
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
@@ -275,16 +278,6 @@ class Z2System2D(System2DBase):
             # idxarrs for the specific group element, for Z_N we expect only 1 anyway
             idxarrs_group_element = idxarr_vec[group_element_idx]
             coeffs_vec_group_element = coeffs_vec[group_element_idx]
-
-            # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
-            d_mat_a_vec_vec, d_mat_b_vec_vec, d_mat_d_vec_vec = utils.extract_mod_covmats(
-                gamma_maj_sys_deriv_layvec_ucvec_symbvec,
-                mod_link_inds,
-                lattice_size,
-                nphysmodes_site,
-                nvirtmodes_link,
-                ax=1,
-            )
 
             # (nlayer, nmodlinks, mod_virt_dim, mod_virt_dim)
             prod_mod_norm_vec = mat_d_mod_inv_vec @ gamma_in_mod_inv_vec @ gamma_in_sys_mod_vec

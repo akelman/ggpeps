@@ -84,6 +84,7 @@ class System2DBase(ABC):
         self._mat_d_mod_vec: Optional[xnp.ndarray] = None
         self._det_mat_d_mod_vec: Optional[xnp.ndarray] = None
         self._mat_d_mod_inv_vec: Optional[xnp.ndarray] = None
+        self._deriv_mod_mats = None
         # Electric energy intermediate values - if we compute the electric energy,
         # we store intermediate values to be reused in the gradient calculation
         self._covmat_out_mod_vec: Optional[xnp.ndarray] = None
@@ -1961,6 +1962,20 @@ class System2DBase(ABC):
             )
         return self._chem_energy_op_vec
 
+    def deriv_mod_mats(self):
+        if self._deriv_mod_mats is None:
+            # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
+            d_mat_a_vec, d_mat_b_vec, d_mat_d_vec = utils.extract_mod_covmats(
+                self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+                self.cfg.mod_link_inds,
+                self.cfg.lattice.size,
+                self.cfg.nphysmodes_site,
+                self.cfg.nvirtmodes_link,
+                ax=1,
+            )
+            self._deriv_mod_mats = (d_mat_a_vec, d_mat_b_vec, d_mat_d_vec)
+        return self._deriv_mod_mats
+
     # Functions that return the layer-resolved gradients of each energy operator
     @property
     def el_energy_op_grad_vec(self) -> xnp.ndarray:
@@ -1984,6 +1999,9 @@ class System2DBase(ABC):
                 ]
             )
 
+            # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
+            d_mat_a_vec_vec, d_mat_b_vec_vec, d_mat_d_vec_vec = self.deriv_mod_mats()
+
             self._el_energy_op_grad_vec = self._compute_el_grad_vec(
                 self.cfg.lattice.size,
                 self.cfg.num_pg_layer,
@@ -2004,6 +2022,9 @@ class System2DBase(ABC):
                 gamma_out_mod_inv_vec,
                 self.mat_d_mod_inv_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+                d_mat_a_vec_vec,
+                d_mat_b_vec_vec,
+                d_mat_d_vec_vec,
                 self.grad_over_norm_vec,
                 self.cfg.zeroed_params,
                 self.cfg.gaugemgr.group_elements_for_el_energy,
