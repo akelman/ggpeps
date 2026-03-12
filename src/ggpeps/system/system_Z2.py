@@ -664,7 +664,7 @@ class Z2System2D(System2DBase):
 
         return gradients
 
-    def _meson_string_vec(self, path: list[tuple[int, bool]]) -> xnp.ndarray:
+    def _meson_string_vec(self, path: tuple[tuple[int, bool], ...]) -> xnp.ndarray:
 
         meson_op_vec = xnp.zeros(self.cfg.nlayer)
 
@@ -698,18 +698,18 @@ class Z2System2D(System2DBase):
             meson_op_vec = backend.array_assign(meson_op_vec, layer_ind, xnp.abs(layer_val))
         return meson_op_vec
 
-    def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
+    @staticmethod
+    @maybe_jit(static_argnames=["after_ph"])
+    def occupation(covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False) -> float:
 
-        covmat = self.ferm_covmat_vec[lay]
         site_ind = 2 * site  # index into covariance matrix
 
-        x, y = self.cfg.lattice.ind2coord(site)
-        site_factor = (-1) ** (x + y)  # even or odd sublattice
-        site_even = True if site_factor == 1 else False
-
-        if site_even or after_ph:
-            mass_site = 0.5 * (1 + covmat[site_ind + 1, site_ind])
+        x, y = site_coord
+        if after_ph:
+            site_factor = 1
         else:
-            mass_site = 0.5 * (1 - covmat[site_ind + 1, site_ind])
+            site_factor = (-1) ** (x + y)  # even or odd sublattice
+
+        mass_site = 0.5 * (1 + site_factor * covmat[site_ind + 1, site_ind])
 
         return mass_site

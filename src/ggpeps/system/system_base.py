@@ -1728,7 +1728,7 @@ class System2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def _meson_string_vec(self, path: list[tuple[int, bool]]) -> xnp.ndarray:
+    def _meson_string_vec(self, path: tuple[tuple[int, bool], ...]) -> xnp.ndarray:
         r"""Compute a layer resolved meson string for the given path.
         This is \psi^dagger (start) * String * \psi(end) before particle-hole,
         and assumes that start and end are on the same sublattice.
@@ -1736,7 +1736,7 @@ class System2DBase(ABC):
         This is an abstract method and has to be overwritten in a subclass.
 
         Args:
-            path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
+            path (tuple): Tuple of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
 
         Returns:
             array: meson_str_vec
@@ -2079,14 +2079,17 @@ class System2DBase(ABC):
 
     ##################  ######################
 
+    @staticmethod
     @abstractmethod
-    def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
+    @maybe_jit(static_argnames=["after_ph"])
+    def occupation(covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False) -> float:
         """Compute the occupation number for the given layer and site.
         # TODO: make this method also support specification of flavor, for use with non-Abelian gauge groups
 
         Args:
-            lay (int): Layer index
+            covmat (ndarray): The covariance matrix for the layer
             site (int): Site index
+            site_coord (tuple): Coordinate of the site. Provided to remove reliance on lattice inside jitted function.
             after_ph (bool, optional): If True, compute the occupation number using the operators
                                        defined after the particle-hole transformation. Defaults to False.
 
@@ -2110,7 +2113,8 @@ class System2DBase(ABC):
         for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
             layer_val = 0.0
             for site in range(self.cfg.lattice.size):
-                layer_val += self.occupation(lay, site, after_ph=after_ph)
+                site_coord = self.cfg.lattice.ind2coord(site)
+                layer_val += self.occupation(self.ferm_covmat_vec[lay], site, site_coord, after_ph=after_ph)
             total_occ.append(layer_val / self.cfg.lattice.size)
         return xnp.array(total_occ)
 
@@ -2132,8 +2136,9 @@ class System2DBase(ABC):
             after_ph = False
             for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
                 for site in range(self.cfg.lattice.size):
+                    site_coord = self.cfg.lattice.ind2coord(site)
                     self._occupations_before_ph[lay - self.cfg.num_pg_layer, site] = self.occupation(
-                        lay, site, after_ph=after_ph
+                        self.ferm_covmat_vec[lay], site, site_coord, after_ph=after_ph
                     )
         return self._occupations_before_ph
 
@@ -2155,16 +2160,17 @@ class System2DBase(ABC):
             after_ph = True
             for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
                 for site in range(self.cfg.lattice.size):
+                    site_coord = self.cfg.lattice.ind2coord(site)
                     self._occupations_after_ph[lay - self.cfg.num_pg_layer, site] = self.occupation(
-                        lay, site, after_ph=after_ph
+                        self.ferm_covmat_vec[lay], site, site_coord, after_ph=after_ph
                     )
         return self._occupations_after_ph
 
-    def meson_string(self, path: list[tuple[int, bool]]) -> float:
+    def meson_string(self, path: tuple[tuple[int, bool], ...]) -> float:
         """Calculate the value of a meson string given a path.
 
         Args:
-            path (list):
+            path (tuple):
 
         Returns:
             float:
@@ -2172,19 +2178,27 @@ class System2DBase(ABC):
         meson_val = xnp.sum(self._meson_string_vec(path))  # sum over layers/flavors
         return meson_val
 
-    def compute_path(self, path: list[tuple[int, bool]]) -> float:
-        """Compute the observable corresponding the path given as an argument
+    def compute_path(self, path: tuple[tuple[int, bool], ...]) -> float:
+        """Compute the trace of group elements along the path.
 
         Args:
-            path (list): List of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
+            path (tuple): Tuple of tuples [(index,conj),....]. conj indicates whether the argument should be conjugated.
             This is the case if the link is traversed from right to left or from top to bottom.
         """
-        path_product = self.cfg.gaugemgr.get_neutral_gauge_value()  # The identity matrix
+        val = self._compute_path(self.cfg.gaugemgr.get_neutral_gauge_value(), self.gaugefieldvec, path)
+        return val
+
+    @staticmethod
+    @maybe_jit(static_argnames=["path"])
+    def _compute_path(
+        neutral_gauge_value: xnp.ndarray, gaugefieldvec: xnp.ndarray, path: tuple[tuple[int, bool], ...]
+    ) -> float:
+        path_product = neutral_gauge_value
         for ind, conj in path:
             if conj:
-                path_product = path_product @ xnp.conjugate(xnp.transpose(self.gaugefieldvec[ind]))
+                path_product = path_product @ xnp.conjugate(xnp.transpose(gaugefieldvec[ind]))
             else:
-                path_product = path_product @ self.gaugefieldvec[ind]
+                path_product = path_product @ gaugefieldvec[ind]
         return xnp.trace(path_product)
 
     @staticmethod

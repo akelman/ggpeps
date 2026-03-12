@@ -205,7 +205,7 @@ class Lattice2D:
 
     def links_coord_to_index(
         self, links: list[tuple[tuple[tuple[int, int], Direction], bool]]
-    ) -> list[tuple[int, bool]]:
+    ) -> tuple[tuple[int, bool], ...]:
         """
         Convert a list of coordinate-based links into index-based links.
 
@@ -215,10 +215,11 @@ class Lattice2D:
                 (((x, y), direction), orientation).
 
         Returns:
-            list[tuple[int, bool]]: Links in index form, where each element is
+            tuple[tuple[int, bool]]: Tuples in index form, where each element is
             (link_index, orientation).
         """
-        return [(self.coord2ind_dir(coord, direction), conj) for (coord, direction), conj in links]
+        val = [(self.coord2ind_dir(coord, direction), conj) for (coord, direction), conj in links]
+        return tuple(val)
 
     def get_neighbor(self, coord: tuple[int, int], direction: Direction, orientation: bool = True) -> tuple[int, int]:
         """
@@ -250,7 +251,7 @@ class Lattice2D:
         else:
             raise ValueError("get_neighbor: Only X and Y directions are supported")
 
-    def get_path_endpoints(self, path: list[tuple[int, bool]]) -> tuple[int, int]:
+    def get_path_endpoints(self, path: tuple[tuple[int, bool], ...]) -> tuple[int, int]:
         """
         Get the lattice site endpoints of a path.
 
@@ -259,8 +260,8 @@ class Lattice2D:
         by whether the link is conjugated or not.
 
         Args:
-            path (list[tuple[int, bool]]):
-                List of links in index form. Each link is:
+            path (tuple[tuple[int, bool], ...]):
+                Tuple of links in index form. Each link is:
                     - (link_id, conj)
 
         Returns:
@@ -286,7 +287,7 @@ class Lattice2D:
         end_site_index = self.coord2ind(end_site_coord)
         return (start_site_index, end_site_index)
 
-    def generate_polyakov_loop(self, coord: tuple[int, int], dir: Direction) -> list[tuple[int, bool]]:
+    def generate_polyakov_loop(self, coord: tuple[int, int], dir: Direction) -> tuple[tuple[int, bool], ...]:
         """
         Generate a Polyakov loop around the full system in the positive direction.
 
@@ -299,7 +300,7 @@ class Lattice2D:
             dir (Direction): Loop direction (Direction.X or Direction.Y).
 
         Returns:
-            list[tuple[int, bool]]: Links forming the Polyakov loop, each as
+            tuple[tuple[int, bool]]: Links forming the Polyakov loop, each as
             (link_index, orientation).
         """
         x, y = coord
@@ -314,9 +315,9 @@ class Lattice2D:
         else:
             raise ValueError("generate_polyakov_loop:  Only X and Y are valid directions.")
 
-        return self.links_coord_to_index(dest)
+        return tuple(self.links_coord_to_index(dest))
 
-    def generate_wilson_loop(self, coord: tuple[int, int], size: tuple[int, int]) -> list[tuple[int, bool]]:
+    def generate_wilson_loop(self, coord: tuple[int, int], size: tuple[int, int]) -> tuple[tuple[int, bool], ...]:
         """
         Generate a Wilson loop with a given size and bottom-left starting point.
 
@@ -328,7 +329,7 @@ class Lattice2D:
             size (tuple[int, int]): Loop size as (extent_x, extent_y).
 
         Returns:
-            list[tuple[int, bool]]: Links forming the Wilson loop, each as
+            tuple[tuple[int, bool]]: Links forming the Wilson loop, each as
             (link_index, orientation).
         """
         ext_x, ext_y = size
@@ -356,9 +357,9 @@ class Lattice2D:
             coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=False)
             dest.append(((coord_edge, Direction.Y), True))
 
-        return self.links_coord_to_index(dest)
+        return tuple(self.links_coord_to_index(dest))
 
-    def generate_L_string(self, coord: tuple[int, int], size: tuple[int, int]) -> list[tuple[int, bool]]:
+    def generate_L_string(self, coord: tuple[int, int], size: tuple[int, int]) -> tuple[tuple[int, bool], ...]:
         """
         Generate an L-shaped path starting from a bottom-left corner.
 
@@ -371,7 +372,7 @@ class Lattice2D:
             size (tuple[int, int]): Path extents as (extent_x, extent_y).
 
         Returns:
-            list[tuple[int, bool]]: Links forming the L-shaped path, each as
+            tuple[tuple[int, bool]]: Links forming the L-shaped path, each as
             (link_index, orientation).
         """
         ext_x, ext_y = size
@@ -388,7 +389,7 @@ class Lattice2D:
             dest.append(((coord_edge, Direction.Y), False))
             coord_edge = self.get_neighbor(coord_edge, Direction.Y, orientation=True)
 
-        return self.links_coord_to_index(dest)
+        return tuple(self.links_coord_to_index(dest))
 
     def generate_allowed_loop_dimensions(self, include_all: bool = False) -> list[tuple[int, int]]:
         """
@@ -418,7 +419,7 @@ class Lattice2D:
 
     def generate_all_wilson_loops(
         self, coord: tuple[int, int], sizes: list[tuple[int, int]] = []
-    ) -> list[list[tuple[int, bool]]]:
+    ) -> tuple[tuple[tuple[int, bool], ...], ...]:
         """
         Generate all allowed rectangular Wilson loops from a starting point.
 
@@ -431,8 +432,8 @@ class Lattice2D:
                 If empty, all allowed loop sizes are generated.
 
         Returns:
-            list[list[tuple[int, bool]]]: A list of Wilson loops, each represented as
-            a list of (link_index, orientation) tuples.
+            tuple[tuple[tuple[int, bool]]]: A tuple of Wilson loops, each represented as
+            a tuple of (link_index, orientation) tuples.
         """
         loops = []
 
@@ -443,7 +444,7 @@ class Lattice2D:
             loop = self.generate_wilson_loop(coord, size)
             loops.append(loop)
 
-        return loops
+        return tuple(loops)
 
     def generate_tree(self, num_of_rows: Optional[int] = None) -> list[int]:
         """
