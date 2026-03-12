@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 
 import ray
 import copy
@@ -109,12 +109,18 @@ class EvaluatorManager:
             raise ValueError("Unrecognized type of evaluator config.")
 
         # Set the evaluator
+        # self.evaluator: Optional[Evaluator] = None
+        # # Because reset evaluator needs an evaluator to check the system
         self.evaluator: Evaluator = self.reset_evaluator()
 
     def reset_evaluator(self) -> Evaluator:
         """Reset the evaluator to a new instance with the current configuration."""
+        existing_evaluator = getattr(self, "evaluator", None)
+        if existing_evaluator is not None:
+            system = self.evaluator.system
+        else:
+            system = self.system_cls(self.system_cfg)
 
-        system = self.system_cls(self.system_cfg)
         system.initialize()
 
         if self.type == "exact":
