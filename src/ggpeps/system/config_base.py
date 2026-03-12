@@ -501,9 +501,8 @@ def bracket_terms(
     # Snap small real/imag parts and drop zeros to reduce work upstream
     terms: list[tuple[complex, tuple[int, ...]]] = []
     for coef, inds in raw_terms:
-        snapped = snap_complex(coef)
-        if snapped != 0.0:
-            terms.append((snapped, inds))
+        if abs(coef) > 1e-6:
+            terms.append((coef, inds))
     return terms
 
 
@@ -637,15 +636,15 @@ def generate_gauged_projector_terms(
     final_polynomial = simplify_majorana_acc(final_polynomial)
 
     # Split constant vs others and build the output
-    constant = snap_complex(final_polynomial.pop((), 0.0))
+    constant = final_polynomial.pop((), 0.0)
     items = [(mon, complex(coef)) for mon, coef in final_polynomial.items() if coef != 0.0]
 
     # Multiply each coefficient by i^(-len(mon)/2), the Pfaffian-Wick phase
     phased_items: list[tuple[tuple[int, ...], complex]] = []
     for mon, coef in items:
         factor = pfaffian_wick_phase(mon)
-        new_coef = snap_complex(coef * factor)
-        if new_coef != 0.0:
+        new_coef = coef * factor  # snap_complex(coef * factor)
+        if abs(new_coef) > 1e-6:
             phased_items.append((mon, new_coef))
 
     # Drop terms for which the coefficient has zero real part
@@ -699,8 +698,7 @@ def simplify_majorana_acc(acc):
 
     for indices, factor in acc.items():
         # Clean noise immediately
-        factor = snap_complex(factor)
-        if factor == 0.0:
+        if abs(factor) < 1e-6:
             continue
 
         # Convert to list for in-place sorting
@@ -739,8 +737,7 @@ def simplify_majorana_acc(acc):
     # Final cleanup of the simplified dictionary
     final_acc = defaultdict(complex)
     for k, v in new_acc.items():
-        clean_v = snap_complex(v)
-        if clean_v != 0.0:
-            final_acc[k] = clean_v
+        if abs(v) > 1e-6:
+            final_acc[k] = v
 
     return final_acc
