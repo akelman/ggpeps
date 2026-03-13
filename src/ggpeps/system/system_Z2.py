@@ -322,8 +322,10 @@ class Z2System2D(System2DBase):
                         ]
 
                         deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(virts, d_virts, pfafs)
-                        deriv_pf_tot_vec_vec[layerind, link_pos] += xnp.sum(
-                            prefactors * deriv_pf_tot_vectorized, axis=-1
+                        deriv_pf_tot_vec_vec = backend.array_add(
+                            deriv_pf_tot_vec_vec,
+                            (layerind, link_pos),
+                            xnp.sum(prefactors * deriv_pf_tot_vectorized, axis=-1),
                         )
 
                     # In previous versions of the code, Pfaffians with complex/imaginary coefficients
