@@ -307,12 +307,12 @@ class Z2System2D(System2DBase):
                 for link_pos, mod_link_ind in enumerate(mod_link_inds):
 
                     for lens_ind in range(len(idxarrs_group_element[layerind][link_pos])):
+                        # (# pfafs, pfaf submat dim)
                         inds_arr = xnp.asarray(idxarrs_group_element[layerind][link_pos][lens_ind])
-                        prefactors = xnp.asarray(coeffs_vec_group_element[layerind][link_pos][lens_ind])
-                        pfafs = el_pfaffians[
-                            group_element_idx, layerind, link_pos, lens_ind, : len(inds_arr)
-                        ]  # We slice the last dimension because the
-                        # el_pfaffians array is padded with zeros.
+                        prefactors = xnp.asarray(coeffs_vec_group_element[layerind][link_pos][lens_ind])  # num_pfafs
+
+                        # We slice the last dimension because the el_pfaffians array is padded with zeros.
+                        pfafs = el_pfaffians[group_element_idx, layerind, link_pos, lens_ind, : len(inds_arr)]
 
                         virts = covmat_out_mod_vec[layerind][link_pos][
                             None, None, inds_arr[:, :, None], inds_arr[:, None, :]
