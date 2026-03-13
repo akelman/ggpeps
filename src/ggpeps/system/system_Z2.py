@@ -295,6 +295,8 @@ class Z2System2D(System2DBase):
             - b_times_diff_vec @ d_mat_d_vec_vec[:, :, :, :] @ diff_times_b_vec
         )
 
+        prod = d_mat_d_vec_vec @ prod_mod_norm_vec
+
         for group_element_idx in range(num_group_elements):
             # idxarrs for the specific group element, for Z_N we expect only 1 anyway
             idxarrs_group_element = idxarr_vec[group_element_idx]
@@ -345,9 +347,7 @@ class Z2System2D(System2DBase):
                     #    = -0.5 * trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
                     # we have saved the product of several mats above
                     # (since they don't change in inner loops), and use it here
-                    trace_mod = -0.5 * xnp.trace(
-                        d_mat_d_vec_vec[layerind, link_pos] @ prod_mod_norm_vec[layerind, link_pos], axis1=-2, axis2=-1
-                    )
+                    trace_mod = -0.5 * xnp.trace(prod[layerind, link_pos], axis1=-2, axis2=-1)
 
                     # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
                     d_el_energy_vec += el_energy_vec[group_element_idx][layerind][link_pos] * (trace_mod - trace_def)
