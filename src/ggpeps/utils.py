@@ -426,7 +426,7 @@ def derivative_pfaffian_vectorized(mat: xnp.ndarray, d_mat: xnp.ndarray, pfavals
 
     # Safely invert: identity where masked out (won't contribute anyway because we multiply by mask at the end)
     eye = xnp.eye(mat.shape[-1], dtype=mat.dtype)
-    safe_mat = xnp.where(mask[:, None, None], mat, eye)
+    safe_mat = xnp.where(mask[..., None, None], mat, eye)
 
     inv_mat = xnp.linalg.inv(safe_mat)  # (N, M, M)
     prod = inv_mat @ d_mat  # (N, M, M)
