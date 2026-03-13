@@ -300,47 +300,40 @@ class Z2System2D(System2DBase):
                 - b_times_diff_vec @ d_mat_d_vec_vec[:, :, :, :] @ diff_times_b_vec
             )
 
-            for layerind in range(nlayer):
+            deriv_pf_tot_vec_vec = xnp.zeros((nlayer, len(mod_link_inds), unitcell_size, len(symbolvec)))
 
-                # Abbreviations for more readable code
-                layer_idxs = idxarrs_group_element[layerind]  # tuple of tuples of indices
-                layer_coeffs = coeffs_vec_group_element[layerind]  # tuple of tuple of coeffs
+            for layerind in range(nlayer):
 
                 for link_pos, mod_link_ind in enumerate(mod_link_inds):
 
-                    covmat_out_virt = covmat_out_mod_vec[layerind][link_pos]
-                    norm_mod = norm_mod_vec[layerind][link_pos]
-
-                    # Save products that do not need to be recomputed for every parameter
-                    # In the matrix products, we only compute the parts that are needed below, to save the extra runtime
-                    prod_mod_norm = prod_mod_norm_vec[layerind, link_pos]
-                    d_mat_d_vec = d_mat_d_vec_vec[layerind, link_pos]
-
-                    # shape: (unitcell_size, n_symbols, dim, dim)
-                    d_covmat_out_virt_vec = d_covmat_out_virt_vec_vec[layerind, link_pos]
-
-                    deriv_pf_tot_vec = xnp.zeros((unitcell_size, len(symbolvec)))
-
-                    for lens_ind in range(len(layer_idxs[link_pos])):
-                        inds_arr = xnp.asarray(layer_idxs[link_pos][lens_ind])
-                        prefactors = xnp.asarray(layer_coeffs[link_pos][lens_ind])
+                    for lens_ind in range(len(idxarrs_group_element[layerind][link_pos])):
+                        inds_arr = xnp.asarray(idxarrs_group_element[layerind][link_pos][lens_ind])
+                        prefactors = xnp.asarray(coeffs_vec_group_element[layerind][link_pos][lens_ind])
                         pfafs = el_pfaffians[
                             group_element_idx, layerind, link_pos, lens_ind, : len(inds_arr)
                         ]  # We slice the last dimension because the
                         # el_pfaffians array is padded with zeros.
 
-                        virts = covmat_out_virt[None, None, inds_arr[:, :, None], inds_arr[:, None, :]]
-                        d_virts = d_covmat_out_virt_vec[:, :, inds_arr[:, :, None], inds_arr[:, None, :]]
+                        virts = covmat_out_mod_vec[layerind][link_pos][
+                            None, None, inds_arr[:, :, None], inds_arr[:, None, :]
+                        ]
+                        d_virts = d_covmat_out_virt_vec_vec[layerind, link_pos][
+                            :, :, inds_arr[:, :, None], inds_arr[:, None, :]
+                        ]
 
                         deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(virts, d_virts, pfafs)
-                        deriv_pf_tot_vec += xnp.sum(prefactors * deriv_pf_tot_vectorized, axis=-1)
+                        deriv_pf_tot_vec_vec[layerind, link_pos] += xnp.sum(
+                            prefactors * deriv_pf_tot_vectorized, axis=-1
+                        )
 
                     # In previous versions of the code, Pfaffians with complex/imaginary coefficients
                     # were included, but dropped here. Since operators of interest (electric energy + grad)
                     # are Hermitian, we can just take the real part here.
                     # At present, we drop these complex/imaginary terms higher in the stack to save on
                     # computation. We leave the xnp.real() for testing purposes.
-                    d_el_energy_vec = xnp.real(deriv_pf_tot_vec) * xnp.exp(norm_mod - lognorm_default)
+                    d_el_energy_vec = xnp.real(deriv_pf_tot_vec_vec[layerind, link_pos]) * xnp.exp(
+                        norm_mod_vec[layerind][link_pos] - lognorm_default
+                    )
 
                     # Summand with derivative of norms
                     trace_def = grad_over_norm_vec[layerind]
@@ -350,7 +343,9 @@ class Z2System2D(System2DBase):
                     #    = -0.5 * trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
                     # we have saved the product of several mats above
                     # (since they don't change in inner loops), and use it here
-                    trace_mod = -0.5 * xnp.trace(d_mat_d_vec @ prod_mod_norm, axis1=-2, axis2=-1)
+                    trace_mod = -0.5 * xnp.trace(
+                        d_mat_d_vec_vec[layerind, link_pos] @ prod_mod_norm_vec[layerind, link_pos], axis1=-2, axis2=-1
+                    )
 
                     # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
                     d_el_energy_vec += el_energy_vec[group_element_idx][layerind][link_pos] * (trace_mod - trace_def)
