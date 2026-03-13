@@ -274,31 +274,31 @@ class Z2System2D(System2DBase):
         k = 2 * nvirtmodes_link  # single link offset
         lognorm_default = xnp.sum(lognorm_default_vec)
 
+        # (nlayer, nmodlinks, mod_virt_dim, mod_virt_dim)
+        prod_mod_norm_vec = mat_d_mod_inv_vec @ gamma_in_mod_inv_vec @ gamma_in_sys_mod_vec
+        # (nlayer, nmodlinks, mod_virt_dim, link_dim), take only the last k columns
+        diff_times_b_vec = gamma_out_mod_inv_vec @ xnp.swapaxes(mat_b_mod_vec, -1, -2)[:, :, :, -k:]
+        # (nlayer, nmodlinks, link_dim, mod_virt_dim), take only the last k rows
+        b_times_diff_vec = mat_b_mod_vec[:, :, -k:, :] @ gamma_out_mod_inv_vec
+
+        # Expand to shape (nlayer, nmodlinks, 1, 1, dim1, dim2) so that broadcasting over unitcell_size
+        # and n_symbols works correctly below
+        prod_mod_norm_vec = xnp.expand_dims(prod_mod_norm_vec, axis=(2, 3))
+        diff_times_b_vec = xnp.expand_dims(diff_times_b_vec, axis=(2, 3))
+        b_times_diff_vec = xnp.expand_dims(b_times_diff_vec, axis=(2, 3))
+
+        # shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim, dim)
+        d_covmat_out_virt_vec_vec = (
+            d_mat_a_vec_vec[:, :, :, :, -k:, -k:]
+            + d_mat_b_vec_vec[:, :, :, :, -k:, :] @ diff_times_b_vec[:, :]
+            + b_times_diff_vec @ xnp.swapaxes(d_mat_b_vec_vec, -1, -2)[:, :, :, :, :, -k:]
+            - b_times_diff_vec @ d_mat_d_vec_vec[:, :, :, :] @ diff_times_b_vec
+        )
+
         for group_element_idx in range(num_group_elements):
             # idxarrs for the specific group element, for Z_N we expect only 1 anyway
             idxarrs_group_element = idxarr_vec[group_element_idx]
             coeffs_vec_group_element = coeffs_vec[group_element_idx]
-
-            # (nlayer, nmodlinks, mod_virt_dim, mod_virt_dim)
-            prod_mod_norm_vec = mat_d_mod_inv_vec @ gamma_in_mod_inv_vec @ gamma_in_sys_mod_vec
-            # (nlayer, nmodlinks, mod_virt_dim, link_dim), take only the last k columns
-            diff_times_b_vec = gamma_out_mod_inv_vec @ xnp.swapaxes(mat_b_mod_vec, -1, -2)[:, :, :, -k:]
-            # (nlayer, nmodlinks, link_dim, mod_virt_dim), take only the last k rows
-            b_times_diff_vec = mat_b_mod_vec[:, :, -k:, :] @ gamma_out_mod_inv_vec
-
-            # Expand to shape (nlayer, nmodlinks, 1, 1, dim1, dim2) so that broadcasting over unitcell_size
-            # and n_symbols works correctly below
-            prod_mod_norm_vec = xnp.expand_dims(prod_mod_norm_vec, axis=(2, 3))
-            diff_times_b_vec = xnp.expand_dims(diff_times_b_vec, axis=(2, 3))
-            b_times_diff_vec = xnp.expand_dims(b_times_diff_vec, axis=(2, 3))
-
-            # shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim, dim)
-            d_covmat_out_virt_vec_vec = (
-                d_mat_a_vec_vec[:, :, :, :, -k:, -k:]
-                + d_mat_b_vec_vec[:, :, :, :, -k:, :] @ diff_times_b_vec[:, :]
-                + b_times_diff_vec @ xnp.swapaxes(d_mat_b_vec_vec, -1, -2)[:, :, :, :, :, -k:]
-                - b_times_diff_vec @ d_mat_d_vec_vec[:, :, :, :] @ diff_times_b_vec
-            )
 
             deriv_pf_tot_vec_vec = xnp.zeros((nlayer, len(mod_link_inds), unitcell_size, len(symbolvec)))
 
