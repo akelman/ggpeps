@@ -16,7 +16,6 @@ from .system_base import maybe_jit
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
-from timeit import default_timer as timer
 
 ###################### Z2System2D ##########################
 
