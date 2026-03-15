@@ -215,6 +215,26 @@ class TestUtils(unittest.TestCase):
         self.assertAlmostEqual(trace_hadamard, trace_ref)
         self.assertAlmostEqual(trace_trace, trace_ref)
 
+    def test_trace_of_product_vectorized(self):
+        """Ensure trace of product works for stacks, with arbitrary leading dimensions (assuming all mats
+        have the same leading dimensions)."""
+
+        mat1 = np.random.rand(3, 2, 4, 4)
+        mat2 = np.random.rand(3, 2, 4, 4)
+        mat3 = np.random.rand(3, 2, 4, 4)
+        mats = (mat1, mat2, mat3)
+
+        trace_hadamard = utils.trace_of_product(mats, method="hadamard")
+        trace_trace = utils.trace_of_product(mats, method="trace")
+
+        # Manually compute the product and its trace
+        prod = mat1 @ mat2 @ mat3
+        trace_ref = np.trace(prod, axis1=-2, axis2=-1)
+        self.assertTrue(trace_ref.shape == (3, 2))
+
+        self.assertTrue(np.allclose(trace_hadamard, trace_ref))
+        self.assertTrue(np.allclose(trace_trace, trace_ref))
+
 
 class TestBGBTransform(unittest.TestCase):
     def setUp(self):

@@ -676,8 +676,8 @@ def trace_of_product(mats: Sequence[xnp.ndarray], method: str = "hadamard") -> f
         [1] Trace, Wikipedia, https://en.wikipedia.org/wiki/Trace_(linear_algebra)#Trace_of_a_product
 
     Args:
-        mats (Sequence[xnp.ndarray]): A sequence of matrices with compatible dimensions for multiplication,
-            which result in a square matrix to allow for the trace to be defined.
+        mats (Sequence[xnp.ndarray]): A sequence of matrices (or stack of matrices) with compatible dimensions
+            for multiplication, which result in a square matrix to allow for the trace to be defined.
         method (str, optional): Method to use to compute the trace of the product.
 
     Returns:
@@ -690,7 +690,7 @@ def trace_of_product(mats: Sequence[xnp.ndarray], method: str = "hadamard") -> f
         dest = (prod1 * xnp.swapaxes(prod2, -1, -2)).sum(axis=(-2, -1))
     elif method == "trace":
         prod = functools.reduce(xnp.matmul, mats)
-        dest = xnp.trace(prod)
+        dest = xnp.trace(prod, axis1=-2, axis2=-1)
     else:
         raise ValueError(f"Unknown method {method} for computing the trace of product.")
     return dest
