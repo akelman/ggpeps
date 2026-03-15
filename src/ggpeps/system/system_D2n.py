@@ -512,8 +512,9 @@ class D2nSystem2D(System2DBase):
             "nphysmodes_site",
             "mod_link_inds",
             "symbolvec",
-            "idxarr_vec",
             "zeroed_params",
+            "idxarr_vec",
+            "coeffs_vec",
         ]
     )
     def _compute_el_grad_vec(
@@ -536,6 +537,9 @@ class D2nSystem2D(System2DBase):
         gamma_out_mod_inv_vec: xnp.ndarray,
         mat_d_mod_inv_vec: xnp.ndarray,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
+        d_mat_a_vec,
+        d_mat_b_vec,
+        d_mat_d_vec,
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
@@ -560,107 +564,85 @@ class D2nSystem2D(System2DBase):
         k = 2 * nvirtmodes_link  # single link offset
         lognorm_default = xnp.sum(lognorm_default_vec)
 
+        # (nlayer, nmodlinks, mod_virt_dim, mod_virt_dim)
+        prod_mod_norm_vec = mat_d_mod_inv_vec @ gamma_in_mod_inv_vec @ gamma_in_sys_mod_vec
+        # (nlayer, nmodlinks, mod_virt_dim, link_dim), take only the last k columns
+        diff_times_b_vec = gamma_out_mod_inv_vec @ xnp.swapaxes(mat_b_mod_vec, -1, -2)[:, :, :, -k:]
+        # (nlayer, nmodlinks, link_dim, mod_virt_dim), take only the last k rows
+        b_times_diff_vec = mat_b_mod_vec[:, :, -k:, :] @ gamma_out_mod_inv_vec
+
+        # Expand to shape (nlayer, nmodlinks, 1, 1, dim1, dim2) so that broadcasting over unitcell_size
+        # and n_symbols works correctly below
+        prod_mod_norm_vec = xnp.expand_dims(prod_mod_norm_vec, axis=(2, 3))
+        diff_times_b_vec = xnp.expand_dims(diff_times_b_vec, axis=(2, 3))
+        b_times_diff_vec = xnp.expand_dims(b_times_diff_vec, axis=(2, 3))
+
+        # shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim, dim)
+        d_covmat_out_virt_vec = (
+            d_mat_a_vec[:, :, :, :, -k:, -k:]
+            + d_mat_b_vec[:, :, :, :, -k:, :] @ diff_times_b_vec[:, :]
+            + b_times_diff_vec @ xnp.swapaxes(d_mat_b_vec, -1, -2)[:, :, :, :, :, -k:]
+            - b_times_diff_vec @ d_mat_d_vec @ diff_times_b_vec
+        )
+
+        prod_vec = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec))
+
         for group_element_idx in range(num_group_elements):
             # idxarrs for the specific group element, for Z_N we expect only 1 anyway
             idxarrs_group_element = idxarr_vec[group_element_idx]
             coeffs_vec_group_element = coeffs_vec[group_element_idx]
 
+            deriv_pf_tot_vec_vec = xnp.zeros((nlayer, len(mod_link_inds), unitcell_size, len(symbolvec)))
+
             for layerind in range(nlayer):
 
-                # Abbreviations for more readable code
-                layer_idxs = idxarrs_group_element[layerind]  # tuple of tuples of indices
-                layer_coeffs = coeffs_vec_group_element[layerind]  # tuple of tuple of coeffs
+                for link_pos, _ in enumerate(mod_link_inds):
 
-                for link_pos, mod_link_ind in enumerate(mod_link_inds):
-                    link_idxs = layer_idxs[link_pos]  # tuples of indices
-                    link_coeffs = layer_coeffs[link_pos]  # tuple of coeffs
+                    for lens_ind in range(len(idxarrs_group_element[layerind][link_pos])):
+                        # (# pfafs, pfaf submat dim)
+                        inds_arr = xnp.asarray(idxarrs_group_element[layerind][link_pos][lens_ind])
+                        prefactors = xnp.asarray(coeffs_vec_group_element[layerind][link_pos][lens_ind])  # num_pfafs
 
-                    mat_b = mat_b_mod_vec[layerind][link_pos]
-                    diff_d_gamma_inv = gamma_out_mod_inv_vec[layerind][link_pos]
-                    gamma_in_sys_mod = gamma_in_sys_mod_vec[layerind][link_pos]
-                    diff_d_inv_gamma_inv = gamma_in_mod_inv_vec[layerind][link_pos]
+                        # We slice the last dimension because the el_pfaffians array is padded with zeros.
+                        pfafs = el_pfaffians[group_element_idx, layerind, link_pos, lens_ind, : len(inds_arr)]
 
-                    covmat_out_virt = covmat_out_mod_vec[layerind][link_pos]
-                    norm_mod = norm_mod_vec[layerind][link_pos]
-                    mat_d_mod_inv = mat_d_mod_inv_vec[layerind][link_pos]
+                        virts = covmat_out_mod_vec[layerind][link_pos][
+                            None, None, inds_arr[:, :, None], inds_arr[:, None, :]
+                        ]
+                        d_virts = d_covmat_out_virt_vec[layerind, link_pos][
+                            :, :, inds_arr[:, :, None], inds_arr[:, None, :]
+                        ]
 
-                    # Save products that do not need to be recomputed for every parameter
-                    # In the matrix products, we only compute the parts that are needed below, to save the extra runtime
-                    prod_mod_norm = mat_d_mod_inv @ diff_d_inv_gamma_inv @ gamma_in_sys_mod
-                    diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)[:, -k:]  # We only need the last k columns
-                    b_times_diff = mat_b[-k:, :] @ diff_d_gamma_inv  # We only need the last k rows
+                        deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(virts, d_virts, pfafs)
+                        deriv_pf_tot_vec_vec = backend.array_add(
+                            deriv_pf_tot_vec_vec,
+                            (layerind, link_pos),
+                            xnp.sum(prefactors * deriv_pf_tot_vectorized, axis=-1),
+                        )
 
-                    for uc_ind in range(unitcell_size):
-                        for symbol_ind, _ in enumerate(symbolvec):
-                            if (layerind, uc_ind, symbol_ind) not in zeroed_params:
-                                # the derivative calculation is computationally expensive
-                                # we can skip it for parameters that are forced by the ansatz to be zero
+                    # In previous versions of the code, Pfaffians with complex/imaginary coefficients
+                    # were included, but dropped here. Since operators of interest (electric energy + grad)
+                    # are Hermitian, we can just take the real part here.
+                    # At present, we drop these complex/imaginary terms higher in the stack to save on
+                    # computation. We leave the xnp.real() for testing purposes.
+                    d_el_energy_vec = xnp.real(deriv_pf_tot_vec_vec[layerind, link_pos]) * xnp.exp(
+                        norm_mod_vec[layerind][link_pos] - lognorm_default
+                    )
 
-                                deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[
-                                    layerind, uc_ind, symbol_ind
-                                ]
-                                mod_covmats = utils.extract_mod_covmats(
-                                    deriv_gamma_maj_sys,
-                                    (mod_link_ind,),
-                                    lattice_size,
-                                    nphysmodes_site,
-                                    nvirtmodes_link,
-                                )
-                                d_mat_a, d_mat_b, d_mat_d = mod_covmats[0][0], mod_covmats[1][0], mod_covmats[2][0]
+                    # Summand with derivative of norms
+                    trace_def = grad_over_norm_vec[layerind]
 
-                                # We only need the bottom-right block of d_gamma_out, since we are only interested
-                                # in the virtual modes of the given link.
-                                # We only construct this block, providing a small speedup as compared
-                                # to constructing the full d_gamma_out matrix, and then extracting the block.
-                                d_covmat_out_virt = (
-                                    d_mat_a[-k:, -k:]
-                                    + d_mat_b[-k:, :] @ diff_times_b
-                                    + b_times_diff @ xnp.transpose(d_mat_b)[:, -k:]
-                                    - b_times_diff @ d_mat_d @ diff_times_b
-                                )
+                    # Instead of computing the modified grad over the norm as:
+                    # compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
+                    #    = -0.5 * trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
+                    # we have saved the product of several mats above
+                    # (since they don't change in inner loops), and use it here
+                    trace_mod = -0.5 * prod_vec[layerind, link_pos]
 
-                                deriv_pf_tot: complex = 0.0j
-                                for lens_ind in range(len(link_idxs)):
-                                    inds_arr = xnp.asarray(link_idxs[lens_ind])
-                                    prefactors = xnp.asarray(link_coeffs[lens_ind])
-                                    pfafs = el_pfaffians[
-                                        group_element_idx, layerind, link_pos, lens_ind, : len(inds_arr)
-                                    ]  # We slice the last dimension because the
-                                    # el_pfaffians array is padded with zeros.
+                    # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
+                    d_el_energy_vec += el_energy_vec[group_element_idx][layerind][link_pos] * (trace_mod - trace_def)
 
-                                    virts = covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
-                                    d_virts = d_covmat_out_virt[inds_arr[:, :, None], inds_arr[:, None, :]]
-
-                                    deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(
-                                        virts, d_virts, pfafs
-                                    )
-                                    deriv_pf_tot += xnp.sum(prefactors * deriv_pf_tot_vectorized)
-
-                                # In previous versions of the code, Pfaffians with complex/imaginary coefficients
-                                # were included, but dropped here. Since operators of interest (electric energy + grad)
-                                # are Hermitian, we can just take the real part here.
-                                # At present, we drop these complex/imaginary terms higher in the stack to save on
-                                # computation. We leave the xnp.real() for testing purposes.
-                                d_el_energy = xnp.real(deriv_pf_tot) * xnp.exp(norm_mod - lognorm_default)
-
-                                # Summand with derivative of norms
-                                trace_def = grad_over_norm_vec[layerind, uc_ind, symbol_ind]
-
-                                # Instead of computing the modified grad over the norm as:
-                                # compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
-                                #    = -0.5 * trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
-                                # we have saved the product of several mats above
-                                # (since they don't change in inner loops), and use it here
-                                trace_mod = -0.5 * utils.trace_of_product((d_mat_d, prod_mod_norm))
-
-                                # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
-                                d_el_energy += el_energy_vec[group_element_idx][layerind][link_pos] * (
-                                    trace_mod - trace_def
-                                )
-
-                                dest_grad = backend.array_add(
-                                    dest_grad, (group_element_idx, layerind, link_pos, uc_ind, symbol_ind), d_el_energy
-                                )
+                    dest_grad = backend.array_add(dest_grad, (group_element_idx, layerind, link_pos), d_el_energy_vec)
 
         # scale to system size - currently only valid when all links should be weighed equally
         dest_grad *= nlinks / len(mod_link_inds)
