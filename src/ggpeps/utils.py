@@ -687,7 +687,7 @@ def trace_of_product(mats: Sequence[xnp.ndarray], method: str = "hadamard") -> f
         ind = len(mats) // 2
         prod1 = functools.reduce(xnp.matmul, mats[:ind])
         prod2 = functools.reduce(xnp.matmul, mats[ind:])
-        dest = (prod1 * prod2.T).sum()
+        dest = (prod1 * xnp.swapaxes(prod2, -1, -2)).sum(axis=(-2, -1))
     elif method == "trace":
         prod = functools.reduce(xnp.matmul, mats)
         dest = xnp.trace(prod)
