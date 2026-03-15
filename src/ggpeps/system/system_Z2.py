@@ -16,6 +16,7 @@ from .system_base import maybe_jit
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
+from timeit import default_timer as timer
 
 ###################### Z2System2D ##########################
 
@@ -247,9 +248,9 @@ class Z2System2D(System2DBase):
         gamma_out_mod_inv_vec: xnp.ndarray,
         mat_d_mod_inv_vec: xnp.ndarray,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
-        d_mat_a_vec_vec,
-        d_mat_b_vec_vec,
-        d_mat_d_vec_vec,
+        d_mat_a_vec,
+        d_mat_b_vec,
+        d_mat_d_vec,
         grad_over_norm_vec: xnp.ndarray,
         zeroed_params: tuple,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
@@ -288,14 +289,14 @@ class Z2System2D(System2DBase):
         b_times_diff_vec = xnp.expand_dims(b_times_diff_vec, axis=(2, 3))
 
         # shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim, dim)
-        d_covmat_out_virt_vec_vec = (
-            d_mat_a_vec_vec[:, :, :, :, -k:, -k:]
-            + d_mat_b_vec_vec[:, :, :, :, -k:, :] @ diff_times_b_vec[:, :]
-            + b_times_diff_vec @ xnp.swapaxes(d_mat_b_vec_vec, -1, -2)[:, :, :, :, :, -k:]
-            - b_times_diff_vec @ d_mat_d_vec_vec[:, :, :, :] @ diff_times_b_vec
+        d_covmat_out_virt_vec = (
+            d_mat_a_vec[:, :, :, :, -k:, -k:]
+            + d_mat_b_vec[:, :, :, :, -k:, :] @ diff_times_b_vec[:, :]
+            + b_times_diff_vec @ xnp.swapaxes(d_mat_b_vec, -1, -2)[:, :, :, :, :, -k:]
+            - b_times_diff_vec @ d_mat_d_vec @ diff_times_b_vec
         )
 
-        prod = utils.trace_of_product((d_mat_d_vec_vec, prod_mod_norm_vec))
+        prod_vec = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec))
 
         for group_element_idx in range(num_group_elements):
             # idxarrs for the specific group element, for Z_N we expect only 1 anyway
@@ -306,7 +307,7 @@ class Z2System2D(System2DBase):
 
             for layerind in range(nlayer):
 
-                for link_pos, mod_link_ind in enumerate(mod_link_inds):
+                for link_pos, _ in enumerate(mod_link_inds):
 
                     for lens_ind in range(len(idxarrs_group_element[layerind][link_pos])):
                         # (# pfafs, pfaf submat dim)
@@ -319,7 +320,7 @@ class Z2System2D(System2DBase):
                         virts = covmat_out_mod_vec[layerind][link_pos][
                             None, None, inds_arr[:, :, None], inds_arr[:, None, :]
                         ]
-                        d_virts = d_covmat_out_virt_vec_vec[layerind, link_pos][
+                        d_virts = d_covmat_out_virt_vec[layerind, link_pos][
                             :, :, inds_arr[:, :, None], inds_arr[:, None, :]
                         ]
 
@@ -347,7 +348,7 @@ class Z2System2D(System2DBase):
                     #    = -0.5 * trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
                     # we have saved the product of several mats above
                     # (since they don't change in inner loops), and use it here
-                    trace_mod = -0.5 * prod[layerind, link_pos]
+                    trace_mod = -0.5 * prod_vec[layerind, link_pos]
 
                     # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
                     d_el_energy_vec += el_energy_vec[group_element_idx][layerind][link_pos] * (trace_mod - trace_def)
