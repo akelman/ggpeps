@@ -286,6 +286,7 @@ class Z2System2D(System2DBase):
         diff_times_b_vec = xnp.expand_dims(diff_times_b_vec, axis=(2, 3))
         b_times_diff_vec = xnp.expand_dims(b_times_diff_vec, axis=(2, 3))
 
+        """
         # shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim, dim)
         d_covmat_out_virt_vec = (
             d_mat_a_vec[..., -k:, -k:]
@@ -293,6 +294,39 @@ class Z2System2D(System2DBase):
             + b_times_diff_vec @ xnp.swapaxes(d_mat_b_vec, -1, -2)[..., :, -k:]
             - b_times_diff_vec @ d_mat_d_vec @ diff_times_b_vec
         )
+        """
+        shape = (
+            nlayer,
+            len(mod_link_inds),
+            unitcell_size,
+            len(symbolvec),
+            diff_times_b_vec.shape[-1],
+            diff_times_b_vec.shape[-1],
+        )
+        d_covmat_out_virt_vec = xnp.zeros(shape)
+
+        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
+        mask = xnp.ones(shape, dtype=bool)
+        for zeroed_param in zeroed_params:
+            layer_ind, uc_ind, symbol_ind = zeroed_param
+            mask[layer_ind, :, uc_ind, symbol_ind] = False
+        l, m, u, s = xnp.nonzero(mask)  # layer, mod_link, unitcell, symbol
+
+        dA = d_mat_a_vec[l, m, u, s]
+        dB = d_mat_b_vec[l, m, u, s]
+        dD = d_mat_d_vec[l, m, u, s]
+
+        diffB = diff_times_b_vec[l, m, 0, 0]
+        Bdiff = b_times_diff_vec[l, m, 0, 0]
+
+        vals = (
+            dA[..., -k:, -k:]
+            + dB[..., -k:, :] @ diffB
+            + Bdiff @ xnp.swapaxes(dB, -1, -2)[..., :, -k:]
+            - Bdiff @ dD @ diffB
+        )
+
+        d_covmat_out_virt_vec[l, m, u, s] = vals
 
         # prod_vec = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec))
         prod_vec = xnp.einsum("...ij,...ji->...", d_mat_d_vec, prod_mod_norm_vec, optimize=True)
