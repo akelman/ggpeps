@@ -315,6 +315,9 @@ class Z2System2D(System2DBase):
         dA = d_mat_a_vec[l, m, u, s]
         dB = d_mat_b_vec[l, m, u, s]
         dD = d_mat_d_vec[l, m, u, s]
+        # dA = d_mat_a_vec
+        # dB = d_mat_b_vec
+        # dD = d_mat_d_vec
 
         diffB = diff_times_b_vec[l, m, 0, 0]
         Bdiff = b_times_diff_vec[l, m, 0, 0]
@@ -329,7 +332,12 @@ class Z2System2D(System2DBase):
         d_covmat_out_virt_vec[l, m, u, s] = vals
 
         # prod_vec = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec))
-        prod_vec = xnp.einsum("...ij,...ji->...", d_mat_d_vec, prod_mod_norm_vec, optimize=True)
+        # prod_mod = prod_mod_norm_vec[l, m, 0, 0]
+        # prod_vec = xnp.einsum("...ij,...ji->...", d_mat_d_vec, prod_mod_norm_vec, optimize=True)
+
+        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
+        prod_vec = xnp.zeros(shape)
+        prod_vec[l, m, u, s] = xnp.einsum("...ij,...ji->...", dD, prod_mod_norm_vec[l, m, 0, 0], optimize=True)
 
         for group_element_idx in range(num_group_elements):
             # idxarrs for the specific group element, for Z_N we expect only 1 anyway
