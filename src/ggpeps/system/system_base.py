@@ -1975,7 +1975,18 @@ class System2DBase(ABC):
                 self.cfg.nvirtmodes_link,
                 ax=1,
             )
-            self._deriv_mod_mats = (d_mat_a_vec, d_mat_b_vec, d_mat_d_vec)
+
+            shape = (self.cfg.nlayer, len(self.cfg.mod_link_inds), self.cfg.unitcell_size, len(self.cfg.symbolvec))
+            mask = xnp.ones(shape, dtype=bool)
+            for zeroed_param in self.cfg.zeroed_params:
+                layer_ind, uc_ind, symbol_ind = zeroed_param
+                mask[layer_ind, :, uc_ind, symbol_ind] = False
+            l, m, u, s = xnp.nonzero(mask)  # layer, mod_link, unitcell, symbol
+
+            dA = d_mat_a_vec[l, m, u, s]
+            dB = d_mat_b_vec[l, m, u, s]
+            dD = d_mat_d_vec[l, m, u, s]
+            self._deriv_mod_mats = (dA, dB, dD)
         return self._deriv_mod_mats
 
     # Functions that return the layer-resolved gradients of each energy operator
