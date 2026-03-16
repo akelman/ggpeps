@@ -579,13 +579,14 @@ class D2nSystem2D(System2DBase):
 
         # shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim, dim)
         d_covmat_out_virt_vec = (
-            d_mat_a_vec[:, :, :, :, -k:, -k:]
-            + d_mat_b_vec[:, :, :, :, -k:, :] @ diff_times_b_vec[:, :]
-            + b_times_diff_vec @ xnp.swapaxes(d_mat_b_vec, -1, -2)[:, :, :, :, :, -k:]
+            d_mat_a_vec[..., -k:, -k:]
+            + d_mat_b_vec[..., -k:, :] @ diff_times_b_vec
+            + b_times_diff_vec @ xnp.swapaxes(d_mat_b_vec, -1, -2)[..., :, -k:]
             - b_times_diff_vec @ d_mat_d_vec @ diff_times_b_vec
         )
 
-        prod_vec = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec))
+        # prod_vec = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec))
+        prod_vec = xnp.einsum("...ij,...ji->...", d_mat_d_vec, prod_mod_norm_vec, optimize=True)
 
         for group_element_idx in range(num_group_elements):
             # idxarrs for the specific group element, for Z_N we expect only 1 anyway
