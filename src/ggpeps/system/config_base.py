@@ -658,7 +658,7 @@ def generate_gauged_projector_terms(
 
     # Sort terms by monomial length (shorter first) then lexicographic tuple order for deterministic output.
     phased_items.sort(key=lambda kv: (len(kv[0]), kv[0]))
-    indices = tuple((coef, mon) for mon, coef in phased_items)
+    indices = tuple((snap_complex(coef), mon) for mon, coef in phased_items)
 
     return indices, constant
 
