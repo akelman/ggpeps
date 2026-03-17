@@ -633,7 +633,7 @@ def compute_grad_over_norm(
     deriv_d: xnp.ndarray,
     mat_d_inv: xnp.ndarray,
     diff: xnp.ndarray,
-    method: str = "hadamard",
+    method: Optional[str] = None,
 ) -> float:
     r"""Compute the gradient of the norm divided by the norm.
     The expression of deriv_d given to this function decides which derivative is computed.
@@ -657,7 +657,7 @@ def compute_grad_over_norm(
     return dest
 
 
-def trace_of_product(mats: Sequence[xnp.ndarray], method: str = "hadamard") -> float:
+def trace_of_product(mats: Sequence[xnp.ndarray], method: Optional[str] = None) -> float:
     """Compute the trace of the product of an arbitrary number of matrices.
 
     To reduce the number of expensive matrix multiplications, we use the fact that
@@ -683,6 +683,9 @@ def trace_of_product(mats: Sequence[xnp.ndarray], method: str = "hadamard") -> f
     Returns:
         float: Trace of the product of the matrices
     """
+    if method is None:
+        method = "einsum"  # TODO: pick method taking into account backend (numpy/jax/CPU/GPU)
+
     if method == "einsum":
         # It might be more efficient to build the operands string dynamically for all of the products.
         # Something like:
