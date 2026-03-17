@@ -222,7 +222,7 @@ class Z2System2D(System2DBase):
             "nphysmodes_site",
             "mod_link_inds",
             "symbolvec",
-            "zeroed_params",
+            # "zeroed_params",
             "idxarr_vec",
             "coeffs_vec",
         ]
@@ -250,7 +250,7 @@ class Z2System2D(System2DBase):
         d_mat_b_vec: xnp.ndarray,
         d_mat_d_vec: xnp.ndarray,
         grad_over_norm_vec: xnp.ndarray,
-        zeroed_params: tuple,
+        inds: tuple,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
         idxarr_vec: IdxVec,
         coeffs_vec: CoeffsVec,
@@ -305,12 +305,7 @@ class Z2System2D(System2DBase):
         )
         d_covmat_out_virt_vec = xnp.zeros(shape)
 
-        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
-        mask = xnp.ones(shape, dtype=bool)
-        for zeroed_param in zeroed_params:
-            layer_ind, uc_ind, symbol_ind = zeroed_param
-            mask[layer_ind, :, uc_ind, symbol_ind] = False
-        l, m, u, s = xnp.nonzero(mask)  # layer, mod_link, unitcell, symbol
+        l, m, u, s = inds
 
         dA = d_mat_a_vec
         dB = d_mat_b_vec
@@ -326,12 +321,13 @@ class Z2System2D(System2DBase):
             - Bdiff @ dD @ diffB
         )
 
-        d_covmat_out_virt_vec[l, m, u, s] = vals
+        d_covmat_out_virt_vec = backend.array_assign(d_covmat_out_virt_vec, (l, m, u, s), vals)
 
         shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
         prod_vec = xnp.zeros(shape)
         # prod_vec = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec))
-        prod_vec[l, m, u, s] = xnp.einsum("...ij,...ji->...", dD, prod_mod_norm_vec[l, m, 0, 0], optimize=True)
+        vals = xnp.einsum("...ij,...ji->...", dD, prod_mod_norm_vec[l, m, 0, 0], optimize=True)
+        prod_vec = backend.array_assign(prod_vec, (l, m, u, s), vals)
 
         for group_element_idx in range(num_group_elements):
             # idxarrs for the specific group element, for Z_N we expect only 1 anyway

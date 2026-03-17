@@ -1605,7 +1605,7 @@ class System2DBase(ABC):
         d_mat_b_vec: xnp.ndarray,
         d_mat_d_vec: xnp.ndarray,
         grad_over_norm_vec: xnp.ndarray,
-        zeroed_params: tuple,
+        inds: tuple,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
         idxarr_vec: IdxVec,
         coeffs_vec: CoeffsVec,
@@ -1980,7 +1980,7 @@ class System2DBase(ABC):
             mask = xnp.ones(shape, dtype=bool)
             for zeroed_param in self.cfg.zeroed_params:
                 layer_ind, uc_ind, symbol_ind = zeroed_param
-                mask[layer_ind, :, uc_ind, symbol_ind] = False
+                mask = backend.array_assign(mask, (layer_ind, slice(None), uc_ind, symbol_ind), False)
             l, m, u, s = xnp.nonzero(mask)  # layer, mod_link, unitcell, symbol
 
             dA = d_mat_a_vec[l, m, u, s]
@@ -2012,6 +2012,14 @@ class System2DBase(ABC):
                 ]
             )
 
+            shape = (self.cfg.nlayer, len(self.cfg.mod_link_inds), self.cfg.unitcell_size, len(self.cfg.symbolvec))
+            mask = xnp.ones(shape)
+            for zeroed_param in self.cfg.zeroed_params:
+                layer_ind, uc_ind, symbol_ind = zeroed_param
+                inds = (layer_ind, slice(None), uc_ind, symbol_ind)
+                mask = backend.array_assign(mask, inds, 0)
+            l, m, u, s = np.nonzero(mask)  # layer, mod_link, unitcell, symbol
+
             # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
             d_mat_a_vec_vec, d_mat_b_vec_vec, d_mat_d_vec_vec = self.deriv_mod_mats()
 
@@ -2038,7 +2046,7 @@ class System2DBase(ABC):
                 d_mat_b_vec_vec,
                 d_mat_d_vec_vec,
                 self.grad_over_norm_vec,
-                self.cfg.zeroed_params,
+                (l, m, u, s),
                 self.cfg.gaugemgr.group_elements_for_el_energy,
                 self.cfg.idx_vec,
                 self.cfg.coeffs_vec,
