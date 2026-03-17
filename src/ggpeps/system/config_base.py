@@ -411,7 +411,7 @@ def bracket_terms(
     color: int,
     ncolors: int,
     ncopies: int,
-    group_element: xnp.ndarray,
+    group_element: np.ndarray,
     site,
 ) -> list[tuple[complex, tuple[int, ...]]]:
     """
@@ -437,7 +437,7 @@ def bracket_terms(
         color (int): The current color index (1-based).
         ncolors (int): Total number of colors.
         ncopies (int): Total number of copies.
-        group_element (xnp.ndarray): The matrix faithfully representation of the group element 'h'.
+        group_element (np.ndarray): The matrix faithfully representation of the group element 'h'.
         site (int): The site index, used to determine if the matrix element should be conjugated
                     (staggering for fermionic modes).
 
@@ -477,7 +477,7 @@ def bracket_terms(
     if site % 2 == 0:
         gauging_matrix = group_element
     else:
-        gauging_matrix = xnp.conjugate(group_element)
+        gauging_matrix = np.conjugate(group_element)
 
     for m in range(1, ncolors + 1):
         a_m = get_cov_matrix_idx(m, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
@@ -563,7 +563,7 @@ def generate_gauged_projector_terms(
     ncolor: int,
     mix_copies: bool,
     orientation: Direction,
-    group_element: xnp.ndarray,
+    group_element: np.ndarray,
     site: int = 0,
     drop_real_zero: bool = True,
 ) -> tuple[tuple[tuple[complex, tuple[int, ...]], ...], complex]:
