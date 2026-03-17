@@ -512,7 +512,6 @@ class D2nSystem2D(System2DBase):
             "nphysmodes_site",
             "mod_link_inds",
             "symbolvec",
-            "zeroed_params",
             "idxarr_vec",
             "coeffs_vec",
         ]
@@ -540,7 +539,7 @@ class D2nSystem2D(System2DBase):
         d_mat_b_vec: xnp.ndarray,
         d_mat_d_vec: xnp.ndarray,
         grad_over_norm_vec: xnp.ndarray,
-        zeroed_params: tuple,
+        inds: tuple,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
         idxarr_vec: IdxVec,
         coeffs_vec: CoeffsVec,
@@ -549,7 +548,8 @@ class D2nSystem2D(System2DBase):
         This was done after it was generalized in various ways over the previous months:
             compute on multiple links, horizontal and vertical links, on different sublattices, for non-Abelian groups.
         As a result, it is somewhat harder to read.
-        It may be easier to read the (slower and less general) version at
+        It may be easier to read the (slower and less general) versions at (in reverse chronological order)
+            commit 6cbabbd: before significant vectorization
             commit 1d63a6b: after generalization to multiple hor/vert links, but before many optimizations,
         or even earlier versions.
         """
@@ -563,6 +563,8 @@ class D2nSystem2D(System2DBase):
         k = 2 * nvirtmodes_link  # single link offset
         lognorm_default = xnp.sum(lognorm_default_vec)
 
+        # Calculate the derivatives (wrt all non-zero parameters) of the modified covmat_out
+        # TODO: can mask these
         # (nlayer, nmodlinks, mod_virt_dim, mod_virt_dim)
         prod_mod_norm_vec = mat_d_mod_inv_vec @ gamma_in_mod_inv_vec @ gamma_in_sys_mod_vec
         # (nlayer, nmodlinks, mod_virt_dim, link_dim), take only the last k columns
@@ -570,22 +572,27 @@ class D2nSystem2D(System2DBase):
         # (nlayer, nmodlinks, link_dim, mod_virt_dim), take only the last k rows
         b_times_diff_vec = mat_b_mod_vec[:, :, -k:, :] @ gamma_out_mod_inv_vec
 
-        # Expand to shape (nlayer, nmodlinks, 1, 1, dim1, dim2) so that broadcasting over unitcell_size
-        # and n_symbols works correctly below
-        prod_mod_norm_vec = xnp.expand_dims(prod_mod_norm_vec, axis=(2, 3))
-        diff_times_b_vec = xnp.expand_dims(diff_times_b_vec, axis=(2, 3))
-        b_times_diff_vec = xnp.expand_dims(b_times_diff_vec, axis=(2, 3))
+        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec), k, k)
+        d_covmat_out_virt_vec = xnp.zeros(shape)
 
-        # shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim, dim)
-        d_covmat_out_virt_vec = (
+        l, m, u, s = inds
+        diffB = diff_times_b_vec[l, m]
+        Bdiff = b_times_diff_vec[l, m]
+
+        vals = (
             d_mat_a_vec[..., -k:, -k:]
-            + d_mat_b_vec[..., -k:, :] @ diff_times_b_vec
-            + b_times_diff_vec @ xnp.swapaxes(d_mat_b_vec, -1, -2)[..., :, -k:]
-            - b_times_diff_vec @ d_mat_d_vec @ diff_times_b_vec
+            + d_mat_b_vec[..., -k:, :] @ diffB
+            + Bdiff @ xnp.swapaxes(d_mat_b_vec, -1, -2)[..., :, -k:]
+            - Bdiff @ d_mat_d_vec @ diffB
         )
 
-        # prod_vec = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec))
-        prod_vec = xnp.einsum("...ij,...ji->...", d_mat_d_vec, prod_mod_norm_vec, optimize=True)
+        d_covmat_out_virt_vec = backend.array_assign(d_covmat_out_virt_vec, (l, m, u, s), vals)
+
+        # Calculate the modified norms
+        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
+        prod_vec = xnp.zeros(shape)
+        vals = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec[l, m]))
+        prod_vec = backend.array_assign(prod_vec, (l, m, u, s), vals)
 
         for group_element_idx in range(num_group_elements):
             # idxarrs for the specific group element, for Z_N we expect only 1 anyway
