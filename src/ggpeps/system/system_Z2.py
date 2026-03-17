@@ -301,8 +301,7 @@ class Z2System2D(System2DBase):
         # Calculate the modified norms
         shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
         prod_vec = xnp.zeros(shape)
-        # vals = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec[l, m]))
-        vals = xnp.einsum("...ij,...ji->...", d_mat_d_vec, prod_mod_norm_vec[l, m], optimize=True)
+        vals = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec[l, m]))
         prod_vec = backend.array_assign(prod_vec, (l, m, u, s), vals)
 
         for group_element_idx in range(num_group_elements):
