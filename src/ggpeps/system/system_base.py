@@ -1964,9 +1964,23 @@ class System2DBase(ABC):
             )
         return self._chem_energy_op_vec
 
-    def deriv_mod_mats(self):
+    def deriv_mod_mats(self, inds: tuple) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
+        """Extract the derivatives of the modified covmats.
+
+        Args:
+            inds (tuple): indices to use to mask out the zeroed params.
+                The mask is 1 where the parameter is not zeroed, and 0 where it is zeroed.
+
+        Returns:
+            tuple: Tuple of the derivatives of the modified covmats (d_mat_a, d_mat_b, d_mat_d)
+                These would have shape (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2) if not masked by inds.
+                However, the masking changes the shape to (num_active, dim1, dim2), where num_active comes from
+                collapsing the leading dimensions.
+        """
+
         if self._deriv_mod_mats is None:
             # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
+            # where dim1, dim2 are the (effective) physical and virtual dimensions as appropriate
             d_mat_a_vec, d_mat_b_vec, d_mat_d_vec = utils.extract_mod_covmats(
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
                 self.cfg.mod_link_inds,
@@ -1976,13 +1990,10 @@ class System2DBase(ABC):
                 ax=1,
             )
 
-            shape = (self.cfg.nlayer, len(self.cfg.mod_link_inds), self.cfg.unitcell_size, len(self.cfg.symbolvec))
-            mask = xnp.ones(shape, dtype=bool)
-            for zeroed_param in self.cfg.zeroed_params:
-                layer_ind, uc_ind, symbol_ind = zeroed_param
-                mask = backend.array_assign(mask, (layer_ind, slice(None), uc_ind, symbol_ind), False)
-            l, m, u, s = xnp.nonzero(mask)  # layer, mod_link, unitcell, symbol
-
+            # Keep only the indices corresponding to the non-zeroed params
+            # (It might be better to do this before extract_mod_covmats(), since that will speed up the extraction,
+            # but since this only runs once per evaluation on a given set of params, it doesn't matter much)
+            l, m, u, s = inds  # layer, mod_link, unitcell, symbol
             dA = d_mat_a_vec[l, m, u, s]
             dB = d_mat_b_vec[l, m, u, s]
             dD = d_mat_d_vec[l, m, u, s]
@@ -2021,7 +2032,7 @@ class System2DBase(ABC):
             l, m, u, s = np.nonzero(mask)  # layer, mod_link, unitcell, symbol
 
             # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
-            d_mat_a_vec_vec, d_mat_b_vec_vec, d_mat_d_vec_vec = self.deriv_mod_mats()
+            d_mat_a_vec_vec, d_mat_b_vec_vec, d_mat_d_vec_vec = self.deriv_mod_mats((l, m, u, s))
 
             self._el_energy_op_grad_vec = self._compute_el_grad_vec(
                 self.cfg.lattice.size,
