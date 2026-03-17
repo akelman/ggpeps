@@ -683,7 +683,19 @@ def trace_of_product(mats: Sequence[xnp.ndarray], method: str = "hadamard") -> f
     Returns:
         float: Trace of the product of the matrices
     """
-    if method == "hadamard":
+    if method == "einsum":
+        # It might be more efficient to build the operands string dynamically for all of the products.
+        # Something like:
+        #   letters = string.ascii_letters
+        #   inds = [f"...{letters[i]}{letters[(i+1)%n]}" for i in range(n)]
+        #   expr = ",".join(inds) + "->..."
+        #   dest = xnp.einsum(expr, *mats, optimize=True)
+        # But we leave this for future optimizations.
+        ind = len(mats) // 2
+        prod1 = functools.reduce(xnp.matmul, mats[:ind])
+        prod2 = functools.reduce(xnp.matmul, mats[ind:])
+        dest = xnp.einsum("...ij,...ji->...", prod1, prod2, optimize=True)
+    elif method == "hadamard":
         ind = len(mats) // 2
         prod1 = functools.reduce(xnp.matmul, mats[:ind])
         prod2 = functools.reduce(xnp.matmul, mats[ind:])
