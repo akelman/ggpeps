@@ -2029,7 +2029,7 @@ class System2DBase(ABC):
                 layer_ind, uc_ind, symbol_ind = zeroed_param
                 inds = (layer_ind, slice(None), uc_ind, symbol_ind)
                 mask = backend.array_assign(mask, inds, 0)
-            l, m, u, s = np.nonzero(mask)  # layer, mod_link, unitcell, symbol
+            l, m, u, s = xnp.nonzero(mask)  # layer, mod_link, unitcell, symbol
 
             # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
             d_mat_a_vec_vec, d_mat_b_vec_vec, d_mat_d_vec_vec = self.deriv_mod_mats((l, m, u, s))
