@@ -61,6 +61,12 @@ class System2DBase(ABC):
         # All variables that contain _vec are arrays of length nlayer in the first dimension.
         # Other types of vec are indicated by layervec, sitevec, etc.
 
+        # Copy data from config so that it can be stored as a numpy/jax array (as appropriate)
+        # TODO: this section does not need to be redone for every eval, just once during construction
+        self.mask = xnp.asarray(self.cfg.mask)
+        shape = (self.cfg.nlayer, len(self.cfg.mod_link_inds), self.cfg.unitcell_size, len(self.cfg.symbolvec))
+        self.mod_mask_inds = xnp.nonzero(xnp.broadcast_to(self.mask[:, None, :, :], shape))  #
+
         # Parameter based matrices
         self._tmat_layervec_unitcellvec: Optional[list[list[xnp.ndarray]]] = None
         self._tmat_layervec_sitevec: Optional[list[list[xnp.ndarray]]] = None
@@ -84,6 +90,7 @@ class System2DBase(ABC):
         self._mat_d_mod_vec: Optional[xnp.ndarray] = None
         self._det_mat_d_mod_vec: Optional[xnp.ndarray] = None
         self._mat_d_mod_inv_vec: Optional[xnp.ndarray] = None
+        self._deriv_mod_mats: Optional[tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]] = None
         # Electric energy intermediate values - if we compute the electric energy,
         # we store intermediate values to be reused in the gradient calculation
         self._covmat_out_mod_vec: Optional[xnp.ndarray] = None
@@ -1640,9 +1647,11 @@ class System2DBase(ABC):
         gamma_in_mod_inv_vec: xnp.ndarray,
         gamma_out_mod_inv_vec: xnp.ndarray,
         mat_d_mod_inv_vec: xnp.ndarray,
-        gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
+        d_mat_a_vec: xnp.ndarray,
+        d_mat_b_vec: xnp.ndarray,
+        d_mat_d_vec: xnp.ndarray,
         grad_over_norm_vec: xnp.ndarray,
-        zeroed_params: tuple,
+        inds: tuple,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
         idxarr_vec: IdxVec,
         coeffs_vec: CoeffsVec,
@@ -2001,6 +2010,42 @@ class System2DBase(ABC):
             )
         return self._chem_energy_op_vec
 
+    def deriv_mod_mats(self, inds: tuple) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
+        """Extract the derivatives of the modified covmats.
+
+        Args:
+            inds (tuple): indices to use to mask out the zeroed params.
+                The mask is 1 where the parameter is not zeroed, and 0 where it is zeroed.
+
+        Returns:
+            tuple: Tuple of the derivatives of the modified covmats (d_mat_a, d_mat_b, d_mat_d)
+                These would have shape (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2) if not masked by inds.
+                However, the masking changes the shape to (num_active, dim1, dim2), where num_active comes from
+                collapsing the leading dimensions.
+        """
+
+        if self._deriv_mod_mats is None:
+            # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
+            # where dim1, dim2 are the (effective) physical and virtual dimensions as appropriate
+            d_mat_a_vec, d_mat_b_vec, d_mat_d_vec = utils.extract_mod_covmats(
+                self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+                self.cfg.mod_link_inds,
+                self.cfg.lattice.size,
+                self.cfg.nphysmodes_site,
+                self.cfg.nvirtmodes_link,
+                ax=1,
+            )
+
+            # Keep only the indices corresponding to the non-zeroed params
+            # (It might be better to do this before extract_mod_covmats(), since that will speed up the extraction,
+            # but since this only runs once per evaluation on a given set of params, it doesn't matter much)
+            l, m, u, s = inds  # layer, mod_link, unitcell, symbol
+            dA = d_mat_a_vec[l, m, u, s]
+            dB = d_mat_b_vec[l, m, u, s]
+            dD = d_mat_d_vec[l, m, u, s]
+            self._deriv_mod_mats = (dA, dB, dD)
+        return self._deriv_mod_mats
+
     # Functions that return the layer-resolved gradients of each energy operator
     @property
     def el_energy_op_grad_vec(self) -> xnp.ndarray:
@@ -2024,6 +2069,11 @@ class System2DBase(ABC):
                 ]
             )
 
+            l, m, u, s = self.mod_mask_inds  # layer, mod_link, unitcell, symbol
+
+            # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
+            d_mat_a_vec_vec, d_mat_b_vec_vec, d_mat_d_vec_vec = self.deriv_mod_mats((l, m, u, s))
+
             self._el_energy_op_grad_vec = self._compute_el_grad_vec(
                 self.cfg.lattice.size,
                 self.cfg.num_pg_layer,
@@ -2043,9 +2093,11 @@ class System2DBase(ABC):
                 gamma_in_mod_inv_vec,
                 gamma_out_mod_inv_vec,
                 self.mat_d_mod_inv_vec,
-                self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+                d_mat_a_vec_vec,
+                d_mat_b_vec_vec,
+                d_mat_d_vec_vec,
                 self.grad_over_norm_vec,
-                self.cfg.zeroed_params,
+                (l, m, u, s),
                 self.cfg.gaugemgr.group_elements_for_el_energy,
                 self.cfg.idx_vec,
                 self.cfg.coeffs_vec,

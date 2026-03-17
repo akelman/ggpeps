@@ -127,6 +127,10 @@ class Config2DBase(ABC):
         # We store a list of the parameters forced to be zero by the ansatz
         # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
         self.zeroed_params: tuple[tuple[int, int, int], ...] = self.get_zeroed_params()
+        shape = (self.nlayer, self.unitcell_size, len(self.symbolvec))
+        self.mask = np.ones(shape)
+        for zeroed_param in self.zeroed_params:
+            self.mask[zeroed_param] = 0
 
         # Parameters of the Hamiltonian
         self.g_el = g_el
@@ -654,7 +658,7 @@ def generate_gauged_projector_terms(
 
     # Sort terms by monomial length (shorter first) then lexicographic tuple order for deterministic output.
     phased_items.sort(key=lambda kv: (len(kv[0]), kv[0]))
-    indices = tuple((coef, mon) for mon, coef in phased_items)
+    indices = tuple((snap_complex(coef), mon) for mon, coef in phased_items)
 
     return indices, constant
 

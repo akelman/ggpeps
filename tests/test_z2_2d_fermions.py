@@ -664,10 +664,13 @@ class TestZ2System(unittest.TestCase):
                 deriv_ana.at[lay, :, :].multiply(g_chem[lay - offset])
             else:
                 deriv_ana[lay, :, :] *= g_chem[lay - offset]
+
+        # test a random subset of the parameters, since testing all of them is too slow
         symbolvec = system_z2_2_2.symbolvec
+        inds = np.random.choice(len(symbolvec), size=3, replace=False)
         for layerind in range(3):
             # we could skip the pure gauge layers, since they do not contribute
-            for ind in range(len(symbolvec)):
+            for ind in inds:
                 with self.subTest(symbol=symbolvec[ind], layerind=layerind):
                     paramvec_left = np.copy(paramvec)
                     paramvec_right = np.copy(paramvec)

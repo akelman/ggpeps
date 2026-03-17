@@ -231,9 +231,14 @@ def extract_partial_covmats(mat: xnp.ndarray, corner: int) -> tuple[xnp.ndarray,
     return mat_a, mat_b, mat_d
 
 
-@maybe_jit(static_argnames=["link_inds", "lattice_size", "nphysmodes_site", "nvirtmodes_link"])
+@maybe_jit(static_argnames=["link_inds", "lattice_size", "nphysmodes_site", "nvirtmodes_link", "ax"])
 def extract_mod_covmats(
-    mat: xnp.ndarray, link_inds: tuple[int, ...], lattice_size: int, nphysmodes_site: int, nvirtmodes_link: int
+    mat: xnp.ndarray,
+    link_inds: tuple[int, ...],
+    lattice_size: int,
+    nphysmodes_site: int,
+    nvirtmodes_link: int,
+    ax: int = -3,
 ) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
     """Extract the A, B, D submatrices, but including the virtual modes on the link specified by link_ind.
     This function can accept a 2D matrix, or a stack of 2D matrices (e.g. a 3D array).
@@ -242,6 +247,8 @@ def extract_mod_covmats(
 
     This function is called many times - when building the modified matrices, and when doing so in the electric
     energy gradients. It is important that it be efficient.
+    Many variations of this function have been tested, at this is fastest found so far, at least for numpy (jax
+    was not as heavily tested).
 
     Args:
         mat (xnp.ndarray): The mat(s) from which to extract the submatrices.
@@ -249,13 +256,14 @@ def extract_mod_covmats(
         lattice_size (int): the size of the lattice (number of sites).
         nphysmodes_site (int): number of physical modes per site.
         nvirtmodes_link (int): number of virtual modes per link.
+        ax (int): axis along which to stack the results (default is -3, i.e. the axis before the last two
 
     Returns:
         tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]: the A, B, D submatrices
-            The returned A has shape (..., len(link_inds), phys_dim, phys_dim)
-            The returned B has shape (..., len(link_inds), phys_dim, virt_dim)
-            The returned D has shape (..., len(link_inds), virt_dim, virt_dim)
-            where ... are any leading dimensions of mat, up to the last two.
+            The returned A has shape (..., len(link_inds), ..., phys_dim, phys_dim)
+            The returned B has shape (..., len(link_inds),..., phys_dim, virt_dim)
+            The returned D has shape (..., len(link_inds), ..., virt_dim, virt_dim)
+            where ... are the other dimensions of mat, determined by the value of ax.
             Thus, len(shape(mat)) + 1 = len(shape(A)) = len(shape(B)) = len(shape(D))
     """
 
@@ -280,9 +288,9 @@ def extract_mod_covmats(
         D_list.append(mat[..., virt_inds, :][..., :, virt_inds])
 
     # Stack into (layers, links, ...)
-    A = xnp.stack(A_list, axis=-3)  # -3 stacks at the axis before the last two, which is the dimension of mod_links
-    B = xnp.stack(B_list, axis=-3)
-    D = xnp.stack(D_list, axis=-3)
+    A = xnp.stack(A_list, axis=ax)  # -3 stacks at the axis before the last two
+    B = xnp.stack(B_list, axis=ax)
+    D = xnp.stack(D_list, axis=ax)
 
     return A, B, D
 
@@ -418,7 +426,7 @@ def derivative_pfaffian_vectorized(mat: xnp.ndarray, d_mat: xnp.ndarray, pfavals
 
     # Safely invert: identity where masked out (won't contribute anyway because we multiply by mask at the end)
     eye = xnp.eye(mat.shape[-1], dtype=mat.dtype)
-    safe_mat = xnp.where(mask[:, None, None], mat, eye)
+    safe_mat = xnp.where(mask[..., None, None], mat, eye)
 
     inv_mat = xnp.linalg.inv(safe_mat)  # (N, M, M)
     prod = inv_mat @ d_mat  # (N, M, M)
@@ -625,7 +633,7 @@ def compute_grad_over_norm(
     deriv_d: xnp.ndarray,
     mat_d_inv: xnp.ndarray,
     diff: xnp.ndarray,
-    method: str = "hadamard",
+    method: Optional[str] = None,
 ) -> float:
     r"""Compute the gradient of the norm divided by the norm.
     The expression of deriv_d given to this function decides which derivative is computed.
@@ -649,7 +657,7 @@ def compute_grad_over_norm(
     return dest
 
 
-def trace_of_product(mats: Sequence[xnp.ndarray], method: str = "hadamard") -> float:
+def trace_of_product(mats: Sequence[xnp.ndarray], method: Optional[str] = None) -> float:
     """Compute the trace of the product of an arbitrary number of matrices.
 
     To reduce the number of expensive matrix multiplications, we use the fact that
@@ -668,21 +676,36 @@ def trace_of_product(mats: Sequence[xnp.ndarray], method: str = "hadamard") -> f
         [1] Trace, Wikipedia, https://en.wikipedia.org/wiki/Trace_(linear_algebra)#Trace_of_a_product
 
     Args:
-        mats (Sequence[xnp.ndarray]): A sequence of matrices with compatible dimensions for multiplication,
-            which result in a square matrix to allow for the trace to be defined.
+        mats (Sequence[xnp.ndarray]): A sequence of matrices (or stack of matrices) with compatible dimensions
+            for multiplication, which result in a square matrix to allow for the trace to be defined.
         method (str, optional): Method to use to compute the trace of the product.
 
     Returns:
         float: Trace of the product of the matrices
     """
-    if method == "hadamard":
+    if method is None:
+        method = "einsum"  # TODO: pick method taking into account backend (numpy/jax/CPU/GPU)
+
+    if method == "einsum":
+        # It might be more efficient to build the operands string dynamically for all of the products.
+        # Something like:
+        #   letters = string.ascii_letters
+        #   inds = [f"...{letters[i]}{letters[(i+1)%n]}" for i in range(n)]
+        #   expr = ",".join(inds) + "->..."
+        #   dest = xnp.einsum(expr, *mats, optimize=True)
+        # But we leave this for future optimizations.
         ind = len(mats) // 2
         prod1 = functools.reduce(xnp.matmul, mats[:ind])
         prod2 = functools.reduce(xnp.matmul, mats[ind:])
-        dest = (prod1 * prod2.T).sum()
+        dest = xnp.einsum("...ij,...ji->...", prod1, prod2, optimize=True)
+    elif method == "hadamard":
+        ind = len(mats) // 2
+        prod1 = functools.reduce(xnp.matmul, mats[:ind])
+        prod2 = functools.reduce(xnp.matmul, mats[ind:])
+        dest = (prod1 * xnp.swapaxes(prod2, -1, -2)).sum(axis=(-2, -1))
     elif method == "trace":
         prod = functools.reduce(xnp.matmul, mats)
-        dest = xnp.trace(prod)
+        dest = xnp.trace(prod, axis1=-2, axis2=-1)
     else:
         raise ValueError(f"Unknown method {method} for computing the trace of product.")
     return dest
