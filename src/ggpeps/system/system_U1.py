@@ -15,6 +15,8 @@ from ggpeps.system import U1System2DConfig
 from .system_base import System2DBase
 from ggpeps.system.backend import backend
 
+from .system_base import maybe_jit
+
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 ################### U1MultilayerSystem2D ###################
@@ -477,5 +479,7 @@ class U1System2D(System2DBase):
         meson_op_vec = xnp.zeros(self.cfg.nlayer)
         return xnp.array(meson_op_vec)
 
-    def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
+    @staticmethod
+    @maybe_jit(static_argnames=["after_ph"])
+    def occupation(covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False) -> float:
         return 0.0  # Not implemented

@@ -227,6 +227,31 @@
                 "--compute_grads",
             ]
         },
+        {
+            "name": "JAX D6 Eval Exact L=2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manager.py",
+            "console": "integratedTerminal",
+            "args": [
+                "eval-exact",
+                "D6",
+                "--L", "2",
+                "--ncopy", "2",
+                "--num_pg_layer", "1",
+                "--g_el", "0.0",
+                "--g_mag", "1.0", 
+                "--g_int", "0.0",
+                "--g_mass", "0.0",
+                "--ignore_cache",
+                "--seed", "2",
+                "--gauge_fixing",
+                "--compute_grads",
+            ],
+            "env":{
+                "GGPEPS_BACKEND": "jax"
+            },
+        },
                 {
             "name": "D6 Eval MC L=2",
             "type": "debugpy",

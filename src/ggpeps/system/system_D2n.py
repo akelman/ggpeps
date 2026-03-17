@@ -747,9 +747,11 @@ class D2nSystem2D(System2DBase):
         gradients = xnp.zeros(param_shape)
         return gradients
 
-    def _meson_string_vec(self, path: list[tuple[int, bool]]) -> xnp.ndarray:
+    def _meson_string_vec(self, path: tuple[tuple[int, bool], ...]) -> xnp.ndarray:
         meson_op_vec = xnp.zeros(self.cfg.nlayer)
         return xnp.array(meson_op_vec)
 
-    def occupation(self, lay: int, site: int, after_ph: bool = False) -> float:
+    @staticmethod
+    @maybe_jit(static_argnames=["after_ph"])
+    def occupation(covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False) -> float:
         return 0.0
