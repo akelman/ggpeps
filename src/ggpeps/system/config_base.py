@@ -127,6 +127,10 @@ class Config2DBase(ABC):
         # We store a list of the parameters forced to be zero by the ansatz
         # They are actually used in self.enforce_parameter_conditions(), as well as in other checks throughout
         self.zeroed_params: tuple[tuple[int, int, int], ...] = self.get_zeroed_params()
+        shape = (self.nlayer, self.unitcell_size, len(self.symbolvec))
+        self.mask = np.ones(shape)
+        for zeroed_param in self.zeroed_params:
+            self.mask[zeroed_param] = 0
 
         # Parameters of the Hamiltonian
         self.g_el = g_el

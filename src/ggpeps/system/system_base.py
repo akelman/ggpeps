@@ -61,6 +61,12 @@ class System2DBase(ABC):
         # All variables that contain _vec are arrays of length nlayer in the first dimension.
         # Other types of vec are indicated by layervec, sitevec, etc.
 
+        # Copy data from config so that it can be stored as a numpy/jax array (as appropriate)
+        # TODO: this section does not need to be redone for every eval, just once during construction
+        self.mask = xnp.asarray(self.cfg.mask)
+        shape = (self.cfg.nlayer, len(self.cfg.mod_link_inds), self.cfg.unitcell_size, len(self.cfg.symbolvec))
+        self.mod_mask_inds = xnp.nonzero(xnp.broadcast_to(self.mask[:, None, :, :], shape))  #
+
         # Parameter based matrices
         self._tmat_layervec_unitcellvec: Optional[list[list[xnp.ndarray]]] = None
         self._tmat_layervec_sitevec: Optional[list[list[xnp.ndarray]]] = None
@@ -2023,13 +2029,7 @@ class System2DBase(ABC):
                 ]
             )
 
-            shape = (self.cfg.nlayer, len(self.cfg.mod_link_inds), self.cfg.unitcell_size, len(self.cfg.symbolvec))
-            mask = xnp.ones(shape)
-            for zeroed_param in self.cfg.zeroed_params:
-                layer_ind, uc_ind, symbol_ind = zeroed_param
-                inds = (layer_ind, slice(None), uc_ind, symbol_ind)
-                mask = backend.array_assign(mask, inds, 0)
-            l, m, u, s = xnp.nonzero(mask)  # layer, mod_link, unitcell, symbol
+            l, m, u, s = self.mod_mask_inds  # layer, mod_link, unitcell, symbol
 
             # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
             d_mat_a_vec_vec, d_mat_b_vec_vec, d_mat_d_vec_vec = self.deriv_mod_mats((l, m, u, s))
