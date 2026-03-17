@@ -90,7 +90,7 @@ class System2DBase(ABC):
         self._mat_d_mod_vec: Optional[xnp.ndarray] = None
         self._det_mat_d_mod_vec: Optional[xnp.ndarray] = None
         self._mat_d_mod_inv_vec: Optional[xnp.ndarray] = None
-        self._deriv_mod_mats = None
+        self._deriv_mod_mats: Optional[tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]] = None
         # Electric energy intermediate values - if we compute the electric energy,
         # we store intermediate values to be reused in the gradient calculation
         self._covmat_out_mod_vec: Optional[xnp.ndarray] = None

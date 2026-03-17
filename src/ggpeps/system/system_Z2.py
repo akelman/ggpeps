@@ -266,8 +266,8 @@ class Z2System2D(System2DBase):
         num_group_elements = len(group_elements_for_el_energy)
 
         nlayer = num_pg_layer + num_fermionic_layer
-        shape = (num_group_elements, nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
-        dest_grad = xnp.zeros(shape)
+        grad_shape = (num_group_elements, nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
+        dest_grad = xnp.zeros(grad_shape)
 
         nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
         k = 2 * nvirtmodes_link  # single link offset
@@ -299,8 +299,8 @@ class Z2System2D(System2DBase):
         d_covmat_out_virt_vec = backend.array_assign(d_covmat_out_virt_vec, (l, m, u, s), vals)
 
         # Calculate the modified norms
-        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
-        prod_vec = xnp.zeros(shape)
+        norm_shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
+        prod_vec = xnp.zeros(norm_shape)
         vals = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec[l, m]))
         prod_vec = backend.array_assign(prod_vec, (l, m, u, s), vals)
 
