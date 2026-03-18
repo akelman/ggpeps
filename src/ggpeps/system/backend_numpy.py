@@ -39,23 +39,20 @@ def calculate_lognormvec_numpy(
 ) -> np.ndarray:
     # This is still the plain formula, without any update mechanism
     nlayer = len(mat_d_vec)
-    dest = np.zeros(nlayer)
+    n = mat_d_vec[0].shape[0]
 
-    for ind in range(nlayer):
-        gamma_in_sys = gamma_in_sys_vec[ind]
-        mat_d = mat_d_vec[ind]
+    prod_vec = gamma_in_sys_vec @ mat_d_vec
+    eye_vec = np.broadcast_to(np.eye(n), (nlayer, n, n))
 
-        sign, logval = np.linalg.slogdet((np.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d))
-
-        if all_factors:
-            logval -= mat_d.shape[0] * np.log(2)
-        else:
-            # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
-            pass
-        dest[ind] = logval
+    sign_vec, logval_vec = np.linalg.slogdet((eye_vec - prod_vec))
+    if all_factors:
+        logval_vec -= n * np.log(2)
+    else:
+        # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
+        pass
 
     # The factor 1/2 is the square-root
-    return dest / 2
+    return logval_vec / 2
 
 
 def pfaffian_LTL_stack(A, overwrite_a=False):
