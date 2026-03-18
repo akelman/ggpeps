@@ -1278,13 +1278,13 @@ class System2DBase(ABC):
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
 
     def _calculate_lognorm(
-        self, gamma_in_sys_vec: list[xnp.ndarray], mat_d_vec: list[xnp.ndarray], all_factors: bool = False
+        self, gamma_in_sys_vec: xnp.ndarray, mat_d_vec: xnp.ndarray, all_factors: bool = False
     ) -> float:
         # This is still the plain formula, without any update mechanism
         normvec = backend.calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
         return xnp.sum(normvec)
 
-    def calculate_lognorm(self, all_factors=False):
+    def calculate_lognorm(self, all_factors: bool = False) -> xnp.ndarray:
         """Compute the logarithm of the norm
 
         Args:
@@ -1295,7 +1295,7 @@ class System2DBase(ABC):
         """
         return self._calculate_lognorm(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
 
-    def calculate_lognormvec(self, all_factors=False):
+    def calculate_lognormvec(self, all_factors: bool = False) -> xnp.ndarray:
         """Compute the logarithm of the norm for each layer
 
         Args:
@@ -1307,14 +1307,14 @@ class System2DBase(ABC):
         return backend.calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
 
     @classmethod
-    def _calculate_lognorm_inc(cls, incdet_vec, det_mat_d_vec, n, all_factors: bool = False):
+    def _calculate_lognorm_inc(cls, incdet_vec, det_mat_d_vec, n: int, all_factors: bool = False):
         det_vec = xnp.array([incdet.det() for incdet in incdet_vec])
         lognormvec = cls._calculate_lognormvec_inc(det_vec, det_mat_d_vec, n, all_factors=all_factors)
         return xnp.sum(lognormvec)
 
     @staticmethod
     @maybe_jit(static_argnames=["n", "all_factors"])
-    def _calculate_lognormvec_inc(det_vec, det_mat_d_vec, n, all_factors: bool = False) -> xnp.ndarray:
+    def _calculate_lognormvec_inc(det_vec, det_mat_d_vec, n: int, all_factors: bool = False) -> xnp.ndarray:
         dest = []
         for ind in range(len(det_vec)):
             detval = det_vec[ind]
@@ -1326,7 +1326,7 @@ class System2DBase(ABC):
             dest.append(0.5 * detval)
         return xnp.array(dest)
 
-    def calculate_lognormvec_inc(self, all_factors=False) -> xnp.ndarray:
+    def calculate_lognormvec_inc(self, all_factors: bool = False) -> xnp.ndarray:
         """Compute the logarithm of the norm for all layers by incrementally updating the previous value
         (using IncDet and Woodbury)
 
@@ -1357,7 +1357,7 @@ class System2DBase(ABC):
         normvec = self.calculate_lognormvec_inc(all_factors=all_factors)
         return xnp.sum(normvec)
 
-    def update_lognorm_inc(self, offset, updates, all_factors=False) -> float:
+    def update_lognorm_inc(self, offset: int, updates, all_factors=False) -> float:
         """Updat the logarithm of the norm incrementally with the given update.
 
         Args:
