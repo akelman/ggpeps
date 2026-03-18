@@ -1193,6 +1193,7 @@ class System2DBase(ABC):
         """
         dest_grad = xnp.zeros((nlayer, unitcell_size, nparams))
 
+        # TODO: vectorize and make use of self.deriv_mod_mats(self.mod_mask_inds)
         for layerind in range(nlayer):
             offset = 2 * lattice_size * nphysmodes_site  # offset past the physical modes
             diff = gamma_in_inv_vec[layerind]
