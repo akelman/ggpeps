@@ -274,7 +274,12 @@ class Z2System2D(System2DBase):
         lognorm_default = xnp.sum(lognorm_default_vec)
 
         # Calculate the derivatives (wrt all non-zero parameters) of the modified covmat_out
-        # TODO: can mask these
+        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec), k, k)
+        d_covmat_out_virt_vec = xnp.zeros(shape)
+
+        l, m, u, s = inds
+        # NOTE: from limited testing, it appears that masking these is not worth it, as that creates extra copies.
+        # But it could be worth it if some of the matmuls were moved out of here, to happen once per eval.
         # (nlayer, nmodlinks, mod_virt_dim, mod_virt_dim)
         prod_mod_norm_vec = mat_d_mod_inv_vec @ gamma_in_mod_inv_vec @ gamma_in_sys_mod_vec
         # (nlayer, nmodlinks, mod_virt_dim, link_dim), take only the last k columns
@@ -282,10 +287,6 @@ class Z2System2D(System2DBase):
         # (nlayer, nmodlinks, link_dim, mod_virt_dim), take only the last k rows
         b_times_diff_vec = mat_b_mod_vec[:, :, -k:, :] @ gamma_out_mod_inv_vec
 
-        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec), k, k)
-        d_covmat_out_virt_vec = xnp.zeros(shape)
-
-        l, m, u, s = inds
         diffB = diff_times_b_vec[l, m]
         Bdiff = b_times_diff_vec[l, m]
 
@@ -295,7 +296,6 @@ class Z2System2D(System2DBase):
             + Bdiff @ xnp.swapaxes(d_mat_b_vec, -1, -2)[..., :, -k:]
             - Bdiff @ d_mat_d_vec @ diffB
         )
-
         d_covmat_out_virt_vec = backend.array_assign(d_covmat_out_virt_vec, (l, m, u, s), vals)
 
         # Calculate the modified norms
