@@ -1284,7 +1284,7 @@ class System2DBase(ABC):
         normvec = backend.calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
         return xnp.sum(normvec)
 
-    def calculate_lognorm(self, all_factors: bool = False) -> xnp.ndarray:
+    def calculate_lognorm(self, all_factors: bool = False) -> float:
         """Compute the logarithm of the norm
 
         Args:
