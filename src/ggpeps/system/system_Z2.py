@@ -301,6 +301,9 @@ class Z2System2D(System2DBase):
         # Calculate the modified norms
         norm_shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
         prod_vec = xnp.zeros(norm_shape)
+        # The following line takes >50% of the runtime of this function, but most of that is actually spent
+        # copying data due to the fancy indexing of prod_mod_norm_vec[l, m]
+        # TODO: optimize this (the main complication is dealing with the reshaped arrays after indexing)
         vals = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec[l, m]))
         prod_vec = backend.array_assign(prod_vec, (l, m, u, s), vals)
 
