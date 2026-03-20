@@ -12,14 +12,14 @@ class TestWoodburyInverter(unittest.TestCase):
         self.wi = utils.WoodburyInverter(self.ident)
 
     def test_identity(self):
-        inv_wb = self.wi.update(self.ident, self.ident, self.ident)
+        inv_wb = self.wi.update(self.wi.inv(), self.ident, self.ident, self.ident)
         inv = np.linalg.inv(2 * self.ident)
         self.assertTrue(np.allclose(inv, inv_wb))
 
     def test_identity_incr(self):
         for _ in range(10):
             update = 0.1 * self.ident
-            self.wi.update(self.ident, update, self.ident)
+            self.wi.update(self.wi.inv(), self.ident, update, self.ident)
         inv_wb = self.wi.inv()
         inv = np.linalg.inv(2 * self.ident)
         self.assertTrue(np.allclose(inv, inv_wb))
@@ -29,7 +29,7 @@ class TestWoodburyInverter(unittest.TestCase):
         wi = utils.WoodburyInverter(mat)
         for _ in range(100):
             incr = np.random.rand(self.n, self.n)
-            wi.update(self.ident, incr, self.ident)
+            wi.update(wi.inv(), self.ident, incr, self.ident)
             mat += incr
         inv_wb = wi.inv()
         inv = np.linalg.inv(mat)
@@ -51,7 +51,7 @@ class TestWoodburyInverter(unittest.TestCase):
         mat = np.random.rand(self.n, self.n)
         wi = utils.WoodburyInverter(mat)
         zero = np.zeros((self.n, self.n))
-        inv_wb = wi.update(zero, 0, 0)
+        inv_wb = wi.update(wi.inv(), zero, 0, 0)
         inv = np.linalg.inv(mat)
         self.assertTrue(np.allclose(inv, inv_wb))
 

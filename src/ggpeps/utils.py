@@ -762,10 +762,13 @@ class WoodburyInverter:
     def inv(self) -> xnp.ndarray:
         return self.ainv
 
-    def update(self, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> xnp.ndarray:
+    @staticmethod
+    def update(ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> xnp.ndarray:
         """Update the inverse of a matrix A using the Woodbury formula.
         The formula is: (A+UCV)^{-1}=A^{-1} - A^{-1}U(C^{-1}+VA^{-1}U)^{-1}VA^{-1}.
+
         Args:
+            ainv (xnp.ndarray): the matrix to which to apply the update
             u (xnp.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
                                     used to place the update C to match the dimensions of M.
             v (xnp.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
@@ -773,15 +776,14 @@ class WoodburyInverter:
             c (xnp.ndarray): Local update matrix C
         Returns:
             xnp.ndarray: Updated inverse matrix (A+UCV)^{-1}
-
         """
         # We ware updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
         if not xnp.allclose(c, 0):
             # We cannot update with C being zero since this matrix has no inverse
             cinv = xnp.linalg.inv(c)
-            ainv_u = self.ainv @ u
-            self.ainv -= (ainv_u @ xnp.linalg.inv(cinv + v @ ainv_u)) @ (v @ self.ainv)
-        return self.ainv
+            ainv_u = ainv @ u
+            ainv -= (ainv_u @ xnp.linalg.inv(cinv + v @ ainv_u)) @ (v @ ainv)
+        return ainv
 
     def update_index(self, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """
@@ -809,9 +811,8 @@ class WoodburyInverter:
 
             inds_v = (slice(0, m_m), slice(indj, indj + n_m))
             v = backend.array_assign(v, inds_v, idmat)
-            return self.update(u, m, v)
-        else:
-            return self.inv()
+            self.ainv = self.update(self.ainv, u, m, v)
+        return self.inv()
 
 
 # =========================== IncDeterminant ===============================
