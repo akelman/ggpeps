@@ -779,7 +779,8 @@ class WoodburyInverter:
         if not xnp.allclose(c, 0):
             # We cannot update with C being zero since this matrix has no inverse
             cinv = xnp.linalg.inv(c)
-            self.ainv -= ((self.ainv @ u) @ xnp.linalg.inv(cinv + v @ self.ainv @ u)) @ (v @ self.ainv)
+            ainv_u = self.ainv @ u
+            self.ainv -= (ainv_u @ xnp.linalg.inv(cinv + v @ ainv_u)) @ (v @ self.ainv)
         return self.ainv
 
     def update_index(self, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
