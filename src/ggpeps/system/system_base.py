@@ -660,55 +660,21 @@ class System2DBase(ABC):
                     # Get the modified matrices, which include the virtual modes of the given link among the physical
                     mat_a = self.mat_a_mod_vec[layerind, ind]
                     mat_b = self.mat_b_mod_vec[layerind, ind]
+
+                    mat_a_mod_block = mat_a[
+                        -single_link_offset:, -single_link_offset:
+                    ]  # modified-modified part of the A matrix
+                    mat_b_mod_block = mat_b[-single_link_offset:, :]
+                    # modified-virtual part of the B matrix
+
                     diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind][ind].inv()
 
-                    # Gauge the modified link:
-
-                    # Note that unlike in gamma_in, we multiply on the left with R_T and not R.
-                    # This is because the A operators are gauged with respect to U_G
-                    # and not U_G^\dagger like the projector operators
-
-                    mat_a_gauged = xnp.copy(mat_a)
-                    mat_b_gauged = xnp.copy(mat_b)
-
-                    # Gauging the block of modified coupled to virtuals
-                    mat_b_gauged = backend.array_assign(
-                        mat_b_gauged,
-                        (slice(-single_link_offset, None), slice(None)),
-                        R_T @ mat_b[-single_link_offset:, :],
-                    )
-
-                    # gauging modfied coupled to modified
-                    mat_a_gauged = backend.array_assign(
-                        mat_a_gauged,
-                        (slice(-single_link_offset, None), slice(-single_link_offset, None)),
-                        R_T @ mat_a[-single_link_offset:, -single_link_offset:] @ R,
-                    )
-
-                    # gauging (other) physical coupled to modified
-                    mat_a_gauged = backend.array_assign(
-                        mat_a_gauged,
-                        (slice(None, -single_link_offset), slice(-single_link_offset, None)),
-                        mat_a[:-single_link_offset, -single_link_offset:] @ R,
-                    )
-
-                    # gauging modified coupled to (other) physical
-                    mat_a_gauged = backend.array_assign(
-                        mat_a_gauged,
-                        (slice(-single_link_offset, None), slice(None, -single_link_offset)),
-                        R_T @ mat_a[-single_link_offset:, :-single_link_offset],
-                    )
-
                     # Compute covmat
-                    covmat_out = mat_a_gauged + mat_b_gauged @ diff_d_gamma_inv @ xnp.transpose(mat_b_gauged)
-                    size = covmat_out.shape[1]
-                    covmat_out_virt = backend.slice_matrix(
-                        covmat_out,
-                        size - single_link_offset,
-                        size,
-                        size - single_link_offset,
-                        size,
+                    covmat_out_virt_ungauged = mat_a_mod_block + mat_b_mod_block @ diff_d_gamma_inv @ xnp.transpose(
+                        mat_b_mod_block
                     )
+
+                    covmat_out_virt = R_T @ covmat_out_virt_ungauged @ R
 
                     # pfapack (used in the el energy) is rather picky about the anti-symmetrization (to 1e-14)
                     covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
