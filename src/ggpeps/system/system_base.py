@@ -2074,6 +2074,15 @@ class System2DBase(ABC):
             # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
             d_mat_a_vec_vec, d_mat_b_vec_vec, d_mat_d_vec_vec = self.deriv_mod_mats((l, m, u, s))
 
+            rotmat_vec = xnp.stack(
+                [
+                    self.generate_rotmat(
+                        self.cfg.ncopy, self._gaugefieldvec[link_ind], *self.cfg.lattice.ind2coord_dir(link_ind)
+                    )
+                    for link_ind in self.cfg.mod_link_inds
+                ]
+            )
+
             self._el_energy_op_grad_vec = self._compute_el_grad_vec(
                 self.cfg.lattice.size,
                 self.cfg.num_pg_layer,
@@ -2101,6 +2110,7 @@ class System2DBase(ABC):
                 self.cfg.gaugemgr.group_elements_for_el_energy,
                 self.cfg.idx_vec,
                 self.cfg.coeffs_vec,
+                rotmat_vec,
             )
         return self._el_energy_op_grad_vec
 
