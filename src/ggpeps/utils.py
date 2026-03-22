@@ -785,33 +785,37 @@ class WoodburyInverter:
             ainv -= (ainv_u @ xnp.linalg.inv(cinv + v @ ainv_u)) @ (v @ ainv)
         return ainv
 
-    def update_index(self, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
+    def update_index(self, mat: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """
         Update the inverse of the matrix A using the Woodbury formula, given indices indicating the positions in A
         where the update M is placed. This is done by generating the U and V matrix for the update method.
 
         Args:
-            m (xnp.ndarray): M matrix - The local update matrix to A.
+            mat (xnp.ndarray): a stack of matrices M with arbitrary leading dimensions matching self.ainv
+                This is the local update matrix to A.
             indi (int): Index in the first dimension of A where the update m is placed.
             indj (int): Index in the second dimension of A where the update m is placed.
         Returns:
             xnp.ndarray: Updated inverse matrix (A+UMV)^{-1}
         """
         # Construct two matrices to shift m to the correct position in A
-        if not xnp.allclose(m, 0):
-            # We cannot update with m being zero since this matrix has no inverse
-            m_m, n_m = m.shape
-            m_a, n_a = self.ainv.shape
-            idmat = xnp.eye(m_m, n_m)
-            u = xnp.zeros((m_a, m_m))
-            v = xnp.zeros((n_m, n_a))
+        for idx in np.ndindex(mat.shape[:-2]):
+            m = mat[idx]
+            if not xnp.allclose(m, 0):
+                # We cannot update with m being zero since this matrix has no inverse
+                m_m, n_m = m.shape
+                m_a, n_a = self.ainv[idx].shape
+                idmat = xnp.eye(m_m, n_m)
+                u = xnp.zeros((m_a, m_m))
+                v = xnp.zeros((n_m, n_a))
 
-            inds_u = (slice(indi, indi + m_m), slice(0, n_m))
-            u = backend.array_assign(u, inds_u, idmat)
+                inds_u = (slice(indi, indi + m_m), slice(0, n_m))
+                u = backend.array_assign(u, inds_u, idmat)
 
-            inds_v = (slice(0, m_m), slice(indj, indj + n_m))
-            v = backend.array_assign(v, inds_v, idmat)
-            self.ainv = self.update(self.ainv, u, m, v)
+                inds_v = (slice(0, m_m), slice(indj, indj + n_m))
+                v = backend.array_assign(v, inds_v, idmat)
+                ainv = self.update(self.ainv[idx], u, m, v)
+                self.ainv = backend.array_assign(self.ainv, idx, ainv)
         return self.inv()
 
 

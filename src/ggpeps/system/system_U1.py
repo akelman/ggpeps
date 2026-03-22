@@ -149,9 +149,9 @@ class U1System2D(System2DBase):
             neutral_gauge_X, neutral_gauge_Y
         )  # for the 3D case, simply add in the Z covariance matrix as well
 
-        diffvec = [mat_d_inv - gamma_in_sys for mat_d_inv in self.mat_d_inv_vec]
-        wi_gamma_in_vec = [utils.WoodburyInverter(diff) for diff in diffvec]
-        wi_gamma_out_vec = [utils.WoodburyInverter(mat_d - gamma_in_sys) for mat_d in self.mat_d_vec]
+        diffvec = self.mat_d_inv_vec - gamma_in_sys
+        wi_gamma_in_vec = utils.WoodburyInverter(diffvec)
+        wi_gamma_out_vec = utils.WoodburyInverter(self.mat_d_vec - gamma_in_sys)
         incdet_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec]
 
         # Initialize the modified gamma_in_sys for the full system (and trackers)
@@ -205,23 +205,28 @@ class U1System2D(System2DBase):
             rotmat @ self.gamma_gauge_neutral_vec[0][dir] @ np.transpose(rotmat)
         )  # just use the first gamma_gauge_neutral, since they're shared by all layers
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst, self.gamma_in_sys_vec[0])
+
         # Update the determinant
-        mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
+        mat_inv_vec = self.wi_gamma_in_vec.inv()
         detval_vec = [
             incdet.update_index(mat_inv, update, ind_mat, ind_mat)
             for mat_inv, incdet in zip(mat_inv_vec, self.incdet_vec)
         ]
+
         # Update the modified determinant
         offset = 2 * self.cfg.nvirtmodes_link
         if ind_mat - offset >= 0:
             for wi, incdet in zip(self.wi_gamma_in_mod_vec, self.incdet_mod_vec):
                 mat_inv = wi.inv()
                 incdet.update_index(mat_inv, update, ind_mat - offset, ind_mat - offset)
+
         # Update the weight
         self.weight = 0.5 * np.sum(detval_vec)
+
         # Update the matrix inversion
-        [wi_gamma_in.update_index(update, ind_mat, ind_mat) for wi_gamma_in in self.wi_gamma_in_vec]
-        [wi_gamma_out.update_index(update, ind_mat, ind_mat) for wi_gamma_out in self.wi_gamma_out_vec]
+        update_arr = xnp.array([update])
+        self.wi_gamma_in_vec.update_index(update_arr, ind_mat, ind_mat)
+        self.wi_gamma_out_vec.update_index(update_arr, ind_mat, ind_mat)
 
         if ind_mat - offset >= 0:
             # We do not update the matrix if the first link is updated (it is just not there)

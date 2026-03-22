@@ -413,7 +413,6 @@ class System2DBase(ABC):
                    wrt the parameter at that (lay, uc_ind, symbol)
         """
         if self._d_gamma_out_symbolvec is None:
-            gamma_out_inv_vec = xnp.array([self.wi_gamma_out_vec[layer].inv() for layer in range(self.cfg.nlayer)])
             self._d_gamma_out_symbolvec = self._compute_d_gamma_out_symbolvec(
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
@@ -422,7 +421,7 @@ class System2DBase(ABC):
                 self.cfg.unitcell_size,
                 len(self.cfg.symbolvec),
                 self.mat_b_vec,
-                gamma_out_inv_vec,
+                self.wi_gamma_out_vec.inv(),
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
             )
         return self._d_gamma_out_symbolvec
@@ -840,7 +839,7 @@ class System2DBase(ABC):
 
         # Initialize empty lists
         gamma_in_sys_listvec = []
-        wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec = [], [], []
+        incdet_vec = []
         wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec = [], [], []
 
         # Initialize gamma_in_sys for the full system (and trackers)
@@ -854,10 +853,10 @@ class System2DBase(ABC):
             gamma_in_sys = xscipy.linalg.block_diag(neutral_gauge_X, neutral_gauge_Y)
             gamma_in_sys_listvec.append(gamma_in_sys)
 
-            wi_gamma_in_vec.append(utils.WoodburyInverter(self.mat_d_inv_vec[layer] - gamma_in_sys))
-            wi_gamma_out_vec.append(utils.WoodburyInverter(self.mat_d_vec[layer] - gamma_in_sys))
             incdet_vec.append(utils.IncLogAbsDeterminant(self.mat_d_inv_vec[layer] - gamma_in_sys))
         gamma_in_sys_vec = xnp.array(gamma_in_sys_listvec)
+        wi_gamma_in_vec = utils.WoodburyInverter(self.mat_d_inv_vec - gamma_in_sys_vec)
+        wi_gamma_out_vec = utils.WoodburyInverter(self.mat_d_vec - gamma_in_sys_vec)
 
         # Initialize the modified gamma_in_sys and trackers for the full system
         gamma_in_sys_mod_layervec_linkvec = self._extract_gamma_in_sys_mod_vec(
@@ -1372,7 +1371,7 @@ class System2DBase(ABC):
         cumval = 0
         for ind in range(self.cfg.nlayer):
             detval = self.incdet_vec[ind].update_index(
-                self.wi_gamma_in_vec[ind].inv(),
+                self.wi_gamma_in_vec.inv()[ind],
                 updates[ind],
                 offset,
                 offset,
@@ -1394,7 +1393,6 @@ class System2DBase(ABC):
             xnp.ndarray: Vector of gradients of the norm divided by the norm with respect to all parameters
         """
         if self._grad_over_norm_vec is None:
-            gamma_in_inv_vec = xnp.array([self.wi_gamma_in_vec[layerind].inv() for layerind in range(self.cfg.nlayer)])
             self._grad_over_norm_vec = self.compute_grad_over_norm_vec(
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
@@ -1402,7 +1400,7 @@ class System2DBase(ABC):
                 self.cfg.unitcell_size,
                 len(self.symbolvec),
                 self.cfg.zeroed_params,
-                gamma_in_inv_vec,
+                self.wi_gamma_in_vec.inv(),
                 self.gamma_in_sys_vec,
                 self.mat_d_inv_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
@@ -2286,12 +2284,11 @@ class System2DBase(ABC):
         """Compute the covariance matrix of the fermions in the system for the given layer.
         We calculate it for all layers automatically, even though it is not needed for pure-gauge layers."""
         if self._ferm_covmat_vec is None:
-            gamma_out_inv_vec = xnp.asarray([self.wi_gamma_out_vec[layer].inv() for layer in range(self.cfg.nlayer)])
             self._ferm_covmat_vec = self._compute_ferm_cov(
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nlayer,
-                gamma_out_inv_vec,
+                self.wi_gamma_out_vec.inv(),
                 self.mat_a_vec,
                 self.mat_b_vec,
             )

@@ -100,7 +100,7 @@ class Z2System2D(System2DBase):
             """
 
         # Update the determinant
-        mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
+        mat_inv_vec = self.wi_gamma_in_vec.inv()
         detval_vec = np.array(
             [
                 incdet.update_index(mat_inv, update, ind_mat, ind_mat)
@@ -112,10 +112,9 @@ class Z2System2D(System2DBase):
         self.weight = 0.5 * np.sum(detval_vec)
 
         # Update the matrix inversion
-        for wi_gamma_in, update in zip(self.wi_gamma_in_vec, update_vec):
-            wi_gamma_in.update_index(update, ind_mat, ind_mat)
-        for wi_gamma_out, update in zip(self.wi_gamma_out_vec, update_vec):
-            wi_gamma_out.update_index(update, ind_mat, ind_mat)
+        update_arr = xnp.array(update_vec)
+        self.wi_gamma_in_vec.update_index(update_arr, ind_mat, ind_mat)
+        self.wi_gamma_out_vec.update_index(update_arr, ind_mat, ind_mat)
 
         # Update the modified determinant & matrices
         for lay in range(self.cfg.nlayer):
