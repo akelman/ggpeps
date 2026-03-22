@@ -792,7 +792,7 @@ class WoodburyInverter:
 
         Args:
             mat (xnp.ndarray): a stack of matrices M with arbitrary leading dimensions matching self.ainv
-                This is the local update matrix to A.
+                This is a stack of the local update matrices for A.
             indi (int): Index in the first dimension of A where the update m is placed.
             indj (int): Index in the second dimension of A where the update m is placed.
         Returns:
