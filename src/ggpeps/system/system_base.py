@@ -668,8 +668,8 @@ class System2DBase(ABC):
                     # This is because the A operators are gauged with respect to U_G
                     # and not U_G^\dagger like the projector operators
 
-                    mat_a_gauged = mat_a
-                    mat_b_gauged = mat_b
+                    mat_a_gauged = xnp.copy(mat_a)
+                    mat_b_gauged = xnp.copy(mat_b)
 
                     # Gauging the block of modified coupled to virtuals
                     mat_b_gauged = backend.array_assign(
