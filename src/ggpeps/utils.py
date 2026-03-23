@@ -756,11 +756,6 @@ class CacheServer:
 
 
 class WoodburyInverter:
-    def __init__(self, mat: xnp.ndarray):
-        self.ainv = xnp.linalg.inv(mat)
-
-    def inv(self) -> xnp.ndarray:
-        return self.ainv
 
     def update(ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> xnp.ndarray:
         """Update the inverse of a matrix A using the Woodbury formula.

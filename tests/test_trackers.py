@@ -9,31 +9,29 @@ class TestWoodburyInverter(unittest.TestCase):
     def setUp(self):
         self.n = 10
         self.ident = np.eye(self.n)
-        self.wi = utils.WoodburyInverter(self.ident)
+        self.wi = np.linalg.inv(self.ident)
 
     def test_identity(self):
-        inv_wb = self.wi.update(self.wi.inv(), self.ident, self.ident, self.ident)
+        inv_wb = utils.WoodburyInverter.update(self.wi, self.ident, self.ident, self.ident)
         inv = np.linalg.inv(2 * self.ident)
         self.assertTrue(np.allclose(inv, inv_wb))
 
     def test_identity_incr(self):
         for _ in range(10):
             update = 0.1 * self.ident
-            self.wi.ainv = self.wi.update(self.wi.inv(), self.ident, update, self.ident)
-        inv_wb = self.wi.inv()
+            self.wi = utils.WoodburyInverter.update(self.wi, self.ident, update, self.ident)
         inv = np.linalg.inv(2 * self.ident)
-        self.assertTrue(np.allclose(inv, inv_wb))
+        self.assertTrue(np.allclose(inv, self.wi))
 
     def test_random_incr(self):
         mat = np.random.rand(self.n, self.n)
-        wi = utils.WoodburyInverter(mat)
+        wi = np.linalg.inv(mat)
         for _ in range(100):
             incr = np.random.rand(self.n, self.n)
-            wi.ainv = wi.update(wi.inv(), self.ident, incr, self.ident)
+            wi = utils.WoodburyInverter.update(wi, self.ident, incr, self.ident)
             mat += incr
-        inv_wb = wi.inv()
         inv = np.linalg.inv(mat)
-        self.assertTrue(np.allclose(inv, inv_wb))
+        self.assertTrue(np.allclose(inv, wi))
 
     def test_pos_update(self):
         n = 10
@@ -49,9 +47,9 @@ class TestWoodburyInverter(unittest.TestCase):
 
     def test_zero_incr(self):
         mat = np.random.rand(self.n, self.n)
-        wi = utils.WoodburyInverter(mat)
+        wi = np.linalg.inv(mat)
         zero = np.zeros((self.n, self.n))
-        inv_wb = wi.update(wi.inv(), zero, 0, 0)
+        inv_wb = utils.WoodburyInverter.update(wi, zero, 0, 0)
         inv = np.linalg.inv(mat)
         self.assertTrue(np.allclose(inv, inv_wb))
 
