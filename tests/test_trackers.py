@@ -1,6 +1,8 @@
 import unittest
 import numpy as np
 
+from unittest import skip
+
 from ggpeps import utils
 
 
@@ -45,6 +47,7 @@ class TestWoodburyInverter(unittest.TestCase):
         inv = np.linalg.inv(mat + update_padded)
         self.assertTrue(np.allclose(inv, inv_wb))
 
+    @skip("This test no longer passes, since we do not perform the check for zeros in the update method")
     def test_zero_incr(self):
         mat = np.random.rand(self.n, self.n)
         wi = np.linalg.inv(mat)

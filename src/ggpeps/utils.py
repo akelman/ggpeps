@@ -760,6 +760,7 @@ class WoodburyInverter:
     def update(ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> xnp.ndarray:
         """Update the inverse of a matrix A using the Woodbury formula.
         The formula is: (A+UCV)^{-1}=A^{-1} - A^{-1}U(C^{-1}+VA^{-1}U)^{-1}VA^{-1}.
+        We do not check here that c is invertible, so this must be done by the caller.
 
         Args:
             ainv (xnp.ndarray): the matrix to which to apply the update
@@ -771,15 +772,13 @@ class WoodburyInverter:
         Returns:
             xnp.ndarray: Updated inverse matrix (A+UCV)^{-1}
         """
-        # We ware updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
-        if not xnp.allclose(c, 0):
-            # We cannot update with C being zero since this matrix has no inverse
-            cinv = xnp.linalg.inv(c)
-            ainv_u = ainv @ u
-            ainv -= (ainv_u @ xnp.linalg.inv(cinv + v @ ainv_u)) @ (v @ ainv)
+        cinv = xnp.linalg.inv(c)
+        ainv_u = ainv @ u
+        ainv -= (ainv_u @ xnp.linalg.inv(cinv + v @ ainv_u)) @ (v @ ainv)
         return ainv
 
-    def update_index(ainv: xnp.ndarray, mat: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
+    @maybe_jit(static_argnames=["indi", "indj"])
+    def update_index(ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """
         Update the inverse of the matrix A using the Woodbury formula, given indices indicating the positions in A
         where the update M is placed. This is done by generating the U and V matrix for the update method.
@@ -794,24 +793,34 @@ class WoodburyInverter:
             xnp.ndarray: Updated inverse matrix (A+UMV)^{-1}
         """
         # Construct two matrices to shift m to the correct position in A
-        for idx in xnp.ndindex(mat.shape[:-2]):
-            m = mat[idx]
-            if not xnp.allclose(m, 0):
-                # We cannot update with m being zero since this matrix has no inverse
-                m_m, n_m = m.shape
-                m_a, n_a = ainv[idx].shape
-                idmat = xnp.eye(m_m, n_m)
-                u = xnp.zeros((m_a, m_m))
-                v = xnp.zeros((n_m, n_a))
+        mask = ~xnp.all(xnp.isclose(m, 0), axis=(-2, -1))  # (...,)
 
-                inds_u = (slice(indi, indi + m_m), slice(0, n_m))
-                u = backend.array_assign(u, inds_u, idmat)
+        m_m, n_m = m.shape[-2:]
+        m_a, n_a = ainv.shape[-2:]
 
-                inds_v = (slice(0, m_m), slice(indj, indj + n_m))
-                v = backend.array_assign(v, inds_v, idmat)
-                val = WoodburyInverter.update(ainv[idx], u, m, v)
-                ainv = backend.array_assign(ainv, idx, val)
-        return ainv
+        # Identity broadcasted to batch
+        idmat = xnp.eye(m_m, n_m)
+        idmat = xnp.broadcast_to(idmat, m.shape)
+
+        # Build u
+        u = xnp.zeros(m.shape[:-2] + (m_a, m_m))
+        inds = (Ellipsis, slice(indi, indi + m_m), slice(None))
+        u = backend.array_assign(u, inds, idmat)
+
+        # Build v
+        v = xnp.zeros(m.shape[:-2] + (n_m, n_a))
+        inds = (Ellipsis, slice(None), slice(indj, indj + n_m))
+        v = backend.array_assign(v, inds, idmat)
+
+        # Compute the update
+        updated = WoodburyInverter.update(ainv, u, m, v)
+
+        # Expand mask to matrix dims
+        mask_expanded = mask[..., None, None]
+
+        # Select update where desired
+        result = xnp.where(mask_expanded, updated, ainv)
+        return result
 
 
 # =========================== IncDeterminant ===============================
