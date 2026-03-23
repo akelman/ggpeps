@@ -794,7 +794,7 @@ class WoodburyInverter:
             xnp.ndarray: Updated inverse matrix (A+UMV)^{-1}
         """
         # Construct two matrices to shift m to the correct position in A
-        for idx in np.ndindex(mat.shape[:-2]):
+        for idx in xnp.ndindex(mat.shape[:-2]):
             m = mat[idx]
             if not xnp.allclose(m, 0):
                 # We cannot update with m being zero since this matrix has no inverse
