@@ -2010,19 +2010,6 @@ class System2DBase(ABC):
             array: List of all electric energy gradients (w/o shift)
         """
         if self._el_energy_op_grad_vec is None:
-            # In order to jit, we must pass arrays, not WoodburyInverter objects.
-            gamma_in_mod_inv_vec = xnp.asarray(
-                [
-                    [self.wi_gamma_in_mod_vec[lay][ind] for ind in range(len(self.cfg.mod_link_inds))]
-                    for lay in range(self.cfg.nlayer)
-                ]
-            )
-            gamma_out_mod_inv_vec = xnp.asarray(
-                [
-                    [self.wi_gamma_out_mod_vec[lay][ind] for ind in range(len(self.cfg.mod_link_inds))]
-                    for lay in range(self.cfg.nlayer)
-                ]
-            )
 
             l, m, u, s = self.mod_mask_inds  # layer, mod_link, unitcell, symbol
 
@@ -2045,8 +2032,8 @@ class System2DBase(ABC):
                 self.el_pfaffians,
                 self.norm_mod_vec,
                 self.lognorm_default_vec,
-                gamma_in_mod_inv_vec,
-                gamma_out_mod_inv_vec,
+                self.wi_gamma_in_mod_vec,
+                self.wi_gamma_out_mod_vec,
                 self.mat_d_mod_inv_vec,
                 d_mat_a_vec_vec,
                 d_mat_b_vec_vec,
