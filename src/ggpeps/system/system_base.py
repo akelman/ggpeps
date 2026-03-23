@@ -1367,6 +1367,7 @@ class System2DBase(ABC):
         cumval = 0
         for ind in range(self.cfg.nlayer):
             detval = self.incdet_vec[ind].update_index(
+                self.incdet_vec[ind].det(),
                 self.wi_gamma_in_vec[ind],
                 updates[ind],
                 offset,

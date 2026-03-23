@@ -208,20 +208,18 @@ class U1System2D(System2DBase):
 
         # Update the determinant
         mat_inv_vec = self.wi_gamma_in_vec
-        detval_vec = [
-            incdet.update_index(mat_inv, update, ind_mat, ind_mat)
-            for mat_inv, incdet in zip(mat_inv_vec, self.incdet_vec)
-        ]
+        for mat_inv, incdet in zip(mat_inv_vec, self.incdet_vec):
+            incdet.detval = incdet.update_index(incdet.det(), mat_inv, update, ind_mat, ind_mat)
 
         # Update the modified determinant
         offset = 2 * self.cfg.nvirtmodes_link
         if ind_mat - offset >= 0:
             for wi, incdet in zip(self.wi_gamma_in_mod_vec, self.incdet_mod_vec):
                 mat_inv = wi
-                incdet.update_index(mat_inv, update, ind_mat - offset, ind_mat - offset)
+                incdet.detval = incdet.update_index(incdet.det(), mat_inv, update, ind_mat - offset, ind_mat - offset)
 
         # Update the weight
-        self.weight = 0.5 * np.sum(detval_vec)
+        self.weight = 0.5 * np.sum(incdet.det())
 
         # Update the matrix inversion
         update_arr = xnp.array([update])

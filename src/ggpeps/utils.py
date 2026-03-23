@@ -865,7 +865,10 @@ class IncLogAbsDeterminant:
     def det(self) -> float:
         return self.detval
 
-    def update(self, ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray, store: bool = True) -> float:
+    @staticmethod
+    def update(
+        detval: float, ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray, store: bool = True
+    ) -> float:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma.
         The formula is: det(A+UCV)=det(A) * det(C^{-1}+VA^{-1}U) * det(C).
         Args:
@@ -878,7 +881,7 @@ class IncLogAbsDeterminant:
             store (bool, optional): Store the updated determinant value. Defaults to True.
         """
         # We are updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
-        dest = self.detval
+        dest = detval
         converged = True
         if not xnp.allclose(c, 0):
             # We cannot update if c is zero because we cannot invert it
@@ -888,12 +891,13 @@ class IncLogAbsDeterminant:
             if xnp.isnan(combined_detval) or xnp.isnan(cdetval):
                 converged = False
             if converged:
-                dest = self.detval + cdetval + combined_detval
-            if store:
-                self.detval = dest
+                dest = detval + cdetval + combined_detval
         return dest
 
-    def update_index(self, ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int, store: bool = True) -> float:
+    @staticmethod
+    def update_index(
+        detval: xnp.ndarray, ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int, store: bool = True
+    ) -> float:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma,
         given indices indicating the positions in A where the update M is placed.
         This is done by generating the U and V matrix for the update method.
@@ -918,9 +922,8 @@ class IncLogAbsDeterminant:
 
             inds_v = (slice(0, m_m), slice(indj, indj + n_m))
             v = backend.array_assign(v, inds_v, idmat)
-            return self.update(ainv, u, m, v, store)
-        else:
-            return self.det()
+            detval = IncLogAbsDeterminant.update(detval, ainv, u, m, v, store)
+        return detval
 
 
 # Not used (though still appears in tests)
