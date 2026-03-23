@@ -42,8 +42,8 @@ class TestWoodburyInverter(unittest.TestCase):
         update_mat = np.random.rand(n_up, n_up)
         padval = n - n_up
         update_padded = np.pad(update_mat, [(0, padval), (0, padval)], "constant", constant_values=(0, 0))
-        wi = utils.WoodburyInverter(mat)
-        inv_wb = wi.update_index(update_mat, 0, 0)
+        wi = np.linalg.inv(mat)
+        inv_wb = utils.WoodburyInverter.update_index(wi, update_mat, 0, 0)
         inv = np.linalg.inv(mat + update_padded)
         self.assertTrue(np.allclose(inv, inv_wb))
 

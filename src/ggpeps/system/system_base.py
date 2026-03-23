@@ -421,7 +421,7 @@ class System2DBase(ABC):
                 self.cfg.unitcell_size,
                 len(self.cfg.symbolvec),
                 self.mat_b_vec,
-                self.wi_gamma_out_vec.inv(),
+                self.wi_gamma_out_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
             )
         return self._d_gamma_out_symbolvec
@@ -656,7 +656,7 @@ class System2DBase(ABC):
                     # Get the modified matrices, which include the virtual modes of the given link among the physical
                     mat_a = self.mat_a_mod_vec[layerind, ind]
                     mat_b = self.mat_b_mod_vec[layerind, ind]
-                    diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind][ind].inv()
+                    diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind][ind]
 
                     # Compute covmat
                     covmat_out = mat_a + mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
@@ -855,29 +855,25 @@ class System2DBase(ABC):
 
             incdet_vec.append(utils.IncLogAbsDeterminant(self.mat_d_inv_vec[layer] - gamma_in_sys))
         gamma_in_sys_vec = xnp.array(gamma_in_sys_listvec)
-        wi_gamma_in_vec = utils.WoodburyInverter(self.mat_d_inv_vec - gamma_in_sys_vec)
-        wi_gamma_out_vec = utils.WoodburyInverter(self.mat_d_vec - gamma_in_sys_vec)
+        wi_gamma_in_vec = xnp.linalg.inv(self.mat_d_inv_vec - gamma_in_sys_vec)
+        wi_gamma_out_vec = xnp.linalg.inv(self.mat_d_vec - gamma_in_sys_vec)
 
         # Initialize the modified gamma_in_sys and trackers for the full system
         gamma_in_sys_mod_layervec_linkvec = self._extract_gamma_in_sys_mod_vec(
             self.cfg.mod_link_inds, gamma_in_sys_vec
         )
         for layer in range(self.cfg.nlayer):
-            wi_gamma_in_mod_linkvec, wi_gamma_out_mod_linkvec, incdet_mod_linkvec = [], [], []
+            incdet_mod_linkvec = []
             for ind, link_ind in enumerate(self.cfg.mod_link_inds):
                 gamma_in_sys_mod = gamma_in_sys_mod_layervec_linkvec[layer, ind]
-                wi_gamma_in_mod_linkvec.append(
-                    utils.WoodburyInverter(self.mat_d_mod_inv_vec[layer, ind] - gamma_in_sys_mod)
-                )
-                wi_gamma_out_mod_linkvec.append(
-                    utils.WoodburyInverter(self.mat_d_mod_vec[layer, ind] - gamma_in_sys_mod)
-                )
+
                 incdet_mod_linkvec.append(
                     utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec[layer, ind] - gamma_in_sys_mod)
                 )
-            wi_gamma_in_mod_vec.append(wi_gamma_in_mod_linkvec)
-            wi_gamma_out_mod_vec.append(wi_gamma_out_mod_linkvec)
             incdet_mod_vec.append(incdet_mod_linkvec)
+
+        wi_gamma_in_mod_vec = xnp.linalg.inv(self.mat_d_mod_inv_vec - gamma_in_sys_mod_layervec_linkvec)
+        wi_gamma_out_mod_vec = xnp.linalg.inv(self.mat_d_mod_vec - gamma_in_sys_mod_layervec_linkvec)
 
         return (
             gamma_in_sys_vec,
@@ -1371,7 +1367,7 @@ class System2DBase(ABC):
         cumval = 0
         for ind in range(self.cfg.nlayer):
             detval = self.incdet_vec[ind].update_index(
-                self.wi_gamma_in_vec.inv()[ind],
+                self.wi_gamma_in_vec[ind],
                 updates[ind],
                 offset,
                 offset,
@@ -1400,7 +1396,7 @@ class System2DBase(ABC):
                 self.cfg.unitcell_size,
                 len(self.symbolvec),
                 self.cfg.zeroed_params,
-                self.wi_gamma_in_vec.inv(),
+                self.wi_gamma_in_vec,
                 self.gamma_in_sys_vec,
                 self.mat_d_inv_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
@@ -2017,13 +2013,13 @@ class System2DBase(ABC):
             # In order to jit, we must pass arrays, not WoodburyInverter objects.
             gamma_in_mod_inv_vec = xnp.asarray(
                 [
-                    [self.wi_gamma_in_mod_vec[lay][ind].inv() for ind in range(len(self.cfg.mod_link_inds))]
+                    [self.wi_gamma_in_mod_vec[lay][ind] for ind in range(len(self.cfg.mod_link_inds))]
                     for lay in range(self.cfg.nlayer)
                 ]
             )
             gamma_out_mod_inv_vec = xnp.asarray(
                 [
-                    [self.wi_gamma_out_mod_vec[lay][ind].inv() for ind in range(len(self.cfg.mod_link_inds))]
+                    [self.wi_gamma_out_mod_vec[lay][ind] for ind in range(len(self.cfg.mod_link_inds))]
                     for lay in range(self.cfg.nlayer)
                 ]
             )
@@ -2288,7 +2284,7 @@ class System2DBase(ABC):
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nlayer,
-                self.wi_gamma_out_vec.inv(),
+                self.wi_gamma_out_vec,
                 self.mat_a_vec,
                 self.mat_b_vec,
             )

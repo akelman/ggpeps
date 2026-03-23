@@ -393,7 +393,7 @@ class D2nSystem2D(System2DBase):
             self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
 
         # Update the determinant
-        mat_inv_vec = self.wi_gamma_in_vec.inv()
+        mat_inv_vec = self.wi_gamma_in_vec
         detval_vec = np.array(
             [
                 incdet.update_index(mat_inv, update, ind_mat, ind_mat)
@@ -406,8 +406,12 @@ class D2nSystem2D(System2DBase):
 
         # Update the matrix inversion
         update_arr = xnp.array(update_vec)
-        self.wi_gamma_in_vec.update_index(update_arr, ind_mat, ind_mat)
-        self.wi_gamma_out_vec.update_index(update_arr, ind_mat, ind_mat)
+        self._wi_gamma_in_vec = ggpeps.utils.WoodburyInverter.update_index(
+            self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat
+        )
+        self._wi_gamma_out_vec = ggpeps.utils.WoodburyInverter.update_index(
+            self.wi_gamma_out_vec, update_arr, ind_mat, ind_mat
+        )
 
         # Update the modified determinant & matrices
         for lay in range(self.cfg.nlayer):
@@ -419,18 +423,20 @@ class D2nSystem2D(System2DBase):
                     if link_ind > mod_link_ind:
                         offset = 2 * self.cfg.nvirtmodes_link
 
-                    mat_inv = self.wi_gamma_in_mod_vec[lay][ind].inv()
+                    mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
                     self.incdet_mod_vec[lay][ind].update_index(
                         mat_inv, update_vec[lay], ind_mat - offset, ind_mat - offset
                     )
 
-                    self.wi_gamma_in_mod_vec[lay][ind].update_index(
-                        update_vec[lay], ind_mat - offset, ind_mat - offset
+                    new1 = ggpeps.utils.WoodburyInverter.update_index(
+                        self._wi_gamma_in_mod_vec[lay][ind], update_vec[lay], ind_mat - offset, ind_mat - offset
                     )
+                    self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (lay, ind), new1)
 
-                    self.wi_gamma_out_mod_vec[lay][ind].update_index(
-                        update_vec[lay], ind_mat - offset, ind_mat - offset
+                    new2 = ggpeps.utils.WoodburyInverter.update_index(
+                        self._wi_gamma_out_mod_vec[lay][ind], update_vec[lay], ind_mat - offset, ind_mat - offset
                     )
+                    self._wi_gamma_out_mod_vec = backend.array_assign(self._wi_gamma_out_mod_vec, (lay, ind), new2)
 
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()

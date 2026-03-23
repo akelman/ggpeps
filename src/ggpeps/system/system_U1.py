@@ -150,16 +150,16 @@ class U1System2D(System2DBase):
         )  # for the 3D case, simply add in the Z covariance matrix as well
 
         diffvec = self.mat_d_inv_vec - gamma_in_sys
-        wi_gamma_in_vec = utils.WoodburyInverter(diffvec)
-        wi_gamma_out_vec = utils.WoodburyInverter(self.mat_d_vec - gamma_in_sys)
+        wi_gamma_in_vec = xnp.linalg.inv(diffvec)
+        wi_gamma_out_vec = xnp.linalg.inv(self.mat_d_vec - gamma_in_sys)
         incdet_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec]
 
         # Initialize the modified gamma_in_sys for the full system (and trackers)
         single_link_offset = 2 * self.cfg.nvirtmodes_link
         gamma_in_sys_mod = gamma_in_sys[single_link_offset:, single_link_offset:]
         diffvec_mod = [mat_d_inv - gamma_in_sys_mod for mat_d_inv in self.mat_d_mod_inv_vec]
-        wi_gamma_in_mod_vec = [utils.WoodburyInverter(diff) for diff in diffvec_mod]
-        wi_gamma_out_mod_vec = [utils.WoodburyInverter(mat_d - gamma_in_sys_mod) for mat_d in self.mat_d_mod_vec]
+        wi_gamma_in_mod_vec = np.linalg.inv(diffvec_mod)
+        wi_gamma_out_mod_vec = xnp.linalg.inv(self.mat_d_mod_vec - gamma_in_sys_mod)
         incdet_mod_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec_mod]
 
         # Though for this ansatz gamma_in_sys does not vary between layers,
@@ -207,7 +207,7 @@ class U1System2D(System2DBase):
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst, self.gamma_in_sys_vec[0])
 
         # Update the determinant
-        mat_inv_vec = self.wi_gamma_in_vec.inv()
+        mat_inv_vec = self.wi_gamma_in_vec
         detval_vec = [
             incdet.update_index(mat_inv, update, ind_mat, ind_mat)
             for mat_inv, incdet in zip(mat_inv_vec, self.incdet_vec)
@@ -217,7 +217,7 @@ class U1System2D(System2DBase):
         offset = 2 * self.cfg.nvirtmodes_link
         if ind_mat - offset >= 0:
             for wi, incdet in zip(self.wi_gamma_in_mod_vec, self.incdet_mod_vec):
-                mat_inv = wi.inv()
+                mat_inv = wi
                 incdet.update_index(mat_inv, update, ind_mat - offset, ind_mat - offset)
 
         # Update the weight
@@ -225,19 +225,23 @@ class U1System2D(System2DBase):
 
         # Update the matrix inversion
         update_arr = xnp.array([update])
-        self.wi_gamma_in_vec.update_index(update_arr, ind_mat, ind_mat)
-        self.wi_gamma_out_vec.update_index(update_arr, ind_mat, ind_mat)
+        self._wi_gamma_in_vec = ggpeps.utils.WoodburyInverter.update_index(
+            self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat
+        )
+        self._wi_gamma_out_vec = ggpeps.utils.WoodburyInverter.update_index(
+            self.wi_gamma_out_vec, update_arr, ind_mat, ind_mat
+        )
 
         if ind_mat - offset >= 0:
             # We do not update the matrix if the first link is updated (it is just not there)
-            [
-                wi_gamma_in_mod.update_index(update, ind_mat - offset, ind_mat - offset)
-                for wi_gamma_in_mod in self.wi_gamma_in_mod_vec
-            ]
-            [
-                wi_gamma_out_mod.update_index(update, ind_mat - offset, ind_mat - offset)
-                for wi_gamma_out_mod in self.wi_gamma_out_mod_vec
-            ]
+            for ind in range(self.cfg.nlayer):
+                self.wi_gamma_in_mod_vec[ind] = utils.WoodburyInverter.update_index(
+                    self.wi_gamma_in_mod_vec[ind], update, ind_mat - offset, ind_mat - offset
+                )
+                self.wi_gamma_out_mod_vec[ind] = utils.WoodburyInverter.update_index(
+                    self.wi_gamma_out_mod_vec[ind], update, ind_mat - offset, ind_mat - offset
+                )
+
         # Substitute in the array
         self.gamma_in_sys_vec[0][
             ind_mat : ind_mat + rotmat.shape[0], ind_mat : ind_mat + rotmat.shape[1]
@@ -292,11 +296,11 @@ class U1System2D(System2DBase):
                 # The offset is changed such that one virtual link is attributed to the physical part
                 mat_a = self.mat_a_mod_vec[layerind][link_ind]
                 mat_b = self.mat_b_mod_vec[layerind][link_ind]
-                diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
-                diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
+                diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind]
+                diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind]
 
                 ###################### Calculation of <P> ########################
-                covmat_out = mat_a + mat_b @ self.wi_gamma_out_mod_vec[layerind].inv() @ np.transpose(mat_b)
+                covmat_out = mat_a + mat_b @ self.wi_gamma_out_mod_vec[layerind] @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_link_offset:, -single_link_offset:]
                 # For the modified norm, we still have to take into account the contributions from the unmodified parts
                 norm_mod = self._calculate_lognorm_inc(

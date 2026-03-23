@@ -762,7 +762,6 @@ class WoodburyInverter:
     def inv(self) -> xnp.ndarray:
         return self.ainv
 
-    @staticmethod
     def update(ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> xnp.ndarray:
         """Update the inverse of a matrix A using the Woodbury formula.
         The formula is: (A+UCV)^{-1}=A^{-1} - A^{-1}U(C^{-1}+VA^{-1}U)^{-1}VA^{-1}.
@@ -785,12 +784,13 @@ class WoodburyInverter:
             ainv -= (ainv_u @ xnp.linalg.inv(cinv + v @ ainv_u)) @ (v @ ainv)
         return ainv
 
-    def update_index(self, mat: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
+    def update_index(ainv: xnp.ndarray, mat: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """
         Update the inverse of the matrix A using the Woodbury formula, given indices indicating the positions in A
         where the update M is placed. This is done by generating the U and V matrix for the update method.
 
         Args:
+            ainv (xnp.ndarray): the matrix to which to apply the update
             mat (xnp.ndarray): a stack of matrices M with arbitrary leading dimensions matching self.ainv
                 This is a stack of the local update matrices for A.
             indi (int): Index in the first dimension of A where the update m is placed.
@@ -804,7 +804,7 @@ class WoodburyInverter:
             if not xnp.allclose(m, 0):
                 # We cannot update with m being zero since this matrix has no inverse
                 m_m, n_m = m.shape
-                m_a, n_a = self.ainv[idx].shape
+                m_a, n_a = ainv[idx].shape
                 idmat = xnp.eye(m_m, n_m)
                 u = xnp.zeros((m_a, m_m))
                 v = xnp.zeros((n_m, n_a))
@@ -814,9 +814,9 @@ class WoodburyInverter:
 
                 inds_v = (slice(0, m_m), slice(indj, indj + n_m))
                 v = backend.array_assign(v, inds_v, idmat)
-                ainv = self.update(self.ainv[idx], u, m, v)
-                self.ainv = backend.array_assign(self.ainv, idx, ainv)
-        return self.inv()
+                val = WoodburyInverter.update(ainv[idx], u, m, v)
+                ainv = backend.array_assign(ainv, idx, val)
+        return ainv
 
 
 # =========================== IncDeterminant ===============================
