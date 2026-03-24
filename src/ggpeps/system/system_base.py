@@ -661,13 +661,7 @@ class System2DBase(ABC):
                     # Compute covmat
                     covmat_out = mat_a + mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
                     size = covmat_out.shape[1]
-                    covmat_out_virt = backend.slice_matrix(
-                        covmat_out,
-                        size - single_link_offset,
-                        size,
-                        size - single_link_offset,
-                        size,
-                    )
+                    covmat_out_virt = covmat_out[size - single_link_offset : size, size - single_link_offset : size]
 
                     # pfapack (used in the el energy) is rather picky about the anti-symmetrization (to 1e-14)
                     covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
@@ -1498,7 +1492,7 @@ class System2DBase(ABC):
     def calculate_update_gamma_in(
         self, offset: int, update_mat: xnp.ndarray, gamma_in_sys: xnp.ndarray
     ) -> xnp.ndarray:
-        """Compute an update between the current gamma_in and the new gamma_in
+        """Compute an update between the current gamma_in and the new gamma_in.
 
         Args:
             offset (int): Offset in the matrix
@@ -1510,7 +1504,7 @@ class System2DBase(ABC):
             xnp.ndarray: Additional update to reach update_mat at gamma_in[offset:,offset:]
         """
         m_up, n_up = update_mat.shape
-        gamma_in_old = backend.slice_matrix(gamma_in_sys, offset, offset + m_up, offset, offset + n_up)
+        gamma_in_old = gamma_in_sys[offset : offset + m_up, offset : offset + n_up]
         return -(update_mat - gamma_in_old)
 
     ################## Observables ######################
