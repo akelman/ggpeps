@@ -152,7 +152,7 @@ class U1System2D(System2DBase):
         diffvec = self.mat_d_inv_vec - gamma_in_sys
         wi_gamma_in_vec = xnp.linalg.inv(diffvec)
         wi_gamma_out_vec = xnp.linalg.inv(self.mat_d_vec - gamma_in_sys)
-        incdet_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec]
+        sign, incdet_vec = xnp.linalg.slogdet(diffvec)
 
         # Initialize the modified gamma_in_sys for the full system (and trackers)
         single_link_offset = 2 * self.cfg.nvirtmodes_link
@@ -160,7 +160,7 @@ class U1System2D(System2DBase):
         diffvec_mod = [mat_d_inv - gamma_in_sys_mod for mat_d_inv in self.mat_d_mod_inv_vec]
         wi_gamma_in_mod_vec = np.linalg.inv(diffvec_mod)
         wi_gamma_out_mod_vec = xnp.linalg.inv(self.mat_d_mod_vec - gamma_in_sys_mod)
-        incdet_mod_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec_mod]
+        sign, incdet_mod_vec = xnp.linalg.slogdet(diffvec_mod)
 
         # Though for this ansatz gamma_in_sys does not vary between layers,
         # it is convenient to have gamma_in_sys_vec available as a vector with length = nlayers
@@ -208,18 +208,20 @@ class U1System2D(System2DBase):
 
         # Update the determinant
         mat_inv_vec = self.wi_gamma_in_vec
-        for mat_inv, incdet in zip(mat_inv_vec, self.incdet_vec):
-            incdet.detval = incdet.update_index(incdet.det(), mat_inv, update, ind_mat, ind_mat)
+        for ind, (mat_inv, incdet) in enumerate(zip(mat_inv_vec, self.incdet_vec)):
+            self._incdet_vec[ind] = utils.IncLogAbsDeterminant.update_index(incdet, mat_inv, update, ind_mat, ind_mat)
 
         # Update the modified determinant
         offset = 2 * self.cfg.nvirtmodes_link
         if ind_mat - offset >= 0:
-            for wi, incdet in zip(self.wi_gamma_in_mod_vec, self.incdet_mod_vec):
+            for ind, (wi, incdet) in enumerate(zip(self.wi_gamma_in_mod_vec, self.incdet_mod_vec)):
                 mat_inv = wi
-                incdet.detval = incdet.update_index(incdet.det(), mat_inv, update, ind_mat - offset, ind_mat - offset)
+                self._incdet_mod_vec[ind] = utils.IncLogAbsDeterminant.update_index(
+                    self.incdet_mod_vec[ind], mat_inv, update, ind_mat - offset, ind_mat - offset
+                )
 
         # Update the weight
-        self.weight = 0.5 * np.sum(incdet.det())
+        self.weight = 0.5 * np.sum(incdet)
 
         # Update the matrix inversion
         update_arr = xnp.array([update])
@@ -418,7 +420,7 @@ class U1System2D(System2DBase):
             for i in range(self.cfg.ncopy):
                 mat_d_inv = self.mat_d_inv_vec[i]
                 # The 0.5 is the square root since incdet stores the log of the determinant
-                overlap_same_gauge = np.exp(0.5 * self.incdet_vec[i].det())
+                overlap_same_gauge = np.exp(0.5 * self.incdet_vec[i])
 
                 diff_try = gamma_in_try - mat_d_inv
                 overlap_diff_gauge = pf.pfaffian(

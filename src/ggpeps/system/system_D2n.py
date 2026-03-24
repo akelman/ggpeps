@@ -394,15 +394,11 @@ class D2nSystem2D(System2DBase):
 
         # Update the determinant
         mat_inv_vec = self.wi_gamma_in_vec
-        detval_vec = np.array(
-            [
-                incdet.update_index(mat_inv, update, ind_mat, ind_mat)
-                for mat_inv, update, incdet in zip(mat_inv_vec, update_vec, self.incdet_vec)
-            ]
-        )
+        for ind, (mat_inv, update, incdet) in enumerate(zip(mat_inv_vec, update_vec, self.incdet_vec)):
+            self._incdet_vec[ind] = utils.IncLogAbsDeterminant.update_index(incdet, mat_inv, update, ind_mat, ind_mat)
 
         # Update the weight
-        self.weight = 0.5 * np.sum(detval_vec)
+        self.weight = 0.5 * np.sum(self.incdet_vec)
 
         # Update the matrix inversion
         update_arr = xnp.array(update_vec)
@@ -424,8 +420,12 @@ class D2nSystem2D(System2DBase):
                         offset = 2 * self.cfg.nvirtmodes_link
 
                     mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
-                    self.incdet_mod_vec[lay][ind].update_index(
-                        mat_inv, update_vec[lay], ind_mat - offset, ind_mat - offset
+                    self._incdet_mod_vec[lay][ind] = utils.IncLogAbsDeterminant.update_index(
+                        self.incdet_mod_vec[lay][ind],
+                        mat_inv,
+                        update_vec[lay],
+                        ind_mat - offset,
+                        ind_mat - offset,
                     )
 
                     new1 = ggpeps.utils.WoodburyInverter.update_index(

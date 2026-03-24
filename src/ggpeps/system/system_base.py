@@ -839,7 +839,6 @@ class System2DBase(ABC):
 
         # Initialize empty lists
         gamma_in_sys_listvec = []
-        incdet_vec = []
         wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec = [], [], []
 
         # Initialize gamma_in_sys for the full system (and trackers)
@@ -853,27 +852,19 @@ class System2DBase(ABC):
             gamma_in_sys = xscipy.linalg.block_diag(neutral_gauge_X, neutral_gauge_Y)
             gamma_in_sys_listvec.append(gamma_in_sys)
 
-            incdet_vec.append(utils.IncLogAbsDeterminant(self.mat_d_inv_vec[layer] - gamma_in_sys))
         gamma_in_sys_vec = xnp.array(gamma_in_sys_listvec)
         wi_gamma_in_vec = xnp.linalg.inv(self.mat_d_inv_vec - gamma_in_sys_vec)
         wi_gamma_out_vec = xnp.linalg.inv(self.mat_d_vec - gamma_in_sys_vec)
+        _, incdet_vec = xnp.linalg.slogdet(self.mat_d_inv_vec - gamma_in_sys_vec)
 
         # Initialize the modified gamma_in_sys and trackers for the full system
         gamma_in_sys_mod_layervec_linkvec = self._extract_gamma_in_sys_mod_vec(
             self.cfg.mod_link_inds, gamma_in_sys_vec
         )
-        for layer in range(self.cfg.nlayer):
-            incdet_mod_linkvec = []
-            for ind, link_ind in enumerate(self.cfg.mod_link_inds):
-                gamma_in_sys_mod = gamma_in_sys_mod_layervec_linkvec[layer, ind]
-
-                incdet_mod_linkvec.append(
-                    utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec[layer, ind] - gamma_in_sys_mod)
-                )
-            incdet_mod_vec.append(incdet_mod_linkvec)
 
         wi_gamma_in_mod_vec = xnp.linalg.inv(self.mat_d_mod_inv_vec - gamma_in_sys_mod_layervec_linkvec)
         wi_gamma_out_mod_vec = xnp.linalg.inv(self.mat_d_mod_vec - gamma_in_sys_mod_layervec_linkvec)
+        _, incdet_mod_vec = xnp.linalg.slogdet(self.mat_d_mod_inv_vec - gamma_in_sys_mod_layervec_linkvec)
 
         return (
             gamma_in_sys_vec,
@@ -1304,8 +1295,7 @@ class System2DBase(ABC):
 
     @classmethod
     def _calculate_lognorm_inc(cls, incdet_vec, det_mat_d_vec, n: int, all_factors: bool = False):
-        det_vec = xnp.array([incdet.det() for incdet in incdet_vec])
-        lognormvec = cls._calculate_lognormvec_inc(det_vec, det_mat_d_vec, n, all_factors=all_factors)
+        lognormvec = cls._calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=all_factors)
         return xnp.sum(lognormvec)
 
     @staticmethod
@@ -1332,9 +1322,8 @@ class System2DBase(ABC):
         Returns:
             list: Vector of the incrementally updated norms for all layers
         """
-        det_vec = xnp.array([incdet.det() for incdet in self.incdet_vec])
         res = self._calculate_lognormvec_inc(
-            det_vec,
+            self.incdet_vec,
             self.det_mat_d_vec,
             self.gamma_in_sys_vec[0].shape[0],
             all_factors=all_factors,
@@ -1366,8 +1355,8 @@ class System2DBase(ABC):
         """
         cumval = 0
         for ind in range(self.cfg.nlayer):
-            detval = self.incdet_vec[ind].update_index(
-                self.incdet_vec[ind].det(),
+            detval = utils.IncLogAbsDeterminant.update_index(
+                self.incdet_vec[ind],
                 self.wi_gamma_in_vec[ind],
                 updates[ind],
                 offset,
