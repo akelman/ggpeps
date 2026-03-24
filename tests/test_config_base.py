@@ -211,7 +211,7 @@ class TestGaugedProjectorTermsForZ2(unittest.TestCase):
         pass
 
     def test_generate_gauged_projector_terms_small_cases1_D6(self):
-        # Expected outputs for ncopy in {1,2}, layer in {mixed_copies, unmixed_copies},
+        # Expected outputs for ncopy in {1}, layer in {unmixed_copies},
         # orientation in {horizontal, vertical}, group_order = 2.
         # We compare ALL terms, including those with coefficients with zero real part.
         expected = {
