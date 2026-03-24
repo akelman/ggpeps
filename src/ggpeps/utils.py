@@ -757,6 +757,7 @@ class CacheServer:
 
 class WoodburyInverter:
 
+    @staticmethod
     def update(ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> xnp.ndarray:
         """Update the inverse of a matrix A using the Woodbury formula.
         The formula is: (A+UCV)^{-1} = A^{-1} - A^{-1}U(C^{-1}+VA^{-1}U)^{-1} VA^{-1}
@@ -781,6 +782,7 @@ class WoodburyInverter:
         ainv -= (ainv_u @ xnp.linalg.inv(idmat + c_v @ ainv_u)) @ (c_v @ ainv)
         return ainv
 
+    @staticmethod
     @maybe_jit(static_argnames=["indi", "indj"])
     def update_index(ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """
@@ -855,7 +857,8 @@ class IncDeterminant:
 
 class IncLogAbsDeterminant:
 
-    def update(detval: float, ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> float:
+    @staticmethod
+    def update(detval: xnp.ndarray, ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> xnp.ndarray:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma.
         The formula is: det(A+UCV) = det(A) * det(C^{-1}+VA^{-1}U) * det(C).
                                    = det(A) * det(I + V @ A^{-1} @ U @ C)
@@ -876,8 +879,9 @@ class IncLogAbsDeterminant:
         _, logdet = xnp.linalg.slogdet(mat)  # logDet(I + V @ A^{-1} @ U @ C)
         return detval + logdet
 
+    @staticmethod
     @maybe_jit(static_argnames=["indi", "indj"])
-    def update_index(detval: xnp.ndarray, ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> float:
+    def update_index(detval: xnp.ndarray, ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma,
         given indices indicating the positions in A where the update M is placed.
         This is done by generating the U and V matrix for the update method.

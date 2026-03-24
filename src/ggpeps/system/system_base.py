@@ -139,13 +139,13 @@ class System2DBase(ABC):
         self._occupations_after_ph: Optional[xnp.ndarray] = None
 
         # Woodbury Update and Matrix Inversion
-        self._wi_gamma_in_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (D^-1 - gammain)^-1
-        self._wi_gamma_out_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (D - gammain)^-1
-        self._incdet_vec: Optional[list[utils.IncLogAbsDeterminant]] = None  # Tracks det(D^-1 - gammain)
+        self._wi_gamma_in_vec: Optional[xnp.ndarray] = None  # Tracks (D^-1 - gammain)^-1
+        self._wi_gamma_out_vec: Optional[xnp.ndarray] = None  # Tracks (D - gammain)^-1
+        self._incdet_vec: Optional[xnp.ndarray] = None  # Tracks det(D^-1 - gammain)
 
-        self._wi_gamma_in_mod_vec: Optional[list[list[utils.WoodburyInverter]]] = None  # Tracks (Dmod^-1 - gammain)^-1
-        self._wi_gamma_out_mod_vec: Optional[list[list[utils.WoodburyInverter]]] = None  # Tracks (Dmod - gammain)^-1
-        self._incdet_mod_vec: Optional[list[list[utils.IncLogAbsDeterminant]]] = None  # Tracks det(Dmod^-1 - gammain)
+        self._wi_gamma_in_mod_vec: Optional[xnp.ndarray] = None  # Tracks (Dmod^-1 - gammain)^-1
+        self._wi_gamma_out_mod_vec: Optional[xnp.ndarray] = None  # Tracks (Dmod - gammain)^-1
+        self._incdet_mod_vec: Optional[xnp.ndarray] = None  # Tracks det(Dmod^-1 - gammain)
 
         return
 
@@ -837,15 +837,12 @@ class System2DBase(ABC):
         This method overwrites an abstract method in System2DBase.
         """
 
-        # Initialize empty lists
-        gamma_in_sys_listvec = []
-        wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec = [], [], []
-
         # Initialize gamma_in_sys for the full system (and trackers)
         size = self.cfg.lattice.size  # number of sites
         id = xnp.eye(size)
 
         # TODO: vectorize!
+        gamma_in_sys_listvec = []
         for layer in range(self.cfg.nlayer):
             neutral_gauge_X = xnp.kron(id, self.gamma_gauge_neutral_vec[layer][Direction.X])
             neutral_gauge_Y = xnp.kron(id, self.gamma_gauge_neutral_vec[layer][Direction.Y])
@@ -891,7 +888,7 @@ class System2DBase(ABC):
         return self._gamma_in_sys_vec
 
     @property
-    def incdet_vec(self):
+    def incdet_vec(self) -> xnp.ndarray:
         """Return the vector of incremental determinants for the different layers.
         The length of the list is equal to the number of layers.
         This is a get function.
@@ -910,7 +907,7 @@ class System2DBase(ABC):
         return self._incdet_vec
 
     @property
-    def wi_gamma_in_vec(self):
+    def wi_gamma_in_vec(self) -> xnp.ndarray:
         """Return the vector of Woodbury inverters for (D^-1 - gammain)^-1 for the different layers.
         The length of the list is equal to the number of layers.
         This is a get function.
@@ -929,7 +926,7 @@ class System2DBase(ABC):
         return self._wi_gamma_in_vec
 
     @property
-    def wi_gamma_out_vec(self):
+    def wi_gamma_out_vec(self) -> xnp.ndarray:
         """Return the vector of Woodbury inverters for (D - gammain)^-1 for the different layers.
         The length of the list is equal to the number of layers.
         This is a get function.
@@ -983,7 +980,7 @@ class System2DBase(ABC):
         return gamma_in_sys_mod_linkvec_layervec
 
     @property
-    def incdet_mod_vec(self):
+    def incdet_mod_vec(self) -> xnp.ndarray:
         """Return the vector of incremental determinants for the modified matrices for the different layers.
         The length of the list is equal to the number of layers.
         This is a get function.
@@ -1002,7 +999,7 @@ class System2DBase(ABC):
         return self._incdet_mod_vec
 
     @property
-    def wi_gamma_in_mod_vec(self):
+    def wi_gamma_in_mod_vec(self) -> xnp.ndarray:
         """Return the vector of Woodbury inverters for (D^-1 - gammain_mod)^-1 for the different layers.
         The length of the list is equal to the number of layers.
         This is a get function.
@@ -1021,7 +1018,7 @@ class System2DBase(ABC):
         return self._wi_gamma_in_mod_vec
 
     @property
-    def wi_gamma_out_mod_vec(self):
+    def wi_gamma_out_mod_vec(self) -> xnp.ndarray:
         """Return the vector of Woodbury inverters for (D - gammain_mod)^-1 for the different layers.
         The length of the list is equal to the number of layers.
         This is a get function.
@@ -1344,7 +1341,7 @@ class System2DBase(ABC):
         normvec = self.calculate_lognormvec_inc(all_factors=all_factors)
         return xnp.sum(normvec)
 
-    def update_lognorm_inc(self, offset: int, updates, all_factors=False) -> float:
+    def update_lognorm_inc(self, offset: int, updates: xnp.ndarray, all_factors: bool = False) -> float:
         """Update the logarithm of the norm incrementally with the given update.
 
         Args:

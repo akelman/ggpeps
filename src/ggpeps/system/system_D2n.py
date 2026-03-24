@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 import numpy as np
 from ggpeps import xnp as xnp
@@ -46,7 +47,7 @@ class D2nSystem2D(System2DBase):
     # Calculating weight attempt
     def calculate_weight_attempt_non_singular(
         self, link_ind: int, theta: xnp.ndarray, all_factors=False, color_to_check=None
-    ):
+    ) -> float:
         """
         Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
@@ -100,7 +101,7 @@ class D2nSystem2D(System2DBase):
         )
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
 
-    def calculate_weight_attempt(self, link_ind: int, theta: np.ndarray, all_factors=False):
+    def calculate_weight_attempt(self, link_ind: int, theta: np.ndarray, all_factors: bool = False) -> float:
         """
         This method overwrites a method in System2DBase. For now, we need it only for the D2n systems.
 
@@ -332,7 +333,9 @@ class D2nSystem2D(System2DBase):
         # In the other case we can update the gauge straightforwardly
         self.update_non_singular_gauge_ind(link_ind, theta, color_to_update=color_to_update)
 
-    def update_non_singular_gauge_ind(self, link_ind, theta, color_to_update=None):
+    def update_non_singular_gauge_ind(
+        self, link_ind: int, theta: xnp.ndarray, color_to_update: Optional[int] = None
+    ) -> None:
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
         and updates all incremental trackers of determinants and inverses.
@@ -416,6 +419,8 @@ class D2nSystem2D(System2DBase):
         # Update the modified determinant & matrices
         # The vectorization of the local updates does not support skipping a link or variable offsets,
         # so we loop explicitly.
+        assert self._wi_gamma_in_mod_vec is not None  # for mypy
+        assert self._wi_gamma_out_mod_vec is not None
         for lay in range(self.cfg.nlayer):
             for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
                 if mod_link_ind != link_ind:

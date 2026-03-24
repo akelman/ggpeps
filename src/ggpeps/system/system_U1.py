@@ -157,8 +157,8 @@ class U1System2D(System2DBase):
         # Initialize the modified gamma_in_sys for the full system (and trackers)
         single_link_offset = 2 * self.cfg.nvirtmodes_link
         gamma_in_sys_mod = gamma_in_sys[single_link_offset:, single_link_offset:]
-        diffvec_mod = [mat_d_inv - gamma_in_sys_mod for mat_d_inv in self.mat_d_mod_inv_vec]
-        wi_gamma_in_mod_vec = np.linalg.inv(diffvec_mod)
+        diffvec_mod = xnp.asarray([mat_d_inv - gamma_in_sys_mod for mat_d_inv in self.mat_d_mod_inv_vec])
+        wi_gamma_in_mod_vec = xnp.linalg.inv(diffvec_mod)
         wi_gamma_out_mod_vec = xnp.linalg.inv(self.mat_d_mod_vec - gamma_in_sys_mod)
         sign, incdet_mod_vec = xnp.linalg.slogdet(diffvec_mod)
 
@@ -208,17 +208,23 @@ class U1System2D(System2DBase):
 
         # Update the determinant
         mat_inv_vec = self.wi_gamma_in_vec
+        assert self._wi_gamma_in_mod_vec is not None  # for mypy
+        assert self._wi_gamma_out_mod_vec is not None
+        assert self._incdet_vec is not None
+        assert self._incdet_mod_vec is not None
         for ind, (mat_inv, incdet) in enumerate(zip(mat_inv_vec, self.incdet_vec)):
-            self._incdet_vec[ind] = utils.IncLogAbsDeterminant.update_index(incdet, mat_inv, update, ind_mat, ind_mat)
+            val = utils.IncLogAbsDeterminant.update_index(incdet, mat_inv, update, ind_mat, ind_mat)
+            self._incdet_vec = backend.array_assign(self._incdet_vec, ind, val)
 
         # Update the modified determinant
         offset = 2 * self.cfg.nvirtmodes_link
         if ind_mat - offset >= 0:
             for ind, (wi, incdet) in enumerate(zip(self.wi_gamma_in_mod_vec, self.incdet_mod_vec)):
                 mat_inv = wi
-                self._incdet_mod_vec[ind] = utils.IncLogAbsDeterminant.update_index(
+                val = utils.IncLogAbsDeterminant.update_index(
                     self.incdet_mod_vec[ind], mat_inv, update, ind_mat - offset, ind_mat - offset
                 )
+                self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, ind, val)
 
         # Update the weight
         self.weight = 0.5 * np.sum(incdet)

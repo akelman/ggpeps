@@ -113,6 +113,8 @@ class Z2System2D(System2DBase):
         # Update the modified determinant & matrices
         # The vectorization of the local updates does not support skipping a link or variable offsets,
         # so we loop explicitly.
+        assert self._wi_gamma_in_mod_vec is not None  # for mypy
+        assert self._wi_gamma_out_mod_vec is not None
         for lay in range(self.cfg.nlayer):
             for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
                 if mod_link_ind != link_ind:
