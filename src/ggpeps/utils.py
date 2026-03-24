@@ -876,6 +876,7 @@ class IncLogAbsDeterminant:
         _, logdet = xnp.linalg.slogdet(mat)  # logDet(I + V @ A^{-1} @ U @ C)
         return detval + logdet
 
+    @maybe_jit(static_argnames=["indi", "indj"])
     def update_index(detval: xnp.ndarray, ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> float:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma,
         given indices indicating the positions in A where the update M is placed.
