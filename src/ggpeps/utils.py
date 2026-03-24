@@ -874,20 +874,8 @@ class IncLogAbsDeterminant:
                                     used to place the update C to match the dimensions of A.
             store (bool, optional): Store the updated determinant value. Defaults to True.
         """
-        # We are updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
-        """
-        # converged = True
-        sign, cdetval = xnp.linalg.slogdet(c)
-        sign, combined_detval = xnp.linalg.slogdet(xnp.linalg.inv(c) + v @ ainv @ u)
-        # if xnp.isnan(combined_detval) or xnp.isnan(cdetval):
-        #    converged = False
-        # if converged:
-        dest = detval + cdetval + combined_detval
-        """
-
         middle = v @ ainv @ u
         mat = xnp.eye(c.shape[-1]) + middle @ c
-
         _, logdet = xnp.linalg.slogdet(mat)  # logDet(I + V @ A^{-1} @ U @ C)
         return detval + logdet
 
@@ -923,21 +911,6 @@ class IncLogAbsDeterminant:
         v = backend.array_assign(v, inds, idmat)
 
         detval = IncLogAbsDeterminant.update(detval, ainv, u, m, v)
-        """
-        if not xnp.allclose(m, 0):
-            m_m, n_m = m.shape
-            m_a, n_a = ainv.shape
-            idmat = xnp.eye(m_m, n_m)
-            u = xnp.zeros((m_a, m_m))
-            v = xnp.zeros((n_m, n_a))
-
-            inds_u = (slice(indi, indi + m_m), slice(0, n_m))
-            u = backend.array_assign(u, inds_u, idmat)
-
-            inds_v = (slice(0, m_m), slice(indj, indj + n_m))
-            v = backend.array_assign(v, inds_v, idmat)
-            detval = IncLogAbsDeterminant.update(detval, ainv, u, m, v)
-        """
         return detval
 
 

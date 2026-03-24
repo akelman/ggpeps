@@ -103,8 +103,6 @@ class Z2System2D(System2DBase):
         mat_inv_vec = self.wi_gamma_in_vec
         update_arr = xnp.array(update_vec)
 
-        # for ind, (mat_inv, update, incdet) in enumerate(zip(mat_inv_vec, update_vec, self.incdet_vec)):
-        #    self._incdet_vec[ind] = utils.IncLogAbsDeterminant.update_index(incdet, mat_inv, update, ind_mat, ind_mat)
         self._incdet_vec = utils.IncLogAbsDeterminant.update_index(
             self.incdet_vec, mat_inv_vec, update_arr, ind_mat, ind_mat
         )
