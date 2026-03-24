@@ -109,18 +109,11 @@ class D6System2D_Config(Config2DBase):
             )
 
             # generate fermionic terms
-            idxarr_ferm_h_0, const_ferm_h_0 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.X, group_element, site=0
-            )
-            idxarr_ferm_h_1, const_ferm_h_1 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.X, group_element, site=1
-            )
-            idxarr_ferm_v_0, const_ferm_v_0 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=0
-            )
-            idxarr_ferm_v_1, const_ferm_v_1 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=1
-            )
+            # Reuse the exact same variables for the fermionic terms
+            idxarr_ferm_h_0, const_ferm_h_0 = idxarr_pg_h_0, const_pg_h_0
+            idxarr_ferm_h_1, const_ferm_h_1 = idxarr_pg_h_1, const_pg_h_1
+            idxarr_ferm_v_0, const_ferm_v_0 = idxarr_pg_v_0, const_pg_v_0
+            idxarr_ferm_v_1, const_ferm_v_1 = idxarr_pg_v_1, const_pg_v_1
 
             pg_link_coeffs, pg_link_indices = [], []
             ferm_link_coeffs, ferm_link_indices = [], []
