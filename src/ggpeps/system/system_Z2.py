@@ -129,13 +129,14 @@ class Z2System2D(System2DBase):
                         offset = 2 * self.cfg.nvirtmodes_link
 
                     mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
-                    self._incdet_mod_vec[lay][ind] = utils.IncLogAbsDeterminant.update_index(
+                    new_det = utils.IncLogAbsDeterminant.update_index(
                         self.incdet_mod_vec[lay][ind],
                         mat_inv,
                         update_vec[lay],
                         ind_mat - offset,
                         ind_mat - offset,
                     )
+                    self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, (lay, ind), new_det)
 
                     new1 = ggpeps.utils.WoodburyInverter.update_index(
                         self._wi_gamma_in_mod_vec[lay][ind], update_vec[lay], ind_mat - offset, ind_mat - offset
