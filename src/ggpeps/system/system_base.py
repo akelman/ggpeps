@@ -1466,7 +1466,7 @@ class System2DBase(ABC):
 
     def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray) -> None:
         """Update a gauge field at a given link index by a new value.
-        This function is called from outside the system, and so accepts a gauge field value as np.ndarray.
+        This function can be called from outside the system, and so accepts a gauge field value as np.ndarray.
         We convert here to xnp.ndarray.
 
         Args:
@@ -1480,17 +1480,12 @@ class System2DBase(ABC):
 
     def update_gauge_full_system(self, gaugeconfig: list[np.ndarray]) -> None:
         """Replace all gauge fields on the links by the values given in gaugeconfig.
-        This function is called from outside the system, and so accepts a list of gauge field values as np.ndarrays.
-        We convert here to xnp.ndarrays.
 
         Args:
             gaugeconfig (list[np.ndarray]): Array of new values for the gauge field
         """
         for link_ind, gauge_val in enumerate(gaugeconfig):
-            theta = xnp.asarray(gauge_val)
-            if not xnp.allclose(self.gaugefieldvec[link_ind], theta):
-                # only actually do the update if it's a different gauge field
-                self._update_gauge_ind(link_ind, theta)
+            self.update_gauge_ind(link_ind, gauge_val)
 
     def update_gauge_coord(self, coord: tuple[int, int], dir: Direction, gauge_val: np.ndarray) -> None:
         """Update a gauge field at a given coordinate and direction by a new value
