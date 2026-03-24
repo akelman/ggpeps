@@ -113,50 +113,50 @@ class TestIncLogDeterminant(unittest.TestCase):
     def setUp(self):
         self.n = 10
         self.ident = np.eye(self.n)
-        self.incdet = utils.IncLogAbsDeterminant(self.ident)
+        sign, self.incdet = np.linalg.slogdet(self.ident)
 
     def test_identity(self):
-        detval = self.incdet.update(self.incdet.det(), self.ident, self.ident, self.ident, self.ident)
+        detval = utils.IncLogAbsDeterminant.update(self.incdet, self.ident, self.ident, self.ident, self.ident)
         _, detval_direct = np.linalg.slogdet(2 * self.ident)
         self.assertAlmostEqual(detval, detval_direct)
 
     def test_identity_incr(self):
         track = np.copy(self.ident)
         for _ in range(10):
-            self.incdet.detval = self.incdet.update(
-                self.incdet.det(), np.linalg.inv(track), self.ident, 0.1 * self.ident, self.ident
+            self.incdet = utils.IncLogAbsDeterminant.update(
+                self.incdet, np.linalg.inv(track), self.ident, 0.1 * self.ident, self.ident
             )
             track += 0.1 * self.ident
-        detval = self.incdet.det()
+        detval = self.incdet
         _, detval_direct = np.linalg.slogdet(2 * self.ident)
         self.assertAlmostEqual(detval, detval_direct)
 
     def test_random_incr(self):
         mat = generate_pos_def_matrix(self.n)
-        incdet = utils.IncLogAbsDeterminant(mat)
+        sign, incdet = np.linalg.slogdet(mat)
         for _ in range(100):
             incr = generate_pos_def_matrix(self.n)
-            incdet.detval = incdet.update(incdet.det(), np.linalg.inv(mat), self.ident, incr, self.ident)
+            incdet = utils.IncLogAbsDeterminant.update(incdet, np.linalg.inv(mat), self.ident, incr, self.ident)
             mat += incr
-        detval = incdet.det()
+        detval = incdet
         _, detval_direct = np.linalg.slogdet(mat)
         self.assertAlmostEqual(detval, detval_direct)
 
     def test_zero_incr(self):
         mat = generate_pos_def_matrix(self.n)
         zero = np.zeros((self.n, self.n))
-        incdet = utils.IncLogAbsDeterminant(mat)
-        incdet.detval = incdet.update(incdet.det(), np.linalg.inv(mat), self.ident, zero, self.ident)
-        detval = incdet.det()
+        sign, incdet = np.linalg.slogdet(mat)
+        incdet = utils.IncLogAbsDeterminant.update(incdet, np.linalg.inv(mat), self.ident, zero, self.ident)
+        detval = incdet
         _, detval_direct = np.linalg.slogdet(mat)
         self.assertAlmostEqual(detval, detval_direct)
 
     def test_revert(self):
         mat = generate_pos_def_matrix(self.n)
         incr = generate_pos_def_matrix(self.n)
-        incdet = utils.IncLogAbsDeterminant(mat)
-        incdet.detval = incdet.update(incdet.det(), np.linalg.inv(mat), self.ident, incr, self.ident)
-        incdet.detval = incdet.update(incdet.det(), np.linalg.inv(mat + incr), self.ident, -incr, self.ident)
-        detval = incdet.det()
+        sign, incdet = np.linalg.slogdet(mat)
+        incdet = utils.IncLogAbsDeterminant.update(incdet, np.linalg.inv(mat), self.ident, incr, self.ident)
+        incdet = utils.IncLogAbsDeterminant.update(incdet, np.linalg.inv(mat + incr), self.ident, -incr, self.ident)
+        detval = incdet
         _, detval_direct = np.linalg.slogdet(mat)
         self.assertAlmostEqual(detval, detval_direct)

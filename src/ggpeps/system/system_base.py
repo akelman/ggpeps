@@ -1356,12 +1356,7 @@ class System2DBase(ABC):
         cumval = 0
         for ind in range(self.cfg.nlayer):
             detval = utils.IncLogAbsDeterminant.update_index(
-                self.incdet_vec[ind],
-                self.wi_gamma_in_vec[ind],
-                updates[ind],
-                offset,
-                offset,
-                store=False,
+                self.incdet_vec[ind], self.wi_gamma_in_vec[ind], updates[ind], offset, offset
             )
             if all_factors:
                 detval -= self.gamma_in_sys_vec[0].shape[0] * xnp.log(2)

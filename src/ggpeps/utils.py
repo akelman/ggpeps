@@ -857,20 +857,11 @@ class IncDeterminant:
 
 
 class IncLogAbsDeterminant:
-    def __init__(self, a: xnp.ndarray) -> None:
-        # We are not using the sign right now.
-        # We know that the sign has to be positive
-        self.sign, self.detval = xnp.linalg.slogdet(a)
 
-    def det(self) -> float:
-        return self.detval
-
-    @staticmethod
-    def update(
-        detval: float, ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray, store: bool = True
-    ) -> float:
+    def update(detval: float, ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> float:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma.
         The formula is: det(A+UCV)=det(A) * det(C^{-1}+VA^{-1}U) * det(C).
+
         Args:
             ainv (xnp.ndarray): Inverse of the matrix A
             u (xnp.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
@@ -894,19 +885,17 @@ class IncLogAbsDeterminant:
                 dest = detval + cdetval + combined_detval
         return dest
 
-    @staticmethod
-    def update_index(
-        detval: xnp.ndarray, ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int, store: bool = True
-    ) -> float:
+    def update_index(detval: xnp.ndarray, ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> float:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma,
         given indices indicating the positions in A where the update M is placed.
         This is done by generating the U and V matrix for the update method.
+
         Args:
             ainv (xnp.ndarray): Inverse of the matrix A
             m (xnp.ndarray): M matrix - The local update matrix to A.
             indi (int): Index in the first dimension of A where the update m is placed.
             indj (int): Index in the second dimension of A where the update m is placed
-            store (bool, optional): Store the updated determinant value. Defaults to True."""
+        """
 
         # Construct two matrices to shift M to the correct position in A
         if not xnp.allclose(m, 0):
@@ -922,7 +911,7 @@ class IncLogAbsDeterminant:
 
             inds_v = (slice(0, m_m), slice(indj, indj + n_m))
             v = backend.array_assign(v, inds_v, idmat)
-            detval = IncLogAbsDeterminant.update(detval, ainv, u, m, v, store)
+            detval = IncLogAbsDeterminant.update(detval, ainv, u, m, v)
         return detval
 
 
