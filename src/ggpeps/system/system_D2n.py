@@ -414,6 +414,8 @@ class D2nSystem2D(System2DBase):
         )
 
         # Update the modified determinant & matrices
+        # The vectorization of the local updates does not support skipping a link or variable offsets,
+        # so we loop explicitly.
         for lay in range(self.cfg.nlayer):
             for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
                 if mod_link_ind != link_ind:

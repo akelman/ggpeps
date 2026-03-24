@@ -90,14 +90,6 @@ class Z2System2D(System2DBase):
             # Substitute in the array
             inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
             self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
-            # TODO: should not modify "private" variable - make a setter?
-            """
-            equivalent to:
-                self._gamma_in_sys_vec[layer][
-                    ind_mat : ind_mat + rotmat.shape[0],
-                    ind_mat : ind_mat + rotmat.shape[1],
-                ] = gamma_in_subst
-            """
 
         # Update the determinant
         mat_inv_vec = self.wi_gamma_in_vec
@@ -119,6 +111,8 @@ class Z2System2D(System2DBase):
         )
 
         # Update the modified determinant & matrices
+        # The vectorization of the local updates does not support skipping a link or variable offsets,
+        # so we loop explicitly.
         for lay in range(self.cfg.nlayer):
             for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
                 if mod_link_ind != link_ind:
