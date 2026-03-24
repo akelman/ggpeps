@@ -92,10 +92,12 @@ class D2nSystem2D(System2DBase):
                 for gamma_neutral_gauge in gamma_neutral_gauge_vec
             ]
 
-        updates = [
-            self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys)
-            for gamma_in_subst, gamma_in_sys in zip(gamma_in_subst_layers, self.gamma_in_sys_vec)
-        ]
+        updates = xnp.asarray(
+            [
+                self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys)
+                for gamma_in_subst, gamma_in_sys in zip(gamma_in_subst_layers, self.gamma_in_sys_vec)
+            ]
+        )
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
 
     def calculate_weight_attempt(self, link_ind: int, theta: np.ndarray, all_factors=False):
