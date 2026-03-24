@@ -1258,10 +1258,12 @@ class System2DBase(ABC):
             rotmat @ gamma_neutral_gauge[dir] @ xnp.transpose(rotmat)
             for gamma_neutral_gauge in gamma_neutral_gauge_vec
         ]
-        updates = [
-            self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys)
-            for gamma_in_subst, gamma_in_sys in zip(gamma_in_subst_layers, self.gamma_in_sys_vec)
-        ]
+        updates = xnp.asarray(
+            [
+                self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys)
+                for gamma_in_subst, gamma_in_sys in zip(gamma_in_subst_layers, self.gamma_in_sys_vec)
+            ]
+        )
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
 
     def _calculate_lognorm(
@@ -1343,7 +1345,7 @@ class System2DBase(ABC):
         return xnp.sum(normvec)
 
     def update_lognorm_inc(self, offset: int, updates, all_factors=False) -> float:
-        """Updat the logarithm of the norm incrementally with the given update.
+        """Update the logarithm of the norm incrementally with the given update.
 
         Args:
             offset (int): Offset into the matrix.
@@ -1354,16 +1356,15 @@ class System2DBase(ABC):
             float: Updated logarithmic value of the norm
         """
         cumval = 0
-        for ind in range(self.cfg.nlayer):
-            detval = utils.IncLogAbsDeterminant.update_index(
-                self.incdet_vec[ind], self.wi_gamma_in_vec[ind], updates[ind], offset, offset
-            )
-            if all_factors:
-                detval -= self.gamma_in_sys_vec[0].shape[0] * xnp.log(2)
-                detval += xnp.linalg.slogdet(self.mat_d_vec[ind])[1]
-            # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
-            # The addition of the cumval is the multiplication of the indpendent PEPS
-            cumval += 0.5 * detval
+        detval_vec = utils.IncLogAbsDeterminant.update_index(
+            self.incdet_vec, self.wi_gamma_in_vec, updates, offset, offset
+        )
+        if all_factors:
+            detval_vec -= self.gamma_in_sys_vec[0].shape[0] * xnp.log(2)
+            detval_vec += xnp.linalg.slogdet(self.mat_d_vec)[1]
+        # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
+        # The addition of the cumval is the multiplication of the indpendent PEPS
+        cumval += 0.5 * xnp.sum(detval_vec)
         return cumval
 
     @property
