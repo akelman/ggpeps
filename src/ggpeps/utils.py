@@ -759,8 +759,10 @@ class WoodburyInverter:
 
     def update(ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> xnp.ndarray:
         """Update the inverse of a matrix A using the Woodbury formula.
-        The formula is: (A+UCV)^{-1}=A^{-1} - A^{-1}U(C^{-1}+VA^{-1}U)^{-1}VA^{-1}.
-        We do not check here that c is invertible, so this must be done by the caller.
+        The formula is: (A+UCV)^{-1} = A^{-1} - A^{-1}U(C^{-1}+VA^{-1}U)^{-1} VA^{-1}
+                                     = A^{-1} - A^{-1}U (I + CVA^{-1}U)^{-1} CVA^{-1}.
+        (The latter form is more convenient, because it avoids finding the inverse of C, and therefore does not require
+        that C be invertible).
 
         Args:
             ainv (xnp.ndarray): the matrix to which to apply the update
@@ -772,9 +774,11 @@ class WoodburyInverter:
         Returns:
             xnp.ndarray: Updated inverse matrix (A+UCV)^{-1}
         """
-        cinv = xnp.linalg.inv(c)
         ainv_u = ainv @ u
-        ainv -= (ainv_u @ xnp.linalg.inv(cinv + v @ ainv_u)) @ (v @ ainv)
+        c_v = c @ v
+        idmat = xnp.eye(*c.shape[-2:])
+        idmat = xnp.broadcast_to(idmat, c.shape)
+        ainv -= (ainv_u @ xnp.linalg.inv(idmat + c_v @ ainv_u)) @ (c_v @ ainv)
         return ainv
 
     @maybe_jit(static_argnames=["indi", "indj"])
@@ -793,7 +797,6 @@ class WoodburyInverter:
             xnp.ndarray: Updated inverse matrix (A+UMV)^{-1}
         """
         # Construct two matrices to shift m to the correct position in A
-        mask = ~xnp.all(xnp.isclose(m, 0), axis=(-2, -1))  # (...,)
 
         m_m, n_m = m.shape[-2:]
         m_a, n_a = ainv.shape[-2:]
@@ -814,13 +817,7 @@ class WoodburyInverter:
 
         # Compute the update
         updated = WoodburyInverter.update(ainv, u, m, v)
-
-        # Expand mask to matrix dims
-        mask_expanded = mask[..., None, None]
-
-        # Select update where desired
-        result = xnp.where(mask_expanded, updated, ainv)
-        return result
+        return updated
 
 
 # =========================== IncDeterminant ===============================
