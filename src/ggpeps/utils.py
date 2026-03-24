@@ -860,7 +860,10 @@ class IncLogAbsDeterminant:
 
     def update(detval: float, ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> float:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma.
-        The formula is: det(A+UCV)=det(A) * det(C^{-1}+VA^{-1}U) * det(C).
+        The formula is: det(A+UCV) = det(A) * det(C^{-1}+VA^{-1}U) * det(C).
+                                   = det(A) * det(I + V @ A^{-1} @ U @ C)
+        (The latter form is more convenient, because it avoids finding the inverse of C).
+        Since we are working with the log of the determinant, the products turn into sums.
 
         Args:
             ainv (xnp.ndarray): Inverse of the matrix A
@@ -872,18 +875,21 @@ class IncLogAbsDeterminant:
             store (bool, optional): Store the updated determinant value. Defaults to True.
         """
         # We are updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
-        dest = detval
-        converged = True
-        if not xnp.allclose(c, 0):
-            # We cannot update if c is zero because we cannot invert it
-            # There might also be problems if c is singular !
-            sign, cdetval = xnp.linalg.slogdet(c)
-            sign, combined_detval = xnp.linalg.slogdet(xnp.linalg.inv(c) + v @ ainv @ u)
-            if xnp.isnan(combined_detval) or xnp.isnan(cdetval):
-                converged = False
-            if converged:
-                dest = detval + cdetval + combined_detval
-        return dest
+        """
+        # converged = True
+        sign, cdetval = xnp.linalg.slogdet(c)
+        sign, combined_detval = xnp.linalg.slogdet(xnp.linalg.inv(c) + v @ ainv @ u)
+        # if xnp.isnan(combined_detval) or xnp.isnan(cdetval):
+        #    converged = False
+        # if converged:
+        dest = detval + cdetval + combined_detval
+        """
+
+        middle = v @ ainv @ u
+        mat = xnp.eye(c.shape[-1]) + middle @ c
+
+        _, logdet = xnp.linalg.slogdet(mat)  # logDet(I + V @ A^{-1} @ U @ C)
+        return detval + logdet
 
     def update_index(detval: xnp.ndarray, ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> float:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma,
@@ -898,8 +904,27 @@ class IncLogAbsDeterminant:
         """
 
         # Construct two matrices to shift M to the correct position in A
+
+        m_m, n_m = m.shape[-2:]
+        m_a, n_a = ainv.shape[-2:]
+
+        # Identity broadcasted to batch
+        idmat = xnp.eye(m_m, n_m)
+        idmat = xnp.broadcast_to(idmat, m.shape)
+
+        # Build u
+        u = xnp.zeros(m.shape[:-2] + (m_a, m_m))
+        inds = (Ellipsis, slice(indi, indi + m_m), slice(0, n_m))  # equivalen to slice(None) in last dim
+        u = backend.array_assign(u, inds, idmat)
+
+        # Build v
+        v = xnp.zeros(m.shape[:-2] + (n_m, n_a))
+        inds = (Ellipsis, slice(0, m_m), slice(indj, indj + n_m))
+        v = backend.array_assign(v, inds, idmat)
+
+        detval = IncLogAbsDeterminant.update(detval, ainv, u, m, v)
+        """
         if not xnp.allclose(m, 0):
-            # We cannot update if m is zero because we cannot invert it
             m_m, n_m = m.shape
             m_a, n_a = ainv.shape
             idmat = xnp.eye(m_m, n_m)
@@ -912,6 +937,7 @@ class IncLogAbsDeterminant:
             inds_v = (slice(0, m_m), slice(indj, indj + n_m))
             v = backend.array_assign(v, inds_v, idmat)
             detval = IncLogAbsDeterminant.update(detval, ainv, u, m, v)
+        """
         return detval
 
 
