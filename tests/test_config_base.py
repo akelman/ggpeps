@@ -8,10 +8,10 @@ from ggpeps import lattice
 
 from ggpeps.lattice import Direction
 
-# ==================== ZN Gauged Projector Terms: Test ====================
+# ==================== Gauged Projector Terms: Test ====================
 
 
-class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
+class TestGaugedProjectorTermsForZ2(unittest.TestCase):
     def _assert_complex_close(self, a, b, rtol=1e-12, atol=1e-12):
         self.assertTrue(np.isclose(a, b, rtol=rtol, atol=atol), f"Complex values differ: {a} vs {b}")
 
@@ -63,7 +63,7 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
             self.assertEqual(g_mon, e_mon, f"Monomial indices differ at sorted index {i}: {g_mon} vs {e_mon}")
             self._assert_complex_close(g_coef, e_coef)
 
-    def test_generate_gauged_projector_terms_small_cases1(self):
+    def test_generate_gauged_projector_terms_small_cases1_Z2(self):
         # Expected outputs for ncopy in {1,2}, layer in {mixed_copies, unmixed_copies},
         # orientation in {horizontal, vertical}, group_order = 2.
         # We compare ALL terms, including those with coefficients with zero real part.
@@ -209,6 +209,64 @@ class TestZNGaugedProjectorTermsForZ2(unittest.TestCase):
     def test_generate_gauged_projector_terms_small_cases2(self):
         # same as above but without imaginary terms
         pass
+
+    def test_generate_gauged_projector_terms_small_cases1_D6(self):
+        # Expected outputs for ncopy in {1,2}, layer in {mixed_copies, unmixed_copies},
+        # orientation in {horizontal, vertical}, group_order = 2.
+        # We compare ALL terms, including those with coefficients with zero real part.
+        expected = {
+            (1, False, Direction.X): (
+                (
+                    (0.25 / 4, (4, 5)),
+                    (0.25 / 4, (6, 7)),
+                    (1j * 0.25 / 4, (4, 6)),
+                    (-1j * 0.25 / 4, (5, 7)),
+                    (0.25 / 4, (0, 1, 2, 3, 4, 5)),
+                    (0.25 / 4, (0, 1, 2, 3, 6, 7)),
+                    (1j * 0.25 / 4, (0, 1, 2, 3, 4, 6)),
+                    (-1j * 0.25 / 4, (0, 1, 2, 3, 5, 7)),
+                    (0.25 / 4, (0, 3, 4, 5)),
+                    (0.25 / 4, (0, 3, 6, 7)),
+                    (1j * 0.25 / 4, (0, 3, 4, 6)),
+                    (-1j * 0.25 / 4, (0, 3, 5, 7)),
+                    (0.25 / 4, (1, 2, 4, 5)),
+                    (0.25 / 4, (1, 2, 6, 7)),
+                    (1j * 0.25 / 4, (1, 2, 4, 6)),
+                    (-1j * 0.25 / 4, (1, 2, 5, 7)),
+                ),
+                0.0,
+            ),
+            (1, True, Direction.X): (
+                (
+                    (0.25 / 4, (4, 5)),
+                    (0.25 / 4, (6, 7)),
+                    (0.25 / 4, (0, 1, 2, 3, 4, 5)),
+                    (0.25 / 4, (0, 1, 2, 3, 6, 7)),
+                    (0.25 / 4, (0, 3, 4, 5)),
+                    (0.25 / 4, (0, 3, 6, 7)),
+                    (0.25 / 4, (1, 2, 4, 5)),
+                    (0.25 / 4, (1, 2, 6, 7)),
+                ),
+                0.0,
+            ),
+        }
+        gaugemgr = gauge.D2nGauge(3)
+        group_element = gaugemgr.get_representation(0, 1)
+        ncopy = 1
+        mix_copies = False
+        for drop_real_zero in [False, True]:
+            orientation = Direction.X
+            got_ind, got_const = config_base.generate_gauged_projector_terms(
+                ncopy=ncopy,
+                ncolor=2,
+                mix_copies=mix_copies,
+                orientation=orientation,
+                group_element=group_element,
+                site=0,
+                drop_real_zero=drop_real_zero,
+            )
+            exp_ind, exp_const = expected[(ncopy, drop_real_zero, orientation)]
+            self._assert_terms_equal(got_ind, got_const, exp_ind, exp_const)
 
     def assertPolyEqual(self, result, expected):
         """Helper to compare polynomial dictionaries."""
