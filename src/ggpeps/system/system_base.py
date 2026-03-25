@@ -1240,26 +1240,19 @@ class System2DBase(ABC):
         Returns:
             float: Logarithm of the weight of the proposed configuration
         """
-        # There are two directions per vertex and two Majoranas per link
+        # There are two directions per vertex and some number of Majoranas per link
+        theta = xnp.asarray(theta)
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
         gamma_neutral_gauge_vec = self.gamma_gauge_neutral_vec
-        gamma_in_subst_layers = [
-            rotmat @ gamma_neutral_gauge[dir] @ xnp.transpose(rotmat)
-            for gamma_neutral_gauge in gamma_neutral_gauge_vec
-        ]
-        updates = xnp.asarray(
-            [
-                self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys)
-                for gamma_in_subst, gamma_in_sys in zip(gamma_in_subst_layers, self.gamma_in_sys_vec)
-            ]
-        )
+        gamma_in_subst_layers = rotmat @ gamma_neutral_gauge_vec[:, dir] @ xnp.transpose(rotmat)
+        updates = self.calculate_update_gamma_in(ind_mat, gamma_in_subst_layers, self.gamma_in_sys_vec)
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
 
-    def _calculate_lognorm(
-        self, gamma_in_sys_vec: xnp.ndarray, mat_d_vec: xnp.ndarray, all_factors: bool = False
-    ) -> float:
+    @staticmethod
+    @maybe_jit(static_argnames=["all_factors"])
+    def _calculate_lognorm(gamma_in_sys_vec: xnp.ndarray, mat_d_vec: xnp.ndarray, all_factors: bool = False) -> float:
         # This is still the plain formula, without any update mechanism
         normvec = backend.calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
         return xnp.sum(normvec)
@@ -1503,8 +1496,8 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Additional update to reach update_mat at gamma_in[offset:,offset:]
         """
-        m_up, n_up = update_mat.shape
-        gamma_in_old = gamma_in_sys[offset : offset + m_up, offset : offset + n_up]
+        m_up, n_up = update_mat.shape[-2:]
+        gamma_in_old = gamma_in_sys[..., offset : offset + m_up, offset : offset + n_up]
         return -(update_mat - gamma_in_old)
 
     ################## Observables ######################

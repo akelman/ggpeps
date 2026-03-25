@@ -165,7 +165,7 @@ class U1System2D(System2DBase):
         # Though for this ansatz gamma_in_sys does not vary between layers,
         # it is convenient to have gamma_in_sys_vec available as a vector with length = nlayers
         # for general methods in system base
-        gamma_in_sys_vec = [gamma_in_sys] * self.cfg.nlayer
+        gamma_in_sys_vec = xnp.asarray([gamma_in_sys] * self.cfg.nlayer)
 
         return (
             gamma_in_sys_vec,
@@ -249,9 +249,9 @@ class U1System2D(System2DBase):
                 )
 
         # Substitute in the array
-        self.gamma_in_sys_vec[0][
-            ind_mat : ind_mat + rotmat.shape[0], ind_mat : ind_mat + rotmat.shape[1]
-        ] = gamma_in_subst
+        inds = (0, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
+        self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
+
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
 
@@ -379,7 +379,8 @@ class U1System2D(System2DBase):
         rotmat = self.generate_rotmat(self.cfg.ncopy, current_phase, coord, dir)
         adapted = rotmat @ adapted_no_gauge @ rotmat.transpose()
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
-        dest[ind_mat : ind_mat + adapted.shape[0], ind_mat : ind_mat + adapted.shape[1]] = adapted
+        inds = (slice(ind_mat, ind_mat + adapted.shape[0]), slice(ind_mat, ind_mat + adapted.shape[1]))
+        dest = backend.array_assign(dest, inds, adapted)
         return dest
 
     def generate_electric_single_mode(self, phi):
