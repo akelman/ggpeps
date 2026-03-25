@@ -120,6 +120,7 @@ class MonteCarloEvaluator(Evaluator):
         super().__init__(evaluator_cfg, system)
 
         self.step: int = 0
+        self._initialize_measurement_geometry()
         self.init_measurements()
 
         # Choose how to update in each MC step
@@ -129,6 +130,22 @@ class MonteCarloEvaluator(Evaluator):
         else:
             # self.update = self.update_single_site
             self.update = self.update_N_sites
+
+    def _initialize_measurement_geometry(self) -> None:
+        """Precompute static loop/string definitions used by `measure`.
+
+        These only depend on the lattice geometry and are unchanged during MC updates.
+        """
+        lat = self.system.cfg.lattice
+        self._polyakov_loop = lat.generate_polyakov_loop((0, 0), lattice.Direction.X)
+
+        self._wilson_sizes = lat.generate_allowed_loop_dimensions()
+        self._wilson_loops = lat.generate_all_wilson_loops((0, 0), self._wilson_sizes)
+        self._wilson_names = [f"wilson_loop_0-0_{size[0]}x{size[1]}" for size in self._wilson_sizes]
+
+        max_string = 1 + max(lat.nx, lat.ny) // 2
+        self._meson_strings = [lat.generate_L_string((0, 0), (k, k)) for k in range(1, max_string)]
+        self._meson_names = [f"square_string_0-0_{k}x{k}" for k in range(1, max_string)]
 
     def init_measurements(self) -> None:
         """Add empty measurement vectors to the measurement dictionary"""
@@ -154,15 +171,12 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict["variance_occupation"] = Measurement("Variance Occupation", binsize)
 
         # Wilson loops (of various sizes)
-        sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
-        for size in sizes:
-            loop_name = f"wilson_loop_0-0_{size[0]}x{size[1]}"
+        for loop_name in self._wilson_names:
             self.obsdict[loop_name] = Measurement(loop_name, binsize)
 
         # Meson strings
-        max_string = 1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
-        for k in range(1, max_string):
-            self.obsdict[f"square_string_0-0_{k}x{k}"] = Measurement(f"square_string_0-0_{k}x{k}", binsize)
+        for string_name in self._meson_names:
+            self.obsdict[string_name] = Measurement(string_name, binsize)
 
         # Gradients
         if self.cfg.compute_grads:
@@ -175,9 +189,7 @@ class MonteCarloEvaluator(Evaluator):
 
     def measure(self) -> None:
         """Measure the corresponding observables in the dictionary"""
-        polyakov_loop = self.system.cfg.lattice.generate_polyakov_loop((0, 0), lattice.Direction.X)
-
-        self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
+        self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(self._polyakov_loop)))
         # self.obsdict["cov_ferm"].append(self.system.ferm_covmat_vec)
         self.obsdict["mag_energy_op"].append(np.asarray(self.system.mag_energy_op))
         self.obsdict["el_energy_op"].append(np.asarray(self.system.el_energy_op))
@@ -198,18 +210,12 @@ class MonteCarloEvaluator(Evaluator):
 
         # Wilson loops
         # TODO: save sizes/loops/strings in a more efficient way, so that they are not recomputed each step
-        sizes = self.system.cfg.lattice.generate_allowed_loop_dimensions()
-        loops = self.system.cfg.lattice.generate_all_wilson_loops((0, 0), sizes)
-        for k in range(len(sizes)):
-            loop_name = f"wilson_loop_0-0_{sizes[k][0]}x{sizes[k][1]}"
-            self.obsdict[loop_name].append(np.real(self.system.compute_path(loops[k])))
+        for loop_name, loop_path in zip(self._wilson_names, self._wilson_loops):
+            self.obsdict[loop_name].append(np.real(self.system.compute_path(loop_path)))
 
         # Meson strings
-        max_string = 1 + max(self.system.cfg.lattice.nx, self.system.cfg.lattice.ny) // 2
-        strings = [self.system.cfg.lattice.generate_L_string((0, 0), (k, k)) for k in range(1, max_string)]
-        for k in range(1, max_string):
-            string_name = f"square_string_0-0_{k}x{k}"
-            self.obsdict[string_name].append(np.asarray(self.system.meson_string(strings[k - 1])))
+        for string_name, string_path in zip(self._meson_names, self._meson_strings):
+            self.obsdict[string_name].append(np.asarray(self.system.meson_string(string_path)))
 
         if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"].append(np.asarray(self.system.el_energy_op_grad_vec))
