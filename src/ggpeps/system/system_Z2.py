@@ -312,6 +312,7 @@ class Z2System2D(System2DBase):
                 - Bdiff @ d_mat_d_vec @ diffB
             )
             @ R_active
+        )
         d_covmat_out_virt_vec = backend.array_assign(d_covmat_out_virt_vec, (l, m, u, s), vals)
 
         # Calculate the modified norms
