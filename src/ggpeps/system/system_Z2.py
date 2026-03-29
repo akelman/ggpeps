@@ -90,34 +90,31 @@ class Z2System2D(System2DBase):
             # Substitute in the array
             inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
             self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
-            # TODO: should not modify "private" variable - make a setter?
-            """
-            equivalent to:
-                self._gamma_in_sys_vec[layer][
-                    ind_mat : ind_mat + rotmat.shape[0],
-                    ind_mat : ind_mat + rotmat.shape[1],
-                ] = gamma_in_subst
-            """
 
         # Update the determinant
-        mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
-        detval_vec = np.array(
-            [
-                incdet.update_index(mat_inv, update, ind_mat, ind_mat)
-                for mat_inv, update, incdet in zip(mat_inv_vec, update_vec, self.incdet_vec)
-            ]
+        mat_inv_vec = self.wi_gamma_in_vec
+        update_arr = xnp.array(update_vec)
+
+        self._incdet_vec = utils.IncLogAbsDeterminant.update_index(
+            self.incdet_vec, mat_inv_vec, update_arr, ind_mat, ind_mat
         )
 
         # Update the weight
-        self.weight = 0.5 * np.sum(detval_vec)
+        self.weight = 0.5 * np.sum(self.incdet_vec)
 
         # Update the matrix inversion
-        for wi_gamma_in, update in zip(self.wi_gamma_in_vec, update_vec):
-            wi_gamma_in.update_index(update, ind_mat, ind_mat)
-        for wi_gamma_out, update in zip(self.wi_gamma_out_vec, update_vec):
-            wi_gamma_out.update_index(update, ind_mat, ind_mat)
+        self._wi_gamma_in_vec = ggpeps.utils.WoodburyInverter.update_index(
+            self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat
+        )
+        self._wi_gamma_out_vec = ggpeps.utils.WoodburyInverter.update_index(
+            self.wi_gamma_out_vec, update_arr, ind_mat, ind_mat
+        )
 
         # Update the modified determinant & matrices
+        # The vectorization of the local updates does not support skipping a link or variable offsets,
+        # so we loop explicitly.
+        assert self._wi_gamma_in_mod_vec is not None  # for mypy
+        assert self._wi_gamma_out_mod_vec is not None
         for lay in range(self.cfg.nlayer):
             for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
                 if mod_link_ind != link_ind:
@@ -127,18 +124,25 @@ class Z2System2D(System2DBase):
                     if link_ind > mod_link_ind:
                         offset = 2 * self.cfg.nvirtmodes_link
 
-                    mat_inv = self.wi_gamma_in_mod_vec[lay][ind].inv()
-                    self.incdet_mod_vec[lay][ind].update_index(
-                        mat_inv, update_vec[lay], ind_mat - offset, ind_mat - offset
+                    mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
+                    new_det = utils.IncLogAbsDeterminant.update_index(
+                        self.incdet_mod_vec[lay][ind],
+                        mat_inv,
+                        update_vec[lay],
+                        ind_mat - offset,
+                        ind_mat - offset,
                     )
+                    self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, (lay, ind), new_det)
 
-                    self.wi_gamma_in_mod_vec[lay][ind].update_index(
-                        update_vec[lay], ind_mat - offset, ind_mat - offset
+                    new1 = ggpeps.utils.WoodburyInverter.update_index(
+                        self._wi_gamma_in_mod_vec[lay][ind], update_vec[lay], ind_mat - offset, ind_mat - offset
                     )
+                    self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (lay, ind), new1)
 
-                    self.wi_gamma_out_mod_vec[lay][ind].update_index(
-                        update_vec[lay], ind_mat - offset, ind_mat - offset
+                    new2 = ggpeps.utils.WoodburyInverter.update_index(
+                        self._wi_gamma_out_mod_vec[lay][ind], update_vec[lay], ind_mat - offset, ind_mat - offset
                     )
+                    self._wi_gamma_out_mod_vec = backend.array_assign(self._wi_gamma_out_mod_vec, (lay, ind), new2)
 
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
@@ -275,7 +279,12 @@ class Z2System2D(System2DBase):
         lognorm_default = xnp.sum(lognorm_default_vec)
 
         # Calculate the derivatives (wrt all non-zero parameters) of the modified covmat_out
-        # TODO: can mask these
+        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec), k, k)
+        d_covmat_out_virt_vec = xnp.zeros(shape)
+
+        l, m, u, s = inds
+        # NOTE: from limited testing, it appears that masking these is not worth it, as that creates extra copies.
+        # But it could be worth it if some of the matmuls were moved out of here, to happen once per eval.
         # (nlayer, nmodlinks, mod_virt_dim, mod_virt_dim)
         prod_mod_norm_vec = mat_d_mod_inv_vec @ gamma_in_mod_inv_vec @ gamma_in_sys_mod_vec
         # (nlayer, nmodlinks, mod_virt_dim, link_dim), take only the last k columns
@@ -303,13 +312,14 @@ class Z2System2D(System2DBase):
                 - Bdiff @ d_mat_d_vec @ diffB
             )
             @ R_active
-        )
-
         d_covmat_out_virt_vec = backend.array_assign(d_covmat_out_virt_vec, (l, m, u, s), vals)
 
         # Calculate the modified norms
         norm_shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
         prod_vec = xnp.zeros(norm_shape)
+        # The following line takes >50% of the runtime of this function, but most of that is actually spent
+        # copying data due to the fancy indexing of prod_mod_norm_vec[l, m]
+        # TODO: optimize this (the main complication is dealing with the reshaped arrays after indexing)
         vals = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec[l, m]))
         prod_vec = backend.array_assign(prod_vec, (l, m, u, s), vals)
 

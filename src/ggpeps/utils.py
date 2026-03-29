@@ -756,16 +756,17 @@ class CacheServer:
 
 
 class WoodburyInverter:
-    def __init__(self, mat: xnp.ndarray):
-        self.ainv = xnp.linalg.inv(mat)
 
-    def inv(self) -> xnp.ndarray:
-        return self.ainv
-
-    def update(self, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> xnp.ndarray:
+    @staticmethod
+    def update(ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> xnp.ndarray:
         """Update the inverse of a matrix A using the Woodbury formula.
-        The formula is: (A+UCV)^{-1}=A^{-1} - A^{-1}U(C^{-1}+VA^{-1}U)^{-1}VA^{-1}.
+        The formula is: (A+UCV)^{-1} = A^{-1} - A^{-1}U(C^{-1}+VA^{-1}U)^{-1} VA^{-1}
+                                     = A^{-1} - A^{-1}U (I + CVA^{-1}U)^{-1} CVA^{-1}.
+        (The latter form is more convenient, because it avoids finding the inverse of C, and therefore does not require
+        that C be invertible).
+
         Args:
+            ainv (xnp.ndarray): the matrix to which to apply the update
             u (xnp.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
                                     used to place the update C to match the dimensions of M.
             v (xnp.ndarray): V matrix - Contains zeroes and identity blocks, along with U this matrix is
@@ -773,44 +774,52 @@ class WoodburyInverter:
             c (xnp.ndarray): Local update matrix C
         Returns:
             xnp.ndarray: Updated inverse matrix (A+UCV)^{-1}
-
         """
-        # We ware updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
-        if not xnp.allclose(c, 0):
-            # We cannot update with C being zero since this matrix has no inverse
-            cinv = xnp.linalg.inv(c)
-            self.ainv -= ((self.ainv @ u) @ xnp.linalg.inv(cinv + v @ self.ainv @ u)) @ (v @ self.ainv)
-        return self.ainv
+        ainv_u = ainv @ u
+        c_v = c @ v
+        idmat = xnp.eye(*c.shape[-2:])
+        idmat = xnp.broadcast_to(idmat, c.shape)
+        ainv -= (ainv_u @ xnp.linalg.inv(idmat + c_v @ ainv_u)) @ (c_v @ ainv)
+        return ainv
 
-    def update_index(self, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
+    @staticmethod
+    @maybe_jit(static_argnames=["indi", "indj"])
+    def update_index(ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """
         Update the inverse of the matrix A using the Woodbury formula, given indices indicating the positions in A
         where the update M is placed. This is done by generating the U and V matrix for the update method.
 
         Args:
-            m (xnp.ndarray): M matrix - The local update matrix to A.
+            ainv (xnp.ndarray): the matrix to which to apply the update
+            mat (xnp.ndarray): a stack of matrices M with arbitrary leading dimensions matching self.ainv
+                This is a stack of the local update matrices for A.
             indi (int): Index in the first dimension of A where the update m is placed.
             indj (int): Index in the second dimension of A where the update m is placed.
         Returns:
             xnp.ndarray: Updated inverse matrix (A+UMV)^{-1}
         """
         # Construct two matrices to shift m to the correct position in A
-        if not xnp.allclose(m, 0):
-            # We cannot update with m being zero since this matrix has no inverse
-            m_m, n_m = m.shape
-            m_a, n_a = self.ainv.shape
-            idmat = xnp.eye(m_m, n_m)
-            u = xnp.zeros((m_a, m_m))
-            v = xnp.zeros((n_m, n_a))
 
-            inds_u = (slice(indi, indi + m_m), slice(0, n_m))
-            u = backend.array_assign(u, inds_u, idmat)
+        m_m, n_m = m.shape[-2:]
+        m_a, n_a = ainv.shape[-2:]
 
-            inds_v = (slice(0, m_m), slice(indj, indj + n_m))
-            v = backend.array_assign(v, inds_v, idmat)
-            return self.update(u, m, v)
-        else:
-            return self.inv()
+        # Identity broadcasted to batch
+        idmat = xnp.eye(m_m, n_m)
+        idmat = xnp.broadcast_to(idmat, m.shape)
+
+        # Build u
+        u = xnp.zeros(m.shape[:-2] + (m_a, m_m))
+        inds = (Ellipsis, slice(indi, indi + m_m), slice(None))
+        u = backend.array_assign(u, inds, idmat)
+
+        # Build v
+        v = xnp.zeros(m.shape[:-2] + (n_m, n_a))
+        inds = (Ellipsis, slice(None), slice(indj, indj + n_m))
+        v = backend.array_assign(v, inds, idmat)
+
+        # Compute the update
+        updated = WoodburyInverter.update(ainv, u, m, v)
+        return updated
 
 
 # =========================== IncDeterminant ===============================
@@ -847,17 +856,15 @@ class IncDeterminant:
 
 
 class IncLogAbsDeterminant:
-    def __init__(self, a: xnp.ndarray) -> None:
-        # We are not using the sign right now.
-        # We know that the sign has to be positive
-        self.sign, self.detval = xnp.linalg.slogdet(a)
 
-    def det(self) -> float:
-        return self.detval
-
-    def update(self, ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray, store: bool = True) -> float:
+    @staticmethod
+    def update(detval: xnp.ndarray, ainv: xnp.ndarray, u: xnp.ndarray, c: xnp.ndarray, v: xnp.ndarray) -> xnp.ndarray:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma.
-        The formula is: det(A+UCV)=det(A) * det(C^{-1}+VA^{-1}U) * det(C).
+        The formula is: det(A+UCV) = det(A) * det(C^{-1}+VA^{-1}U) * det(C).
+                                   = det(A) * det(I + V @ A^{-1} @ U @ C)
+        (The latter form is more convenient, because it avoids finding the inverse of C).
+        Since we are working with the log of the determinant, the products turn into sums.
+
         Args:
             ainv (xnp.ndarray): Inverse of the matrix A
             u (xnp.ndarray): U matrix - Contains zeroes and identity blocks, along with V this matrix is
@@ -867,50 +874,46 @@ class IncLogAbsDeterminant:
                                     used to place the update C to match the dimensions of A.
             store (bool, optional): Store the updated determinant value. Defaults to True.
         """
-        # We are updating the matrix A according to A=A+UCV and recalculate the inverse afterwards
-        dest = self.detval
-        converged = True
-        if not xnp.allclose(c, 0):
-            # We cannot update if c is zero because we cannot invert it
-            # There might also be problems if c is singular !
-            sign, cdetval = xnp.linalg.slogdet(c)
-            sign, combined_detval = xnp.linalg.slogdet(xnp.linalg.inv(c) + v @ ainv @ u)
-            if xnp.isnan(combined_detval) or xnp.isnan(cdetval):
-                converged = False
-            if converged:
-                dest = self.detval + cdetval + combined_detval
-            if store:
-                self.detval = dest
-        return dest
+        middle = v @ ainv @ u
+        mat = xnp.eye(c.shape[-1]) + middle @ c
+        _, logdet = xnp.linalg.slogdet(mat)  # logDet(I + V @ A^{-1} @ U @ C)
+        return detval + logdet
 
-    def update_index(self, ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int, store: bool = True) -> float:
+    @staticmethod
+    @maybe_jit(static_argnames=["indi", "indj"])
+    def update_index(detval: xnp.ndarray, ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma,
         given indices indicating the positions in A where the update M is placed.
         This is done by generating the U and V matrix for the update method.
+
         Args:
             ainv (xnp.ndarray): Inverse of the matrix A
             m (xnp.ndarray): M matrix - The local update matrix to A.
             indi (int): Index in the first dimension of A where the update m is placed.
             indj (int): Index in the second dimension of A where the update m is placed
-            store (bool, optional): Store the updated determinant value. Defaults to True."""
+        """
 
         # Construct two matrices to shift M to the correct position in A
-        if not xnp.allclose(m, 0):
-            # We cannot update if m is zero because we cannot invert it
-            m_m, n_m = m.shape
-            m_a, n_a = ainv.shape
-            idmat = xnp.eye(m_m, n_m)
-            u = xnp.zeros((m_a, m_m))
-            v = xnp.zeros((n_m, n_a))
 
-            inds_u = (slice(indi, indi + m_m), slice(0, n_m))
-            u = backend.array_assign(u, inds_u, idmat)
+        m_m, n_m = m.shape[-2:]
+        m_a, n_a = ainv.shape[-2:]
 
-            inds_v = (slice(0, m_m), slice(indj, indj + n_m))
-            v = backend.array_assign(v, inds_v, idmat)
-            return self.update(ainv, u, m, v, store)
-        else:
-            return self.det()
+        # Identity broadcasted to batch
+        idmat = xnp.eye(m_m, n_m)
+        idmat = xnp.broadcast_to(idmat, m.shape)
+
+        # Build u
+        u = xnp.zeros(m.shape[:-2] + (m_a, m_m))
+        inds = (Ellipsis, slice(indi, indi + m_m), slice(0, n_m))  # equivalen to slice(None) in last dim
+        u = backend.array_assign(u, inds, idmat)
+
+        # Build v
+        v = xnp.zeros(m.shape[:-2] + (n_m, n_a))
+        inds = (Ellipsis, slice(0, m_m), slice(indj, indj + n_m))
+        v = backend.array_assign(v, inds, idmat)
+
+        detval = IncLogAbsDeterminant.update(detval, ainv, u, m, v)
+        return detval
 
 
 # Not used (though still appears in tests)

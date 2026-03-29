@@ -139,13 +139,13 @@ class System2DBase(ABC):
         self._occupations_after_ph: Optional[xnp.ndarray] = None
 
         # Woodbury Update and Matrix Inversion
-        self._wi_gamma_in_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (D^-1 - gammain)^-1
-        self._wi_gamma_out_vec: Optional[list[utils.WoodburyInverter]] = None  # Tracks (D - gammain)^-1
-        self._incdet_vec: Optional[list[utils.IncLogAbsDeterminant]] = None  # Tracks det(D^-1 - gammain)
+        self._wi_gamma_in_vec: Optional[xnp.ndarray] = None  # Tracks (D^-1 - gammain)^-1
+        self._wi_gamma_out_vec: Optional[xnp.ndarray] = None  # Tracks (D - gammain)^-1
+        self._incdet_vec: Optional[xnp.ndarray] = None  # Tracks det(D^-1 - gammain)
 
-        self._wi_gamma_in_mod_vec: Optional[list[list[utils.WoodburyInverter]]] = None  # Tracks (Dmod^-1 - gammain)^-1
-        self._wi_gamma_out_mod_vec: Optional[list[list[utils.WoodburyInverter]]] = None  # Tracks (Dmod - gammain)^-1
-        self._incdet_mod_vec: Optional[list[list[utils.IncLogAbsDeterminant]]] = None  # Tracks det(Dmod^-1 - gammain)
+        self._wi_gamma_in_mod_vec: Optional[xnp.ndarray] = None  # Tracks (Dmod^-1 - gammain)^-1
+        self._wi_gamma_out_mod_vec: Optional[xnp.ndarray] = None  # Tracks (Dmod - gammain)^-1
+        self._incdet_mod_vec: Optional[xnp.ndarray] = None  # Tracks det(Dmod^-1 - gammain)
 
         return
 
@@ -413,7 +413,6 @@ class System2DBase(ABC):
                    wrt the parameter at that (lay, uc_ind, symbol)
         """
         if self._d_gamma_out_symbolvec is None:
-            gamma_out_inv_vec = xnp.array([self.wi_gamma_out_vec[layer].inv() for layer in range(self.cfg.nlayer)])
             self._d_gamma_out_symbolvec = self._compute_d_gamma_out_symbolvec(
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
@@ -422,7 +421,7 @@ class System2DBase(ABC):
                 self.cfg.unitcell_size,
                 len(self.cfg.symbolvec),
                 self.mat_b_vec,
-                gamma_out_inv_vec,
+                self.wi_gamma_out_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
             )
         return self._d_gamma_out_symbolvec
@@ -667,7 +666,7 @@ class System2DBase(ABC):
                     mat_b_mod_block = mat_b[-single_link_offset:, :]
                     # modified-virtual part of the B matrix
 
-                    diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind][ind].inv()
+                    diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind][ind]
 
                     # Compute covmat
                     covmat_out_virt_ungauged = mat_a_mod_block + mat_b_mod_block @ diff_d_gamma_inv @ xnp.transpose(
@@ -844,47 +843,31 @@ class System2DBase(ABC):
         This method overwrites an abstract method in System2DBase.
         """
 
-        # Initialize empty lists
-        gamma_in_sys_listvec = []
-        wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec = [], [], []
-        wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec = [], [], []
-
         # Initialize gamma_in_sys for the full system (and trackers)
         size = self.cfg.lattice.size  # number of sites
         id = xnp.eye(size)
 
         # TODO: vectorize!
+        gamma_in_sys_listvec = []
         for layer in range(self.cfg.nlayer):
             neutral_gauge_X = xnp.kron(id, self.gamma_gauge_neutral_vec[layer][Direction.X])
             neutral_gauge_Y = xnp.kron(id, self.gamma_gauge_neutral_vec[layer][Direction.Y])
             gamma_in_sys = xscipy.linalg.block_diag(neutral_gauge_X, neutral_gauge_Y)
             gamma_in_sys_listvec.append(gamma_in_sys)
 
-            wi_gamma_in_vec.append(utils.WoodburyInverter(self.mat_d_inv_vec[layer] - gamma_in_sys))
-            wi_gamma_out_vec.append(utils.WoodburyInverter(self.mat_d_vec[layer] - gamma_in_sys))
-            incdet_vec.append(utils.IncLogAbsDeterminant(self.mat_d_inv_vec[layer] - gamma_in_sys))
         gamma_in_sys_vec = xnp.array(gamma_in_sys_listvec)
+        wi_gamma_in_vec = xnp.linalg.inv(self.mat_d_inv_vec - gamma_in_sys_vec)
+        wi_gamma_out_vec = xnp.linalg.inv(self.mat_d_vec - gamma_in_sys_vec)
+        _, incdet_vec = xnp.linalg.slogdet(self.mat_d_inv_vec - gamma_in_sys_vec)
 
         # Initialize the modified gamma_in_sys and trackers for the full system
         gamma_in_sys_mod_layervec_linkvec = self._extract_gamma_in_sys_mod_vec(
             self.cfg.mod_link_inds, gamma_in_sys_vec
         )
-        for layer in range(self.cfg.nlayer):
-            wi_gamma_in_mod_linkvec, wi_gamma_out_mod_linkvec, incdet_mod_linkvec = [], [], []
-            for ind, link_ind in enumerate(self.cfg.mod_link_inds):
-                gamma_in_sys_mod = gamma_in_sys_mod_layervec_linkvec[layer, ind]
-                wi_gamma_in_mod_linkvec.append(
-                    utils.WoodburyInverter(self.mat_d_mod_inv_vec[layer, ind] - gamma_in_sys_mod)
-                )
-                wi_gamma_out_mod_linkvec.append(
-                    utils.WoodburyInverter(self.mat_d_mod_vec[layer, ind] - gamma_in_sys_mod)
-                )
-                incdet_mod_linkvec.append(
-                    utils.IncLogAbsDeterminant(self.mat_d_mod_inv_vec[layer, ind] - gamma_in_sys_mod)
-                )
-            wi_gamma_in_mod_vec.append(wi_gamma_in_mod_linkvec)
-            wi_gamma_out_mod_vec.append(wi_gamma_out_mod_linkvec)
-            incdet_mod_vec.append(incdet_mod_linkvec)
+
+        wi_gamma_in_mod_vec = xnp.linalg.inv(self.mat_d_mod_inv_vec - gamma_in_sys_mod_layervec_linkvec)
+        wi_gamma_out_mod_vec = xnp.linalg.inv(self.mat_d_mod_vec - gamma_in_sys_mod_layervec_linkvec)
+        _, incdet_mod_vec = xnp.linalg.slogdet(self.mat_d_mod_inv_vec - gamma_in_sys_mod_layervec_linkvec)
 
         return (
             gamma_in_sys_vec,
@@ -911,7 +894,7 @@ class System2DBase(ABC):
         return self._gamma_in_sys_vec
 
     @property
-    def incdet_vec(self):
+    def incdet_vec(self) -> xnp.ndarray:
         """Return the vector of incremental determinants for the different layers.
         The length of the list is equal to the number of layers.
         This is a get function.
@@ -930,7 +913,7 @@ class System2DBase(ABC):
         return self._incdet_vec
 
     @property
-    def wi_gamma_in_vec(self):
+    def wi_gamma_in_vec(self) -> xnp.ndarray:
         """Return the vector of Woodbury inverters for (D^-1 - gammain)^-1 for the different layers.
         The length of the list is equal to the number of layers.
         This is a get function.
@@ -949,7 +932,7 @@ class System2DBase(ABC):
         return self._wi_gamma_in_vec
 
     @property
-    def wi_gamma_out_vec(self):
+    def wi_gamma_out_vec(self) -> xnp.ndarray:
         """Return the vector of Woodbury inverters for (D - gammain)^-1 for the different layers.
         The length of the list is equal to the number of layers.
         This is a get function.
@@ -1003,7 +986,7 @@ class System2DBase(ABC):
         return gamma_in_sys_mod_linkvec_layervec
 
     @property
-    def incdet_mod_vec(self):
+    def incdet_mod_vec(self) -> xnp.ndarray:
         """Return the vector of incremental determinants for the modified matrices for the different layers.
         The length of the list is equal to the number of layers.
         This is a get function.
@@ -1022,7 +1005,7 @@ class System2DBase(ABC):
         return self._incdet_mod_vec
 
     @property
-    def wi_gamma_in_mod_vec(self):
+    def wi_gamma_in_mod_vec(self) -> xnp.ndarray:
         """Return the vector of Woodbury inverters for (D^-1 - gammain_mod)^-1 for the different layers.
         The length of the list is equal to the number of layers.
         This is a get function.
@@ -1041,7 +1024,7 @@ class System2DBase(ABC):
         return self._wi_gamma_in_mod_vec
 
     @property
-    def wi_gamma_out_mod_vec(self):
+    def wi_gamma_out_mod_vec(self) -> xnp.ndarray:
         """Return the vector of Woodbury inverters for (D - gammain_mod)^-1 for the different layers.
         The length of the list is equal to the number of layers.
         This is a get function.
@@ -1199,6 +1182,7 @@ class System2DBase(ABC):
         """
         dest_grad = xnp.zeros((nlayer, unitcell_size, nparams))
 
+        # TODO: vectorize and make use of self.deriv_mod_mats(self.mod_mask_inds)
         for layerind in range(nlayer):
             offset = 2 * lattice_size * nphysmodes_site  # offset past the physical modes
             diff = gamma_in_inv_vec[layerind]
@@ -1268,29 +1252,24 @@ class System2DBase(ABC):
         Returns:
             float: Logarithm of the weight of the proposed configuration
         """
-        # There are two directions per vertex and two Majoranas per link
+        # There are two directions per vertex and some number of Majoranas per link
+        theta = xnp.asarray(theta)
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
         gamma_neutral_gauge_vec = self.gamma_gauge_neutral_vec
-        gamma_in_subst_layers = [
-            rotmat @ gamma_neutral_gauge[dir] @ xnp.transpose(rotmat)
-            for gamma_neutral_gauge in gamma_neutral_gauge_vec
-        ]
-        updates = [
-            self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys)
-            for gamma_in_subst, gamma_in_sys in zip(gamma_in_subst_layers, self.gamma_in_sys_vec)
-        ]
+        gamma_in_subst_layers = rotmat @ gamma_neutral_gauge_vec[:, dir] @ xnp.transpose(rotmat)
+        updates = self.calculate_update_gamma_in(ind_mat, gamma_in_subst_layers, self.gamma_in_sys_vec)
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
 
-    def _calculate_lognorm(
-        self, gamma_in_sys_vec: list[xnp.ndarray], mat_d_vec: list[xnp.ndarray], all_factors: bool = False
-    ) -> float:
+    @staticmethod
+    @maybe_jit(static_argnames=["all_factors"])
+    def _calculate_lognorm(gamma_in_sys_vec: xnp.ndarray, mat_d_vec: xnp.ndarray, all_factors: bool = False) -> float:
         # This is still the plain formula, without any update mechanism
         normvec = backend.calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
         return xnp.sum(normvec)
 
-    def calculate_lognorm(self, all_factors=False):
+    def calculate_lognorm(self, all_factors: bool = False) -> float:
         """Compute the logarithm of the norm
 
         Args:
@@ -1301,7 +1280,7 @@ class System2DBase(ABC):
         """
         return self._calculate_lognorm(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
 
-    def calculate_lognormvec(self, all_factors=False):
+    def calculate_lognormvec(self, all_factors: bool = False) -> xnp.ndarray:
         """Compute the logarithm of the norm for each layer
 
         Args:
@@ -1313,14 +1292,13 @@ class System2DBase(ABC):
         return backend.calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
 
     @classmethod
-    def _calculate_lognorm_inc(cls, incdet_vec, det_mat_d_vec, n, all_factors: bool = False):
-        det_vec = xnp.array([incdet.det() for incdet in incdet_vec])
-        lognormvec = cls._calculate_lognormvec_inc(det_vec, det_mat_d_vec, n, all_factors=all_factors)
+    def _calculate_lognorm_inc(cls, incdet_vec, det_mat_d_vec, n: int, all_factors: bool = False):
+        lognormvec = cls._calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=all_factors)
         return xnp.sum(lognormvec)
 
     @staticmethod
     @maybe_jit(static_argnames=["n", "all_factors"])
-    def _calculate_lognormvec_inc(det_vec, det_mat_d_vec, n, all_factors: bool = False) -> xnp.ndarray:
+    def _calculate_lognormvec_inc(det_vec, det_mat_d_vec, n: int, all_factors: bool = False) -> xnp.ndarray:
         dest = []
         for ind in range(len(det_vec)):
             detval = det_vec[ind]
@@ -1332,7 +1310,7 @@ class System2DBase(ABC):
             dest.append(0.5 * detval)
         return xnp.array(dest)
 
-    def calculate_lognormvec_inc(self, all_factors=False) -> xnp.ndarray:
+    def calculate_lognormvec_inc(self, all_factors: bool = False) -> xnp.ndarray:
         """Compute the logarithm of the norm for all layers by incrementally updating the previous value
         (using IncDet and Woodbury)
 
@@ -1342,9 +1320,8 @@ class System2DBase(ABC):
         Returns:
             list: Vector of the incrementally updated norms for all layers
         """
-        det_vec = xnp.array([incdet.det() for incdet in self.incdet_vec])
         res = self._calculate_lognormvec_inc(
-            det_vec,
+            self.incdet_vec,
             self.det_mat_d_vec,
             self.gamma_in_sys_vec[0].shape[0],
             all_factors=all_factors,
@@ -1363,8 +1340,8 @@ class System2DBase(ABC):
         normvec = self.calculate_lognormvec_inc(all_factors=all_factors)
         return xnp.sum(normvec)
 
-    def update_lognorm_inc(self, offset, updates, all_factors=False) -> float:
-        """Updat the logarithm of the norm incrementally with the given update.
+    def update_lognorm_inc(self, offset: int, updates: xnp.ndarray, all_factors: bool = False) -> float:
+        """Update the logarithm of the norm incrementally with the given update.
 
         Args:
             offset (int): Offset into the matrix.
@@ -1375,20 +1352,15 @@ class System2DBase(ABC):
             float: Updated logarithmic value of the norm
         """
         cumval = 0
-        for ind in range(self.cfg.nlayer):
-            detval = self.incdet_vec[ind].update_index(
-                self.wi_gamma_in_vec[ind].inv(),
-                updates[ind],
-                offset,
-                offset,
-                store=False,
-            )
-            if all_factors:
-                detval -= self.gamma_in_sys_vec[0].shape[0] * xnp.log(2)
-                detval += xnp.linalg.slogdet(self.mat_d_vec[ind])[1]
-            # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
-            # The addition of the cumval is the multiplication of the indpendent PEPS
-            cumval += 0.5 * detval
+        detval_vec = utils.IncLogAbsDeterminant.update_index(
+            self.incdet_vec, self.wi_gamma_in_vec, updates, offset, offset
+        )
+        if all_factors:
+            detval_vec -= self.gamma_in_sys_vec[0].shape[0] * xnp.log(2)
+            detval_vec += xnp.linalg.slogdet(self.mat_d_vec)[1]
+        # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
+        # The addition of the cumval is the multiplication of the indpendent PEPS
+        cumval += 0.5 * xnp.sum(detval_vec)
         return cumval
 
     @property
@@ -1399,7 +1371,6 @@ class System2DBase(ABC):
             xnp.ndarray: Vector of gradients of the norm divided by the norm with respect to all parameters
         """
         if self._grad_over_norm_vec is None:
-            gamma_in_inv_vec = xnp.array([self.wi_gamma_in_vec[layerind].inv() for layerind in range(self.cfg.nlayer)])
             self._grad_over_norm_vec = self.compute_grad_over_norm_vec(
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
@@ -1407,7 +1378,7 @@ class System2DBase(ABC):
                 self.cfg.unitcell_size,
                 len(self.symbolvec),
                 self.cfg.zeroed_params,
-                gamma_in_inv_vec,
+                self.wi_gamma_in_vec,
                 self.gamma_in_sys_vec,
                 self.mat_d_inv_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
@@ -1491,7 +1462,7 @@ class System2DBase(ABC):
 
     def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray) -> None:
         """Update a gauge field at a given link index by a new value.
-        This function is called from outside the system, and so accepts a gauge field value as np.ndarray.
+        This function can be called from outside the system, and so accepts a gauge field value as np.ndarray.
         We convert here to xnp.ndarray.
 
         Args:
@@ -1505,17 +1476,12 @@ class System2DBase(ABC):
 
     def update_gauge_full_system(self, gaugeconfig: list[np.ndarray]) -> None:
         """Replace all gauge fields on the links by the values given in gaugeconfig.
-        This function is called from outside the system, and so accepts a list of gauge field values as np.ndarrays.
-        We convert here to xnp.ndarrays.
 
         Args:
             gaugeconfig (list[np.ndarray]): Array of new values for the gauge field
         """
         for link_ind, gauge_val in enumerate(gaugeconfig):
-            theta = xnp.asarray(gauge_val)
-            if not xnp.allclose(self.gaugefieldvec[link_ind], theta):
-                # only actually do the update if it's a different gauge field
-                self._update_gauge_ind(link_ind, theta)
+            self.update_gauge_ind(link_ind, gauge_val)
 
     def update_gauge_coord(self, coord: tuple[int, int], dir: Direction, gauge_val: np.ndarray) -> None:
         """Update a gauge field at a given coordinate and direction by a new value
@@ -1531,7 +1497,7 @@ class System2DBase(ABC):
     def calculate_update_gamma_in(
         self, offset: int, update_mat: xnp.ndarray, gamma_in_sys: xnp.ndarray
     ) -> xnp.ndarray:
-        """Compute an update between the current gamma_in and the new gamma_in
+        """Compute an update between the current gamma_in and the new gamma_in.
 
         Args:
             offset (int): Offset in the matrix
@@ -1542,8 +1508,8 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Additional update to reach update_mat at gamma_in[offset:,offset:]
         """
-        m_up, n_up = update_mat.shape
-        gamma_in_old = backend.slice_matrix(gamma_in_sys, offset, offset + m_up, offset, offset + n_up)
+        m_up, n_up = update_mat.shape[-2:]
+        gamma_in_old = gamma_in_sys[..., offset : offset + m_up, offset : offset + n_up]
         return -(update_mat - gamma_in_old)
 
     ################## Observables ######################
@@ -2021,19 +1987,6 @@ class System2DBase(ABC):
             array: List of all electric energy gradients (w/o shift)
         """
         if self._el_energy_op_grad_vec is None:
-            # In order to jit, we must pass arrays, not WoodburyInverter objects.
-            gamma_in_mod_inv_vec = xnp.asarray(
-                [
-                    [self.wi_gamma_in_mod_vec[lay][ind].inv() for ind in range(len(self.cfg.mod_link_inds))]
-                    for lay in range(self.cfg.nlayer)
-                ]
-            )
-            gamma_out_mod_inv_vec = xnp.asarray(
-                [
-                    [self.wi_gamma_out_mod_vec[lay][ind].inv() for ind in range(len(self.cfg.mod_link_inds))]
-                    for lay in range(self.cfg.nlayer)
-                ]
-            )
 
             l, m, u, s = self.mod_mask_inds  # layer, mod_link, unitcell, symbol
 
@@ -2065,8 +2018,8 @@ class System2DBase(ABC):
                 self.el_pfaffians,
                 self.norm_mod_vec,
                 self.lognorm_default_vec,
-                gamma_in_mod_inv_vec,
-                gamma_out_mod_inv_vec,
+                self.wi_gamma_in_mod_vec,
+                self.wi_gamma_out_mod_vec,
                 self.mat_d_mod_inv_vec,
                 d_mat_a_vec_vec,
                 d_mat_b_vec_vec,
@@ -2301,12 +2254,11 @@ class System2DBase(ABC):
         """Compute the covariance matrix of the fermions in the system for the given layer.
         We calculate it for all layers automatically, even though it is not needed for pure-gauge layers."""
         if self._ferm_covmat_vec is None:
-            gamma_out_inv_vec = xnp.asarray([self.wi_gamma_out_vec[layer].inv() for layer in range(self.cfg.nlayer)])
             self._ferm_covmat_vec = self._compute_ferm_cov(
                 self.cfg.lattice.size,
                 self.cfg.nphysmodes_site,
                 self.cfg.nlayer,
-                gamma_out_inv_vec,
+                self.wi_gamma_out_vec,
                 self.mat_a_vec,
                 self.mat_b_vec,
             )

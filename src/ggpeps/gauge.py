@@ -77,7 +77,7 @@ class ZNGauge:
         theta = self.get_angle(group_element)
         return np.array([[np.exp(1.0j * theta * irrep_label)]])
 
-    def get_possible_irrep_labels(self):
+    def get_possible_irrep_labels(self) -> list:
         """
         Generate all irrep labels representations of the Z_N group.
 
@@ -392,7 +392,7 @@ class D2nGauge:
             else:
                 raise ValueError("Invalid irrep label for D2n group")
 
-    def get_possible_irrep_labels(self):
+    def get_possible_irrep_labels(self) -> list:
         """
         Generate all irrep labels representations of the D_2N group.
         The irreps are labelled as follows:

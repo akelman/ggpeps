@@ -149,23 +149,23 @@ class U1System2D(System2DBase):
             neutral_gauge_X, neutral_gauge_Y
         )  # for the 3D case, simply add in the Z covariance matrix as well
 
-        diffvec = [mat_d_inv - gamma_in_sys for mat_d_inv in self.mat_d_inv_vec]
-        wi_gamma_in_vec = [utils.WoodburyInverter(diff) for diff in diffvec]
-        wi_gamma_out_vec = [utils.WoodburyInverter(mat_d - gamma_in_sys) for mat_d in self.mat_d_vec]
-        incdet_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec]
+        diffvec = self.mat_d_inv_vec - gamma_in_sys
+        wi_gamma_in_vec = xnp.linalg.inv(diffvec)
+        wi_gamma_out_vec = xnp.linalg.inv(self.mat_d_vec - gamma_in_sys)
+        sign, incdet_vec = xnp.linalg.slogdet(diffvec)
 
         # Initialize the modified gamma_in_sys for the full system (and trackers)
         single_link_offset = 2 * self.cfg.nvirtmodes_link
         gamma_in_sys_mod = gamma_in_sys[single_link_offset:, single_link_offset:]
-        diffvec_mod = [mat_d_inv - gamma_in_sys_mod for mat_d_inv in self.mat_d_mod_inv_vec]
-        wi_gamma_in_mod_vec = [utils.WoodburyInverter(diff) for diff in diffvec_mod]
-        wi_gamma_out_mod_vec = [utils.WoodburyInverter(mat_d - gamma_in_sys_mod) for mat_d in self.mat_d_mod_vec]
-        incdet_mod_vec = [utils.IncLogAbsDeterminant(diff) for diff in diffvec_mod]
+        diffvec_mod = xnp.asarray([mat_d_inv - gamma_in_sys_mod for mat_d_inv in self.mat_d_mod_inv_vec])
+        wi_gamma_in_mod_vec = xnp.linalg.inv(diffvec_mod)
+        wi_gamma_out_mod_vec = xnp.linalg.inv(self.mat_d_mod_vec - gamma_in_sys_mod)
+        sign, incdet_mod_vec = xnp.linalg.slogdet(diffvec_mod)
 
         # Though for this ansatz gamma_in_sys does not vary between layers,
         # it is convenient to have gamma_in_sys_vec available as a vector with length = nlayers
         # for general methods in system base
-        gamma_in_sys_vec = [gamma_in_sys] * self.cfg.nlayer
+        gamma_in_sys_vec = xnp.asarray([gamma_in_sys] * self.cfg.nlayer)
 
         return (
             gamma_in_sys_vec,
@@ -205,38 +205,53 @@ class U1System2D(System2DBase):
             rotmat @ self.gamma_gauge_neutral_vec[0][dir] @ np.transpose(rotmat)
         )  # just use the first gamma_gauge_neutral, since they're shared by all layers
         update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst, self.gamma_in_sys_vec[0])
+
         # Update the determinant
-        mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
-        detval_vec = [
-            incdet.update_index(mat_inv, update, ind_mat, ind_mat)
-            for mat_inv, incdet in zip(mat_inv_vec, self.incdet_vec)
-        ]
+        mat_inv_vec = self.wi_gamma_in_vec
+        assert self._wi_gamma_in_mod_vec is not None  # for mypy
+        assert self._wi_gamma_out_mod_vec is not None
+        assert self._incdet_vec is not None
+        assert self._incdet_mod_vec is not None
+        for ind, (mat_inv, incdet) in enumerate(zip(mat_inv_vec, self.incdet_vec)):
+            val = utils.IncLogAbsDeterminant.update_index(incdet, mat_inv, update, ind_mat, ind_mat)
+            self._incdet_vec = backend.array_assign(self._incdet_vec, ind, val)
+
         # Update the modified determinant
         offset = 2 * self.cfg.nvirtmodes_link
         if ind_mat - offset >= 0:
-            for wi, incdet in zip(self.wi_gamma_in_mod_vec, self.incdet_mod_vec):
-                mat_inv = wi.inv()
-                incdet.update_index(mat_inv, update, ind_mat - offset, ind_mat - offset)
+            for ind, (wi, incdet) in enumerate(zip(self.wi_gamma_in_mod_vec, self.incdet_mod_vec)):
+                mat_inv = wi
+                val = utils.IncLogAbsDeterminant.update_index(
+                    self.incdet_mod_vec[ind], mat_inv, update, ind_mat - offset, ind_mat - offset
+                )
+                self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, ind, val)
+
         # Update the weight
-        self.weight = 0.5 * np.sum(detval_vec)
+        self.weight = 0.5 * np.sum(incdet)
+
         # Update the matrix inversion
-        [wi_gamma_in.update_index(update, ind_mat, ind_mat) for wi_gamma_in in self.wi_gamma_in_vec]
-        [wi_gamma_out.update_index(update, ind_mat, ind_mat) for wi_gamma_out in self.wi_gamma_out_vec]
+        update_arr = xnp.array([update])
+        self._wi_gamma_in_vec = ggpeps.utils.WoodburyInverter.update_index(
+            self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat
+        )
+        self._wi_gamma_out_vec = ggpeps.utils.WoodburyInverter.update_index(
+            self.wi_gamma_out_vec, update_arr, ind_mat, ind_mat
+        )
 
         if ind_mat - offset >= 0:
             # We do not update the matrix if the first link is updated (it is just not there)
-            [
-                wi_gamma_in_mod.update_index(update, ind_mat - offset, ind_mat - offset)
-                for wi_gamma_in_mod in self.wi_gamma_in_mod_vec
-            ]
-            [
-                wi_gamma_out_mod.update_index(update, ind_mat - offset, ind_mat - offset)
-                for wi_gamma_out_mod in self.wi_gamma_out_mod_vec
-            ]
+            for ind in range(self.cfg.nlayer):
+                self.wi_gamma_in_mod_vec[ind] = utils.WoodburyInverter.update_index(
+                    self.wi_gamma_in_mod_vec[ind], update, ind_mat - offset, ind_mat - offset
+                )
+                self.wi_gamma_out_mod_vec[ind] = utils.WoodburyInverter.update_index(
+                    self.wi_gamma_out_mod_vec[ind], update, ind_mat - offset, ind_mat - offset
+                )
+
         # Substitute in the array
-        self.gamma_in_sys_vec[0][
-            ind_mat : ind_mat + rotmat.shape[0], ind_mat : ind_mat + rotmat.shape[1]
-        ] = gamma_in_subst
+        inds = (0, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
+        self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
+
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
 
@@ -287,11 +302,11 @@ class U1System2D(System2DBase):
                 # The offset is changed such that one virtual link is attributed to the physical part
                 mat_a = self.mat_a_mod_vec[layerind][link_ind]
                 mat_b = self.mat_b_mod_vec[layerind][link_ind]
-                diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind].inv()
-                diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind].inv()
+                diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind]
+                diff_d_inv_gamma_inv = self.wi_gamma_in_mod_vec[layerind]
 
                 ###################### Calculation of <P> ########################
-                covmat_out = mat_a + mat_b @ self.wi_gamma_out_mod_vec[layerind].inv() @ np.transpose(mat_b)
+                covmat_out = mat_a + mat_b @ self.wi_gamma_out_mod_vec[layerind] @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_link_offset:, -single_link_offset:]
                 # For the modified norm, we still have to take into account the contributions from the unmodified parts
                 norm_mod = self._calculate_lognorm_inc(
@@ -364,7 +379,8 @@ class U1System2D(System2DBase):
         rotmat = self.generate_rotmat(self.cfg.ncopy, current_phase, coord, dir)
         adapted = rotmat @ adapted_no_gauge @ rotmat.transpose()
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
-        dest[ind_mat : ind_mat + adapted.shape[0], ind_mat : ind_mat + adapted.shape[1]] = adapted
+        inds = (slice(ind_mat, ind_mat + adapted.shape[0]), slice(ind_mat, ind_mat + adapted.shape[1]))
+        dest = backend.array_assign(dest, inds, adapted)
         return dest
 
     def generate_electric_single_mode(self, phi):
@@ -411,7 +427,7 @@ class U1System2D(System2DBase):
             for i in range(self.cfg.ncopy):
                 mat_d_inv = self.mat_d_inv_vec[i]
                 # The 0.5 is the square root since incdet stores the log of the determinant
-                overlap_same_gauge = np.exp(0.5 * self.incdet_vec[i].det())
+                overlap_same_gauge = np.exp(0.5 * self.incdet_vec[i])
 
                 diff_try = gamma_in_try - mat_d_inv
                 overlap_diff_gauge = pf.pfaffian(

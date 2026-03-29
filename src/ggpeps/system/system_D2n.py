@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 import numpy as np
 from ggpeps import xnp as xnp
@@ -46,7 +47,7 @@ class D2nSystem2D(System2DBase):
     # Calculating weight attempt
     def calculate_weight_attempt_non_singular(
         self, link_ind: int, theta: xnp.ndarray, all_factors=False, color_to_check=None
-    ):
+    ) -> float:
         """
         Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
@@ -66,24 +67,16 @@ class D2nSystem2D(System2DBase):
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
         gamma_neutral_gauge_vec = self.gamma_gauge_neutral_vec
+
         if color_to_check is not None:
-            ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind + 2 * color_to_check * self.cfg.nvirtmodes_link_per_color
-            rotmat = backend.slice_matrix(
-                rotmat,
-                2 * self.cfg.nvirtmodes_link_per_color * color_to_check,
-                2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1),
-                2 * self.cfg.nvirtmodes_link_per_color * color_to_check,
-                2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1),
-            )
+            ind1 = 2 * self.cfg.nvirtmodes_link_per_color * color_to_check
+            ind2 = 2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1)
+            ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind + ind1
+            rotmat = rotmat[ind1:ind2, ind1:ind2]
+
             gamma_in_subst_layers = []
             for gamma_neutral_gauge in gamma_neutral_gauge_vec:
-                gamma_neutral_gauge_sliced = backend.slice_matrix(
-                    gamma_neutral_gauge[dir],
-                    2 * self.cfg.nvirtmodes_link_per_color * color_to_check,
-                    2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1),
-                    2 * self.cfg.nvirtmodes_link_per_color * color_to_check,
-                    2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1),
-                )
+                gamma_neutral_gauge_sliced = gamma_neutral_gauge[dir][ind1:ind2, ind1:ind2]
                 gamma_in_subst_layers.append(rotmat @ gamma_neutral_gauge_sliced @ xnp.transpose(rotmat))
         else:
             ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
@@ -92,13 +85,15 @@ class D2nSystem2D(System2DBase):
                 for gamma_neutral_gauge in gamma_neutral_gauge_vec
             ]
 
-        updates = [
-            self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys)
-            for gamma_in_subst, gamma_in_sys in zip(gamma_in_subst_layers, self.gamma_in_sys_vec)
-        ]
+        updates = xnp.asarray(
+            [
+                self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys)
+                for gamma_in_subst, gamma_in_sys in zip(gamma_in_subst_layers, self.gamma_in_sys_vec)
+            ]
+        )
         return self.update_lognorm_inc(ind_mat, updates, all_factors)
 
-    def calculate_weight_attempt(self, link_ind: int, theta: np.ndarray, all_factors=False):
+    def calculate_weight_attempt(self, link_ind: int, theta: np.ndarray, all_factors: bool = False) -> float:
         """
         This method overwrites a method in System2DBase. For now, we need it only for the D2n systems.
 
@@ -330,7 +325,9 @@ class D2nSystem2D(System2DBase):
         # In the other case we can update the gauge straightforwardly
         self.update_non_singular_gauge_ind(link_ind, theta, color_to_update=color_to_update)
 
-    def update_non_singular_gauge_ind(self, link_ind, theta, color_to_update=None):
+    def update_non_singular_gauge_ind(
+        self, link_ind: int, theta: xnp.ndarray, color_to_update: Optional[int] = None
+    ) -> None:
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
         and updates all incremental trackers of determinants and inverses.
@@ -359,58 +356,56 @@ class D2nSystem2D(System2DBase):
             ind_mat = (
                 2 * self.cfg.nvirtmodes_link * link_ind + 2 * color_to_update * self.cfg.nvirtmodes_link_per_color
             )
-            rotmat = backend.slice_matrix(  # In this case we slice rotmat to only contain the relevant color
-                # We assume a specific ordering of the modes:
-                # (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
-                rotmat,
-                2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
-                2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1),
-                2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
-                2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1),
-            )
+            # In this case we slice rotmat to only contain the relevant color
+            # We assume a specific ordering of the modes:
+            # (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
+            ind1 = 2 * self.cfg.nvirtmodes_link_per_color * color_to_update
+            ind2 = 2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1)
+            rotmat = rotmat[ind1:ind2, ind1:ind2]
 
         update_vec = []
         for layer in range(self.cfg.nlayer):
             gamma_neutral_gauge = self.gamma_gauge_neutral_vec[layer][dir]
             if color_to_update is not None:
                 # In this case we slice gamma_neutral_gauge to only contain the relevant color
-                gamma_neutral_gauge = backend.slice_matrix(
-                    # We assume a specific ordering of the modes:
-                    # (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
-                    xnp.copy(gamma_neutral_gauge),
-                    2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
-                    2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1),
-                    2 * self.cfg.nvirtmodes_link_per_color * color_to_update,
-                    2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1),
-                )
+                # We assume a specific ordering of the modes:
+                # (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
+                ind1 = 2 * self.cfg.nvirtmodes_link_per_color * color_to_update
+                ind2 = 2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1)
+                gamma_neutral_gauge = gamma_neutral_gauge[ind1:ind2, ind1:ind2]
+
             gamma_in_subst = rotmat @ gamma_neutral_gauge @ xnp.transpose(rotmat)
             update_vec.append(
                 self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer])
             )
             # Substitute in the array
-            # TODO: should not modify "private" variable - make a setter?
             inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
             self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
 
         # Update the determinant
-        mat_inv_vec = [wi_gamma_in.inv() for wi_gamma_in in self.wi_gamma_in_vec]
-        detval_vec = np.array(
-            [
-                incdet.update_index(mat_inv, update, ind_mat, ind_mat)
-                for mat_inv, update, incdet in zip(mat_inv_vec, update_vec, self.incdet_vec)
-            ]
+        mat_inv_vec = self.wi_gamma_in_vec
+        update_arr = xnp.array(update_vec)
+
+        self._incdet_vec = utils.IncLogAbsDeterminant.update_index(
+            self.incdet_vec, mat_inv_vec, update_arr, ind_mat, ind_mat
         )
 
         # Update the weight
-        self.weight = 0.5 * np.sum(detval_vec)
+        self.weight = 0.5 * np.sum(self.incdet_vec)
 
         # Update the matrix inversion
-        for wi_gamma_in, update in zip(self.wi_gamma_in_vec, update_vec):
-            wi_gamma_in.update_index(update, ind_mat, ind_mat)
-        for wi_gamma_out, update in zip(self.wi_gamma_out_vec, update_vec):
-            wi_gamma_out.update_index(update, ind_mat, ind_mat)
+        self._wi_gamma_in_vec = ggpeps.utils.WoodburyInverter.update_index(
+            self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat
+        )
+        self._wi_gamma_out_vec = ggpeps.utils.WoodburyInverter.update_index(
+            self.wi_gamma_out_vec, update_arr, ind_mat, ind_mat
+        )
 
         # Update the modified determinant & matrices
+        # The vectorization of the local updates does not support skipping a link or variable offsets,
+        # so we loop explicitly.
+        assert self._wi_gamma_in_mod_vec is not None  # for mypy
+        assert self._wi_gamma_out_mod_vec is not None
         for lay in range(self.cfg.nlayer):
             for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
                 if mod_link_ind != link_ind:
@@ -420,18 +415,25 @@ class D2nSystem2D(System2DBase):
                     if link_ind > mod_link_ind:
                         offset = 2 * self.cfg.nvirtmodes_link
 
-                    mat_inv = self.wi_gamma_in_mod_vec[lay][ind].inv()
-                    self.incdet_mod_vec[lay][ind].update_index(
-                        mat_inv, update_vec[lay], ind_mat - offset, ind_mat - offset
+                    mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
+                    new_det = utils.IncLogAbsDeterminant.update_index(
+                        self.incdet_mod_vec[lay][ind],
+                        mat_inv,
+                        update_vec[lay],
+                        ind_mat - offset,
+                        ind_mat - offset,
                     )
+                    self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, (lay, ind), new_det)
 
-                    self.wi_gamma_in_mod_vec[lay][ind].update_index(
-                        update_vec[lay], ind_mat - offset, ind_mat - offset
+                    new1 = ggpeps.utils.WoodburyInverter.update_index(
+                        self._wi_gamma_in_mod_vec[lay][ind], update_vec[lay], ind_mat - offset, ind_mat - offset
                     )
+                    self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (lay, ind), new1)
 
-                    self.wi_gamma_out_mod_vec[lay][ind].update_index(
-                        update_vec[lay], ind_mat - offset, ind_mat - offset
+                    new2 = ggpeps.utils.WoodburyInverter.update_index(
+                        self._wi_gamma_out_mod_vec[lay][ind], update_vec[lay], ind_mat - offset, ind_mat - offset
                     )
+                    self._wi_gamma_out_mod_vec = backend.array_assign(self._wi_gamma_out_mod_vec, (lay, ind), new2)
 
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
@@ -565,7 +567,12 @@ class D2nSystem2D(System2DBase):
         lognorm_default = xnp.sum(lognorm_default_vec)
 
         # Calculate the derivatives (wrt all non-zero parameters) of the modified covmat_out
-        # TODO: can mask these
+        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec), k, k)
+        d_covmat_out_virt_vec = xnp.zeros(shape)
+
+        l, m, u, s = inds
+        # NOTE: from limited testing, it appears that masking these is not worth it, as that creates extra copies.
+        # But it could be worth it if some of the matmuls were moved out of here, to happen once per eval.
         # (nlayer, nmodlinks, mod_virt_dim, mod_virt_dim)
         prod_mod_norm_vec = mat_d_mod_inv_vec @ gamma_in_mod_inv_vec @ gamma_in_sys_mod_vec
         # (nlayer, nmodlinks, mod_virt_dim, link_dim), take only the last k columns
@@ -600,6 +607,9 @@ class D2nSystem2D(System2DBase):
         # Calculate the modified norms
         norm_shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
         prod_vec = xnp.zeros(norm_shape)
+        # The following line takes >50% of the runtime of this function, but most of that is actually spent
+        # copying data due to the fancy indexing of prod_mod_norm_vec[l, m]
+        # TODO: optimize this (the main complication is dealing with the reshaped arrays after indexing)
         vals = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec[l, m]))
         prod_vec = backend.array_assign(prod_vec, (l, m, u, s), vals)
 
