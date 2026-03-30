@@ -485,7 +485,7 @@ class D2nSystem2D(System2DBase):
                 for link_pos, norm_mod in enumerate(norm_mod_linkvec):
                     ###################### Calculation of sum f_j |jmn><jmn| ########################
                     link_coeffs = layer_coeffs[link_pos]
-                    pf_tot: complex = constants_vec[group_element_idx][layerind][link_pos]
+                    pf_tot = constants_vec[group_element_idx][layerind][link_pos]
                     # this is the constant term in the sum, which does not come with a Pfaffian,
                     # for Z2 it should be 0
                     for size_ind, size_term in enumerate(link_coeffs):
@@ -591,6 +591,8 @@ class D2nSystem2D(System2DBase):
         diffB = diff_times_b_vec[l, m]
         Bdiff = b_times_diff_vec[l, m]
 
+        # TODO: The middle part here (what's multiplied by R_active and R_active_T) does not depend on the gauge configuration,
+        # so it could be be computed once per eval, and not here for every gauge configuration.
         vals = (
             R_active_T
             @ (
