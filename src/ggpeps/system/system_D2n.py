@@ -279,105 +279,23 @@ class D2nSystem2D(System2DBase):
         return mode_order_str
 
     def _update_gauge_ind(self, link_ind: int, theta: xnp.ndarray) -> None:
-        """This method updates a gauge field on a single side. It first checks whether the update is singular,
-        and proceeds accordingly:
 
-        Unlike the update_non_singular_gauge_ind method, this method checks whether the transition is singular
-        (i.e., the update matrix is singular and therfore can't be inverted)
-        if not, it calls the update_non_singular_gauge_ind method directly. Else, it computes a non singular
-        path and then calls the update_non_singular_gauge_ind method.
-
-        This method overwrites an abstract method in System2DBase.
-        """
-        old_theta = xnp.copy(self._gaugefieldvec[link_ind])
-        singular = False
-        g_transition_1, g_transition_2 = (
-            self.cfg.gaugemgr.transition_pair
-        )  # The transition that connects the two unconnected subgroups that are connected by singular paths
-        for (
-            g_tuple
-        ) in self.cfg.gaugemgr.forbidden_transitions:  # check if the update matrix is expected to be singular
-            g1, g2 = g_tuple
-            if (xnp.allclose(g1, old_theta) and xnp.allclose(g2, theta)) or (
-                xnp.allclose(g1, theta) and xnp.allclose(g2, old_theta)
-            ):
-                singular = True
-                break
-        previous_g = xnp.copy(old_theta)
-        if singular:  # if the update matrix is singular
-            path = self.cfg.gaugemgr.get_nonsingular_path(
-                old_theta, theta
-            )  # get a non singular path between the two gauge values
-            for g in path:
-                color_to_update = None  # we update both colors
-                if (xnp.allclose(previous_g, g_transition_1) and xnp.allclose(g, g_transition_2)) or (
-                    xnp.allclose(previous_g, g_transition_2) and xnp.allclose(g, g_transition_1)
-                ):  # in this case we update only the color m=1 (second color)
-                    color_to_update = 1
-                self.update_non_singular_gauge_ind(link_ind, g, color_to_update=color_to_update)
-                previous_g = xnp.copy(g)
-        color_to_update = None  # we update both colors
-        if (xnp.allclose(previous_g, g_transition_1) and xnp.allclose(theta, g_transition_2)) or (
-            xnp.allclose(previous_g, g_transition_2) and xnp.allclose(theta, g_transition_1)
-        ):  # in this case we update only the color m=1 (second color)
-            color_to_update = 1
-        # In case it was originally a singular, we update the gauge field to the final value.
-        # In the other case we can update the gauge straightforwardly
-        self.update_non_singular_gauge_ind(link_ind, theta, color_to_update=color_to_update)
-
-    def update_non_singular_gauge_ind(
-        self, link_ind: int, theta: xnp.ndarray, color_to_update: Optional[int] = None
-    ) -> None:
-        """Update method that is called upon changing a gauge field.
-        This method is central to the algorithm since it changes the gauged projectors
-        and updates all incremental trackers of determinants and inverses.
-        The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
-
-        This method assumes that the two gauge values don't yield a singular update matrix.
-        It is called by the update_gauge_ind method which takes care of not allowing singular updates.
-
-        For updatting just one color we assume a specific ordering of the modes:
-        (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2}).
-
-        Args:
-            link_ind (int): Link index to be updated
-            theta (xnp.array): New gauge field value
-            color_to_update (int, optional): Color to update. If None, both colors are updated. Defaults to None.
-        """
         # Update the gaugefield
         self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
 
         # There are two directions per vertex
+        ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
-        if color_to_update is None:  # if we update both colors.
-            ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
-        else:
-            ind_mat = (
-                2 * self.cfg.nvirtmodes_link * link_ind + 2 * color_to_update * self.cfg.nvirtmodes_link_per_color
-            )
-            # In this case we slice rotmat to only contain the relevant color
-            # We assume a specific ordering of the modes:
-            # (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
-            ind1 = 2 * self.cfg.nvirtmodes_link_per_color * color_to_update
-            ind2 = 2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1)
-            rotmat = rotmat[ind1:ind2, ind1:ind2]
 
         update_vec = []
         for layer in range(self.cfg.nlayer):
             gamma_neutral_gauge = self.gamma_gauge_neutral_vec[layer][dir]
-            if color_to_update is not None:
-                # In this case we slice gamma_neutral_gauge to only contain the relevant color
-                # We assume a specific ordering of the modes:
-                # (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
-                ind1 = 2 * self.cfg.nvirtmodes_link_per_color * color_to_update
-                ind2 = 2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1)
-                gamma_neutral_gauge = gamma_neutral_gauge[ind1:ind2, ind1:ind2]
-
             gamma_in_subst = rotmat @ gamma_neutral_gauge @ xnp.transpose(rotmat)
             update_vec.append(
                 self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer])
             )
+
             # Substitute in the array
             inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
             self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)

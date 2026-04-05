@@ -16,7 +16,6 @@ class ZNGauge:
         """
         self.n = n
         self.rep_dim = 1  # Each group element is represented as a 1×1 matrix.
-        self.forbidden_transitions: list = []  # List of forbidden transitions - Empty for Z_N gauge group.
         self.group_order = n
         self.el_mult_factor, self.group_elements_for_el_energy = self.get_group_elements_and_factors_for_el_energy()
 
@@ -192,21 +191,6 @@ class ZNGauge:
         """
         return np.angle(g[0][0])
 
-    def get_nonsingular_path(self, g_old: np.ndarray, g_new: np.ndarray) -> list[np.ndarray]:
-        """Return an empty path since Z_N has no singular transitions.
-
-        In Z_N, all gauge values lie on the unit circle and transitions
-        between any two elements are always nonsingular.
-
-        Args:
-            g_old (np.ndarray): Current gauge value (1x1 complex matrix).
-            g_new (np.ndarray): Target gauge value (1x1 complex matrix).
-
-        Returns:
-            list[np.ndarray]: Empty list; no intermediate steps are required.
-        """
-        return []
-
     def get_group_elements_and_factors_for_el_energy(self) -> tuple[float, tuple[np.ndarray, ...]]:
         """
         Compute group elements and coefficients for the electric energy term.
@@ -253,25 +237,10 @@ class D2nGauge:
         Attributes:
             n (int): The number of rotations in the group (half the total number of elements).
             rep_dim (int): The dimension of the matrix representation (2 for D_2n).
-            forbidden_transitions (list[tuple[np.ndarray, np.ndarray]]):
-                A list of gauge element pairs that correspond to singular transitions
-                (i.e., reflection-changing transitions that yield a singular update matrix).
-            transition_pair (tuple[np.ndarray, np.ndarray]):
-                Special transition (0,0) -> (0,1) which is handled separately in update routines.
         """
         self.n = n
         self.rep_dim = 2
         self.group_order = 2 * n
-        self.forbidden_transitions = [
-            (self.get_representation(p0, 0), self.get_representation(p1, 1))
-            for p0 in range(self.n)
-            for p1 in range(self.n)
-            if not (p0 == 0 and p1 == 0)
-        ]
-        self.transition_pair = (
-            self.get_representation(0, 0),
-            self.get_representation(0, 1),
-        )
         factors_for_el_energy, group_elements_for_el_energy = self.get_group_elements_and_factors_for_el_energy()
         self.group_elements_for_el_energy: tuple[np.ndarray, ...] = group_elements_for_el_energy
         self.el_mult_factor = factors_for_el_energy
@@ -489,40 +458,6 @@ class D2nGauge:
                 return 1
             else:
                 return 2
-
-    def get_nonsingular_path(self, g_old: np.ndarray, g_new: np.ndarray) -> list[np.ndarray]:
-        """
-        Return a list of intermediate group elements for a non-singular transition from g_old to g_new.
-
-        If the transition from g_old to g_new is known to be singular, this method returns a short path
-        through allowed intermediate group elements (like the identity), avoiding singular update matrices.
-
-        Args:
-            g_old (np.ndarray): Starting gauge group element (2x2 matrix).
-            g_new (np.ndarray): Target gauge group element (2x2 matrix).
-
-        Returns:
-            list[np.ndarray]: Sequence of intermediate group elements (possibly empty).
-        """
-        p_0_q_0 = self.get_neutral_gauge_value()
-        p_0_q_1 = self.get_representation(0, 1)
-        q_old = self.get_reflection_index(g_old)
-        q_new = self.get_reflection_index(g_new)
-        if q_old == 0 and q_new == 1:
-            # we need to go through the representation (0,1)
-            dest = [p_0_q_1]
-            if not np.allclose(g_old, p_0_q_0):  # we need to first go to (0,0)
-                dest = [p_0_q_0] + dest
-        elif q_old == 1 and q_new == 0:
-            # we need to go through the representation (0,0)
-            dest = [p_0_q_0]
-            if not np.allclose(g_old, p_0_q_1):  # we need to first go to (0,1)
-                dest = [p_0_q_1] + dest
-        else:  # this is not a forbidden transition
-            # we can go directly from g_old to g_new
-            dest = []
-
-        return dest
 
     def get_reflection_index(self, g: np.ndarray) -> int:
         """
