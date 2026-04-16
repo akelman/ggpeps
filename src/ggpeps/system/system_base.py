@@ -1242,7 +1242,6 @@ class System2DBase(ABC):
         Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
 
-        For D2n gauge groups, we overwrite this function in the system implementation.
 
         Args:
             link_ind (int): Link index
