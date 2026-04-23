@@ -27,10 +27,10 @@ class D6System2D_Config(Config2DBase):
 
     Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di].
     Mode order of tmat: The mode order is:
-        Psi_1,Psi_2, l1_1,l1_2, r1_1,r1_2,d1_1, d1_2, u1_1,u1_2, l2_1, l2_2, r2_1,r2_2, d2_1,d2_2, u2_1, u2_2
-    Where the modes are labelled by directin{copy}_{color}
-    Where the 1 and 2 virtual copies and the Psi are the m=0,
-    and the 3 and 4 virtual copies and Psi2 are of the color m=1.
+        Psi1, Psi2, l1_1, r1_1, d1_1, u1_1, l2_1, r2_1, d2_1, u2_1, l1_2, r1_2, d1_2, u1_2, l2_2, r2_2, d2_2, u2_2
+    Where the modes are labelled by direction{copy}_{color}.
+    Where color 1 (m=0) contains the 1st and 2nd virtual copies and Psi1,
+    and color 2 (m=1) contains the 1st and 2nd virtual copies of that color (often indexed 3,4 in code) and Psi2.
 
     Mode order of gamma_dirac:
         {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
