@@ -292,12 +292,9 @@ class D2nSystem2D(System2DBase):
                         ]
                         pf_tot += xnp.dot(array_size_term, current_pfaffians)
 
-                    condition = xnp.real(pf_tot) > 1e-6
                     # xnp.real() is only for testing purposes, since the Pfaffian's with imaginary components are
                     # now dropped higher up in the stack.
-                    el_energy_link_calculated = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
-
-                    el_energy_link = xnp.where(condition, el_energy_link_calculated, 0.0)
+                    el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
 
                     dest = backend.array_assign(dest, (group_element_idx, layerind, link_pos), el_energy_link)
         return dest
