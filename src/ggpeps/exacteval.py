@@ -193,7 +193,7 @@ class ExactEvaluator(Evaluator):
 
             # The norm that we turn in the end is the actual norm, not the lognorm!
             dest["norm"] = np.sum(normvec)
-            dest["energy"] = 1000 * ((dest["norm"] - 1)) ** 2 + dest["real_energy"]
+            dest["energy"] = 50 * ((dest["norm"] - 1)) ** 2 + dest["real_energy"]
 
             # Compute the gradients
             if self.cfg.compute_grads:
@@ -268,7 +268,7 @@ class ExactEvaluator(Evaluator):
                 dest["real_energy_grad"] = total_grad
 
                 dest["energy_grad"] = (
-                    dest["real_energy_grad"] + 1000 * 2 * (dest["norm"] - 1) * dest["norm"] * dest["grad_norm"]
+                    dest["real_energy_grad"] + 50 * 2 * (dest["norm"] - 1) * dest["norm"] * dest["grad_norm"]
                 )
             # Save data
             self.obsdict = dest
