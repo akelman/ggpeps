@@ -135,12 +135,23 @@ def get_neighbors(df, g, g_int, g_mass, g_chem, column, bounds):
     return neighbors_energy, neighbors_couplings
 
 
+def is_outlier(value, neighbors):
+    # thresh = 0.1  # 1.07
+    # if abs(energy - neighbors_energy[idx]) > thresh * min(neighbors_energy):
+    med = np.median(neighbors)
+    diff = value - med
+    mad = np.median(abs(neighbors - med))
+    return diff / mad > 3
+
+
 def main():
 
     # Data
     ec_files = None
     base_dir = "L4/mc/round4"
     mc_files = glob.glob(os.path.join(base_dir, r"g*/sum*.pkl"))
+
+    modify_data = True  # Set to True to visually mark points for rerunning and skip actual rerunning for testing
 
     obs = "energy"
     column = "mean"
@@ -174,30 +185,14 @@ def main():
                 df_energy, g, int_clean, g_mass, chem_clean, column, bounds
             )
 
-            med = np.median(neighbors_energy)
-            diff = energy - med
-            mad = np.median(abs(neighbors_energy - med))
-            if diff / mad > 3:
+            if is_outlier(energy, neighbors_energy):
+
                 num += 1
 
                 idx = np.argmin(neighbors_energy)
-                # thresh = 0.1  # 1.07
-                # if abs(energy - neighbors_energy[idx]) > thresh * min(neighbors_energy):
-                print(
-                    f"Energy at g_int={g_int}, chem={chem_clean} is at least {diff/mad} times higher than median neighbor."
-                )
+                print(f"Energy at g_int={g_int}, chem={chem_clean} is an outlier.")
 
-                modify_data = True  # Set to True to visually mark points for rerunning
                 if modify_data:
-                    """
-                    mask = (
-                        np.isclose(df_energy["g_int"], g_int)
-                        & np.isclose(df_energy["g_chem"], chem_clean)
-                        & np.isclose(df_energy["g"], g)
-                        & np.isclose(df_energy["g_mass"], g_mass)
-                        & (df_energy["name"] == obs)
-                    )
-                    """
                     df_energy.loc[(g, int_clean, g_mass, chem_clean), column] = 1000
 
                     continue
