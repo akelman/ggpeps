@@ -155,7 +155,7 @@ class ExactEvaluator(Evaluator):
 
             # Expectation values
             dest: dict[str, Union[float, np.ndarray]] = {}
-            dest["real_energy"] = self.compute_expval(data["energy"], normvec)
+            dest["energy"] = self.compute_expval(data["energy"], normvec)
             dest["mag_energy"] = self.compute_expval(data["mag_energy"], normvec)
             dest["el_energy"] = self.compute_expval(data["el_energy"], normvec)
             dest["mass_energy"] = self.compute_expval(data["mass_energy"], normvec)
@@ -193,7 +193,6 @@ class ExactEvaluator(Evaluator):
 
             # The norm that we turn in the end is the actual norm, not the lognorm!
             dest["norm"] = np.sum(normvec)
-            dest["energy"] = 10 * ((dest["norm"] - 1)) ** 2 + dest["real_energy"]
 
             # Compute the gradients
             if self.cfg.compute_grads:
@@ -265,11 +264,8 @@ class ExactEvaluator(Evaluator):
 
                 assert isinstance(total_grad, np.ndarray)
                 self.system.cfg.enforce_parameter_conditions(total_grad)
-                dest["real_energy_grad"] = total_grad
+                dest["energy_grad"] = total_grad
 
-                dest["energy_grad"] = (
-                    dest["real_energy_grad"] + 10 * 2 * (dest["norm"] - 1) * dest["norm"] * dest["grad_norm"]
-                )
             # Save data
             self.obsdict = dest
 
