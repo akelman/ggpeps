@@ -309,6 +309,7 @@ class Z2System2D(System2DBase):
         #   vals = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec[l, m]))
         # However, doing so in that form (i.e. using fancy indexing) requires (for numpy) copying into a new array
         # which is very expensive. It's cheaper to loop (and lose vectorization) in order to reduce copying.
+        # TODO: copy this to Dn implemntation, and see which version is faster
         nactive = d_mat_d_vec.shape[0]
         vals = xnp.zeros(nactive)
         for idx in range(nactive):
