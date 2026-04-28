@@ -1,7 +1,7 @@
 #####################################################
 # Script to restart simulations based on value of
-# energy at each point compared to neighboring
-# points in a phase diagram.
+# energy (or another observable) at each point
+# compared to neighboring points in a phase diagram.
 #
 # created: Feb 2026
 #
@@ -97,8 +97,8 @@ def get_obs1(df, g, g_int, g_mass, g_chem, obs, column):
         & (np.isclose(df["g"], g))
         & (np.isclose(df["g_mass"], g_mass))
     ]
-    energy = data.loc[data["name"] == obs, column].values[0]
-    return energy
+    val = data.loc[data["name"] == obs, column].values[0]
+    return val
 
 
 def get_obs2(df, g, g_int, g_mass, g_chem, obs, column):
@@ -117,7 +117,7 @@ def get_obs(df_idx, g, g_int, g_mass, g_chem, column):
 
 
 def get_neighbors(df, g, g_int, g_mass, g_chem, column, bounds):
-    neighbors_energy = []
+    neighbors_vals = []
     neighbors_couplings = []
     for g_int_n in [g_int - 0.1, g_int + 0.1]:
         for chem_n in [g_chem - 0.1, g_chem + 0.1]:
@@ -129,10 +129,10 @@ def get_neighbors(df, g, g_int, g_mass, g_chem, column, bounds):
                 or not (g, g_int_n.round(1), g_mass, chem_n.round(1)) in df.index
             ):
                 continue
-            energy = get_obs(df, g, g_int_n.round(1), g_mass, chem_n.round(1), column)
-            neighbors_energy.append(energy)
+            val = get_obs(df, g, g_int_n.round(1), g_mass, chem_n.round(1), column)
+            neighbors_vals.append(val)
             neighbors_couplings.append((g_int_n, chem_n))
-    return neighbors_energy, neighbors_couplings
+    return neighbors_vals, neighbors_couplings
 
 
 def is_outlier(value, neighbors):
@@ -161,13 +161,13 @@ def main():
 
     for col in ["g", "g_int", "g_mass", "g_chem"]:
         df[col] = df[col].astype(float).round(GRID_DECIMALS)
-    df_energy = df[df["name"] == obs].set_index(["g", "g_int", "g_mass", "g_chem"]).sort_index()
+    df_obs = df[df["name"] == obs].set_index(["g", "g_int", "g_mass", "g_chem"]).sort_index()
     num = 0
 
     g = 1.0
     g_mass = 1.0
     bounds = {
-        "g_int": (0.0, 2.9),
+        "g_int": (0.0, 3.9),
         "g_chem": (0.0, 5.9),
     }
 
@@ -177,23 +177,23 @@ def main():
             chem_clean = g_chem.round(1)
             int_clean = g_int.round(1)
 
-            if not (g, int_clean, g_mass, chem_clean) in df_energy.index:
+            if not (g, int_clean, g_mass, chem_clean) in df_obs.index:
                 continue
 
-            energy = get_obs(df_energy, g, int_clean, g_mass, chem_clean, column)
-            neighbors_energy, neighbors_couplings = get_neighbors(
-                df_energy, g, int_clean, g_mass, chem_clean, column, bounds
+            obs_val = get_obs(df_obs, g, int_clean, g_mass, chem_clean, column)
+            neighbors_vals, neighbors_couplings = get_neighbors(
+                df_obs, g, int_clean, g_mass, chem_clean, column, bounds
             )
 
-            if is_outlier(energy, neighbors_energy):
+            if is_outlier(obs_val, neighbors_vals):
 
                 num += 1
 
-                idx = np.argmin(neighbors_energy)
-                print(f"Energy at g_int={g_int}, chem={chem_clean} is an outlier.")
+                idx = np.argmin(neighbors_vals)
+                print(f"Observable {obs} at g_int={g_int}, chem={chem_clean} is an outlier.")
 
                 if modify_data:
-                    df_energy.loc[(g, int_clean, g_mass, chem_clean), column] = 1000
+                    df_obs.loc[(g, int_clean, g_mass, chem_clean), column] = 1000
 
                     continue
 
@@ -231,7 +231,7 @@ def main():
     plot = True
     if plot:
         fig = px.imshow(
-            df_energy.pivot_table(index="g_chem", columns="g_int", values=column).astype(float),
+            df_obs.pivot_table(index="g_chem", columns="g_int", values=column).astype(float),
             color_continuous_scale="viridis",
             labels=dict(x="X", y="Y", color="Value"),
         )
