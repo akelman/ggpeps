@@ -227,7 +227,7 @@ def main():
                 # change back to main directory
                 os.chdir("..")
 
-    print(f"Total number of points to consider rerunning: {num}")
+    print(f"Total number of points to rerun: {num}")
     plot = True
     if plot:
         fig = px.imshow(
