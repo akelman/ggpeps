@@ -728,7 +728,6 @@ class System2DBase(ABC):
         num_lens = max(len(link) for group_element in idxarr_vec for layer in group_element for link in layer)
         # Max terms per link; elements may vary in term count.
         el_pfaffians = xnp.zeros((num_group_elements, nlayer, num_el_links, num_lens, num_terms_per_size))
-        return el_pfaffians
 
         # TODO: vectorize!
         for group_element_idx in range(num_group_elements):

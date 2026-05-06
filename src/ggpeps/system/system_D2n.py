@@ -357,9 +357,6 @@ class D2nSystem2D(System2DBase):
         nlayer = num_pg_layer + num_fermionic_layer
         grad_shape = (num_group_elements, nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
         dest_grad = xnp.zeros(grad_shape)
-        dest_grad = xnp.sum(dest_grad, axis=0)  # sum over group elements
-        dest_grad = xnp.sum(dest_grad, axis=1)  # sum over the links
-        return dest_grad
 
         nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
         k = 2 * nvirtmodes_link  # single link offset
