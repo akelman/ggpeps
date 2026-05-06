@@ -155,7 +155,9 @@ class ExactEvaluator(Evaluator):
 
             # Expectation values
             dest: dict[str, Union[float, np.ndarray]] = {}
-            dest["energy"] = self.compute_expval(data["energy"], normvec)
+            dest["real_energy"] = self.compute_expval(data["energy"], normvec)
+            penalty = 1
+            dest["energy"] = dest["real_energy"] + penalty * np.sum(self.system.cfg.paramvec**2)
             dest["mag_energy"] = self.compute_expval(data["mag_energy"], normvec)
             dest["el_energy"] = self.compute_expval(data["el_energy"], normvec)
             dest["mass_energy"] = self.compute_expval(data["mass_energy"], normvec)
@@ -264,7 +266,8 @@ class ExactEvaluator(Evaluator):
 
                 assert isinstance(total_grad, np.ndarray)
                 self.system.cfg.enforce_parameter_conditions(total_grad)
-                dest["energy_grad"] = total_grad
+                dest["real_energy_grad"] = total_grad
+                dest["energy_grad"] = dest["real_energy_grad"] + 2 * penalty * self.system.cfg.paramvec
 
             # Save data
             self.obsdict = dest
