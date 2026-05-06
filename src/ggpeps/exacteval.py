@@ -156,7 +156,7 @@ class ExactEvaluator(Evaluator):
             # Expectation values
             dest: dict[str, Union[float, np.ndarray]] = {}
             dest["real_energy"] = self.compute_expval(data["energy"], normvec)
-            penalty = 10
+            penalty = 100
             dest["energy"] = dest["real_energy"] + penalty * np.sum(self.system.cfg.paramvec**2)
             dest["mag_energy"] = self.compute_expval(data["mag_energy"], normvec)
             dest["el_energy"] = self.compute_expval(data["el_energy"], normvec)
