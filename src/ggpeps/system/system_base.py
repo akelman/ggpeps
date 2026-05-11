@@ -2130,14 +2130,16 @@ class System2DBase(ABC):
             # Initialize shape
             # this ensures that is has the proper shape even when there are no fermionic layers
             # (which is needed for transposes, etc. higher up in the stack)
-            self._occupations_before_ph = np.zeros((self.cfg.num_fermionic_layer, self.cfg.lattice.size))
+            self._occupations_before_ph = xnp.zeros((self.cfg.num_fermionic_layer, self.cfg.lattice.size))
 
             after_ph = False
             for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
                 for site in range(self.cfg.lattice.size):
                     site_coord = self.cfg.lattice.ind2coord(site)
-                    self._occupations_before_ph[lay - self.cfg.num_pg_layer, site] = self.occupation(
-                        self.ferm_covmat_vec[lay], site, site_coord, after_ph=after_ph
+                    self._occupations_before_ph = backend.array_assign(
+                        self._occupations_before_ph,
+                        (lay - self.cfg.num_pg_layer, site),
+                        self.occupation(self.ferm_covmat_vec[lay], site, site_coord, after_ph=after_ph),
                     )
         return self._occupations_before_ph
 
@@ -2154,14 +2156,16 @@ class System2DBase(ABC):
             # Initialize shape
             # this ensures that is has the proper shape even when there are no fermionic layers
             # (which is needed for transposes, etc. higher up in the stack)
-            self._occupations_after_ph = np.zeros((self.cfg.num_fermionic_layer, self.cfg.lattice.size))
+            self._occupations_after_ph = xnp.zeros((self.cfg.num_fermionic_layer, self.cfg.lattice.size))
 
             after_ph = True
             for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
                 for site in range(self.cfg.lattice.size):
                     site_coord = self.cfg.lattice.ind2coord(site)
-                    self._occupations_after_ph[lay - self.cfg.num_pg_layer, site] = self.occupation(
-                        self.ferm_covmat_vec[lay], site, site_coord, after_ph=after_ph
+                    self._occupations_after_ph = backend.array_assign(
+                        self._occupations_after_ph,
+                        (lay - self.cfg.num_pg_layer, site),
+                        self.occupation(self.ferm_covmat_vec[lay], site, site_coord, after_ph=after_ph),
                     )
         return self._occupations_after_ph
 
