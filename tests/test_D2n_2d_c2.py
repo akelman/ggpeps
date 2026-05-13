@@ -10,7 +10,6 @@ from ggpeps import system, exacteval
 from ggpeps.modearray import generate_permutation_matrix
 from ggpeps.system.config_base import generate_gauged_projector_terms
 
-
 # ======================= D6 fermionic system (2 copies) =======================
 
 
@@ -1358,16 +1357,40 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
         for group_element in cfg.gaugemgr.group_elements_for_el_energy:
             # --- Pure gauge (mix_copies=True) ---
             idxarr_lay_pg_h_0, _ = generate_gauged_projector_terms(
-                cfg.ncopy, cfg.ncolors, True, lattice.Direction.X, group_element, site=0, drop_real_zero=drop_real_zero
+                cfg.ncopy,
+                cfg.ncolors,
+                False,
+                lattice.Direction.X,
+                group_element,
+                site=0,
+                drop_real_zero=drop_real_zero,
             )
             idxarr_lay_pg_h_1, _ = generate_gauged_projector_terms(
-                cfg.ncopy, cfg.ncolors, True, lattice.Direction.X, group_element, site=1, drop_real_zero=drop_real_zero
+                cfg.ncopy,
+                cfg.ncolors,
+                False,
+                lattice.Direction.X,
+                group_element,
+                site=1,
+                drop_real_zero=drop_real_zero,
             )
             idxarr_lay_pg_v_0, _ = generate_gauged_projector_terms(
-                cfg.ncopy, cfg.ncolors, True, lattice.Direction.Y, group_element, site=0, drop_real_zero=drop_real_zero
+                cfg.ncopy,
+                cfg.ncolors,
+                False,
+                lattice.Direction.Y,
+                group_element,
+                site=0,
+                drop_real_zero=drop_real_zero,
             )
             idxarr_lay_pg_v_1, _ = generate_gauged_projector_terms(
-                cfg.ncopy, cfg.ncolors, True, lattice.Direction.Y, group_element, site=1, drop_real_zero=drop_real_zero
+                cfg.ncopy,
+                cfg.ncolors,
+                False,
+                lattice.Direction.Y,
+                group_element,
+                site=1,
+                drop_real_zero=drop_real_zero,
             )
 
             # --- Fermionic (mix_copies=False) ---
