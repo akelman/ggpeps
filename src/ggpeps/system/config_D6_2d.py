@@ -12,7 +12,6 @@ from ggpeps.lattice import Direction
 
 from .config_base import Config2DBase, generate_gauged_projector_terms
 
-
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
@@ -63,7 +62,7 @@ class D6System2D_Config(Config2DBase):
     ) -> None:
         self.gaugemgr: gauge.D2nGauge
         super().__init__(
-            gauge.D2nGauge(3),
+            gauge.D2nGauge(4),
             lattice,
             g_el,
             g_mag,
@@ -79,10 +78,8 @@ class D6System2D_Config(Config2DBase):
 
         # Translation invariance (or variance)
         if self.unitcell_size not in [1]:
-            logger.error(
-                "For Dn groups this ansatz only supports unitcell_size = 1. \
-                This can be adapted by adding in a specification in the config to map sites to parameters."
-            )
+            logger.error("For Dn groups this ansatz only supports unitcell_size = 1. \
+                This can be adapted by adding in a specification in the config to map sites to parameters.")
             sys.exit(1)
 
         self.init_el_energy_terms()
