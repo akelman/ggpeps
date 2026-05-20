@@ -1542,7 +1542,7 @@ class System2DBase(ABC):
 
         Returns:
             array: electric energies for the links specified in self.cfg.mod_link_inds for all layers
-                   with shape: (nlayer, len(self.cfg.mod_link_inds))
+                   with shape: (num_group_elements, nlayer, len(self.cfg.mod_link_inds))
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
@@ -1823,9 +1823,8 @@ class System2DBase(ABC):
             float: electric energy for the whole system w/o shift
         """
         if self._el_energy_op is None:
-            # The different layers can be separated into separate PEPS and then multiplied together.
             nlinks = self.cfg.lattice.nlinks
-            el_energy_link_vec = xnp.prod(self.el_energy_op_vec, axis=1, dtype=float)
+            el_energy_link_vec = xnp.prod(self.el_energy_op_vec, axis=1, dtype=float)  # product over layers
             el_energy_link_vec = xnp.sum(el_energy_link_vec, axis=0, dtype=float)  # sum over group elements
 
             self._el_energy_op = (nlinks / len(self.cfg.mod_link_inds)) * xnp.sum(el_energy_link_vec)
