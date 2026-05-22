@@ -294,7 +294,10 @@ class D2nSystem2D(System2DBase):
 
                     # xnp.real() is only for testing purposes, since the Pfaffian's with imaginary components are
                     # now dropped higher up in the stack.
-                    el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
+                    # el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
+                    el_energy_link = xnp.where(
+                        lognorm_default < -80, 0.0, xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
+                    )
 
                     dest = backend.array_assign(dest, (group_element_idx, layerind, link_pos), el_energy_link)
         return dest
@@ -449,8 +452,11 @@ class D2nSystem2D(System2DBase):
                     # are Hermitian, we can just take the real part here.
                     # At present, we drop these complex/imaginary terms higher in the stack to save on
                     # computation. We leave the xnp.real() for testing purposes.
-                    d_el_energy_vec = xnp.real(deriv_pf_tot_vec_vec[layerind, link_pos]) * xnp.exp(
-                        norm_mod_vec[layerind][link_pos] - lognorm_default
+                    d_el_energy_vec = xnp.where(
+                        lognorm_default < -80,
+                        0.0,
+                        xnp.real(deriv_pf_tot_vec_vec[layerind, link_pos])
+                        * xnp.exp(norm_mod_vec[layerind][link_pos] - lognorm_default),
                     )
 
                     # Summand with derivative of norms
