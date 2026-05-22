@@ -62,7 +62,7 @@ class D6System2D_Config(Config2DBase):
     ) -> None:
         self.gaugemgr: gauge.D2nGauge
         super().__init__(
-            gauge.D2nGauge(4),
+            gauge.D2nGauge(3),
             lattice,
             g_el,
             g_mag,
