@@ -85,7 +85,7 @@ class EvaluatorManager:
         system_cls: type[System2DBase],
         system_cfg: Config2DBase,
         cfg: Union[MonteCarloEvaluatorConfig, ExactEvaluatorConfig, NEVMC_EvaluatorConfig],
-        nrunner: int,
+        nrunner: int = 0,
     ):
 
         self.system_cls = system_cls
@@ -109,8 +109,6 @@ class EvaluatorManager:
             raise ValueError("Unrecognized type of evaluator config.")
 
         # Set the evaluator
-        # self.evaluator: Optional[Evaluator] = None
-        # # Because reset evaluator needs an evaluator to check the system
         self.evaluator: Evaluator = self.reset_evaluator()
 
     def reset_evaluator(self) -> Evaluator:
