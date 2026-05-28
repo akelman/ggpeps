@@ -54,7 +54,7 @@ def run_mc(
     logger = logging.getLogger(ggpeps.LOGGER_NAME)
     utils.setup_logger(logger, logger_file, level, runner_msg=f"Runner {runner_id}-")
 
-    system = system_cls(copy.deepcopy(system_cfg))
+    system = system_cls(copy.deepcopy(system_cfg))  # ensure the system configs don't interfere with each other
     system.initialize()
     if evaluator_class is NEVMC_Evaluator:
         assert isinstance(evaluator_cfg, NEVMC_EvaluatorConfig)
@@ -93,11 +93,10 @@ class EvaluatorManager:
         self.cfg = cfg
         self.nrunner = nrunner
 
-        ### beg NEVMC ###
+        # used for NEVMC
         self.store_gauge: list = []
         self.store_weights: list[float] = []
         self.store_work: list[float] = []
-        ### end NEVMC ###
 
         if isinstance(self.cfg, ExactEvaluatorConfig):
             self.type = "exact"
@@ -172,7 +171,6 @@ class EvaluatorManager:
             assert isinstance(self.cfg, MonteCarloEvaluatorConfig) or isinstance(self.cfg, NEVMC_EvaluatorConfig)
 
             resultvec = []
-            # system_cfg_id = ray.put(self.system_cfg)
             reduced_meas_steps = self.cfg.meas_steps // self.nrunner
             logger.info(
                 f"Starting {self.nrunner} ray runners with {reduced_meas_steps} measurement steps each "
@@ -184,13 +182,6 @@ class EvaluatorManager:
                 cfg = copy.deepcopy(self.cfg)
                 cfg.seed = self.cfg.seed + i
                 cfg.meas_steps = reduced_meas_steps
-
-                # Make a copy of the system config
-                # This is necessary, because otherwise an error is raised when we try to modify the params
-                # in enforce_parameter_conditions()
-                # For some unclear reason, making a deep copy here does not prevent this, so instead a deep
-                # copy is made inside run_mc()
-                # sys_cfg = copy.deepcopy(self.system_cfg)
 
                 # package logger info
                 logger_info = {
@@ -204,9 +195,8 @@ class EvaluatorManager:
                     gpu_frac = 1 / ggpeps.global_vars["args"].nrunner
                 evaluator_class = self.get_evaluator_class()
 
-                run_mc_modified = run_mc.options(
-                    num_gpus=gpu_frac
-                )  # TODO: according to the ray documentation, we should also specify num_cpus
+                # TODO: according to the ray documentation, we should also specify num_cpus
+                run_mc_modified = run_mc.options(num_gpus=gpu_frac)
 
                 local_gauge = []
                 local_weights = []
