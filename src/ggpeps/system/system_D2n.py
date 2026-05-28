@@ -286,7 +286,9 @@ class D2nSystem2D(System2DBase):
                     # this is the constant term in the sum, which does not come with a Pfaffian,
                     # for Z2 it should be 0
                     for size_ind, size_term in enumerate(link_coeffs):
-                        array_size_term = xnp.asarray(size_term)
+                        array_size_term = xnp.asarray(
+                            size_term
+                        )  # TODO: We should convert this to array outside the loop
                         current_pfaffians = el_pfaffians[
                             group_element_idx, layerind, link_pos, size_ind, : len(size_term)
                         ]
@@ -294,10 +296,7 @@ class D2nSystem2D(System2DBase):
 
                     # xnp.real() is only for testing purposes, since the Pfaffian's with imaginary components are
                     # now dropped higher up in the stack.
-                    # el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
-                    el_energy_link = xnp.where(
-                        lognorm_default < -80, 0.0, xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
-                    )
+                    el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
 
                     dest = backend.array_assign(dest, (group_element_idx, layerind, link_pos), el_energy_link)
         return dest
