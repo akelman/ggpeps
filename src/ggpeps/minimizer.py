@@ -356,17 +356,11 @@ class Minimizer:
         # We might want to change this later.
         flattened_paramvec = np.reshape(self.evaluator_manager.system_cfg.paramvec, (-1))
 
-        param_bounds = [(-0.999, 0.999)] * len(flattened_paramvec)
-
-        # אנחנו מעבירים את החסמים רק אם השיטה תומכת בכך (כדי למנוע שגיאות מ-SciPy)
-        use_bounds = param_bounds if self.cfg.method in ["L-BFGS-B", "TNC"] else None
-
         min_result = minimize(  # type: ignore
             energy_wrapper,
             flattened_paramvec,
             method=self.cfg.method,  # TODO: fix type hint - should be literal of supported method, not a string
             jac=gradient_wrapper if self.cfg.method in self.grad_methods else None,
-            bounds=use_bounds,
             tol=self.cfg.tol,
             callback=lambda x: print_callback(x, self),
             options=options_dict,  # TODO: this also causes a type error, but unclear why
