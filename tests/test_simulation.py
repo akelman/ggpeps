@@ -14,6 +14,21 @@ from ggpeps.mc import MonteCarloEvaluatorConfig
 from ggpeps.system.system_Z2 import Z2System2D
 
 
+def reorder_g2c_f2c_paramvec_old_to_new(paramvec: np.ndarray) -> np.ndarray:
+    """Convert G2C/F2C parameters from the old ordering to the new copy-general ordering.
+
+    Old order:
+        [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr,
+         t1i, y1i, z1i, t2i, y2i, z2i, ai, bi, ci, di]
+
+    New order:
+        [t1r, t2r, y1r, y2r, z1r, z2r, a12r, b12r, c12r, d12r,
+         t1i, t2i, y1i, y2i, z1i, z2i, a12i, b12i, c12i, d12i]
+    """
+    old_to_new = [0, 3, 1, 4, 2, 5, 6, 7, 8, 9, 10, 13, 11, 14, 12, 15, 16, 17, 18, 19]
+    return paramvec[..., old_to_new]
+
+
 class TestZ2System(unittest.TestCase):
     """This class tests hard-coded values that should be output by simulations.
     We compare only a few simulations, with as general settings as possible."""
@@ -127,7 +142,9 @@ class TestZ2System(unittest.TestCase):
         seed = 12
         rngstate = np.random.RandomState(seed)
         shape = (nlayer, unitcell_size, 20)
+
         paramvec = rngstate.rand(*shape)
+        paramvec = reorder_g2c_f2c_paramvec_old_to_new(paramvec)
         system_cfg.paramvec = paramvec
 
         # Evaluator
@@ -149,7 +166,7 @@ class TestZ2System(unittest.TestCase):
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "wilson_loop_0-0_1x1"), 0.220211)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "square_string_0-0_1x1"), 0.08457018)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "FM_1x1"), 0.18021784)
-        idx = (0, 0, 1)
+        idx = (0, 0, 2)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "grad_norm")[idx], -1.907041756)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "mag_energy_grad")[idx], 3.0555902689)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "el_energy_grad")[idx], 3.6992497863e-5)
@@ -177,7 +194,7 @@ class TestZ2System(unittest.TestCase):
         unitcell_size = 2
         enforce_u1 = False
         el_links = [0, 1]  # links on which to compute the electric energy
-        gauge_fixing = 0  # no guage fixing for MC
+        gauge_fixing = 0  # no gauge fixing for MC
 
         # Construct the system
         lat = lattice.Lattice2D(L, L, gf_num_of_rows=gauge_fixing)
@@ -200,7 +217,9 @@ class TestZ2System(unittest.TestCase):
         seed = 12
         rngstate = np.random.RandomState(seed)
         shape = (nlayer, unitcell_size, 20)
+
         paramvec = rngstate.rand(*shape)
+        paramvec = reorder_g2c_f2c_paramvec_old_to_new(paramvec)
         system_cfg.paramvec = paramvec
 
         # Evaluator
@@ -222,7 +241,7 @@ class TestZ2System(unittest.TestCase):
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "wilson_loop_0-0_1x1"), 0.2202, places=1)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "square_string_0-0_1x1"), 0.08457, places=1)
         # self.assertAlmostEqual(utils.get_obs_mean_df(result, "FM_1x1"), 0.18022, places=1) # not implemented in MC
-        idx = (0, 0, 1)
+        idx = (0, 0, 2)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "grad_norm")[idx], -1.9070, places=0)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "energy_grad")[idx], 2.2347, places=0)
 
@@ -246,25 +265,26 @@ class TestZ2System(unittest.TestCase):
         gauge_fixing = -1  # maximal tree
 
         # Hard coded paramvec for which results were checked on trusted version of the code (commit 566db49)
+        # Stored in the current copy-general parameter order.
         paramvec = np.asarray(
             [
                 [
                     [
                         0.00000000e00,
-                        7.20324493e-01,
-                        1.14374817e-04,
                         0.00000000e00,
+                        7.20324493e-01,
                         1.46755891e-01,
+                        1.14374817e-04,
                         9.23385948e-02,
                         1.86260211e-01,
                         3.45560727e-01,
                         3.96767474e-01,
                         5.38816734e-01,
                         0.00000000e00,
-                        6.85219500e-01,
-                        2.04452250e-01,
                         0.00000000e00,
+                        6.85219500e-01,
                         2.73875932e-02,
+                        2.04452250e-01,
                         6.70467510e-01,
                         4.17304802e-01,
                         5.58689828e-01,
@@ -273,20 +293,20 @@ class TestZ2System(unittest.TestCase):
                     ],
                     [
                         0.00000000e00,
-                        9.68261576e-01,
-                        3.13424178e-01,
                         0.00000000e00,
+                        9.68261576e-01,
                         8.76389152e-01,
+                        3.13424178e-01,
                         8.94606664e-01,
                         8.50442114e-02,
                         3.90547832e-02,
                         1.69830420e-01,
                         8.78142503e-01,
                         0.00000000e00,
-                        4.21107625e-01,
-                        9.57889530e-01,
                         0.00000000e00,
+                        4.21107625e-01,
                         6.91877114e-01,
+                        9.57889530e-01,
                         3.15515631e-01,
                         6.86500928e-01,
                         8.34625672e-01,
@@ -297,20 +317,20 @@ class TestZ2System(unittest.TestCase):
                 [
                     [
                         9.88861089e-01,
-                        7.48165654e-01,
-                        2.80443992e-01,
                         7.89279328e-01,
+                        7.48165654e-01,
                         1.03226007e-01,
+                        2.80443992e-01,
                         4.47893526e-01,
                         9.08595503e-01,
                         2.93614148e-01,
                         2.87775339e-01,
                         1.30028572e-01,
                         1.93669579e-02,
-                        6.78835533e-01,
-                        2.11628116e-01,
                         2.65546659e-01,
+                        6.78835533e-01,
                         4.91573159e-01,
+                        2.11628116e-01,
                         5.33625451e-02,
                         5.74117605e-01,
                         1.46728575e-01,
@@ -319,20 +339,20 @@ class TestZ2System(unittest.TestCase):
                     ],
                     [
                         1.02334429e-01,
-                        4.14055988e-01,
-                        6.94400158e-01,
                         4.14179270e-01,
+                        4.14055988e-01,
                         4.99534589e-02,
+                        6.94400158e-01,
                         5.35896406e-01,
                         6.63794645e-01,
                         5.14889112e-01,
                         9.44594756e-01,
                         5.86555041e-01,
                         9.03401915e-01,
-                        1.37474704e-01,
-                        1.39276347e-01,
                         8.07391289e-01,
+                        1.37474704e-01,
                         3.97676837e-01,
+                        1.39276347e-01,
                         1.65354197e-01,
                         9.27508580e-01,
                         3.47765860e-01,
@@ -342,7 +362,6 @@ class TestZ2System(unittest.TestCase):
                 ],
             ]
         )
-
         # Construct the system
         lat = lattice.Lattice2D(L, L, gf_num_of_rows=gauge_fixing)
 
