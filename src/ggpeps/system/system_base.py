@@ -294,9 +294,10 @@ class System2DBase(ABC):
             smat = utils.generate_smat(m)
 
             # Vectorized operation over all layers and sites
-            # note: since self.gamma_dirac_layervec_sitevec is already a vector over sites, here we are being
+            # Note: since self.gamma_dirac_layervec_sitevec is already a vector over sites, here we are being
             #       slightly inneficent - we do the matrix multiplication for each entry, even though many of
-            #       the gamma_dirac's are the same.
+            #       the gamma_dirac's are the same. However, this happens only once per evaluation,
+            #       so it is ultimately negligible.
             self._gamma_maj_layervec_sitevec = xnp.real(smat @ self.gamma_dirac_layervec_sitevec @ xnp.transpose(smat))
         return self._gamma_maj_layervec_sitevec
 
