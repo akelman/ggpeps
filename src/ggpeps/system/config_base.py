@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union, Optional
+from typing import Optional
 
 import sys
 import logging
@@ -58,7 +58,7 @@ class Config2DBase(ABC):
 
     def __init__(
         self,
-        gaugemgr: Union[gauge.ZNGauge, gauge.D2nGauge],
+        gaugemgr: gauge.GaugeGroupBase,
         lattice: Lattice2D,
         g_el: float,
         g_mag: float,
@@ -591,7 +591,7 @@ def generate_gauged_projector_terms(
         ncolor (int): Number of colors.
         mix_copies (bool): whether to mix copies in the projectors (controls sigma permutation).
         orientation (Direction): 'X' (horizontal, eta^2 = 1) or 'Y' (vertical, eta^2 = i).
-        gaugemgr (Union[gauge.ZNGauge, gauge.D2nGauge]): Gauge manager handling group structure and irreps.
+        gaugemgr (gauge.GaugeGroupBase): Gauge manager handling group structure and irreps.
         site (int, optional): Site index (used for parity-dependent conjugation). Defaults to 0.
         drop_real_zero (bool, optional): Whether to drop terms with zero real part in coefficients. Defaults to True.
 
