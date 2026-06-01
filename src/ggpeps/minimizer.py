@@ -50,11 +50,19 @@ class MinimizerResult:
 
 class MinimizerConfig:
 
-    def __init__(self) -> None:
-        self.max_iter: int = 100
-        self.tol: float = 1e-5  # convergence tol (e.g. stop when grad falls below tol)
-        self.alpha: float = 1e-2  # learning rate
-        self._method: str = "CG"
+    def __init__(self, max_iter: int = 100, tol: float = 1e-5, alpha: float = 1e-2, method: str = "CG") -> None:
+        """Initialize a MinimizerConfig
+
+        Args:
+            max_iter (int, optional): Maximum number of iterations. Defaults to 100.
+            tol (float, optional): Convergence tolerance. Defaults to 1e-5.
+            alpha (float, optional): Learning rate. Defaults to 1e-2.
+            method (str, optional): Minimization algorithm. Defaults to "CG".
+        """
+        self.max_iter: int = max_iter
+        self.tol: float = tol
+        self.alpha: float = alpha
+        self._method: str = method
 
     @property
     def method(self) -> str:
