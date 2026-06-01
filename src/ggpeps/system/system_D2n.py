@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import numpy as np
 from ggpeps import xnp as xnp
@@ -387,7 +386,8 @@ class D2nSystem2D(System2DBase):
         diffB = diff_times_b_vec[l, m]
         Bdiff = b_times_diff_vec[l, m]
 
-        # TODO: The middle part here (what's multiplied by R_active and R_active_T) does not depend on the gauge configuration,
+        # TODO: The middle part here (what's multiplied by R_active and R_active_T)
+        # does not depend on the gauge configuration,
         # so it could be be computed once per eval, and not here for every gauge configuration.
         vals = (
             R_active_T
