@@ -653,16 +653,28 @@ class System2DBase(ABC):
                 covmat_out_linkvec = []
 
                 for ind, link_ind in enumerate(self.cfg.mod_link_inds):
-
+                    group_element = self._gaugefieldvec[link_ind]
+                    coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
+                    R = self.generate_rotmat(self.cfg.ncopy, group_element, coord, dir)
+                    R_T = xnp.transpose(R)
                     # Get the modified matrices, which include the virtual modes of the given link among the physical
                     mat_a = self.mat_a_mod_vec[layerind, ind]
                     mat_b = self.mat_b_mod_vec[layerind, ind]
+
+                    mat_a_mod_block = mat_a[
+                        -single_link_offset:, -single_link_offset:
+                    ]  # modified-modified part of the A matrix
+                    mat_b_mod_block = mat_b[-single_link_offset:, :]
+                    # modified-virtual part of the B matrix
+
                     diff_d_gamma_inv = self.wi_gamma_out_mod_vec[layerind][ind]
 
                     # Compute covmat
-                    covmat_out = mat_a + mat_b @ diff_d_gamma_inv @ xnp.transpose(mat_b)
-                    size = covmat_out.shape[1]
-                    covmat_out_virt = covmat_out[size - single_link_offset : size, size - single_link_offset : size]
+                    covmat_out_virt_ungauged = mat_a_mod_block + mat_b_mod_block @ diff_d_gamma_inv @ xnp.transpose(
+                        mat_b_mod_block
+                    )
+
+                    covmat_out_virt = R_T @ covmat_out_virt_ungauged @ R
 
                     # pfapack (used in the el energy) is rather picky about the anti-symmetrization (to 1e-14)
                     covmat_out_virt = utils.anti_symmetrize(covmat_out_virt)
@@ -1231,7 +1243,6 @@ class System2DBase(ABC):
         Compute the weight of an update attempt in which the link index link_ind is substituted for theta
         The inclusion of all constant pre-factors can be switched on and off.
 
-        For D2n gauge groups, we overwrite this function in the system implementation.
 
         Args:
             link_ind (int): Link index
@@ -1981,6 +1992,15 @@ class System2DBase(ABC):
             # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
             d_mat_a_vec_vec, d_mat_b_vec_vec, d_mat_d_vec_vec = self.deriv_mod_mats((l, m, u, s))
 
+            rotmat_vec = xnp.stack(
+                [
+                    self.generate_rotmat(
+                        self.cfg.ncopy, self._gaugefieldvec[link_ind], *self.cfg.lattice.ind2coord_dir(link_ind)
+                    )
+                    for link_ind in self.cfg.mod_link_inds
+                ]
+            )
+
             self._el_energy_op_grad_vec = self._compute_el_grad_vec(
                 self.cfg.lattice.size,
                 self.cfg.num_pg_layer,
@@ -2008,6 +2028,7 @@ class System2DBase(ABC):
                 self.cfg.gaugemgr.group_elements_for_el_energy,
                 self.cfg.idx_vec,
                 self.cfg.coeffs_vec,
+                rotmat_vec,
             )
         return self._el_energy_op_grad_vec
 

@@ -257,6 +257,7 @@ class Z2System2D(System2DBase):
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
         idxarr_vec: IdxVec,
         coeffs_vec: CoeffsVec,
+        rotmat_vec: xnp.ndarray,
     ) -> xnp.ndarray:
         """In early 2026, this function was significantly optimized.
         This was done after it was generalized in various ways over the previous months:
@@ -291,14 +292,26 @@ class Z2System2D(System2DBase):
         # (nlayer, nmodlinks, link_dim, mod_virt_dim), take only the last k rows
         b_times_diff_vec = mat_b_mod_vec[:, :, -k:, :] @ gamma_out_mod_inv_vec
 
+        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec), k, k)
+        d_covmat_out_virt_vec = xnp.zeros(shape)
+
+        l, m, u, s = inds
+
+        R_active = rotmat_vec[m]
+        R_active_T = xnp.swapaxes(R_active, -1, -2)
+
         diffB = diff_times_b_vec[l, m]
         Bdiff = b_times_diff_vec[l, m]
 
         vals = (
-            d_mat_a_vec[..., -k:, -k:]
-            + d_mat_b_vec[..., -k:, :] @ diffB
-            + Bdiff @ xnp.swapaxes(d_mat_b_vec, -1, -2)[..., :, -k:]
-            - Bdiff @ d_mat_d_vec @ diffB
+            R_active_T
+            @ (
+                d_mat_a_vec[..., -k:, -k:]
+                + d_mat_b_vec[..., -k:, :] @ diffB
+                + Bdiff @ xnp.swapaxes(d_mat_b_vec, -1, -2)[..., :, -k:]
+                - Bdiff @ d_mat_d_vec @ diffB
+            )
+            @ R_active
         )
         d_covmat_out_virt_vec = backend.array_assign(d_covmat_out_virt_vec, (l, m, u, s), vals)
 
