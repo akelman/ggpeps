@@ -148,7 +148,7 @@ class Z2System2D(System2DBase):
         self.invalidate_gauge_update()
 
     ################## Observables ##################
-    def _compute_mag_energy_op(self, use_trans_inv: bool = False):
+    def _compute_mag_energy_op(self, use_trans_inv: bool = False) -> float:
         if use_trans_inv:
             if self.cfg.unitcell_size > 1:
                 raise ValueError("Cannot rely on translation invariance if unitcell size is >1.")

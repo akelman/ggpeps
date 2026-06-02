@@ -22,6 +22,8 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 def maybe_jit(*jit_args, **jit_kwargs):
+    """Apply jax.jit iff using the jax backend."""
+
     def decorator(func):
         if ggpeps.PREFERRED_BACKEND == "jax":
             return jax.jit(func, *jit_args, **jit_kwargs)
@@ -69,7 +71,7 @@ class System2DBase(ABC):
 
         # Parameter based matrices
         self._tmat_layervec_unitcellvec: Optional[list[list[xnp.ndarray]]] = None
-        self._tmat_layervec_sitevec: Optional[list[list[xnp.ndarray]]] = None
+        self._tmat_layervec_sitevec: Optional[xnp.ndarray] = None
         self._gamma_dirac_layervec_sitevec: Optional[xnp.ndarray] = None
         self._gamma_maj_layervec_sitevec: Optional[xnp.ndarray] = None
         self._gamma_maj_sys_vec: Optional[xnp.ndarray] = None
@@ -99,9 +101,8 @@ class System2DBase(ABC):
         self._lognorm_default_vec: Optional[xnp.ndarray] = None
 
         # Management of the gauge fields
-        self._gamma_gauge_neutral_vec_dirs: Optional[xnp.ndarray] = (
-            None  # vec for layers (choices of projectors may be different for each layer), dirs for directions
-        )
+        # vec for layers (choices of projectors may be different for each layer), dirs for directions
+        self._gamma_gauge_neutral_vec_dirs: Optional[xnp.ndarray] = None
 
         # In cases when different layers use the same projectors, all elements will point to the same gamma_in_sys:
         self._gamma_in_sys_vec: Optional[xnp.ndarray] = None
@@ -237,22 +238,23 @@ class System2DBase(ABC):
         return self._tmat_layervec_unitcellvec
 
     @property
-    def tmat_layervec_sitevec(self) -> list[list[xnp.ndarray]]:
+    def tmat_layervec_sitevec(self) -> xnp.ndarray:
         """
         Generate the T-matrix vector (single virtual fermion on the link).
         Analytically, this mode order is not advantageous,
         but it makes the reshuffling of the modes easier for gamma_in and M_D in the covariance matrix.
 
         Returns:
-            xnp.ndarray: parameter matrix T
+            xnp.ndarray: an array of parameter matrices T, of shape (nlayer, nsites, dim_tmat, dim_tmat)
         """
         if self._tmat_layervec_sitevec is None:
             self.cfg.enforce_parameter_conditions(self.cfg.paramvec)
-            self._tmat_layervec_sitevec = []
+            tmat_layervec_sitevec = []
             for layer in range(self.cfg.nlayer):
                 tmats = self.tmat_layervec_unitcellvec[layer]
                 tmat_lay = [tmats[self.cfg.site_params_dict[site]] for site in range(self.cfg.lattice.size)]
-                self._tmat_layervec_sitevec.append(tmat_lay)
+                tmat_layervec_sitevec.append(tmat_lay)
+            self._tmat_layervec_sitevec = xnp.array(tmat_layervec_sitevec)
         return self._tmat_layervec_sitevec
 
     @property
@@ -267,9 +269,7 @@ class System2DBase(ABC):
             gamma_dirac_layervec_sitevec = []
             for lay in range(self.cfg.nlayer):
 
-                gamma_dirac_lay = [
-                    xnp.array(utils.tmat_to_covariance_matrix(tmat)) for tmat in self.tmat_layervec_sitevec[lay]
-                ]
+                gamma_dirac_lay = [utils.tmat_to_covariance_matrix(tmat) for tmat in self.tmat_layervec_sitevec[lay]]
                 gamma_dirac_layervec_sitevec.append(gamma_dirac_lay)
 
             self._gamma_dirac_layervec_sitevec = xnp.array(gamma_dirac_layervec_sitevec)
@@ -307,8 +307,6 @@ class System2DBase(ABC):
             (A    B)
             (-B^T D)
         we have to reorder the modes of the single-vertex matrix with respect to the full matrix.
-
-        This method is overwritten for the U1 system.
 
         Args:
             covmats_layervec_sitevec (xnp.ndarray):
@@ -407,8 +405,6 @@ class System2DBase(ABC):
     def d_gamma_out_symbolvec(self) -> xnp.ndarray:
         """Return a vector containing the derivatives of gamma_out for each symbol.
 
-        The derivatives for pure-gauge layers are set to nan.
-
         Returns:
             array: d_gamma_out_symbolvec[layer, uc_ind, symbol] is the matrix of derivatives of gamma_out[lay]
                    wrt the parameter at that (lay, uc_ind, symbol)
@@ -436,7 +432,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            [xnp.ndarray]: Covariance matrix of the full system
+            xnp.ndarray: Covariance matrix of the full system
         """
         if self._gamma_maj_sys_vec is None:
             self._gamma_maj_sys_vec = self._expand_gamma_maj_to_system(self.gamma_maj_layervec_sitevec)
@@ -454,7 +450,7 @@ class System2DBase(ABC):
         dim = 2 (for majorana) * [ nsites * nphysmodespersite (# phys modes) ]
 
         Returns:
-            [xnp.ndarray]: Correlations of the physcial modes for the full system.
+            xnp.ndarray: Correlations of the physcial modes for the full system.
         """
         if self._mat_a_vec is None:
             offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
@@ -473,7 +469,7 @@ class System2DBase(ABC):
         dim2 = 2 (for majorana) * [ nlinks * 2 * ncopy (virt modes/link) ]
 
         Returns:
-            [xnp.ndarray]: Correlations of the physcial modes with the virtual modes for the full system.
+            xnp.ndarray: Correlations of the physcial modes with the virtual modes for the full system.
         """
         if self._mat_b_vec is None:
             offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
@@ -491,7 +487,7 @@ class System2DBase(ABC):
         dim = 2 (for majorana) * [ nlinks * 2 * ncopy (virt modes/link) ]
 
         Returns:
-            [xnp.ndarray]: Correlations of the virtual modes for the full system.
+            xnp.ndarray: Correlations of the virtual modes for the full system.
         """
         if self._mat_d_vec is None:
             offset = 2 * self.cfg.lattice.size * self.cfg.nphysmodes_site
@@ -638,7 +634,7 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list[xnp.array]: a vector of covariance matrices
+            xnp.ndarray: a vector of covariance matrices
         """
 
         if self._covmat_out_mod_vec is None:
@@ -916,11 +912,11 @@ class System2DBase(ABC):
     @property
     def wi_gamma_in_vec(self) -> xnp.ndarray:
         """Return the vector of Woodbury inverters for (D^-1 - gammain)^-1 for the different layers.
-        The length of the list is equal to the number of layers.
+        The length of the first axis is equal to the number of layers.
         This is a get function.
 
         Returns:
-            list: List of Woodbury inverters
+            xnp.ndarray: Array of Woodbury inverters
         """
         if self._wi_gamma_in_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_and_trackers()
@@ -935,11 +931,11 @@ class System2DBase(ABC):
     @property
     def wi_gamma_out_vec(self) -> xnp.ndarray:
         """Return the vector of Woodbury inverters for (D - gammain)^-1 for the different layers.
-        The length of the list is equal to the number of layers.
+        The length of the first axis is equal to the number of layers.
         This is a get function.
 
         Returns:
-            list: List of Woodbury inverters
+            xnp.ndarray: Array of Woodbury inverters
         """
         if self._wi_gamma_out_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_and_trackers()
@@ -989,11 +985,10 @@ class System2DBase(ABC):
     @property
     def incdet_mod_vec(self) -> xnp.ndarray:
         """Return the vector of incremental determinants for the modified matrices for the different layers.
-        The length of the list is equal to the number of layers.
         This is a get function.
 
         Returns:
-            list: List of lists of incremental determinant trackers, over layers and links
+            xnp.ndarray: Array of incremental determinant trackers, over layers and links
         """
         if self._incdet_mod_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_and_trackers()
@@ -1008,11 +1003,10 @@ class System2DBase(ABC):
     @property
     def wi_gamma_in_mod_vec(self) -> xnp.ndarray:
         """Return the vector of Woodbury inverters for (D^-1 - gammain_mod)^-1 for the different layers.
-        The length of the list is equal to the number of layers.
         This is a get function.
 
         Returns:
-            list: List of lists of Woodbury inverters, over layers and links
+            xnp.ndarray: Array of Woodbury inverters, over layers and links
         """
         if self._wi_gamma_in_mod_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_and_trackers()
@@ -1027,11 +1021,10 @@ class System2DBase(ABC):
     @property
     def wi_gamma_out_mod_vec(self) -> xnp.ndarray:
         """Return the vector of Woodbury inverters for (D - gammain_mod)^-1 for the different layers.
-        The length of the list is equal to the number of layers.
         This is a get function.
 
         Returns:
-            list: List of lists of Woodbury inverters, over layers and links
+            xnp.ndarray: Array of Woodbury inverters, over layers and links
         """
         if self._wi_gamma_out_mod_vec is None:
             self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_and_trackers()
@@ -1051,6 +1044,7 @@ class System2DBase(ABC):
         Args:
             symb (sympy.Symbol): Symbol with respect to which we derive
             layerind (int): index of the layer
+            uc_ind (int): index of the unit cell
 
         Returns:
             xnp.ndarray: Derivative of gamma_dirac wrt to symb
@@ -1074,6 +1068,7 @@ class System2DBase(ABC):
         Args:
             symb (sympy.Symbol): Symbol with respect to which we derive
             layerind (int): index of the layer
+            uc_ind (int): index of the unit cell
 
         Returns:
             xnp.ndarray: Derivative of gamma_maj wrt to symb
@@ -1246,7 +1241,7 @@ class System2DBase(ABC):
 
         Args:
             link_ind (int): Link index
-            theta (float): New gauge field value
+            theta (array): New gauge field value
             all_factors (bool, optional): Include all constant factors. Defaults to False.
 
         Returns:
@@ -1318,7 +1313,7 @@ class System2DBase(ABC):
             all_factors (bool, optional): Include all pre-factors in the computation. Defaults to False.
 
         Returns:
-            list: Vector of the incrementally updated norms for all layers
+            xnp.ndarray: Vector of the incrementally updated norms for all layers
         """
         res = self._calculate_lognormvec_inc(
             self.incdet_vec,
@@ -1434,9 +1429,9 @@ class System2DBase(ABC):
 
         Args:
             ncopy (int): number of copies of the ansatz
-            g (fxnp.array): representation of group element
+            group_element (xnp.array): representation of group element
             coord (tuple): (x,y) coordinate on the lattice
-            dir (lattice.Direction): direction of the link
+            dir (lattice.Direction): direction of the link from (x,y)
 
         Returns:
             xnp.ndarray: Rotation matrix for gamma_in_neutral
@@ -1503,7 +1498,7 @@ class System2DBase(ABC):
             offset (int): Offset in the matrix
             update_mat (xnp.ndarray): Array to replace the current content of gamma_in at offset
             gamma_in_sys (xnp.ndarray): gamma_in_sys. This is given as an argument so that different gamma_in_sys
-            can be passed in when gamma_in_sys differs between layers.
+                can be passed in when gamma_in_sys differs between layers.
 
         Returns:
             xnp.ndarray: Additional update to reach update_mat at gamma_in[offset:,offset:]
@@ -1514,7 +1509,7 @@ class System2DBase(ABC):
 
     ################## Observables ######################
     @abstractmethod
-    def _compute_mag_energy_op(self):
+    def _compute_mag_energy_op(self) -> float:
         """Compute the magnetic energy operator (w/o shift).
         This operator is diagonal in the gauge field (group element) basis and can thus
         be computed easily.
@@ -1546,11 +1541,7 @@ class System2DBase(ABC):
         This is an abstract method and has to be overwritten in a subclass.
 
         Args:
-            lognormvec_default: the usual norm without any modifications
-            idxarrs: indices for building the required Pfaffians
-            nlayer (int): total number of layers (pure gauge + fermionic)
-            el_pfaffians:
-            norm_mod_vec:
+            TODO: describe arguments
 
         Returns:
             array: electric energies for the links specified in self.cfg.mod_link_inds for all layers

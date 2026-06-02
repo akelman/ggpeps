@@ -235,7 +235,7 @@ class D2nSystem2D(System2DBase):
         self.invalidate_gauge_update()
 
     # Observables
-    def _compute_mag_energy_op(self, use_trans_inv: bool = True):
+    def _compute_mag_energy_op(self, use_trans_inv: bool = True) -> float:
         if use_trans_inv:
             # Evaluate one plaquette and multiply by number of plaquettes
             wilson_plaquette = self.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
