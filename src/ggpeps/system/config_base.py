@@ -58,7 +58,7 @@ class Config2DBase(ABC):
 
     def __init__(
         self,
-        gaugemgr: gauge.GaugeGroupBase,
+        gaugemgr: gauge.GaugeGroup,
         lattice: Lattice2D,
         g_el: float,
         g_mag: float,

@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 
-class GaugeGroupBase(ABC):
+class GaugeGroup(ABC):
     """Abstract base class for gauge groups.
 
     Defines the interface that all gauge group implementations must provide.
@@ -128,7 +128,7 @@ class GaugeGroupBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
 
-class ZNGauge(GaugeGroupBase):
+class ZNGauge(GaugeGroup):
     """Implement a Z_N gauge group with elements on the unit circle.
 
     Elements are represented as 1x1 complex matrices corresponding to
@@ -321,7 +321,7 @@ class ZNGauge(GaugeGroupBase):
         return 2.0, tuple([self.get_representation(increment)])
 
 
-class D2nGauge(GaugeGroupBase):
+class D2nGauge(GaugeGroup):
     """
     Implement the D_2n gauge group using a real 2D matrix representation.
 
