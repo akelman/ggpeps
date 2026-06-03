@@ -26,6 +26,8 @@ from ggpeps.system import Z2System2D_G2C_F2C_Config
 from ggpeps.system import Z2System2D_G4C_F4C_Config
 from ggpeps.system import Z2System2D_G8C_F8C_Config
 from ggpeps.system import D6System2D_Config
+from ggpeps.system import Z2System2D_2col_Config
+from ggpeps.system import Z2System2D_2col_1copy_Config
 from ggpeps.system import Z2System2D
 from ggpeps.system import D2nSystem2D
 
@@ -332,6 +334,16 @@ def main(args):
     elif args.gauge_group == "D6":
         system_type = D2nSystem2D
         cfg_class = D6System2D_Config
+    elif args.gauge_group == "Z2_2col":
+        # Diagnostic ansatz: Z_2 gauge group represented as 2x2 matrices, 2 colors, 2 copies.
+        # T-matrix is color-diagonal with the standard Z_2 9x9 block repeated.
+        system_type = D2nSystem2D
+        cfg_class = Z2System2D_2col_Config
+    elif args.gauge_group == "Z2_2col_1copy":
+        # Diagnostic ansatz: same as Z2_2col but with 1 copy instead of 2.
+        # Removes cross-copy parameters (a,b,c,d); only t1,y1,z1 remain per color.
+        system_type = D2nSystem2D
+        cfg_class = Z2System2D_2col_1copy_Config
     elif args.gauge_group == "U1":
         logger.error("Not Implemented: The U1 gauge group is not currently working.")
         sys.exit(1)
@@ -689,7 +701,12 @@ if __name__ == "__main__":
         ],
         help="Mode of the program",
     )
-    parser.add_argument("gauge_group", type=str, choices=["Z2", "D6"], help="gauge group")
+    parser.add_argument(
+        "gauge_group",
+        type=str,
+        choices=["Z2", "D6", "Z2_2col", "Z2_2col_1copy"],
+        help="gauge group (Z2_2col/Z2_2col_1copy are diagnostic Z2-with-2D-rep ansätze)",
+    )
 
     parser.add_argument("--L", type=int, help="Size of the square system (one side)")
 

@@ -582,3 +582,77 @@ class D2nGauge:
                     f"Values found: {factor_for_el}"
                 )
         return factor_for_el[0], tuple(group_for_el_energy)
+
+
+class Z2RepGauge2D:
+    """Z_2 gauge group represented by 2x2 matrices that mix colors.
+
+    Group elements: {+1, -1}. Representation matrices:
+        D(+1) = I_2
+        D(-1) = sigma_x = [[0, 1], [1, 0]]   # swaps the two colors
+
+    The two irreps of Z_2 are still 1D (Z_2 is abelian) — trivial and sign — so the
+    electric-energy bookkeeping (irrep characters, dimensions, factors) is identical
+    to the standard ZNGauge(2). What changes is the FAITHFUL representation used by
+    the gauging operator U_h: it is now a 2x2 matrix that mixes the two color blocks,
+    exactly like the D6 2D irrep. This class exists to test whether the D6 electric-
+    energy discrepancy is specific to D6 or appears for any 2D-rep gauging.
+    """
+
+    SIGMA_X = np.array([[-1.0, 0.0], [0.0, -1.0]])
+
+    def __init__(self) -> None:
+        self.n = 2
+        self.rep_dim = 2
+        self.group_order = 2
+        self.el_mult_factor, self.group_elements_for_el_energy = self.get_group_elements_and_factors_for_el_energy()
+        self.el_offset = 2
+
+    # ---- group structure ---------------------------------------------------
+    def get_representation(self, sign: int) -> np.ndarray:
+        """sign in {+1, -1} -> 2x2 matrix."""
+        return np.eye(2) if sign > 0 else self.SIGMA_X.copy()
+
+    def get_neutral_gauge_value(self) -> np.ndarray:
+        return np.eye(2)
+
+    def get_possible_gauge_values(self) -> np.ndarray:
+        return np.array([np.eye(2), self.SIGMA_X])
+
+    def get_random_gauge_value(self, rng_state: np.random.RandomState) -> np.ndarray:
+        k = rng_state.randint(0, 2)
+        return np.eye(2) if k == 0 else self.SIGMA_X.copy()
+
+    # ---- irrep bookkeeping (1D irreps, same as ZNGauge(2)) -----------------
+    def _sign_of(self, group_element: np.ndarray) -> int:
+        return 1 if np.allclose(group_element, np.eye(2)) else -1
+
+    def get_irrep(self, irrep_label: int, group_element: np.ndarray) -> np.ndarray:
+        s = self._sign_of(group_element)
+        if irrep_label == 0:  # trivial irrep
+            return np.array([[1.0 + 0.0j]])
+        # sign irrep
+        return np.array([[float(s) + 0.0j]])
+
+    def get_irrep_character(self, group_element: np.ndarray, irrep_label: int) -> complex:
+        return complex(np.trace(self.get_irrep(irrep_label, group_element)))
+
+    def get_irrep_dimension(self, irrep_label: int) -> int:
+        return 1
+
+    def get_possible_irrep_labels(self) -> list:
+        return [0, 1]
+
+    def get_electric_energy_factor(self, irrep_label: int) -> float:
+        # f_j = 2 cos(2*pi*j / N), N=2
+        return 2.0 if irrep_label == 0 else 0.0
+
+    def get_group_elements_and_factors_for_el_energy(self):
+        """Return (el_mult_factor, group elements used for the electric energy).
+
+        For Z_2 the single non-neutral element gives pref(h) = 2 (same as ZNGauge(2)).
+        Using el_mult_factor=2.0 keeps the el_energy formula
+            el_energy = g_el * (el_offset * nlinks - el_mult_factor * el_energy_op)
+        consistent with the standard Z_2 convention.
+        """
+        return 2.0, tuple([self.SIGMA_X.copy()])
