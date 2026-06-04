@@ -571,11 +571,22 @@ def _w_dag_terms(copy, sigma_copy, eta2, color, ncolors, ncopies):
 
 
 def _poly_mul(p: "MonomialAccumulator", q_terms) -> "MonomialAccumulator":
-    """Multiply a polynomial dict by a list of (coeff, indices) terms, then simplify."""
+    """Multiply a polynomial dict on the LEFT by a list of (coeff, indices) terms on the
+    right (result monomial = p_indices ++ q_indices), then simplify."""
     new: MonomialAccumulator = defaultdict(complex)
     for inds_a, coef_a in p.items():
         for coef_b, inds_b in q_terms:
             new[inds_a + inds_b] += coef_a * coef_b
+    return simplify_majorana_acc(new)
+
+
+def _left_mul(terms, p: "MonomialAccumulator") -> "MonomialAccumulator":
+    """Multiply the polynomial dict `p` on the LEFT by a list of (coeff, indices) `terms`
+    (result monomial = terms_indices ++ p_indices), then simplify."""
+    new: MonomialAccumulator = defaultdict(complex)
+    for coef_b, inds_b in terms:
+        for inds_a, coef_a in p.items():
+            new[inds_b + inds_a] += coef_b * coef_a
     return simplify_majorana_acc(new)
 
 
@@ -698,24 +709,31 @@ def generate_gauged_projector_terms(
     # Conjugate the representation on the odd sublattice (no-op for real reps such as D6).
     gauging_matrix = group_element if site % 2 == 0 else np.conjugate(group_element)
 
-    # Build the three GROUPED products separately. Within each group the per-alpha factors
-    # commute, so the internal order is irrelevant; the three groups must NOT be interleaved.
-    acc_w: MonomialAccumulator = defaultdict(complex)
-    acc_v: MonomialAccumulator = defaultdict(complex)
-    acc_wd: MonomialAccumulator = defaultdict(complex)
-    acc_w[()] = 1.0
-    acc_v[()] = 1.0
-    acc_wd[()] = 1.0
+    # Grouped operator: O = ( prod_a W_a ) ( prod_a V_a ) ( prod_a w_a^dag ).
+    #
+    # We assemble it MIDDLE-OUT to keep every intermediate bounded by the projector rank:
+    # build the vacuum-projector core ( prod V ) first, then left-multiply each W_a, then
+    # right-multiply each w_a^dag. This is exact -- the W_a commute among themselves and the
+    # w_a^dag commute among themselves, and every W stays to the LEFT of V while every w^dag
+    # stays to the RIGHT, so the grouped ordering is preserved. Building the free `prod W`
+    # (resp. `prod w^dag`) as an operator and then multiplying the two large polynomials --
+    # the naive grouped assembly -- blows the intermediate up combinatorially for a
+    # color-mixing M (|acc| ~ 9216, ~33 s/build); folding V into the middle keeps it ~bounded
+    # (|acc| ~ 4^(ncopy*ncolor)) and is ~36x faster, with identical output.
+    acc: MonomialAccumulator = defaultdict(complex)
+    acc[()] = 1.0
     for color in range(1, ncolor + 1):
         for copy in range(1, ncopy + 1):
             sc = sigma[copy - 1]
-            acc_w = _poly_mul(acc_w, _w_gauged_terms(copy, sc, eta2, color, ncolor, ncopy, gauging_matrix))
-            acc_v = _poly_mul(acc_v, _vacuum_terms(copy, sc, color, ncolor, ncopy))
-            acc_wd = _poly_mul(acc_wd, _w_dag_terms(copy, sc, eta2, color, ncolor, ncopy))
-
-    # Grouped operator: ( prod W ) ( prod V ) ( prod w^dag )
-    acc = _poly_mul(acc_w, [(coef, inds) for inds, coef in acc_v.items()])
-    acc = _poly_mul(acc, [(coef, inds) for inds, coef in acc_wd.items()])
+            acc = _poly_mul(acc, _vacuum_terms(copy, sc, color, ncolor, ncopy))
+    for color in range(1, ncolor + 1):
+        for copy in range(1, ncopy + 1):
+            sc = sigma[copy - 1]
+            acc = _left_mul(_w_gauged_terms(copy, sc, eta2, color, ncolor, ncopy, gauging_matrix), acc)
+    for color in range(1, ncolor + 1):
+        for copy in range(1, ncopy + 1):
+            sc = sigma[copy - 1]
+            acc = _poly_mul(acc, _w_dag_terms(copy, sc, eta2, color, ncolor, ncopy))
 
     # After finishing the product, add to the final sum weighted by pref (and the per-alpha 2x).
     for inds, coef in acc.items():
