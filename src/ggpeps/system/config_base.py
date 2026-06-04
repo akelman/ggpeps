@@ -510,6 +510,75 @@ def bracket_terms(
     return terms
 
 
+# ---------------------------------------------------------------------------
+# Per-(color,copy) operator PRIMITIVES for the gauged projector.
+#
+# The full gauged projector on a link is  O = U_h^dag w |Omega><Omega| w^dag, which equals
+#     O = ( prod_a W_a ) ( prod_a V_a ) ( prod_a w_a^dag )           [GROUPED ordering]
+# with, per alpha=(color,copy):
+#     W_a       = U_h^dag w_a U_h = 1 + xi  l^dag_a  sum_b M_{b a} r^dag_b   (gauged w factor)
+#     V_a       = l_a l^dag_a r_a r^dag_a                                    (vacuum projector)
+#     w_a^dag   = 1 + xibar r_a l_a
+# (l uses sigma_copy, r uses copy, matching the projector pairing.)
+#
+# NOTE on ordering: the older `bracket_terms` returns the per-alpha PRODUCT
+# W_a V_a w_a^dag and the assembly multiplied those together INTERLEAVED, i.e.
+# prod_a (W_a V_a w_a^dag). That equals the grouped operator only when the per-alpha
+# factors commute -- which holds for a COLOR-DIAGONAL representation M, but NOT for a
+# color-mixing (off-diagonal) M (then W_a references other colors' r^dag modes that do not
+# commute past the intervening V and w^dag). The grouped ordering below is correct for any M.
+# ---------------------------------------------------------------------------
+
+
+def _w_gauged_terms(copy, sigma_copy, eta2, color, ncolors, ncopies, gauging_matrix):
+    """W_a = 1 + eta2 * l^dag_(color,sigma_copy) * sum_b M_{b,color} r^dag_(b,copy)."""
+    c = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=1, ncolors=ncolors, ncopies=ncopies)
+    d = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=2, ncolors=ncolors, ncopies=ncopies)
+    terms: list[tuple[complex, tuple[int, ...]]] = [(1.0 + 0j, ())]
+    for m in range(1, ncolors + 1):
+        a_m = get_cov_matrix_idx(m, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
+        b_m = get_cov_matrix_idx(m, copy, direction=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
+        mel = gauging_matrix[m - 1][color - 1]
+        if abs(mel) < 1e-15:
+            continue
+        coef = eta2 * mel  # l^dag r^dag_m = 1/4[(c,a_m) + i(c,b_m) + i(d,a_m) - (d,b_m)]
+        terms += [
+            (0.25 * coef, (c, a_m)),
+            (0.25j * coef, (c, b_m)),
+            (0.25j * coef, (d, a_m)),
+            (-0.25 * coef, (d, b_m)),
+        ]
+    return terms
+
+
+def _vacuum_terms(copy, sigma_copy, color, ncolors, ncopies):
+    """V_a = l l^dag r r^dag = 1/4 (1 + i l1 l2)(1 + i r1 r2)."""
+    c = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=1, ncolors=ncolors, ncopies=ncopies)
+    d = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=2, ncolors=ncolors, ncopies=ncopies)
+    a = get_cov_matrix_idx(color, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
+    b = get_cov_matrix_idx(color, copy, direction=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
+    return [(0.25 + 0j, ()), (0.25j, (c, d)), (0.25j, (a, b)), (-0.25 + 0j, (c, d, a, b))]
+
+
+def _w_dag_terms(copy, sigma_copy, eta2, color, ncolors, ncopies):
+    """w_a^dag = 1 + conj(eta2) * r_(color,copy) l_(color,sigma_copy)."""
+    c = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=1, ncolors=ncolors, ncopies=ncopies)
+    d = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=2, ncolors=ncolors, ncopies=ncopies)
+    a = get_cov_matrix_idx(color, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
+    b = get_cov_matrix_idx(color, copy, direction=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
+    eb = complex(eta2).conjugate()  # r_a l_a = 1/4[(a,c) - i(a,d) - i(b,c) - (b,d)]
+    return [(1.0 + 0j, ()), (0.25 * eb, (a, c)), (-0.25j * eb, (a, d)), (-0.25j * eb, (b, c)), (-0.25 * eb, (b, d))]
+
+
+def _poly_mul(p: "MonomialAccumulator", q_terms) -> "MonomialAccumulator":
+    """Multiply a polynomial dict by a list of (coeff, indices) terms, then simplify."""
+    new: MonomialAccumulator = defaultdict(complex)
+    for inds_a, coef_a in p.items():
+        for coef_b, inds_b in q_terms:
+            new[inds_a + inds_b] += coef_a * coef_b
+    return simplify_majorana_acc(new)
+
+
 def snap_complex(z: complex, eps=1e-12) -> complex:
     """
     Component-wise zeroing of tiny real/imag parts.
@@ -618,24 +687,39 @@ def generate_gauged_projector_terms(
 
     # Initialize the final polynomial accumulator
     final_polynomial: dict[tuple[int, ...], complex] = defaultdict(complex)
-    # Multiply in each bracket
 
     pref = 4 ** (-ncopy * ncolor)
+    # The per-(color,copy) `bracket_terms` carried a factor of 2 relative to the bare
+    # W_a V_a w_a^dag product; building from the bare primitives below loses that factor,
+    # so we restore it here (2 per alpha) to keep the el_offset / el_mult_factor calibration
+    # and to reproduce the previous result exactly for color-diagonal representations.
+    norm_factor = 2 ** (ncopy * ncolor)
 
-    acc: MonomialAccumulator = defaultdict(complex)  # Accumulator of partial expansions: monomial tuple -> coefficient
-    acc[()] = 1.0  # multiplicative identity (empty monomial)
+    # Conjugate the representation on the odd sublattice (no-op for real reps such as D6).
+    gauging_matrix = group_element if site % 2 == 0 else np.conjugate(group_element)
+
+    # Build the three GROUPED products separately. Within each group the per-alpha factors
+    # commute, so the internal order is irrelevant; the three groups must NOT be interleaved.
+    acc_w: MonomialAccumulator = defaultdict(complex)
+    acc_v: MonomialAccumulator = defaultdict(complex)
+    acc_wd: MonomialAccumulator = defaultdict(complex)
+    acc_w[()] = 1.0
+    acc_v[()] = 1.0
+    acc_wd[()] = 1.0
     for color in range(1, ncolor + 1):
         for copy in range(1, ncopy + 1):
-            terms_j = bracket_terms(copy, sigma[copy - 1], eta2, color, ncolor, ncopy, group_element, site)
-            new_acc: MonomialAccumulator = defaultdict(complex)
-            for indsA, coefA in acc.items():
-                for coefB, indsB in terms_j:
-                    # Multiply polynomials (append indices, multiply coeffs)
-                    new_acc[indsA + indsB] += coefA * coefB
-            acc = simplify_majorana_acc(new_acc)
-    # After finishing the product, add to the final sum weighted by pref
+            sc = sigma[copy - 1]
+            acc_w = _poly_mul(acc_w, _w_gauged_terms(copy, sc, eta2, color, ncolor, ncopy, gauging_matrix))
+            acc_v = _poly_mul(acc_v, _vacuum_terms(copy, sc, color, ncolor, ncopy))
+            acc_wd = _poly_mul(acc_wd, _w_dag_terms(copy, sc, eta2, color, ncolor, ncopy))
+
+    # Grouped operator: ( prod W ) ( prod V ) ( prod w^dag )
+    acc = _poly_mul(acc_w, [(coef, inds) for inds, coef in acc_v.items()])
+    acc = _poly_mul(acc, [(coef, inds) for inds, coef in acc_wd.items()])
+
+    # After finishing the product, add to the final sum weighted by pref (and the per-alpha 2x).
     for inds, coef in acc.items():
-        final_polynomial[inds] += coef * pref
+        final_polynomial[inds] += coef * pref * norm_factor
     # Final simplification to avoid computing same pfaffian multiple times
     final_polynomial = simplify_majorana_acc(final_polynomial)
 
