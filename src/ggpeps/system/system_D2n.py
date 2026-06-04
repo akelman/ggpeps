@@ -451,11 +451,8 @@ class D2nSystem2D(System2DBase):
                     # are Hermitian, we can just take the real part here.
                     # At present, we drop these complex/imaginary terms higher in the stack to save on
                     # computation. We leave the xnp.real() for testing purposes.
-                    d_el_energy_vec = xnp.where(
-                        lognorm_default < -80,
-                        0.0,
-                        xnp.real(deriv_pf_tot_vec_vec[layerind, link_pos])
-                        * xnp.exp(norm_mod_vec[layerind][link_pos] - lognorm_default),
+                    d_el_energy_vec = xnp.real(deriv_pf_tot_vec_vec[layerind, link_pos]) * xnp.exp(
+                        norm_mod_vec[layerind][link_pos] - lognorm_default
                     )
 
                     # Summand with derivative of norms
