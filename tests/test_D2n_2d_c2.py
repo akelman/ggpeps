@@ -174,12 +174,14 @@ class TestD2nSystem(unittest.TestCase):
         )
         R = block_diag(R, R)  # block diagonal of 2 colors
         permutation_mat = np.array(
-            # change to correct mode ordering of:
-            # Psi_1,Psi_2, l1_1, r1_1,d1_1,u1_1, l1_2, r1_2,d1_2,u1_2, l2_1, r2_1,d2_1,u2_1,l2_2, r2_2,d2_2,u2_2
-            # Where the modes are labelled by directin{copy}_{color}.
+            # Reorder R from the BlockDiag(color1, color2) source order into the
+            # tmat mode order (color-outer):
+            #   Psi_1,Psi_2, l1_1,r1_1,d1_1,u1_1, l2_1,r2_1,d2_1,u2_1,
+            #                l1_2,r1_2,d1_2,u1_2, l2_2,r2_2,d2_2,u2_2
+            # (modes labelled direction{copy}_{color}, same as config_D6_2d correct_order)
             generate_permutation_matrix(
                 list(range(1, 19)),
-                [1, 10, 2, 3, 4, 5, 11, 12, 13, 14, 6, 7, 8, 9, 15, 16, 17, 18],
+                [1, 10, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18],
             )
         )
         R = np.transpose(permutation_mat) @ R @ permutation_mat
@@ -212,12 +214,14 @@ class TestD2nSystem(unittest.TestCase):
         )
         R = block_diag(R, R)  # block diagonal of 2 colors
         permutation_mat = np.array(
-            # change to correct mode ordering of:
-            # Psi_1,Psi_2, l1_1, r1_1,d1_1,u1_1, l1_2, r1_2,d1_2,u1_2, l2_1, r2_1,d2_1,u2_1,l2_2, r2_2,d2_2,u2_2
-            # Where the modes are labelled by direction{copy}_{color}.
+            # Reorder R from the BlockDiag(color1, color2) source order into the
+            # tmat mode order (color-outer):
+            #   Psi_1,Psi_2, l1_1,r1_1,d1_1,u1_1, l2_1,r2_1,d2_1,u2_1,
+            #                l1_2,r1_2,d1_2,u1_2, l2_2,r2_2,d2_2,u2_2
+            # (modes labelled direction{copy}_{color}, same as config_D6_2d correct_order)
             generate_permutation_matrix(
                 list(range(1, 19)),
-                [1, 10, 2, 3, 4, 5, 11, 12, 13, 14, 6, 7, 8, 9, 15, 16, 17, 18],
+                [1, 10, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18],
             )
         )
         R = np.transpose(permutation_mat) @ R @ permutation_mat
@@ -619,6 +623,68 @@ class TestD2nSystem(unittest.TestCase):
         res = ex_eval.evaluate()
         FM = res["FM_1x1"]
         self.assertAlmostEqual(FM, FM_ed, places=2)
+
+
+class TestD6TmatColorStructure(unittest.TestCase):
+    """Regression tests pinning the *color* structure of the D6 T-matrix.
+
+     Antisymmetry and rotation invariance are already covered by test_Tmat_symmetries_*,
+    so they are intentionally not repeated here.
+
+    tmat mode order (config_D6_2d.py, color-outer): indices
+        0      = Psi1 (color-1 physical),   1      = Psi2 (color-2 physical)
+        2..9   = color-1 virtuals,          10..17 = color-2 virtuals
+    """
+
+    COLOR1_IDX = [0, 2, 3, 4, 5, 6, 7, 8, 9]
+    COLOR2_IDX = [1, 10, 11, 12, 13, 14, 15, 16, 17]
+
+    def setUp(self):
+        lat = lattice.Lattice2D(2, 2)
+        num_pg_layer = 1
+        num_fermionic_layer = 1  # a fermionic layer keeps t1 (phys-virt coupling) nonzero
+        paramvec = np.random.rand(num_pg_layer + num_fermionic_layer, 1, 20)
+        cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer, num_fermionic_layer)
+        cfg.paramvec = paramvec
+        self.system_D6 = system.D2nSystem2D(cfg)
+        self.system_D6.cfg.enforce_parameter_conditions(self.system_D6.cfg.paramvec)
+
+    def test_tmat_no_cross_color_coupling(self):
+        """T has zero coupling between color-1 and color-2 modes (block-diagonal in color).
+        Includes the physical modes: Psi1 must not couple to color-2 virtuals or to Psi2.
+        """
+        for lay in range(self.system_D6.cfg.nlayer):
+            tmat = np.array(self.system_D6.tmat_layervec_sitevec[lay][0])
+            cross_block = tmat[np.ix_(self.COLOR1_IDX, self.COLOR2_IDX)]
+            with self.subTest(layer=lay):
+                self.assertTrue(np.allclose(cross_block, 0))
+
+    def test_tmat_color_blocks_identical(self):
+        """The two color blocks (each = its physical mode + its 8 virtual modes) are equal:
+        the two colors share the same variational parameters.
+        """
+        for lay in range(self.system_D6.cfg.nlayer):
+            tmat = np.array(self.system_D6.tmat_layervec_sitevec[lay][0])
+            block1 = tmat[np.ix_(self.COLOR1_IDX, self.COLOR1_IDX)]
+            block2 = tmat[np.ix_(self.COLOR2_IDX, self.COLOR2_IDX)]
+            with self.subTest(layer=lay):
+                self.assertTrue(np.allclose(block1, block2))
+
+    def test_tmat_physical_virtual_coupling_is_color_local(self):
+        """Anti-vacuity guard for the tests above: a fermionic layer must actually couple
+        each physical mode to its own color's virtuals (t1 != 0), while a pure-gauge layer
+        must not (t1 == 0). Combined with test_tmat_no_cross_color_coupling this confirms
+        each physical mode couples to its own color only.
+        """
+        cfg = self.system_D6.cfg
+        for lay in range(cfg.nlayer):
+            tmat = np.array(self.system_D6.tmat_layervec_sitevec[lay][0])
+            psi1_to_color1 = tmat[0, 2:10]  # Psi1 -> color-1 virtuals
+            with self.subTest(layer=lay):
+                if lay < cfg.num_pg_layer:
+                    self.assertTrue(np.allclose(psi1_to_color1, 0))
+                else:
+                    self.assertFalse(np.allclose(psi1_to_color1, 0))
 
 
 # class TestTransVariance(unittest.TestCase):
