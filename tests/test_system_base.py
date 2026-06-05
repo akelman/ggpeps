@@ -3,6 +3,7 @@ import numpy as np
 
 from ggpeps import lattice, system, utils
 from ggpeps import xnp as xnp
+from ggpeps.system.config_base import get_cov_matrix_idx
 
 
 class TestSystemBase(unittest.TestCase):
@@ -504,3 +505,112 @@ class TestSystemBaseDimensions(unittest.TestCase):
         target_shape = self.system_z2_2c.cfg.param_shape()
 
         self.assertTrue(shape == target_shape)
+
+
+class TestMultiColorModeOrder(unittest.TestCase):
+    """Regression tests for the color-outer / copy-inner mode ordering when num_colors > 1.
+
+    The Z2 mode-order tests above only ever exercise num_colors=1 (the "2C" Z2 configs
+    have two *copies* but a single color, since the Z2 representation is 1-dimensional).
+    With a single color the `for color` loop in get_link_based_mode_order /
+    get_site_based_mode_order is trivial, so the color-vs-copy nesting is never checked.
+    """
+
+    def setUp(self):
+        lat = lattice.Lattice2D(2, 2)
+        num_pg_layer = 1
+        num_fermionic_layer = 0
+        paramvec = np.random.rand(num_pg_layer + num_fermionic_layer, 1, 20)
+        cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer, num_fermionic_layer)
+        cfg.paramvec = paramvec
+        self.system_D6 = system.D2nSystem2D(cfg)
+        self.system_D6.cfg.enforce_parameter_conditions(self.system_D6.cfg.paramvec)
+
+        self.ncolor = self.system_D6.cfg.gaugemgr.rep_dim
+        self.ncopy = self.system_D6.cfg.ncopy
+        # Guard: these tests are only meaningful for a genuinely multi-color, multi-copy system.
+        self.assertEqual((self.ncolor, self.ncopy), (2, 2))
+
+    def test_link_based_mode_order_D6_first_link(self):
+        """The first horizontal link must list its 16 modes color-outer, copy-inner.
+
+        Mode string format is "<letter><maj>_<copy>_<color>_<link>".
+        """
+        modes = self.system_D6.get_link_based_mode_order()
+        expected_first_link = [
+            # color 1, copy 1
+            "l1_1_1_0", "l2_1_1_0", "r1_1_1_0", "r2_1_1_0",
+            # color 1, copy 2
+            "l1_2_1_0", "l2_2_1_0", "r1_2_1_0", "r2_2_1_0",
+            # color 2, copy 1
+            "l1_1_2_0", "l2_1_2_0", "r1_1_2_0", "r2_1_2_0",
+            # color 2, copy 2
+            "l1_2_2_0", "l2_2_2_0", "r1_2_2_0", "r2_2_2_0",
+        ]  # fmt: skip
+        self.assertEqual(modes[: len(expected_first_link)], expected_first_link)
+
+    def test_site_based_mode_order_D6_first_site(self):
+        """The first site must list its modes color-outer, copy-inner, with the 8 dir/maj
+        modes l1,l2,r1,r2,d1,d2,u1,u2 per (color, copy). Link ids are lattice-specific,
+        so only the (letter, copy, color) nesting is asserted here.
+        """
+        modes = self.system_D6.get_site_based_mode_order()
+        modes_per_site = 8 * self.ncolor * self.ncopy
+        first_site = modes[:modes_per_site]
+
+        dirmaj = ["l1", "l2", "r1", "r2", "d1", "d2", "u1", "u2"]
+        expected = [
+            (letter, copy, color)
+            for color in range(1, self.ncolor + 1)
+            for copy in range(1, self.ncopy + 1)
+            for letter in dirmaj
+        ]
+        actual = []
+        for mode in first_site:
+            letter, copy_s, color_s, _link = mode.split("_")
+            actual.append((letter, int(copy_s), int(color_s)))
+        self.assertEqual(actual, expected)
+
+    def test_link_order_consistent_with_get_cov_matrix_idx(self):
+        """Within a single link, the position of each mode in get_link_based_mode_order
+        must equal get_cov_matrix_idx(...) -- i.e. the mode-order builder and the index
+        helper share one convention. This is the direct contract _expand_gamma_maj_to_system
+        depends on, checked against an independent function so it is not a loop self-copy.
+        """
+        modes = self.system_D6.get_link_based_mode_order()
+        modes_per_link = 4 * self.ncolor * self.ncopy
+        first_link = modes[:modes_per_link]
+
+        # letter -> (direction, majorana); link has 2 directions (1=left, 2=right).
+        letter_to_dir_maj = {"l1": (1, 1), "l2": (1, 2), "r1": (2, 1), "r2": (2, 2)}
+        for pos, mode in enumerate(first_link):
+            letter, copy_s, color_s, _link = mode.split("_")
+            direction, majorana = letter_to_dir_maj[letter]
+            idx = get_cov_matrix_idx(int(color_s), int(copy_s), direction, majorana, self.ncolor, self.ncopy)
+            with self.subTest(mode=mode):
+                self.assertEqual(pos, idx)
+
+    def test_color_outer_invariant(self):
+        """Anti-transposition guard: within each link, every color-1 mode precedes every
+        color-2 mode (the defining property of color-outer ordering). A copy<->color swap
+        would interleave the colors and break this.
+        """
+        modes = self.system_D6.get_link_based_mode_order()
+        modes_per_link = 4 * self.ncolor * self.ncopy
+        first_link = modes[:modes_per_link]
+        colors_in_order = [int(mode.split("_")[2]) for mode in first_link]
+        # The color sequence must be non-decreasing (1,1,...,2,2,...), never interleaved.
+        self.assertEqual(colors_in_order, sorted(colors_in_order))
+        self.assertEqual(set(colors_in_order), {1, 2})
+
+    def test_gamma_maj_sys_vec_D6_is_valid_covariance(self):
+        """End-to-end smoke test: the multi-color path through _expand_gamma_maj_to_system
+        runs and yields a real, antisymmetric, pure-state (Gamma^2 = -I) covariance matrix.
+        """
+        gamma_sys = np.array(self.system_D6.gamma_maj_sys_vec)
+        for lay in range(gamma_sys.shape[0]):
+            g = gamma_sys[lay]
+            with self.subTest(layer=lay):
+                self.assertTrue(np.allclose(g.imag, 0))
+                self.assertTrue(np.allclose(g, -np.transpose(g)))
+                self.assertTrue(np.allclose(g @ g, -np.eye(g.shape[0])))
