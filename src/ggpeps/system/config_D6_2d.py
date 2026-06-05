@@ -31,11 +31,18 @@ class D6System2D_Config(Config2DBase):
     Where color 1 (m=0) contains the 1st and 2nd virtual copies and Psi1,
     and color 2 (m=1) contains the 1st and 2nd virtual copies of that color (often indexed 3,4 in code) and Psi2.
 
-    Mode order of gamma_dirac:
-        {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
-    Mode order of gamma_maj:
-        {p_1,p_2,l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2,l3_1, l3_2, r3_1, r3_2, l4_1, l4_2, r4_1, r4_2,
-        d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u3_2,d3_1, d3_2, u3_1, u3_2, d4_1, d4_2, u4_1, u4_2}.
+    Mode order of gamma_dirac (the output of tmat_to_covariance_matrix): the 18 Dirac
+    annihilation modes in the same order as tmat above, followed by the 18 creation
+    (daggered) modes:
+        [Psi1, Psi2, l1_1, r1_1, d1_1, u1_1, l2_1, r2_1, d2_1, u2_1,
+                     l1_2, r1_2, d1_2, u1_2, l2_2, r2_2, d2_2, u2_2,
+         Psi1_dag, Psi2_dag, l1_1_dag, ... , u2_2_dag].
+    Mode order of gamma_maj (after generate_smat): each Dirac mode `a` is replaced by its
+    two adjacent Majoranas gamma^1 = a + a_dag, gamma^2 = i(a - a_dag), preserving the
+    tmat order. So the 4 physical Majoranas come first, then for each (color, copy) the 8
+    Majoranas of l, r, d, u:
+        Psi1^1, Psi1^2, Psi2^1, Psi2^2,
+        l1_1^1, l1_1^2, r1_1^1, r1_1^2, d1_1^1, d1_1^2, u1_1^1, u1_1^2, l2_1^1, ... , u2_2^2.
     """
 
     _nparams = 20
