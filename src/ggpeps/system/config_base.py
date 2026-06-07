@@ -511,7 +511,7 @@ def bracket_terms(
 
 
 # ---------------------------------------------------------------------------
-# Per-(color,copy) operator PRIMITIVES for the gauged projector.
+# Per-(color,copy) operator.
 #
 # The full gauged projector on a link is  O = U_h^dag w |Omega><Omega| w^dag, which equals
 #     O = ( prod_a W_a ) ( prod_a V_a ) ( prod_a w_a^dag )
