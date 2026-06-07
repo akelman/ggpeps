@@ -366,7 +366,7 @@ class Config2DBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
 
-# ==================== ZN Gauged Projector Terms ====================
+# ==================== Pfaffian indices Terms ====================
 
 
 from collections import defaultdict
@@ -514,19 +514,13 @@ def bracket_terms(
 # Per-(color,copy) operator PRIMITIVES for the gauged projector.
 #
 # The full gauged projector on a link is  O = U_h^dag w |Omega><Omega| w^dag, which equals
-#     O = ( prod_a W_a ) ( prod_a V_a ) ( prod_a w_a^dag )           [GROUPED ordering]
+#     O = ( prod_a W_a ) ( prod_a V_a ) ( prod_a w_a^dag )
 # with, per alpha=(color,copy):
-#     W_a       = U_h^dag w_a U_h = 1 + xi  l^dag_a  sum_b M_{b a} r^dag_b   (gauged w factor)
+#     W_a       = U_h^dag w_a U_h = 1 + eta2  l^dag_a  sum_b M_{b a} r^dag_b   (gauged w factor)
 #     V_a       = l_a l^dag_a r_a r^dag_a                                    (vacuum projector)
-#     w_a^dag   = 1 + xibar r_a l_a
+#     w_a^dag   = 1 + eta2bar r_a l_a
 # (l uses sigma_copy, r uses copy, matching the projector pairing.)
 #
-# NOTE on ordering: the older `bracket_terms` returns the per-alpha PRODUCT
-# W_a V_a w_a^dag and the assembly multiplied those together INTERLEAVED, i.e.
-# prod_a (W_a V_a w_a^dag). That equals the grouped operator only when the per-alpha
-# factors commute -- which holds for a COLOR-DIAGONAL representation M, but NOT for a
-# color-mixing (off-diagonal) M (then W_a references other colors' r^dag modes that do not
-# commute past the intervening V and w^dag). The grouped ordering below is correct for any M.
 # ---------------------------------------------------------------------------
 
 
@@ -650,28 +644,16 @@ def generate_gauged_projector_terms(
     """
     Expand the gauged projector product and collect terms.
 
-    This function computes the expansion of the projector operator for the GGFPEPS ansatz.
-    Mathematically, it calculates:
 
-    Sum_{h in G} [ Prefactor(h) * Product_{color=1}^{ncolor} Product_{copy=1}^{ncopy} Bracket(h, copy, color) ]
-
-    where:
-    - Prefactor(h) = (1/|G|) * 4^{-(ncopy * ncolor)} *
-                    * Sum_{irrep} ( dim(irrep) * chi_irrep(h^-1) * electric_energy_factor(irrep) )
-    - Bracket(h, copy, color) is the 16-term Majorana polynomial associated with the group element h.
-
-    The function performs the following steps:
-    1. Maps orientation to eta^2 (horizontal -> 1, vertical -> i).
-    2. Sums over all group elements 'h', accumulating the polynomial product for each 'h'.
-    3. Multiplies the result by the Pfaffian-Wick phase i^(-N/2) for each term.
-    4. Returns a sparse polynomial representation sorted canonically.
+    The function computes the indices for which we take the Pfaffian of the modificed covariance matrix,
+    needed for the electric energy calculation.
 
     Args:
         ncopy (int): Number of copies.
         ncolor (int): Number of colors.
         mix_copies (bool): whether to mix copies in the projectors (controls sigma permutation).
         orientation (Direction): 'X' (horizontal, eta^2 = 1) or 'Y' (vertical, eta^2 = i).
-        gaugemgr (Union[gauge.ZNGauge, gauge.D2nGauge]): Gauge manager handling group structure and irreps.
+        group_element (np.ndarray): Group element h.
         site (int, optional): Site index (used for parity-dependent conjugation). Defaults to 0.
         drop_real_zero (bool, optional): Whether to drop terms with zero real part in coefficients. Defaults to True.
 
@@ -699,27 +681,11 @@ def generate_gauged_projector_terms(
     # Initialize the final polynomial accumulator
     final_polynomial: dict[tuple[int, ...], complex] = defaultdict(complex)
 
-    pref = 4 ** (-ncopy * ncolor)
-    # The per-(color,copy) `bracket_terms` carried a factor of 2 relative to the bare
-    # W_a V_a w_a^dag product; building from the bare primitives below loses that factor,
-    # so we restore it here (2 per alpha) to keep the el_offset / el_mult_factor calibration
-    # and to reproduce the previous result exactly for color-diagonal representations.
-    norm_factor = 2 ** (ncopy * ncolor)
+    pref = 2 ** (-ncopy * ncolor)  # Normalization factor from the projectors
 
-    # Conjugate the representation on the odd sublattice (no-op for real reps such as D6).
+    # Conjugate the representation on the odd sublattice
     gauging_matrix = group_element if site % 2 == 0 else np.conjugate(group_element)
 
-    # Grouped operator: O = ( prod_a W_a ) ( prod_a V_a ) ( prod_a w_a^dag ).
-    #
-    # We assemble it MIDDLE-OUT to keep every intermediate bounded by the projector rank:
-    # build the vacuum-projector core ( prod V ) first, then left-multiply each W_a, then
-    # right-multiply each w_a^dag. This is exact -- the W_a commute among themselves and the
-    # w_a^dag commute among themselves, and every W stays to the LEFT of V while every w^dag
-    # stays to the RIGHT, so the grouped ordering is preserved. Building the free `prod W`
-    # (resp. `prod w^dag`) as an operator and then multiplying the two large polynomials --
-    # the naive grouped assembly -- blows the intermediate up combinatorially for a
-    # color-mixing M (|acc| ~ 9216, ~33 s/build); folding V into the middle keeps it ~bounded
-    # (|acc| ~ 4^(ncopy*ncolor)) and is ~36x faster, with identical output.
     acc: MonomialAccumulator = defaultdict(complex)
     acc[()] = 1.0
     for color in range(1, ncolor + 1):
@@ -737,7 +703,7 @@ def generate_gauged_projector_terms(
 
     # After finishing the product, add to the final sum weighted by pref (and the per-alpha 2x).
     for inds, coef in acc.items():
-        final_polynomial[inds] += coef * pref * norm_factor
+        final_polynomial[inds] += coef * pref
     # Final simplification to avoid computing same pfaffian multiple times
     final_polynomial = simplify_majorana_acc(final_polynomial)
 
@@ -795,7 +761,7 @@ def get_cov_matrix_idx(
 def simplify_majorana_acc(acc):
     """
     Simplifies the Majorana polynomial accumulator.
-    1. Reorders indices to canonical order (applying sign flips for swaps).
+    1. Sorts indices to order (applying sign flips for swaps).
     2. Contracts identical adjacent pairs (c_i^2 = 1).
     3. Aggregates identical terms using _snap_complex for numerical stability.
 
