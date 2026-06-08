@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union, Optional
+from typing import Optional
 
 import sys
 import logging
@@ -58,7 +58,7 @@ class Config2DBase(ABC):
 
     def __init__(
         self,
-        gaugemgr: Union[gauge.ZNGauge, gauge.D2nGauge],
+        gaugemgr: gauge.GaugeGroup,
         lattice: Lattice2D,
         g_el: float,
         g_mag: float,
@@ -639,7 +639,7 @@ def generate_gauged_projector_terms(
     orientation: Direction,
     group_element: np.ndarray,
     site: int = 0,
-    drop_real_zero: bool = True,
+    drop_real_zero: bool = False,
 ) -> tuple[tuple[tuple[complex, tuple[int, ...]], ...], complex]:
     """
     Expand the gauged projector product and collect terms.

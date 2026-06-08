@@ -148,7 +148,7 @@ class Z2System2D(System2DBase):
         self.invalidate_gauge_update()
 
     ################## Observables ##################
-    def _compute_mag_energy_op(self, use_trans_inv: bool = False):
+    def _compute_mag_energy_op(self, use_trans_inv: bool = False) -> float:
         if use_trans_inv:
             if self.cfg.unitcell_size > 1:
                 raise ValueError("Cannot rely on translation invariance if unitcell size is >1.")
@@ -183,7 +183,7 @@ class Z2System2D(System2DBase):
 
         num_el_links = len(mod_link_inds)  # number of links on which the electric energy is computed
         num_group_elements = len(group_elements_for_el_energy)
-        dest = xnp.zeros((num_group_elements, nlayer, num_el_links))
+        dest = xnp.zeros((num_group_elements, nlayer, num_el_links), dtype=complex)
 
         # TODO: vectorize!
         for group_element_idx in range(num_group_elements):
@@ -207,9 +207,9 @@ class Z2System2D(System2DBase):
                         ]
                         pf_tot += xnp.dot(array_size_term, current_pfaffians)
 
-                    # xnp.real() is only for testing purposes, since the Pfaffian's with imaginary components are
-                    # now dropped higher up in the stack.
-                    el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
+                    # Keep el_energy_link COMPLEX. The real part is taken only after the product over
+                    # layers and the sum over group elements (prod(Re) != Re(prod)).
+                    el_energy_link = pf_tot * xnp.exp(norm_mod - lognorm_default)
 
                     dest = backend.array_assign(dest, (group_element_idx, layerind, link_pos), el_energy_link)
 
@@ -272,7 +272,7 @@ class Z2System2D(System2DBase):
 
         nlayer = num_pg_layer + num_fermionic_layer
         grad_shape = (num_group_elements, nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
-        dest_grad = xnp.zeros(grad_shape)
+        dest_grad = xnp.zeros(grad_shape, dtype=complex)  # real part taken after the layer product
 
         nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
         k = 2 * nvirtmodes_link  # single link offset
@@ -318,10 +318,18 @@ class Z2System2D(System2DBase):
         # Calculate the modified norms
         norm_shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
         prod_vec = xnp.zeros(norm_shape)
-        # The following line takes >50% of the runtime of this function, but most of that is actually spent
-        # copying data due to the fancy indexing of prod_mod_norm_vec[l, m]
-        # TODO: optimize this (the main complication is dealing with the reshaped arrays after indexing)
-        vals = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec[l, m]))
+        # We now compute
+        #   vals = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec[l, m]))
+        # However, doing so in that form (i.e. using fancy indexing) requires (for numpy) copying into a new array
+        # which is very expensive. It's cheaper to loop (and lose vectorization) in order to reduce copying.
+        # TODO: copy this to Dn implemntation, and see which version is faster
+        nactive = d_mat_d_vec.shape[0]
+        vals = xnp.zeros(nactive)
+        for idx in range(nactive):
+            # l[idx] is the layer index of a non-zero parameter
+            # m[idx] is the link index of a non-zero parameter
+            val = utils.trace_of_product((d_mat_d_vec[idx], prod_mod_norm_vec[l[idx], m[idx]]))
+            vals = backend.array_assign(vals, idx, val)
         prod_vec = backend.array_assign(prod_vec, (l, m, u, s), vals)
 
         for group_element_idx in range(num_group_elements):
@@ -329,7 +337,9 @@ class Z2System2D(System2DBase):
             idxarrs_group_element = idxarr_vec[group_element_idx]
             coeffs_vec_group_element = coeffs_vec[group_element_idx]
 
-            deriv_pf_tot_vec_vec = xnp.zeros((nlayer, len(mod_link_inds), unitcell_size, len(symbolvec)))
+            deriv_pf_tot_vec_vec = xnp.zeros(
+                (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec)), dtype=complex
+            )
 
             for layerind in range(nlayer):
 
@@ -362,7 +372,8 @@ class Z2System2D(System2DBase):
                     # are Hermitian, we can just take the real part here.
                     # At present, we drop these complex/imaginary terms higher in the stack to save on
                     # computation. We leave the xnp.real() for testing purposes.
-                    d_el_energy_vec = xnp.real(deriv_pf_tot_vec_vec[layerind, link_pos]) * xnp.exp(
+                    # Keep COMPLEX; the real part is taken after the layer product + group sum below.
+                    d_el_energy_vec = deriv_pf_tot_vec_vec[layerind, link_pos] * xnp.exp(
                         norm_mod_vec[layerind][link_pos] - lognorm_default
                     )
 
@@ -396,7 +407,8 @@ class Z2System2D(System2DBase):
         dest_grad = xnp.sum(dest_grad, axis=0)  # sum over group elements
         dest_grad = xnp.sum(dest_grad, axis=1)  # sum over the links
 
-        return dest_grad
+        # Take the real part only now, after the layer product and the group-element sum.
+        return xnp.real(dest_grad)
 
     @staticmethod
     @maybe_jit(static_argnames=["use_trans_inv"])

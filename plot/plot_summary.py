@@ -161,7 +161,7 @@ def main(args):
                 type_, L, nlayer, ncopy = name
 
                 # Get x axis values
-                if isinstance(group[args.xaxis].iloc[0], np.ndarray):
+                if isinstance(group[args.xaxis].iloc[0], np.ndarray) and group[args.xaxis].iloc[0].ndim > 1:
                     # Handle case where chosen values are an array
                     xaxis_values = group[args.xaxis].apply(lambda x: x[args.xaxis_ind])
                 else:

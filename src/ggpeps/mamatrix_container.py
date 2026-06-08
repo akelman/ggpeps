@@ -1,7 +1,10 @@
+from collections.abc import Callable
+from typing import Any
+
 import numpy as np
 import numpy.lib.mixins
 
-HANDLED_FUNCTIONS = {}
+HANDLED_FUNCTIONS: dict[Callable[..., Any], Callable[..., Any]] = {}
 
 
 def implements(np_function):
