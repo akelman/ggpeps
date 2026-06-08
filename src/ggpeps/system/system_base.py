@@ -1828,10 +1828,10 @@ class System2DBase(ABC):
         """
         if self._el_energy_op is None:
             nlinks = self.cfg.lattice.nlinks
-            el_energy_link_vec = xnp.prod(self.el_energy_op_vec, axis=1, dtype=float)  # product over layers
-            el_energy_link_vec = xnp.sum(el_energy_link_vec, axis=0, dtype=float)  # sum over group elements
+            el_energy_link_vec = xnp.prod(self.el_energy_op_vec, axis=1)  # complex product over layers
+            el_energy_link_vec = xnp.sum(el_energy_link_vec, axis=0)  # sum over group elements (complex)
 
-            self._el_energy_op = (nlinks / len(self.cfg.mod_link_inds)) * xnp.sum(el_energy_link_vec)
+            self._el_energy_op = xnp.real((nlinks / len(self.cfg.mod_link_inds)) * xnp.sum(el_energy_link_vec))
         return self._el_energy_op
 
     @property

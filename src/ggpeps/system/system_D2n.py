@@ -267,7 +267,7 @@ class D2nSystem2D(System2DBase):
 
         num_el_links = len(mod_link_inds)  # number of links on which the electric energy is computed
         num_group_elements = len(group_elements_for_el_energy)
-        dest = xnp.zeros((num_group_elements, nlayer, num_el_links))
+        dest = xnp.zeros((num_group_elements, nlayer, num_el_links), dtype=complex)
 
         # TODO: vectorize!
         for group_element_idx in range(num_group_elements):
@@ -291,9 +291,11 @@ class D2nSystem2D(System2DBase):
                         ]
                         pf_tot += xnp.dot(array_size_term, current_pfaffians)
 
-                    # xnp.real() is only for testing purposes, since the Pfaffian's with imaginary components are
-                    # now dropped higher up in the stack.
-                    el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
+                    # Keep el_energy_link COMPLEX. The gauged projector is not hermitian for
+                    # non-Abelian reflections, so the imaginary part is physical here; the real part
+                    # is taken only after the product over layers and the sum over group elements
+                    # (prod(Re) != Re(prod)). See el_energy_op in system_base.
+                    el_energy_link = pf_tot * xnp.exp(norm_mod - lognorm_default)
 
                     dest = backend.array_assign(dest, (group_element_idx, layerind, link_pos), el_energy_link)
         return dest
@@ -355,7 +357,9 @@ class D2nSystem2D(System2DBase):
 
         nlayer = num_pg_layer + num_fermionic_layer
         grad_shape = (num_group_elements, nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
-        dest_grad = xnp.zeros(grad_shape)
+        # Kept COMPLEX: the gauged projector is non-hermitian for non-Abelian reflections, so the
+        # real part is taken only after the product over layers (and sum over group elements).
+        dest_grad = xnp.zeros(grad_shape, dtype=complex)
 
         nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
         k = 2 * nvirtmodes_link  # single link offset
@@ -416,7 +420,9 @@ class D2nSystem2D(System2DBase):
             idxarrs_group_element = idxarr_vec[group_element_idx]
             coeffs_vec_group_element = coeffs_vec[group_element_idx]
 
-            deriv_pf_tot_vec_vec = xnp.zeros((nlayer, len(mod_link_inds), unitcell_size, len(symbolvec)))
+            deriv_pf_tot_vec_vec = xnp.zeros(
+                (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec)), dtype=complex
+            )
 
             for layerind in range(nlayer):
 
@@ -444,12 +450,10 @@ class D2nSystem2D(System2DBase):
                             xnp.sum(prefactors * deriv_pf_tot_vectorized, axis=-1),
                         )
 
-                    # In previous versions of the code, Pfaffians with complex/imaginary coefficients
-                    # were included, but dropped here. Since operators of interest (electric energy + grad)
-                    # are Hermitian, we can just take the real part here.
-                    # At present, we drop these complex/imaginary terms higher in the stack to save on
-                    # computation. We leave the xnp.real() for testing purposes.
-                    d_el_energy_vec = xnp.real(deriv_pf_tot_vec_vec[layerind, link_pos]) * xnp.exp(
+                    # Keep COMPLEX: the gauged projector is non-hermitian for non-Abelian
+                    # reflections, so the real part must be taken only after the product over layers
+                    # (and the sum over group elements) at the end of this function, not here.
+                    d_el_energy_vec = deriv_pf_tot_vec_vec[layerind, link_pos] * xnp.exp(
                         norm_mod_vec[layerind][link_pos] - lognorm_default
                     )
 
@@ -483,7 +487,8 @@ class D2nSystem2D(System2DBase):
         dest_grad = xnp.sum(dest_grad, axis=0)  # sum over group elements
         dest_grad = xnp.sum(dest_grad, axis=1)  # sum over the links
 
-        return dest_grad
+        # Take the real part only now, after the layer product and the group-element sum.
+        return xnp.real(dest_grad)
 
     @staticmethod
     def _compute_mass_energy_op_vec(
