@@ -1,4 +1,6 @@
 import unittest
+from collections import defaultdict
+
 import numpy as np
 
 import ggpeps.system.config_base as config_base
@@ -350,3 +352,391 @@ class TestElectricContstants(unittest.TestCase):
         """Test that the electric energy calculation returns the same result whether or not
         the imaginary parts are included in the calculation."""
         pass
+
+
+# ============================================================================
+# These helpers re-derive, FROM SCRATCH (creation/annihilation operators), the
+# polynomials that `_vacuum_terms`, `_w_gauged_terms`, `_w_dag_terms` and the
+# grouped assembly in `generate_gauged_projector_terms` are supposed to return.
+#
+#   c^dag = 1/2 (g1 + i g2),   c = 1/2 (g1 - i g2)
+#   xi_k  = 1 (Direction.X) or i (Direction.Y)
+#   V_a      = (l l^dag)(r r^dag)
+#   W_a(h)   = 1 + xi  l^dag_(color,sc) sum_m M[m,color] r^dag_(m,copy)
+#   w_a^dag  = 1 + conj(xi)  r_(color,copy) l_(color,sc)
+#   O_h      = pref * (prod_a W_a)(prod_a V_a)(prod_a w_a^dag),  pref = 2^-(ncolor*ncopy)
+# ============================================================================
+
+
+def _ora_canon(poly):
+    """Canonicalize a Majorana polynomial: sort indices (sign from transpositions),
+    contract c_i^2 = 1, aggregate, drop ~0. Independent of the production code."""
+    out = defaultdict(complex)
+    for inds, coef in poly.items():
+        lst = list(inds)
+        sign = 1
+        n = len(lst)
+        for i in range(n):  # bubble sort, track parity of swaps
+            for j in range(n - 1 - i):
+                if lst[j] > lst[j + 1]:
+                    lst[j], lst[j + 1] = lst[j + 1], lst[j]
+                    sign = -sign
+        stack = []  # contract adjacent equal pairs (c^2 = 1)
+        for x in lst:
+            if stack and stack[-1] == x:
+                stack.pop()
+            else:
+                stack.append(x)
+        out[tuple(stack)] += coef * sign
+    return {k: v for k, v in out.items() if abs(v) > 1e-12}
+
+
+def _ora_mul(p, q):
+    """Multiply two polynomials; monomial = p_indices ++ q_indices (order matters)."""
+    out = defaultdict(complex)
+    for pi, pc in p.items():
+        for qi, qc in q.items():
+            out[pi + qi] += pc * qc
+    return _ora_canon(out)
+
+
+def _ora_scale(poly, s):
+    return {k: v * s for k, v in poly.items()}
+
+
+def _ora_add(*polys):
+    acc = defaultdict(complex)
+    for p in polys:
+        for k, v in p.items():
+            acc[k] += v
+    return _ora_canon(acc)
+
+
+_ORA_ID = {(): 1.0 + 0j}
+
+
+def _ora_idx(color, copy, direction, majorana, ncolors, ncopies, ndir=2):
+    """Flat Majorana index built by ENUMERATING the documented mode ordering
+    (grouped color -> copy -> direction -> majorana), rather than re-deriving the
+    mixed-radix arithmetic the production code uses. This keeps the oracle an
+    independent encoding of the *convention*: a wrong radix / off-by-one in
+    get_cov_matrix_idx would diverge from this enumeration."""
+    order = [
+        (c, cp, d, m)
+        for c in range(1, ncolors + 1)
+        for cp in range(1, ncopies + 1)
+        for d in range(1, ndir + 1)
+        for m in range(1, 3)
+    ]
+    return order.index((color, copy, direction, majorana))
+
+
+def _ora_cdag(g1, g2):
+    return {(g1,): 0.5 + 0j, (g2,): 0.5j}
+
+
+def _ora_cann(g1, g2):
+    return {(g1,): 0.5 + 0j, (g2,): -0.5j}
+
+
+def _ora_sigma(ncopy, mix_copies):
+    """Independent reimplementation of make_sigma's pairing permutation (1-based)."""
+    if not mix_copies or ncopy == 1:
+        return tuple(range(1, ncopy + 1))
+    s = [0] * ncopy
+    for a in range(1, ncopy // 2 + 1):
+        i, j = 2 * a - 1, 2 * a
+        s[i - 1] = j
+        s[j - 1] = i
+    return tuple(s)
+
+
+def _ora_vacuum(copy, sc, color, ncolors, ncopies):
+    l1 = _ora_idx(color, sc, 1, 1, ncolors, ncopies)
+    l2 = _ora_idx(color, sc, 1, 2, ncolors, ncopies)
+    r1 = _ora_idx(color, copy, 2, 1, ncolors, ncopies)
+    r2 = _ora_idx(color, copy, 2, 2, ncolors, ncopies)
+    ll = _ora_mul(_ora_cann(l1, l2), _ora_cdag(l1, l2))
+    rr = _ora_mul(_ora_cann(r1, r2), _ora_cdag(r1, r2))
+    return _ora_mul(ll, rr)
+
+
+def _ora_w_gauged(copy, sc, eta2, color, ncolors, ncopies, M):
+    l1 = _ora_idx(color, sc, 1, 1, ncolors, ncopies)
+    l2 = _ora_idx(color, sc, 1, 2, ncolors, ncopies)
+    pieces = [_ORA_ID]
+    for m in range(1, ncolors + 1):
+        r1 = _ora_idx(m, copy, 2, 1, ncolors, ncopies)
+        r2 = _ora_idx(m, copy, 2, 2, ncolors, ncopies)
+        ldag_rdag = _ora_mul(_ora_cdag(l1, l2), _ora_cdag(r1, r2))
+        pieces.append(_ora_scale(ldag_rdag, eta2 * M[m - 1][color - 1]))
+    return _ora_add(*pieces)
+
+
+def _ora_w_dag(copy, sc, eta2, color, ncolors, ncopies):
+    l1 = _ora_idx(color, sc, 1, 1, ncolors, ncopies)
+    l2 = _ora_idx(color, sc, 1, 2, ncolors, ncopies)
+    r1 = _ora_idx(color, copy, 2, 1, ncolors, ncopies)
+    r2 = _ora_idx(color, copy, 2, 2, ncolors, ncopies)
+    rl = _ora_mul(_ora_cann(r1, r2), _ora_cann(l1, l2))
+    return _ora_add(_ORA_ID, _ora_scale(rl, np.conj(eta2)))
+
+
+def _ora_projector(ncopy, ncolor, mix_copies, orientation, group_element, site=0):
+    """Full grouped assembly: (prod W)(prod V)(prod w^dag), pref, and Wick phase i^-(n/2).
+    Returns (items_dict, constant) comparable to generate_gauged_projector_terms."""
+    eta2 = 1.0 if orientation == Direction.X else 1j
+    sigma = _ora_sigma(ncopy, mix_copies)
+    M = group_element if site % 2 == 0 else np.conjugate(group_element)
+
+    blockV = dict(_ORA_ID)
+    blockW = dict(_ORA_ID)
+    blockWd = dict(_ORA_ID)
+    for color in range(1, ncolor + 1):
+        for copy in range(1, ncopy + 1):
+            sc = sigma[copy - 1]
+            blockV = _ora_mul(blockV, _ora_vacuum(copy, sc, color, ncolor, ncopy))
+            blockW = _ora_mul(blockW, _ora_w_gauged(copy, sc, eta2, color, ncolor, ncopy, M))
+            blockWd = _ora_mul(blockWd, _ora_w_dag(copy, sc, eta2, color, ncolor, ncopy))
+
+    full = _ora_mul(_ora_mul(blockW, blockV), blockWd)
+    full = _ora_scale(full, 2.0 ** (-ncopy * ncolor))
+
+    constant = full.get((), 0.0)
+    items = {}
+    for mon, coef in full.items():
+        if mon == ():
+            continue
+        phase = (1j) ** (-(len(mon) // 2))  # i^-(n/2), == pfaffian_wick_phase
+        c = coef * phase
+        if abs(c) > 1e-6:
+            items[mon] = c
+    return items, constant
+
+
+# ============================================================================
+# Tests
+# ============================================================================
+
+
+class _PolyAssertMixin:
+    def assert_poly_close(self, got, exp, tol=1e-9, msg=""):
+        """Compare two {monomial: coeff} dicts, ignoring near-zero terms."""
+        got = {k: v for k, v in got.items() if abs(v) > tol}
+        exp = {k: v for k, v in exp.items() if abs(v) > tol}
+        self.assertEqual(
+            set(got),
+            set(exp),
+            f"{msg}\n  monomials only in code: {sorted(set(got) - set(exp))}"
+            f"\n  monomials only in oracle: {sorted(set(exp) - set(got))}",
+        )
+        for k in exp:
+            self.assertTrue(
+                abs(got[k] - exp[k]) < 1e-7,
+                f"{msg}\n  coeff mismatch at {k}: code={got[k]} oracle={exp[k]}",
+            )
+
+    @staticmethod
+    def terms_to_poly(terms):
+        acc = defaultdict(complex)
+        for coef, inds in terms:
+            acc[inds] += coef
+        return _ora_canon(acc)
+
+
+class TestMajoranaAlgebraHelpers(_PolyAssertMixin, unittest.TestCase):
+    """Low-level helpers used to assemble the gauged projector."""
+
+    def test_poly_mul_concatenates_on_the_right(self):
+        # c_0 * c_1 -> (0, 1)
+        p = config_base.simplify_majorana_acc({(0,): 1.0})
+        out = config_base._poly_mul(p, [(1.0, (1,))])
+        self.assert_poly_close(out, {(0, 1): 1.0}, msg="_poly_mul order")
+
+    def test_left_mul_concatenates_on_the_left(self):
+        # left-multiplying c_0 by c_1 -> c_1 c_0 = -(0, 1): opposite sign to _poly_mul.
+        # This is the discriminator that catches a left/right swap.
+        p = config_base.simplify_majorana_acc({(0,): 1.0})
+        out = config_base._left_mul([(1.0, (1,))], p)
+        self.assert_poly_close(out, {(0, 1): -1.0}, msg="_left_mul order")
+
+    def test_poly_mul_contracts_squares(self):
+        # (0, 1) * (1, 2) = (0, 1, 1, 2) -> (0, 2)
+        p = config_base.simplify_majorana_acc({(0, 1): 1.0})
+        out = config_base._poly_mul(p, [(1.0, (1, 2))])
+        self.assert_poly_close(out, {(0, 2): 1.0}, msg="_poly_mul contraction")
+
+    def test_poly_mul_distributes_over_terms_and_coeffs(self):
+        p = config_base.simplify_majorana_acc({(0,): 2.0})
+        out = config_base._poly_mul(p, [(3.0, (1,)), (1j, (2,))])
+        self.assert_poly_close(out, {(0, 1): 6.0, (0, 2): 2j}, msg="_poly_mul distribute")
+
+    def test_simplify_majorana_acc_matches_independent_canon(self):
+        # Random monomials checked against the independent oracle canonicalizer.
+        rng = np.random.default_rng(0)
+        for _ in range(50):
+            n = rng.integers(0, 7)
+            inds = tuple(int(x) for x in rng.integers(0, 5, size=n))
+            coef = complex(rng.standard_normal(), rng.standard_normal())
+            got = config_base.simplify_majorana_acc({inds: coef})
+            exp = _ora_canon({inds: coef})
+            self.assert_poly_close(got, exp, msg=f"simplify vs canon for {inds}")
+
+    def test_pfaffian_wick_phase(self):
+        self.assertEqual(config_base.pfaffian_wick_phase(()), 1.0)
+        self.assertEqual(config_base.pfaffian_wick_phase((0, 1)), -1j)
+        self.assertEqual(config_base.pfaffian_wick_phase((0, 1, 2, 3)), -1.0)
+        self.assertEqual(config_base.pfaffian_wick_phase((0, 1, 2, 3, 4, 5)), 1j)
+        self.assertEqual(config_base.pfaffian_wick_phase((0, 1, 2, 3, 4, 5, 6, 7)), 1.0)
+        with self.assertRaises(ValueError):
+            config_base.pfaffian_wick_phase((0, 1, 2))
+
+    def test_make_sigma(self):
+        self.assertEqual(config_base.make_sigma(1, True), (1,))
+        self.assertEqual(config_base.make_sigma(1, False), (1,))
+        self.assertEqual(config_base.make_sigma(2, False), (1, 2))
+        self.assertEqual(config_base.make_sigma(2, True), (2, 1))
+        self.assertEqual(config_base.make_sigma(4, False), (1, 2, 3, 4))
+        self.assertEqual(config_base.make_sigma(4, True), (2, 1, 4, 3))
+        with self.assertRaises(ValueError):
+            config_base.make_sigma(3, False)
+
+    def test_get_cov_matrix_idx_matches_documented_ordering(self):
+        for ncolors, ncopies in [(1, 1), (1, 2), (2, 1), (2, 2)]:
+            for color in range(1, ncolors + 1):
+                for copy in range(1, ncopies + 1):
+                    for direction in (1, 2):
+                        for majorana in (1, 2):
+                            got = config_base.get_cov_matrix_idx(color, copy, direction, majorana, ncolors, ncopies)
+                            exp = _ora_idx(color, copy, direction, majorana, ncolors, ncopies)
+                            self.assertEqual(got, exp, f"idx({color},{copy},{direction},{majorana})")
+
+
+class TestGaugedProjectorPrimitives(_PolyAssertMixin, unittest.TestCase):
+    """`_vacuum_terms`, `_w_gauged_terms`, `_w_dag_terms` vs the independent oracle."""
+
+    def _group_elements(self):
+        g = gauge.D2nGauge(3)
+        return {
+            "identity": g.get_representation(0, 0),
+            "rotation": g.get_representation(1, 0),  # color-mixing (off-diagonal)
+            "diag_reflection": g.get_representation(0, 1),  # diag(1, -1)
+            "mixing_reflection": g.get_representation(1, 1),  # color-mixing reflection
+        }
+
+    def test_vacuum_terms(self):
+        for ncolor, ncopy in [(1, 1), (1, 2), (2, 1), (2, 2)]:
+            for color in range(1, ncolor + 1):
+                for copy in range(1, ncopy + 1):
+                    for sc in range(1, ncopy + 1):
+                        got = self.terms_to_poly(config_base._vacuum_terms(copy, sc, color, ncolor, ncopy))
+                        exp = _ora_vacuum(copy, sc, color, ncolor, ncopy)
+                        self.assert_poly_close(got, exp, msg=f"_vacuum_terms c{color} cp{copy} sc{sc}")
+
+    def test_w_dag_terms(self):
+        for eta2 in (1.0, 1j):
+            for ncolor, ncopy in [(1, 1), (1, 2), (2, 1), (2, 2)]:
+                for color in range(1, ncolor + 1):
+                    for copy in range(1, ncopy + 1):
+                        for sc in range(1, ncopy + 1):
+                            got = self.terms_to_poly(config_base._w_dag_terms(copy, sc, eta2, color, ncolor, ncopy))
+                            exp = _ora_w_dag(copy, sc, eta2, color, ncolor, ncopy)
+                            self.assert_poly_close(got, exp, msg=f"_w_dag_terms eta2={eta2} c{color}")
+
+    def test_w_gauged_terms(self):
+        elems = self._group_elements()
+        for name, M in elems.items():
+            for eta2 in (1.0, 1j):
+                ncolor, ncopy = 2, 2
+                for color in range(1, ncolor + 1):
+                    for copy in range(1, ncopy + 1):
+                        for sc in range(1, ncopy + 1):
+                            got = self.terms_to_poly(
+                                config_base._w_gauged_terms(copy, sc, eta2, color, ncolor, ncopy, M)
+                            )
+                            exp = _ora_w_gauged(copy, sc, eta2, color, ncolor, ncopy, M)
+                            self.assert_poly_close(
+                                got, exp, msg=f"_w_gauged_terms {name} eta2={eta2} c{color} cp{copy}"
+                            )
+
+    def test_w_gauged_identity_decouples_colors(self):
+        # For the identity rep M = I the gauged factor must reference only the same-color r mode
+        # (no color mixing). This is the property that distinguishes Abelian from non-Abelian.
+        M = gauge.D2nGauge(3).get_representation(0, 0)
+        ncolor, ncopy = 2, 2
+        terms = config_base._w_gauged_terms(
+            copy=1, sigma_copy=1, eta2=1.0, color=1, ncolors=ncolor, ncopies=ncopy, gauging_matrix=M
+        )
+        other_color_modes = {
+            config_base.get_cov_matrix_idx(2, 1, 2, 1, ncolor, ncopy),
+            config_base.get_cov_matrix_idx(2, 1, 2, 2, ncolor, ncopy),
+        }
+        used = {idx for _, inds in terms for idx in inds}
+        self.assertTrue(used.isdisjoint(other_color_modes), "identity rep must not mix colors")
+
+
+class TestGaugedProjectorAssembly(_PolyAssertMixin, unittest.TestCase):
+    """`generate_gauged_projector_terms` (the grouped (prod W)(prod V)(prod w_dag) assembly,
+    pref, and Wick phase) vs the independent oracle. This is the regression net for the
+    operator-ordering bug, which was invisible for diagonal reps but real for color-mixing ones."""
+
+    def _cases(self):
+        d6 = gauge.D2nGauge(3)
+        cases = []
+        # D6: ncolor = 2, mix_copies = False, identity / rotation / reflections.
+        for ncopy in (1, 2):
+            for orientation in (Direction.X, Direction.Y):
+                for q in (0, 1):
+                    for p in (0, 1):
+                        cases.append(
+                            dict(
+                                ncopy=ncopy,
+                                ncolor=2,
+                                mix_copies=False,
+                                orientation=orientation,
+                                group_element=d6.get_representation(p, q),
+                                tag=f"D6 ncopy={ncopy} {orientation} rep({p},{q})",
+                            )
+                        )
+        # Z2-like: ncolor = 1, both mix_copies settings, both 1x1 reps.
+        for ncopy in (1, 2):
+            for mix_copies in (True, False):
+                for orientation in (Direction.X, Direction.Y):
+                    for sign in (1, -1):
+                        cases.append(
+                            dict(
+                                ncopy=ncopy,
+                                ncolor=1,
+                                mix_copies=mix_copies,
+                                orientation=orientation,
+                                group_element=np.array([[float(sign)]]),
+                                tag=f"Z2 ncopy={ncopy} mix={mix_copies} {orientation} M={sign}",
+                            )
+                        )
+        return cases
+
+    def test_assembly_matches_oracle(self):
+        for case in self._cases():
+            tag = case.pop("tag")
+            got_ind, got_const = config_base.generate_gauged_projector_terms(
+                ncopy=case["ncopy"],
+                ncolor=case["ncolor"],
+                mix_copies=case["mix_copies"],
+                orientation=case["orientation"],
+                group_element=case["group_element"],
+                site=0,
+                drop_real_zero=False,
+            )
+            exp_items, exp_const = _ora_projector(
+                case["ncopy"],
+                case["ncolor"],
+                case["mix_copies"],
+                case["orientation"],
+                case["group_element"],
+                site=0,
+            )
+            self.assertTrue(
+                abs(got_const - exp_const) < 1e-9,
+                f"{tag}: constant {got_const} vs {exp_const}",
+            )
+            self.assert_poly_close(self.terms_to_poly(got_ind), exp_items, msg=tag)
