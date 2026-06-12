@@ -1,4 +1,4 @@
-import unittest
+﻿import unittest
 from collections import defaultdict
 
 import numpy as np
@@ -368,7 +368,7 @@ class TestElectricContstants(unittest.TestCase):
 # ============================================================================
 
 
-def _ora_canon(poly):
+def _ref_canon(poly):
     """Canonicalize a Majorana polynomial: sort indices (sign from transpositions),
     contract c_i^2 = 1, aggregate, drop ~0. Independent of the production code."""
     out = defaultdict(complex)
@@ -391,35 +391,35 @@ def _ora_canon(poly):
     return {k: v for k, v in out.items() if abs(v) > 1e-12}
 
 
-def _ora_mul(p, q):
+def _ref_mul(p, q):
     """Multiply two polynomials; monomial = p_indices ++ q_indices (order matters)."""
     out = defaultdict(complex)
     for pi, pc in p.items():
         for qi, qc in q.items():
             out[pi + qi] += pc * qc
-    return _ora_canon(out)
+    return _ref_canon(out)
 
 
-def _ora_scale(poly, s):
+def _ref_scale(poly, s):
     return {k: v * s for k, v in poly.items()}
 
 
-def _ora_add(*polys):
+def _ref_add(*polys):
     acc = defaultdict(complex)
     for p in polys:
         for k, v in p.items():
             acc[k] += v
-    return _ora_canon(acc)
+    return _ref_canon(acc)
 
 
-_ORA_ID = {(): 1.0 + 0j}
+_REF_ID = {(): 1.0 + 0j}
 
 
-def _ora_idx(color, copy, direction, majorana, ncolors, ncopies, ndir=2):
+def _ref_idx(color, copy, direction, majorana, ncolors, ncopies, ndir=2):
     """Flat Majorana index built by ENUMERATING the documented mode ordering
     (grouped color -> copy -> direction -> majorana), rather than re-deriving the
-    mixed-radix arithmetic the production code uses. This keeps the oracle an
-    independent encoding of the *convention*: a wrong radix / off-by-one in
+    mixed-radix arithmetic the production code uses. This keeps this reference
+    implementation an independent encoding of the *convention*: a wrong radix / off-by-one in
     get_cov_matrix_idx would diverge from this enumeration."""
     order = [
         (c, cp, d, m)
@@ -431,15 +431,15 @@ def _ora_idx(color, copy, direction, majorana, ncolors, ncopies, ndir=2):
     return order.index((color, copy, direction, majorana))
 
 
-def _ora_cdag(g1, g2):
+def _ref_cdag(g1, g2):
     return {(g1,): 0.5 + 0j, (g2,): 0.5j}
 
 
-def _ora_cann(g1, g2):
+def _ref_cann(g1, g2):
     return {(g1,): 0.5 + 0j, (g2,): -0.5j}
 
 
-def _ora_sigma(ncopy, mix_copies):
+def _ref_sigma(ncopy, mix_copies):
     """Independent reimplementation of make_sigma's pairing permutation (1-based)."""
     if not mix_copies or ncopy == 1:
         return tuple(range(1, ncopy + 1))
@@ -451,56 +451,56 @@ def _ora_sigma(ncopy, mix_copies):
     return tuple(s)
 
 
-def _ora_vacuum(copy, sc, color, ncolors, ncopies):
-    l1 = _ora_idx(color, sc, 1, 1, ncolors, ncopies)
-    l2 = _ora_idx(color, sc, 1, 2, ncolors, ncopies)
-    r1 = _ora_idx(color, copy, 2, 1, ncolors, ncopies)
-    r2 = _ora_idx(color, copy, 2, 2, ncolors, ncopies)
-    ll = _ora_mul(_ora_cann(l1, l2), _ora_cdag(l1, l2))
-    rr = _ora_mul(_ora_cann(r1, r2), _ora_cdag(r1, r2))
-    return _ora_mul(ll, rr)
+def _ref_vacuum(copy, sc, color, ncolors, ncopies):
+    l1 = _ref_idx(color, sc, 1, 1, ncolors, ncopies)
+    l2 = _ref_idx(color, sc, 1, 2, ncolors, ncopies)
+    r1 = _ref_idx(color, copy, 2, 1, ncolors, ncopies)
+    r2 = _ref_idx(color, copy, 2, 2, ncolors, ncopies)
+    ll = _ref_mul(_ref_cann(l1, l2), _ref_cdag(l1, l2))
+    rr = _ref_mul(_ref_cann(r1, r2), _ref_cdag(r1, r2))
+    return _ref_mul(ll, rr)
 
 
-def _ora_w_gauged(copy, sc, eta2, color, ncolors, ncopies, M):
-    l1 = _ora_idx(color, sc, 1, 1, ncolors, ncopies)
-    l2 = _ora_idx(color, sc, 1, 2, ncolors, ncopies)
-    pieces = [_ORA_ID]
+def _ref_w_gauged(copy, sc, eta2, color, ncolors, ncopies, M):
+    l1 = _ref_idx(color, sc, 1, 1, ncolors, ncopies)
+    l2 = _ref_idx(color, sc, 1, 2, ncolors, ncopies)
+    pieces = [_REF_ID]
     for m in range(1, ncolors + 1):
-        r1 = _ora_idx(m, copy, 2, 1, ncolors, ncopies)
-        r2 = _ora_idx(m, copy, 2, 2, ncolors, ncopies)
-        ldag_rdag = _ora_mul(_ora_cdag(l1, l2), _ora_cdag(r1, r2))
-        pieces.append(_ora_scale(ldag_rdag, eta2 * M[m - 1][color - 1]))
-    return _ora_add(*pieces)
+        r1 = _ref_idx(m, copy, 2, 1, ncolors, ncopies)
+        r2 = _ref_idx(m, copy, 2, 2, ncolors, ncopies)
+        ldag_rdag = _ref_mul(_ref_cdag(l1, l2), _ref_cdag(r1, r2))
+        pieces.append(_ref_scale(ldag_rdag, eta2 * M[m - 1][color - 1]))
+    return _ref_add(*pieces)
 
 
-def _ora_w_dag(copy, sc, eta2, color, ncolors, ncopies):
-    l1 = _ora_idx(color, sc, 1, 1, ncolors, ncopies)
-    l2 = _ora_idx(color, sc, 1, 2, ncolors, ncopies)
-    r1 = _ora_idx(color, copy, 2, 1, ncolors, ncopies)
-    r2 = _ora_idx(color, copy, 2, 2, ncolors, ncopies)
-    rl = _ora_mul(_ora_cann(r1, r2), _ora_cann(l1, l2))
-    return _ora_add(_ORA_ID, _ora_scale(rl, np.conj(eta2)))
+def _ref_w_dag(copy, sc, eta2, color, ncolors, ncopies):
+    l1 = _ref_idx(color, sc, 1, 1, ncolors, ncopies)
+    l2 = _ref_idx(color, sc, 1, 2, ncolors, ncopies)
+    r1 = _ref_idx(color, copy, 2, 1, ncolors, ncopies)
+    r2 = _ref_idx(color, copy, 2, 2, ncolors, ncopies)
+    rl = _ref_mul(_ref_cann(r1, r2), _ref_cann(l1, l2))
+    return _ref_add(_REF_ID, _ref_scale(rl, np.conj(eta2)))
 
 
-def _ora_projector(ncopy, ncolor, mix_copies, orientation, group_element, site=0):
+def _ref_projector(ncopy, ncolor, mix_copies, orientation, group_element, site=0):
     """Full grouped assembly: (prod W)(prod V)(prod w^dag), pref, and Wick phase i^-(n/2).
     Returns (items_dict, constant) comparable to generate_gauged_projector_terms."""
     eta2 = 1.0 if orientation == Direction.X else 1j
-    sigma = _ora_sigma(ncopy, mix_copies)
+    sigma = _ref_sigma(ncopy, mix_copies)
     M = group_element if site % 2 == 0 else np.conjugate(group_element)
 
-    blockV = dict(_ORA_ID)
-    blockW = dict(_ORA_ID)
-    blockWd = dict(_ORA_ID)
+    blockV = dict(_REF_ID)
+    blockW = dict(_REF_ID)
+    blockWd = dict(_REF_ID)
     for color in range(1, ncolor + 1):
         for copy in range(1, ncopy + 1):
             sc = sigma[copy - 1]
-            blockV = _ora_mul(blockV, _ora_vacuum(copy, sc, color, ncolor, ncopy))
-            blockW = _ora_mul(blockW, _ora_w_gauged(copy, sc, eta2, color, ncolor, ncopy, M))
-            blockWd = _ora_mul(blockWd, _ora_w_dag(copy, sc, eta2, color, ncolor, ncopy))
+            blockV = _ref_mul(blockV, _ref_vacuum(copy, sc, color, ncolor, ncopy))
+            blockW = _ref_mul(blockW, _ref_w_gauged(copy, sc, eta2, color, ncolor, ncopy, M))
+            blockWd = _ref_mul(blockWd, _ref_w_dag(copy, sc, eta2, color, ncolor, ncopy))
 
-    full = _ora_mul(_ora_mul(blockW, blockV), blockWd)
-    full = _ora_scale(full, 2.0 ** (-ncopy * ncolor))
+    full = _ref_mul(_ref_mul(blockW, blockV), blockWd)
+    full = _ref_scale(full, 2.0 ** (-ncopy * ncolor))
 
     constant = full.get((), 0.0)
     items = {}
@@ -528,12 +528,12 @@ class _PolyAssertMixin:
             set(got),
             set(exp),
             f"{msg}\n  monomials only in code: {sorted(set(got) - set(exp))}"
-            f"\n  monomials only in oracle: {sorted(set(exp) - set(got))}",
+            f"\n  monomials only in reference: {sorted(set(exp) - set(got))}",
         )
         for k in exp:
             self.assertTrue(
                 abs(got[k] - exp[k]) < 1e-7,
-                f"{msg}\n  coeff mismatch at {k}: code={got[k]} oracle={exp[k]}",
+                f"{msg}\n  coeff mismatch at {k}: code={got[k]} reference={exp[k]}",
             )
 
     @staticmethod
@@ -541,7 +541,7 @@ class _PolyAssertMixin:
         acc = defaultdict(complex)
         for coef, inds in terms:
             acc[inds] += coef
-        return _ora_canon(acc)
+        return _ref_canon(acc)
 
 
 class TestMajoranaAlgebraHelpers(_PolyAssertMixin, unittest.TestCase):
@@ -572,14 +572,14 @@ class TestMajoranaAlgebraHelpers(_PolyAssertMixin, unittest.TestCase):
         self.assert_poly_close(out, {(0, 1): 6.0, (0, 2): 2j}, msg="_poly_mul distribute")
 
     def test_simplify_majorana_acc_matches_independent_canon(self):
-        # Random monomials checked against the independent oracle canonicalizer.
+        # Random monomials checked against the independent reference canonicalizer.
         rng = np.random.default_rng(0)
         for _ in range(50):
             n = rng.integers(0, 7)
             inds = tuple(int(x) for x in rng.integers(0, 5, size=n))
             coef = complex(rng.standard_normal(), rng.standard_normal())
             got = config_base.simplify_majorana_acc({inds: coef})
-            exp = _ora_canon({inds: coef})
+            exp = _ref_canon({inds: coef})
             self.assert_poly_close(got, exp, msg=f"simplify vs canon for {inds}")
 
     def test_pfaffian_wick_phase(self):
@@ -608,12 +608,12 @@ class TestMajoranaAlgebraHelpers(_PolyAssertMixin, unittest.TestCase):
                     for direction in (1, 2):
                         for majorana in (1, 2):
                             got = config_base.get_cov_matrix_idx(color, copy, direction, majorana, ncolors, ncopies)
-                            exp = _ora_idx(color, copy, direction, majorana, ncolors, ncopies)
+                            exp = _ref_idx(color, copy, direction, majorana, ncolors, ncopies)
                             self.assertEqual(got, exp, f"idx({color},{copy},{direction},{majorana})")
 
 
 class TestGaugedProjectorPrimitives(_PolyAssertMixin, unittest.TestCase):
-    """`_vacuum_terms`, `_w_gauged_terms`, `_w_dag_terms` vs the independent oracle."""
+    """`_vacuum_terms`, `_w_gauged_terms`, `_w_dag_terms` vs the independent reference implementation."""
 
     def _group_elements(self):
         g = gauge.D2nGauge(3)
@@ -630,7 +630,7 @@ class TestGaugedProjectorPrimitives(_PolyAssertMixin, unittest.TestCase):
                 for copy in range(1, ncopy + 1):
                     for sc in range(1, ncopy + 1):
                         got = self.terms_to_poly(config_base._vacuum_terms(copy, sc, color, ncolor, ncopy))
-                        exp = _ora_vacuum(copy, sc, color, ncolor, ncopy)
+                        exp = _ref_vacuum(copy, sc, color, ncolor, ncopy)
                         self.assert_poly_close(got, exp, msg=f"_vacuum_terms c{color} cp{copy} sc{sc}")
 
     def test_w_dag_terms(self):
@@ -640,7 +640,7 @@ class TestGaugedProjectorPrimitives(_PolyAssertMixin, unittest.TestCase):
                     for copy in range(1, ncopy + 1):
                         for sc in range(1, ncopy + 1):
                             got = self.terms_to_poly(config_base._w_dag_terms(copy, sc, eta2, color, ncolor, ncopy))
-                            exp = _ora_w_dag(copy, sc, eta2, color, ncolor, ncopy)
+                            exp = _ref_w_dag(copy, sc, eta2, color, ncolor, ncopy)
                             self.assert_poly_close(got, exp, msg=f"_w_dag_terms eta2={eta2} c{color}")
 
     def test_w_gauged_terms(self):
@@ -654,7 +654,7 @@ class TestGaugedProjectorPrimitives(_PolyAssertMixin, unittest.TestCase):
                             got = self.terms_to_poly(
                                 config_base._w_gauged_terms(copy, sc, eta2, color, ncolor, ncopy, M)
                             )
-                            exp = _ora_w_gauged(copy, sc, eta2, color, ncolor, ncopy, M)
+                            exp = _ref_w_gauged(copy, sc, eta2, color, ncolor, ncopy, M)
                             self.assert_poly_close(
                                 got, exp, msg=f"_w_gauged_terms {name} eta2={eta2} c{color} cp{copy}"
                             )
@@ -677,7 +677,7 @@ class TestGaugedProjectorPrimitives(_PolyAssertMixin, unittest.TestCase):
 
 class TestGaugedProjectorAssembly(_PolyAssertMixin, unittest.TestCase):
     """`generate_gauged_projector_terms` (the grouped (prod W)(prod V)(prod w_dag) assembly,
-    pref, and Wick phase) vs the independent oracle. This is the regression net for the
+    pref, and Wick phase) vs the independent reference implementation. This is the regression net for the
     operator-ordering bug, which was invisible for diagonal reps but real for color-mixing ones."""
 
     def _cases(self):
@@ -715,7 +715,7 @@ class TestGaugedProjectorAssembly(_PolyAssertMixin, unittest.TestCase):
                         )
         return cases
 
-    def test_assembly_matches_oracle(self):
+    def test_assembly_matches_reference(self):
         for case in self._cases():
             tag = case.pop("tag")
             got_ind, got_const = config_base.generate_gauged_projector_terms(
@@ -727,7 +727,7 @@ class TestGaugedProjectorAssembly(_PolyAssertMixin, unittest.TestCase):
                 site=0,
                 drop_real_zero=False,
             )
-            exp_items, exp_const = _ora_projector(
+            exp_items, exp_const = _ref_projector(
                 case["ncopy"],
                 case["ncolor"],
                 case["mix_copies"],
