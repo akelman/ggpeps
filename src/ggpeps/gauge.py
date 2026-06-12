@@ -1,6 +1,11 @@
+import logging
 from abc import ABC, abstractmethod
 
 import numpy as np
+
+import ggpeps
+
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
 class GaugeGroup(ABC):
@@ -682,7 +687,7 @@ class D2nGauge(GaugeGroup):
         return factor_for_el[0], tuple(group_for_el_energy)
 
 
-class Z2RepGauge2D:
+class Z2RepGauge2D(GaugeGroup):
     """Z_2 gauge group represented by 2x2 matrices that mix colors.
 
     Group elements: {+1, -1}. Representation matrices:
@@ -697,9 +702,13 @@ class Z2RepGauge2D:
     energy discrepancy is specific to D6 or appears for any 2D-rep gauging.
     """
 
-    SIGMA_X = np.array([[-1.0, 0.0], [0.0, -1.0]])
+    SIGMA_X = np.array([[0.0, 1.0], [1.0, 0.0]])
 
     def __init__(self) -> None:
+        logger.warning(
+            "Z2RepGauge2D (the 2D-representation Z2 gauge group) was created for "
+            "debugging purposes only and has not been tested."
+        )
         self.n = 2
         self.rep_dim = 2
         self.group_order = 2

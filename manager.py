@@ -335,15 +335,17 @@ def main(args):
         system_type = D2nSystem2D
         cfg_class = D6System2D_Config
     elif args.gauge_group == "Z2_2col":
-        # Diagnostic ansatz: Z_2 gauge group represented as 2x2 matrices, 2 colors, 2 copies.
-        # T-matrix is color-diagonal with the standard Z_2 9x9 block repeated.
+        # Diagnostic ansatz: Z_2 gauge group represented as 2x2 matrices, 2 colors.
+        # T-matrix is color-diagonal with the standard Z_2 block repeated.
+        # --ncopy selects the number of copies (1 or 2).
         system_type = D2nSystem2D
-        cfg_class = Z2System2D_2col_Config
-    elif args.gauge_group == "Z2_2col_1copy":
-        # Diagnostic ansatz: same as Z2_2col but with 1 copy instead of 2.
-        # Removes cross-copy parameters (a,b,c,d); only t1,y1,z1 remain per color.
-        system_type = D2nSystem2D
-        cfg_class = Z2System2D_2col_1copy_Config
+        if args.ncopy == 1:
+            cfg_class = Z2System2D_2col_1copy_Config
+        elif args.ncopy == 2:
+            cfg_class = Z2System2D_2col_Config
+        else:
+            logger.error("Not Implemented: Z2_2col only supports --ncopy 1 or 2.")
+            sys.exit(1)
     elif args.gauge_group == "U1":
         logger.error("Not Implemented: The U1 gauge group is not currently working.")
         sys.exit(1)
@@ -704,8 +706,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "gauge_group",
         type=str,
-        choices=["Z2", "D6", "Z2_2col", "Z2_2col_1copy"],
-        help="gauge group (Z2_2col/Z2_2col_1copy are diagnostic Z2-with-2D-rep ansätze)",
+        choices=["Z2", "D6", "Z2_2col"],
+        help="gauge group (Z2_2col is a diagnostic Z2-with-2D-rep ansatz; "
+        "use --ncopy 1 or 2 to select the number of copies)",
     )
 
     parser.add_argument("--L", type=int, help="Size of the square system (one side)")
