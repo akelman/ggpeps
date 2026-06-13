@@ -726,7 +726,7 @@ def generate_gauged_projector_terms(
 
     # Sort terms by monomial length (shorter first) then lexicographic tuple order for deterministic output.
     phased_items.sort(key=lambda kv: (len(kv[0]), kv[0]))
-    indices = tuple((snap_complex(coef), mon) for mon, coef in phased_items)
+    indices = tuple((coef, mon) for mon, coef in phased_items)
 
     return indices, constant
 
@@ -763,7 +763,6 @@ def simplify_majorana_acc(acc):
     Simplifies the Majorana polynomial accumulator.
     1. Sorts indices to order (applying sign flips for swaps).
     2. Contracts identical adjacent pairs (c_i^2 = 1).
-    3. Aggregates identical terms using _snap_complex for numerical stability.
 
     """
     new_acc = defaultdict(complex)
