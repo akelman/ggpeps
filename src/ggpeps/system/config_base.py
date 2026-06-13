@@ -639,7 +639,7 @@ def generate_gauged_projector_terms(
     orientation: Direction,
     group_element: np.ndarray,
     site: int = 0,
-    drop_real_zero: bool = False,
+    drop_real_zero: bool = True,
 ) -> tuple[tuple[tuple[complex, tuple[int, ...]], ...], complex]:
     """
     Expand the gauged projector product and collect terms.
