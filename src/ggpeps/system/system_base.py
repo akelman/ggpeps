@@ -181,6 +181,13 @@ class System2DBase(ABC):
         self._norm_mod_vec = None
         self._el_pfaffians = None
         self._lognorm_default_vec = None
+
+        # Modified (open-link) trackers are recomputed from scratch each config instead of
+        # being tracked incrementally (the incremental update drifts catastrophically along a
+        # gauge-fixed traversal). Invalidate them so they are rebuilt by _compute_mod_trackers.
+        self._wi_gamma_in_mod_vec = None
+        self._wi_gamma_out_mod_vec = None
+        self._incdet_mod_vec = None
         return
 
     @property
@@ -982,6 +989,25 @@ class System2DBase(ABC):
         gamma_in_sys_mod_linkvec_layervec = res[2]  # extract the "virtual-virtual" part
         return gamma_in_sys_mod_linkvec_layervec
 
+    def _compute_mod_trackers(self) -> tuple:
+        """Recompute the modified (open-link) Woodbury inverses and incremental determinant
+        from scratch from the CURRENT ``gamma_in_sys_vec``.
+
+        The modified objects are recomputed on demand rather than tracked incrementally:
+        the incremental Woodbury/IncDet update of the modified objects drifts catastrophically
+        along a gauge-fixed exact-eval traversal. There the measured link is pinned, so the
+        modified open-link state passes repeatedly through near-singular configurations and the
+        update accumulates unbounded error (observed: ``norm_mod`` off by ~37, i.e. exp(37) in
+        the modnorm/norm ratio). ``gamma_in_sys_vec`` itself is maintained exactly, so
+        recomputing the modified objects from it is correct and numerically stable.
+        """
+        gamma_in_sys_mod = self.gamma_in_sys_mod_vec
+        diff_in = self.mat_d_mod_inv_vec - gamma_in_sys_mod
+        wi_gamma_in_mod = xnp.linalg.inv(diff_in)
+        wi_gamma_out_mod = xnp.linalg.inv(self.mat_d_mod_vec - gamma_in_sys_mod)
+        _, incdet_mod = xnp.linalg.slogdet(diff_in)
+        return wi_gamma_in_mod, wi_gamma_out_mod, incdet_mod
+
     @property
     def incdet_mod_vec(self) -> xnp.ndarray:
         """Return the vector of incremental determinants for the modified matrices for the different layers.
@@ -991,13 +1017,11 @@ class System2DBase(ABC):
             xnp.ndarray: Array of incremental determinant trackers, over layers and links
         """
         if self._incdet_mod_vec is None:
-            self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_and_trackers()
-            self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
                 self._wi_gamma_in_mod_vec,
                 self._wi_gamma_out_mod_vec,
                 self._incdet_mod_vec,
-            ) = mod_tuple
+            ) = self._compute_mod_trackers()
         return self._incdet_mod_vec
 
     @property
@@ -1009,13 +1033,11 @@ class System2DBase(ABC):
             xnp.ndarray: Array of Woodbury inverters, over layers and links
         """
         if self._wi_gamma_in_mod_vec is None:
-            self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_and_trackers()
-            self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
                 self._wi_gamma_in_mod_vec,
                 self._wi_gamma_out_mod_vec,
                 self._incdet_mod_vec,
-            ) = mod_tuple
+            ) = self._compute_mod_trackers()
         return self._wi_gamma_in_mod_vec
 
     @property
@@ -1027,13 +1049,11 @@ class System2DBase(ABC):
             xnp.ndarray: Array of Woodbury inverters, over layers and links
         """
         if self._wi_gamma_out_mod_vec is None:
-            self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_and_trackers()
-            self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
                 self._wi_gamma_in_mod_vec,
                 self._wi_gamma_out_mod_vec,
                 self._incdet_mod_vec,
-            ) = mod_tuple
+            ) = self._compute_mod_trackers()
         return self._wi_gamma_out_mod_vec
 
     ################## Computation of derivatives ######################

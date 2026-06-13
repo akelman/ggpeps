@@ -197,39 +197,11 @@ class D2nSystem2D(System2DBase):
             self.wi_gamma_out_vec, update_arr, ind_mat, ind_mat
         )
 
-        # Update the modified determinant & matrices
-        # The vectorization of the local updates does not support skipping a link or variable offsets,
-        # so we loop explicitly.
-        assert self._wi_gamma_in_mod_vec is not None  # for mypy
-        assert self._wi_gamma_out_mod_vec is not None
-        for lay in range(self.cfg.nlayer):
-            for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
-                if mod_link_ind != link_ind:
-                    # We do not update if the link is the one that is excluded in the modified objects
-
-                    offset = 0  # no offset if link_ind < mod_link_ind
-                    if link_ind > mod_link_ind:
-                        offset = 2 * self.cfg.nvirtmodes_link
-
-                    mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
-                    new_det = utils.IncLogAbsDeterminant.update_index(
-                        self.incdet_mod_vec[lay][ind],
-                        mat_inv,
-                        update_vec[lay],
-                        ind_mat - offset,
-                        ind_mat - offset,
-                    )
-                    self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, (lay, ind), new_det)
-
-                    new1 = ggpeps.utils.WoodburyInverter.update_index(
-                        self._wi_gamma_in_mod_vec[lay][ind], update_vec[lay], ind_mat - offset, ind_mat - offset
-                    )
-                    self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (lay, ind), new1)
-
-                    new2 = ggpeps.utils.WoodburyInverter.update_index(
-                        self._wi_gamma_out_mod_vec[lay][ind], update_vec[lay], ind_mat - offset, ind_mat - offset
-                    )
-                    self._wi_gamma_out_mod_vec = backend.array_assign(self._wi_gamma_out_mod_vec, (lay, ind), new2)
+        # The modified (open-link) trackers are NOT updated incrementally here. Their
+        # incremental Woodbury/IncDet update drifts catastrophically along a gauge-fixed
+        # traversal (the measured link is pinned). They are recomputed from scratch on demand
+        # from gamma_in_sys_vec (see System2DBase._compute_mod_trackers); invalidate_gauge_update
+        # below resets them so the next access rebuilds them.
 
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
