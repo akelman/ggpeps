@@ -163,6 +163,49 @@ class Testgaugefixing(unittest.TestCase):
         for key, val in eval_with_gf.items():
             self.assertTrue(np.allclose(val, eval_without_gf[key]))
 
+    def test_exacteval_explosive_params_pinned_link(self):
+        """Gauge fixing must reproduce the no-gauge-fixing electric energy even when the
+        measured link is a pinned tree link and the parameters drive the modnorm/norm ratio
+        huge.
+
+        Regression for the incremental modified-norm/Woodbury tracker drift: these specific
+        1-copy parameters make exp(norm_mod - lognorm_default) ~ 1e14 for some configs. With
+        the measured link (0) pinned by gauge fixing, the incremental modified trackers used
+        to drift catastrophically and give a large-negative (unphysical) electric energy
+        (~ -483) while no gauge fixing gives ~ +16. The physical electric energy is bounded
+        below by 0.
+        """
+        # Parameters (1 copy, 1 PG layer) known to expose the bug; the measured link is link 0,
+        # which is on the maximal gauge-fixing tree (pinned to identity).
+        explosive_params = np.array(
+            [0.0, 2.79433214e-04, -7.06773559e-01, 0.0, 9.99670799e-01, 7.06984522e-01]
+        )
+
+        def run(gf_flag):
+            lat2 = lattice.Lattice2D(2, 2, gf_flag)
+            cfg = system.Z2System2DConfig(
+                lat2, 1.0, 1.0, 0.0, 0.0, [],
+                num_pg_layer=1, num_fermionic_layer=0,
+                mod_link_inds=(0,), unitcell_size=1, enforce_u1_symmetry=True,
+            )
+            cfg.paramvec = np.reshape(explosive_params, cfg.param_shape())
+            cfg.make_pure_gauge()
+            cfg.enforce_parameter_conditions(cfg.paramvec)
+            sys_ = system.Z2System2D(cfg)
+            ec = ExactEvaluatorConfig()
+            ec.compute_grads = False
+            ev = exacteval.ExactEvaluator(ec, sys_)
+            ev.evaluate()
+            return float(ev.obsdict["el_energy"])
+
+        el_no_gf = run(0)   # no gauge fixing (link 0 summed over)
+        el_gf = run(-1)     # maximal-tree gauge fixing (link 0 pinned)
+
+        # The physical electric energy is bounded below by 0 (offset convention).
+        self.assertGreaterEqual(el_gf, -1e-6, msg=f"gauge-fixed electric energy is unphysical: {el_gf}")
+        # Gauge fixing must reproduce the no-gauge-fixing value.
+        self.assertAlmostEqual(el_gf, el_no_gf, places=4)
+
     @skip("Too long and not precise enough")
     def test_mceval(self):
         """Ensure that MC evaluation gives the same results with and without
