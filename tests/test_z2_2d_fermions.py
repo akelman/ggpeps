@@ -11,6 +11,7 @@ from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.modearray import generate_permutation_matrix
 from ggpeps.system.config_base import generate_gauged_projector_terms
 
+
 # ======================= Z2 fermionic system (4 copies) =======================
 
 
@@ -35,7 +36,7 @@ class TestZ2System(unittest.TestCase):
         do indeed vanish."""
 
         mat = self.system_z2.cfg.paramvec
-        t_indices = [0, 1, 10, 11]  # index of t1r, t2r, t1i, t2i in symbolvec
+        t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.system_z2.cfg.num_pg_layer):
             for uc_ind in range(self.system_z2.cfg.unitcell_size):
                 for t_ind in t_indices:
@@ -44,15 +45,17 @@ class TestZ2System(unittest.TestCase):
                         self.assertAlmostEqual(mat[coord], 0)
 
         zero_for_fermionic_layer = [
-            2,
             3,
+            13,
+            1,
+            2,
             4,
             5,
+            11,
             12,
-            13,
             14,
             15,
-        ]  # index of y1r, y2r, z1r, z2r, y1i, y2i, z1i, z2i in symbolvec
+        ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
         for layer_ind in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
             for uc_ind in range(self.system_z2.cfg.unitcell_size):
                 for ind in zero_for_fermionic_layer:
@@ -142,7 +145,7 @@ class TestZ2System(unittest.TestCase):
         self.assertTrue(np.allclose(0, dest_dict["int_energy"]))
 
     def test_t_nonzero(self):
-        """Ensure mass and interaction energy are nonzero when t != 0.
+        """Ensure mass and interaction energy are zero when t != 0.
         This checks for random params, which we assume do not give t = 0"""
 
         ec_config = exacteval.ExactEvaluatorConfig()
@@ -717,25 +720,24 @@ class TestZ2System(unittest.TestCase):
         g_int0 = 1
         g0 = 1.1
         FM_ed = 0.056378472489371945
-
         param = np.array(
             [
                 [
                     0.0,
-                    0.0,
                     -2.40404381,
-                    -0.03930116,
                     0.06235486,
+                    0.0,
+                    -0.03930116,
                     0.02570194,
                     -0.86789621,
                     1.63420534,
                     -0.48050886,
                     0.32365748,
                     0.0,
-                    0.0,
                     -0.57834489,
-                    -0.00508246,
                     0.67735453,
+                    0.0,
+                    -0.00508246,
                     0.06794535,
                     0.93614442,
                     0.62925059,
@@ -766,7 +768,6 @@ class TestZ2System(unittest.TestCase):
                 ],
             ]
         )
-
         system_cfg = system.Z2System2D_G2C_F2C_Config(
             lat,
             g0 / 2,
@@ -777,7 +778,6 @@ class TestZ2System(unittest.TestCase):
             num_pg_layer=1,
             num_fermionic_layer=1,
         )
-
         system_cfg.paramvec = param
         sys = system_type(system_cfg)
         eval_config = exacteval.ExactEvaluatorConfig()
@@ -901,7 +901,7 @@ class TestTransVariance(unittest.TestCase):
     def test_mat_a_even(self):
         """If t=0 on a given site, then mat_a should be [[0,1],[-1,0]] on that site."""
         # Set t = 0 on even sites
-        t_inds = [0, 1, 10, 11]  # index of t1r, t2r, t1i, t2i in symbolvec
+        t_inds = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         paramvec = self.system_z2.cfg.paramvec
         for lay in range(self.system_z2.cfg.nlayer):
             uc_ind = 0  # index for even sites
@@ -941,7 +941,7 @@ class TestTransVariance(unittest.TestCase):
         """If t=0 on a given site, then mat_a should be [[0, 1], [-1, 0]] on that site.
         Same as previous test, but for odd sites."""
         # Set t = 0 on odd sites
-        t_inds = [0, 1, 10, 11]  # index of t1r, t2r, t1i, t2i in symbolvec
+        t_inds = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         paramvec = self.system_z2.cfg.paramvec
         for lay in range(self.system_z2.cfg.nlayer):
             uc_ind = 1  # index for odd sites
@@ -980,7 +980,7 @@ class TestTransVariance(unittest.TestCase):
     def test_mat_b_even(self):
         """If t=0 on a given site, then mat_b should be all zeros on that site."""
         # Set t = 0 on even sites
-        t_inds = [0, 1, 10, 11]  # index of t1r, t2r, t1i, t2i in symbolvec
+        t_inds = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         paramvec = self.system_z2.cfg.paramvec
         for lay in range(self.system_z2.cfg.nlayer):
             uc_ind = 0  # index for even sites

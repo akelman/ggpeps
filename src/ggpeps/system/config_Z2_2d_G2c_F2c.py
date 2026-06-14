@@ -9,6 +9,7 @@ from ggpeps.lattice import Direction
 
 from .config_base import Config2DBase, generate_gauged_projector_terms
 
+
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
@@ -19,10 +20,10 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
     Some general notes about conventions:
 
-    Order of the paramvec: [t1r,t2r,y1r,y2r,z1r,z2r,a12r,b12r,c12r,d12r,t1i,t2i,y1i,y2i,z1i,z2i,a12i,b12i,c12i,d12i].
+    Order of the paramvec: [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di].
     Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2}.
     Mode order of gamma_dirac:
-        {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dag,r2_dag,u2_dag,d2_dag}.
+        {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag}.
     Mode order of gamma_maj:
         {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2}.
     """
@@ -64,8 +65,10 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         )
 
         if self.unitcell_size not in [1, 2, -1]:
-            logger.error("This ansatz only supports unitcell_size = 1, 2, or -1 (all sites independent). \
-                This can be adapted by adding in a specification in the config to map sites to parameters.")
+            logger.error(
+                "This ansatz only supports unitcell_size = 1, 2, or -1 (all sites independent). \
+                This can be adapted by adding in a specification in the config to map sites to parameters."
+            )
             raise ValueError("Invalid unitcell_size.")
 
         self.init_el_energy_terms()
@@ -170,98 +173,77 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         self.coeffs_vec = tuple(coeffs_vec)
         self.constants_vec = tuple(constants_vec)
 
+    def make_pure_gauge(self) -> None:
+        """Make the ansatz pure gauge by setting t-params to zero.
+
+        This function is obsolete for this ansatz, and is kept for some tests.
+        """
+        t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
+        for layer_ind in range(self.nlayer):
+            for uc_ind in range(self.unitcell_size):
+                for t_ind in t_indices:
+                    coord = (layer_ind, uc_ind, t_ind)
+                    self.paramvec[coord] = 0
+
     def get_zeroed_params(self) -> tuple[tuple[int, int, int], ...]:
-        offset = self._nparams // 2  # offset to get index of imaginary part
+        # The order of the parameters (for each layer) is:
+        # [t1r,y1r,z1r,t2r,y2r,z2r,ar,br,cr,dr,t1i,y1i,z1i,t2i,y2i,z2i,ai,bi,ci,di]
+
         zeroed_params = []  # we'll save the indices of the zeroed parameters
 
-        # Zero out the parameters which are not used in the pure gauge layers
+        t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
         for layer_ind in range(self.num_pg_layer):
             for uc_ind in range(self.unitcell_size):
-                for t_ind in range(self.ncopy):
-                    real_coord = (layer_ind, uc_ind, t_ind)
-                    imag_coord = (layer_ind, uc_ind, t_ind + offset)
-                    zeroed_params.append(real_coord)
-                    zeroed_params.append(imag_coord)
+                for t_ind in t_indices:
+                    coord = (layer_ind, uc_ind, t_ind)
+                    zeroed_params.append(coord)
 
-        # Zero out the parameters which are not used in the fermionic layers
-        y_inds = [ind for ind in range(self.ncopy, 2 * self.ncopy)]
-        z_inds = [ind for ind in range(2 * self.ncopy, 3 * self.ncopy)]
-        mixed_copy_inds = []
-        countdown = list(range(self.ncopy - 1, 0, -1))
-        for cop1 in range(self.ncopy):
-            for cop2 in range(cop1 + 1, self.ncopy):
-                if (cop1 % 2) == (cop2 % 2):
-                    start = 3 * self.ncopy + (sum(countdown[:cop1]) + cop2 - cop1 - 1) * 4
-                    inds = [ind for ind in range(start, start + 4)]  # a,b,c,d
-                    mixed_copy_inds += inds
-
-        zero_for_fermionic_layer = y_inds + z_inds + mixed_copy_inds
         if self.u1_symmetry:
-            for layer_ind in range(self.num_pg_layer, self.nlayer):
-                for uc_ind in range(self.unitcell_size):
-                    for ind in zero_for_fermionic_layer:
-                        real_coord = (layer_ind, uc_ind, ind)
-                        imag_coord = (layer_ind, uc_ind, ind + offset)
-                        zeroed_params.append(real_coord)
-                        zeroed_params.append(imag_coord)
+            # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
+            zero_for_fermionic_layer = [3, 13, 1, 2, 4, 5, 11, 12, 14, 15]
+        else:
+            zero_for_fermionic_layer = []
+        for layer_ind in range(self.num_pg_layer, self.nlayer):
+            for uc_ind in range(self.unitcell_size):
+                for ind in zero_for_fermionic_layer:
+                    coord = (layer_ind, uc_ind, ind)
+                    zeroed_params.append(coord)
 
         return tuple(zeroed_params)
 
-    def _create_symbolvec(self):
+    def _create_symbolvec(self) -> list[sympy.Symbol]:
         """Define all symbols of the T matrix as symbols.
         We will use the analytic expression of the T matrix to calculate the derivative
         of the covariance matrices analytically.
 
-        The order of the symbols is:
-        1) params which couple the physical and virtual modes
-        2) params which couple a set of virtual modes to themselves
-        3) params which couple between two sets of virtual modes
-        All real parts, then all imaginary parts.
-        Copy numbering starts at 1 (no zero-indexing).
-
-        TODO: this function is general enough to be used in other systems;
-        it can probably be moved to the base class.
-
         Returns:
             list: List of all analytic symbols
         """
+        t1r = sympy.Symbol("t1r", real=True)
+        y1r = sympy.Symbol("y1r", real=True)
+        z1r = sympy.Symbol("z1r", real=True)
+        t2r = sympy.Symbol("t2r", real=True)
+        y2r = sympy.Symbol("y2r", real=True)
+        z2r = sympy.Symbol("z2r", real=True)
+        ar = sympy.Symbol("ar", real=True)
+        br = sympy.Symbol("br", real=True)
+        cr = sympy.Symbol("cr", real=True)
+        dr = sympy.Symbol("dr", real=True)
 
-        # t params: couple physical to virtual modes
-        t_params = []
-        for cop in range(1, self.ncopy + 1):
-            for com in ["r", "i"]:  # real or imaginary
-                symbol = sympy.Symbol(f"t{cop}{com}", real=True)
-                t_params.append(symbol)
-
-        # y,z params: couple a virtual copy to itself
-        y_params = []
-        z_params = []
-        for cop in range(1, self.ncopy + 1):
-            for com in ["r", "i"]:  # real or imaginary
-                symbol = sympy.Symbol(f"y{cop}{com}", real=True)
-                y_params.append(symbol)
-
-                symbol = sympy.Symbol(f"z{cop}{com}", real=True)
-                z_params.append(symbol)
-
-        # a,b,c,d params: couple a virtual copy to another virtual copy
-        mixed_params = []
-        for cop1 in range(1, self.ncopy + 1):
-            for cop2 in range(cop1 + 1, self.ncopy + 1):
-                for param in ["a", "b", "c", "d"]:
-                    for com in ["r", "i"]:  # real or imaginary
-                        symbol = sympy.Symbol(f"{param}{cop1}{cop2}{com}", real=True)
-                        mixed_params.append(symbol)
-
-        # Package all parameters, and ensure correct order
-        all_params = t_params + y_params + z_params + mixed_params
-        real_params = all_params[::2]
-        imag_params = all_params[1::2]
-
-        return real_params + imag_params
+        t1i = sympy.Symbol("t1i", real=True)
+        y1i = sympy.Symbol("y1i", real=True)
+        z1i = sympy.Symbol("z1i", real=True)
+        t2i = sympy.Symbol("t2i", real=True)
+        y2i = sympy.Symbol("y2i", real=True)
+        z2i = sympy.Symbol("z2i", real=True)
+        ai = sympy.Symbol("ai", real=True)
+        bi = sympy.Symbol("bi", real=True)
+        ci = sympy.Symbol("ci", real=True)
+        di = sympy.Symbol("di", real=True)
+        return [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i, z1i, t2i, y2i, z2i, ai, bi, ci, di]
 
     @property
-    def tmat_symb(self):
+    def tmat_symb(self) -> sympy.Matrix:
         """Definition of the symbolic T matrix.
         The definition of T here is a result of an analytic consideration of global
         symmetries like rotational invariance, charge conjugation invarance, etc.
@@ -272,7 +254,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         This is one of two analytic inputs into the code.
         The other input is the structure and the parametrization of the projectors.
 
-        The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, l_3, r_3...
+        The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2
 
         The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations)
         because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
@@ -281,89 +263,30 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         Returns:
             sympy.Matrix: Analytic T matrix of the fiducial state
         """
-        # Create a dictionary of parameters
-        offset = self._nparams // 2  # offset to get index of imaginary part
-        keys = [str(symb)[:-1] for symb in self.symbolvec[:offset]]
-        vals = [self.symbolvec[i] + 1j * self.symbolvec[i + offset] for i in range(offset)]
-        params = {key: val for key, val in zip(keys, vals)}
-
-        # Define the form blocks of the T matrix -
-        # physical-virtual, virtual-virtual within the same copy, and virtual-virtual between copies
-
-        # a) Physical-virtual
-        # this is a row matrix (because of the transpose)
-        Block_1 = sympy.Matrix([-1.0j * params["t1"], 1.0j * params["t1"], params["t1"], -params["t1"]]).T
-
-        # b) Virtual-virtual within the same copy
-        Block_2 = sympy.Matrix(
+        [t1r, y1r, z1r, t2r, y2r, z2r, ar, br, cr, dr, t1i, y1i, z1i, t2i, y2i, z2i, ai, bi, ci, di] = self.symbolvec
+        t1 = t1r + 1.0j * t1i
+        y1 = y1r + 1.0j * y1i
+        z1 = z1r + 1.0j * z1i
+        t2 = t2r + 1.0j * t2i
+        y2 = y2r + 1.0j * y2i
+        z2 = z2r + 1.0j * z2i
+        a = ar + 1.0j * ai
+        b = br + 1.0j * bi
+        c = cr + 1.0j * ci
+        d = dr + 1.0j * di
+        tmat_symb = sympy.Matrix(
             [
-                [0, 1.0j * params["y1"], params["z1"], 1.0j * params["z1"]],
-                [-1.0j * params["y1"], 0, -1.0j * params["z1"], -params["z1"]],
-                [-params["z1"], 1.0j * params["z1"], 0, -params["y1"]],
-                [-1.0j * params["z1"], params["z1"], params["y1"], 0],
+                [0, -1.0j * t1, 1.0j * t1, t1, -t1, -1.0j * t2, 1.0j * t2, t2, -t2],
+                [1.0j * t1, 0, 1.0j * y1, z1, 1.0j * z1, -1.0j * a, -1.0j * c, -1.0j * b, -1.0j * d],
+                [-1.0j * t1, -1.0j * y1, 0, -1.0j * z1, -z1, 1.0j * c, 1.0j * a, 1.0j * d, 1.0j * b],
+                [-t1, -z1, 1.0j * z1, 0, -y1, d, b, a, c],
+                [t1, -1.0j * z1, z1, y1, 0, -b, -d, -c, -a],
+                [1.0j * t2, 1.0j * a, -1.0j * c, -d, b, 0, 1.0j * y2, z2, 1.0j * z2],
+                [-1.0j * t2, 1.0j * c, -1.0j * a, -b, d, -1.0j * y2, 0, -1.0j * z2, -z2],
+                [-t2, 1.0j * b, -1.0j * d, -a, c, -z2, 1.0j * z2, 0, -y2],
+                [t2, 1.0j * d, -1.0j * b, -c, a, -1.0j * z2, z2, y2, 0],
             ]
         )
-
-        # c) Virtual-virtual between two different copies
-        Block_3 = sympy.Matrix(
-            [
-                [-1.0j * params["a12"], -1.0j * params["c12"], -1.0j * params["b12"], -1.0j * params["d12"]],
-                [1.0j * params["c12"], 1.0j * params["a12"], 1.0j * params["d12"], 1.0j * params["b12"]],
-                [params["d12"], params["b12"], params["a12"], params["c12"]],
-                [-params["b12"], -params["d12"], -params["c12"], -params["a12"]],
-            ]
-        )
-
-        # Generate all the blocks for all copies:
-        # a) Physical-virtual blocks
-        t_blocks = [Block_1.subs(params["t1"], params[f"t{i}"]) for i in range(1, self.ncopy + 1)]
-
-        # b) Virtual-virtual within the same copy
-        yz_blocks = [
-            Block_2.subs([(params["y1"], params[f"y{i}"]), (params["z1"], params[f"z{i}"])])
-            for i in range(1, self.ncopy + 1)
-        ]
-
-        # c) Virtual-virtual between different copies
-        abcd_blocks = {}
-        for cop1 in range(self.ncopy):
-            for cop2 in range(cop1 + 1, self.ncopy):
-                cop1_label = cop1 + 1
-                cop2_label = cop2 + 1
-                subs = [
-                    (params["a12"], params[f"a{cop1_label}{cop2_label}"]),
-                    (params["b12"], params[f"b{cop1_label}{cop2_label}"]),
-                    (params["c12"], params[f"c{cop1_label}{cop2_label}"]),
-                    (params["d12"], params[f"d{cop1_label}{cop2_label}"]),
-                ]
-                abcd_blocks[(cop1, cop2)] = Block_3.subs(subs)
-
-        # We will constuct the T matrix row by row.
-        # Each row will be a physical mode, or a virtual copy (4 virtual modes)
-
-        # row corresponding to the physical mode
-        data = [sympy.zeros(1)] + [t_block for t_block in t_blocks]
-        first_row = sympy.Matrix.hstack(*data)
-
-        # rows corresponding to the virtual modes
-        rows = []
-        for cop in range(self.ncopy):
-            # We construct the row (really, 4 rows, since each copy has 4 modes, 1 for each link connected to a site)
-
-            # mix copies - below diagonal blocks
-            off_diag1 = [-abcd_blocks[(other, cop)].T for other in range(cop)]
-
-            # mix copies - above diagonal blocks
-            off_diag2 = [abcd_blocks[(cop, other)] for other in range(cop + 1, self.ncopy)]
-
-            # construct full row
-            row = [-t_blocks[cop].T] + off_diag1 + [yz_blocks[cop]] + off_diag2
-            rows.append(sympy.Matrix.hstack(*row))
-
-        # Stack all rows together
-        all_rows = [first_row] + rows
-        tmat_symb = sympy.Matrix.vstack(*all_rows)
-
         return tmat_symb
 
     def generate_gamma_gauge_neutral_dict(self) -> np.ndarray:
@@ -401,16 +324,3 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         dest_unmixed.append(np.real(1.0j * np.kron(np.eye(2), np.kron(utils.pauliy, utils.pauliz))))  # Y direction
 
         return np.array([dest_mixed] * self.num_pg_layer + [dest_unmixed] * self.num_fermionic_layer)
-
-    # TODO - maybe move to test file?
-    def make_pure_gauge(self) -> None:
-        """Make the ansatz pure gauge by setting t-params to zero.
-
-        This function is obsolete for this ansatz, and is kept for some tests.
-        """
-        t_indices = [0, 1, 10, 11]  # index of t1r, t2r, t1i, t2i in symbolvec
-        for layer_ind in range(self.nlayer):
-            for uc_ind in range(self.unitcell_size):
-                for t_ind in t_indices:
-                    coord = (layer_ind, uc_ind, t_ind)
-                    self.paramvec[coord] = 0
