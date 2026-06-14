@@ -1931,3 +1931,58 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
             np.allclose(sys_drop.el_energy_op_vec, sys_keep.el_energy_op_vec, atol=1e-12, rtol=1e-12),
             msg="el_energy_op_vec changed when toggling drop_real_zero (should be invariant).",
         )
+
+class TestG4ConfigNcopyGeneric(unittest.TestCase):
+    """Structural tests for the ncopy-generic G4C/F4C config."""
+
+    def _make_cfg(self, ncopy):
+        lat = lattice.Lattice2D(2, 2)
+        return system.Z2System2D_G4C_F4C_Config(
+            lat,
+            g_el=1.0,
+            g_mag=1.0,
+            g_int=1.0,
+            g_mass=0.0,
+            g_chem=None,
+            num_pg_layer=1,
+            num_fermionic_layer=1,
+            ncopy=ncopy,
+        )
+
+    def test_ncopy_dependent_shapes(self):
+        """Check that the generic config derives all basic dimensions from ncopy."""
+        for ncopy in [1, 2, 4, 8]:
+            with self.subTest(ncopy=ncopy):
+                cfg = self._make_cfg(ncopy)
+                expected_nparams = 2 * ncopy * (2 * ncopy + 1)
+                expected_tmat_size = 1 + 4 * ncopy
+
+                self.assertEqual(cfg.ncopy, ncopy)
+                self.assertEqual(cfg._nparams, expected_nparams)
+                self.assertEqual(len(cfg.symbolvec), expected_nparams)
+                self.assertEqual(cfg.param_shape(), (2, 1, expected_nparams))
+                self.assertEqual(cfg.tmat_symb.shape, (expected_tmat_size, expected_tmat_size))
+                self.assertEqual(cfg.nvirtmodes_vertex, 4 * ncopy)
+                self.assertEqual(cfg.nvirtmodes_link, 2 * ncopy)
+
+    def test_zeroed_params_are_in_range(self):
+        """Check that ncopy-dependent zeroed parameter indices stay within param_shape."""
+        for ncopy in [1, 2, 4, 8]:
+            with self.subTest(ncopy=ncopy):
+                cfg = self._make_cfg(ncopy)
+                shape = cfg.param_shape()
+
+                for coord in cfg.zeroed_params:
+                    self.assertGreaterEqual(coord[0], 0)
+                    self.assertLess(coord[0], shape[0])
+                    self.assertGreaterEqual(coord[1], 0)
+                    self.assertLess(coord[1], shape[1])
+                    self.assertGreaterEqual(coord[2], 0)
+                    self.assertLess(coord[2], shape[2])
+
+    def test_odd_ncopy_greater_than_one_is_rejected(self):
+        """Odd ncopy > 1 is unsupported by the current pairwise projector convention."""
+        for ncopy in [3, 5]:
+            with self.subTest(ncopy=ncopy):
+                with self.assertRaises(ValueError):
+                    self._make_cfg(ncopy)

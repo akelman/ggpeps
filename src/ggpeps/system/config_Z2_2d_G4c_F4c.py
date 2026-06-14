@@ -273,132 +273,6 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
 
         return real_params + imag_params
 
-    # @property
-    # def tmat_symb(self):
-    #     """Definition of the symbolic T matrix.
-    #     The definition of T here is a result of an analytic consideration of global
-    #     symmetries like rotational invariance, charge conjugation invarance, etc.
-    #     The T matrix is given in terms of symbols to compute the derivative of the
-    #     covariance matrices analytically via sympy.
-    #     We do not have to type them explicitly anymore into the code.
-
-    #     This is one of two analytic inputs into the code.
-    #     The other input is the structure and the parametrization of the projectors.
-
-    #     The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, l_3, r_3...
-
-    #     The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations)
-    #     because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
-    #     The permutation matrices are prone to errors.
-
-    #     Returns:
-    #         sympy.Matrix: Analytic T matrix of the fiducial state
-    #     """
-    #     # Create a dictionary of parameters
-    #     offset = self._nparams // 2  # offset to get index of imaginary part
-    #     keys = [str(symb)[:-1] for symb in self.symbolvec[:offset]]
-    #     vals = [self.symbolvec[i] + 1j * self.symbolvec[i + offset] for i in range(offset)]
-    #     params = {key: val for key, val in zip(keys, vals)}
-
-    #     # Define the form blocks of the T matrix -
-    #     # physical-virtual, virtual-virtual within the same copy, and virtual-virtual between copies
-
-    #     # a) Physical-virtual
-    #     # this is a row matrix (because of the transpose)
-    #     Block_1 = sympy.Matrix([-1.0j * params["t1"], 1.0j * params["t1"], params["t1"], -params["t1"]]).T
-
-    #     # b) Virtual-virtual within the same copy
-    #     Block_2 = sympy.Matrix(
-    #         [
-    #             [0, 1.0j * params["y1"], params["z1"], 1.0j * params["z1"]],
-    #             [-1.0j * params["y1"], 0, -1.0j * params["z1"], -params["z1"]],
-    #             [-params["z1"], 1.0j * params["z1"], 0, -params["y1"]],
-    #             [-1.0j * params["z1"], params["z1"], params["y1"], 0],
-    #         ]
-    #     )
-
-    #     # c) Virtual-virtual between two different copies
-    #     Block_3 = sympy.Matrix(
-    #         [
-    #             [-1.0j * params["a12"], -1.0j * params["c12"], -1.0j * params["b12"], -1.0j * params["d12"]],
-    #             [1.0j * params["c12"], 1.0j * params["a12"], 1.0j * params["d12"], 1.0j * params["b12"]],
-    #             [params["d12"], params["b12"], params["a12"], params["c12"]],
-    #             [-params["b12"], -params["d12"], -params["c12"], -params["a12"]],
-    #         ]
-    #     )
-
-    #     # Generate all the blocks for all copies:
-    #     # a) Physical-virtual blocks
-    #     t_blocks = [Block_1.subs(params["t1"], params[f"t{i}"]) for i in range(1, self.ncopy + 1)]
-
-    #     # b) Virtual-virtual within the same copy
-    #     yz_blocks = [
-    #         Block_2.subs([(params["y1"], params[f"y{i}"]), (params["z1"], params[f"z{i}"])])
-    #         for i in range(1, self.ncopy + 1)
-    #     ]
-
-    #     # c) Virtual-virtual between different copies
-    #     abcd_blocks = []
-    #     for cop1 in range(1, self.ncopy + 1):
-    #         for cop2 in range(cop1 + 1, self.ncopy + 1):
-    #             # a12, b12, c12, d12
-    #             a_sub = (params["a12"], params[f"a{cop1}{cop2}"])
-    #             b_sub = (params["b12"], params[f"b{cop1}{cop2}"])
-    #             c_sub = (params["c12"], params[f"c{cop1}{cop2}"])
-    #             d_sub = (params["d12"], params[f"d{cop1}{cop2}"])
-    #             subs = [a_sub, b_sub, c_sub, d_sub]
-    #             block = Block_3.subs(subs)
-    #             abcd_blocks.append(block)
-
-    #     # We will constuct the T matrix row by row.
-    #     # Each row will be a physical mode, or a virtual copy (4 virtual modes)
-
-    #     # row corresponding to the physical mode
-    #     data = [sympy.zeros(1)] + [t_block for t_block in t_blocks]
-    #     first_row = sympy.Matrix.hstack(*data)
-
-    #     # rows corresponding to the virtual modes
-    #     rows = []
-    #     countdown = list(range(self.ncopy - 1, 0, -1))
-    #     for cop in range(self.ncopy):
-    #         # We construct the row (really, 4 rows, since each copy has 4 modes, 1 for each link connected to a site)
-
-    #         # mix copies - below diagonal blocks
-    #         # TODO: this should be generalized to any number of copies
-    #         off_diag1 = []
-    #         if cop == 0:
-    #             off_diag1 = []
-    #         elif cop == 1:
-    #             off_diag1 = [-abcd_blocks[0].T]
-    #         elif cop == 2:
-    #             off_diag1 = [
-    #                 -abcd_blocks[1].T,
-    #                 -abcd_blocks[3].T,
-    #             ]
-    #         elif cop == 3:
-    #             off_diag1 = [
-    #                 -abcd_blocks[2].T,
-    #                 -abcd_blocks[4].T,
-    #                 -abcd_blocks[5].T,
-    #             ]
-    #         else:
-    #             raise ValueError("Invalid copy index.")
-
-    #         # mix copies - above diagonal blocks
-    #         start = sum(countdown[:cop])
-    #         end = sum(countdown[: cop + 1])
-    #         off_diag2 = abcd_blocks[start:end]
-
-    #         # construct full row
-    #         row = [-t_blocks[cop].T] + off_diag1 + [yz_blocks[cop]] + off_diag2
-    #         rows.append(sympy.Matrix.hstack(*row))
-
-    #     # Stack all rows together
-    #     all_rows = [first_row] + rows
-    #     tmat_symb = sympy.Matrix.vstack(*all_rows)
-
-    #     return tmat_symb
-
     @property
     def tmat_symb(self):
         """Definition of the symbolic T matrix.
@@ -411,7 +285,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         This is one of two analytic inputs into the code.
         The other input is the structure and the parametrization of the projectors.
 
-        The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, l_3, r_3...
+        The mode order is: Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, ... , l_n, r_n, d_n, u_n
 
         The order {l,r,d,u} instead of {r,u,l,d} (used in some analytic calculations)
         because it eliminates the need for a lot of permutation matrices in the conversion from T to gamma_maj.
@@ -443,16 +317,6 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
             ]
         )
 
-        # c) Virtual-virtual between two different copies
-        Block_3 = sympy.Matrix(
-            [
-                [-1.0j * params["a12"], -1.0j * params["c12"], -1.0j * params["b12"], -1.0j * params["d12"]],
-                [1.0j * params["c12"], 1.0j * params["a12"], 1.0j * params["d12"], 1.0j * params["b12"]],
-                [params["d12"], params["b12"], params["a12"], params["c12"]],
-                [-params["b12"], -params["d12"], -params["c12"], -params["a12"]],
-            ]
-        )
-
         # Generate all the blocks for all copies:
         # a) Physical-virtual blocks
         t_blocks = [Block_1.subs(params["t1"], params[f"t{i}"]) for i in range(1, self.ncopy + 1)]
@@ -463,21 +327,32 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
             for i in range(1, self.ncopy + 1)
         ]
 
-        # c) Virtual-virtual between different copies
+        # c) Virtual-virtual between two different copies.
+        # For ncopy == 1 there are no mixed-copy blocks and therefore no a12,b12,c12,d12 symbols.
         abcd_blocks = {}
-        for cop1 in range(self.ncopy):
-            for cop2 in range(cop1 + 1, self.ncopy):
-                cop1_label = cop1 + 1
-                cop2_label = cop2 + 1
-                subs = [
-                    (params["a12"], params[f"a{cop1_label}{cop2_label}"]),
-                    (params["b12"], params[f"b{cop1_label}{cop2_label}"]),
-                    (params["c12"], params[f"c{cop1_label}{cop2_label}"]),
-                    (params["d12"], params[f"d{cop1_label}{cop2_label}"]),
+        if self.ncopy > 1:
+            Block_3 = sympy.Matrix(
+                [
+                    [-1.0j * params["a12"], -1.0j * params["c12"], -1.0j * params["b12"], -1.0j * params["d12"]],
+                    [1.0j * params["c12"], 1.0j * params["a12"], 1.0j * params["d12"], 1.0j * params["b12"]],
+                    [params["d12"], params["b12"], params["a12"], params["c12"]],
+                    [-params["b12"], -params["d12"], -params["c12"], -params["a12"]],
                 ]
-                abcd_blocks[(cop1, cop2)] = Block_3.subs(subs)
+            )
 
-        # We will constuct the T matrix row by row.
+            for cop1 in range(self.ncopy):
+                for cop2 in range(cop1 + 1, self.ncopy):
+                    cop1_label = cop1 + 1
+                    cop2_label = cop2 + 1
+                    subs = [
+                        (params["a12"], params[f"a{cop1_label}{cop2_label}"]),
+                        (params["b12"], params[f"b{cop1_label}{cop2_label}"]),
+                        (params["c12"], params[f"c{cop1_label}{cop2_label}"]),
+                        (params["d12"], params[f"d{cop1_label}{cop2_label}"]),
+                    ]
+                    abcd_blocks[(cop1, cop2)] = Block_3.subs(subs)
+
+        # We will construct the T matrix row by row.
         # Each row will be a physical mode, or a virtual copy (4 virtual modes)
 
         # row corresponding to the physical mode
