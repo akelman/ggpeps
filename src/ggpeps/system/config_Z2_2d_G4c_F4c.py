@@ -48,7 +48,19 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         mod_link_inds=(0,),
         unitcell_size=1,
         enforce_u1_symmetry=True,
+        ncopy=4,
     ) -> None:
+        # The current gauged-projector construction mixes copies pairwise in pure-gauge layers
+        # via sigma = (1 <-> 2), (3 <-> 4), ... Therefore odd ncopy > 1 is not supported
+        # unless a different projector convention is implemented. The ncopy == 1 case is the
+        # trivial unmixed case.
+        if not (ncopy == 1 or ncopy % 2 == 0):
+            raise ValueError("ncopy must be 1 or even.")
+
+        self.ncopy = ncopy
+        self.nvirtmodes_vertex = 4 * ncopy
+        self.nvirtmodes_link = 2 * ncopy
+        self._nparams = 2 * ncopy * (2 * ncopy + 1)
         super().__init__(
             gauge.ZNGauge(2),
             lattice,
