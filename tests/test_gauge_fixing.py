@@ -177,16 +177,22 @@ class Testgaugefixing(unittest.TestCase):
         """
         # Parameters (1 copy, 1 PG layer) known to expose the bug; the measured link is link 0,
         # which is on the maximal gauge-fixing tree (pinned to identity).
-        explosive_params = np.array(
-            [0.0, 2.79433214e-04, -7.06773559e-01, 0.0, 9.99670799e-01, 7.06984522e-01]
-        )
+        explosive_params = np.array([0.0, 2.79433214e-04, -7.06773559e-01, 0.0, 9.99670799e-01, 7.06984522e-01])
 
         def run(gf_flag):
             lat2 = lattice.Lattice2D(2, 2, gf_flag)
             cfg = system.Z2System2DConfig(
-                lat2, 1.0, 1.0, 0.0, 0.0, [],
-                num_pg_layer=1, num_fermionic_layer=0,
-                mod_link_inds=(0,), unitcell_size=1, enforce_u1_symmetry=True,
+                lat2,
+                1.0,
+                1.0,
+                0.0,
+                0.0,
+                [],
+                num_pg_layer=1,
+                num_fermionic_layer=0,
+                mod_link_inds=(0,),
+                unitcell_size=1,
+                enforce_u1_symmetry=True,
             )
             cfg.paramvec = np.reshape(explosive_params, cfg.param_shape())
             cfg.make_pure_gauge()
@@ -198,13 +204,191 @@ class Testgaugefixing(unittest.TestCase):
             ev.evaluate()
             return float(ev.obsdict["el_energy"])
 
-        el_no_gf = run(0)   # no gauge fixing (link 0 summed over)
-        el_gf = run(-1)     # maximal-tree gauge fixing (link 0 pinned)
+        el_no_gf = run(0)  # no gauge fixing (link 0 summed over)
+        el_gf = run(-1)  # maximal-tree gauge fixing (link 0 pinned)
 
         # The physical electric energy is bounded below by 0 (offset convention).
         self.assertGreaterEqual(el_gf, -1e-6, msg=f"gauge-fixed electric energy is unphysical: {el_gf}")
         # Gauge fixing must reproduce the no-gauge-fixing value.
         self.assertAlmostEqual(el_gf, el_no_gf, places=4)
+
+    def test_modified_norm_no_incremental_drift(self):
+        """The modified open-link norm must equal a from-scratch recomputation after any
+        sequence of gauge updates.
+
+        The modified-norm quantity (norm_mod_vec) is a pure function of the current gauge
+        configuration, so a system driven incrementally through a traversal must agree with a
+        freshly built system set to the same configuration. A previous implementation ofs
+        incrementalWoodbury/IncDet tracking of the modified objects violated this:
+        when the measured link is pinned by gauge fixing it
+        drifted catastrophically (norm_mod off by ~37 -> exp(37)
+         in the modnorm/norm ratio).
+        """
+        explosive_params = np.array([0.0, 2.79433214e-04, -7.06773559e-01, 0.0, 9.99670799e-01, 7.06984522e-01])
+
+        def build():
+            lat2 = lattice.Lattice2D(2, 2, -1)  # maximal tree: the measured link 0 is pinned
+            cfg = system.Z2System2DConfig(
+                lat2,
+                1.0,
+                1.0,
+                0.0,
+                0.0,
+                [],
+                num_pg_layer=1,
+                num_fermionic_layer=0,
+                mod_link_inds=(0,),
+                unitcell_size=1,
+                enforce_u1_symmetry=True,
+            )
+            cfg.paramvec = np.reshape(explosive_params, cfg.param_shape())
+            cfg.make_pure_gauge()
+            cfg.enforce_parameter_conditions(cfg.paramvec)
+            return system.Z2System2D(cfg)
+
+        persistent = build()  # driven incrementally through the whole traversal
+        evaluator = exacteval.ExactEvaluator(ExactEvaluatorConfig(), persistent)
+
+        max_drift = 0.0
+        for config in evaluator.generate_config_vec():
+            persistent.update_gauge_full_system(config)
+            fresh = build()
+            fresh.update_gauge_full_system(config)
+            drift = np.max(
+                np.abs(np.asarray(persistent.norm_mod_vec, dtype=float) - np.asarray(fresh.norm_mod_vec, dtype=float))
+            )
+            max_drift = max(max_drift, float(drift))
+
+        self.assertLess(max_drift, 1e-8, msg=f"modified norm drifted by {max_drift} along the traversal")
+
+    @staticmethod
+    def _build_explosive_pure_gauge_system(gf_flag=-1):
+        """Build the 1-copy, 1-PG-layer Z2 system with the explosive parameters and the measured
+        link (0) pinned by maximal-tree gauge fixing. Shared by the tracker-refresh tests."""
+        explosive_params = np.array([0.0, 2.79433214e-04, -7.06773559e-01, 0.0, 9.99670799e-01, 7.06984522e-01])
+        lat2 = lattice.Lattice2D(2, 2, gf_flag)
+        cfg = system.Z2System2DConfig(
+            lat2,
+            1.0,
+            1.0,
+            0.0,
+            0.0,
+            [],
+            num_pg_layer=1,
+            num_fermionic_layer=0,
+            mod_link_inds=(0,),
+            unitcell_size=1,
+            enforce_u1_symmetry=True,
+        )
+        cfg.paramvec = np.reshape(explosive_params, cfg.param_shape())
+        cfg.make_pure_gauge()
+        cfg.enforce_parameter_conditions(cfg.paramvec)
+        return system.Z2System2D(cfg)
+
+    def test_mod_trackers_incremental_match_fresh_with_refresh(self):
+        """With incremental modified-tracker tracking restored (plus periodic + adaptive refresh),
+        BOTH the modified covariance (covmat_out_mod_vec) and the modified norm (norm_mod_vec) must
+        still equal a from-scratch system at every config along the gauge-fixed traversal.
+
+        This is the stronger form of test_modified_norm_no_incremental_drift: it also pins the
+        modified covariance matrix, not just its norm.
+        """
+        persistent = self._build_explosive_pure_gauge_system(-1)
+        evaluator = exacteval.ExactEvaluator(ExactEvaluatorConfig(), persistent)
+
+        max_norm_drift = 0.0
+        max_cov_drift = 0.0
+        for config in evaluator.generate_config_vec():
+            persistent.update_gauge_full_system(config)
+            fresh = self._build_explosive_pure_gauge_system(-1)
+            fresh.update_gauge_full_system(config)
+
+            max_norm_drift = max(
+                max_norm_drift,
+                float(
+                    np.max(
+                        np.abs(
+                            np.asarray(persistent.norm_mod_vec, dtype=float)
+                            - np.asarray(fresh.norm_mod_vec, dtype=float)
+                        )
+                    )
+                ),
+            )
+            max_cov_drift = max(
+                max_cov_drift,
+                float(
+                    np.max(np.abs(np.asarray(persistent.covmat_out_mod_vec) - np.asarray(fresh.covmat_out_mod_vec)))
+                ),
+            )
+
+        self.assertLess(max_norm_drift, 1e-8, msg=f"modified norm drifted by {max_norm_drift}")
+        self.assertLess(max_cov_drift, 1e-8, msg=f"modified covmat drifted by {max_cov_drift}")
+
+    def test_closed_trackers_match_fresh_over_chain(self):
+        """The closed (full-system) Woodbury inverses and incremental determinant, maintained
+        incrementally with periodic + adaptive refresh, must equal a from-scratch recomputation
+        over the long incremental chain of a full traversal.
+        """
+        persistent = self._build_explosive_pure_gauge_system(-1)
+        evaluator = exacteval.ExactEvaluator(ExactEvaluatorConfig(), persistent)
+
+        max_incdet_drift = 0.0
+        max_wi_in_drift = 0.0
+        max_wi_out_drift = 0.0
+        for config in evaluator.generate_config_vec():
+            persistent.update_gauge_full_system(config)
+            # Ground truth: rebuild the closed trackers from scratch from the exact gamma_in_sys.
+            wi_in_fresh, wi_out_fresh, incdet_fresh = persistent._compute_closed_trackers()
+
+            max_incdet_drift = max(
+                max_incdet_drift,
+                float(np.max(np.abs(np.asarray(persistent.incdet_vec) - np.asarray(incdet_fresh)))),
+            )
+            max_wi_in_drift = max(
+                max_wi_in_drift,
+                float(np.max(np.abs(np.asarray(persistent.wi_gamma_in_vec) - np.asarray(wi_in_fresh)))),
+            )
+            max_wi_out_drift = max(
+                max_wi_out_drift,
+                float(np.max(np.abs(np.asarray(persistent.wi_gamma_out_vec) - np.asarray(wi_out_fresh)))),
+            )
+
+        self.assertLess(max_incdet_drift, 1e-8, msg=f"closed incdet drifted by {max_incdet_drift}")
+        self.assertLess(max_wi_in_drift, 1e-8, msg=f"closed wi_gamma_in drifted by {max_wi_in_drift}")
+        self.assertLess(max_wi_out_drift, 1e-8, msg=f"closed wi_gamma_out drifted by {max_wi_out_drift}")
+
+    def test_adaptive_guard_catches_singular_step(self):
+        """Even with the periodic refresh effectively disabled (huge interval), the adaptive
+        condition-number guard must catch the ill-conditioned (near-singular) modified update that
+        the pinned measured link produces, keeping norm_mod from drifting.
+
+        With a huge interval and NO guard the modified trackers are pure-incremental and drift
+        catastrophically (norm_mod off by ~37) -- exactly the original bug. Passing this test with
+        the periodic refresh disabled proves the *adaptive guard* (not the interval) is the safety
+        net for the explosive case.
+        """
+        persistent = self._build_explosive_pure_gauge_system(-1)
+        persistent.tracker_refresh_interval = 10**9  # disable periodic refresh; rely on the guard
+        evaluator = exacteval.ExactEvaluator(ExactEvaluatorConfig(), persistent)
+
+        max_drift = 0.0
+        for config in evaluator.generate_config_vec():
+            persistent.update_gauge_full_system(config)
+            fresh = self._build_explosive_pure_gauge_system(-1)
+            fresh.update_gauge_full_system(config)
+            max_drift = max(
+                max_drift,
+                float(
+                    np.max(
+                        np.abs(
+                            np.asarray(persistent.norm_mod_vec, dtype=float)
+                            - np.asarray(fresh.norm_mod_vec, dtype=float)
+                        )
+                    )
+                ),
+            )
+
+        self.assertLess(max_drift, 1e-8, msg=f"adaptive guard failed; modified norm drifted by {max_drift}")
 
     @skip("Too long and not precise enough")
     def test_mceval(self):
