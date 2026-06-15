@@ -385,6 +385,19 @@ def main(args):
     # Enforce the required parameter conditions
     system_cfg.enforce_parameter_conditions(system_cfg.paramvec)
 
+    # Select the electric-energy backend (default "pfaffian"). The "bravyi" path is an independent
+    # Gaussian-overlap oracle: pure gauge, exact-eval, energies only (no gradients/minimization).
+    system_cfg.el_method = args.el_method
+    if args.el_method == "bravyi":
+        if args.compute_grads or args.mode in ("min-exact", "min-mc", "min-nevmc", "minmult-mc"):
+            logger.error("The 'bravyi' electric-energy method supports energies only (no gradients / minimization).")
+            sys.exit(1)
+        if args.mode != "eval-exact":
+            logger.warning("The 'bravyi' electric-energy method is only validated for eval-exact.")
+        if args.num_fermionic_layer != 0:
+            logger.error("The 'bravyi' electric-energy method supports pure gauge only (num_fermionic_layer=0).")
+            sys.exit(1)
+
     # Switch to control the binning analysis on EOM (Error of mean)
     if args.no_bin_eom:
         Measurement.use_rebinning = False
@@ -809,6 +822,14 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
         help="Compute grads even if in eval mode",
+    )
+    parser.add_argument(
+        "--el_method",
+        type=str,
+        choices=["pfaffian", "bravyi"],
+        default="pfaffian",
+        help="Electric-energy backend: 'pfaffian' (default) or 'bravyi' (independent Gaussian "
+        "three-state overlap; pure-gauge, exact-eval, energies only).",
     )
 
     # Monte Carlo settings
