@@ -148,7 +148,33 @@ class System2DBase(ABC):
         self._wi_gamma_out_mod_vec: Optional[xnp.ndarray] = None  # Tracks (Dmod - gammain)^-1
         self._incdet_mod_vec: Optional[xnp.ndarray] = None  # Tracks det(Dmod^-1 - gammain)
 
+        # Drift control for the incremental (Woodbury/IncDet) trackers.
+        # The trackers are maintained incrementally for O(N^2) single-link updates, but the per-step
+        # error accumulates and is amplified through ill-conditioned (near-singular) updates. To keep
+        # it bounded we re-anchor each side from scratch (a) periodically every
+        # ``tracker_refresh_interval`` steps and (b) adaptively whenever a single Woodbury step is
+        # ill-conditioned (the capacitance matrix is near-singular). See _update_trackers_after_substitution.
+        self._closed_tracker_age: int = 0
+        self._mod_tracker_age: int = 0
+        self.tracker_refresh_interval: int = getattr(
+            self.cfg, "tracker_refresh_interval", self.TRACKER_REFRESH_INTERVAL_DEFAULT
+        )
+
         return
+
+    # Periodic re-anchor cadence for the incremental trackers (steps between from-scratch refreshes).
+    # 1 reproduces the always-from-scratch behavior; a large value relies on the adaptive guard alone.
+    TRACKER_REFRESH_INTERVAL_DEFAULT: int = 64
+    # Adaptive guards. Refresh a side immediately if EITHER
+    #   (a) a Woodbury step's capacitance condition number exceeds TRACKER_COND_THRESH
+    #       (the single step is ill-conditioned), OR
+    #   (b) the resulting tracked inverse has an entry larger than TRACKER_INV_MAG_THRESH
+    #       (the tracked matrix is near-singular -- a *global* signal the local capacitance check
+    #       can miss when the singularity is not in the just-updated block). At such configs the
+    #       incremental inverse cannot match a from-scratch one, so we re-anchor: the from-scratch
+    #       inverse is itself large there, but persistent then equals it to machine precision.
+    TRACKER_COND_THRESH: float = 1e8
+    TRACKER_INV_MAG_THRESH: float = 1e2
 
     def invalidate_gauge_update(self) -> None:
         """Reset the values of computed quantitities to avoid spillover from previous computations.
@@ -182,12 +208,6 @@ class System2DBase(ABC):
         self._el_pfaffians = None
         self._lognorm_default_vec = None
 
-        # Modified (open-link) trackers are recomputed from scratch each config instead of
-        # being tracked incrementally (the incremental update drifts catastrophically along a
-        # gauge-fixed traversal). Invalidate them so they are rebuilt by _compute_mod_trackers.
-        self._wi_gamma_in_mod_vec = None
-        self._wi_gamma_out_mod_vec = None
-        self._incdet_mod_vec = None
         return
 
     @property
@@ -860,24 +880,32 @@ class System2DBase(ABC):
             gamma_in_sys_listvec.append(gamma_in_sys)
 
         gamma_in_sys_vec = xnp.array(gamma_in_sys_listvec)
+        # Set gamma_in_sys_vec now so the from-scratch tracker helpers below can read it via the
+        # property without re-triggering initialization.
+        self._gamma_in_sys_vec = gamma_in_sys_vec
+
+        # Build both tracker families from scratch and reset their drift-control age counters: this
+        # is the canonical re-anchor point that the periodic / adaptive refresh also reuses.
+        closed_trackers = self._compute_closed_trackers()
+        mod_trackers = self._compute_mod_trackers()
+        self._closed_tracker_age = 0
+        self._mod_tracker_age = 0
+
+        return (gamma_in_sys_vec, closed_trackers, mod_trackers)
+
+    def _compute_closed_trackers(self) -> tuple:
+        """Recompute the closed (full-system) Woodbury inverses and incremental determinant from
+        scratch from the CURRENT ``gamma_in_sys_vec``.
+
+        Counterpart of ``_compute_mod_trackers`` for the closed side. ``gamma_in_sys_vec`` is
+        maintained exactly (direct assignment in ``_update_gauge_ind``), so rebuilding the trackers
+        from it is the numerically stable ground truth used to re-anchor the incremental chain.
+        """
+        gamma_in_sys_vec = self.gamma_in_sys_vec
         wi_gamma_in_vec = xnp.linalg.inv(self.mat_d_inv_vec - gamma_in_sys_vec)
         wi_gamma_out_vec = xnp.linalg.inv(self.mat_d_vec - gamma_in_sys_vec)
         _, incdet_vec = xnp.linalg.slogdet(self.mat_d_inv_vec - gamma_in_sys_vec)
-
-        # Initialize the modified gamma_in_sys and trackers for the full system
-        gamma_in_sys_mod_layervec_linkvec = self._extract_gamma_in_sys_mod_vec(
-            self.cfg.mod_link_inds, gamma_in_sys_vec
-        )
-
-        wi_gamma_in_mod_vec = xnp.linalg.inv(self.mat_d_mod_inv_vec - gamma_in_sys_mod_layervec_linkvec)
-        wi_gamma_out_mod_vec = xnp.linalg.inv(self.mat_d_mod_vec - gamma_in_sys_mod_layervec_linkvec)
-        _, incdet_mod_vec = xnp.linalg.slogdet(self.mat_d_mod_inv_vec - gamma_in_sys_mod_layervec_linkvec)
-
-        return (
-            gamma_in_sys_vec,
-            (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec),
-            (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec),
-        )
+        return wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec
 
     @property
     def gamma_in_sys_vec(self) -> xnp.ndarray:
@@ -993,13 +1021,16 @@ class System2DBase(ABC):
         """Recompute the modified (open-link) Woodbury inverses and incremental determinant
         from scratch from the CURRENT ``gamma_in_sys_vec``.
 
-        The modified objects are recomputed on demand rather than tracked incrementally:
-        the incremental Woodbury/IncDet update of the modified objects drifts catastrophically
-        along a gauge-fixed exact-eval traversal. There the measured link is pinned, so the
+        This is the from-scratch re-anchor point for the modified trackers. The modified objects
+        ARE tracked incrementally (see ``_update_mod_trackers_incremental``) for the O(N^2)
+        single-link update, but their incremental Woodbury/IncDet update drifts catastrophically
+        along a gauge-fixed exact-eval traversal: there the measured link is pinned, so the
         modified open-link state passes repeatedly through near-singular configurations and the
         update accumulates unbounded error (observed: ``norm_mod`` off by ~37, i.e. exp(37) in
-        the modnorm/norm ratio). ``gamma_in_sys_vec`` itself is maintained exactly, so
-        recomputing the modified objects from it is correct and numerically stable.
+        the modnorm/norm ratio). To bound that drift the trackers are re-anchored from scratch
+        here -- periodically and on the adaptive ill-conditioning guard. ``gamma_in_sys_vec``
+        itself is maintained exactly, so recomputing the modified objects from it is correct and
+        numerically stable.
         """
         gamma_in_sys_mod = self.gamma_in_sys_mod_vec
         diff_in = self.mat_d_mod_inv_vec - gamma_in_sys_mod
@@ -1007,6 +1038,131 @@ class System2DBase(ABC):
         wi_gamma_out_mod = xnp.linalg.inv(self.mat_d_mod_vec - gamma_in_sys_mod)
         _, incdet_mod = xnp.linalg.slogdet(diff_in)
         return wi_gamma_in_mod, wi_gamma_out_mod, incdet_mod
+
+    # ---------------- Incremental tracker update + drift control ----------------
+
+    @staticmethod
+    def _capacitance_cond(ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> float:
+        """Condition number of the Woodbury capacitance for an indexed rank-k update (max over any
+        batch dimension). A large value flags an ill-conditioned single step whose incremental
+        inverse cannot be trusted -- the trigger for an adaptive from-scratch refresh."""
+        cap = utils.WoodburyInverter.capacitance_index(ainv, m, indi, indj)
+        return float(xnp.max(xnp.linalg.cond(cap)))
+
+    def _update_trackers_after_substitution(
+        self,
+        update_vec: list,
+        update_arr: xnp.ndarray,
+        ind_mat: int,
+        link_ind: int,
+    ) -> None:
+        """Apply the single-link incremental update to both the closed and modified trackers, then
+        re-anchor each side from scratch if its periodic interval elapsed or the adaptive
+        ill-conditioning guard fired.
+
+        Shared by Z2System2D and D2nSystem2D (their ``_update_gauge_ind`` differ only in
+        ``generate_rotmat``). ``gamma_in_sys_vec`` has already been substituted exactly by the
+        caller; ``update_vec``/``update_arr`` are the per-layer local updates at offset ``ind_mat``.
+        """
+        # --- Closed (full-system) trackers: incremental Woodbury / IncDet update ---
+        # Conditioning of this step (read the OLD inverses before they are overwritten).
+        closed_cond = max(
+            self._capacitance_cond(self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat),
+            self._capacitance_cond(self.wi_gamma_out_vec, update_arr, ind_mat, ind_mat),
+        )
+
+        self._incdet_vec = utils.IncLogAbsDeterminant.update_index(
+            self.incdet_vec, self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat
+        )
+        self.weight = 0.5 * np.sum(self.incdet_vec)
+        self._wi_gamma_in_vec = utils.WoodburyInverter.update_index(self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat)
+        self._wi_gamma_out_vec = utils.WoodburyInverter.update_index(
+            self.wi_gamma_out_vec, update_arr, ind_mat, ind_mat
+        )
+        self._closed_tracker_age += 1
+        closed_mag = max(
+            float(xnp.max(xnp.abs(self._wi_gamma_in_vec))),
+            float(xnp.max(xnp.abs(self._wi_gamma_out_vec))),
+        )
+
+        # --- Modified (open-link) trackers: incremental update ---
+        mod_cond, mod_mag = self._update_mod_trackers_incremental(update_vec, ind_mat, link_ind)
+        self._mod_tracker_age += 1
+
+        # --- Re-anchor from scratch: periodic interval OR adaptive guards (step conditioning,
+        #     or near-singular tracked inverse) ---
+        if self._refresh_due(self._closed_tracker_age, closed_cond, closed_mag):
+            self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = self._compute_closed_trackers()
+            self.weight = 0.5 * np.sum(self._incdet_vec)
+            self._closed_tracker_age = 0
+
+        if self._refresh_due(self._mod_tracker_age, mod_cond, mod_mag):
+            (
+                self._wi_gamma_in_mod_vec,
+                self._wi_gamma_out_mod_vec,
+                self._incdet_mod_vec,
+            ) = self._compute_mod_trackers()
+            self._mod_tracker_age = 0
+
+    def _refresh_due(self, age: int, cond: float, inv_mag: float) -> bool:
+        """A tracker side must be re-anchored from scratch when its periodic interval elapsed, a
+        Woodbury step was ill-conditioned, or the tracked inverse became near-singular (large)."""
+        return (
+            age >= self.tracker_refresh_interval
+            or cond > self.TRACKER_COND_THRESH
+            or inv_mag > self.TRACKER_INV_MAG_THRESH
+        )
+
+    def _update_mod_trackers_incremental(self, update_vec: list, ind_mat: int, link_ind: int) -> tuple:
+        """Incrementally update the modified (open-link) trackers for the changed link and return
+        ``(max_cond, max_inv_mag)``: the worst-case capacitance condition number and the largest
+        resulting inverse entry over the per-(layer, link) Woodbury steps (the two adaptive-refresh
+        signals).
+
+        The link excluded from the modified objects (``mod_link_ind``) is skipped; for the others
+        the local update is placed at ``ind_mat`` shifted by the carved-out link when it sits below
+        the changed link in the mode order. The vectorized index update does not support skipping a
+        link or a variable offset, so we loop explicitly.
+        """
+        assert self._wi_gamma_in_mod_vec is not None  # for mypy
+        assert self._wi_gamma_out_mod_vec is not None
+        max_cond = 0.0
+        max_mag = 0.0
+        for lay in range(self.cfg.nlayer):
+            for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
+                if mod_link_ind == link_ind:
+                    # The changed link is the one excluded from the modified objects -> no update.
+                    continue
+
+                offset = 0  # no offset if link_ind < mod_link_ind
+                if link_ind > mod_link_ind:
+                    offset = 2 * self.cfg.nvirtmodes_link
+                pos = ind_mat - offset
+
+                mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
+                max_cond = max(
+                    max_cond,
+                    self._capacitance_cond(mat_inv, update_vec[lay], pos, pos),
+                    self._capacitance_cond(self.wi_gamma_out_mod_vec[lay][ind], update_vec[lay], pos, pos),
+                )
+
+                new_det = utils.IncLogAbsDeterminant.update_index(
+                    self.incdet_mod_vec[lay][ind], mat_inv, update_vec[lay], pos, pos
+                )
+                self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, (lay, ind), new_det)
+
+                new1 = utils.WoodburyInverter.update_index(
+                    self._wi_gamma_in_mod_vec[lay][ind], update_vec[lay], pos, pos
+                )
+                self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (lay, ind), new1)
+
+                new2 = utils.WoodburyInverter.update_index(
+                    self._wi_gamma_out_mod_vec[lay][ind], update_vec[lay], pos, pos
+                )
+                self._wi_gamma_out_mod_vec = backend.array_assign(self._wi_gamma_out_mod_vec, (lay, ind), new2)
+
+                max_mag = max(max_mag, float(xnp.max(xnp.abs(new1))), float(xnp.max(xnp.abs(new2))))
+        return max_cond, max_mag
 
     @property
     def incdet_mod_vec(self) -> xnp.ndarray:

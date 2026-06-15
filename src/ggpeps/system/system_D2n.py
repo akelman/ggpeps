@@ -178,30 +178,12 @@ class D2nSystem2D(System2DBase):
             inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
             self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
 
-        # Update the determinant
-        mat_inv_vec = self.wi_gamma_in_vec
         update_arr = xnp.array(update_vec)
 
-        self._incdet_vec = utils.IncLogAbsDeterminant.update_index(
-            self.incdet_vec, mat_inv_vec, update_arr, ind_mat, ind_mat
-        )
-
-        # Update the weight
-        self.weight = 0.5 * np.sum(self.incdet_vec)
-
-        # Update the matrix inversion
-        self._wi_gamma_in_vec = ggpeps.utils.WoodburyInverter.update_index(
-            self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat
-        )
-        self._wi_gamma_out_vec = ggpeps.utils.WoodburyInverter.update_index(
-            self.wi_gamma_out_vec, update_arr, ind_mat, ind_mat
-        )
-
-        # The modified (open-link) trackers are NOT updated incrementally here. Their
-        # incremental Woodbury/IncDet update drifts catastrophically along a gauge-fixed
-        # traversal (the measured link is pinned). They are recomputed from scratch on demand
-        # from gamma_in_sys_vec (see System2DBase._compute_mod_trackers); invalidate_gauge_update
-        # below resets them so the next access rebuilds them.
+        # Incrementally update the closed and modified trackers, with periodic + adaptive
+        # from-scratch re-anchoring to keep accumulated drift bounded
+        # (see System2DBase._update_trackers_after_substitution).
+        self._update_trackers_after_substitution(update_vec, update_arr, ind_mat, link_ind)
 
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()

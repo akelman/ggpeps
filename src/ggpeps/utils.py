@@ -821,6 +821,33 @@ class WoodburyInverter:
         updated = WoodburyInverter.update(ainv, u, m, v)
         return updated
 
+    @staticmethod
+    def capacitance_index(ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
+        """Return the Woodbury capacitance matrix K = I + C V A^{-1} U for an indexed rank-k
+        update, WITHOUT applying it.
+
+        K is the small (k x k) matrix that ``update``/``update_index`` invert (utils line in
+        ``WoodburyInverter.update``: ``idmat + c_v @ ainv_u``). When K is near-singular the
+        incremental inverse update is ill-conditioned and loses precision, so its conditioning is
+        a cheap, exact signal for an adaptive "refresh from scratch" guard.
+
+        For the indexed update, ``V A^{-1} U`` selects the sub-block ``ainv[indj:indj+n, indi:indi+m]``,
+        so ``K = I + m @ ainv[indj:indj+n, indi:indi+m]``.
+
+        Args:
+            ainv (xnp.ndarray): the inverse matrix being tracked (possibly batched).
+            m (xnp.ndarray): the local (k x k) update matrix C, matching ainv's leading dims.
+            indi (int): row index in A where the update is placed.
+            indj (int): column index in A where the update is placed.
+
+        Returns:
+            xnp.ndarray: the capacitance matrix K (same leading dims as m, trailing k x k).
+        """
+        m_m, n_m = m.shape[-2:]
+        sub = ainv[..., indj : indj + n_m, indi : indi + m_m]
+        idmat = xnp.broadcast_to(xnp.eye(m_m, n_m), m.shape)
+        return idmat + m @ sub
+
 
 # =========================== IncDeterminant ===============================
 class IncDeterminant:
