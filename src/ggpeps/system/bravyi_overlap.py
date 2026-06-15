@@ -1,0 +1,53 @@
+"""Bravyi & Gosset three-state Gaussian-overlap identity (Commun. Math. Phys. 356, 451 (2017),
+eqs. 24-25), used to compute fermionic-PEPS amplitudes psi(G) = <phi_1(G)|phi_2> independently of
+the Pfaffian/bracket expansion. Pure-math, group-agnostic; operates on covariance matrices.
+
+Convention: covariance matrices follow Bravyi's M_{pq} = (-i/2)<[c_p, c_q]>. The vacuum covariance
+is M0 = (+) [[0,1],[-1,0]] per mode (eq 18, y=0). See docs/d6_combined.tex "Outlook" section.
+"""
+from ggpeps import xnp
+from ggpeps.system.backend import backend   # the backend INSTANCE (exposes .pfaffian)
+
+
+def _antisymmetrize(x: xnp.ndarray) -> xnp.ndarray:
+    """Project onto the antisymmetric part. The matrices fed to the Pfaffian (M1+M2 and
+    Delta+M0) are antisymmetric in exact arithmetic, but Delta = (...)(M1+M2)^-1 accumulates
+    round-off from inv/expm; pfapack asserts antisymmetry to 1e-14, so we clean the round-off.
+    This does not change the true Pfaffian (only removes the symmetric round-off component)."""
+    return 0.5 * (x - xnp.transpose(x))
+
+
+def vacuum_covmat(dim: int) -> xnp.ndarray:
+    """Covariance matrix of the fermionic vacuum |Omega>, size dim x dim (dim even).
+
+    M0 = blockdiag([[0, 1], [-1, 0]]) over dim/2 modes.
+    """
+    assert dim % 2 == 0, "covariance matrix dimension must be even"
+    m0 = xnp.zeros((dim, dim), dtype=xnp.complex128)
+    idx = xnp.arange(0, dim, 2)
+    if hasattr(m0, "at"):  # jax backend
+        m0 = m0.at[idx, idx + 1].set(1.0)
+        m0 = m0.at[idx + 1, idx].set(-1.0)
+    else:
+        m0[idx, idx + 1] = 1.0
+        m0[idx + 1, idx] = -1.0
+    return m0
+
+
+def gaussian_overlap_chi(m1: xnp.ndarray, m2: xnp.ndarray, m0: xnp.ndarray) -> xnp.ndarray:
+    """The G-dependent Pfaffian product chi = Pf(M1 + M2) * Pf(Delta + M0), where
+    Delta = (-2 I + i M1 - i M2) (M1 + M2)^{-1}  (Bravyi eqs. 24-25).
+
+    Returns a complex scalar. The full triple-overlap product is 4^{-n} * chi with n = dim/2.
+    """
+    dim = m1.shape[0]
+    eye = xnp.eye(dim, dtype=xnp.complex128)
+    m1m2 = m1 + m2
+    delta = (-2.0 * eye + 1j * m1 - 1j * m2) @ xnp.linalg.inv(m1m2)
+    return backend.pfaffian(_antisymmetrize(m1m2)) * backend.pfaffian(_antisymmetrize(delta + m0))
+
+
+def overlap_magnitude_sq(m1: xnp.ndarray, m2: xnp.ndarray) -> xnp.ndarray:
+    """|<phi_1|phi_2>|^2 = 2^{-n} Pf(M1 + M2)  (Bravyi eq 22, parity sigma = +1)."""
+    n = m1.shape[0] // 2
+    return (2.0 ** (-n)) * backend.pfaffian(_antisymmetrize(m1 + m2))

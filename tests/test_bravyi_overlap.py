@@ -1,0 +1,39 @@
+import unittest
+import numpy as np
+import scipy.linalg as sla
+
+from ggpeps.system import bravyi_overlap as bo
+from ggpeps.system.backend import backend
+
+
+def _random_even_pure_covmat(n_modes, rng, complex_state=False):
+    """Return a 2n x 2n covariance M with M^2 = -I and Pf(M) = +1 (even parity),
+    built as M = R M0 R^T with R a (complex) special-orthogonal rotation (det R = 1)."""
+    dim = 2 * n_modes
+    M0 = bo.vacuum_covmat(dim)
+    A = rng.standard_normal((dim, dim))
+    if complex_state:
+        A = A + 1j * rng.standard_normal((dim, dim))
+    A = A - A.T                      # antisymmetric generator -> expm is (complex) orthogonal, det=1
+    R = sla.expm(A)
+    M = R @ np.asarray(M0) @ R.T
+    M = 0.5 * (M - M.T)              # clean complex-expm round-off -> exact covariance (antisym)
+    return M, np.asarray(M0)
+
+
+class TestBravyiOverlapMath(unittest.TestCase):
+    def test_chi_reduces_to_norm_when_states_equal(self):
+        """For phi1 = phi2 = phi (even parity), the triple-overlap product reduces to
+        |<Omega|phi>|^2, so 4^-n * chi(M, M, M0) == 2^-n * Pf(M0 + M)  (Bravyi eq 22)."""
+        rng = np.random.default_rng(0)
+        for complex_state in (False, True):
+            for n_modes in (2, 3, 4):
+                M, M0 = _random_even_pure_covmat(n_modes, rng, complex_state)
+                n = M.shape[0] // 2
+                chi = bo.gaussian_overlap_chi(M, M, M0)
+                lhs = (4.0 ** (-n)) * chi
+                rhs = (2.0 ** (-n)) * backend.pfaffian(M0 + M)
+                self.assertTrue(
+                    np.allclose(lhs, rhs, atol=1e-9),
+                    msg=f"complex={complex_state} n={n_modes}: {lhs} != {rhs}",
+                )
