@@ -4,6 +4,8 @@ import scipy.linalg as sla
 
 from ggpeps.system import bravyi_overlap as bo
 from ggpeps.system.backend import backend
+from ggpeps import lattice
+from ggpeps import system
 
 
 def _random_even_pure_covmat(n_modes, rng, complex_state=False):
@@ -37,3 +39,37 @@ class TestBravyiOverlapMath(unittest.TestCase):
                     np.allclose(lhs, rhs, atol=1e-9),
                     msg=f"complex={complex_state} n={n_modes}: {lhs} != {rhs}",
                 )
+
+
+def _build_z2_2c_system(seed=1):
+    lat = lattice.Lattice2D(2, 2, 0)  # no gauge fixing
+    cfg = system.Z2System2D_G2C_F2C_Config(
+        lat, 1.0, 1.0, 0.0, 0.0, None, num_pg_layer=2, num_fermionic_layer=0
+    )
+    rng = np.random.default_rng(seed)
+    cfg.paramvec = rng.standard_normal(cfg.param_shape())
+    cfg.enforce_parameter_conditions(cfg.paramvec)
+    sysobj = system.Z2System2D(cfg)
+    return sysobj
+
+
+class TestBravyiNormCrosscheck(unittest.TestCase):
+    def test_overlap_magnitude_matches_existing_norm_per_layer(self):
+        sysobj = _build_z2_2c_system()
+        # pick a non-trivial (non-neutral) config on all links
+        configvec = [sysobj.cfg.gaugemgr.get_possible_gauge_values()[0]] * sysobj.cfg.lattice.nlinks
+        sysobj.update_gauge_full_system(configvec)
+
+        gamma_in = np.asarray(sysobj.gamma_in_sys_vec)  # (nlayer, dim, dim)
+        mat_d = np.asarray(sysobj.mat_d_vec)  # (nlayer, dim, dim)
+        lognormvec = np.asarray(sysobj.calculate_lognormvec(all_factors=True))  # per layer
+
+        for lay in range(sysobj.cfg.nlayer):
+            m1 = -gamma_in[lay]
+            m2 = -mat_d[lay]
+            mag = bo.overlap_magnitude_sq(m1, m2)  # == |psi_lay(G)|^2
+            expected = np.exp(lognormvec[lay])  # exp(lognorm), NOT 2*lognorm
+            self.assertTrue(
+                np.allclose(np.abs(mag), expected, rtol=1e-7, atol=1e-12),
+                msg=f"layer {lay}: |{mag}| != {expected}",
+            )
