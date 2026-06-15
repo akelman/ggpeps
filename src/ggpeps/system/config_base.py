@@ -150,6 +150,10 @@ class Config2DBase(ABC):
         self.coeffs_vec: CoeffsVec
         self.constants_vec: ConstantsVec
 
+        # Electric-energy backend: "pfaffian" (default, bracket/Pfaffian expansion) or
+        # "bravyi" (independent Gaussian three-state overlap; pure-gauge, energies only).
+        self.el_method: str = "pfaffian"
+
     def __str__(self) -> str:
         """Define a string method that can be used, e.g., in filenaming.
         This string doesn't include enough information to reconstruct the config"""

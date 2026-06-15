@@ -73,3 +73,23 @@ class TestBravyiNormCrosscheck(unittest.TestCase):
                 np.allclose(np.abs(mag), expected, rtol=1e-7, atol=1e-12),
                 msg=f"layer {lay}: |{mag}| != {expected}",
             )
+
+
+class TestBravyiSystemMethod(unittest.TestCase):
+    def test_bravyi_el_op_vec_shape_and_identity_ratio(self):
+        sysobj = _build_z2_2c_system()
+        configvec = [sysobj.cfg.gaugemgr.get_possible_gauge_values()[0]] * sysobj.cfg.lattice.nlinks
+        sysobj.update_gauge_full_system(configvec)
+
+        n_h = len(sysobj.cfg.gaugemgr.group_elements_for_el_energy)
+        nlayer = sysobj.cfg.nlayer
+        n_el = len(sysobj.cfg.mod_link_inds)
+
+        vec = np.asarray(sysobj._compute_el_energy_op_vec_bravyi())
+        self.assertEqual(vec.shape, (n_h, nlayer, n_el))
+
+        # Feeding the identity element as the only "reflection" must give ratio == 1 exactly
+        # (G' == G), independent of params/config.
+        ident = sysobj.cfg.gaugemgr.get_neutral_gauge_value()
+        vec_id = np.asarray(sysobj._bravyi_el_op_vec_for_elements((ident,)))
+        self.assertTrue(np.allclose(vec_id, 1.0, atol=1e-10))

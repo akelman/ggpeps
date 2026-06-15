@@ -2036,6 +2036,61 @@ class System2DBase(ABC):
             self._int_energy_op = xnp.sum(self.int_energy_op_vec)
         return self._int_energy_op
 
+    def _bravyi_chi_per_layer(self, gamma_in_vec: xnp.ndarray) -> xnp.ndarray:
+        """chi_lay = Pf(M1+M2) Pf(Delta+M0) for each layer, given a full-system gauged link
+        covariance `gamma_in_vec` (shape (nlayer, dim, dim)). Returns complex (nlayer,)."""
+        from ggpeps.system import bravyi_overlap as bo
+
+        mat_d = self.mat_d_vec
+        dim = gamma_in_vec.shape[-1]
+        m0 = xnp.asarray(bo.vacuum_covmat(dim))
+        chis = []
+        for lay in range(self.cfg.nlayer):
+            m1 = -gamma_in_vec[lay]  # Bravyi M = -Gamma_code
+            m2 = -mat_d[lay]
+            chis.append(bo.gaussian_overlap_chi(m1, m2, m0))
+        return xnp.array(chis)
+
+    def _bravyi_gamma_in_with_modified_link(self, link_ind: int, gauge_val: xnp.ndarray) -> xnp.ndarray:
+        """Fresh copy of gamma_in_sys_vec with link `link_ind`'s block rebuilt for `gauge_val`.
+        Mirrors _update_gauge_ind's block construction but touches no trackers. No Woodbury."""
+        ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
+        coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
+        rotmat = self.generate_rotmat(self.cfg.ncopy, gauge_val, coord, dir)
+        gamma = xnp.array(self.gamma_in_sys_vec)  # copy (nlayer, dim, dim)
+        blockdim = rotmat.shape[0]
+        for layer in range(self.cfg.nlayer):
+            gamma_neutral = self.gamma_gauge_neutral_vec[layer][dir]
+            block = rotmat @ gamma_neutral @ xnp.transpose(rotmat)
+            inds = (layer, slice(ind_mat, ind_mat + blockdim), slice(ind_mat, ind_mat + blockdim))
+            gamma = backend.array_assign(gamma, inds, block)
+        return gamma
+
+    def _bravyi_el_op_vec_for_elements(self, elements: tuple) -> xnp.ndarray:
+        """Per-(element, layer, measured-link) cross-overlap ratio conj(chi_lay(G')/chi_lay(G)),
+        where G' is the current config with link q's gauge value right-multiplied by `element`.
+        Shape (len(elements), nlayer, n_el_links). Drop-in for el_energy_op_vec."""
+        chi_G = self._bravyi_chi_per_layer(self.gamma_in_sys_vec)  # (nlayer,)
+        out = []
+        for h in elements:
+            per_link = []
+            for q in self.cfg.mod_link_inds:
+                g_q = self.gaugefieldvec[q]
+                g_prime = xnp.asarray(g_q) @ xnp.asarray(h)  # g_q h
+                gamma_prime = self._bravyi_gamma_in_with_modified_link(q, g_prime)
+                chi_Gp = self._bravyi_chi_per_layer(gamma_prime)  # (nlayer,)
+                per_link.append(xnp.conj(chi_Gp / chi_G))  # (nlayer,)
+            out.append(xnp.transpose(xnp.array(per_link), (1, 0)))  # (nlayer, n_el_links)
+        return xnp.array(out)  # (n_h, nlayer, n_el_links)
+
+    def _compute_el_energy_op_vec_bravyi(self) -> xnp.ndarray:
+        """Bravyi drop-in for el_energy_op_vec, summed over the standard electric-energy elements."""
+        # Pure gauge only. nphysmodes_site may be > 0 (Z2=1, D6=2) but those AUX modes decouple
+        # (mat_b=0), so the virtual-virtual block alone determines the amplitude. Guard ONLY on matter.
+        if self.cfg.num_fermionic_layer != 0:
+            raise NotImplementedError("The bravyi electric-energy path supports pure gauge only.")
+        return self._bravyi_el_op_vec_for_elements(self.cfg.gaugemgr.group_elements_for_el_energy)
+
     # Functions that return the layer-resolved energies of each energy operator
     @property
     def el_energy_op_vec(self) -> xnp.ndarray:
@@ -2046,18 +2101,21 @@ class System2DBase(ABC):
             array: Layer-resolved electric energy w/o shift of shape (nlayer, len(self.cfg.mod_link_inds))
         """
         if self._el_energy_op_vec is None:
-            # This vector is the electric energy on a single link. Otherwise, we get a
-            # power of nlinks in the product and the electric energy term (with prefactors) gets negative
-            self._el_energy_op_vec = self._compute_el_energy_op_vec(
-                self.lognorm_default_vec,
-                self.cfg.mod_link_inds,
-                self.cfg.nlayer,
-                self.el_pfaffians,
-                self.norm_mod_vec,
-                self.cfg.gaugemgr.group_elements_for_el_energy,
-                self.cfg.coeffs_vec,
-                self.cfg.constants_vec,
-            )
+            if getattr(self.cfg, "el_method", "pfaffian") == "bravyi":
+                self._el_energy_op_vec = self._compute_el_energy_op_vec_bravyi()
+            else:
+                # This vector is the electric energy on a single link. Otherwise, we get a
+                # power of nlinks in the product and the electric energy term (with prefactors) gets negative
+                self._el_energy_op_vec = self._compute_el_energy_op_vec(
+                    self.lognorm_default_vec,
+                    self.cfg.mod_link_inds,
+                    self.cfg.nlayer,
+                    self.el_pfaffians,
+                    self.norm_mod_vec,
+                    self.cfg.gaugemgr.group_elements_for_el_energy,
+                    self.cfg.coeffs_vec,
+                    self.cfg.constants_vec,
+                )
         return self._el_energy_op_vec
 
     @property
