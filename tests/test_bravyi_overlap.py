@@ -6,6 +6,8 @@ from ggpeps.system import bravyi_overlap as bo
 from ggpeps.system.backend import backend
 from ggpeps import lattice
 from ggpeps import system
+from ggpeps import exacteval
+from ggpeps.exacteval import ExactEvaluatorConfig
 
 
 def _random_even_pure_covmat(n_modes, rng, complex_state=False):
@@ -93,3 +95,59 @@ class TestBravyiSystemMethod(unittest.TestCase):
         ident = sysobj.cfg.gaugemgr.get_neutral_gauge_value()
         vec_id = np.asarray(sysobj._bravyi_el_op_vec_for_elements((ident,)))
         self.assertTrue(np.allclose(vec_id, 1.0, atol=1e-10))
+
+
+def _exact_el_energy(cfg_class, lat, paramvec, el_method, system_type, num_pg_layer=2,
+                     g_el=1.0, g_mag=1.0, mod_links=(0,)):
+    """Run exact eval and return aggregated <el_energy>. (Aggregated el_energy_op is NOT in the
+    evaluator obsdict, so we compare el_energy — the physical observable.)"""
+    cfg = cfg_class(lat, g_el, g_mag, 0.0, 0.0, None, num_pg_layer=num_pg_layer,
+                    num_fermionic_layer=0, mod_link_inds=mod_links)
+    cfg.paramvec = np.reshape(paramvec, cfg.param_shape())
+    if isinstance(cfg, system.Z2System2DConfig):
+        cfg.make_pure_gauge()                 # 1-copy Z2 must be forced pure gauge (manager.py:383)
+    cfg.enforce_parameter_conditions(cfg.paramvec)
+    cfg.el_method = el_method
+    sysobj = system_type(cfg)
+    ec_cfg = ExactEvaluatorConfig()
+    ec_cfg.compute_grads = False
+    ev = exacteval.ExactEvaluator(ec_cfg, sysobj)
+    ev.evaluate()
+    return ev.get_obs_mean("el_energy")
+
+
+class TestBravyiReproducesZ2(unittest.TestCase):
+    def test_z2_2c_exact_matches_pfaffian(self):
+        lat = lattice.Lattice2D(2, 2, 0)
+        rng = np.random.default_rng(7)
+        paramvec = rng.standard_normal((2, 1, 20))
+        el_p = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec,
+                                "pfaffian", system.Z2System2D)
+        el_b = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec,
+                                "bravyi", system.Z2System2D)
+        self.assertTrue(np.allclose(el_b, el_p, rtol=1e-7, atol=1e-8),
+                        msg=f"el_energy: bravyi {el_b} != pfaffian {el_p}")
+
+    def test_z2_1c_exact_matches_pfaffian_all_layers(self):
+        lat = lattice.Lattice2D(2, 2, 0)
+        for num_pg_layer in (1, 2, 3):     # odd AND even: locks the (-1)^nlayer Wick-phase fix
+            rng = np.random.default_rng(100 + num_pg_layer)
+            sh = system.Z2System2DConfig(lat, 1.0, 1.0, 0.0, 0.0, None, num_pg_layer=num_pg_layer,
+                                         num_fermionic_layer=0).param_shape()
+            paramvec = rng.standard_normal(sh)
+            el_p = _exact_el_energy(system.Z2System2DConfig, lat, paramvec, "pfaffian",
+                                    system.Z2System2D, num_pg_layer=num_pg_layer)
+            el_b = _exact_el_energy(system.Z2System2DConfig, lat, paramvec, "bravyi",
+                                    system.Z2System2D, num_pg_layer=num_pg_layer)
+            self.assertTrue(np.allclose(el_b, el_p, rtol=1e-6, atol=1e-7),
+                            msg=f"1c num_pg_layer={num_pg_layer}: bravyi {el_b} != pfaffian {el_p}")
+
+    def test_z2_gauge_fixed_matches_pfaffian(self):
+        lat = lattice.Lattice2D(2, 2, -1)
+        rng = np.random.default_rng(11)
+        paramvec = rng.standard_normal((2, 1, 20))
+        el_p = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec,
+                                "pfaffian", system.Z2System2D)
+        el_b = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec,
+                                "bravyi", system.Z2System2D)
+        self.assertTrue(np.allclose(el_b, el_p, rtol=1e-6, atol=1e-7))

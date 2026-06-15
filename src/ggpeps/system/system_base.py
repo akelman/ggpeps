@@ -2069,7 +2069,15 @@ class System2DBase(ABC):
     def _bravyi_el_op_vec_for_elements(self, elements: tuple) -> xnp.ndarray:
         """Per-(element, layer, measured-link) cross-overlap ratio conj(chi_lay(G')/chi_lay(G)),
         where G' is the current config with link q's gauge value right-multiplied by `element`.
-        Shape (len(elements), nlayer, n_el_links). Drop-in for el_energy_op_vec."""
+        Shape (len(elements), nlayer, n_el_links). Drop-in for el_energy_op_vec.
+
+        Each PER-LAYER factor carries the Pfaffian-Wick phase i^(-N/2) = (-1)^(ncolor*ncopy)
+        with N = 4*ncolor*ncopy (Majorana count on a link). The operator/Pfaffian path applies
+        this phase (config_base.pfaffian_wick_phase); the amplitude-ratio omits it, so we restore
+        it here. It is +1 for ncolor*ncopy even (Z2-2copy, D6) and -1 for odd (Z2-1copy); without
+        it the 1-copy energy is off by (-1)^nlayer. Verified: with it, Z2 1c/2c reproduce the
+        pfaffian path for all layer counts + gauge-fixing (D6 phase = +1, unaffected)."""
+        wick_phase = (-1.0) ** (self.cfg.ncolors * self.cfg.ncopy)
         chi_G = self._bravyi_chi_per_layer(self.gamma_in_sys_vec)  # (nlayer,)
         out = []
         for h in elements:
@@ -2079,7 +2087,7 @@ class System2DBase(ABC):
                 g_prime = xnp.asarray(g_q) @ xnp.asarray(h)  # g_q h
                 gamma_prime = self._bravyi_gamma_in_with_modified_link(q, g_prime)
                 chi_Gp = self._bravyi_chi_per_layer(gamma_prime)  # (nlayer,)
-                per_link.append(xnp.conj(chi_Gp / chi_G))  # (nlayer,)
+                per_link.append(wick_phase * xnp.conj(chi_Gp / chi_G))  # (nlayer,) incl. Wick phase
             out.append(xnp.transpose(xnp.array(per_link), (1, 0)))  # (nlayer, n_el_links)
         return xnp.array(out)  # (n_h, nlayer, n_el_links)
 
