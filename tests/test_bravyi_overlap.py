@@ -151,3 +151,45 @@ class TestBravyiReproducesZ2(unittest.TestCase):
         el_b = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec,
                                 "bravyi", system.Z2System2D)
         self.assertTrue(np.allclose(el_b, el_p, rtol=1e-6, atol=1e-7))
+
+
+import os
+
+PARAM_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # repo root
+RUN_SLOW_D6 = os.environ.get("GGPEPS_RUN_SLOW_D6") == "1"
+
+
+@unittest.skipUnless(RUN_SLOW_D6, "set GGPEPS_RUN_SLOW_D6=1 (and GGPEPS_BACKEND=jax) to run the slow D6 evals")
+class TestBravyiD6(unittest.TestCase):
+    """D6 application of the Bravyi oracle (gauge-fixed, L=2). SLOW: ~3-9 min/eval on JAX.
+    Verified results (JAX, 2026-06-15):
+      large_paramvec2.npy   (2 layer): pfaffian el=-26.744 (UNPHYSICAL), bravyi el=+22.663 (physical)
+      1layer_with_largeparamvec.npy (1 layer): pfaffian=12.332168, bravyi=12.332166 (agree ~1e-6)
+    The 2-layer case localizes the residual D6 bug to the pfaffian electric-energy path; the 1-layer
+    case agreement validates the Bravyi oracle on D6."""
+
+    def _run(self, fname, num_pg_layer):
+        path = os.path.join(PARAM_DIR, fname)
+        if not os.path.isfile(path):
+            self.skipTest(f"{fname} not present")
+        lat = lattice.Lattice2D(2, 2, -1)        # gauge fixing (7776 configs); JAX recommended
+        paramvec = np.load(path)
+        el_p = _exact_el_energy(system.D6System2D_Config, lat, paramvec, "pfaffian",
+                                system.D2nSystem2D, num_pg_layer=num_pg_layer)
+        el_b = _exact_el_energy(system.D6System2D_Config, lat, paramvec, "bravyi",
+                                system.D2nSystem2D, num_pg_layer=num_pg_layer)
+        return el_p, el_b
+
+    def test_d6_1layer_bravyi_nonnegative(self):
+        # pfaffian is non-divergent here (Woodbury-drift fix) but not independently known correct.
+        # Assert only that Bravyi is physical; report the comparison.
+        el_p, el_b = self._run("1layer_with_largeparamvec.npy", 1)
+        print(f"\nD6 1-layer: pfaffian el={el_p:.6f}  bravyi el={el_b:.6f}  "
+              f"(agree? {np.allclose(el_b, el_p, rtol=1e-5, atol=1e-6)})")
+        self.assertGreaterEqual(el_b, -1e-6, msg=f"bravyi el_energy {el_b} < 0")
+
+    def test_d6_2layer_bravyi_nonnegative(self):
+        # large_paramvec2: residual bug -> pfaffian unphysical (~-26.7); bravyi must be physical.
+        el_p, el_b = self._run("large_paramvec2.npy", 2)
+        print(f"\nD6 2-layer: pfaffian el={el_p:.6f}  bravyi el={el_b:.6f}")
+        self.assertGreaterEqual(el_b, -1e-6, msg=f"bravyi el_energy {el_b} < 0")
