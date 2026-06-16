@@ -68,7 +68,7 @@ class TestZ2System(unittest.TestCase):
         # Minimzer config
         min_cfg = MinimizerConfig()
         min_cfg.method = "BFGS"
-        min_cfg.max_iter = 30
+        min_cfg.max_iter = 50
         min_cfg.alpha = 0.1
         min_cfg.tol = 1e-5
 

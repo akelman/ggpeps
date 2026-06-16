@@ -78,7 +78,7 @@ class ExactEvaluator(Evaluator):
 
             data: dict = {
                 "energy": [],
-                "norm": [],
+                "lognorm": [],
                 "mag_energy": [],
                 "el_energy": [],
                 "mass_energy": [],
@@ -123,7 +123,7 @@ class ExactEvaluator(Evaluator):
                 data["mass_energy_op"].append(self.system.mass_energy_op)
                 data["int_energy_op"].append(self.system.int_energy_op)
 
-                data["norm"].append(self.system.calculate_lognorm(all_factors=True))
+                data["lognorm"].append(self.system.calculate_lognorm(all_factors=True))
                 data["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
 
                 # Wilson loops
@@ -151,7 +151,7 @@ class ExactEvaluator(Evaluator):
             data = {key: np.asarray(data[key]) for key in data}
 
             # We need to change from log values to regular values here
-            normvec = np.exp(data["norm"])
+            normvec = np.exp(data["lognorm"])
 
             # Expectation values
             dest: dict[str, Union[float, np.ndarray]] = {}
@@ -268,6 +268,7 @@ class ExactEvaluator(Evaluator):
 
             # Save data
             self.obsdict = dest
+
         return
 
     def generate_config_vec(self) -> Iterator[list[np.ndarray]]:

@@ -58,6 +58,8 @@ slurmjob
 .nox*
 # Ignore coverage files
 .coverage
+# Claude Code
+CLAUDE.md
 # Other
 run
 build

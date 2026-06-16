@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import numpy as np
 from ggpeps import xnp as xnp
@@ -43,127 +42,6 @@ class D2nSystem2D(System2DBase):
     def __init__(self, cfg: D6System2D_Config):
         self.cfg: D6System2D_Config
         super().__init__(cfg)
-
-    # Calculating weight attempt
-    def calculate_weight_attempt_non_singular(
-        self, link_ind: int, theta: xnp.ndarray, all_factors=False, color_to_check=None
-    ) -> float:
-        """
-        Compute the weight of an update attempt in which the link index link_ind is substituted for theta
-        The inclusion of all constant pre-factors can be switched on and off.
-
-        This method assumes that the two gauge values don't yield a singular update matrix.
-        It is called by the calculate_weight_attempt method which takes care of not allowing singular updates.
-
-        Args:
-            link_ind (int): Link index
-            theta (xnp.array): New gauge field value
-            all_factors (bool, optional): Include all constant factors. Defaults to False.
-
-        Returns:
-            float: Logarithm of the weight of the proposed configuration
-        """
-        # There are two directions per vertex and two Majoranas per link
-        coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
-        gamma_neutral_gauge_vec = self.gamma_gauge_neutral_vec
-
-        if color_to_check is not None:
-            ind1 = 2 * self.cfg.nvirtmodes_link_per_color * color_to_check
-            ind2 = 2 * self.cfg.nvirtmodes_link_per_color * (color_to_check + 1)
-            ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind + ind1
-            rotmat = rotmat[ind1:ind2, ind1:ind2]
-
-            gamma_in_subst_layers = []
-            for gamma_neutral_gauge in gamma_neutral_gauge_vec:
-                gamma_neutral_gauge_sliced = gamma_neutral_gauge[dir][ind1:ind2, ind1:ind2]
-                gamma_in_subst_layers.append(rotmat @ gamma_neutral_gauge_sliced @ xnp.transpose(rotmat))
-        else:
-            ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
-            gamma_in_subst_layers = [
-                rotmat @ gamma_neutral_gauge[dir] @ xnp.transpose(rotmat)
-                for gamma_neutral_gauge in gamma_neutral_gauge_vec
-            ]
-
-        updates = xnp.asarray(
-            [
-                self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys)
-                for gamma_in_subst, gamma_in_sys in zip(gamma_in_subst_layers, self.gamma_in_sys_vec)
-            ]
-        )
-        return self.update_lognorm_inc(ind_mat, updates, all_factors)
-
-    def calculate_weight_attempt(self, link_ind: int, theta: np.ndarray, all_factors: bool = False) -> float:
-        """
-        This method overwrites a method in System2DBase. For now, we need it only for the D2n systems.
-
-        Compute the weight of an update attempt in which the link index link_ind is substituted for theta
-        The inclusion of all constant pre-factors can be switched on and off.
-
-        Unlike the calculate_weight_attempt_non_singular method, this method checks whether the transition is singular
-        (i.e., the update matrix is singular and therfore can't be inverted).
-        If not, it calls the calculate_weight_attempt_non_singular method directly.
-        Else, it updates the gauge in along a non singular path and then calls the
-        calculate_weight_attempt_non_singular method.
-        After the caclulation of the weight, it updates the system back to the original gauge field.
-
-        Args:
-            link_ind (int): Link index
-            theta (xnp.array): New gauge field value
-            all_factors (bool, optional): Include all constant factors. Defaults to False.
-
-        Returns:
-            float: Logarithm of the weight of the proposed configuration
-        """
-        # TODO: If we create a new state class object, avoiding singular transitions could be handled better
-        # (by keeping the previous state and then not having to update the system back to the original gauge field)
-        current_theta = xnp.copy(self._gaugefieldvec[link_ind])
-        singular = False
-        color_to_check = None
-        g_transition_1, g_transition_2 = (
-            self.cfg.gaugemgr.transition_pair
-        )  # The transition that connects the two unconnected subgroups that are connected by singular paths
-        for (
-            g_tuple
-        ) in self.cfg.gaugemgr.forbidden_transitions:  # check if the update matrix is expected to be singular
-            g1, g2 = g_tuple
-            if (xnp.allclose(g1, current_theta) and xnp.allclose(g2, theta)) or (
-                xnp.allclose(g1, theta) and xnp.allclose(g2, current_theta)
-            ):
-                singular = True
-                break
-        if singular:
-            path = self.cfg.gaugemgr.get_nonsingular_path(
-                current_theta, theta
-            )  # get a non singular path between the two gauge values
-            for g in path:
-                self._update_gauge_ind(link_ind, g)
-            current_g = xnp.copy(path[-1])
-            if (xnp.allclose(current_g, g_transition_1) and xnp.allclose(theta, g_transition_2)) or (
-                xnp.allclose(current_g, g_transition_2) and xnp.allclose(theta, g_transition_1)
-            ):
-
-                color_to_check = 1
-            weight = self.calculate_weight_attempt_non_singular(
-                link_ind, theta, all_factors, color_to_check=color_to_check
-            )  # calculate the weight of the last gauge value
-
-            for g in path[-2::-1]:  # go back to the original gauge field
-                self._update_gauge_ind(link_ind, g)
-            self._update_gauge_ind(link_ind, current_theta)  # go back to the original gauge field
-
-        else:  # the update matrix is not singular and we can update the gauge straightforwardly
-            if (xnp.allclose(current_theta, g_transition_1) and xnp.allclose(theta, g_transition_2)) or (
-                xnp.allclose(current_theta, g_transition_2) and xnp.allclose(theta, g_transition_1)
-            ):
-
-                color_to_check = 1
-
-            weight = self.calculate_weight_attempt_non_singular(
-                link_ind, theta, all_factors, color_to_check=color_to_check
-            )
-
-        return weight
 
     # Gauging
     @classmethod
@@ -279,105 +157,23 @@ class D2nSystem2D(System2DBase):
         return mode_order_str
 
     def _update_gauge_ind(self, link_ind: int, theta: xnp.ndarray) -> None:
-        """This method updates a gauge field on a single side. It first checks whether the update is singular,
-        and proceeds accordingly:
 
-        Unlike the update_non_singular_gauge_ind method, this method checks whether the transition is singular
-        (i.e., the update matrix is singular and therfore can't be inverted)
-        if not, it calls the update_non_singular_gauge_ind method directly. Else, it computes a non singular
-        path and then calls the update_non_singular_gauge_ind method.
-
-        This method overwrites an abstract method in System2DBase.
-        """
-        old_theta = xnp.copy(self._gaugefieldvec[link_ind])
-        singular = False
-        g_transition_1, g_transition_2 = (
-            self.cfg.gaugemgr.transition_pair
-        )  # The transition that connects the two unconnected subgroups that are connected by singular paths
-        for (
-            g_tuple
-        ) in self.cfg.gaugemgr.forbidden_transitions:  # check if the update matrix is expected to be singular
-            g1, g2 = g_tuple
-            if (xnp.allclose(g1, old_theta) and xnp.allclose(g2, theta)) or (
-                xnp.allclose(g1, theta) and xnp.allclose(g2, old_theta)
-            ):
-                singular = True
-                break
-        previous_g = xnp.copy(old_theta)
-        if singular:  # if the update matrix is singular
-            path = self.cfg.gaugemgr.get_nonsingular_path(
-                old_theta, theta
-            )  # get a non singular path between the two gauge values
-            for g in path:
-                color_to_update = None  # we update both colors
-                if (xnp.allclose(previous_g, g_transition_1) and xnp.allclose(g, g_transition_2)) or (
-                    xnp.allclose(previous_g, g_transition_2) and xnp.allclose(g, g_transition_1)
-                ):  # in this case we update only the color m=1 (second color)
-                    color_to_update = 1
-                self.update_non_singular_gauge_ind(link_ind, g, color_to_update=color_to_update)
-                previous_g = xnp.copy(g)
-        color_to_update = None  # we update both colors
-        if (xnp.allclose(previous_g, g_transition_1) and xnp.allclose(theta, g_transition_2)) or (
-            xnp.allclose(previous_g, g_transition_2) and xnp.allclose(theta, g_transition_1)
-        ):  # in this case we update only the color m=1 (second color)
-            color_to_update = 1
-        # In case it was originally a singular, we update the gauge field to the final value.
-        # In the other case we can update the gauge straightforwardly
-        self.update_non_singular_gauge_ind(link_ind, theta, color_to_update=color_to_update)
-
-    def update_non_singular_gauge_ind(
-        self, link_ind: int, theta: xnp.ndarray, color_to_update: Optional[int] = None
-    ) -> None:
-        """Update method that is called upon changing a gauge field.
-        This method is central to the algorithm since it changes the gauged projectors
-        and updates all incremental trackers of determinants and inverses.
-        The re-calculation of determinants and inverses for the norm would be prohibitively expensive.
-
-        This method assumes that the two gauge values don't yield a singular update matrix.
-        It is called by the update_gauge_ind method which takes care of not allowing singular updates.
-
-        For updatting just one color we assume a specific ordering of the modes:
-        (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2}).
-
-        Args:
-            link_ind (int): Link index to be updated
-            theta (xnp.array): New gauge field value
-            color_to_update (int, optional): Color to update. If None, both colors are updated. Defaults to None.
-        """
         # Update the gaugefield
         self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
 
         # There are two directions per vertex
+        ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
-        if color_to_update is None:  # if we update both colors.
-            ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
-        else:
-            ind_mat = (
-                2 * self.cfg.nvirtmodes_link * link_ind + 2 * color_to_update * self.cfg.nvirtmodes_link_per_color
-            )
-            # In this case we slice rotmat to only contain the relevant color
-            # We assume a specific ordering of the modes:
-            # (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
-            ind1 = 2 * self.cfg.nvirtmodes_link_per_color * color_to_update
-            ind2 = 2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1)
-            rotmat = rotmat[ind1:ind2, ind1:ind2]
 
         update_vec = []
         for layer in range(self.cfg.nlayer):
             gamma_neutral_gauge = self.gamma_gauge_neutral_vec[layer][dir]
-            if color_to_update is not None:
-                # In this case we slice gamma_neutral_gauge to only contain the relevant color
-                # We assume a specific ordering of the modes:
-                # (for example {copy=1_color=1,copy=2_color=1,copy=1_color=2,copy=2_color=2})
-                ind1 = 2 * self.cfg.nvirtmodes_link_per_color * color_to_update
-                ind2 = 2 * self.cfg.nvirtmodes_link_per_color * (color_to_update + 1)
-                gamma_neutral_gauge = gamma_neutral_gauge[ind1:ind2, ind1:ind2]
-
             gamma_in_subst = rotmat @ gamma_neutral_gauge @ xnp.transpose(rotmat)
             update_vec.append(
                 self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer])
             )
+
             # Substitute in the array
             inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
             self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
@@ -439,7 +235,7 @@ class D2nSystem2D(System2DBase):
         self.invalidate_gauge_update()
 
     # Observables
-    def _compute_mag_energy_op(self, use_trans_inv: bool = True):
+    def _compute_mag_energy_op(self, use_trans_inv: bool = True) -> float:
         if use_trans_inv:
             # Evaluate one plaquette and multiply by number of plaquettes
             wilson_plaquette = self.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
@@ -471,7 +267,7 @@ class D2nSystem2D(System2DBase):
 
         num_el_links = len(mod_link_inds)  # number of links on which the electric energy is computed
         num_group_elements = len(group_elements_for_el_energy)
-        dest = xnp.zeros((num_group_elements, nlayer, num_el_links))
+        dest = xnp.zeros((num_group_elements, nlayer, num_el_links), dtype=complex)
 
         # TODO: vectorize!
         for group_element_idx in range(num_group_elements):
@@ -485,22 +281,25 @@ class D2nSystem2D(System2DBase):
                 for link_pos, norm_mod in enumerate(norm_mod_linkvec):
                     ###################### Calculation of sum f_j |jmn><jmn| ########################
                     link_coeffs = layer_coeffs[link_pos]
-                    pf_tot: complex = constants_vec[group_element_idx][layerind][link_pos]
+                    pf_tot = constants_vec[group_element_idx][layerind][link_pos]
                     # this is the constant term in the sum, which does not come with a Pfaffian,
                     # for Z2 it should be 0
                     for size_ind, size_term in enumerate(link_coeffs):
-                        array_size_term = xnp.asarray(size_term)
+                        array_size_term = xnp.asarray(
+                            size_term
+                        )  # TODO: We should convert this to array outside the loop
                         current_pfaffians = el_pfaffians[
                             group_element_idx, layerind, link_pos, size_ind, : len(size_term)
                         ]
                         pf_tot += xnp.dot(array_size_term, current_pfaffians)
 
-                    # xnp.real() is only for testing purposes, since the Pfaffian's with imaginary components are
-                    # now dropped higher up in the stack.
-                    el_energy_link = xnp.real(pf_tot) * xnp.exp(norm_mod - lognorm_default)
+                    # Keep el_energy_link COMPLEX. The gauged projector is not hermitian for
+                    # non-Abelian reflections, so the imaginary part is physical here; the real part
+                    # is taken only after the product over layers and the sum over group elements
+                    # (prod(Re) != Re(prod)). See el_energy_op in system_base.
+                    el_energy_link = pf_tot * xnp.exp(norm_mod - lognorm_default)
 
                     dest = backend.array_assign(dest, (group_element_idx, layerind, link_pos), el_energy_link)
-
         return dest
 
     @staticmethod
@@ -545,6 +344,7 @@ class D2nSystem2D(System2DBase):
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
         idxarr_vec: IdxVec,
         coeffs_vec: CoeffsVec,
+        rotmat_vec: xnp.ndarray,
     ) -> xnp.ndarray:
         """In early 2026, this function was significantly optimized.
         This was done after it was generalized in various ways over the previous months:
@@ -559,7 +359,9 @@ class D2nSystem2D(System2DBase):
 
         nlayer = num_pg_layer + num_fermionic_layer
         grad_shape = (num_group_elements, nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
-        dest_grad = xnp.zeros(grad_shape)
+        # Kept COMPLEX: the gauged projector is non-hermitian for non-Abelian reflections, so the
+        # real part is taken only after the product over layers (and sum over group elements).
+        dest_grad = xnp.zeros(grad_shape, dtype=complex)
 
         nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
         k = 2 * nvirtmodes_link  # single link offset
@@ -579,15 +381,31 @@ class D2nSystem2D(System2DBase):
         # (nlayer, nmodlinks, link_dim, mod_virt_dim), take only the last k rows
         b_times_diff_vec = mat_b_mod_vec[:, :, -k:, :] @ gamma_out_mod_inv_vec
 
+        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec), k, k)
+        d_covmat_out_virt_vec = xnp.zeros(shape)
+
+        l, m, u, s = inds
+
+        R_active = rotmat_vec[m]
+        R_active_T = xnp.swapaxes(R_active, -1, -2)
+
         diffB = diff_times_b_vec[l, m]
         Bdiff = b_times_diff_vec[l, m]
 
+        # TODO: The middle part here (what's multiplied by R_active and R_active_T)
+        # does not depend on the gauge configuration,
+        # so it could be be computed once per eval, and not here for every gauge configuration.
         vals = (
-            d_mat_a_vec[..., -k:, -k:]
-            + d_mat_b_vec[..., -k:, :] @ diffB
-            + Bdiff @ xnp.swapaxes(d_mat_b_vec, -1, -2)[..., :, -k:]
-            - Bdiff @ d_mat_d_vec @ diffB
+            R_active_T
+            @ (
+                d_mat_a_vec[..., -k:, -k:]
+                + d_mat_b_vec[..., -k:, :] @ diffB
+                + Bdiff @ xnp.swapaxes(d_mat_b_vec, -1, -2)[..., :, -k:]
+                - Bdiff @ d_mat_d_vec @ diffB
+            )
+            @ R_active
         )
+
         d_covmat_out_virt_vec = backend.array_assign(d_covmat_out_virt_vec, (l, m, u, s), vals)
 
         # Calculate the modified norms
@@ -604,7 +422,9 @@ class D2nSystem2D(System2DBase):
             idxarrs_group_element = idxarr_vec[group_element_idx]
             coeffs_vec_group_element = coeffs_vec[group_element_idx]
 
-            deriv_pf_tot_vec_vec = xnp.zeros((nlayer, len(mod_link_inds), unitcell_size, len(symbolvec)))
+            deriv_pf_tot_vec_vec = xnp.zeros(
+                (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec)), dtype=complex
+            )
 
             for layerind in range(nlayer):
 
@@ -632,12 +452,10 @@ class D2nSystem2D(System2DBase):
                             xnp.sum(prefactors * deriv_pf_tot_vectorized, axis=-1),
                         )
 
-                    # In previous versions of the code, Pfaffians with complex/imaginary coefficients
-                    # were included, but dropped here. Since operators of interest (electric energy + grad)
-                    # are Hermitian, we can just take the real part here.
-                    # At present, we drop these complex/imaginary terms higher in the stack to save on
-                    # computation. We leave the xnp.real() for testing purposes.
-                    d_el_energy_vec = xnp.real(deriv_pf_tot_vec_vec[layerind, link_pos]) * xnp.exp(
+                    # Keep COMPLEX: the gauged projector is non-hermitian for non-Abelian
+                    # reflections, so the real part must be taken only after the product over layers
+                    # (and the sum over group elements) at the end of this function, not here.
+                    d_el_energy_vec = deriv_pf_tot_vec_vec[layerind, link_pos] * xnp.exp(
                         norm_mod_vec[layerind][link_pos] - lognorm_default
                     )
 
@@ -671,7 +489,8 @@ class D2nSystem2D(System2DBase):
         dest_grad = xnp.sum(dest_grad, axis=0)  # sum over group elements
         dest_grad = xnp.sum(dest_grad, axis=1)  # sum over the links
 
-        return dest_grad
+        # Take the real part only now, after the layer product and the group-element sum.
+        return xnp.real(dest_grad)
 
     @staticmethod
     def _compute_mass_energy_op_vec(
@@ -694,6 +513,7 @@ class D2nSystem2D(System2DBase):
     ) -> xnp.ndarray:
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
+
         gradients = xnp.zeros(param_shape)
         return gradients
 

@@ -8,7 +8,7 @@ dynamic = ["version"]
 name = "ggpeps"  
 description = "A Python package to work with Gauged Gaussian Projected Entangled Pair States (GGPEPS)"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.9"
 
 license = "MIT"
 license-files = ["LICENSE"]
@@ -32,6 +32,9 @@ classifiers = [
   "Topic :: Simulation",
 
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
@@ -52,7 +55,7 @@ dependencies = [
   "ray",
   # py-pfaffian is not available on PyPI, so we get it from GitHub.
   # In April 2026 (commit 0932622) the package required python 3.12,
-  # and then removed support for JAX. We pin an older version.
+  # and then removed support for JAX (commit 4132ddd). We pin an older version.
   "py-pfaffian @ git+https://github.com/Nuclear-Physics-with-Machine-Learning/PyPfaffian.git@733cee7"
 ]
 

@@ -17,7 +17,6 @@ from ggpeps.evaluator import Evaluator
 from ggpeps.measurement import Measurement
 from ggpeps.system.system_base import System2DBase
 
-
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 #################### Monte Carlo Estimator Config ###################
@@ -164,7 +163,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["int_energy_op"] = Measurement("Interaction Energy Operator (bare)", binsize)
         self.obsdict["mass_energy_op"] = Measurement("Mass Energy Operator (bare)", binsize)
         self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
-        self.obsdict["norm"] = Measurement("Norm", binsize)
+        self.obsdict["lognorm"] = Measurement("LogNorm", binsize)
         if self.system.cfg.num_fermionic_layer > 0:
             self.obsdict["all_occupations"] = Measurement("All Occupations (after PH)", binsize)
             self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
@@ -203,7 +202,7 @@ class MonteCarloEvaluator(Evaluator):
         self.obsdict["int_energy"].append(float(self.system.int_energy))
         self.obsdict["mass_energy"].append(float(self.system.mass_energy))
         self.obsdict["chem_energy"].append(float(self.system.chem_energy))
-        self.obsdict["norm"].append(float(self.system.calculate_lognorm(all_factors=True)))
+        self.obsdict["lognorm"].append(float(self.system.calculate_lognorm(all_factors=True)))
         if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
             self.obsdict["all_occupations"].append(np.asarray(self.system.occupations_before_ph))
             self.obsdict["average_occupation"].append(np.asarray(self.system.average_occupation()))

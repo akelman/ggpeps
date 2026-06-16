@@ -5,10 +5,10 @@ import numpy as np
 import sympy as sp
 from scipy.linalg import block_diag
 
-from ggpeps import lattice, utils
+from ggpeps import gauge, lattice, utils
 from ggpeps import system, exacteval
 from ggpeps.modearray import generate_permutation_matrix
-
+from ggpeps.system.config_base import generate_gauged_projector_terms
 
 # ======================= D6 fermionic system (2 copies) =======================
 
@@ -174,12 +174,14 @@ class TestD2nSystem(unittest.TestCase):
         )
         R = block_diag(R, R)  # block diagonal of 2 colors
         permutation_mat = np.array(
-            # change to correct mode ordering of:
-            # Psi_1,Psi_2, l1_1, r1_1,d1_1,u1_1, l1_2, r1_2,d1_2,u1_2, l2_1, r2_1,d2_1,u2_1,l2_2, r2_2,d2_2,u2_2
-            # Where the modes are labelled by directin{copy}_{color}.
+            # Reorder R from the BlockDiag(color1, color2) source order into the
+            # tmat mode order (color-outer):
+            #   Psi_1,Psi_2, l1_1,r1_1,d1_1,u1_1, l2_1,r2_1,d2_1,u2_1,
+            #                l1_2,r1_2,d1_2,u1_2, l2_2,r2_2,d2_2,u2_2
+            # (modes labelled direction{copy}_{color}, same as config_D6_2d correct_order)
             generate_permutation_matrix(
                 list(range(1, 19)),
-                [1, 10, 2, 3, 4, 5, 11, 12, 13, 14, 6, 7, 8, 9, 15, 16, 17, 18],
+                [1, 10, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18],
             )
         )
         R = np.transpose(permutation_mat) @ R @ permutation_mat
@@ -212,12 +214,14 @@ class TestD2nSystem(unittest.TestCase):
         )
         R = block_diag(R, R)  # block diagonal of 2 colors
         permutation_mat = np.array(
-            # change to correct mode ordering of:
-            # Psi_1,Psi_2, l1_1, r1_1,d1_1,u1_1, l1_2, r1_2,d1_2,u1_2, l2_1, r2_1,d2_1,u2_1,l2_2, r2_2,d2_2,u2_2
-            # Where the modes are labelled by direction{copy}_{color}.
+            # Reorder R from the BlockDiag(color1, color2) source order into the
+            # tmat mode order (color-outer):
+            #   Psi_1,Psi_2, l1_1,r1_1,d1_1,u1_1, l2_1,r2_1,d2_1,u2_1,
+            #                l1_2,r1_2,d1_2,u1_2, l2_2,r2_2,d2_2,u2_2
+            # (modes labelled direction{copy}_{color}, same as config_D6_2d correct_order)
             generate_permutation_matrix(
                 list(range(1, 19)),
-                [1, 10, 2, 3, 4, 5, 11, 12, 13, 14, 6, 7, 8, 9, 15, 16, 17, 18],
+                [1, 10, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18],
             )
         )
         R = np.transpose(permutation_mat) @ R @ permutation_mat
@@ -619,6 +623,68 @@ class TestD2nSystem(unittest.TestCase):
         res = ex_eval.evaluate()
         FM = res["FM_1x1"]
         self.assertAlmostEqual(FM, FM_ed, places=2)
+
+
+class TestD6TmatColorStructure(unittest.TestCase):
+    """Regression tests pinning the *color* structure of the D6 T-matrix.
+
+     Antisymmetry and rotation invariance are already covered by test_Tmat_symmetries_*,
+    so they are intentionally not repeated here.
+
+    tmat mode order (config_D6_2d.py, color-outer): indices
+        0      = Psi1 (color-1 physical),   1      = Psi2 (color-2 physical)
+        2..9   = color-1 virtuals,          10..17 = color-2 virtuals
+    """
+
+    COLOR1_IDX = [0, 2, 3, 4, 5, 6, 7, 8, 9]
+    COLOR2_IDX = [1, 10, 11, 12, 13, 14, 15, 16, 17]
+
+    def setUp(self):
+        lat = lattice.Lattice2D(2, 2)
+        num_pg_layer = 1
+        num_fermionic_layer = 1  # a fermionic layer keeps t1 (phys-virt coupling) nonzero
+        paramvec = np.random.rand(num_pg_layer + num_fermionic_layer, 1, 20)
+        cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer, num_fermionic_layer)
+        cfg.paramvec = paramvec
+        self.system_D6 = system.D2nSystem2D(cfg)
+        self.system_D6.cfg.enforce_parameter_conditions(self.system_D6.cfg.paramvec)
+
+    def test_tmat_no_cross_color_coupling(self):
+        """T has zero coupling between color-1 and color-2 modes (block-diagonal in color).
+        Includes the physical modes: Psi1 must not couple to color-2 virtuals or to Psi2.
+        """
+        for lay in range(self.system_D6.cfg.nlayer):
+            tmat = np.array(self.system_D6.tmat_layervec_sitevec[lay][0])
+            cross_block = tmat[np.ix_(self.COLOR1_IDX, self.COLOR2_IDX)]
+            with self.subTest(layer=lay):
+                self.assertTrue(np.allclose(cross_block, 0))
+
+    def test_tmat_color_blocks_identical(self):
+        """The two color blocks (each = its physical mode + its 8 virtual modes) are equal:
+        the two colors share the same variational parameters.
+        """
+        for lay in range(self.system_D6.cfg.nlayer):
+            tmat = np.array(self.system_D6.tmat_layervec_sitevec[lay][0])
+            block1 = tmat[np.ix_(self.COLOR1_IDX, self.COLOR1_IDX)]
+            block2 = tmat[np.ix_(self.COLOR2_IDX, self.COLOR2_IDX)]
+            with self.subTest(layer=lay):
+                self.assertTrue(np.allclose(block1, block2))
+
+    def test_tmat_physical_virtual_coupling_is_color_local(self):
+        """Anti-vacuity guard for the tests above: a fermionic layer must actually couple
+        each physical mode to its own color's virtuals (t1 != 0), while a pure-gauge layer
+        must not (t1 == 0). Combined with test_tmat_no_cross_color_coupling this confirms
+        each physical mode couples to its own color only.
+        """
+        cfg = self.system_D6.cfg
+        for lay in range(cfg.nlayer):
+            tmat = np.array(self.system_D6.tmat_layervec_sitevec[lay][0])
+            psi1_to_color1 = tmat[0, 2:10]  # Psi1 -> color-1 virtuals
+            with self.subTest(layer=lay):
+                if lay < cfg.num_pg_layer:
+                    self.assertTrue(np.allclose(psi1_to_color1, 0))
+                else:
+                    self.assertFalse(np.allclose(psi1_to_color1, 0))
 
 
 # class TestTransVariance(unittest.TestCase):
@@ -1181,6 +1247,326 @@ class TestD2nSystem(unittest.TestCase):
 #                         )
 #                         deriv_num = (val_right - val_left) / (2 * eps)
 
+
 #                         self.assertAlmostEqual(
 #                             deriv_ana[layerind, uc_ind, ind], deriv_num, places=3
 #                         )
+class TestElectricEnergyUniformityRandomk(unittest.TestCase):
+    """
+    Pick k random (unique) subsets of links with varying sizes and verify that
+    the per-link electric energy (mean over the selected links) is identical
+    across all of them for a translationally invariant, neutral-gauge setup.
+    """
+
+    def setUp(self):
+        # Fixed lattice: 2x2 with PBC -> nlinks = 8
+        self.lat = lattice.Lattice2D(2, 2)
+        self.num_pg_layer = 2
+        self.num_fermionic_layer = 0
+        self.nlayer = self.num_pg_layer + self.num_fermionic_layer
+        self.unitcell_size = 1  # translation invariance
+
+        # Reproducible random params shared by all systems in this test
+        rng = np.random.RandomState(1234)
+
+        self.paramvec = rng.rand(self.nlayer, self.unitcell_size, 20)
+
+        # Build a neutral gauge configuration once
+        Dn = gauge.D2nGauge(3)
+        neutral = Dn.get_neutral_gauge_value()
+        self.neutral_config = np.array([neutral] * self.lat.nlinks)
+
+    def _energy_for_subset(self, link_inds: tuple[int, ...]) -> float:
+        """Return the mean per selected link (sys.el_energy_op) for the given subset."""
+        cfg = system.D6System2D_Config(
+            self.lat,
+            g_el=1.0,
+            g_mag=0.0,
+            g_int=0.0,
+            g_mass=0.0,
+            g_chem=None,
+            num_pg_layer=self.num_pg_layer,
+            num_fermionic_layer=self.num_fermionic_layer,
+            unitcell_size=self.unitcell_size,
+            mod_link_inds=tuple(sorted(link_inds)),
+        )
+        cfg.paramvec = np.copy(self.paramvec)
+        sys = system.D2nSystem2D(cfg)
+        sys.update_gauge_full_system(self.neutral_config)
+        return float(sys.el_energy_op)  # mean over the selected links
+
+    def _random_unique_subsets(self, nlinks: int, k: int, seed: int = 2025):
+        """
+        Generate k unique random non-empty subsets with varying sizes in [1..nlinks].
+        Ensures at least two different sizes appear (if nlinks >= 2).
+        """
+        rng = np.random.RandomState(seed)
+        subsets = set()
+        # Try a reasonable number of attempts to avoid rare infinite loops
+        attempts, max_attempts = 0, 10000
+
+        while len(subsets) < k and attempts < max_attempts:
+            s = rng.randint(1, nlinks + 1)  # size in [1..nlinks]
+            choice = tuple(sorted(rng.choice(nlinks, size=s, replace=False)))
+            subsets.add(choice)
+            attempts += 1
+
+        # Ensure size diversity when possible (nlinks >= 2)
+        if nlinks >= 2:
+            sizes_present = {len(t) for t in subsets}
+            if len(sizes_present) == 1:
+                # Force-inject another size
+                if 1 not in sizes_present:
+                    subsets.add((0,))  # singleton
+                if nlinks not in sizes_present:
+                    subsets.add(tuple(range(nlinks)))  # full set
+                # Trim back to k if we overshot
+                subsets = set(list(subsets)[:k])
+
+        # If we somehow fell short, pad deterministically
+        while len(subsets) < k:
+            # cycle sizes 1..nlinks deterministically
+            s = (len(subsets) % nlinks) + 1
+            # take first s indices
+            subsets.add(tuple(range(s)))
+
+        return list(subsets)[:k]
+
+    def test_el_energy_uniform_over_k_random_subsets(self):
+        nlinks = self.lat.nlinks
+        k = 10
+
+        subsets = self._random_unique_subsets(nlinks, k, seed=2025)
+        # Compute per-link energies for each subset and compare
+        energies = [self._energy_for_subset(sub) for sub in subsets]
+        base = energies[0]
+        for e in energies[1:]:
+            self.assertAlmostEqual(e, base, places=8)
+
+
+class TestElectricEnergyDropRealZero(unittest.TestCase):
+    """Regression test for `drop_real_zero` pruning in `generate_gauged_projector_terms`.
+
+    Background:
+    - Electric energy is evaluated from Pfaffians of submatrices of a Majorana covariance matrix.
+    - The physical observable is of the form sum_j f_j |jmn><jmn| and must be real.
+    - Terms that contribute only a purely imaginary piece cancel in <sum_j f_j |jmn><jmn|>.
+
+    The feature `drop_real_zero=True` prunes such terms to reduce the number of Pfaffians.
+
+    Contract:
+    - For the same parameters and the same gauge configuration,
+      el_energy_op (and el_energy_op_vec) must be invariant under toggling drop_real_zero.
+    """
+
+    def setUp(self) -> None:
+        """Set up a small deterministic D6 2D system and a nontrivial gauge configuration.
+
+        This initializes shared test fixtures:
+        - a 2x2 lattice (PBC),
+        - a reproducible random parameter tensor (paramvec),
+        - and a gauge configuration containing one flux link.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+        # Keep the test small and deterministic.
+        self.lat = lattice.Lattice2D(2, 2)
+        self.num_pg_layer = 2
+        self.num_fermionic_layer = 0
+        self.nlayer = self.num_pg_layer + self.num_fermionic_layer
+        self.unitcell_size = 1
+
+        rng = np.random.RandomState(123)  # deterministic
+        self.paramvec = rng.rand(self.nlayer, self.unitcell_size, 20)
+
+        # Use a non-trivial gauge configuration (include one flux) so the test is not vacuous.
+        Dn = gauge.D2nGauge(3)
+        neutral = Dn.get_neutral_gauge_value()
+        flux = Dn.get_representation(1, 1)  # nontrivial flux value
+        # 2x2 with PBC -> nlinks = 8
+        self.gauge_config = np.array([neutral] * 7 + [flux] * 1)
+
+    @staticmethod
+    def _rebuild_idxarr_vec(cfg, *, drop_real_zero: bool) -> None:
+        """Rebuild `cfg.idxarr_vec` with an explicit `drop_real_zero` setting.
+
+        This is a test-only reimplementation of the production logic in
+        `D2nSystem2D.init_el_energy_terms()` (see
+        `ggpeps/system/config_D2n_2d.py`), with the *only* intentional difference
+        being that we pass `drop_real_zero` through to `generate_gauged_projector_terms()`.
+
+        The produced structure matches the production layout:
+        for each group element used in the electric energy, and for each layer, we build a
+        tuple of "quads" (H0, H1, V0, V1), where each entry is an (prefactor, indices) term.
+
+        Args:
+            cfg: Config instance to mutate. On return, `cfg.idxarr_vec` is overwritten.
+            drop_real_zero: If True, drop terms whose contribution is guaranteed to cancel in
+                <P + P_dagger> (i.e., terms that would contribute only purely imaginary pieces).
+                If False, keep those terms as well.
+
+        Returns:
+            None. This function mutates `cfg.idxarr_vec` in-place.
+
+        NOTE:
+            - Future-proofing requirement: this helper should remain a *verbatim code duplicate*
+              of `D2nSystem2D.init_el_energy_terms()`, except for the explicit
+              `drop_real_zero` plumbing. If the production construction of `idxarr_vec` changes
+              (ordering, layering, loops, etc.), update this helper accordingly to avoid false
+              positives/negatives in the test.
+        """
+        result = []
+        for group_element in cfg.gaugemgr.group_elements_for_el_energy:
+            # --- Pure gauge (mix_copies=True) ---
+            idxarr_lay_pg_h_0, _ = generate_gauged_projector_terms(
+                cfg.ncopy,
+                cfg.ncolors,
+                False,
+                lattice.Direction.X,
+                group_element,
+                site=0,
+                drop_real_zero=drop_real_zero,
+            )
+            idxarr_lay_pg_h_1, _ = generate_gauged_projector_terms(
+                cfg.ncopy,
+                cfg.ncolors,
+                False,
+                lattice.Direction.X,
+                group_element,
+                site=1,
+                drop_real_zero=drop_real_zero,
+            )
+            idxarr_lay_pg_v_0, _ = generate_gauged_projector_terms(
+                cfg.ncopy,
+                cfg.ncolors,
+                False,
+                lattice.Direction.Y,
+                group_element,
+                site=0,
+                drop_real_zero=drop_real_zero,
+            )
+            idxarr_lay_pg_v_1, _ = generate_gauged_projector_terms(
+                cfg.ncopy,
+                cfg.ncolors,
+                False,
+                lattice.Direction.Y,
+                group_element,
+                site=1,
+                drop_real_zero=drop_real_zero,
+            )
+
+            # --- Fermionic (mix_copies=False) ---
+            idxarr_lay_pf_h_0, _ = generate_gauged_projector_terms(
+                cfg.ncopy,
+                cfg.ncolors,
+                False,
+                lattice.Direction.X,
+                group_element,
+                site=0,
+                drop_real_zero=drop_real_zero,
+            )
+            idxarr_lay_pf_h_1, _ = generate_gauged_projector_terms(
+                cfg.ncopy,
+                cfg.ncolors,
+                False,
+                lattice.Direction.X,
+                group_element,
+                site=1,
+                drop_real_zero=drop_real_zero,
+            )
+            idxarr_lay_pf_v_0, _ = generate_gauged_projector_terms(
+                cfg.ncopy,
+                cfg.ncolors,
+                False,
+                lattice.Direction.Y,
+                group_element,
+                site=0,
+                drop_real_zero=drop_real_zero,
+            )
+            idxarr_lay_pf_v_1, _ = generate_gauged_projector_terms(
+                cfg.ncopy,
+                cfg.ncolors,
+                False,
+                lattice.Direction.Y,
+                group_element,
+                site=1,
+                drop_real_zero=drop_real_zero,
+            )
+
+            zipped_pg = tuple(zip(idxarr_lay_pg_h_0, idxarr_lay_pg_h_1, idxarr_lay_pg_v_0, idxarr_lay_pg_v_1))
+            zipped_pf = tuple(zip(idxarr_lay_pf_h_0, idxarr_lay_pf_h_1, idxarr_lay_pf_v_0, idxarr_lay_pf_v_1))
+
+            # First pure-gauge layers, then fermionic layers.
+            result.append(tuple([zipped_pg] * cfg.num_pg_layer + [zipped_pf] * cfg.num_fermionic_layer))
+
+        cfg.idxarr_vec = tuple(result)
+
+    def _build_system(self) -> system.D2nSystem2D:
+        """Construct a D2nSystem2D with the test's lattice and deterministic parameters.
+
+        The returned system:
+        - uses the same ansatz/layer counts as the test fixtures,
+        - receives a copy of `self.paramvec`,
+        - and has parameter constraints enforced.
+
+        Args:
+            None
+
+        Returns:
+            A fully constructed `system.Z2System2D` instance (gauge not yet applied).
+        """
+        cfg = system.D6System2D_Config(
+            self.lat,
+            g_el=1.0,
+            g_mag=0.0,
+            g_int=0.0,
+            g_mass=0.0,
+            g_chem=None,
+            num_pg_layer=self.num_pg_layer,
+            num_fermionic_layer=self.num_fermionic_layer,
+            unitcell_size=self.unitcell_size,
+            mod_link_inds=(0,),
+        )
+        cfg.paramvec = np.copy(self.paramvec)
+        sys_obj = system.D2nSystem2D(cfg)
+        sys_obj.cfg.enforce_parameter_conditions(sys_obj.cfg.paramvec)
+        return sys_obj
+
+    def test_el_energy_invariant_under_drop_real_zero(self) -> None:
+        """Verify invariance of electric energy under toggling `drop_real_zero`.
+
+        We build two identical systems and apply the same gauge configuration.
+        The only difference is that for one system we rebuild `cfg.idxarr_vec` using
+        `drop_real_zero=False`, so it includes also terms that would contribute only
+        purely imaginary pieces that should cancel in <sum_j f_j |jmn><jmn|>.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+        # Build two identical systems.
+        sys_drop = self._build_system()  # default drop_real_zero=True inside config
+        sys_keep = self._build_system()
+
+        # Override only idxarr_vec for sys_keep to represent drop_real_zero=False.
+        self._rebuild_idxarr_vec(sys_keep.cfg, drop_real_zero=False)
+
+        # Apply the same gauge configuration to both.
+        sys_drop.update_gauge_full_system(self.gauge_config)
+        sys_keep.update_gauge_full_system(self.gauge_config)
+
+        # Compare both scalar and vector forms.
+        self.assertTrue(
+            np.allclose(sys_drop.el_energy_op, sys_keep.el_energy_op, atol=1e-12, rtol=1e-12),
+            msg="el_energy_op changed when toggling drop_real_zero (should be invariant).",
+        )
+        self.assertTrue(
+            np.allclose(sys_drop.el_energy_op_vec, sys_keep.el_energy_op_vec, atol=1e-12, rtol=1e-12),
+            msg="el_energy_op_vec changed when toggling drop_real_zero (should be invariant).",
+        )

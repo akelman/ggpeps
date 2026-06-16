@@ -1,7 +1,139 @@
+import logging
+from abc import ABC, abstractmethod
+
 import numpy as np
 
+import ggpeps
 
-class ZNGauge:
+logger = logging.getLogger(ggpeps.LOGGER_NAME)
+
+
+class GaugeGroup(ABC):
+    """Abstract base class for gauge groups.
+
+    Defines the interface that all gauge group implementations must provide.
+    This class cannot be instantiated directly.
+
+    Subclasses must implement all abstract methods and set the following attributes
+    in their ``__init__``:
+
+    Attributes:
+        n (int): Primary order parameter of the group (e.g. N for Z_N, half-order for D_2n).
+        rep_dim (int): Dimension of the fundamental matrix representation.
+        group_order (int): Total number of group elements.
+        el_mult_factor (float): Uniform prefactor for the electric energy operator.
+        el_offset (int): Offset used to keep the electric energy non-negative.
+        group_elements_for_el_energy (tuple[np.ndarray, ...]): Group elements that contribute
+            non-zero weight to the electric energy.
+    """
+
+    n: int
+    rep_dim: int
+    group_order: int
+    el_mult_factor: float
+    el_offset: int
+    group_elements_for_el_energy: tuple[np.ndarray, ...]
+
+    @abstractmethod
+    def get_random_gauge_value(self, rng_state: np.random.RandomState) -> np.ndarray:
+        """Return a randomly selected group element as a matrix.
+
+        Args:
+            rng_state (np.random.RandomState): Random number generator.
+
+        Returns:
+            np.ndarray: Matrix representing a randomly selected group element.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
+    def get_irrep(self, irrep_label: int, group_element: np.ndarray) -> np.ndarray:
+        """Return the irreducible representation matrix for a given irrep label and group element.
+
+        Args:
+            irrep_label (int): Label of the irrep.
+            group_element (np.ndarray): Matrix representing a group element.
+
+        Returns:
+            np.ndarray: Matrix representing the irrep of the group element.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
+    def get_possible_irrep_labels(self) -> list:
+        """Return all irrep labels for this gauge group.
+
+        Returns:
+            list[int]: List of all irrep labels.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
+    def get_electric_energy_factor(self, irrep_label: int) -> float:
+        """Return the electric energy factor for a given irrep label.
+
+        Args:
+            irrep_label (int): Label of the irrep.
+
+        Returns:
+            float: Electric energy factor for the specified irrep.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    def get_irrep_character(self, group_element: np.ndarray, irrep_label: int) -> complex:
+        """Return the character of the irrep evaluated at the given group element.
+
+        Args:
+            group_element (np.ndarray): Matrix representing the group element.
+            irrep_label (int): Label of the irrep.
+
+        Returns:
+            complex: Character of the irrep evaluated at group_element.
+        """
+        return np.trace(self.get_irrep(irrep_label, group_element))
+
+    @abstractmethod
+    def get_irrep_dimension(self, irrep_label: int) -> int:
+        """Return the dimension of the specified irrep.
+
+        Args:
+            irrep_label (int): Label of the irrep.
+
+        Returns:
+            int: Dimension of the specified irrep.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
+    def get_neutral_gauge_value(self) -> np.ndarray:
+        """Return the identity element of the gauge group as a matrix.
+
+        Returns:
+            np.ndarray: Matrix representing the identity element.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
+    def get_possible_gauge_values(self) -> np.ndarray:
+        """Return all group elements as an array of matrices.
+
+        Returns:
+            np.ndarray: Array of shape (group_order, rep_dim, rep_dim) containing all group elements.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @abstractmethod
+    def get_group_elements_and_factors_for_el_energy(self) -> tuple[float, tuple[np.ndarray, ...]]:
+        """Compute group elements and the uniform coefficient for the electric energy term.
+
+        Returns:
+            float: The uniform coefficient for the electric energy.
+            tuple[np.ndarray, ...]: Group elements that contribute to the electric energy.
+        """
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+
+class ZNGauge(GaugeGroup):
     """Implement a Z_N gauge group with elements on the unit circle.
 
     Elements are represented as 1x1 complex matrices corresponding to
@@ -16,7 +148,6 @@ class ZNGauge:
         """
         self.n = n
         self.rep_dim = 1  # Each group element is represented as a 1×1 matrix.
-        self.forbidden_transitions: list = []  # List of forbidden transitions - Empty for Z_N gauge group.
         self.group_order = n
         self.el_mult_factor, self.group_elements_for_el_energy = self.get_group_elements_and_factors_for_el_energy()
 
@@ -106,22 +237,6 @@ class ZNGauge:
         angle = irrep_label * increment
         return 2.0 * np.cos(angle)
 
-    def get_irrep_character(self, group_element: np.ndarray, irrep_label: int) -> complex:
-        """
-        Return the character of the irrep for the inverse group element group_element.
-
-        In Z_N, the character of a one-dimensional irrep is simply the value of the irrep
-        evaluated at the group element.
-
-        Args:
-            group_element (np.ndarray): 1x1 matrix representing the inverse group element.
-            irrep (int): Label of the irrep, an integer in [0, N - 1].
-        Returns:
-            complex: Character of the irrep evaluated at group_element.
-        """
-        theta = self.get_angle(group_element)
-        return np.exp(1.0j * theta * irrep_label)
-
     def get_irrep_dimension(self, irrep_label: int) -> int:
         """
         Return the dimension of the specified irrep in Z_N.
@@ -192,21 +307,6 @@ class ZNGauge:
         """
         return np.angle(g[0][0])
 
-    def get_nonsingular_path(self, g_old: np.ndarray, g_new: np.ndarray) -> list[np.ndarray]:
-        """Return an empty path since Z_N has no singular transitions.
-
-        In Z_N, all gauge values lie on the unit circle and transitions
-        between any two elements are always nonsingular.
-
-        Args:
-            g_old (np.ndarray): Current gauge value (1x1 complex matrix).
-            g_new (np.ndarray): Target gauge value (1x1 complex matrix).
-
-        Returns:
-            list[np.ndarray]: Empty list; no intermediate steps are required.
-        """
-        return []
-
     def get_group_elements_and_factors_for_el_energy(self) -> tuple[float, tuple[np.ndarray, ...]]:
         """
         Compute group elements and coefficients for the electric energy term.
@@ -226,7 +326,7 @@ class ZNGauge:
         return 2.0, tuple([self.get_representation(increment)])
 
 
-class D2nGauge:
+class D2nGauge(GaugeGroup):
     """
     Implement the D_2n gauge group using a real 2D matrix representation.
 
@@ -253,25 +353,10 @@ class D2nGauge:
         Attributes:
             n (int): The number of rotations in the group (half the total number of elements).
             rep_dim (int): The dimension of the matrix representation (2 for D_2n).
-            forbidden_transitions (list[tuple[np.ndarray, np.ndarray]]):
-                A list of gauge element pairs that correspond to singular transitions
-                (i.e., reflection-changing transitions that yield a singular update matrix).
-            transition_pair (tuple[np.ndarray, np.ndarray]):
-                Special transition (0,0) -> (0,1) which is handled separately in update routines.
         """
         self.n = n
         self.rep_dim = 2
         self.group_order = 2 * n
-        self.forbidden_transitions = [
-            (self.get_representation(p0, 0), self.get_representation(p1, 1))
-            for p0 in range(self.n)
-            for p1 in range(self.n)
-            if not (p0 == 0 and p1 == 0)
-        ]
-        self.transition_pair = (
-            self.get_representation(0, 0),
-            self.get_representation(0, 1),
-        )
         factors_for_el_energy, group_elements_for_el_energy = self.get_group_elements_and_factors_for_el_energy()
         self.group_elements_for_el_energy: tuple[np.ndarray, ...] = group_elements_for_el_energy
         self.el_mult_factor = factors_for_el_energy
@@ -455,19 +540,6 @@ class D2nGauge:
         else:
             raise NotImplementedError("Electric energy factors not implemented for D2n with n>4")
 
-    def get_irrep_character(self, group_element: np.ndarray, irrep_label: int) -> complex:
-        """
-        Return the character of the irrep for the inverse group element group_element.
-
-        Args:
-            group_element (np.ndarray): 2x2 matrix representing the group element.
-            irrep_label (int): Label of the irrep.
-        Returns:
-            complex: Character of the irrep evaluated at h.
-        """
-
-        return np.trace(self.get_irrep(irrep_label, group_element))
-
     def get_irrep_dimension(self, irrep_label: int) -> int:
         """
         Return the dimension of the specified irrep in D_2N.
@@ -489,40 +561,6 @@ class D2nGauge:
                 return 1
             else:
                 return 2
-
-    def get_nonsingular_path(self, g_old: np.ndarray, g_new: np.ndarray) -> list[np.ndarray]:
-        """
-        Return a list of intermediate group elements for a non-singular transition from g_old to g_new.
-
-        If the transition from g_old to g_new is known to be singular, this method returns a short path
-        through allowed intermediate group elements (like the identity), avoiding singular update matrices.
-
-        Args:
-            g_old (np.ndarray): Starting gauge group element (2x2 matrix).
-            g_new (np.ndarray): Target gauge group element (2x2 matrix).
-
-        Returns:
-            list[np.ndarray]: Sequence of intermediate group elements (possibly empty).
-        """
-        p_0_q_0 = self.get_neutral_gauge_value()
-        p_0_q_1 = self.get_representation(0, 1)
-        q_old = self.get_reflection_index(g_old)
-        q_new = self.get_reflection_index(g_new)
-        if q_old == 0 and q_new == 1:
-            # we need to go through the representation (0,1)
-            dest = [p_0_q_1]
-            if not np.allclose(g_old, p_0_q_0):  # we need to first go to (0,0)
-                dest = [p_0_q_0] + dest
-        elif q_old == 1 and q_new == 0:
-            # we need to go through the representation (0,0)
-            dest = [p_0_q_0]
-            if not np.allclose(g_old, p_0_q_1):  # we need to first go to (0,1)
-                dest = [p_0_q_1] + dest
-        else:  # this is not a forbidden transition
-            # we can go directly from g_old to g_new
-            dest = []
-
-        return dest
 
     def get_reflection_index(self, g: np.ndarray) -> int:
         """
@@ -647,3 +685,81 @@ class D2nGauge:
                     f"Values found: {factor_for_el}"
                 )
         return factor_for_el[0], tuple(group_for_el_energy)
+
+
+class Z2RepGauge2D(GaugeGroup):
+    """Z_2 gauge group represented by 2x2 matrices that mix colors.
+
+    Group elements: {+1, -1}. Representation matrices:
+        D(+1) = I_2
+        D(-1) = sigma_x = [[0, 1], [1, 0]]   # swaps the two colors
+
+    The two irreps of Z_2 are still 1D (Z_2 is abelian) — trivial and sign — so the
+    electric-energy bookkeeping (irrep characters, dimensions, factors) is identical
+    to the standard ZNGauge(2). What changes is the FAITHFUL representation used by
+    the gauging operator U_h: it is now a 2x2 matrix that mixes the two color blocks,
+    exactly like the D6 2D irrep. This class exists to test whether the D6 electric-
+    energy discrepancy is specific to D6 or appears for any 2D-rep gauging.
+    """
+
+    SIGMA_X = np.array([[0.0, 1.0], [1.0, 0.0]])
+
+    def __init__(self) -> None:
+        logger.warning(
+            "Z2RepGauge2D (the 2D-representation Z2 gauge group) was created for "
+            "debugging purposes only and has not been tested."
+        )
+        self.n = 2
+        self.rep_dim = 2
+        self.group_order = 2
+        self.el_mult_factor, self.group_elements_for_el_energy = self.get_group_elements_and_factors_for_el_energy()
+        self.el_offset = 2
+
+    # ---- group structure ---------------------------------------------------
+    def get_representation(self, sign: int) -> np.ndarray:
+        """sign in {+1, -1} -> 2x2 matrix."""
+        return np.eye(2) if sign > 0 else self.SIGMA_X.copy()
+
+    def get_neutral_gauge_value(self) -> np.ndarray:
+        return np.eye(2)
+
+    def get_possible_gauge_values(self) -> np.ndarray:
+        return np.array([np.eye(2), self.SIGMA_X])
+
+    def get_random_gauge_value(self, rng_state: np.random.RandomState) -> np.ndarray:
+        k = rng_state.randint(0, 2)
+        return np.eye(2) if k == 0 else self.SIGMA_X.copy()
+
+    # ---- irrep bookkeeping (1D irreps, same as ZNGauge(2)) -----------------
+    def _sign_of(self, group_element: np.ndarray) -> int:
+        return 1 if np.allclose(group_element, np.eye(2)) else -1
+
+    def get_irrep(self, irrep_label: int, group_element: np.ndarray) -> np.ndarray:
+        s = self._sign_of(group_element)
+        if irrep_label == 0:  # trivial irrep
+            return np.array([[1.0 + 0.0j]])
+        # sign irrep
+        return np.array([[float(s) + 0.0j]])
+
+    def get_irrep_character(self, group_element: np.ndarray, irrep_label: int) -> complex:
+        return complex(np.trace(self.get_irrep(irrep_label, group_element)))
+
+    def get_irrep_dimension(self, irrep_label: int) -> int:
+        return 1
+
+    def get_possible_irrep_labels(self) -> list:
+        return [0, 1]
+
+    def get_electric_energy_factor(self, irrep_label: int) -> float:
+        # f_j = 2 cos(2*pi*j / N), N=2
+        return 2.0 if irrep_label == 0 else 0.0
+
+    def get_group_elements_and_factors_for_el_energy(self):
+        """Return (el_mult_factor, group elements used for the electric energy).
+
+        For Z_2 the single non-neutral element gives pref(h) = 2 (same as ZNGauge(2)).
+        Using el_mult_factor=2.0 keeps the el_energy formula
+            el_energy = g_el * (el_offset * nlinks - el_mult_factor * el_energy_op)
+        consistent with the standard Z_2 convention.
+        """
+        return 2.0, tuple([self.SIGMA_X.copy()])
