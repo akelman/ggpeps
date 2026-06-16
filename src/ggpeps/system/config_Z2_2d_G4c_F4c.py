@@ -6,7 +6,7 @@ import ggpeps
 from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
-from .config_base import Config2DBase, generate_gauged_projector_terms
+from .config_base import Config2DBase, generate_gauged_projector_terms, make_sigma
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -417,31 +417,8 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
 
         # We want to give the projectors for the fermionic part which don't mix copies
         # (so as to preserve global U(1) symmetry)
-        unmixed_X = np.array(
-            [
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
-            ]
-        )
-
-        unmixed_Y = np.array(
-            [
-                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, -1.0, 0.0, -0.0, 0.0, 0.0],
-                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, -1.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-            ]
-        )
+        unmixed_X = np.real_if_close(1.0j * np.kron(np.eye(2), np.kron(utils.pauliy, utils.paulix)))
+        unmixed_Y = np.real_if_close(1.0j * np.kron(np.eye(2), np.kron(utils.pauliy, utils.pauliz)))
 
         dest_unmixed[Direction.X] = np.block([[unmixed_X, zeros_8], [zeros_8, unmixed_X]])
         dest_unmixed[Direction.Y] = np.block([[unmixed_Y, zeros_8], [zeros_8, unmixed_Y]])
