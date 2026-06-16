@@ -151,7 +151,7 @@ class Config2DBase(ABC):
         self.constants_vec: ConstantsVec
 
         # Electric-energy backend: "pfaffian" (default, bracket/Pfaffian expansion) or
-        # "bravyi" (independent Gaussian three-state overlap; pure-gauge, energies only).
+        # "overlap" (independent Bravyi-Gosset three-state Gaussian overlap; pure-gauge, energies only).
         self.el_method: str = "pfaffian"
 
     def __str__(self) -> str:
