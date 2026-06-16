@@ -34,6 +34,104 @@ paulix = np.array([[0, 1], [1, 0]])
 pauliy = np.array([[0, -1.0j], [1.0j, 0]])
 pauliz = np.array([[1, 0], [0, -1]])
 
+
+# Parameter order utilities
+ParameterOrder = Union[str, Sequence[str]]
+
+
+def parse_parameter_order(order: ParameterOrder) -> tuple[str, ...]:
+    """Normalize a parameter-order specification to a tuple of parameter names.
+
+    This helper is useful when comparing ansatz configs that contain the same
+    symbolic parameters but store them in different orders. The input can be a
+    sequence of names or a compact string such as
+    ``"[t1r, y1r, z1r]"`` or ``"t1r y1r z1r"``.
+
+    Args:
+        order: Parameter names, either as a sequence of strings or as a comma- or
+            whitespace-separated string.
+
+    Returns:
+        tuple[str, ...]: Normalized parameter names.
+    """
+    if isinstance(order, str):
+        clean_order = order.replace("[", " ").replace("]", " ").replace("(", " ").replace(")", " ")
+        clean_order = clean_order.replace("'", " ").replace('"', " ").replace(",", " ")
+        return tuple(name for name in clean_order.split() if name)
+    return tuple(str(name) for name in order)
+
+
+def parameter_order_permutation(source_order: ParameterOrder, target_order: ParameterOrder) -> tuple[int, ...]:
+    """Return indices that reorder values from ``source_order`` to ``target_order``.
+
+    If ``values`` are ordered according to ``source_order``, then
+    ``values[..., permutation]`` is ordered according to ``target_order``, where
+    ``permutation`` is the tuple returned by this function.
+
+    Args:
+        source_order: Current order of the parameter values.
+        target_order: Desired order of the parameter values.
+
+    Returns:
+        tuple[int, ...]: Indices into ``source_order`` in the order required by
+            ``target_order``.
+
+    Raises:
+        ValueError: If either order contains duplicates or if the two orders do
+            not contain exactly the same parameter names.
+    """
+    source = parse_parameter_order(source_order)
+    target = parse_parameter_order(target_order)
+
+    duplicate_source = sorted({name for name in source if source.count(name) > 1})
+    duplicate_target = sorted({name for name in target if target.count(name) > 1})
+    if duplicate_source:
+        raise ValueError(f"source_order contains duplicate parameter names: {duplicate_source}")
+    if duplicate_target:
+        raise ValueError(f"target_order contains duplicate parameter names: {duplicate_target}")
+
+    source_set = set(source)
+    target_set = set(target)
+    if source_set != target_set:
+        missing_from_source = sorted(target_set - source_set)
+        missing_from_target = sorted(source_set - target_set)
+        raise ValueError(
+            "source_order and target_order must contain the same parameter names. "
+            f"Missing from source_order: {missing_from_source}. "
+            f"Missing from target_order: {missing_from_target}."
+        )
+
+    source_index = {name: ind for ind, name in enumerate(source)}
+    return tuple(source_index[name] for name in target)
+
+
+def reorder_parameter_vector(
+    values: np.ndarray,
+    source_order: ParameterOrder,
+    target_order: ParameterOrder,
+    axis: int = -1,
+) -> np.ndarray:
+    """Reorder parameter values from one symbolic order to another.
+
+    This is intended for tests and compatibility checks between configs with
+    different parameter-vector conventions. For example, it can convert a vector
+    ordered as the old G2C/F2C ``symbolvec`` into the order used by the generic
+    G4C/F4C config with ``ncopy=2``.
+
+    Args:
+        values: Parameter values ordered according to ``source_order``.
+        source_order: Current order of ``values``.
+        target_order: Desired output order.
+        axis: Axis of ``values`` that stores the parameter index. Defaults to the
+            last axis.
+
+    Returns:
+        np.ndarray: A copy/view of ``values`` reordered along ``axis`` according
+            to ``target_order``.
+    """
+    permutation = parameter_order_permutation(source_order, target_order)
+    return np.take(values, permutation, axis=axis)
+
 # ========== Utility Functions ====================
 
 

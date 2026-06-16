@@ -21,6 +21,93 @@ class TestUtils(unittest.TestCase):
         couplings = utils.get_couplings_from_foldername(dirname)
         self.assertEqual(couplings, "g_1.3_int_1.4_mass_1.5_chem_1.0_2.0_3.0")
 
+    def test_parse_parameter_order_from_string(self):
+        """Parameter orders can be supplied as compact strings."""
+        order = "[t1r, y1r, z1r, t2r]"
+        parsed = utils.parse_parameter_order(order)
+        self.assertEqual(parsed, ("t1r", "y1r", "z1r", "t2r"))
+
+        whitespace_order = "t1r y1r z1r t2r"
+        parsed = utils.parse_parameter_order(whitespace_order)
+        self.assertEqual(parsed, ("t1r", "y1r", "z1r", "t2r"))
+
+    def test_parse_parameter_order_from_sequence(self):
+        """Parameter orders can also be supplied directly as sequences."""
+        order = ["t1r", "y1r", "z1r", "t2r"]
+        parsed = utils.parse_parameter_order(order)
+        self.assertEqual(parsed, ("t1r", "y1r", "z1r", "t2r"))
+
+    def test_parameter_order_permutation(self):
+        """The permutation should index the source order in target-order order."""
+        source_order = ["t1r", "y1r", "z1r", "t2r"]
+        target_order = ["t1r", "t2r", "y1r", "z1r"]
+
+        permutation = utils.parameter_order_permutation(source_order, target_order)
+
+        self.assertEqual(permutation, (0, 3, 1, 2))
+
+    def test_reorder_parameter_vector_1d(self):
+        """A one-dimensional parameter vector should be reordered according to symbol names."""
+        source_order = ["t1r", "y1r", "z1r", "t2r"]
+        target_order = ["t1r", "t2r", "y1r", "z1r"]
+        values = np.array([10.0, 20.0, 30.0, 40.0])
+
+        reordered = utils.reorder_parameter_vector(values, source_order, target_order)
+
+        expected = np.array([10.0, 40.0, 20.0, 30.0])
+        self.assertTrue(np.allclose(reordered, expected))
+
+    def test_reorder_parameter_vector_axis(self):
+        """Reordering should work along an arbitrary parameter axis."""
+        source_order = ["t1r", "y1r", "z1r", "t2r"]
+        target_order = ["t1r", "t2r", "y1r", "z1r"]
+        values = np.array(
+            [
+                [1.0, 2.0, 3.0, 4.0],
+                [10.0, 20.0, 30.0, 40.0],
+            ]
+        )
+
+        reordered = utils.reorder_parameter_vector(values, source_order, target_order, axis=1)
+
+        expected = np.array(
+            [
+                [1.0, 4.0, 2.0, 3.0],
+                [10.0, 40.0, 20.0, 30.0],
+            ]
+        )
+        self.assertTrue(np.allclose(reordered, expected))
+
+    def test_reorder_parameter_vector_g2_like_to_g4_ncopy2_like_order(self):
+        """The helper should support the G2-like to generic-G4 ncopy=2 parameter reordering pattern."""
+        g2_like_order = [
+            "t1r", "y1r", "z1r", "t2r", "y2r", "z2r", "a12r", "b12r", "c12r", "d12r",
+            "t1i", "y1i", "z1i", "t2i", "y2i", "z2i", "a12i", "b12i", "c12i", "d12i",
+        ]
+        g4_ncopy2_like_order = [
+            "t1r", "t2r", "y1r", "y2r", "z1r", "z2r", "a12r", "b12r", "c12r", "d12r",
+            "t1i", "t2i", "y1i", "y2i", "z1i", "z2i", "a12i", "b12i", "c12i", "d12i",
+        ]
+        values = np.arange(20)
+
+        reordered = utils.reorder_parameter_vector(values, g2_like_order, g4_ncopy2_like_order)
+
+        expected = np.array([0, 3, 1, 4, 2, 5, 6, 7, 8, 9, 10, 13, 11, 14, 12, 15, 16, 17, 18, 19])
+        self.assertTrue(np.array_equal(reordered, expected))
+
+    def test_parameter_order_permutation_rejects_duplicate_names(self):
+        """Ambiguous parameter orders should be rejected before reordering."""
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            utils.parameter_order_permutation(["t1r", "t1r"], ["t1r", "t2r"])
+
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            utils.parameter_order_permutation(["t1r", "t2r"], ["t1r", "t1r"])
+
+    def test_parameter_order_permutation_rejects_mismatched_names(self):
+        """The two orders must contain exactly the same parameter names."""
+        with self.assertRaisesRegex(ValueError, "same parameter names"):
+            utils.parameter_order_permutation(["t1r", "y1r"], ["t1r", "z1r"])
+
     def test_generate_smat(self):
         N = 10
         smat = utils.generate_smat(N)
