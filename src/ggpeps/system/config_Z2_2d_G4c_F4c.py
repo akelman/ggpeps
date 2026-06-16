@@ -196,7 +196,12 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
                     zeroed_params.append(real_coord)
                     zeroed_params.append(imag_coord)
 
-        # Zero out the parameters which are not used in the fermionic layers
+        # Zero out the parameters which are not used in the fermionic layers.
+        # Under the U(1)-symmetric convention, only odd-labelled copies couple directly
+        # to the physical fermion via t_i. Hence, t_2, t_4, ... are forced to zero.
+        # The y_i and z_i intra-copy virtual couplings are also forced to zero, and
+        # mixed-copy couplings are allowed only between copies of opposite parity.
+        t_inds = [ind for ind in range(self.ncopy) if ind % 2 == 1]
         y_inds = [ind for ind in range(self.ncopy, 2 * self.ncopy)]
         z_inds = [ind for ind in range(2 * self.ncopy, 3 * self.ncopy)]
         mixed_copy_inds = []
@@ -208,7 +213,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
                     inds = [ind for ind in range(start, start + 4)]  # a,b,c,d
                     mixed_copy_inds += inds
 
-        zero_for_fermionic_layer = y_inds + z_inds + mixed_copy_inds
+        zero_for_fermionic_layer = t_inds + y_inds + z_inds + mixed_copy_inds
         if self.u1_symmetry:
             for layer_ind in range(self.num_pg_layer, self.nlayer):
                 for uc_ind in range(self.unitcell_size):

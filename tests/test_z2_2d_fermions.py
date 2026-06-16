@@ -1937,9 +1937,27 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
 ### Generic ncopy tests
 
 class TestG4ConfigNcopyGeneric(unittest.TestCase):
-    """Structural tests for the ncopy-generic G4C/F4C config."""
+    """Tests for the ncopy-generic behavior of the G4C/F4C Z2 config.
 
-    def _make_cfg(self, ncopy):
+    The long-term goal is to use this config as the generic Z2 ansatz class,
+    with `ncopy` selecting the number of virtual-fermion copies. These tests
+    therefore check bookkeeping that must scale with ncopy, and the precise
+    `zeroed_params` rules that define which variational parameters are allowed
+    in pure-gauge and fermionic layers.
+
+    The tests intentionally inspect the generic G4C/F4C implementation directly.
+    They do not compare against the old G2C/F2C config, which should remain a
+    historical/reference implementation rather than the object being modified.
+    """
+
+    def _make_cfg(self, ncopy, *, num_pg_layer=1, num_fermionic_layer=1, enforce_u1_symmetry=True):
+        """Build a small generic G4C/F4C config for ncopy-dependent tests.
+
+        The lattice is deliberately small because these tests are about config
+        structure, symbol ordering, and zeroed-parameter rules rather than about
+        finite-size physics. Layer counts are configurable so that ncopy == 1 can
+        be tested in its supported pure-gauge-only setting.
+        """
         lat = lattice.Lattice2D(2, 2)
         return system.Z2System2D_G4C_F4C_Config(
             lat,
@@ -1948,32 +1966,167 @@ class TestG4ConfigNcopyGeneric(unittest.TestCase):
             g_int=1.0,
             g_mass=0.0,
             g_chem=None,
-            num_pg_layer=1,
-            num_fermionic_layer=1,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
             ncopy=ncopy,
+            enforce_u1_symmetry=enforce_u1_symmetry,
         )
+    
+    @staticmethod
+    def _zeroed_symbol_names(cfg, layer_ind):
+        """Return symbol names, rather than raw indices, zeroed in a given layer.
 
-    def test_ncopy_dependent_shapes(self):
-        """Check that the generic config derives all basic dimensions from ncopy."""
+        Using names makes these tests express the ansatz semantics directly and
+        avoids tying the assertions to incidental index values in `symbolvec`.
+        """
+        return {str(cfg.symbolvec[param_ind]) for lay, _, param_ind in cfg.zeroed_params if lay == layer_ind}
+
+    @staticmethod
+    def _t_symbol_names(copies):
+        """Return real and imaginary t_i symbol names for the given one-based copies."""
+        return {f"t{copy}{part}" for copy in copies for part in ["r", "i"]}
+
+    @staticmethod
+    def _yz_symbol_names(ncopy):
+        """Return all real and imaginary y_i and z_i intra-copy coupling symbols."""
+        return {
+            f"{param}{copy}{part}"
+            for param in ["y", "z"]
+            for copy in range(1, ncopy + 1)
+            for part in ["r", "i"]
+        }
+
+    @staticmethod
+    def _same_parity_mixed_symbol_names(ncopy):
+        """Return mixed-copy symbols between copies with the same parity.
+
+        Under the U(1)-symmetric convention these same-parity mixed-copy
+        couplings are forbidden in fermionic layers. Opposite-parity pairs remain
+        allowed.
+        """
+        return {
+            f"{param}{copy1}{copy2}{part}"
+            for copy1 in range(1, ncopy + 1)
+            for copy2 in range(copy1 + 1, ncopy + 1)
+            if (copy1 % 2) == (copy2 % 2)
+            for param in ["a", "b", "c", "d"]
+            for part in ["r", "i"]
+        }
+    
+    def test_zeroed_params_pure_gauge_layers_zero_all_t_copies(self):
+        """Pure-gauge layers should zero all physical-virtual t_i couplings.
+
+        A pure-gauge layer should not couple to the physical fermion at all.
+        Therefore every t_i parameter, for every copy, must be forced to zero.
+        This is checked for ncopy = 1, 2, and 4 using symbol names.
+        """
         for ncopy in [1, 2, 4]:
             with self.subTest(ncopy=ncopy):
+                num_fermionic_layer = 0 if ncopy == 1 else 1
+                cfg = self._make_cfg(ncopy, num_fermionic_layer=num_fermionic_layer)
+                zeroed_pg = self._zeroed_symbol_names(cfg, layer_ind=0)
+                expected = self._t_symbol_names(range(1, ncopy + 1))
+                self.assertEqual(zeroed_pg, expected)
+
+    def test_zeroed_params_fermionic_layers_u1_rule(self):
+        """U(1)-symmetric fermionic layers should zero the forbidden symbols.
+
+        The generic rule is:
+        - zero t_2, t_4, ... so only odd-labelled copies couple directly to the
+        physical fermion;
+        - zero all y_i and z_i intra-copy virtual couplings;
+        - zero mixed-copy couplings between same-parity copies;
+        - keep opposite-parity mixed-copy couplings variational.
+
+        For ncopy = 2 this reproduces the old G2C/F2C zeroing rule
+        semantically, without modifying or importing that implementation here.
+        """
+        for ncopy in [2, 4]:
+            with self.subTest(ncopy=ncopy):
                 cfg = self._make_cfg(ncopy)
+                zeroed_ferm = self._zeroed_symbol_names(cfg, layer_ind=cfg.num_pg_layer)
+
+                even_copy_t = self._t_symbol_names(range(2, ncopy + 1, 2))
+                yz_symbols = self._yz_symbol_names(ncopy)
+                same_parity_mixed = self._same_parity_mixed_symbol_names(ncopy)
+                expected = even_copy_t | yz_symbols | same_parity_mixed
+
+                self.assertEqual(zeroed_ferm, expected)
+
+    def test_zeroed_params_fermionic_layers_do_not_zero_allowed_u1_symbols(self):
+        """Allowed U(1)-compatible symbols should not appear in zeroed_params.
+
+        This complements the previous test by checking the negative case: t_1,
+        t_3 and opposite-parity mixed-copy couplings should remain variational
+        for ncopy = 4.
+        """
+        cfg = self._make_cfg(ncopy=4)
+        zeroed_ferm = self._zeroed_symbol_names(cfg, layer_ind=cfg.num_pg_layer)
+
+        allowed_symbols = self._t_symbol_names([1, 3]) | {
+            f"{param}{copy1}{copy2}{part}"
+            for copy1, copy2 in [(1, 2), (1, 4), (2, 3), (3, 4)]
+            for param in ["a", "b", "c", "d"]
+            for part in ["r", "i"]
+        }
+
+        self.assertTrue(zeroed_ferm.isdisjoint(allowed_symbols))
+
+    def test_zeroed_params_fermionic_layers_empty_when_u1_not_enforced(self):
+        """Disabling U(1) symmetry should remove fermionic-layer zeroing.
+
+        Pure-gauge layers still zero t_i, but fermionic layers should not force
+        any symbols to zero when `enforce_u1_symmetry=False`.
+        """
+        cfg = self._make_cfg(ncopy=4, enforce_u1_symmetry=False)
+        zeroed_ferm = self._zeroed_symbol_names(cfg, layer_ind=cfg.num_pg_layer)
+        self.assertEqual(zeroed_ferm, set())
+
+    def test_zeroed_params_one_copy_no_fermionic_layer(self):
+        """For ncopy == 1, the supported use case is pure-gauge only.
+
+        There is no fermionic layer in the one-copy setting. This test documents
+        that convention explicitly and checks that the only forced parameters are
+        the one-copy physical-virtual couplings t1r and t1i in the pure-gauge layer.
+        """
+        cfg = self._make_cfg(ncopy=1, num_fermionic_layer=0)
+        self.assertEqual(cfg.nlayer, 1)
+        self.assertEqual(self._zeroed_symbol_names(cfg, layer_ind=0), {"t1r", "t1i"})
+
+    def test_ncopy_dependent_shapes(self):
+        """The generic config should derive all basic dimensions from ncopy.
+
+        This protects the ncopy generalization of the constructor and symbolic
+        T-matrix bookkeeping: number of parameters, symbolvec length, parameter
+        tensor shape, T-matrix shape, and virtual-mode counts must all follow
+        the ncopy-dependent formulas.
+        """
+        for ncopy in [1, 2, 4]:
+            with self.subTest(ncopy=ncopy):
+                num_fermionic_layer = 0 if ncopy == 1 else 1
+                cfg = self._make_cfg(ncopy, num_fermionic_layer=num_fermionic_layer)
                 expected_nparams = 2 * ncopy * (2 * ncopy + 1)
                 expected_tmat_size = 1 + 4 * ncopy
+                expected_nlayer = 1 if ncopy == 1 else 2
 
                 self.assertEqual(cfg.ncopy, ncopy)
                 self.assertEqual(cfg._nparams, expected_nparams)
                 self.assertEqual(len(cfg.symbolvec), expected_nparams)
-                self.assertEqual(cfg.param_shape(), (2, 1, expected_nparams))
+                self.assertEqual(cfg.param_shape(), (expected_nlayer, 1, expected_nparams))
                 self.assertEqual(cfg.tmat_symb.shape, (expected_tmat_size, expected_tmat_size))
                 self.assertEqual(cfg.nvirtmodes_vertex, 4 * ncopy)
                 self.assertEqual(cfg.nvirtmodes_link, 2 * ncopy)
 
     def test_zeroed_params_are_in_range(self):
-        """Check that ncopy-dependent zeroed parameter indices stay within param_shape."""
+        """Every zeroed-parameter coordinate should be valid for the param_shape.
+
+        This is a structural guard against off-by-one errors in the generic index
+        formulas used by `get_zeroed_params`, especially as ncopy changes.
+        """
         for ncopy in [1, 2, 4]:
             with self.subTest(ncopy=ncopy):
-                cfg = self._make_cfg(ncopy)
+                num_fermionic_layer = 0 if ncopy == 1 else 1
+                cfg = self._make_cfg(ncopy, num_fermionic_layer=num_fermionic_layer)
                 shape = cfg.param_shape()
 
                 for coord in cfg.zeroed_params:
@@ -1985,14 +2138,26 @@ class TestG4ConfigNcopyGeneric(unittest.TestCase):
                     self.assertLess(coord[2], shape[2])
 
     def test_odd_ncopy_greater_than_one_is_rejected(self):
-        """Odd ncopy > 1 is unsupported by the current pairwise projector convention."""
+        """Odd ncopy > 1 should be rejected by the current pairwise convention.
+
+        The current pure-gauge projector pairs copies as (1 <-> 2), (3 <-> 4), ... .
+        Therefore ncopy must be either 1 or even until a different convention is
+        implemented.
+        """
         for ncopy in [3, 5]:
             with self.subTest(ncopy=ncopy):
                 with self.assertRaises(ValueError):
                     self._make_cfg(ncopy)
 
 class TestGammaGaugeNeutralDict(unittest.TestCase):
-    """Direct tests for the single-link ungauged projector covariance matrices."""
+    """Direct tests for single-link ungauged projector covariance matrices.
+
+    These tests pin down the exact X/Y projector matrices returned by
+    `generate_gamma_gauge_neutral_dict`. They serve two purposes:
+    1. protect the legacy two-copy and four-copy behavior during refactoring;
+    2. verify that the ncopy-generic G4C/F4C implementation reproduces the
+    expected one-copy, two-copy, and four-copy projectors.
+    """
 
     @staticmethod
     def expected_x_1copy():
@@ -2084,7 +2249,12 @@ class TestGammaGaugeNeutralDict(unittest.TestCase):
 
     @staticmethod
     def block_diag_2copy(mat):
-        """Build the current four-copy block-diagonal structure from an explicit two-copy matrix."""
+        """Build the expected four-copy matrix from two independent two-copy blocks.
+
+        This represents the existing G4C/F4C convention: copies (1,2) and (3,4)
+        are paired independently, so the four-copy projector is block diagonal in
+        the two-copy projector blocks.
+        """
         zeros = np.zeros_like(mat)
         return np.block([[mat, zeros], [zeros, mat]])
 
@@ -2112,7 +2282,13 @@ class TestGammaGaugeNeutralDict(unittest.TestCase):
         self.assertTrue(np.allclose(gamma_dict[1][Direction.Y], self.expected_unmixed_y_2copy()))
 
     def test_generate_gamma_gauge_neutral_dict_layer_assignment(self):
-        """Check pure-gauge layers receive mixed projectors and fermionic layers receive unmixed projectors."""
+        """Check that layer type determines whether projectors are mixed or unmixed.
+
+        The returned list must preserve the production layer ordering: all
+        pure-gauge layers first, followed by all fermionic layers. Pure-gauge
+        layers receive mixed-copy projectors; fermionic layers receive unmixed
+        projectors.
+        """
         lat = lattice.Lattice2D(2, 2)
 
         num_pg_layer = 2
