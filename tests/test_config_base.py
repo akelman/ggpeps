@@ -272,6 +272,8 @@ class TestGaugedProjectorTermsForZ2(unittest.TestCase):
 
     def assertPolyEqual(self, result, expected):
         """Helper to compare polynomial dictionaries."""
+        # TODO: Is this working?
+
         # Convert dict {indices: factor} -> sorted list [(factor, indices)]
         # This ensures deterministic comparison regardless of hash order
         res_list = sorted([(v, k) for k, v in result.items()], key=lambda x: x[1])
@@ -288,27 +290,35 @@ class TestGaugedProjectorTermsForZ2(unittest.TestCase):
         # Input is now a dictionary: {indices: factor}
         poly = {(2, 1): 1.0}
         expected = {(1, 2): -1.0}
-        self.assertPolyEqual(config_base.simplify_majorana_acc(poly), expected)
+        self.assertPolyEqual(config_base.simplify_polynomial(poly), expected)
 
     def test_nested_contraction(self):
         """Test 2: Recursive contraction (c_1 c_2 c_2 c_1 -> c_1 c_1 -> 1)."""
         poly = {(1, 2, 2, 1): 1.0}
         expected = {(): 1.0}  # Empty tuple is Identity
-        self.assertPolyEqual(config_base.simplify_majorana_acc(poly), expected)
+        self.assertPolyEqual(config_base.simplify_polynomial(poly), expected)
 
     def test_cancellation(self):
         """Test 3: Aggregation and cancellation of terms."""
         # c_1 c_2 + c_2 c_1  -->  c_1 c_2 - c_1 c_2  -->  0
         poly = {(1, 2): 1.0, (2, 1): 1.0}
         expected = {}  # Should be empty after cancellation
-        self.assertPolyEqual(config_base.simplify_majorana_acc(poly), expected)
+        self.assertPolyEqual(config_base.simplify_polynomial(poly), expected)
 
     def test_mixed_case(self):
         """Test 4: Sort then contract combined."""
         # c_1 c_3 c_1 --> swap c_3/c_1 (sign flip) --> -c_1 c_1 c_3 --> contract --> -c_3
         poly = {(1, 3, 1): 1.0}
         expected = {(3,): -1.0}
-        self.assertPolyEqual(config_base.simplify_majorana_acc(poly), expected)
+        self.assertPolyEqual(config_base.simplify_polynomial(poly), expected)
+
+    def test_longer_anti_commutation(self):
+        """Test 5: Reordering checks sign flipping (c_2 c_1 -> -c_1 c_2)."""
+        # Input is now a dictionary: {indices: factor}
+        # TODO: this should fail, but it doesn't, because assertPolyEqual is broken
+        poly = {(2, 1, 7, 12, 15, 9): 1.0}
+        expected = {(1, 2, 7, 9, 12, 15): -1.0}
+        self.assertPolyEqual(config_base.simplify_polynomial(poly), expected)
 
 
 class TestElectricContstants(unittest.TestCase):
@@ -539,7 +549,7 @@ class _PolyAssertMixin:
     @staticmethod
     def terms_to_poly(terms):
         acc = defaultdict(complex)
-        for coef, inds in terms:
+        for inds, coef in terms.items():
             acc[inds] += coef
         return _ref_canon(acc)
 
@@ -549,26 +559,26 @@ class TestMajoranaAlgebraHelpers(_PolyAssertMixin, unittest.TestCase):
 
     def test_poly_mul_concatenates_on_the_right(self):
         # c_0 * c_1 -> (0, 1)
-        p = config_base.simplify_majorana_acc({(0,): 1.0})
-        out = config_base._poly_mul(p, [(1.0, (1,))])
+        p = config_base.simplify_polynomial({(0,): 1.0})
+        out = config_base.poly_mul(p, {(1,): 1.0})
         self.assert_poly_close(out, {(0, 1): 1.0}, msg="_poly_mul order")
 
     def test_left_mul_concatenates_on_the_left(self):
         # left-multiplying c_0 by c_1 -> c_1 c_0 = -(0, 1): opposite sign to _poly_mul.
         # This is the discriminator that catches a left/right swap.
-        p = config_base.simplify_majorana_acc({(0,): 1.0})
+        p = config_base.simplify_polynomial({(0,): 1.0})
         out = config_base._left_mul([(1.0, (1,))], p)
         self.assert_poly_close(out, {(0, 1): -1.0}, msg="_left_mul order")
 
     def test_poly_mul_contracts_squares(self):
         # (0, 1) * (1, 2) = (0, 1, 1, 2) -> (0, 2)
-        p = config_base.simplify_majorana_acc({(0, 1): 1.0})
-        out = config_base._poly_mul(p, [(1.0, (1, 2))])
+        p = config_base.simplify_polynomial({(0, 1): 1.0})
+        out = config_base.poly_mul(p, {(1, 2): 1.0})
         self.assert_poly_close(out, {(0, 2): 1.0}, msg="_poly_mul contraction")
 
     def test_poly_mul_distributes_over_terms_and_coeffs(self):
-        p = config_base.simplify_majorana_acc({(0,): 2.0})
-        out = config_base._poly_mul(p, [(3.0, (1,)), (1j, (2,))])
+        p = config_base.simplify_polynomial({(0,): 2.0})
+        out = config_base.poly_mul(p, {(1,): 3.0, (2,): 1j})
         self.assert_poly_close(out, {(0, 1): 6.0, (0, 2): 2j}, msg="_poly_mul distribute")
 
     def test_simplify_majorana_acc_matches_independent_canon(self):
@@ -578,7 +588,7 @@ class TestMajoranaAlgebraHelpers(_PolyAssertMixin, unittest.TestCase):
             n = rng.integers(0, 7)
             inds = tuple(int(x) for x in rng.integers(0, 5, size=n))
             coef = complex(rng.standard_normal(), rng.standard_normal())
-            got = config_base.simplify_majorana_acc({inds: coef})
+            got = config_base.simplify_polynomial({inds: coef})
             exp = _ref_canon({inds: coef})
             self.assert_poly_close(got, exp, msg=f"simplify vs canon for {inds}")
 
@@ -629,9 +639,9 @@ class TestGaugedProjectorPrimitives(_PolyAssertMixin, unittest.TestCase):
             for color in range(1, ncolor + 1):
                 for copy in range(1, ncopy + 1):
                     for sc in range(1, ncopy + 1):
-                        got = self.terms_to_poly(config_base._vacuum_terms(copy, sc, color, ncolor, ncopy))
+                        got = self.terms_to_poly(config_base.vacuum_terms(copy, sc, color, ncolor, ncopy))
                         exp = _ref_vacuum(copy, sc, color, ncolor, ncopy)
-                        self.assert_poly_close(got, exp, msg=f"_vacuum_terms c{color} cp{copy} sc{sc}")
+                        self.assert_poly_close(got, exp, msg=f"vacuum_terms c{color} cp{copy} sc{sc}")
 
     def test_w_dag_terms(self):
         for eta2 in (1.0, 1j):
@@ -671,7 +681,7 @@ class TestGaugedProjectorPrimitives(_PolyAssertMixin, unittest.TestCase):
             config_base.get_cov_matrix_idx(2, 1, 2, 1, ncolor, ncopy),
             config_base.get_cov_matrix_idx(2, 1, 2, 2, ncolor, ncopy),
         }
-        used = {idx for _, inds in terms for idx in inds}
+        used = {idx for inds, _ in terms.items() for idx in inds}
         self.assertTrue(used.isdisjoint(other_color_modes), "identity rep must not mix colors")
 
 
