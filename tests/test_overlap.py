@@ -13,7 +13,8 @@ Test layers:
   * TestOverlapPerConfigZ2   - F(G)==pfaffian for several explicit Z2 configs (per-config). PASSES.
   * TestOverlapReproducesZ2  - full exact-eval <el_energy> matches pfaffian (Z2, 1c/2c, gauge-fixed).
   * TestOverlapPerConfigD6   - F(G) overlap-vs-pfaffian for explicit D6 configs, 1 and 2 layers
-                               (gauge-fixed). Currently RED for D6 — an open-bug regression target.
+                               (gauge-fixed), for both hand-picked sensitive params and random params.
+                               Currently RED for D6 — an open-bug regression target.
   * TestOverlapD6FullEval    - full exact-eval <el_energy> for D6, 1 and 2 layers (skipped: too slow;
                                run explicitly): 1-layer matches, 2-layer is RED (the multi-layer D6 bug).
 
@@ -29,7 +30,6 @@ Measure per-config with a FRESH single-backend system per config: do NOT switch 
 system, because re-feeding an unchanged config skips cache invalidation and returns a stale value
 (a false pass).
 """
-import os
 import unittest
 
 import numpy as np
@@ -41,8 +41,6 @@ from ggpeps import lattice
 from ggpeps import system
 from ggpeps import exacteval
 from ggpeps.exacteval import ExactEvaluatorConfig
-
-FIXTURE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
 
 
 def _random_even_pure_covmat(n_modes, rng, complex_state=False):
@@ -264,17 +262,43 @@ class TestOverlapReproducesZ2(unittest.TestCase):
         self.assertTrue(np.allclose(el_b, el_p, rtol=1e-6, atol=1e-7))
 
 
-def _build_d6_gauge_fixed_system(fixture_name, num_pg_layer, el_method):
-    """Fresh gauge-fixed (L=2) D6 system from a committed param fixture, fixed to one backend.
+# Specific, hand-picked D6 parameter vectors (NOT random) that exhibit the open electric-energy
+# discrepancy. These are SENSITIVE: the 2-layer set has large entries (|.| up to ~68) and is the
+# configuration where the gauge-weighted electric energy goes unphysical for the pfaffian backend
+# (full-eval pfaffian -26.74 vs overlap +22.66). They are written out verbatim so the regression is
+# pinned to exactly these values. Shape is (num_pg_layer, unitcell_size=1, nparams_per_site=20).
+D6_1LAYER_PARAMVEC = np.array([
+    0.0, -0.9939527757343662, 1.4260579366967028, 0.0, -0.28000887715354855,
+    0.8089407935296115, -1.3065504646046338, 1.865642743080219, -1.6649918678103066,
+    2.1196735319722277, 0.0, 1.8397448679904251, -0.4227470147907068, 0.0,
+    1.3538850781838103, -0.5407833330276589, -0.7780308822579828, 0.9742888873324884,
+    -0.5166044214592881, 0.32950471997126796,
+]).reshape(1, 1, 20)
+
+D6_2LAYER_PARAMVEC = np.array([
+    0.0, -52.8917263263219, 19.78345618719102, 0.0, -42.27171900640149,
+    17.746641326666904, 43.61807316876326, -16.946194917588613, -27.8886671204573,
+    25.88035087784146, 0.0, -18.003447995609516, -3.148152878314228, 0.0,
+    -52.077659929094075, 29.386499281816484, -58.689942035772205, 16.797500524676142,
+    32.23274988398398, 8.263898579638377,
+    0.0, 36.326909166788774, -3.4463705034947996, 0.0, 34.292370450080206,
+    67.64738719605107, -19.4054466188742, 48.84705248075478, -39.814331170415855,
+    -15.637498538375208, 0.0, -12.417914185140402, 56.57154429687569, 0.0,
+    11.449625035471854, 1.8054305840486773, -21.545921775346713, -58.06042095755204,
+    -1.941659389661235, -54.451686759216436,
+]).reshape(2, 1, 20)
+
+
+def _build_d6_gauge_fixed_system(paramvec, num_pg_layer, el_method):
+    """Fresh gauge-fixed (L=2) D6 system from an explicit paramvec, fixed to one backend.
     Building one system per backend (not switching el_method on a reused system) is required: see
     the module docstring. comp_tree links are free under gauge fixing; the rest are held neutral."""
-    path = os.path.join(FIXTURE_DIR, fixture_name)
     lat = lattice.Lattice2D(2, 2, -1)
     cfg = system.D6System2D_Config(
         lat, 1.0, 1.0, 0.0, 0.0, None, num_pg_layer=num_pg_layer, num_fermionic_layer=0,
         mod_link_inds=(0,)
     )
-    cfg.paramvec = np.load(path).reshape(cfg.param_shape())
+    cfg.paramvec = np.reshape(paramvec, cfg.param_shape())
     cfg.enforce_parameter_conditions(cfg.paramvec)
     cfg.el_method = el_method
     return system.D2nSystem2D(cfg)
@@ -313,10 +337,10 @@ class TestOverlapPerConfigD6(unittest.TestCase):
         (3, 2, 1, 2, 2),   # historic divergent config (full-eval index 4370)
     ]
 
-    def _assert_match(self, fixture, num_pg_layer):
+    def _assert_match(self, paramvec, num_pg_layer):
         # one fresh system per backend; iterate configs on each (matches ExactEvaluator)
-        sp = _build_d6_gauge_fixed_system(fixture, num_pg_layer, "pfaffian")
-        so = _build_d6_gauge_fixed_system(fixture, num_pg_layer, "overlap")
+        sp = _build_d6_gauge_fixed_system(paramvec, num_pg_layer, "pfaffian")
+        so = _build_d6_gauge_fixed_system(paramvec, num_pg_layer, "overlap")
         for combo in self._COMBOS:
             cv = _d6_configvec(sp, combo)
             sp.update_gauge_full_system(cv)
@@ -328,12 +352,26 @@ class TestOverlapPerConfigD6(unittest.TestCase):
             )
 
     def test_d6_1layer_per_config_matches_pfaffian(self):
-        """Per-config F(G) overlap == pfaffian for 1-layer gauge-fixed D6. Currently RED (open bug)."""
-        self._assert_match("d6_1layer_paramvec.npy", 1)
+        """Per-config F(G) overlap == pfaffian for 1-layer gauge-fixed D6 on the sensitive
+        hand-picked params. Currently RED (open bug)."""
+        self._assert_match(D6_1LAYER_PARAMVEC, 1)
 
     def test_d6_2layer_per_config_matches_pfaffian(self):
-        """Per-config F(G) overlap == pfaffian for 2-layer gauge-fixed D6. Currently RED (open bug)."""
-        self._assert_match("d6_2layer_paramvec.npy", 2)
+        """Per-config F(G) overlap == pfaffian for 2-layer gauge-fixed D6 on the sensitive
+        hand-picked params. Currently RED (open bug)."""
+        self._assert_match(D6_2LAYER_PARAMVEC, 2)
+
+    def test_d6_1layer_per_config_random(self):
+        """Per-config F(G) overlap == pfaffian for 1-layer gauge-fixed D6 on random params
+        (fixed seed for reproducibility)."""
+        paramvec = np.random.default_rng(2026).standard_normal((1, 1, 20))
+        self._assert_match(paramvec, 1)
+
+    def test_d6_2layer_per_config_random(self):
+        """Per-config F(G) overlap == pfaffian for 2-layer gauge-fixed D6 on random params
+        (fixed seed for reproducibility)."""
+        paramvec = np.random.default_rng(4052).standard_normal((2, 1, 20))
+        self._assert_match(paramvec, 2)
 
 
 @unittest.skip("Takes too long")
@@ -342,23 +380,22 @@ class TestOverlapD6FullEval(unittest.TestCase):
     overlap vs pfaffian, for 1 and 2 layers. Skipped by default because it is SLOW (~5-10 min/eval
     on JAX, much longer on numpy) — remove the @skip to run it explicitly.
 
-    Status (JAX, L=2): 1-layer d6_1layer_paramvec.npy -> pfaffian 12.332168 == overlap 12.332166
-    (PASSES). 2-layer d6_2layer_paramvec.npy -> pfaffian -26.74 (UNPHYSICAL, < 0) vs overlap +22.66
+    Status (JAX, L=2): 1-layer D6_1LAYER_PARAMVEC -> pfaffian 12.332168 == overlap 12.332166
+    (PASSES). 2-layer D6_2LAYER_PARAMVEC -> pfaffian -26.74 (UNPHYSICAL, < 0) vs overlap +22.66
     -> RED (the multi-layer D6 electric-energy bug). The overlap side is the trustworthy one. The
     @skip is purely about runtime; the assertions are NOT softened (no expectedFailure / skip-on-
     mismatch), so when run the 2-layer case fails red until the pfaffian path is fixed."""
 
-    def _eval(self, fixture, num_pg_layer):
+    def _eval(self, paramvec, num_pg_layer):
         lat = lattice.Lattice2D(2, 2, -1)
-        paramvec = np.load(os.path.join(FIXTURE_DIR, fixture))
         el_p = _exact_el_energy(system.D6System2D_Config, lat, paramvec, "pfaffian",
                                 system.D2nSystem2D, num_pg_layer=num_pg_layer)
         el_o = _exact_el_energy(system.D6System2D_Config, lat, paramvec, "overlap",
                                 system.D2nSystem2D, num_pg_layer=num_pg_layer)
         return float(el_p), float(el_o)
 
-    def _check(self, fixture, num_pg_layer):
-        el_p, el_o = self._eval(fixture, num_pg_layer)
+    def _check(self, paramvec, num_pg_layer):
+        el_p, el_o = self._eval(paramvec, num_pg_layer)
         print(f"\nD6 {num_pg_layer}-layer: pfaffian={el_p:.6f}  overlap={el_o:.6f}")
         self.assertTrue(
             np.allclose(el_p, el_o, rtol=1e-5, atol=1e-6),
@@ -367,12 +404,12 @@ class TestOverlapD6FullEval(unittest.TestCase):
 
     def test_d6_1layer_full_eval(self):
         """Full exact-eval <el_energy> overlap == pfaffian for 1-layer gauge-fixed D6 (passes)."""
-        self._check("d6_1layer_paramvec.npy", 1)
+        self._check(D6_1LAYER_PARAMVEC, 1)
 
     def test_d6_2layer_full_eval(self):
         """Full exact-eval <el_energy> overlap == pfaffian for 2-layer gauge-fixed D6. Currently RED:
         pfaffian gives an unphysical (< 0) energy (the multi-layer D6 bug)."""
-        self._check("d6_2layer_paramvec.npy", 2)
+        self._check(D6_2LAYER_PARAMVEC, 2)
 
 
 if __name__ == "__main__":
