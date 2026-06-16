@@ -1995,6 +1995,30 @@ class TestGammaGaugeNeutralDict(unittest.TestCase):
     """Direct tests for the single-link ungauged projector covariance matrices."""
 
     @staticmethod
+    def expected_x_1copy():
+        """Expected 4x4 horizontal one-copy projector covariance matrix."""
+        return np.array(
+            [
+                [0.0, 0.0, 0.0, 1.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, -1.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0, 0.0],
+            ]
+        )
+
+    @staticmethod
+    def expected_y_1copy():
+        """Expected 4x4 vertical one-copy projector covariance matrix."""
+        return np.array(
+            [
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, -1.0],
+                [-1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+            ]
+        )
+
+    @staticmethod
     def expected_mixed_x_2copy():
         """Expected 8x8 horizontal mixed-copy projector covariance matrix."""
         return np.array(
@@ -2117,6 +2141,66 @@ class TestGammaGaugeNeutralDict(unittest.TestCase):
             with self.subTest(layer=lay, layer_type="fermionic"):
                 self.assertTrue(np.allclose(gamma_dict[lay][Direction.X], self.expected_unmixed_x_2copy()))
                 self.assertTrue(np.allclose(gamma_dict[lay][Direction.Y], self.expected_unmixed_y_2copy()))
+
+    def test_generate_gamma_gauge_neutral_dict_g4_ncopy1_exact(self):
+        """Check that the generic G4C/F4C config reproduces the one-copy projectors.
+
+        With ncopy == 1 and no fermionic layer, only the pure-gauge projector list is
+        returned. The mixed-copy permutation is the identity in this case, so the
+        returned matrices must be the original 4x4 one-copy X/Y projectors.
+        """
+        lat = lattice.Lattice2D(2, 2)
+        cfg = system.Z2System2D_G4C_F4C_Config(
+            lat,
+            1,
+            1,
+            1,
+            1,
+            None,
+            num_pg_layer=1,
+            num_fermionic_layer=0,
+            ncopy=1,
+        )
+        gamma_dict = cfg.generate_gamma_gauge_neutral_dict()
+
+        self.assertEqual(len(gamma_dict), 1)
+        self.assertEqual(gamma_dict[0][Direction.X].shape, (4, 4))
+        self.assertEqual(gamma_dict[0][Direction.Y].shape, (4, 4))
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.X], self.expected_x_1copy()))
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.Y], self.expected_y_1copy()))
+
+    def test_generate_gamma_gauge_neutral_dict_g4_ncopy2_exact(self):
+        """Check the exact G4C/F4C single-link projectors for ncopy == 2.
+
+        This verifies that the generic G4C/F4C config produces the same two-copy
+        mixed and unmixed projector matrices as the dedicated G2C/F2C config, but
+        without relying on the G2C/F2C implementation itself.
+        """
+        lat = lattice.Lattice2D(2, 2)
+        cfg = system.Z2System2D_G4C_F4C_Config(
+            lat,
+            1,
+            1,
+            1,
+            1,
+            None,
+            num_pg_layer=1,
+            num_fermionic_layer=1,
+            ncopy=2,
+        )
+        gamma_dict = cfg.generate_gamma_gauge_neutral_dict()
+
+        self.assertEqual(len(gamma_dict), 2)
+
+        self.assertEqual(gamma_dict[0][Direction.X].shape, (8, 8))
+        self.assertEqual(gamma_dict[0][Direction.Y].shape, (8, 8))
+        self.assertEqual(gamma_dict[1][Direction.X].shape, (8, 8))
+        self.assertEqual(gamma_dict[1][Direction.Y].shape, (8, 8))
+
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.X], self.expected_mixed_x_2copy()))
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.Y], self.expected_mixed_y_2copy()))
+        self.assertTrue(np.allclose(gamma_dict[1][Direction.X], self.expected_unmixed_x_2copy()))
+        self.assertTrue(np.allclose(gamma_dict[1][Direction.Y], self.expected_unmixed_y_2copy()))
 
     def test_generate_gamma_gauge_neutral_dict_4copy_exact(self):
         """Check the exact current G4C/F4C single-link projector covariance matrices.

@@ -6,7 +6,7 @@ import ggpeps
 from ggpeps import utils, gauge
 from ggpeps.lattice import Direction
 
-from .config_base import Config2DBase, generate_gauged_projector_terms, make_sigma
+from .config_base import Config2DBase, generate_gauged_projector_terms, make_sigma_matrix
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -406,21 +406,21 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         dest_mixed = [0] * 2  # mixes copies
         dest_unmixed = [0] * 2  # does not mix copies
 
-        zeros_8 = np.zeros((8, 8))
+        gamma_x_base = np.real_if_close(1.0j * np.kron(utils.pauliy, utils.paulix))
+        gamma_y_base = np.real_if_close(1.0j * np.kron(utils.pauliy, utils.pauliz))
 
-        # We want to give the projectors for the pure gauge part, which mix copies
-        mixed_X = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.paulix)))
-        mixed_Y = np.real_if_close(1.0j * np.kron(utils.paulix, np.kron(utils.pauliy, utils.pauliz)))
+        mixed_copy = make_sigma_matrix(self.ncopy, mix_copies=True)
+        unmixed_copy = make_sigma_matrix(self.ncopy, mix_copies=False)
 
-        dest_mixed[Direction.X] = np.block([[mixed_X, zeros_8], [zeros_8, mixed_X]])
-        dest_mixed[Direction.Y] = np.block([[mixed_Y, zeros_8], [zeros_8, mixed_Y]])
+        # We want to give the projectors for the pure gauge part, which mix copies.
+        # For ncopy == 1, make_sigma_matrix returns the 1x1 identity matrix, so mixed
+        # and unmixed projectors coincide with the original one-copy projector.
+        dest_mixed[Direction.X] = np.real_if_close(np.kron(mixed_copy, gamma_x_base))
+        dest_mixed[Direction.Y] = np.real_if_close(np.kron(mixed_copy, gamma_y_base))
 
         # We want to give the projectors for the fermionic part which don't mix copies
-        # (so as to preserve global U(1) symmetry)
-        unmixed_X = np.real_if_close(1.0j * np.kron(np.eye(2), np.kron(utils.pauliy, utils.paulix)))
-        unmixed_Y = np.real_if_close(1.0j * np.kron(np.eye(2), np.kron(utils.pauliy, utils.pauliz)))
-
-        dest_unmixed[Direction.X] = np.block([[unmixed_X, zeros_8], [zeros_8, unmixed_X]])
-        dest_unmixed[Direction.Y] = np.block([[unmixed_Y, zeros_8], [zeros_8, unmixed_Y]])
+        # (so as to preserve global U(1) symmetry).
+        dest_unmixed[Direction.X] = np.real_if_close(np.kron(unmixed_copy, gamma_x_base))
+        dest_unmixed[Direction.Y] = np.real_if_close(np.kron(unmixed_copy, gamma_y_base))
 
         return [dest_mixed] * self.num_pg_layer + [dest_unmixed] * self.num_fermionic_layer
