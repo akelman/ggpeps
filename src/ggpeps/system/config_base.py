@@ -370,6 +370,10 @@ class Config2DBase(ABC):
 # ==================== Pfaffian indices Terms ====================
 
 # ---------------------------------------------------------------------------
+# The following functions are used to compute the indices and coefficients
+# of the terms which appear in the calculation of the overlap of modified
+# norms in the electric energy. The code is designed to match our notes
+# as closely as possible, and sacrifices efficiency for that purpose.
 #
 # Per-(color,copy) operator.
 #
@@ -589,7 +593,7 @@ def generate_gauged_projector_terms(
     constant *= pref  # add in global prefactor
 
     # Filter and account for extra factors
-    phased_items: list[tuple[complex, tuple[int, ...]]] = []
+    polynom_list: list[tuple[complex, tuple[int, ...]]] = []
     for mon, coef in polynom.items():
         pfaffian_wick_phase = 1.0j ** (-len(mon) // 2)  # the Pfaffian-Wick phase
         new_coef = coef * pfaffian_wick_phase * pref  # add in global prefactor, and Pfaffian-Wick phase
@@ -601,13 +605,13 @@ def generate_gauged_projector_terms(
         # TODO: explain why/when this is allowed/desired
         if drop_imag:
             if np.abs(np.real(new_coef)) > tol:
-                phased_items.append((np.real(new_coef), mon))
+                polynom_list.append((np.real(new_coef), mon))
         else:
-            phased_items.append((new_coef, mon))
+            polynom_list.append((new_coef, mon))
 
     # Sort terms by monomial length (shorter first) then lexicographic order for deterministic output
-    phased_items.sort(key=lambda kv: (len(kv[1]), kv[1]))
-    indices = tuple(phased_items)
+    polynom_list.sort(key=lambda kv: (len(kv[1]), kv[1]))
+    indices = tuple(polynom_list)
 
     return indices, constant
 
