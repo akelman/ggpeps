@@ -106,6 +106,8 @@ def _el_op_per_config(build_fn, configvec, method):
 
 class TestOverlapNormCrosscheck(unittest.TestCase):
     def test_overlap_magnitude_matches_existing_norm_per_layer(self):
+        """overlap_magnitude_sq(-gamma_in, -mat_d) reproduces the existing per-layer squared norm
+        exp(lognorm) for a non-trivial Z2 config — cross-checks the overlap math against the norm."""
         sysobj = _build_z2_2c_system()
         # pick a non-trivial (non-neutral) config on all links
         configvec = [sysobj.cfg.gaugemgr.get_possible_gauge_values()[0]] * sysobj.cfg.lattice.nlinks
@@ -128,6 +130,8 @@ class TestOverlapNormCrosscheck(unittest.TestCase):
 
 class TestOverlapSystemMethod(unittest.TestCase):
     def test_overlap_el_op_vec_shape_and_identity_ratio(self):
+        """The overlap el-op vector has shape (n_h, nlayer, n_el_links), and feeding the identity
+        element (G' == G) gives a per-layer ratio of exactly 1, independent of params/config."""
         sysobj = _build_z2_2c_system()
         configvec = [sysobj.cfg.gaugemgr.get_possible_gauge_values()[0]] * sysobj.cfg.lattice.nlinks
         sysobj.update_gauge_full_system(configvec)
@@ -163,6 +167,8 @@ class TestOverlapPerConfigZ2(unittest.TestCase):
         ]
 
     def test_z2_2c_per_config_matches_pfaffian(self):
+        """Per-config F(G) from the overlap backend equals the pfaffian backend for several explicit
+        2-copy Z2 configs (no gauge fixing)."""
         build = lambda: _build_z2_2c_system(seed=7, gf=0)
         for ci, cv in enumerate(self._configs(build())):
             vp = _el_op_per_config(build, cv, "pfaffian")
@@ -173,6 +179,8 @@ class TestOverlapPerConfigZ2(unittest.TestCase):
             )
 
     def test_z2_1c_per_config_matches_pfaffian(self):
+        """Per-config F(G) overlap == pfaffian for several explicit 1-copy (pure-gauge) Z2 configs —
+        exercises the (-1)^nlayer Wick-phase handling of the odd ncolor*ncopy case."""
         def build():
             lat = lattice.Lattice2D(2, 2, 0)
             cfg = system.Z2System2DConfig(
@@ -215,6 +223,8 @@ def _exact_el_energy(cfg_class, lat, paramvec, el_method, system_type, num_pg_la
 
 class TestOverlapReproducesZ2(unittest.TestCase):
     def test_z2_2c_exact_matches_pfaffian(self):
+        """Full exact-eval <el_energy> from the overlap backend equals the pfaffian backend for
+        2-copy Z2 (no gauge fixing) — the gauge-weighted physical observable."""
         lat = lattice.Lattice2D(2, 2, 0)
         rng = np.random.default_rng(7)
         paramvec = rng.standard_normal((2, 1, 20))
@@ -226,6 +236,8 @@ class TestOverlapReproducesZ2(unittest.TestCase):
                         msg=f"el_energy: overlap {el_b} != pfaffian {el_p}")
 
     def test_z2_1c_exact_matches_pfaffian_all_layers(self):
+        """Full exact-eval <el_energy> overlap == pfaffian for 1-copy Z2 at 1, 2 and 3 PG layers —
+        odd and even layer counts lock in the (-1)^nlayer Wick-phase fix."""
         lat = lattice.Lattice2D(2, 2, 0)
         for num_pg_layer in (1, 2, 3):     # odd AND even: locks the (-1)^nlayer Wick-phase fix
             rng = np.random.default_rng(100 + num_pg_layer)
@@ -240,6 +252,8 @@ class TestOverlapReproducesZ2(unittest.TestCase):
                             msg=f"1c num_pg_layer={num_pg_layer}: overlap {el_b} != pfaffian {el_p}")
 
     def test_z2_gauge_fixed_matches_pfaffian(self):
+        """Full exact-eval <el_energy> overlap == pfaffian for 2-copy Z2 WITH gauge fixing — checks
+        the overlap backend is unaffected by the gauge-fixed lattice."""
         lat = lattice.Lattice2D(2, 2, -1)
         rng = np.random.default_rng(11)
         paramvec = rng.standard_normal((2, 1, 20))
@@ -314,9 +328,11 @@ class TestOverlapPerConfigD6(unittest.TestCase):
             )
 
     def test_d6_1layer_per_config_matches_pfaffian(self):
+        """Per-config F(G) overlap == pfaffian for 1-layer gauge-fixed D6. Currently RED (open bug)."""
         self._assert_match("d6_1layer_paramvec.npy", 1)
 
     def test_d6_2layer_per_config_matches_pfaffian(self):
+        """Per-config F(G) overlap == pfaffian for 2-layer gauge-fixed D6. Currently RED (open bug)."""
         self._assert_match("d6_2layer_paramvec.npy", 2)
 
 
@@ -355,9 +371,12 @@ class TestOverlapD6FullEval(unittest.TestCase):
         )
 
     def test_d6_1layer_full_eval(self):
+        """Full exact-eval <el_energy> overlap == pfaffian for 1-layer gauge-fixed D6 (passes)."""
         self._check("d6_1layer_paramvec.npy", 1)
 
     def test_d6_2layer_full_eval(self):
+        """Full exact-eval <el_energy> overlap == pfaffian for 2-layer gauge-fixed D6. Currently RED:
+        pfaffian gives an unphysical (< 0) energy (the multi-layer D6 bug)."""
         self._check("d6_2layer_paramvec.npy", 2)
 
 
