@@ -7,6 +7,7 @@ import jax.numpy as jnp
 
 from ggpeps import lattice, utils, gauge
 from ggpeps import system, exacteval
+from ggpeps.lattice import Direction
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.modearray import generate_permutation_matrix
 from ggpeps.system.config_base import generate_gauged_projector_terms
@@ -1932,6 +1933,9 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
             msg="el_energy_op_vec changed when toggling drop_real_zero (should be invariant).",
         )
 
+
+### Generic ncopy tests
+
 class TestG4ConfigNcopyGeneric(unittest.TestCase):
     """Structural tests for the ncopy-generic G4C/F4C config."""
 
@@ -1986,3 +1990,167 @@ class TestG4ConfigNcopyGeneric(unittest.TestCase):
             with self.subTest(ncopy=ncopy):
                 with self.assertRaises(ValueError):
                     self._make_cfg(ncopy)
+
+class TestGammaGaugeNeutralDict(unittest.TestCase):
+    """Direct tests for the single-link ungauged projector covariance matrices."""
+
+    @staticmethod
+    def expected_mixed_x_2copy():
+        """Expected 8x8 horizontal mixed-copy projector covariance matrix."""
+        return np.array(
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            ]
+        )
+
+    @staticmethod
+    def expected_mixed_y_2copy():
+        """Expected 8x8 vertical mixed-copy projector covariance matrix."""
+        return np.array(
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0],
+                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            ]
+        )
+
+    @staticmethod
+    def expected_unmixed_x_2copy():
+        """Expected 8x8 horizontal unmixed-copy projector covariance matrix."""
+        return np.array(
+            [
+                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+            ]
+        )
+
+    @staticmethod
+    def expected_unmixed_y_2copy():
+        """Expected 8x8 vertical unmixed-copy projector covariance matrix."""
+        return np.array(
+            [
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0],
+                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+            ]
+        )
+
+    @staticmethod
+    def block_diag_2copy(mat):
+        """Build the current four-copy block-diagonal structure from an explicit two-copy matrix."""
+        zeros = np.zeros_like(mat)
+        return np.block([[mat, zeros], [zeros, mat]])
+
+    def test_generate_gamma_gauge_neutral_dict_2copy_exact(self):
+        """Check the exact G2C/F2C single-link projector covariance matrices.
+
+        The first returned layer is the pure-gauge layer and must use mixed-copy
+        projectors. The second returned layer is the fermionic layer and must use
+        unmixed-copy projectors.
+        """
+        lat = lattice.Lattice2D(2, 2)
+        cfg = system.Z2System2D_G2C_F2C_Config(lat, 1, 1, 1, 1, None)
+        gamma_dict = cfg.generate_gamma_gauge_neutral_dict()
+
+        self.assertEqual(len(gamma_dict), 2)
+
+        self.assertEqual(gamma_dict[0][Direction.X].shape, (8, 8))
+        self.assertEqual(gamma_dict[0][Direction.Y].shape, (8, 8))
+        self.assertEqual(gamma_dict[1][Direction.X].shape, (8, 8))
+        self.assertEqual(gamma_dict[1][Direction.Y].shape, (8, 8))
+
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.X], self.expected_mixed_x_2copy()))
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.Y], self.expected_mixed_y_2copy()))
+        self.assertTrue(np.allclose(gamma_dict[1][Direction.X], self.expected_unmixed_x_2copy()))
+        self.assertTrue(np.allclose(gamma_dict[1][Direction.Y], self.expected_unmixed_y_2copy()))
+
+    def test_generate_gamma_gauge_neutral_dict_layer_assignment(self):
+        """Check pure-gauge layers receive mixed projectors and fermionic layers receive unmixed projectors."""
+        lat = lattice.Lattice2D(2, 2)
+
+        num_pg_layer = 2
+        num_fermionic_layer = 3
+
+        cfg = system.Z2System2D_G2C_F2C_Config(
+            lat,
+            1,
+            1,
+            1,
+            1,
+            None,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
+        )
+        gamma_dict = cfg.generate_gamma_gauge_neutral_dict()
+
+        self.assertEqual(len(gamma_dict), 5)
+
+        for lay in range(num_pg_layer):
+            with self.subTest(layer=lay, layer_type="pure_gauge"):
+                self.assertTrue(np.allclose(gamma_dict[lay][Direction.X], self.expected_mixed_x_2copy()))
+                self.assertTrue(np.allclose(gamma_dict[lay][Direction.Y], self.expected_mixed_y_2copy()))
+
+        for lay in range(num_pg_layer, num_pg_layer + num_fermionic_layer):
+            with self.subTest(layer=lay, layer_type="fermionic"):
+                self.assertTrue(np.allclose(gamma_dict[lay][Direction.X], self.expected_unmixed_x_2copy()))
+                self.assertTrue(np.allclose(gamma_dict[lay][Direction.Y], self.expected_unmixed_y_2copy()))
+
+    def test_generate_gamma_gauge_neutral_dict_4copy_exact(self):
+        """Check the exact current G4C/F4C single-link projector covariance matrices.
+
+        The current four-copy implementation is built by placing two identical
+        two-copy blocks on the diagonal. This protects backward compatibility
+        before refactoring the implementation.
+        """
+        lat = lattice.Lattice2D(2, 2)
+        cfg = system.Z2System2D_G4C_F4C_Config(
+            lat,
+            1,
+            1,
+            1,
+            1,
+            None,
+            num_pg_layer=1,
+            num_fermionic_layer=1,
+        )
+        gamma_dict = cfg.generate_gamma_gauge_neutral_dict()
+
+        expected_mixed_x = self.block_diag_2copy(self.expected_mixed_x_2copy())
+        expected_mixed_y = self.block_diag_2copy(self.expected_mixed_y_2copy())
+        expected_unmixed_x = self.block_diag_2copy(self.expected_unmixed_x_2copy())
+        expected_unmixed_y = self.block_diag_2copy(self.expected_unmixed_y_2copy())
+
+        self.assertEqual(len(gamma_dict), 2)
+
+        self.assertEqual(gamma_dict[0][Direction.X].shape, (16, 16))
+        self.assertEqual(gamma_dict[0][Direction.Y].shape, (16, 16))
+        self.assertEqual(gamma_dict[1][Direction.X].shape, (16, 16))
+        self.assertEqual(gamma_dict[1][Direction.Y].shape, (16, 16))
+
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.X], expected_mixed_x))
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.Y], expected_mixed_y))
+        self.assertTrue(np.allclose(gamma_dict[1][Direction.X], expected_unmixed_x))
+        self.assertTrue(np.allclose(gamma_dict[1][Direction.Y], expected_unmixed_y))
