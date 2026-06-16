@@ -563,13 +563,6 @@ class TestMajoranaAlgebraHelpers(_PolyAssertMixin, unittest.TestCase):
         out = config_base.poly_mul(p, {(1,): 1.0})
         self.assert_poly_close(out, {(0, 1): 1.0}, msg="_poly_mul order")
 
-    def test_left_mul_concatenates_on_the_left(self):
-        # left-multiplying c_0 by c_1 -> c_1 c_0 = -(0, 1): opposite sign to _poly_mul.
-        # This is the discriminator that catches a left/right swap.
-        p = config_base.simplify_polynomial({(0,): 1.0})
-        out = config_base._left_mul([(1.0, (1,))], p)
-        self.assert_poly_close(out, {(0, 1): -1.0}, msg="_left_mul order")
-
     def test_poly_mul_contracts_squares(self):
         # (0, 1) * (1, 2) = (0, 1, 1, 2) -> (0, 2)
         p = config_base.simplify_polynomial({(0, 1): 1.0})
@@ -591,15 +584,6 @@ class TestMajoranaAlgebraHelpers(_PolyAssertMixin, unittest.TestCase):
             got = config_base.simplify_polynomial({inds: coef})
             exp = _ref_canon({inds: coef})
             self.assert_poly_close(got, exp, msg=f"simplify vs canon for {inds}")
-
-    def test_pfaffian_wick_phase(self):
-        self.assertEqual(config_base.pfaffian_wick_phase(()), 1.0)
-        self.assertEqual(config_base.pfaffian_wick_phase((0, 1)), -1j)
-        self.assertEqual(config_base.pfaffian_wick_phase((0, 1, 2, 3)), -1.0)
-        self.assertEqual(config_base.pfaffian_wick_phase((0, 1, 2, 3, 4, 5)), 1j)
-        self.assertEqual(config_base.pfaffian_wick_phase((0, 1, 2, 3, 4, 5, 6, 7)), 1.0)
-        with self.assertRaises(ValueError):
-            config_base.pfaffian_wick_phase((0, 1, 2))
 
     def test_make_sigma(self):
         self.assertEqual(config_base.make_sigma(1, True), (1,))
