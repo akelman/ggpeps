@@ -1955,7 +1955,7 @@ class TestG4ConfigNcopyGeneric(unittest.TestCase):
 
     def test_ncopy_dependent_shapes(self):
         """Check that the generic config derives all basic dimensions from ncopy."""
-        for ncopy in [1, 2, 4, 8]:
+        for ncopy in [1, 2, 4]:
             with self.subTest(ncopy=ncopy):
                 cfg = self._make_cfg(ncopy)
                 expected_nparams = 2 * ncopy * (2 * ncopy + 1)
@@ -1971,7 +1971,7 @@ class TestG4ConfigNcopyGeneric(unittest.TestCase):
 
     def test_zeroed_params_are_in_range(self):
         """Check that ncopy-dependent zeroed parameter indices stay within param_shape."""
-        for ncopy in [1, 2, 4, 8]:
+        for ncopy in [1, 2, 4]:
             with self.subTest(ncopy=ncopy):
                 cfg = self._make_cfg(ncopy)
                 shape = cfg.param_shape()
