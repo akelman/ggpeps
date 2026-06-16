@@ -671,7 +671,7 @@ def generate_gauged_projector_terms(
     orientation: Direction,
     group_element: np.ndarray,
     site: int = 0,
-    drop_real_zero: bool = True,
+    drop_imag: bool = True,
     tol: float = 1e-10,
 ) -> tuple[tuple[tuple[complex, tuple[int, ...]], ...], complex]:
     """
@@ -687,7 +687,7 @@ def generate_gauged_projector_terms(
         orientation (Direction): 'X' (horizontal, eta^2 = 1) or 'Y' (vertical, eta^2 = i).
         group_element (np.ndarray): Group element h.
         site (int, optional): Site index (used for parity-dependent conjugation). Defaults to 0.
-        drop_real_zero (bool, optional): Whether to drop terms with zero real part in coefficients. Defaults to True.
+        drop_imag (bool, optional): Drop imaginary parts of coefficients. Defaults to True.
         tol (float, optional): Tolerance for dropping small coefficients. Defaults to 1e-10.
 
     Returns:
@@ -749,29 +749,30 @@ def generate_gauged_projector_terms(
     ## Stage 3: Cleanup
 
     # Final simplification to avoid computing same pfaffian multiple times
-    polynom = simplify_polynomial(polynom)
-
-    # After finishing the product, add to the final sum weighted by prefactor
-    for inds, coef in polynom.items():
-        polynom[inds] *= pref
+    polynom = simplify_polynomial(polynom, tol=tol)
 
     # Get the constant term and handle it separately
     constant = polynom.pop((), 0.0)
+    constant *= pref  # add in global prefactor
 
-    # Multiply each coefficient by i^(-len(mon)/2), the Pfaffian-Wick phase
-    phased_items: list[tuple[tuple[int, ...], complex]] = []
+    # Filter and account for extra factors
+    phased_items: list[tuple[complex, tuple[int, ...]]] = []
     for mon, coef in polynom.items():
-        factor = pfaffian_wick_phase(mon)
-        new_coef = coef * factor
-        if abs(new_coef) > 1e-6:
+        pfaffian_wick_phase = 1.0j ** (-len(mon) // 2)  # the Pfaffian-Wick phase
+        new_coef = coef * pfaffian_wick_phase * pref  # add in global prefactor, and Pfaffian-Wick phase
+
+        if abs(new_coef) < tol:
+            continue  # Skip terms with negligible coefficients
+
+        # Drop terms for which the coefficient has zero real part
+        # TODO: explain why/when this is allowed/desired
+        if drop_imag:
+            if np.abs(np.real(new_coef)) > tol:
+                phased_items.append((np.real(new_coef), mon))
+        else:
             phased_items.append((new_coef, mon))
 
-    # Drop terms for which the coefficient has zero real part
-    # TODO: explain why this is allowed / desired
-    if drop_real_zero:
-        phased_items = [(coef, mon) for coef, mon in phased_items if np.abs(np.real(coef)) > 1e-5]
-
-    # Sort terms by monomial length (shorter first) then lexicographic tuple order for deterministic output.
+    # Sort terms by monomial length (shorter first) then lexicographic order for deterministic output
     phased_items.sort(key=lambda kv: (len(kv[1]), kv[1]))
     indices = tuple(phased_items)
 
@@ -835,8 +836,8 @@ def simplify_polynomial(
         if swaps % 2 != 0:
             coeff = -coeff
 
-        # 2. Contraction of pairs (Stack method)
-        # Since the list is sorted, c_i^2 terms are adjacent.
+        # 2. Elimination of pairs
+        # Since the list is sorted, c_i^2 terms are adjacent
         stack: list[int] = []
         if len(idx_list) > 0:  # TODO: this check is probably not necessary
             for idx in idx_list:
@@ -852,6 +853,7 @@ def simplify_polynomial(
         simplified[reduced_indices] += coeff
 
     # Final cleanup of the simplified dictionary
+    # Without this check, some coefficients may be zero, but we want to drop those terms
     final_polynomial = defaultdict(complex)
     for k, v in simplified.items():
         if abs(v) > tol:

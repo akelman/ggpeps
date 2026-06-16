@@ -203,7 +203,7 @@ class TestGaugedProjectorTermsForZ2(unittest.TestCase):
                         orientation=orientation,
                         group_element=group_element,
                         site=0,
-                        drop_real_zero=False,
+                        drop_imag=False,
                     )
                     exp_ind, exp_const = expected[(ncopy, mix_copies, orientation)]
                     self._assert_terms_equal(got_ind, got_const, exp_ind, exp_const)
@@ -265,7 +265,7 @@ class TestGaugedProjectorTermsForZ2(unittest.TestCase):
                 orientation=orientation,
                 group_element=group_element,
                 site=0,
-                drop_real_zero=drop_real_zero,
+                drop_imag=drop_real_zero,
             )
             exp_ind, exp_const = expected[(ncopy, drop_real_zero, orientation)]
             self._assert_terms_equal(got_ind, got_const, exp_ind, exp_const)
@@ -735,7 +735,7 @@ class TestGaugedProjectorAssembly(_PolyAssertMixin, unittest.TestCase):
                 orientation=case["orientation"],
                 group_element=case["group_element"],
                 site=0,
-                drop_real_zero=False,
+                drop_imag=False,
             )
             exp_items, exp_const = _ref_projector(
                 case["ncopy"],
