@@ -11,7 +11,6 @@ from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.modearray import generate_permutation_matrix
 from ggpeps.system.config_base import generate_gauged_projector_terms
 
-
 # ======================= Z2 fermionic system (4 copies) =======================
 
 
