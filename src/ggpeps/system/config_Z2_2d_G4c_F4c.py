@@ -20,7 +20,25 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
 
     Some general notes about conventions:
 
-    Order of the paramvec: see the functions that create the symbolvec.
+    Order of the paramvec:
+    [all real parts, then all imaginary parts]
+
+    For ncopy = n:
+        real part:
+            t1r, ..., tnr,
+            y1r, ..., ynr,
+            z1r, ..., znr,
+            a12r, b12r, c12r, d12r,
+            a13r, b13r, c13r, d13r,
+            ...
+    imaginary part:
+        t1i, ..., tni,
+        y1i, ..., yni,
+        z1i, ..., zni,
+        a12i, b12i, c12i, d12i,
+        a13i, b13i, c13i, d13i,
+        ...
+        
     Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3,d3,u3,l4,r4,d4,u4}.
     Mode order of gamma_dirac:
         {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3... }.
@@ -182,6 +200,27 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         self.idx_vec = tuple(idx_vec)
         self.coeffs_vec = tuple(coeffs_vec)
         self.constants_vec = tuple(constants_vec)
+
+    def make_pure_gauge(self) -> None:
+        """Make the ansatz pure gauge by setting all t_i parameters to zero.
+
+        The generic symbol order stores all real t_i parameters first, followed
+        by the remaining real parameters, and then the corresponding imaginary
+        parameters. Therefore the real t_i indices are 0, ..., ncopy - 1, and
+        the imaginary t_i indices are offset, ..., offset + ncopy - 1.
+
+        This method is kept for compatibility with tests and workflows that
+        explicitly project an ansatz to the pure-gauge sector after assigning a
+        parameter vector.
+        """
+        offset = self._nparams // 2
+        t_indices = list(range(self.ncopy)) + [ind + offset for ind in range(self.ncopy)]
+
+        for layer_ind in range(self.nlayer):
+            for uc_ind in range(self.unitcell_size):
+                for t_ind in t_indices:
+                    coord = (layer_ind, uc_ind, t_ind)
+                    self.paramvec[coord] = 0
 
     def get_zeroed_params(self) -> tuple[tuple[int, int, int], ...]:
         offset = self._nparams // 2  # offset to get index of imaginary part

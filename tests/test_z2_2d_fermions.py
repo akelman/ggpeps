@@ -2093,6 +2093,35 @@ class TestG4ConfigNcopyGeneric(unittest.TestCase):
         self.assertEqual(cfg.nlayer, 1)
         self.assertEqual(self._zeroed_symbol_names(cfg, layer_ind=0), {"t1r", "t1i"})
 
+    def test_make_pure_gauge_zeroes_only_t_symbols_for_representative_ncopy(self):
+        """make_pure_gauge should zero exactly the t_i symbols and leave all others unchanged."""
+        expected_zeroed_t_symbols = {
+            1: {"t1r", "t1i"},
+            2: {"t1r", "t2r", "t1i", "t2i"},
+            4: {"t1r", "t2r", "t3r", "t4r", "t1i", "t2i", "t3i", "t4i"},
+        }
+
+        for ncopy, expected_t_symbols in expected_zeroed_t_symbols.items():
+            with self.subTest(ncopy=ncopy):
+                num_fermionic_layer = 0 if ncopy == 1 else 1
+                cfg = self._make_cfg(ncopy, num_fermionic_layer=num_fermionic_layer)
+
+                paramvec = np.arange(np.prod(cfg.param_shape()), dtype=float).reshape(cfg.param_shape()) + 1.0
+                cfg.paramvec = paramvec
+                original_paramvec = np.copy(cfg.paramvec)
+
+                cfg.make_pure_gauge()
+
+                for param_ind, symbol in enumerate(cfg.symbolvec):
+                    symbol_name = str(symbol)
+                    for layer_ind in range(cfg.nlayer):
+                        for uc_ind in range(cfg.unitcell_size):
+                            coord = (layer_ind, uc_ind, param_ind)
+                            if symbol_name in expected_t_symbols:
+                                self.assertEqual(cfg.paramvec[coord], 0)
+                            else:
+                                self.assertEqual(cfg.paramvec[coord], original_paramvec[coord])
+
     def test_ncopy_dependent_shapes(self):
         """The generic config should derive all basic dimensions from ncopy.
 
