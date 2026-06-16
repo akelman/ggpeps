@@ -10,23 +10,24 @@ Test layers:
   * TestOverlapMath          - the pure-math identity (vacuum reduction).
   * TestOverlapNormCrosscheck- |<phi_1|phi_2>|^2 matches the existing per-layer norm (Z2).
   * TestOverlapSystemMethod  - shape + identity-element ratio == 1.
-  * TestOverlapPerConfigZ2   - F(G)==pfaffian for several explicit Z2 configs (per-config).
+  * TestOverlapPerConfigZ2   - F(G)==pfaffian for several explicit Z2 configs (per-config). PASSES.
   * TestOverlapReproducesZ2  - full exact-eval <el_energy> matches pfaffian (Z2, 1c/2c, gauge-fixed).
   * TestOverlapPerConfigD6   - F(G) overlap-vs-pfaffian for explicit D6 configs, 1 and 2 layers
-                               (gauge-fixed). expectedFailure: documents the open D6 bug.
-  * TestOverlapD6FullEval    - full exact-eval <el_energy> for D6 (SLOW, env-guarded) confirming the
-                               same discrepancy on the physical, gauge-weighted observable.
+                               (gauge-fixed). Currently RED for D6 — an open-bug regression target.
+  * TestOverlapD6FullEval    - full exact-eval <el_energy> for D6, 1 and 2 layers (SLOW, env-guarded):
+                               1-layer matches, 2-layer is RED (the multi-layer D6 bug).
 
 Both backends are meant to compute the SAME per-config observable F(G) = el_energy_op (exactly the
-quantity ExactEvaluator accumulates), so per-config they SHOULD be equal — as they are for Z2. For
-D6 they diverge: the pfaffian path builds F(G) through the open-link Schur complement (the opened-
-link covariance covmat_out_mod and its norm norm_mod), which is buggy for D6, while the overlap
-oracle bypasses that machinery (from-scratch Gaussian overlaps). The full-system norm is NOT the
-culprit — it is verified equal to the from-scratch norm (lognorm_default == calculate_lognormvec).
-The per-config comparison therefore pinpoints WHERE the D6 bug lives (the pfaffian open-link path);
-it is reproducible and backend-independent (numpy == jax). Measure with a FRESH single-backend
-system per config (do NOT switch el_method on a reused system: re-feeding an unchanged config skips
-cache invalidation and returns a stale value).
+quantity ExactEvaluator accumulates), so per-config they SHOULD be equal for the same gauge config —
+as they are for Z2. For D6 they currently differ per-config (and the 2-layer gauge-weighted full eval
+disagrees: pfaffian gives an unphysical, < 0 electric energy). The overlap oracle is the trustworthy
+side (validated against the ED-backed Z2 path). These D6 tests assert the equality that SHOULD hold
+and are expected to be RED until the D6 electric-energy path is fixed; they are kept as live
+regression targets (no expectedFailure / skips).
+
+Measure per-config with a FRESH single-backend system per config: do NOT switch el_method on a reused
+system, because re-feeding an unchanged config skips cache invalidation and returns a stale value
+(a false pass).
 """
 import os
 import unittest
@@ -281,16 +282,15 @@ def _d6_configvec(sysobj, free_gauge_indices):
 class TestOverlapPerConfigD6(unittest.TestCase):
     """Per-config F(G) = el_energy_op for gauge-fixed D6, overlap vs pfaffian, for 1 and 2 layers.
 
-    Both backends are meant to compute the same per-config observable, so they SHOULD be equal (as
-    for Z2). For D6 they diverge — the pfaffian path builds F(G) through the open-link Schur
-    complement (the opened-link covariance covmat_out_mod / norm norm_mod), which is buggy for D6,
-    while the overlap oracle bypasses it. (The full-system norm is exonerated: lognorm_default ==
-    the from-scratch norm.) This is therefore an `expectedFailure`: it documents and localizes the
-    bug, and will flip to an "unexpected success" (prompting removal of the decorator) once the
-    pfaffian path is fixed.
+    The two backends compute the same per-config observable F(G) for the SAME gauge configuration,
+    so they must be equal — exactly as TestOverlapPerConfigZ2 verifies for Z2. For D6 they currently
+    differ; the overlap side is the trustworthy one (validated against the ED-backed Z2 path), so a
+    mismatch is the open D6 electric-energy bug.
 
-    The combos include the historically-flagged (3, 2, 1, 2, 2) [full-eval index 4370 on these
-    params], where pfaffian gives +14700 vs overlap -18.95. ~20-40 s (D6 precompute per layer)."""
+    These assertions are EXPECTED TO BE RED for D6 until that bug is fixed — they are kept as live
+    regression targets (deliberately no expectedFailure / skip). The combos include the historically
+    flagged (3, 2, 1, 2, 2) [full-eval index 4370 on these params], where pfaffian gives +14700 vs
+    overlap -18.95. ~20-40 s (D6 electric-energy precompute per layer count)."""
 
     # free-link (comp_tree) gauge-value indices; comp_tree has 5 free links for L=2.
     _COMBOS = [
@@ -313,11 +313,9 @@ class TestOverlapPerConfigD6(unittest.TestCase):
                 msg=f"npg={num_pg_layer} combo={combo}: overlap F(G)={vo} != pfaffian F(G)={vp}",
             )
 
-    @unittest.expectedFailure
     def test_d6_1layer_per_config_matches_pfaffian(self):
         self._assert_match("d6_1layer_paramvec.npy", 1)
 
-    @unittest.expectedFailure
     def test_d6_2layer_per_config_matches_pfaffian(self):
         self._assert_match("d6_2layer_paramvec.npy", 2)
 
@@ -331,13 +329,13 @@ RUN_SLOW_D6 = os.environ.get("GGPEPS_RUN_SLOW_D6") == "1"
 )
 class TestOverlapD6FullEval(unittest.TestCase):
     """Full exact-eval <el_energy> for gauge-fixed D6 (the physical, gauge-weighted observable),
-    confirming on the aggregate what TestOverlapPerConfigD6 shows per config. SLOW: ~5-10 min/eval
-    on JAX, much longer on numpy.
+    overlap vs pfaffian, for 1 and 2 layers. SLOW: ~5-10 min/eval on JAX, much longer on numpy.
 
-    Status (JAX, L=2): 2-layer d6_2layer_paramvec.npy -> pfaffian el_energy = -26.74 (UNPHYSICAL,
-    < 0) vs overlap el_energy = +22.66 (physical). Each test asserts the overlap result is physical
-    (>= 0) and skips (printing both numbers) when the pfaffian path disagrees, so it self-documents
-    the open bug and starts asserting equality automatically once the pfaffian path is fixed."""
+    Status (JAX, L=2): 1-layer d6_1layer_paramvec.npy -> pfaffian 12.332168 == overlap 12.332166
+    (PASSES). 2-layer d6_2layer_paramvec.npy -> pfaffian -26.74 (UNPHYSICAL, < 0) vs overlap +22.66
+    -> RED (the multi-layer D6 electric-energy bug). The overlap side is the trustworthy one. The
+    2-layer assertion is expected to fail until the pfaffian path is fixed (kept as a live regression
+    target, no expectedFailure / skip)."""
 
     def _eval(self, fixture, num_pg_layer):
         lat = lattice.Lattice2D(2, 2, -1)
@@ -351,13 +349,10 @@ class TestOverlapD6FullEval(unittest.TestCase):
     def _check(self, fixture, num_pg_layer):
         el_p, el_o = self._eval(fixture, num_pg_layer)
         print(f"\nD6 {num_pg_layer}-layer: pfaffian={el_p:.6f}  overlap={el_o:.6f}")
-        # The overlap oracle must be physical even where the pfaffian path is not.
-        self.assertGreaterEqual(el_o, -1e-6, msg=f"overlap el_energy {el_o} < 0 (unphysical)")
-        if not np.allclose(el_p, el_o, rtol=1e-5, atol=1e-6):
-            self.skipTest(
-                f"KNOWN D6 pfaffian bug: pfaffian {el_p:.6f} != overlap {el_o:.6f} "
-                f"(overlap is the trustworthy value)"
-            )
+        self.assertTrue(
+            np.allclose(el_p, el_o, rtol=1e-5, atol=1e-6),
+            msg=f"{num_pg_layer}-layer: overlap {el_o} != pfaffian {el_p}",
+        )
 
     def test_d6_1layer_full_eval(self):
         self._check("d6_1layer_paramvec.npy", 1)
