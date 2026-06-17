@@ -11,7 +11,38 @@ from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.minimizer import Minimizer, MinimizerConfig
 from ggpeps.exacteval import ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluatorConfig
+
 from ggpeps.system.system_Z2 import Z2System2D
+
+
+# Helper: legacy G2 order for 2-copy Z2 system, for test parameter conversion
+G2_ORDER_IN_G4_CONVENTION = [
+    "t1r",
+    "y1r",
+    "z1r",
+    "t2r",
+    "y2r",
+    "z2r",
+    "a12r",
+    "b12r",
+    "c12r",
+    "d12r",
+    "t1i",
+    "y1i",
+    "z1i",
+    "t2i",
+    "y2i",
+    "z2i",
+    "a12i",
+    "b12i",
+    "c12i",
+    "d12i",
+]
+
+def reorder_g2_paramvec_to_g4_order(paramvec, cfg):
+    """Convert legacy G2-ordered test parameters to generic G4(ncopy=2) order."""
+    target_order = [str(symbol) for symbol in cfg.symbolvec]
+    return utils.reorder_parameter_vector(paramvec, G2_ORDER_IN_G4_CONVENTION, target_order, axis=-1)
 
 
 class TestZ2System(unittest.TestCase):
@@ -44,15 +75,15 @@ class TestZ2System(unittest.TestCase):
         # Construct the system
         lat = lattice.Lattice2D(L, L, gf_num_of_rows=gauge_fixing)
 
-        system_cfg = system.Z2System2D_G2C_F2C_Config(
+        system_cfg = utils.make_z2_2copy_config(
             lat,
             g / 2,
             1.0 / (2.0 * g),
             g_int,
             mass,
             chem,
-            num_pg_layer,
-            num_fermionic_layer,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
             mod_link_inds=el_links,
             unitcell_size=unitcell_size,
             enforce_u1_symmetry=enforce_u1,
@@ -63,6 +94,7 @@ class TestZ2System(unittest.TestCase):
         rngstate = np.random.RandomState(seed)
         shape = (nlayer, unitcell_size, 20)
         paramvec = rngstate.rand(*shape)
+        paramvec = reorder_g2_paramvec_to_g4_order(paramvec, system_cfg)
         system_cfg.paramvec = paramvec
 
         # Minimzer config
@@ -109,15 +141,15 @@ class TestZ2System(unittest.TestCase):
         # Construct the system
         lat = lattice.Lattice2D(L, L, gf_num_of_rows=gauge_fixing)
 
-        system_cfg = system.Z2System2D_G2C_F2C_Config(
+        system_cfg = utils.make_z2_2copy_config(
             lat,
             g / 2,
             1.0 / (2.0 * g),
             g_int,
             mass,
             chem,
-            num_pg_layer,
-            num_fermionic_layer,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
             mod_link_inds=el_links,
             unitcell_size=unitcell_size,
             enforce_u1_symmetry=enforce_u1,
@@ -128,6 +160,7 @@ class TestZ2System(unittest.TestCase):
         rngstate = np.random.RandomState(seed)
         shape = (nlayer, unitcell_size, 20)
         paramvec = rngstate.rand(*shape)
+        paramvec = reorder_g2_paramvec_to_g4_order(paramvec, system_cfg)
         system_cfg.paramvec = paramvec
 
         # Evaluator
@@ -149,7 +182,7 @@ class TestZ2System(unittest.TestCase):
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "wilson_loop_0-0_1x1"), 0.220211)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "square_string_0-0_1x1"), 0.08457018)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "FM_1x1"), 0.18021784)
-        idx = (0, 0, 1)
+        idx = (0, 0, 2)  # old G2 index 1 was y1r; in generic G4(ncopy=2) order y1r is index 2
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "grad_norm")[idx], -1.907041756)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "mag_energy_grad")[idx], 3.0555902689)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "el_energy_grad")[idx], 3.6992497863e-5)
@@ -182,15 +215,15 @@ class TestZ2System(unittest.TestCase):
         # Construct the system
         lat = lattice.Lattice2D(L, L, gf_num_of_rows=gauge_fixing)
 
-        system_cfg = system.Z2System2D_G2C_F2C_Config(
+        system_cfg = utils.make_z2_2copy_config(
             lat,
             g / 2,
             1.0 / (2.0 * g),
             g_int,
             mass,
             chem,
-            num_pg_layer,
-            num_fermionic_layer,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
             mod_link_inds=el_links,
             unitcell_size=unitcell_size,
             enforce_u1_symmetry=enforce_u1,
@@ -201,6 +234,7 @@ class TestZ2System(unittest.TestCase):
         rngstate = np.random.RandomState(seed)
         shape = (nlayer, unitcell_size, 20)
         paramvec = rngstate.rand(*shape)
+        paramvec = reorder_g2_paramvec_to_g4_order(paramvec, system_cfg)
         system_cfg.paramvec = paramvec
 
         # Evaluator
@@ -222,7 +256,7 @@ class TestZ2System(unittest.TestCase):
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "wilson_loop_0-0_1x1"), 0.2202, places=1)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "square_string_0-0_1x1"), 0.08457, places=1)
         # self.assertAlmostEqual(utils.get_obs_mean_df(result, "FM_1x1"), 0.18022, places=1) # not implemented in MC
-        idx = (0, 0, 1)
+        idx = (0, 0, 2)  # old G2 index 1 was y1r; in generic G4(ncopy=2) order y1r is index 2
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "grad_norm")[idx], -1.9070, places=0)
         self.assertAlmostEqual(utils.get_obs_mean_df(result, "energy_grad")[idx], 2.2347, places=0)
 
@@ -347,19 +381,20 @@ class TestZ2System(unittest.TestCase):
         lat = lattice.Lattice2D(L, L, gf_num_of_rows=gauge_fixing)
 
         # paramvec = np.random.rand(nlayer, unitcell_size, 20)
-        cfg = system.Z2System2D_G2C_F2C_Config(
+        cfg = utils.make_z2_2copy_config(
             lat,
             g / 2,
             1.0 / (2.0 * g),
             g_int,
             mass,
             chem,
-            num_pg_layer,
-            num_fermionic_layer,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
             mod_link_inds=el_links,
             unitcell_size=unitcell_size,
             enforce_u1_symmetry=enforce_u1,
         )  # 2 copy ansatz
+        paramvec = reorder_g2_paramvec_to_g4_order(paramvec, cfg)
         cfg.paramvec = paramvec
         system_z2 = system.Z2System2D(cfg)
         system_z2.cfg.enforce_parameter_conditions(system_z2.cfg.paramvec)

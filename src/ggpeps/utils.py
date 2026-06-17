@@ -16,6 +16,7 @@ from scipy.linalg import svd, block_diag
 import numpy as np
 import jax.numpy as jnp
 from ggpeps import xnp as xnp
+from ggpeps import system
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
@@ -131,6 +132,12 @@ def reorder_parameter_vector(
     """
     permutation = parameter_order_permutation(source_order, target_order)
     return np.take(values, permutation, axis=axis)
+
+
+def make_z2_2copy_config(*args, **kwargs):
+    """Build the generic G4C/F4C Z2 config in its ncopy=2 compatibility mode."""
+    return system.Z2System2D_G4C_F4C_Config(*args, ncopy=2, **kwargs)
+    
 
 # ========== Utility Functions ====================
 
