@@ -38,7 +38,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         a12i, b12i, c12i, d12i,
         a13i, b13i, c13i, d13i,
         ...
-        
+
     Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3,d3,u3,l4,r4,d4,u4}.
     Mode order of gamma_dirac:
         {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3... }.
@@ -61,12 +61,12 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         g_int,
         g_mass,
         g_chem,
+        ncopy=4,
         num_pg_layer=1,
         num_fermionic_layer=1,
         mod_link_inds=(0,),
         unitcell_size=1,
         enforce_u1_symmetry=True,
-        ncopy=4,
     ) -> None:
         # The current gauged-projector construction mixes copies pairwise in pure-gauge layers
         # via sigma = (1 <-> 2), (3 <-> 4), ... Therefore odd ncopy > 1 is not supported
