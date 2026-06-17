@@ -30,6 +30,7 @@ Measure per-config with a FRESH single-backend system per config: do NOT switch 
 system, because re-feeding an unchanged config skips cache invalidation and returns a stale value
 (a false pass).
 """
+
 import unittest
 
 import numpy as np
@@ -51,10 +52,10 @@ def _random_even_pure_covmat(n_modes, rng, complex_state=False):
     A = rng.standard_normal((dim, dim))
     if complex_state:
         A = A + 1j * rng.standard_normal((dim, dim))
-    A = A - A.T                      # antisymmetric generator -> expm is (complex) orthogonal, det=1
+    A = A - A.T  # antisymmetric generator -> expm is (complex) orthogonal, det=1
     R = sla.expm(A)
     M = R @ np.asarray(M0) @ R.T
-    M = 0.5 * (M - M.T)              # clean complex-expm round-off -> exact covariance (antisym)
+    M = 0.5 * (M - M.T)  # clean complex-expm round-off -> exact covariance (antisym)
     return M, np.asarray(M0)
 
 
@@ -79,8 +80,7 @@ class TestOverlapMath(unittest.TestCase):
 def _build_z2_2c_system(seed=1, gf=0, num_pg_layer=2):
     lat = lattice.Lattice2D(2, 2, gf)
     cfg = system.Z2System2D_G2C_F2C_Config(
-        lat, 1.0, 1.0, 0.0, 0.0, None, num_pg_layer=num_pg_layer, num_fermionic_layer=0,
-        mod_link_inds=(0,)
+        lat, 1.0, 1.0, 0.0, 0.0, None, num_pg_layer=num_pg_layer, num_fermionic_layer=0, mod_link_inds=(0,)
     )
     rng = np.random.default_rng(seed)
     cfg.paramvec = rng.standard_normal(cfg.param_shape())
@@ -179,15 +179,15 @@ class TestOverlapPerConfigZ2(unittest.TestCase):
     def test_z2_1c_per_config_matches_pfaffian(self):
         """Per-config F(G) overlap == pfaffian for several explicit 1-copy (pure-gauge) Z2 configs —
         exercises the (-1)^nlayer Wick-phase handling of the odd ncolor*ncopy case."""
+
         def build():
             lat = lattice.Lattice2D(2, 2, 0)
             cfg = system.Z2System2DConfig(
-                lat, 1.0, 1.0, 0.0, 0.0, None, num_pg_layer=2, num_fermionic_layer=0,
-                mod_link_inds=(0,)
+                lat, 1.0, 1.0, 0.0, 0.0, None, num_pg_layer=2, num_fermionic_layer=0, mod_link_inds=(0,)
             )
             rng = np.random.default_rng(13)
             cfg.paramvec = rng.standard_normal(cfg.param_shape())
-            cfg.make_pure_gauge()             # 1-copy Z2 must be forced pure gauge (manager.py)
+            cfg.make_pure_gauge()  # 1-copy Z2 must be forced pure gauge (manager.py)
             cfg.enforce_parameter_conditions(cfg.paramvec)
             return system.Z2System2D(cfg)
 
@@ -200,15 +200,17 @@ class TestOverlapPerConfigZ2(unittest.TestCase):
             )
 
 
-def _exact_el_energy(cfg_class, lat, paramvec, el_method, system_type, num_pg_layer=2,
-                     g_el=1.0, g_mag=1.0, mod_links=(0,)):
+def _exact_el_energy(
+    cfg_class, lat, paramvec, el_method, system_type, num_pg_layer=2, g_el=1.0, g_mag=1.0, mod_links=(0,)
+):
     """Run exact eval and return aggregated <el_energy>. (Aggregated el_energy_op is NOT in the
     evaluator obsdict, so we compare el_energy — the physical observable.)"""
-    cfg = cfg_class(lat, g_el, g_mag, 0.0, 0.0, None, num_pg_layer=num_pg_layer,
-                    num_fermionic_layer=0, mod_link_inds=mod_links)
+    cfg = cfg_class(
+        lat, g_el, g_mag, 0.0, 0.0, None, num_pg_layer=num_pg_layer, num_fermionic_layer=0, mod_link_inds=mod_links
+    )
     cfg.paramvec = np.reshape(paramvec, cfg.param_shape())
     if isinstance(cfg, system.Z2System2DConfig):
-        cfg.make_pure_gauge()                 # 1-copy Z2 must be forced pure gauge (manager.py:383)
+        cfg.make_pure_gauge()  # 1-copy Z2 must be forced pure gauge (manager.py:383)
     cfg.enforce_parameter_conditions(cfg.paramvec)
     cfg.el_method = el_method
     sysobj = system_type(cfg)
@@ -226,28 +228,32 @@ class TestOverlapReproducesZ2(unittest.TestCase):
         lat = lattice.Lattice2D(2, 2, 0)
         rng = np.random.default_rng(7)
         paramvec = rng.standard_normal((2, 1, 20))
-        el_p = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec,
-                                "pfaffian", system.Z2System2D)
-        el_b = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec,
-                                "overlap", system.Z2System2D)
-        self.assertTrue(np.allclose(el_b, el_p, rtol=1e-7, atol=1e-8),
-                        msg=f"el_energy: overlap {el_b} != pfaffian {el_p}")
+        el_p = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec, "pfaffian", system.Z2System2D)
+        el_b = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec, "overlap", system.Z2System2D)
+        self.assertTrue(
+            np.allclose(el_b, el_p, rtol=1e-7, atol=1e-8), msg=f"el_energy: overlap {el_b} != pfaffian {el_p}"
+        )
 
     def test_z2_1c_exact_matches_pfaffian_all_layers(self):
         """Full exact-eval <el_energy> overlap == pfaffian for 1-copy Z2 at 1, 2 and 3 PG layers —
         odd and even layer counts lock in the (-1)^nlayer Wick-phase fix."""
         lat = lattice.Lattice2D(2, 2, 0)
-        for num_pg_layer in (1, 2, 3):     # odd AND even: locks the (-1)^nlayer Wick-phase fix
+        for num_pg_layer in (1, 2, 3):  # odd AND even: locks the (-1)^nlayer Wick-phase fix
             rng = np.random.default_rng(100 + num_pg_layer)
-            sh = system.Z2System2DConfig(lat, 1.0, 1.0, 0.0, 0.0, None, num_pg_layer=num_pg_layer,
-                                         num_fermionic_layer=0).param_shape()
+            sh = system.Z2System2DConfig(
+                lat, 1.0, 1.0, 0.0, 0.0, None, num_pg_layer=num_pg_layer, num_fermionic_layer=0
+            ).param_shape()
             paramvec = rng.standard_normal(sh)
-            el_p = _exact_el_energy(system.Z2System2DConfig, lat, paramvec, "pfaffian",
-                                    system.Z2System2D, num_pg_layer=num_pg_layer)
-            el_b = _exact_el_energy(system.Z2System2DConfig, lat, paramvec, "overlap",
-                                    system.Z2System2D, num_pg_layer=num_pg_layer)
-            self.assertTrue(np.allclose(el_b, el_p, rtol=1e-6, atol=1e-7),
-                            msg=f"1c num_pg_layer={num_pg_layer}: overlap {el_b} != pfaffian {el_p}")
+            el_p = _exact_el_energy(
+                system.Z2System2DConfig, lat, paramvec, "pfaffian", system.Z2System2D, num_pg_layer=num_pg_layer
+            )
+            el_b = _exact_el_energy(
+                system.Z2System2DConfig, lat, paramvec, "overlap", system.Z2System2D, num_pg_layer=num_pg_layer
+            )
+            self.assertTrue(
+                np.allclose(el_b, el_p, rtol=1e-6, atol=1e-7),
+                msg=f"1c num_pg_layer={num_pg_layer}: overlap {el_b} != pfaffian {el_p}",
+            )
 
     def test_z2_gauge_fixed_matches_pfaffian(self):
         """Full exact-eval <el_energy> overlap == pfaffian for 2-copy Z2 WITH gauge fixing — checks
@@ -255,10 +261,8 @@ class TestOverlapReproducesZ2(unittest.TestCase):
         lat = lattice.Lattice2D(2, 2, -1)
         rng = np.random.default_rng(11)
         paramvec = rng.standard_normal((2, 1, 20))
-        el_p = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec,
-                                "pfaffian", system.Z2System2D)
-        el_b = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec,
-                                "overlap", system.Z2System2D)
+        el_p = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec, "pfaffian", system.Z2System2D)
+        el_b = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec, "overlap", system.Z2System2D)
         self.assertTrue(np.allclose(el_b, el_p, rtol=1e-6, atol=1e-7))
 
 
@@ -267,26 +271,75 @@ class TestOverlapReproducesZ2(unittest.TestCase):
 # configuration where the gauge-weighted electric energy goes unphysical for the pfaffian backend
 # (full-eval pfaffian -26.74 vs overlap +22.66). They are written out verbatim so the regression is
 # pinned to exactly these values. Shape is (num_pg_layer, unitcell_size=1, nparams_per_site=20).
-D6_1LAYER_PARAMVEC = np.array([
-    0.0, -0.9939527757343662, 1.4260579366967028, 0.0, -0.28000887715354855,
-    0.8089407935296115, -1.3065504646046338, 1.865642743080219, -1.6649918678103066,
-    2.1196735319722277, 0.0, 1.8397448679904251, -0.4227470147907068, 0.0,
-    1.3538850781838103, -0.5407833330276589, -0.7780308822579828, 0.9742888873324884,
-    -0.5166044214592881, 0.32950471997126796,
-]).reshape(1, 1, 20)
+D6_1LAYER_PARAMVEC = np.array(
+    [
+        0.0,
+        -0.9939527757343662,
+        1.4260579366967028,
+        0.0,
+        -0.28000887715354855,
+        0.8089407935296115,
+        -1.3065504646046338,
+        1.865642743080219,
+        -1.6649918678103066,
+        2.1196735319722277,
+        0.0,
+        1.8397448679904251,
+        -0.4227470147907068,
+        0.0,
+        1.3538850781838103,
+        -0.5407833330276589,
+        -0.7780308822579828,
+        0.9742888873324884,
+        -0.5166044214592881,
+        0.32950471997126796,
+    ]
+).reshape(1, 1, 20)
 
-D6_2LAYER_PARAMVEC = np.array([
-    0.0, -52.8917263263219, 19.78345618719102, 0.0, -42.27171900640149,
-    17.746641326666904, 43.61807316876326, -16.946194917588613, -27.8886671204573,
-    25.88035087784146, 0.0, -18.003447995609516, -3.148152878314228, 0.0,
-    -52.077659929094075, 29.386499281816484, -58.689942035772205, 16.797500524676142,
-    32.23274988398398, 8.263898579638377,
-    0.0, 36.326909166788774, -3.4463705034947996, 0.0, 34.292370450080206,
-    67.64738719605107, -19.4054466188742, 48.84705248075478, -39.814331170415855,
-    -15.637498538375208, 0.0, -12.417914185140402, 56.57154429687569, 0.0,
-    11.449625035471854, 1.8054305840486773, -21.545921775346713, -58.06042095755204,
-    -1.941659389661235, -54.451686759216436,
-]).reshape(2, 1, 20)
+D6_2LAYER_PARAMVEC = np.array(
+    [
+        0.0,
+        -52.8917263263219,
+        19.78345618719102,
+        0.0,
+        -42.27171900640149,
+        17.746641326666904,
+        43.61807316876326,
+        -16.946194917588613,
+        -27.8886671204573,
+        25.88035087784146,
+        0.0,
+        -18.003447995609516,
+        -3.148152878314228,
+        0.0,
+        -52.077659929094075,
+        29.386499281816484,
+        -58.689942035772205,
+        16.797500524676142,
+        32.23274988398398,
+        8.263898579638377,
+        0.0,
+        36.326909166788774,
+        -3.4463705034947996,
+        0.0,
+        34.292370450080206,
+        67.64738719605107,
+        -19.4054466188742,
+        48.84705248075478,
+        -39.814331170415855,
+        -15.637498538375208,
+        0.0,
+        -12.417914185140402,
+        56.57154429687569,
+        0.0,
+        11.449625035471854,
+        1.8054305840486773,
+        -21.545921775346713,
+        -58.06042095755204,
+        -1.941659389661235,
+        -54.451686759216436,
+    ]
+).reshape(2, 1, 20)
 
 
 def _build_d6_gauge_fixed_system(paramvec, num_pg_layer, el_method):
@@ -295,8 +348,7 @@ def _build_d6_gauge_fixed_system(paramvec, num_pg_layer, el_method):
     the module docstring. comp_tree links are free under gauge fixing; the rest are held neutral."""
     lat = lattice.Lattice2D(2, 2, -1)
     cfg = system.D6System2D_Config(
-        lat, 1.0, 1.0, 0.0, 0.0, None, num_pg_layer=num_pg_layer, num_fermionic_layer=0,
-        mod_link_inds=(0,)
+        lat, 1.0, 1.0, 0.0, 0.0, None, num_pg_layer=num_pg_layer, num_fermionic_layer=0, mod_link_inds=(0,)
     )
     cfg.paramvec = np.reshape(paramvec, cfg.param_shape())
     cfg.enforce_parameter_conditions(cfg.paramvec)
@@ -332,9 +384,9 @@ class TestOverlapPerConfigD6(unittest.TestCase):
 
     # free-link (comp_tree) gauge-value indices; comp_tree has 5 free links for L=2.
     _COMBOS = [
-        (0, 0, 0, 0, 0),   # all-neutral
-        (3, 0, 4, 0, 3),   # reflection-heavy
-        (3, 2, 1, 2, 2),   # historic divergent config (full-eval index 4370)
+        (0, 0, 0, 0, 0),  # all-neutral
+        (3, 0, 4, 0, 3),  # reflection-heavy
+        (3, 2, 1, 2, 2),  # historic divergent config (full-eval index 4370)
     ]
 
     def _assert_match(self, paramvec, num_pg_layer):
@@ -388,10 +440,12 @@ class TestOverlapD6FullEval(unittest.TestCase):
 
     def _eval(self, paramvec, num_pg_layer):
         lat = lattice.Lattice2D(2, 2, -1)
-        el_p = _exact_el_energy(system.D6System2D_Config, lat, paramvec, "pfaffian",
-                                system.D2nSystem2D, num_pg_layer=num_pg_layer)
-        el_o = _exact_el_energy(system.D6System2D_Config, lat, paramvec, "overlap",
-                                system.D2nSystem2D, num_pg_layer=num_pg_layer)
+        el_p = _exact_el_energy(
+            system.D6System2D_Config, lat, paramvec, "pfaffian", system.D2nSystem2D, num_pg_layer=num_pg_layer
+        )
+        el_o = _exact_el_energy(
+            system.D6System2D_Config, lat, paramvec, "overlap", system.D2nSystem2D, num_pg_layer=num_pg_layer
+        )
         return float(el_p), float(el_o)
 
     def _check(self, paramvec, num_pg_layer):
