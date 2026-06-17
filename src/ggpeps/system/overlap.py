@@ -5,8 +5,9 @@ the Pfaffian/bracket expansion. Pure-math, group-agnostic; operates on covarianc
 Convention: covariance matrices follow Bravyi's M_{pq} = (-i/2)<[c_p, c_q]>. The vacuum covariance
 is M0 = (+) [[0,1],[-1,0]] per mode (eq 18, y=0). See docs/d6_combined.tex "Outlook" section.
 """
+
 from ggpeps import xnp
-from ggpeps.system.backend import backend   # the backend INSTANCE (exposes .pfaffian)
+from ggpeps.system.backend import backend  # the backend INSTANCE (exposes .pfaffian)
 
 
 def _antisymmetrize(x: xnp.ndarray) -> xnp.ndarray:
@@ -32,6 +33,28 @@ def vacuum_covmat(dim: int) -> xnp.ndarray:
         m0[idx, idx + 1] = 1.0
         m0[idx + 1, idx] = -1.0
     return m0
+
+
+def to_bravyi_covmat(gamma: xnp.ndarray) -> xnp.ndarray:
+    """Convert a covariance matrix from OUR convention to Bravyi's.
+
+    Our convention: Gamma_{ab} = (+i/2)<[gamma_a, gamma_b]>
+    with gamma^(1) = a + a^dagger and gamma^(2) = i(a - a^dagger).
+    Bravyi (Commun. Math. Phys. 356, 451 (2017)): M_{pq} = (-i/2)<[c_p, c_q]> (eq. 17) with
+    c_{2j-1} = a_j + a_j^dagger and c_{2j} = -i(a_j - a_j^dagger) (eq. 1).
+
+    The two share the first Majorana (gamma^(1) = c_{2j-1}) but our second is MINUS Bravyi's
+    (gamma^(2)_j = -c_{2j}), i.e. c = S gamma with S = diag(1, -1, 1, -1, ...). Combining the
+    (-i/2 vs +i/2) prefactor (a global minus) with S on each index gives the exact map
+
+        M = -S Gamma S,   i.e.   M_{pq} = -s_p s_q Gamma_{pq}
+
+    -- a global sign, plus a sign flip on every entry coupling a first-type to a second-type
+    Majorana.
+    """
+    dim = gamma.shape[-1]
+    sign = xnp.where(xnp.arange(dim) % 2 == 0, 1.0, -1.0).astype(gamma.dtype)
+    return -(sign[:, None] * gamma * sign[None, :])
 
 
 def gaussian_overlap_chi(m1: xnp.ndarray, m2: xnp.ndarray, m0: xnp.ndarray) -> xnp.ndarray:
