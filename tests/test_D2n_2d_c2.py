@@ -1570,3 +1570,100 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
             np.allclose(sys_drop.el_energy_op_vec, sys_keep.el_energy_op_vec, atol=1e-12, rtol=1e-12),
             msg="el_energy_op_vec changed when toggling drop_real_zero (should be invariant).",
         )
+
+
+class TestMajoranaModeOrdering(unittest.TestCase):
+    """Tests for the generation of Majorana mode orderings on a single link."""
+
+    def test_wrong_single_link_majorana_mode_order_by_copy_then_color(self):
+        """Test the 'wrong' ordering function used for generation of rotmat.
+        This function orders by copy first, then color, and has a specific interleaved
+        mode sequence (l1, then l2, then r1, then r2).
+        Note: num_colors is hardcoded to 2 in this function.
+        """
+        # Test for 1 copy (num_copies=1)
+        expected_1_copy = [
+            "l1_1_1",
+            "l1_1_2",  # copy 1, colors 1 & 2 for l1
+            "l2_1_1",
+            "l2_1_2",  # copy 1, colors 1 & 2 for l2
+            "r1_1_1",
+            "r1_1_2",  # copy 1, colors 1 & 2 for r1
+            "r2_1_1",
+            "r2_1_2",  # copy 1, colors 1 & 2 for r2
+        ]
+        result_1_copy = system.D2nSystem2D.get_wrong_single_link_majorana_mode_order_by_copy_then_color(num_copies=1)
+        self.assertEqual(result_1_copy, expected_1_copy)
+
+        # Test for 2 copies (num_copies=2)
+        expected_2_copies = [
+            # Copy 1
+            "l1_1_1",
+            "l1_1_2",
+            "l2_1_1",
+            "l2_1_2",
+            "r1_1_1",
+            "r1_1_2",
+            "r2_1_1",
+            "r2_1_2",
+            # Copy 2
+            "l1_2_1",
+            "l1_2_2",
+            "l2_2_1",
+            "l2_2_2",
+            "r1_2_1",
+            "r1_2_2",
+            "r2_2_1",
+            "r2_2_2",
+        ]
+        result_2_copies = system.D2nSystem2D.get_wrong_single_link_majorana_mode_order_by_copy_then_color(num_copies=2)
+        self.assertEqual(result_2_copies, expected_2_copies)
+
+    def test_get_single_link_majorana_mode_order(self):
+        """Test the 'correct' actual implementation ordering function.
+        This function orders by color first, then copy, and appends the
+        modes sequentially (l1, l2, r1, r2) within the inner loop.
+        """
+        # Test for 1 copy, 2 colors
+        expected_1_copy_2_color = [
+            # Color 1, Copy 1
+            "l1_1_1",
+            "l2_1_1",
+            "r1_1_1",
+            "r2_1_1",
+            # Color 2, Copy 1
+            "l1_1_2",
+            "l2_1_2",
+            "r1_1_2",
+            "r2_1_2",
+        ]
+        # Changed from system.System2DBase to system.D2nSystem2D
+        result_1_copy_2_color = system.D2nSystem2D.get_single_link_majorana_mode_order(num_copies=1, num_colors=2)
+        self.assertEqual(result_1_copy_2_color, expected_1_copy_2_color)
+
+        # Test for 2 copies, 2 colors
+        expected_2_copy_2_color = [
+            # Color 1, Copy 1
+            "l1_1_1",
+            "l2_1_1",
+            "r1_1_1",
+            "r2_1_1",
+            # Color 1, Copy 2
+            "l1_2_1",
+            "l2_2_1",
+            "r1_2_1",
+            "r2_2_1",
+            # Color 2, Copy 1
+            "l1_1_2",
+            "l2_1_2",
+            "r1_1_2",
+            "r2_1_2",
+            # Color 2, Copy 2
+            "l1_2_2",
+            "l2_2_2",
+            "r1_2_2",
+            "r2_2_2",
+        ]
+        # Changed from system.System2DBase to system.D2nSystem2D
+        result_2_copy_2_color = system.D2nSystem2D.get_single_link_majorana_mode_order(num_copies=2, num_colors=2)
+        self.assertEqual(result_2_copy_2_color, expected_2_copy_2_color)
