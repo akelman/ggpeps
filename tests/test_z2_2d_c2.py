@@ -15,13 +15,13 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         lat = lattice.Lattice2D(2, 2)
         paramvec_real = np.random.rand(1, 10)
         paramvec_real = np.concatenate([paramvec_real, np.zeros((1, 10))], axis=1)
-        cfg = system.Z2System2D2CConfig(lat, 0, 0, 0, 0, None)
+        cfg = utils.make_z2_2copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
         cfg.paramvec = paramvec_real
         self.system_z2_2_2_real = system.Z2System2D(cfg)
 
         lat = lattice.Lattice2D(2, 2)
         paramvec = np.random.rand(1, 20)
-        cfg = system.Z2System2D2CConfig(lat, 0, 0, 0, 0, None)
+        cfg = utils.make_z2_2copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
         cfg.paramvec = paramvec
         self.system_z2_2_2 = system.Z2System2D(cfg)
 
@@ -29,16 +29,21 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         eps = 1e-5
         lat = lattice.Lattice2D(2, 2)
         paramvec = np.random.rand(1, 20)
-        paramvec_left = np.copy(paramvec)
-        paramvec_left[0, 1] -= eps
-        paramvec_right = np.copy(paramvec)
-        paramvec_right[0, 1] += eps
 
-        cfg = system.Z2System2D2CConfig(lat, 0, 0, 0, 0, None)
+        cfg = utils.make_z2_2copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        # Find the index of the parameter named "y1r"
+        target_symbol_name = "y1r"
+        target_ind = [ind for ind, symbol in enumerate(cfg.symbolvec) if str(symbol) == target_symbol_name][0]
+
+        paramvec_left = np.copy(paramvec)
+        paramvec_left[0, target_ind] -= eps
+        paramvec_right = np.copy(paramvec)
+        paramvec_right[0, target_ind] += eps
+
         cfg.paramvec = paramvec
-        cfg_left = system.Z2System2D2CConfig(lat, 0, 0, 0, 0, None)
+        cfg_left = utils.make_z2_2copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
         cfg_left.paramvec = paramvec_left
-        cfg_right = system.Z2System2D2CConfig(lat, 0, 0, 0, 0, None)
+        cfg_right = utils.make_z2_2copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
         cfg_right.paramvec = paramvec_right
 
         system_z2_2_2 = system.Z2System2D(cfg)
@@ -46,8 +51,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         system_z2_2_2_right = system.Z2System2D(cfg_right)
 
         symbvec = system_z2_2_2.symbolvec
-        # Derivative wrt yr
-        deriv_ana = system_z2_2_2.compute_tmat_deriv(symbvec[1])
+        deriv_ana = system_z2_2_2.compute_tmat_deriv(symbvec[target_ind])
         lay = 0
         site = 0
         tmat_left = system_z2_2_2_left.tmat_layervec_sitevec[lay][site]
@@ -145,19 +149,23 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(1, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None)
+        system_cfg = utils.make_z2_2copy_pure_gauge_config(lat_2x2, 1.0, None, None, None, None)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
-        symbolvec = self.system_z2_2_2_real.symbolvec
+        symbolvec = system_z2_2_2.symbolvec
+        zeroed_param_inds = {param_ind for _, _, param_ind in system_cfg.zeroed_params}
         for ind in range(len(symbolvec)):
+            if ind in zeroed_param_inds:
+                continue
+
             with self.subTest(symbol=symbolvec[ind]):
                 paramvec_left = np.copy(paramvec)
                 paramvec_right = np.copy(paramvec)
                 # We are only modifying the first layer (there is only one)
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
-                system_cfg_left = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None)
-                system_cfg_right = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None)
+                system_cfg_left = utils.make_z2_2copy_pure_gauge_config(lat_2x2, 1.0, None, None, None, None)
+                system_cfg_right = utils.make_z2_2copy_pure_gauge_config(lat_2x2, 1.0, None, None, None, None)
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
 
@@ -208,7 +216,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         uc_ind = 0
         paramvec = np.random.rand(1, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D2CConfig(
+        system_cfg = utils.make_z2_2copy_pure_gauge_config(
             lat_2x2, 1.0, None, None, None, None, num_pg_layer=1, num_fermionic_layer=0
         )
         system_cfg.paramvec = paramvec
@@ -220,7 +228,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                 paramvec_right = np.copy(paramvec)
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
-                system_cfg_left = system.Z2System2D2CConfig(
+                system_cfg_left = utils.make_z2_2copy_pure_gauge_config(
                     lat_2x2,
                     1.0,
                     None,
@@ -230,7 +238,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                     num_pg_layer=1,
                     num_fermionic_layer=0,
                 )
-                system_cfg_right = system.Z2System2D2CConfig(
+                system_cfg_right = utils.make_z2_2copy_pure_gauge_config(
                     lat_2x2,
                     1.0,
                     None,
@@ -259,7 +267,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(1, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D2CConfig(lat_2x2, 1.0, None, None, None, None)
+        system_cfg = utils.make_z2_2copy_pure_gauge_config(lat_2x2, 1.0, None, None, None, None)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         symbolvec = system_z2_2_2.symbolvec
@@ -273,7 +281,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                 paramvec_right = np.copy(paramvec)
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
-                system_cfg_left = system.Z2System2D2CConfig(
+                system_cfg_left = utils.make_z2_2copy_pure_gauge_config(
                     lat_2x2,
                     1.0,
                     None,
@@ -283,7 +291,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                     num_pg_layer=1,
                     num_fermionic_layer=0,
                 )
-                system_cfg_right = system.Z2System2D2CConfig(
+                system_cfg_right = utils.make_z2_2copy_pure_gauge_config(
                     lat_2x2,
                     1.0,
                     None,
@@ -312,7 +320,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         nlayer = 2
         paramvec = np.random.rand(2, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D2CConfig(
+        system_cfg = utils.make_z2_2copy_pure_gauge_config(
             lat_2x2, 1.0, None, None, None, None, num_pg_layer=2, num_fermionic_layer=0
         )
         system_cfg.paramvec = paramvec
@@ -329,7 +337,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D2CConfig(
+                    system_cfg_left = utils.make_z2_2copy_pure_gauge_config(
                         lat_2x2,
                         1.0,
                         None,
@@ -339,7 +347,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
                         num_pg_layer=2,
                         num_fermionic_layer=0,
                     )
-                    system_cfg_right = system.Z2System2D2CConfig(
+                    system_cfg_right = utils.make_z2_2copy_pure_gauge_config(
                         lat_2x2,
                         1.0,
                         None,
@@ -366,7 +374,7 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         # Calculate the electric energy of an empty system.
         paramvec = np.zeros((1, 20))
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D2CConfig(
+        system_cfg = utils.make_z2_2copy_pure_gauge_config(
             lat_2x2, 1.0, None, None, None, None, num_pg_layer=1, num_fermionic_layer=0
         )
         system_cfg.paramvec = paramvec

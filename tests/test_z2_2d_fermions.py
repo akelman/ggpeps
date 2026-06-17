@@ -2624,3 +2624,158 @@ class TestG2G4Ncopy2Equivalence(unittest.TestCase):
         self.assertEqual(cfg_g2.idx_vec, cfg_g4.idx_vec)
         self.assertEqual(cfg_g2.coeffs_vec, cfg_g4.coeffs_vec)
         self.assertEqual(cfg_g2.constants_vec, cfg_g4.constants_vec)
+
+
+
+class TestLegacy2CG4Ncopy2PureGaugeEquivalence(unittest.TestCase):
+    """Equivalence tests between legacy pure-gauge 2C and generic G4C/F4C with ncopy=2.
+
+    The legacy Z2System2D2CConfig is pure-gauge only: it rejects fermionic
+    layers. Therefore the generic comparison target is G4C/F4C with ncopy=2
+    and num_fermionic_layer=0.
+    """
+
+    LEGACY_2C_TO_G4_SYMBOL_NAMES = {
+        "ar": "a12r",
+        "br": "b12r",
+        "cr": "c12r",
+        "dr": "d12r",
+        "ai": "a12i",
+        "bi": "b12i",
+        "ci": "c12i",
+        "di": "d12i",
+    }
+
+    def _make_cfgs(self):
+        """Build matching legacy 2C and generic G4(ncopy=2) pure-gauge configs."""
+        lat = lattice.Lattice2D(2, 2)
+        cfg_2c = system.Z2System2D2CConfig(
+            lat,
+            g_el=1.0,
+            g_mag=1.0,
+            g_int=1.0,
+            g_mass=0.0,
+            g_chem=None,
+            num_pg_layer=1,
+            num_fermionic_layer=0,
+        )
+        cfg_g4 = system.Z2System2D_G4C_F4C_Config(
+            lat,
+            g_el=1.0,
+            g_mag=1.0,
+            g_int=1.0,
+            g_mass=0.0,
+            g_chem=None,
+            ncopy=2,
+            num_pg_layer=1,
+            num_fermionic_layer=0,
+        )
+        return cfg_2c, cfg_g4
+
+    @classmethod
+    def _legacy_2c_symbol_name_in_g4_convention(cls, symbol):
+        """Rename legacy 2C symbols to the corresponding generic G4(ncopy=2) names."""
+        name = str(symbol)
+        return cls.LEGACY_2C_TO_G4_SYMBOL_NAMES.get(name, name)
+
+    @classmethod
+    def _legacy_2c_symbol_names_in_g4_convention(cls, cfg_2c):
+        """Return legacy 2C symbol names after applying the G4(ncopy=2) naming convention."""
+        return [cls._legacy_2c_symbol_name_in_g4_convention(symbol) for symbol in cfg_2c.symbolvec]
+
+    @staticmethod
+    def _symbol_names(cfg):
+        """Return symbolvec names as strings."""
+        return [str(symbol) for symbol in cfg.symbolvec]
+
+    @classmethod
+    def _zeroed_symbol_names(cls, cfg):
+        """Return forced-zero parameter symbols in G4 naming convention."""
+        return {
+            cls._legacy_2c_symbol_name_in_g4_convention(cfg.symbolvec[param_ind])
+            for _, _, param_ind in cfg.zeroed_params
+        }
+
+    def test_symbolvec_contains_same_parameters_after_legacy_2c_to_g4_renaming(self):
+        """Legacy 2C and generic G4(ncopy=2) should contain the same symbols after relabeling."""
+        cfg_2c, cfg_g4 = self._make_cfgs()
+
+        legacy_names = self._legacy_2c_symbol_names_in_g4_convention(cfg_2c)
+        g4_names = self._symbol_names(cfg_g4)
+
+        self.assertEqual(set(legacy_names), set(g4_names))
+        self.assertEqual(len(legacy_names), len(g4_names))
+
+    def test_reorder_parameter_vector_maps_legacy_2c_order_to_g4_ncopy2_order(self):
+        """reorder_parameter_vector should convert legacy 2C order to generic G4(ncopy=2) order."""
+        cfg_2c, cfg_g4 = self._make_cfgs()
+        source_order = self._legacy_2c_symbol_names_in_g4_convention(cfg_2c)
+        target_order = self._symbol_names(cfg_g4)
+        legacy_values = np.arange(cfg_2c._nparams)
+
+        reordered = utils.reorder_parameter_vector(legacy_values, source_order, target_order)
+
+        expected = np.array([0, 3, 1, 4, 2, 5, 6, 7, 8, 9, 10, 13, 11, 14, 12, 15, 16, 17, 18, 19])
+        self.assertTrue(np.array_equal(reordered, expected))
+
+    def test_zeroed_params_difference_documents_legacy_compatibility(self):
+        """Legacy 2C keeps zeroed_params empty, while generic G4(ncopy=2) forces pure-gauge t_i zero.
+
+        This documents the one known compatibility difference.
+        """
+        cfg_2c, cfg_g4 = self._make_cfgs()
+
+        self.assertEqual(cfg_2c.zeroed_params, tuple())
+        self.assertEqual(self._zeroed_symbol_names(cfg_g4), {"t1r", "t2r", "t1i", "t2i"})
+
+    def test_make_pure_gauge_is_equivalent_after_parameter_reordering(self):
+        """make_pure_gauge should have the same effect after converting legacy 2C order to G4 order."""
+        cfg_2c, cfg_g4 = self._make_cfgs()
+        source_order = self._legacy_2c_symbol_names_in_g4_convention(cfg_2c)
+        target_order = self._symbol_names(cfg_g4)
+
+        legacy_paramvec = np.arange(np.prod(cfg_2c.param_shape()), dtype=float).reshape(cfg_2c.param_shape()) + 1.0
+        cfg_2c.paramvec = legacy_paramvec
+        cfg_g4.paramvec = utils.reorder_parameter_vector(legacy_paramvec, source_order, target_order, axis=2)
+
+        cfg_2c.make_pure_gauge()
+        cfg_g4.make_pure_gauge()
+
+        legacy_paramvec_in_g4_order = utils.reorder_parameter_vector(cfg_2c.paramvec, source_order, target_order, axis=2)
+        self.assertTrue(np.array_equal(legacy_paramvec_in_g4_order, cfg_g4.paramvec))
+
+    def test_tmat_symb_is_equivalent_after_legacy_2c_to_g4_symbol_substitution(self):
+        """The symbolic T matrices should be identical after legacy 2C symbols are relabeled to G4 names."""
+        cfg_2c, cfg_g4 = self._make_cfgs()
+        g4_symbols_by_name = {str(symbol): symbol for symbol in cfg_g4.symbolvec}
+        substitutions = {
+            symbol: g4_symbols_by_name[self._legacy_2c_symbol_name_in_g4_convention(symbol)]
+            for symbol in cfg_2c.symbolvec
+        }
+
+        tmat_2c_in_g4_symbols = cfg_2c.tmat_symb.subs(substitutions)
+        tmat_g4 = cfg_g4.tmat_symb
+
+        self.assertEqual(tmat_2c_in_g4_symbols.shape, tmat_g4.shape)
+        diff = tmat_2c_in_g4_symbols - tmat_g4
+        for entry in diff:
+            self.assertEqual(sp.simplify(entry), 0)
+
+    def test_gamma_gauge_neutral_dict_is_equivalent(self):
+        """The single-link pure-gauge projector covariance matrices should match exactly."""
+        cfg_2c, cfg_g4 = self._make_cfgs()
+        gamma_2c = cfg_2c.generate_gamma_gauge_neutral_dict()
+        gamma_g4 = cfg_g4.generate_gamma_gauge_neutral_dict()
+
+        self.assertEqual(len(gamma_2c), len(gamma_g4))
+        for layer_ind in range(len(gamma_2c)):
+            for direction in [Direction.X, Direction.Y]:
+                self.assertTrue(np.allclose(gamma_2c[layer_ind][direction], gamma_g4[layer_ind][direction]))
+
+    def test_init_el_energy_terms_are_equivalent(self):
+        """Electric-energy index, coefficient, and constant structures should match."""
+        cfg_2c, cfg_g4 = self._make_cfgs()
+
+        self.assertEqual(cfg_2c.idx_vec, cfg_g4.idx_vec)
+        self.assertEqual(cfg_2c.coeffs_vec, cfg_g4.coeffs_vec)
+        self.assertEqual(cfg_2c.constants_vec, cfg_g4.constants_vec)
