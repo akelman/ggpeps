@@ -546,6 +546,7 @@ class _PolyAssertMixin:
                 f"{msg}\n  coeff mismatch at {k}: code={got[k]} reference={exp[k]}",
             )
 
+
 class TestMajoranaAlgebraHelpers(_PolyAssertMixin, unittest.TestCase):
     """Low-level helpers used to assemble the gauged projector."""
 
