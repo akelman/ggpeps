@@ -546,14 +546,6 @@ class _PolyAssertMixin:
                 f"{msg}\n  coeff mismatch at {k}: code={got[k]} reference={exp[k]}",
             )
 
-    @staticmethod
-    def terms_to_poly(terms):
-        acc = defaultdict(complex)
-        for inds, coef in terms.items():
-            acc[inds] += coef
-        return _ref_canon(acc)
-
-
 class TestMajoranaAlgebraHelpers(_PolyAssertMixin, unittest.TestCase):
     """Low-level helpers used to assemble the gauged projector."""
 
@@ -623,7 +615,7 @@ class TestGaugedProjectorPrimitives(_PolyAssertMixin, unittest.TestCase):
             for color in range(1, ncolor + 1):
                 for copy in range(1, ncopy + 1):
                     for sc in range(1, ncopy + 1):
-                        got = self.terms_to_poly(config_base.vacuum_terms(copy, sc, color, ncolor, ncopy))
+                        got = _ref_canon(config_base.vacuum_terms(copy, sc, color, ncolor, ncopy))
                         exp = _ref_vacuum(copy, sc, color, ncolor, ncopy)
                         self.assert_poly_close(got, exp, msg=f"vacuum_terms c{color} cp{copy} sc{sc}")
 
@@ -633,7 +625,7 @@ class TestGaugedProjectorPrimitives(_PolyAssertMixin, unittest.TestCase):
                 for color in range(1, ncolor + 1):
                     for copy in range(1, ncopy + 1):
                         for sc in range(1, ncopy + 1):
-                            got = self.terms_to_poly(config_base._w_dag_terms(copy, sc, eta2, color, ncolor, ncopy))
+                            got = _ref_canon(config_base._w_dag_terms(copy, sc, eta2, color, ncolor, ncopy))
                             exp = _ref_w_dag(copy, sc, eta2, color, ncolor, ncopy)
                             self.assert_poly_close(got, exp, msg=f"_w_dag_terms eta2={eta2} c{color}")
 
@@ -645,9 +637,7 @@ class TestGaugedProjectorPrimitives(_PolyAssertMixin, unittest.TestCase):
                 for color in range(1, ncolor + 1):
                     for copy in range(1, ncopy + 1):
                         for sc in range(1, ncopy + 1):
-                            got = self.terms_to_poly(
-                                config_base._w_gauged_terms(copy, sc, eta2, color, ncolor, ncopy, M)
-                            )
+                            got = _ref_canon(config_base._w_gauged_terms(copy, sc, eta2, color, ncolor, ncopy, M))
                             exp = _ref_w_gauged(copy, sc, eta2, color, ncolor, ncopy, M)
                             self.assert_poly_close(
                                 got, exp, msg=f"_w_gauged_terms {name} eta2={eta2} c{color} cp{copy}"
@@ -733,4 +723,5 @@ class TestGaugedProjectorAssembly(_PolyAssertMixin, unittest.TestCase):
                 abs(got_const - exp_const) < 1e-9,
                 f"{tag}: constant {got_const} vs {exp_const}",
             )
-            self.assert_poly_close(self.terms_to_poly(got_ind), exp_items, msg=tag)
+            got_poly = _ref_canon({mon: coef for coef, mon in got_ind})
+            self.assert_poly_close(got_poly, exp_items, msg=tag)
