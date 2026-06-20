@@ -147,7 +147,7 @@ class Z2System2D_Config(Config2DBase):
 
             pg_link_coeffs, pg_link_indices = [], []
             ferm_link_coeffs, ferm_link_indices = [], []
-            pg_link_contants, ferm_link_constants = [], []
+            pg_link_constants, ferm_link_constants = [], []
 
             for mod_link in self.mod_link_inds:
                 coord, dir = self.lattice.ind2coord_dir(mod_link)
@@ -159,36 +159,36 @@ class Z2System2D_Config(Config2DBase):
                     if site_parity == 0:
                         term_pg = idxarr_pg_v_0
                         term_ferm = idxarr_ferm_v_0
-                        contant_pg = const_pg_v_0
-                        contant_ferm = const_ferm_v_0
+                        constant_pg = const_pg_v_0
+                        constant_ferm = const_ferm_v_0
                     else:
                         term_pg = idxarr_pg_v_1
                         term_ferm = idxarr_ferm_v_1
-                        contant_pg = const_pg_v_1
-                        contant_ferm = const_ferm_v_1
+                        constant_pg = const_pg_v_1
+                        constant_ferm = const_ferm_v_1
                 else:
                     if site_parity == 0:
                         term_pg = idxarr_pg_h_0
                         term_ferm = idxarr_ferm_h_0
-                        contant_pg = const_pg_h_0
-                        contant_ferm = const_ferm_h_0
+                        constant_pg = const_pg_h_0
+                        constant_ferm = const_ferm_h_0
                     else:
                         term_pg = idxarr_pg_h_1
                         term_ferm = idxarr_ferm_h_1
-                        contant_pg = const_pg_h_1
-                        contant_ferm = const_ferm_h_1
+                        constant_pg = const_pg_h_1
+                        constant_ferm = const_ferm_h_1
 
                 pg_c, pg_i = self._bucket_sort_terms(term_pg)
                 pg_link_coeffs.append(pg_c)
                 pg_link_indices.append(pg_i)
-                pg_link_contants.append(contant_pg)
+                pg_link_constants.append(constant_pg)
 
                 ferm_c, ferm_i = self._bucket_sort_terms(term_ferm)
                 ferm_link_coeffs.append(ferm_c)
                 ferm_link_indices.append(ferm_i)
-                ferm_link_constants.append(contant_ferm)
+                ferm_link_constants.append(constant_ferm)
 
-            pg_base_constants = tuple(pg_link_contants)
+            pg_base_constants = tuple(pg_link_constants)
             ferm_base_constants = tuple(ferm_link_constants)
             constants_vec.append(
                 (pg_base_constants,) * self.num_pg_layer + (ferm_base_constants,) * self.num_fermionic_layer
@@ -329,7 +329,7 @@ class Z2System2D_Config(Config2DBase):
     def tmat_symb(self):
         """Definition of the symbolic T matrix.
         The definition of T here is a result of an analytic consideration of global
-        symmetries like rotational invariance, charge conjugation invarance, etc.
+        symmetries like rotational invariance, charge conjugation invariance, etc.
         The T matrix is given in terms of symbols to compute the derivative of the
         covariance matrices analytically via sympy.
         We do not have to type them explicitly anymore into the code.
