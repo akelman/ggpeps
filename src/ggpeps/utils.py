@@ -6,7 +6,7 @@ import pickle
 import logging
 import functools
 import subprocess  # Start process for git hash
-from typing import Optional, Sequence, Union
+from typing import Mapping, Optional, Sequence, Union
 
 import numba as nb
 import pandas as pd
@@ -132,6 +132,60 @@ def reorder_parameter_vector(
     """
     permutation = parameter_order_permutation(source_order, target_order)
     return np.take(values, permutation, axis=axis)
+
+
+# ==== Parameter name helpers ====
+
+ParameterRenameMap = Optional[Mapping[str, str]]
+
+
+def parameter_names(order: ParameterOrder) -> tuple[str, ...]:
+    """Return normalized parameter names as strings.
+
+    This is a small semantic alias around parse_parameter_order for call sites
+    that work with config.symbolvec values rather than textual order specs.
+    """
+    return parse_parameter_order(order)
+
+
+def renamed_parameter_name(name: object, rename_map: ParameterRenameMap = None) -> str:
+    """Return a parameter name after applying an optional rename map."""
+    name_str = str(name)
+    if rename_map is None:
+        return name_str
+    return rename_map.get(name_str, name_str)
+
+
+def renamed_parameter_names(order: ParameterOrder, rename_map: ParameterRenameMap = None) -> tuple[str, ...]:
+    """Return parameter names after applying an optional rename map.
+
+    The rename map is useful for comparing equivalent ansatz configs that use
+    different symbolic names for the same parameter, for example ``tr`` versus
+    ``t1r`` or ``ar`` versus ``a12r``.
+    """
+    names = parameter_names(order)
+    return tuple(renamed_parameter_name(name, rename_map) for name in names)
+
+
+def zeroed_parameter_named_coords(cfg, rename_map: ParameterRenameMap = None) -> set[tuple[int, int, str]]:
+    """Return zeroed parameter coordinates with parameter indices replaced by names.
+
+    Args:
+        cfg: Config object with ``symbolvec`` and ``zeroed_params`` attributes.
+        rename_map: Optional mapping used to compare equivalent parameters whose
+            symbols have different names in different configs.
+
+    Returns:
+        set[tuple[int, int, str]]: Tuples ``(layer_ind, uc_ind, parameter_name)``.
+    """
+    names = renamed_parameter_names(cfg.symbolvec, rename_map)
+    return {(layer_ind, uc_ind, names[param_ind]) for layer_ind, uc_ind, param_ind in cfg.zeroed_params}
+
+
+def zeroed_parameter_names(cfg, rename_map: ParameterRenameMap = None) -> set[str]:
+    """Return the names of parameters forced to zero by a config."""
+    names = renamed_parameter_names(cfg.symbolvec, rename_map)
+    return {names[param_ind] for _, _, param_ind in cfg.zeroed_params}
 
 
 def make_z2_2copy_config(*args, **kwargs):

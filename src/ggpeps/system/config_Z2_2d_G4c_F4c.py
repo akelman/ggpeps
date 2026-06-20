@@ -31,13 +31,13 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
             a12r, b12r, c12r, d12r,
             a13r, b13r, c13r, d13r,
             ...
-    imaginary part:
-        t1i, ..., tni,
-        y1i, ..., yni,
-        z1i, ..., zni,
-        a12i, b12i, c12i, d12i,
-        a13i, b13i, c13i, d13i,
-        ...
+        imaginary part:
+            t1i, ..., tni,
+            y1i, ..., yni,
+            z1i, ..., zni,
+            a12i, b12i, c12i, d12i,
+            a13i, b13i, c13i, d13i,
+            ...
 
     Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3,d3,u3,l4,r4,d4,u4}.
     Mode order of gamma_dirac:
