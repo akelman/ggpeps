@@ -23,7 +23,7 @@ from ggpeps.caching import Cache
 from ggpeps.system import U1System2DConfig
 from ggpeps.system import Z2System2DConfig
 from ggpeps.system import Z2System2D_G2C_F2C_Config
-from ggpeps.system import Z2System2D_G4C_F4C_Config
+from ggpeps.system import Z2System2D_Config
 from ggpeps.system import Z2System2D_G8C_F8C_Config
 from ggpeps.system import D6System2D_Config
 from ggpeps.system import Z2System2D_2col_Config
@@ -325,7 +325,7 @@ def main(args):
         elif args.ncopy == 2:
             cfg_class = Z2System2D_G2C_F2C_Config
         elif args.ncopy == 4:
-            cfg_class = Z2System2D_G4C_F4C_Config
+            cfg_class = Z2System2D_Config
         elif args.ncopy == 8:
             cfg_class = Z2System2D_G8C_F8C_Config
         else:

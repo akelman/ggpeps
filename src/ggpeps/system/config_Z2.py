@@ -14,14 +14,16 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 ###################### Z2System2D ##########################
 
 
-class Z2System2D_G4C_F4C_Config(Config2DBase):
-    """Configuration of the Z2 system in 2D with 4 copies of virtual fermions on the links.
-    More details about the mode order and the parameters can be found in the documentation of `Z2System2D2C`.
+class Z2System2D_Config(Config2DBase):
+    """Generic configuration of the Z2 system in 2D.
+
+    This config describes a Z2 lattice gauge theory ansatz with ``ncopy``
+    copies of virtual fermions on each link. 
 
     Some general notes about conventions:
 
     Order of the paramvec:
-    [all real parts, then all imaginary parts]
+        [all real parts, then all imaginary parts]
 
     For ncopy = n:
         real part:
@@ -30,28 +32,32 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
             z1r, ..., znr,
             a12r, b12r, c12r, d12r,
             a13r, b13r, c13r, d13r,
-            ...
+            ...,
+            a(n-1)nr, b(n-1)nr, c(n-1)nr, d(n-1)nr
         imaginary part:
             t1i, ..., tni,
             y1i, ..., yni,
             z1i, ..., zni,
             a12i, b12i, c12i, d12i,
             a13i, b13i, c13i, d13i,
-            ...
+            ...,
+            a(n-1)ni, b(n-1)ni, c(n-1)ni, d(n-1)ni
 
-    Mode order of tmat: {p,l1,r1,d1,u1,l2,r2,d2,u2,l3,r3,d3,u3,l4,r4,d4,u4}.
+    Mode order of tmat:
+        {p, l1, r1, d1, u1, l2, r2, d2, u2, ..., ln, rn, dn, un}.
+
     Mode order of gamma_dirac:
-        {p,l1,r1,d1,u1,l2,r2,d2,u2,p_dag,l1_dag,r1_dag,u1_dag,d1_dag,l2_dat,r2_dag,u2_dag,d2_dag,l3,r3... }.
+        annihilation operators first, followed by creation operators, using the
+        same copy ordering as tmat:
+        {p, l1, r1, d1, u1, ..., ln, rn, dn, un,
+         p_dag, l1_dag, r1_dag, d1_dag, u1_dag, ..., ln_dag, rn_dag, dn_dag, un_dag}.
+
     Mode order of gamma_maj:
-        {p_1,p_2,l1_1,l1_2,r1_1,r1_2,d1_1,d1_2,u1_1,u1_2,l2_1,l2_2,r2_1,r2_2,d2_1,d2_2,u2_1,u2_2,l3_1,l3_2... }.
+        each Dirac mode is expanded into two Majorana modes in the same order:
+        {p_1, p_2, l1_1, l1_2, r1_1, r1_2, d1_1, d1_2, u1_1, u1_2,
+         ..., ln_1, ln_2, rn_1, rn_2, dn_1, dn_2, un_1, un_2}.
     """
 
-    _nparams = 2 * (4 + 2 * 4 + 4 * 3 * 2)
-    ncopy = 4
-    nvirtmodes_vertex = 16
-    nvirtmodes_link = 8
-    nphysmodes_site = 1
-    ncolors = 1
 
     def __init__(
         self,
@@ -78,6 +84,8 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         self.ncopy = ncopy
         self.nvirtmodes_vertex = 4 * ncopy
         self.nvirtmodes_link = 2 * ncopy
+        self.nphysmodes_site = 1
+        self.ncolors = 1
         self._nparams = 2 * ncopy * (2 * ncopy + 1)
         super().__init__(
             gauge.ZNGauge(2),
@@ -109,7 +117,7 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
         constants_vec = []
 
         for group_element in self.gaugemgr.group_elements_for_el_energy:
-            # Pure Gauge (PG) ---
+            # Pure Gauge (PG)
             idxarr_pg_h_0, const_pg_h_0 = generate_gauged_projector_terms(
                 self.ncopy, self.ncolors, True, Direction.X, group_element, site=0
             )
@@ -427,11 +435,12 @@ class Z2System2D_G4C_F4C_Config(Config2DBase):
     def generate_gamma_gauge_neutral_dict(self):
         """Generate the covariance matrix of the ungauged projectors.
         The mode order is
-            {l1_1, l1_2, r1_1, r1_2, l2_1, l2_2, r2_1, r2_2, l3_1...}
-            or (for vertical links)
-            {d1_1, d1_2, u1_1, u1_2, d2_1, d2_2, u2_1, u2_2, d3_1...}.
-        The naming convention here is <mode letter><number of copy>_<majorana mode>.
-        We order first by link and then by copy.
+            {l1_1, l1_2, r1_1, r1_2, ..., ln_1, ln_2, rn_1, rn_2}
+            for horizontal links, and
+            {d1_1, d1_2, u1_1, u1_2, ..., dn_1, dn_2, un_1, un_2}
+            for vertical links.
+        The naming convention here is <mode letter><copy index>_<Majorana index>.
+        We order first by link direction and then by copy.
         The sites are picked such that the left mode is right of the right modes,
         i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.

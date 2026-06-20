@@ -4,7 +4,7 @@ __all__ = [
     "Z2System2D_2col_Config",
     "Z2System2D_2col_1copy_Config",
     "Z2System2D_G2C_F2C_Config",
-    "Z2System2D_G4C_F4C_Config",
+    "Z2System2D_Config",
     "Z2System2D_G8C_F8C_Config",
     "Z2System2D",
     "U1System2DConfig",
@@ -19,7 +19,7 @@ from ggpeps.system.config_Z2_2d_2c import Z2System2D2CConfig
 from ggpeps.system.config_Z2_2d_2col_2c import Z2System2D_2col_Config
 from ggpeps.system.config_Z2_2d_2col_1c import Z2System2D_2col_1copy_Config
 from ggpeps.system.config_Z2_2d_G2c_F2c import Z2System2D_G2C_F2C_Config
-from ggpeps.system.config_Z2_2d_G4c_F4c import Z2System2D_G4C_F4C_Config
+from ggpeps.system.config_Z2 import Z2System2D_Config
 from ggpeps.system.config_Z2_2d_G8c_F8c import Z2System2D_G8C_F8C_Config
 from ggpeps.system.system_Z2 import Z2System2D
 
