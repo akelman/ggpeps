@@ -753,10 +753,6 @@ def get_cov_matrix_idx(
     Returns:
         int: index in the covariance matrix - 0-based
     """
-    if direction == 1:
-        direction = 2
-    else:
-        direction = 1
     idx = (
         (color - 1) * (ncopies * ndirections * 2)
         + (copy - 1) * (ndirections * 2)
