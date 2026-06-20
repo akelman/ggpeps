@@ -441,7 +441,7 @@ class D6System2D_Config(Config2DBase):
 
         This function returns the covariance matrices for ungauged projectors:
         Unlike the Z2, copies are always coupled to themselves without mixing different copies.
-        Here we work in the same convention as Z2 w=exp(rl)and not w=exp(r^{\dagger}l^{\dagger}) as in some references.
+        Here we work in the same convention as Z2 w=exp(rl)and not w=exp(lr) as in some references.
 
         This method overwrites an abstract method in System2DBase.
 

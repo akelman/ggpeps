@@ -60,10 +60,8 @@ class Z2System2DConfig(Config2DBase):
 
         # Translation invariance
         if self.unitcell_size not in [1]:
-            logger.error(
-                "This ansatz only supports unitcell_size = 1. \
-                This can be adapted by adding in a specification in the config to map sites to parameters."
-            )
+            logger.error("This ansatz only supports unitcell_size = 1. \
+                This can be adapted by adding in a specification in the config to map sites to parameters.")
             raise ValueError("Invalid unitcell_size.")
 
         if not self.u1_symmetry:
