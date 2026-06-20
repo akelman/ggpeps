@@ -38,6 +38,7 @@ pauliz = np.array([[1, 0], [0, -1]])
 
 # Parameter order utilities
 ParameterOrder = Union[str, Sequence[str]]
+ParameterRenameMap = Optional[Mapping[str, str]]
 
 
 def parse_parameter_order(order: ParameterOrder) -> tuple[str, ...]:
@@ -136,9 +137,6 @@ def reorder_parameter_vector(
 
 # ==== Parameter name helpers ====
 
-ParameterRenameMap = Optional[Mapping[str, str]]
-
-
 def parameter_names(order: ParameterOrder) -> tuple[str, ...]:
     """Return normalized parameter names as strings.
 
@@ -200,6 +198,21 @@ def make_z2_2copy_pure_gauge_config(*args, **kwargs):
 
     kwargs["num_fermionic_layer"] = 0
     return system.Z2System2D_G4C_F4C_Config(*args, ncopy=2, **kwargs)
+
+
+def make_z2_1copy_pure_gauge_config(*args, **kwargs):
+    """Build the generic G4C/F4C Z2 config in pure-gauge ncopy=1 compatibility mode."""
+    if kwargs.get("num_fermionic_layer", 0) != 0:
+        raise ValueError("Pure-gauge 1C compatibility mode requires num_fermionic_layer=0.")
+    if kwargs.get("unitcell_size", 1) != 1:
+        raise ValueError("Pure-gauge 1C compatibility mode requires unitcell_size=1.")
+    if kwargs.get("enforce_u1_symmetry", True) is not True:
+        raise ValueError("Pure-gauge 1C compatibility mode requires enforce_u1_symmetry=True.")
+
+    kwargs["num_fermionic_layer"] = 0
+    kwargs["unitcell_size"] = 1
+    kwargs["enforce_u1_symmetry"] = True
+    return system.Z2System2D_G4C_F4C_Config(*args, ncopy=1, **kwargs)
 
 # ========== Utility Functions ====================
 
