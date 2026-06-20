@@ -1035,7 +1035,7 @@ class System2DBase(ABC):
         gamma_in_sys_mod = self.gamma_in_sys_mod_vec
         diff_in = self.mat_d_mod_inv_vec - gamma_in_sys_mod
         wi_gamma_in_mod = xnp.linalg.inv(diff_in)
-        wi_gamma_out_mod = xnp.linalg.inv(self.mat_d_mod_vec - gamma_in_sys_mod)
+        wi_gamma_out_mod = xnp.linalg.inv(self.mat_d_mod_vec + gamma_in_sys_mod)
         _, incdet_mod = xnp.linalg.slogdet(diff_in)
         return wi_gamma_in_mod, wi_gamma_out_mod, incdet_mod
 
@@ -1140,10 +1140,15 @@ class System2DBase(ABC):
                 pos = ind_mat - offset
 
                 mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
+                # The OUT tracker now inverts (mat_d_mod + gamma_in) (see _compute_mod_trackers),
+                # so a change +Delta in gamma_in enters its inverted matrix with the OPPOSITE sign
+                # to the (mat_d_mod_inv - gamma_in) IN tracker. update_vec carries -Delta, hence the
+                # out-tracker Woodbury step uses -update_vec.
+                update_out = -update_vec[lay]
                 max_cond = max(
                     max_cond,
                     self._capacitance_cond(mat_inv, update_vec[lay], pos, pos),
-                    self._capacitance_cond(self.wi_gamma_out_mod_vec[lay][ind], update_vec[lay], pos, pos),
+                    self._capacitance_cond(self.wi_gamma_out_mod_vec[lay][ind], update_out, pos, pos),
                 )
 
                 new_det = utils.IncLogAbsDeterminant.update_index(
@@ -1156,9 +1161,7 @@ class System2DBase(ABC):
                 )
                 self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (lay, ind), new1)
 
-                new2 = utils.WoodburyInverter.update_index(
-                    self._wi_gamma_out_mod_vec[lay][ind], update_vec[lay], pos, pos
-                )
+                new2 = utils.WoodburyInverter.update_index(self._wi_gamma_out_mod_vec[lay][ind], update_out, pos, pos)
                 self._wi_gamma_out_mod_vec = backend.array_assign(self._wi_gamma_out_mod_vec, (lay, ind), new2)
 
                 max_mag = max(max_mag, float(xnp.max(xnp.abs(new1))), float(xnp.max(xnp.abs(new2))))
