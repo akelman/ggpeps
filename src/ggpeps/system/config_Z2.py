@@ -311,14 +311,16 @@ class Z2System2D_Config(Config2DBase):
         offset = self._nparams // 2  # offset to get index of imaginary part
         zeroed_params = []  # we'll save the indices of the zeroed parameters
 
+        def add_real_imag_zeroed(layer_ind: int, uc_ind: int, ind: int) -> None:
+            """Zero both real and imaginary components of one complex parameter."""
+            zeroed_params.append((layer_ind, uc_ind, ind))
+            zeroed_params.append((layer_ind, uc_ind, ind + offset))
+
         # Zero out the parameters which are not used in the pure gauge layers
         for layer_ind in range(self.num_pg_layer):
             for uc_ind in range(self.unitcell_size):
                 for t_ind in range(self.ncopy):
-                    real_coord = (layer_ind, uc_ind, t_ind)
-                    imag_coord = (layer_ind, uc_ind, t_ind + offset)
-                    zeroed_params.append(real_coord)
-                    zeroed_params.append(imag_coord)
+                    add_real_imag_zeroed(layer_ind, uc_ind, t_ind)
 
         # Zero out the parameters which are not used in the fermionic layers.
         # Under the U(1)-symmetric convention, only odd-labelled copies couple directly
@@ -342,10 +344,7 @@ class Z2System2D_Config(Config2DBase):
             for layer_ind in range(self.num_pg_layer, self.nlayer):
                 for uc_ind in range(self.unitcell_size):
                     for ind in zero_for_fermionic_layer:
-                        real_coord = (layer_ind, uc_ind, ind)
-                        imag_coord = (layer_ind, uc_ind, ind + offset)
-                        zeroed_params.append(real_coord)
-                        zeroed_params.append(imag_coord)
+                        add_real_imag_zeroed(layer_ind, uc_ind, ind)
 
         return tuple(zeroed_params)
 

@@ -21,10 +21,7 @@ np.set_printoptions(linewidth=200)
 import ggpeps
 from ggpeps.caching import Cache
 from ggpeps.system import U1System2DConfig
-from ggpeps.system import Z2System2DConfig
-from ggpeps.system import Z2System2D_G2C_F2C_Config
 from ggpeps.system import Z2System2D_Config
-from ggpeps.system import Z2System2D_G8C_F8C_Config
 from ggpeps.system import D6System2D_Config
 from ggpeps.system import Z2System2D_2col_Config
 from ggpeps.system import Z2System2D_2col_1copy_Config
@@ -142,8 +139,8 @@ def validate_inputs(args) -> bool:
     if args.ncopy == 1 and args.g_mass != 0:
         logger.error("Not Implemented: the mass term has not yet been implemented for the 1 copy case.")
         return False
-    if args.ncopy not in [1, 2, 4, 8]:
-        logger.error("Not Implemented: only 1,2,4, or 8 copies are possible.")
+    if not (args.ncopy == 1 or args.ncopy % 2 == 0):
+        logger.error("Not Implemented: Z2 currently supports ncopy=1 or even ncopy values.")
         return False
 
     return True
@@ -310,9 +307,8 @@ def main(args):
     # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.gauge_group == "Z2":
         system_type = Z2System2D
-
         if args.ncopy == 1:
-            # Z2 system with one copy of virtual fermions on the links and no support for fermions
+            # The generic Z2 config supports ncopy=1 only in the pure-gauge sector.
             if (
                 args.num_fermionic_layer != 0
                 or not np.allclose(g_mass, 0.0)
@@ -321,16 +317,7 @@ def main(args):
             ):
                 logger.error("Not Implemented: The 1 copy case does not support fermionic matter.")
                 sys.exit(1)
-            cfg_class = Z2System2DConfig
-        elif args.ncopy == 2:
-            cfg_class = Z2System2D_G2C_F2C_Config
-        elif args.ncopy == 4:
-            cfg_class = Z2System2D_Config
-        elif args.ncopy == 8:
-            cfg_class = Z2System2D_G8C_F8C_Config
-        else:
-            logger.error("Not Implemented: Only 1, 2, 4, or 8 copies are currently supported for Z2.")
-            sys.exit(1)
+        cfg_class = Z2System2D_Config
     elif args.gauge_group == "D6":
         system_type = D2nSystem2D
         cfg_class = D6System2D_Config
@@ -361,6 +348,7 @@ def main(args):
         g_int,
         g_mass,
         g_chem,
+        ncopy=args.ncopy,
         num_pg_layer=args.num_pg_layer,
         num_fermionic_layer=args.num_fermionic_layer,
         mod_link_inds=el_links,
@@ -377,7 +365,7 @@ def main(args):
     paramvec, param_source = translate_parameters(system_cfg, args.params, rngstate)
     system_cfg.paramvec = paramvec
 
-    if isinstance(system_cfg, Z2System2DConfig) or isinstance(system_cfg, U1System2DConfig):
+    if isinstance(system_cfg, U1System2DConfig):
         # This is a holdover for compatibility with these ansatz's,
         # since they have never been tested or used without being forced to be pure gauge.
         system_cfg.make_pure_gauge()
