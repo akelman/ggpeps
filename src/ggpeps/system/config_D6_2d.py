@@ -61,6 +61,7 @@ class D6System2D_Config(Config2DBase):
         g_int,
         g_mass,
         g_chem,
+        ncopy=2,
         num_pg_layer=2,
         num_fermionic_layer=0,
         mod_link_inds=(0,),
@@ -82,6 +83,8 @@ class D6System2D_Config(Config2DBase):
             unitcell_size,
             enforce_u1_symmetry,
         )
+        if ncopy != self.ncopy:
+            raise ValueError(f"D6System2D_Config expects ncopy={self.ncopy}, got ncopy={ncopy}.")
 
         # Translation invariance (or variance)
         if self.unitcell_size not in [1]:

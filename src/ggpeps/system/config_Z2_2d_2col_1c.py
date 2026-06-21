@@ -53,6 +53,7 @@ class Z2System2D_2col_1copy_Config(Config2DBase):
         g_int,
         g_mass,
         g_chem,
+        ncopy=1,
         num_pg_layer=1,
         num_fermionic_layer=0,
         mod_link_inds=(0,),
@@ -74,6 +75,8 @@ class Z2System2D_2col_1copy_Config(Config2DBase):
             unitcell_size,
             enforce_u1_symmetry,
         )
+        if ncopy != self.ncopy:
+            raise ValueError(f"Z2System2D_2col_1copy_Config expects ncopy={self.ncopy}, got ncopy={ncopy}.")
 
         if self.unitcell_size not in [1]:
             logger.error("Z2System2D_2col_1copy only supports unitcell_size = 1.")

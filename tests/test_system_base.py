@@ -530,7 +530,17 @@ class TestMultiColorModeOrder(unittest.TestCase):
         num_pg_layer = 1
         num_fermionic_layer = 0
         paramvec = np.random.rand(num_pg_layer + num_fermionic_layer, 1, 20)
-        cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer, num_fermionic_layer)
+        cfg = system.D6System2D_Config(
+            lat,
+            1,
+            1,
+            0,
+            0,
+            None,
+            ncopy=2,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
+        )
         cfg.paramvec = paramvec
         self.system_D6 = system.D2nSystem2D(cfg)
         self.system_D6.cfg.enforce_parameter_conditions(self.system_D6.cfg.paramvec)

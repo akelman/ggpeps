@@ -24,7 +24,17 @@ class TestD2nSystem(unittest.TestCase):
         nlayer = num_pg_layer + num_fermionic_layer
         unitcell_size = 1
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
-        cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer, num_fermionic_layer)
+        cfg = system.D6System2D_Config(
+            lat,
+            1,
+            1,
+            0,
+            0,
+            None,
+            ncopy=2,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
+        )
         cfg.paramvec = paramvec
         self.system_D6 = system.D2nSystem2D(cfg)
         self.system_D6.cfg.enforce_parameter_conditions(self.system_D6.cfg.paramvec)
@@ -258,7 +268,15 @@ class TestD2nSystem(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.D6System2D_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+        system_cfg = system.D6System2D_Config(
+            lat_2x2,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            None,
+            ncopy=2,
+        )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.D2nSystem2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
@@ -274,8 +292,24 @@ class TestD2nSystem(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.D6System2D_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
-                    system_cfg_right = system.D6System2D_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+                    system_cfg_left = system.D6System2D_Config(
+                        lat_2x2,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        None,
+                        ncopy=2,
+                    )
+                    system_cfg_right = system.D6System2D_Config(
+                        lat_2x2,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        None,
+                        ncopy=2,
+                    )
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -644,7 +678,17 @@ class TestD6TmatColorStructure(unittest.TestCase):
         num_pg_layer = 1
         num_fermionic_layer = 1  # a fermionic layer keeps t1 (phys-virt coupling) nonzero
         paramvec = np.random.rand(num_pg_layer + num_fermionic_layer, 1, 20)
-        cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer, num_fermionic_layer)
+        cfg = system.D6System2D_Config(
+            lat,
+            1,
+            1,
+            0,
+            0,
+            None,
+            ncopy=2,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
+        )
         cfg.paramvec = paramvec
         self.system_D6 = system.D2nSystem2D(cfg)
         self.system_D6.cfg.enforce_parameter_conditions(self.system_D6.cfg.paramvec)
