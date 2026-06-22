@@ -938,9 +938,9 @@ if __name__ == "__main__":
         "--tracker_refresh_interval",
         type=int,
         default=System2DBase.TRACKER_REFRESH_INTERVAL_DEFAULT,
-        help="Gauge steps between from-scratch re-anchors of the incremental Woodbury/IncDet trackers "
-        "(1 = always from scratch; large = rely on the magnitude guard alone; <=0 = disable refresh "
-        "entirely, pure incremental).",
+        help="Control the from-scratch re-anchoring of the incremental Woodbury/IncDet trackers. "
+        ">0: re-anchor every N gauge steps AND on the magnitude guard (1 = always from scratch); "
+        "0: magnitude guard only, no periodic re-anchor; <0: no refresh at all (pure incremental).",
     )
 
     # Profiling

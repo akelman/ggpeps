@@ -164,9 +164,12 @@ class System2DBase(ABC):
         return
 
     # Periodic re-anchor cadence for the incremental trackers (gauge steps between from-scratch
-    # refreshes). 1 reproduces the always-from-scratch behavior; a large value relies on the
-    # magnitude guard alone. Controlled per run from EvaluatorManager (-> system_cfg).
-    TRACKER_REFRESH_INTERVAL_DEFAULT: int = 64
+    # refreshes), used when tracker_refresh_interval > 0. Empirically the trackers drift only at
+    # machine precision (~1e-13) over thousands of normal MC steps with no refresh at all, so the
+    # periodic re-anchor is mostly a cheap long-run heartbeat -- the magnitude guard is the real
+    # safeguard for near-singular configs. A large value keeps overhead negligible; 1 reproduces
+    # always-from-scratch. Controlled per run from EvaluatorManager (-> system_cfg).
+    TRACKER_REFRESH_INTERVAL_DEFAULT: int = 256
     # Magnitude guard: re-anchor immediately if the largest entry of a tracked inverse exceeds this
     # threshold. A large inverse <=> a near-singular tracked matrix, where the incremental Woodbury
     # update loses precision; the from-scratch recompute is backward-stable and matches even
@@ -1547,16 +1550,19 @@ class System2DBase(ABC):
             # only actually do the update if it's a different gauge field
             self._update_gauge_ind(link_ind, theta)  # incremental; sets self._last_step_max_inv_mag
 
-            # Re-anchor both tracker families from scratch to bound the accumulated drift of the
-            # incremental Woodbury/IncDet trackers, either periodically (every tracker_refresh_interval
-            # steps) or when the last step left a near-singular tracked inverse (magnitude guard).
-            # interval <= 0 disables refresh entirely (pure incremental -- may drift on near-singular
-            # configs); interval == 1 re-anchors every step. Set per run from EvaluatorManager /
-            # --tracker_refresh_interval.
+            # Re-anchor both tracker families from scratch to bound the incremental Woodbury/IncDet
+            # drift. Three modes via tracker_refresh_interval (set per run from EvaluatorManager /
+            # --tracker_refresh_interval):
+            #   > 0 : periodic every `interval` steps AND the magnitude guard (default; 1 == every step)
+            #   == 0: magnitude guard only, no periodic re-anchor ("no_periodic")
+            #   <  0: no refresh at all -- pure incremental, even if a tracked inverse blows up
             interval = self.tracker_refresh_interval
-            if interval > 0:
-                self._steps_since_refresh += 1
-                if self._steps_since_refresh >= interval or self._last_step_max_inv_mag > self.TRACKER_INV_MAG_THRESH:
+            if interval >= 0:
+                periodic_due = False
+                if interval > 0:
+                    self._steps_since_refresh += 1
+                    periodic_due = self._steps_since_refresh >= interval
+                if periodic_due or self._last_step_max_inv_mag > self.TRACKER_INV_MAG_THRESH:
                     self.refresh_trackers()
 
     def update_gauge_full_system(self, gaugeconfig: list[np.ndarray]) -> None:
