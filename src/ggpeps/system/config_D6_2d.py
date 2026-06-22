@@ -103,16 +103,16 @@ class D6System2D_Config(Config2DBase):
         for group_element in self.gaugemgr.group_elements_for_el_energy:
             # Pure Gauge (PG) ---
             idxarr_pg_h_0, const_pg_h_0 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.X, group_element, site=0, drop_real_zero=drop_real
+                self.ncopy, self.ncolors, False, Direction.X, group_element, site=0, drop_imag=drop_real
             )
             idxarr_pg_h_1, const_pg_h_1 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.X, group_element, site=1, drop_real_zero=drop_real
+                self.ncopy, self.ncolors, False, Direction.X, group_element, site=1, drop_imag=drop_real
             )
             idxarr_pg_v_0, const_pg_v_0 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=0, drop_real_zero=drop_real
+                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=0, drop_imag=drop_real
             )
             idxarr_pg_v_1, const_pg_v_1 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=1, drop_real_zero=drop_real
+                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=1, drop_imag=drop_real
             )
 
             # generate fermionic terms
