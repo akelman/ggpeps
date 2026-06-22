@@ -427,9 +427,12 @@ class D2nSystem2D(System2DBase):
         # Calculate the modified norms
         norm_shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
         prod_vec = xnp.zeros(norm_shape)
-        # The following line takes >50% of the runtime of this function, but most of that is actually spent
-        # copying data due to the fancy indexing of prod_mod_norm_vec[l, m]
-        # TODO: optimize this (the main complication is dealing with the reshaped arrays after indexing)
+        # This computes trace(d_mat_d @ prod_mod_norm) for every active parameter in one batched trace.
+        # The fancy index prod_mod_norm_vec[l, m] forces a large copy, which dominates this line on numpy
+        # (>50% of the function's runtime historically). The Z2 implementation (system_Z2.py) instead
+        # loops over active params to avoid that copy. Benchmarked for D6 (June 2026): on jax CPU the loop
+        # and this vectorized form are comparable (within run-to-run noise; identical compile cost), so we
+        # keep the vectorized form here -- it is the better bet on GPU.
         vals = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec[l, m]))
         prod_vec = backend.array_assign(prod_vec, (l, m, u, s), vals)
 
