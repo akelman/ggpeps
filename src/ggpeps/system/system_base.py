@@ -1546,17 +1546,18 @@ class System2DBase(ABC):
         if not xnp.allclose(self.gaugefieldvec[link_ind], theta):
             # only actually do the update if it's a different gauge field
             self._update_gauge_ind(link_ind, theta)  # incremental; sets self._last_step_max_inv_mag
-            self._steps_since_refresh += 1
 
-            # Re-anchor both tracker families from scratch when the periodic interval elapsed, or
-            # when the last incremental step left a near-singular tracked inverse (magnitude guard).
-            # This bounds the accumulated drift of the incremental Woodbury/IncDet trackers. The
-            # interval is set per run from EvaluatorManager (interval=1 -> always from scratch;
-            # large -> guard only).
+            # Re-anchor both tracker families from scratch to bound the accumulated drift of the
+            # incremental Woodbury/IncDet trackers, either periodically (every tracker_refresh_interval
+            # steps) or when the last step left a near-singular tracked inverse (magnitude guard).
+            # interval <= 0 disables refresh entirely (pure incremental -- may drift on near-singular
+            # configs); interval == 1 re-anchors every step. Set per run from EvaluatorManager /
+            # --tracker_refresh_interval.
             interval = self.tracker_refresh_interval
-            periodic_due = bool(interval) and self._steps_since_refresh >= interval
-            if periodic_due or self._last_step_max_inv_mag > self.TRACKER_INV_MAG_THRESH:
-                self.refresh_trackers()
+            if interval > 0:
+                self._steps_since_refresh += 1
+                if self._steps_since_refresh >= interval or self._last_step_max_inv_mag > self.TRACKER_INV_MAG_THRESH:
+                    self.refresh_trackers()
 
     def update_gauge_full_system(self, gaugeconfig: list[np.ndarray]) -> None:
         """Replace all gauge fields on the links by the values given in gaugeconfig.
