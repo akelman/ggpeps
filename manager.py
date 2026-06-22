@@ -149,6 +149,24 @@ def validate_inputs(args) -> bool:
     return True
 
 
+def default_tracker_refresh_interval(system_cfg) -> int:
+    """Per-ansatz default for the periodic tracker re-anchor cadence (the magnitude guard is always
+    on regardless). D6 uses 256 -- a cheap long-run heartbeat for the near-singular-prone non-Abelian
+    ansatz. All other ansaetze (incl. the well-conditioned Z2) default to 0 (guard-only): their
+    trackers drift only at machine precision over thousands of normal MC steps, so the guard alone
+    suffices.
+
+    Args:
+        system_cfg: The system configuration object.
+
+    Returns:
+        int: 256 for the D6 ansatz, 0 otherwise.
+    """
+    if isinstance(system_cfg, D6System2D_Config):
+        return 256
+    return 0
+
+
 def main(args):
     raw_command = " ".join(sys.argv)
     ind = raw_command.index("manager.py")
@@ -398,9 +416,13 @@ def main(args):
             logger.error("The 'overlap' electric-energy method supports pure gauge only (num_fermionic_layer=0).")
             sys.exit(1)
 
-    # Resolve the incremental-tracker refresh cadence. The default lives here (not as a global on
-    # System2DBase); a user-supplied --tracker_refresh_interval overrides it.
-    tracker_interval = args.tracker_refresh_interval if args.tracker_refresh_interval is not None else 256
+    # Resolve the incremental-tracker refresh cadence. The default is per-ansatz (see
+    # default_tracker_refresh_interval); a user-supplied --tracker_refresh_interval overrides it.
+    tracker_interval = (
+        args.tracker_refresh_interval
+        if args.tracker_refresh_interval is not None
+        else default_tracker_refresh_interval(system_cfg)
+    )
 
     # Switch to control the binning analysis on EOM (Error of mean)
     if args.no_bin_eom:
