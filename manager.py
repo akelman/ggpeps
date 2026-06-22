@@ -30,6 +30,7 @@ from ggpeps.system import Z2System2D_2col_Config
 from ggpeps.system import Z2System2D_2col_1copy_Config
 from ggpeps.system import Z2System2D
 from ggpeps.system import D2nSystem2D
+from ggpeps.system.system_base import System2DBase
 
 from ggpeps import utils
 from ggpeps import lattice as lat
@@ -529,7 +530,13 @@ def main(args):
             mc_mgr = cache.load_obj_from_local_cache("evaluator_manager")
             logger.info("Loaded evaluator manager from cache.")
         else:
-            mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+            mc_mgr = EvaluatorManager(
+                system_type,
+                system_cfg,
+                mc_config,
+                args.nrunner,
+                tracker_refresh_interval=args.tracker_refresh_interval,
+            )
         ggpeps.global_vars["eval_manager"] = mc_mgr  # save for global access
 
         start = timer()
@@ -559,7 +566,9 @@ def main(args):
         else:
             # no need to compute grads if not using a gradient-based method
             mc_config.compute_grads = False
-        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+        mc_mgr = EvaluatorManager(
+            system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=args.tracker_refresh_interval
+        )
 
         minimizer = Minimizer(min_cfg, mc_mgr)
         ggpeps.global_vars["minimizer"] = minimizer  # save for global access
@@ -573,7 +582,9 @@ def main(args):
         # Evaluate observables for a given set of parameters with exact contraction
 
         ec_config.compute_grads = args.compute_grads
-        ex_eval = EvaluatorManager(system_type, system_cfg, ec_config, args.nrunner)
+        ex_eval = EvaluatorManager(
+            system_type, system_cfg, ec_config, args.nrunner, tracker_refresh_interval=args.tracker_refresh_interval
+        )
         ggpeps.global_vars["eval_manager"] = ex_eval
 
         start = timer()
@@ -598,7 +609,9 @@ def main(args):
             # no need to compute grads if not using a gradient-based method
             ec_config.compute_grads = False
 
-        ex_mgr = EvaluatorManager(system_type, system_cfg, ec_config, args.nrunner)
+        ex_mgr = EvaluatorManager(
+            system_type, system_cfg, ec_config, args.nrunner, tracker_refresh_interval=args.tracker_refresh_interval
+        )
 
         minimizer = Minimizer(min_cfg, ex_mgr)
         ggpeps.global_vars["minimizer"] = minimizer
@@ -612,7 +625,9 @@ def main(args):
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with NEVMC
 
         mc_config.compute_grads = True
-        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
+        mc_mgr = EvaluatorManager(
+            system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=args.tracker_refresh_interval
+        )
 
         # Set the parameters of the minimizer according to the command line
         min_cfg = MinimizerConfig()
@@ -919,6 +934,13 @@ if __name__ == "__main__":
 
     # Arguments for ray
     parser.add_argument("--nrunner", type=int, default=0, help="Number of parallel MC runners")
+    parser.add_argument(
+        "--tracker_refresh_interval",
+        type=int,
+        default=System2DBase.TRACKER_REFRESH_INTERVAL_DEFAULT,
+        help="Gauge steps between from-scratch re-anchors of the incremental Woodbury/IncDet trackers "
+        "(1 = always from scratch; large = rely on the capacitance guard alone).",
+    )
 
     # Profiling
     parser.add_argument("--profile_jax", action="store_true", default=False, help="Profile the JAX execution")

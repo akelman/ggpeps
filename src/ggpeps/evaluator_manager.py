@@ -86,10 +86,16 @@ class EvaluatorManager:
         system_cfg: Config2DBase,
         cfg: Union[MonteCarloEvaluatorConfig, ExactEvaluatorConfig, NEVMC_EvaluatorConfig],
         nrunner: int = 0,
+        tracker_refresh_interval: int = System2DBase.TRACKER_REFRESH_INTERVAL_DEFAULT,
     ):
 
         self.system_cls = system_cls
         self.system_cfg = system_cfg
+        # Single control point for the incremental-tracker refresh cadence: stamp it onto system_cfg
+        # so every system built from it (here and in the deepcopied configs handed to Ray runners)
+        # picks it up via System2DBase's getattr hook. interval=1 -> always from scratch; large ->
+        # rely on the magnitude guard alone.
+        self.system_cfg.tracker_refresh_interval = tracker_refresh_interval
         self.cfg = cfg
         self.nrunner = nrunner
 

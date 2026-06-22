@@ -157,6 +157,22 @@ class D2nSystem2D(System2DBase):
         return mode_order_str
 
     def _update_gauge_ind(self, link_ind: int, theta: xnp.ndarray) -> None:
+        """Substitute the gauge field on a single link and incrementally update the trackers.
+
+        Exactly substitutes ``gamma_in_sys`` for the changed link, then incrementally updates both
+        the closed (``wi_gamma_in/out_vec``, ``incdet_vec``) and modified (``wi_gamma_*_mod_vec``,
+        ``incdet_mod_vec``) Woodbury/IncDet trackers. The ``gamma_out`` trackers invert
+        ``mat_d + gamma_in``, so their Woodbury step uses the negated update. Records
+        ``self._last_step_max_inv_mag`` (largest entry of any updated inverse) as the global
+        near-singularity signal the public ``update_gauge_ind`` wrapper uses for the magnitude guard.
+
+        Args:
+            link_ind (int): Link index to be updated
+            theta (xnp.ndarray): New gauge field value
+
+        Returns:
+            None
+        """
 
         # Update the gaugefield
         self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
@@ -180,10 +196,56 @@ class D2nSystem2D(System2DBase):
 
         update_arr = xnp.array(update_vec)
 
-        # Incrementally update the closed and modified trackers, with periodic + adaptive
-        # from-scratch re-anchoring to keep accumulated drift bounded
-        # (see System2DBase._update_trackers_after_substitution).
-        self._update_trackers_after_substitution(update_vec, update_arr, ind_mat, link_ind)
+        # --- Incrementally update the closed (full-system) trackers via Woodbury / IncDet.
+        # gamma_out now inverts (mat_d + gamma_in), so a +Delta change in gamma_in enters its
+        # inverted matrix with the opposite sign -> the out-tracker Woodbury step uses -update.
+        update_arr_out = -update_arr
+        self._incdet_vec = utils.IncLogAbsDeterminant.update_index(
+            self.incdet_vec, self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat
+        )
+        self.weight = 0.5 * np.sum(self.incdet_vec)
+        self._wi_gamma_in_vec = utils.WoodburyInverter.update_index(self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat)
+        self._wi_gamma_out_vec = utils.WoodburyInverter.update_index(
+            self.wi_gamma_out_vec, update_arr_out, ind_mat, ind_mat
+        )
+        # Largest entry of any updated inverse (the GLOBAL near-singularity signal: large |inverse|).
+        #  The public update_gauge_ind wrapper uses it to trigger
+        # an out-of-schedule from-scratch refresh.
+        max_inv_mag = max(
+            float(xnp.max(xnp.abs(self._wi_gamma_in_vec))),
+            float(xnp.max(xnp.abs(self._wi_gamma_out_vec))),
+        )
+
+        # --- Incrementally update the modified (open-link) trackers. The link excluded from the
+        # modified objects is skipped; for the others the local update is shifted by the carved-out
+        # link when it sits below the changed link. The vectorized index update supports neither
+        # skipping a link nor a variable offset, so we loop explicitly.
+        assert self._wi_gamma_in_mod_vec is not None  # for mypy
+        assert self._wi_gamma_out_mod_vec is not None
+        for lay in range(self.cfg.nlayer):
+            for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
+                if mod_link_ind == link_ind:
+                    continue
+                offset = 2 * self.cfg.nvirtmodes_link if link_ind > mod_link_ind else 0
+                pos = ind_mat - offset
+
+                mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
+                update_out = -update_vec[lay]
+                new_det = utils.IncLogAbsDeterminant.update_index(
+                    self.incdet_mod_vec[lay][ind], mat_inv, update_vec[lay], pos, pos
+                )
+                self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, (lay, ind), new_det)
+                new_in = utils.WoodburyInverter.update_index(
+                    self._wi_gamma_in_mod_vec[lay][ind], update_vec[lay], pos, pos
+                )
+                self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (lay, ind), new_in)
+                new_out = utils.WoodburyInverter.update_index(
+                    self._wi_gamma_out_mod_vec[lay][ind], update_out, pos, pos
+                )
+                self._wi_gamma_out_mod_vec = backend.array_assign(self._wi_gamma_out_mod_vec, (lay, ind), new_out)
+                max_inv_mag = max(max_inv_mag, float(xnp.max(xnp.abs(new_in))), float(xnp.max(xnp.abs(new_out))))
+
+        self._last_step_max_inv_mag = max_inv_mag
 
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()

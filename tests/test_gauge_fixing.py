@@ -8,6 +8,7 @@ from ggpeps import system, exacteval
 
 from ggpeps.exacteval import ExactEvaluatorConfig
 from ggpeps.mc import MonteCarloEvaluatorConfig, MonteCarloEvaluator
+from ggpeps.evaluator_manager import EvaluatorManager
 
 
 class Testgaugefixing(unittest.TestCase):
@@ -286,7 +287,7 @@ class Testgaugefixing(unittest.TestCase):
         return system.Z2System2D(cfg)
 
     def test_mod_trackers_incremental_match_fresh_with_refresh(self):
-        """With incremental modified-tracker tracking restored (plus periodic + adaptive refresh),
+        """With incremental modified-tracker tracking (plus periodic + magnitude-guard refresh),
         BOTH the modified covariance (covmat_out_mod_vec) and the modified norm (norm_mod_vec) must
         still equal a from-scratch system at every config along the gauge-fixed traversal.
 
@@ -326,8 +327,8 @@ class Testgaugefixing(unittest.TestCase):
 
     def test_closed_trackers_match_fresh_over_chain(self):
         """The closed (full-system) Woodbury inverses and incremental determinant, maintained
-        incrementally with periodic + adaptive refresh, must equal a from-scratch recomputation
-        over the long incremental chain of a full traversal.
+        incrementally with periodic + magnitude-guard refresh, must equal a from-scratch
+        recomputation over the long incremental chain of a full traversal.
         """
         persistent = self._build_explosive_pure_gauge_system(-1)
         evaluator = exacteval.ExactEvaluator(ExactEvaluatorConfig(), persistent)
@@ -357,15 +358,17 @@ class Testgaugefixing(unittest.TestCase):
         self.assertLess(max_wi_in_drift, 1e-8, msg=f"closed wi_gamma_in drifted by {max_wi_in_drift}")
         self.assertLess(max_wi_out_drift, 1e-8, msg=f"closed wi_gamma_out drifted by {max_wi_out_drift}")
 
-    def test_adaptive_guard_catches_singular_step(self):
-        """Even with the periodic refresh effectively disabled (huge interval), the adaptive
-        condition-number guard must catch the ill-conditioned (near-singular) modified update that
-        the pinned measured link produces, keeping norm_mod from drifting.
+    def test_magnitude_guard_catches_singular_step(self):
+        """Even with the periodic refresh effectively disabled (huge interval), the magnitude guard
+        must catch the near-singular modified update that the pinned measured link produces, keeping
+        norm_mod from drifting.
 
         With a huge interval and NO guard the modified trackers are pure-incremental and drift
         catastrophically (norm_mod off by ~37) -- exactly the original bug. Passing this test with
-        the periodic refresh disabled proves the *adaptive guard* (not the interval) is the safety
-        net for the explosive case.
+        the periodic refresh disabled proves the *magnitude guard* (not the interval) is the safety
+        net for the explosive case. (The magnitude of the tracked inverse is a global signal; a local
+        capacitance-condition check misses this corner -- at the worst step cond~3e7 < 1e8 while the
+        inverse magnitude is ~6e6.)
         """
         persistent = self._build_explosive_pure_gauge_system(-1)
         persistent.tracker_refresh_interval = 10**9  # disable periodic refresh; rely on the guard
@@ -388,7 +391,33 @@ class Testgaugefixing(unittest.TestCase):
                 ),
             )
 
-        self.assertLess(max_drift, 1e-8, msg=f"adaptive guard failed; modified norm drifted by {max_drift}")
+        self.assertLess(max_drift, 1e-8, msg=f"magnitude guard failed; modified norm drifted by {max_drift}")
+
+    def test_evaluator_manager_sets_tracker_refresh_interval(self):
+        """The tracker_refresh_interval passed to EvaluatorManager must reach the constructed system
+        (stamped onto system_cfg, read via the system's getattr hook), so the refresh cadence is
+        controllable from the manager / CLI as a single control point."""
+        explosive_params = np.array([0.0, 2.79433214e-04, -7.06773559e-01, 0.0, 9.99670799e-01, 7.06984522e-01])
+        lat2 = lattice.Lattice2D(2, 2, -1)
+        cfg = system.Z2System2DConfig(
+            lat2,
+            1.0,
+            1.0,
+            0.0,
+            0.0,
+            [],
+            num_pg_layer=1,
+            num_fermionic_layer=0,
+            mod_link_inds=(0,),
+            unitcell_size=1,
+            enforce_u1_symmetry=True,
+        )
+        cfg.paramvec = np.reshape(explosive_params, cfg.param_shape())
+        cfg.make_pure_gauge()
+        cfg.enforce_parameter_conditions(cfg.paramvec)
+
+        mgr = EvaluatorManager(system.Z2System2D, cfg, ExactEvaluatorConfig(), 0, tracker_refresh_interval=7)
+        self.assertEqual(mgr.evaluator.system.tracker_refresh_interval, 7)
 
     @skip("Too long and not precise enough")
     def test_mceval(self):
