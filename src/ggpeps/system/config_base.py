@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Union
+from collections import defaultdict
 
 import sys
 import logging
@@ -372,21 +373,35 @@ class Config2DBase(ABC):
 
 # ==================== Pfaffian indices Terms ====================
 
-
-from collections import defaultdict
-from typing import Optional, Union, DefaultDict
-
-MonomialAccumulator = DefaultDict[tuple[int, ...], complex]
+# ---------------------------------------------------------------------------
+# The following functions are used to compute the indices and coefficients
+# of the terms which appear in the calculation of the overlap of modified
+# norms in the electric energy. The code is designed to match our notes
+# as closely as possible, and sacrifices efficiency for that purpose.
+#
+# Per-(color,copy) operator.
+#
+# The full gauged projector on a link is
+#   U_h^dag w |Omega><Omega| w^dag
+# which equals
+#   O = ( prod_a W_a ) ( prod_a V_a ) ( prod_a w_a^dag )
+# with, per alpha=(color,copy),
+#     W_a       = U_h^dag w_a U_h = 1 + eta2  l^dag_a  sum_b M_{b a} r^dag_b    (gauged w factor)
+#     V_a       = l_a l^dag_a r_a r^dag_a                                       (vacuum projector)
+#     w_a^dag   = 1 + eta2bar r_a l_a
+# (l uses sigma_copy, r uses copy, matching the projector pairing.)
+#
+# ---------------------------------------------------------------------------
 
 
 def make_sigma(ncopy: int, mix_copies: bool) -> tuple[int, ...]:
     """
-    Build the link-pairing permutation (sigma) for a single layer.
+    Build the link-pairing permutation ("sigma" in our notes) for a single layer.
 
     Args:
         ncopy (int): Number of copies (must be 1 or even).
-        mix_copies (bool): if True, mix copies: swaps (2a-1 <-> 2a) for a = 1..k/2.
-                            if False, don't mix copies: identity, sigma(j) = j
+        mix_copies (bool): if True, mix copies: swaps (2a-1 <-> 2a) for a = 1..k/2, i.e. sigma(1)=2 and sigma(2)=1
+                            if False, don't mix copies: identity, sigma(c) = c
 
     Returns:
         tuple[int, ...]: 1-based permutation list where entry j equals sigma(j).
@@ -408,232 +423,86 @@ def make_sigma(ncopy: int, mix_copies: bool) -> tuple[int, ...]:
     return permutation
 
 
-def bracket_terms(
-    copy: int,
-    sigma_copy: int,
-    eta2: complex,
-    color: int,
-    ncolors: int,
-    ncopies: int,
-    group_element: np.ndarray,
-    site,
-) -> list[tuple[complex, tuple[int, ...]]]:
+def _w_gauged_terms(
+    copy: int, sigma_copy: int, eta2: complex, color: int, ncolors: int, ncopies: int, gauging_matrix: np.ndarray
+) -> defaultdict[tuple[int, ...], complex]:
+    """Compute the terms making up the gauged projector U_h^dag w.
+    For each copy and color, this operator is:
+        W_a = 1 + eta2 * l^dag_(color,sigma_copy) * sum_b M_{b,color} r^dag_(b,copy).
     """
-    Assemble the polynomial terms for the gauged projector bracket for a specific copy and color.
-
-    This function generates the Majorana operator polynomial corresponding to a single link
-    in the projector. It includes:
-    1.  **Base Terms:** 8 terms involving the local modes (c, d) from the incoming coupling_type
-        (sigma_copy) and (a, b) from the outgoing coupling_type (copy).
-    2.  **Gauge Mixing Terms:** A summation over all colors 'm', generating 16 terms per color.
-        These terms mix the current color indices with the indices of color 'm', weighted
-        by the matrix element D_{m, color}(h) (or its conjugate, depending on site parity).
-
-    The indices are resolved using `get_cov_matrix_idx`:
-    - a, b: Modes for (color, copy) at direction 2 (Right/Up).
-    - c, d: Modes for (color, sigma_copy) at direction 1 (Left/Down).
-    - a_m, b_m: Modes for (m, copy) at direction 2.
-
-    Args:
-        copy (int): The current copy index (1-based).
-        sigma_copy (int): The permuted copy index sigma(copy) (1-based).
-        eta2 (complex): Orientation-dependent parameter (eta^2).
-        color (int): The current color index (1-based).
-        ncolors (int): Total number of colors.
-        ncopies (int): Total number of copies.
-        group_element (np.ndarray): The matrix faithfully representation of the group element 'h'.
-        site (int): The site index, used to determine if the matrix element should be conjugated
-                    (staggering for fermionic modes).
-
-    Returns:
-        list[tuple[complex, tuple[int, ...]]]:
-            A list of (coefficient, indices) tuples representing the sparse polynomial.
-            Coefficients are snapped to remove numerical noise.
-    """
-    # r_{color, copy}^{1} or u_{color, copy}^{1}
-    a = get_cov_matrix_idx(color, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
-
-    # r_{color, copy}^{2} or u_{color, copy}^{2}
-    b = get_cov_matrix_idx(color, copy, direction=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
-
-    # l_{color, copy}^{1} or d_{color, copy}^{1}
-    c = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=1, ncolors=ncolors, ncopies=ncopies)
-
-    # l_{color, copy}^{2} or d_{color, copy}^{2}
-    d = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=2, ncolors=ncolors, ncopies=ncopies)
-
-    eta2_bar = complex(eta2).conjugate()
-
-    raw_terms = [
-        (0.5, ()),
-        (0.5 * 1j, (c, d)),
-        (0.5 * 1j, (a, b)),
-        (-0.5, (c, d, a, b)),
-        (0.5 * eta2_bar, (a, c)),
-        (-0.5 * eta2_bar, (b, d)),
-        (-0.5 * 1j * eta2_bar, (a, d)),
-        (-0.5 * 1j * eta2_bar, (b, c)),
-    ]
-
-    # Apply conjugation on the odd sublattice
-    # TODO: implement conjugation for copies that should transform with the conjugate representation,
-    # i.e., d modes in the conventions here https://journals.aps.org/prd/abstract/10.1103/PhysRevD.110.054511
-    if site % 2 == 0:
-        gauging_matrix = group_element
-    else:
-        gauging_matrix = np.conjugate(group_element)
-
+    l1 = get_cov_matrix_idx(color, sigma_copy, side=1, majorana=1, ncolors=ncolors, ncopies=ncopies)
+    l2 = get_cov_matrix_idx(color, sigma_copy, side=1, majorana=2, ncolors=ncolors, ncopies=ncopies)
+    terms: defaultdict[tuple[int, ...], complex] = defaultdict(complex)
+    terms[()] = 1.0 + 0j
     for m in range(1, ncolors + 1):
-        a_m = get_cov_matrix_idx(m, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
-        b_m = get_cov_matrix_idx(m, copy, direction=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
-        matrix_element = gauging_matrix[m - 1][color - 1]
-        raw_terms += [
-            (0.25 * eta2 * matrix_element, (c, a_m)),
-            (-0.25 * eta2 * matrix_element, (d, b_m)),
-            (1j * 0.25 * eta2 * matrix_element, (c, b_m)),
-            (1j * 0.25 * eta2 * matrix_element, (d, a_m)),
-            (1j * 0.25 * eta2 * matrix_element, (c, a_m, a, b)),
-            (-1j * 0.25 * eta2 * matrix_element, (d, b_m, a, b)),
-            (-0.25 * eta2 * matrix_element, (c, b_m, a, b)),
-            (-0.25 * eta2 * matrix_element, (d, a_m, a, b)),
-            (0.25 * matrix_element, (a_m, a)),
-            (-1j * 0.25 * matrix_element, (a_m, b)),
-            (1j * 0.25 * matrix_element, (b_m, a)),
-            (0.25 * matrix_element, (b_m, b)),
-            (-1j * 0.25 * matrix_element, (c, d, a_m, a)),
-            (-0.25 * matrix_element, (c, d, a_m, b)),
-            (0.25 * matrix_element, (c, d, b_m, a)),
-            (-1j * 0.25 * matrix_element, (c, d, b_m, b)),
-        ]
-
-    # Snap small real/imag parts and drop zeros to reduce work upstream
-    terms: list[tuple[complex, tuple[int, ...]]] = []
-    for coef, inds in raw_terms:
-        if abs(coef) > 1e-6:
-            terms.append((coef, inds))
-    return terms
-
-
-# ---------------------------------------------------------------------------
-# Per-(color,copy) operator.
-#
-# The full gauged projector on a link is  O = U_h^dag w |Omega><Omega| w^dag, which equals
-#     O = ( prod_a W_a ) ( prod_a V_a ) ( prod_a w_a^dag )
-# with, per alpha=(color,copy):
-#     W_a       = U_h^dag w_a U_h = 1 + eta2  l^dag_a  sum_b M_{b a} r^dag_b   (gauged w factor)
-#     V_a       = l_a l^dag_a r_a r^dag_a                                    (vacuum projector)
-#     w_a^dag   = 1 + eta2bar r_a l_a
-# (l uses sigma_copy, r uses copy, matching the projector pairing.)
-#
-# ---------------------------------------------------------------------------
-
-
-def _w_gauged_terms(copy, sigma_copy, eta2, color, ncolors, ncopies, gauging_matrix):
-    """W_a = 1 + eta2 * l^dag_(color,sigma_copy) * sum_b M_{b,color} r^dag_(b,copy)."""
-    c = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=1, ncolors=ncolors, ncopies=ncopies)
-    d = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=2, ncolors=ncolors, ncopies=ncopies)
-    terms: list[tuple[complex, tuple[int, ...]]] = [(1.0 + 0j, ())]
-    for m in range(1, ncolors + 1):
-        a_m = get_cov_matrix_idx(m, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
-        b_m = get_cov_matrix_idx(m, copy, direction=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
+        a_m = get_cov_matrix_idx(m, copy, side=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
+        b_m = get_cov_matrix_idx(m, copy, side=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
         mel = gauging_matrix[m - 1][color - 1]
         if abs(mel) < 1e-15:
             continue
         coef = eta2 * mel  # l^dag r^dag_m = 1/4[(c,a_m) + i(c,b_m) + i(d,a_m) - (d,b_m)]
-        terms += [
-            (0.25 * coef, (c, a_m)),
-            (0.25j * coef, (c, b_m)),
-            (0.25j * coef, (d, a_m)),
-            (-0.25 * coef, (d, b_m)),
-        ]
+        terms[(l1, a_m)] += 0.25 * coef
+        terms[(l1, b_m)] += 0.25j * coef
+        terms[(l2, a_m)] += 0.25j * coef
+        terms[(l2, b_m)] += -0.25 * coef
     return terms
 
 
-def _vacuum_terms(copy, sigma_copy, color, ncolors, ncopies):
-    """V_a = l l^dag r r^dag = 1/4 (1 + i l1 l2)(1 + i r1 r2)."""
-    c = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=1, ncolors=ncolors, ncopies=ncopies)
-    d = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=2, ncolors=ncolors, ncopies=ncopies)
-    a = get_cov_matrix_idx(color, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
-    b = get_cov_matrix_idx(color, copy, direction=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
-    return [(0.25 + 0j, ()), (0.25j, (c, d)), (0.25j, (a, b)), (-0.25 + 0j, (c, d, a, b))]
+def vacuum_terms(
+    copy: int, sigma_copy: int, color: int, ncolors: int, ncopies: int
+) -> defaultdict[tuple[int, ...], complex]:
+    """Compute the terms making up the projector to the vacuum.
+    For each copy and color, this operator is:
+        V_a = l l^dag r r^dag = 1/4 (1 + i l1 l2)(1 + i r1 r2)
+            = 1/4 + 1/4 i l1 l2 + 1/4 i r1 r2 - 1/4 l1 l2 r1 r2
+    """
+    l1 = get_cov_matrix_idx(color, sigma_copy, side=1, majorana=1, ncolors=ncolors, ncopies=ncopies)
+    l2 = get_cov_matrix_idx(color, sigma_copy, side=1, majorana=2, ncolors=ncolors, ncopies=ncopies)
+    r1 = get_cov_matrix_idx(color, copy, side=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
+    r2 = get_cov_matrix_idx(color, copy, side=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
+    res: defaultdict[tuple[int, ...], complex] = defaultdict(complex)
+    res[()] = 0.25 + 0j
+    res[(l1, l2)] = 0.25j
+    res[(r1, r2)] = 0.25j
+    res[(l1, l2, r1, r2)] = -0.25 + 0j
+    return res
 
 
-def _w_dag_terms(copy, sigma_copy, eta2, color, ncolors, ncopies):
-    """w_a^dag = 1 + conj(eta2) * r_(color,copy) l_(color,sigma_copy)."""
-    c = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=1, ncolors=ncolors, ncopies=ncopies)
-    d = get_cov_matrix_idx(color, sigma_copy, direction=1, majorana=2, ncolors=ncolors, ncopies=ncopies)
-    a = get_cov_matrix_idx(color, copy, direction=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
-    b = get_cov_matrix_idx(color, copy, direction=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
+def _w_dag_terms(
+    copy: int, sigma_copy: int, eta2: complex, color: int, ncolors: int, ncopies: int
+) -> defaultdict[tuple[int, ...], complex]:
+    """Compute the terms making up the projector
+    For each copy and color, this operator is:
+        w_a^dag = 1 + conj(eta2) * r_(color,copy) l_(color,sigma_copy).
+    """
+    l1 = get_cov_matrix_idx(color, sigma_copy, side=1, majorana=1, ncolors=ncolors, ncopies=ncopies)
+    l2 = get_cov_matrix_idx(color, sigma_copy, side=1, majorana=2, ncolors=ncolors, ncopies=ncopies)
+    r1 = get_cov_matrix_idx(color, copy, side=2, majorana=1, ncolors=ncolors, ncopies=ncopies)
+    r2 = get_cov_matrix_idx(color, copy, side=2, majorana=2, ncolors=ncolors, ncopies=ncopies)
     eb = complex(eta2).conjugate()  # r_a l_a = 1/4[(a,c) - i(a,d) - i(b,c) - (b,d)]
-    return [(1.0 + 0j, ()), (0.25 * eb, (a, c)), (-0.25j * eb, (a, d)), (-0.25j * eb, (b, c)), (-0.25 * eb, (b, d))]
+    res: defaultdict[tuple[int, ...], complex] = defaultdict(complex)
+    res[()] = 1.0 + 0j
+    res[(r1, l1)] = 0.25 * eb
+    res[(r1, l2)] = -0.25j * eb
+    res[(r2, l1)] = -0.25j * eb
+    res[(r2, l2)] = -0.25 * eb
+    return res
 
 
-def _poly_mul(p: "MonomialAccumulator", q_terms) -> "MonomialAccumulator":
-    """Multiply a polynomial dict on the LEFT by a list of (coeff, indices) terms on the
-    right (result monomial = p_indices ++ q_indices), then simplify."""
-    new: MonomialAccumulator = defaultdict(complex)
+def poly_mul(
+    p: defaultdict[tuple[int, ...], complex], q: defaultdict[tuple[int, ...], complex], tol: float = 0.0
+) -> defaultdict[tuple[int, ...], complex]:
+    """
+    Multiply two polynomials, represented as dictionaries {indices: coefficients}
+    and return the result as new dict in the same format.
+
+    Note: the operation is not commutative, as we are working with indices of Majorana (fermionic) modes.
+    """
+    new: defaultdict[tuple[int, ...], complex] = defaultdict(complex)
     for inds_a, coef_a in p.items():
-        for coef_b, inds_b in q_terms:
+        for inds_b, coef_b in q.items():
             new[inds_a + inds_b] += coef_a * coef_b
-    return simplify_majorana_acc(new)
-
-
-def _left_mul(terms, p: "MonomialAccumulator") -> "MonomialAccumulator":
-    """Multiply the polynomial dict `p` on the LEFT by a list of (coeff, indices) `terms`
-    (result monomial = terms_indices ++ p_indices), then simplify."""
-    new: MonomialAccumulator = defaultdict(complex)
-    for coef_b, inds_b in terms:
-        for inds_a, coef_a in p.items():
-            new[inds_b + inds_a] += coef_b * coef_a
-    return simplify_majorana_acc(new)
-
-
-def snap_complex(z: complex, eps=1e-12) -> complex:
-    """
-    Component-wise zeroing of tiny real/imag parts.
-
-    Args:
-        z (complex): Input complex number.
-        eps (float, optional): Tolerance for zeroing components. Defaults to 1e-12.
-
-    Returns:
-        complex: Cleaned complex with near-zero components set to 0.0, or 0.0 if abs(z) is below tolerance.
-    """
-    if abs(z) <= eps:
-        return 0.0
-    zr = 0.0 if abs(z.real) <= eps else z.real
-    zi = 0.0 if abs(z.imag) <= eps else z.imag
-    if zr == 0.0 and zi == 0.0:
-        return 0.0
-    return zr if zi == 0.0 else complex(zr, zi)
-
-
-def pfaffian_wick_phase(mon: tuple[int, ...]) -> complex:
-    """
-    Compute the Pfaffian-Wick phase i^(-len(mon)/2) for an even Majorana monomial.
-
-    Args:
-        mon (tuple[int, ...]): Ordered Majorana index tuple (even length).
-
-    Returns:
-        complex: One of {1, -1j, -1, 1j}, equal to i^(-len(mon)//2).
-
-    Raises:
-        ValueError: If len(mon) is odd.
-    """
-    n = len(mon)
-    if n % 2 != 0:
-        raise ValueError(f"Monomial length is odd ({n}); expected even.")
-    m = n // 2
-    r = m % 4  # map exponent class for i^(-m)
-    if r == 0:
-        return 1.0
-    elif r == 1:
-        return -1j
-    elif r == 2:
-        return -1.0
-    else:  # r == 3
-        return 1j
+    return simplify_polynomial(new, tol=tol)
 
 
 def generate_gauged_projector_terms(
@@ -643,11 +512,11 @@ def generate_gauged_projector_terms(
     orientation: Direction,
     group_element: np.ndarray,
     site: int = 0,
-    drop_real_zero: bool = False,
+    drop_imag: bool = False,
+    tol: float = 1e-10,
 ) -> tuple[tuple[tuple[complex, tuple[int, ...]], ...], complex]:
     """
     Expand the gauged projector product and collect terms.
-
 
     The function computes the indices for which we take the Pfaffian of the modificed covariance matrix,
     needed for the electric energy calculation.
@@ -659,7 +528,8 @@ def generate_gauged_projector_terms(
         orientation (Direction): 'X' (horizontal, eta^2 = 1) or 'Y' (vertical, eta^2 = i).
         group_element (np.ndarray): Group element h.
         site (int, optional): Site index (used for parity-dependent conjugation). Defaults to 0.
-        drop_real_zero (bool, optional): Whether to drop terms with zero real part in coefficients. Defaults to True.
+        drop_imag (bool, optional): Drop imaginary parts of coefficients. Defaults to True.
+        tol (float, optional): Tolerance for dropping small coefficients. Defaults to 1e-10.
 
     Returns:
         tuple[tuple[tuple[complex, tuple[int, ...]], ...], complex]:
@@ -670,133 +540,147 @@ def generate_gauged_projector_terms(
     Raises:
         ValueError: On invalid ncopy.
     """
+    ## Stage 1: Preliminaries
     sigma = make_sigma(ncopy, mix_copies)
 
-    # Map orientation -> eta^2
-    eta2: Union[float, complex]
+    # Map orientation of the link -> eta^2
+    # TODO: this should be done inside the config, to ensure consistency
+    eta2: Union[float, complex]  # this is the extra factor that appears in the projectors
     if orientation == Direction.X:
         eta2 = 1.0
     elif orientation == Direction.Y:
-        eta2 = 1j
+        eta2 = 1.0j
     else:
         # got Direction.Z, which is not yet supported
         raise ValueError("Link orientation must be 'X' (horizontal) or 'Y' (vertical).")
 
-    # Initialize the final polynomial accumulator
-    final_polynomial: dict[tuple[int, ...], complex] = defaultdict(complex)
-
-    pref = 2 ** (-ncopy * ncolor)  # Normalization factor from the projectors
+    # Normalization factor from the projectors
+    pref = 2 ** (-ncopy * ncolor)
 
     # Conjugate the representation on the odd sublattice
     gauging_matrix = group_element if site % 2 == 0 else np.conjugate(group_element)
 
-    acc: MonomialAccumulator = defaultdict(complex)
-    acc[()] = 1.0
-    for color in range(1, ncolor + 1):
-        for copy in range(1, ncopy + 1):
-            sc = sigma[copy - 1]
-            acc = _poly_mul(acc, _vacuum_terms(copy, sc, color, ncolor, ncopy))
-    for color in range(1, ncolor + 1):
-        for copy in range(1, ncopy + 1):
-            sc = sigma[copy - 1]
-            acc = _left_mul(_w_gauged_terms(copy, sc, eta2, color, ncolor, ncopy, gauging_matrix), acc)
-    for color in range(1, ncolor + 1):
-        for copy in range(1, ncopy + 1):
-            sc = sigma[copy - 1]
-            acc = _poly_mul(acc, _w_dag_terms(copy, sc, eta2, color, ncolor, ncopy))
+    ## Stage 2: Create a dictionary mapping Majorana index tuples to coefficients
 
-    # After finishing the product, add to the final sum weighted by pref (and the per-alpha 2x).
-    for inds, coef in acc.items():
-        final_polynomial[inds] += coef * pref
+    # Initialize the polynomial accumulator
+    # maps each tuple of Majorana indices -> complex coefficient (prefactor)
+    polynom: defaultdict[tuple[int, ...], complex] = defaultdict(complex)
+    polynom[()] = 1.0  # We initialize this way to allow multiplication of polynomials from the get go
+
+    # Build the Majorana polynomial corresponding to U_h^dag w |Omega><Omega| w^dag
+    # a) Majorana terms arising from U_h^dag w
+    for color in range(1, ncolor + 1):
+        for copy in range(1, ncopy + 1):
+            sc = sigma[copy - 1]
+            gauged_projector_terms = _w_gauged_terms(copy, sc, eta2, color, ncolor, ncopy, gauging_matrix)
+            polynom = poly_mul(polynom, gauged_projector_terms)
+    # b) Majorana terms arising from the projection onto the vacuum
+    for color in range(1, ncolor + 1):
+        for copy in range(1, ncopy + 1):
+            sc = sigma[copy - 1]  # the copy to which this copy is coupled by the projector
+            vac_terms = vacuum_terms(copy, sc, color, ncolor, ncopy)
+            polynom = poly_mul(polynom, vac_terms)
+    # c) Majorana terms arising from w^dag
+    for color in range(1, ncolor + 1):
+        for copy in range(1, ncopy + 1):
+            sc = sigma[copy - 1]
+            w_dag_terms = _w_dag_terms(copy, sc, eta2, color, ncolor, ncopy)
+            polynom = poly_mul(polynom, w_dag_terms)
+
+    ## Stage 3: Cleanup
+
     # Final simplification to avoid computing same pfaffian multiple times
-    final_polynomial = simplify_majorana_acc(final_polynomial)
+    polynom = simplify_polynomial(polynom, tol=tol)
 
-    # Split constant vs others and build the output
-    constant = final_polynomial.pop((), 0.0)
-    items = [(mon, complex(coef)) for mon, coef in final_polynomial.items() if coef != 0.0]
+    # Get the constant term and handle it separately
+    constant = polynom.pop((), 0.0)
+    constant *= pref  # add in global prefactor
 
-    # Multiply each coefficient by i^(-len(mon)/2), the Pfaffian-Wick phase
-    phased_items: list[tuple[tuple[int, ...], complex]] = []
-    for mon, coef in items:
-        factor = pfaffian_wick_phase(mon)
-        new_coef = coef * factor  # snap_complex(coef * factor)
-        if abs(new_coef) > 1e-6:
-            phased_items.append((mon, new_coef))
+    # Filter and account for extra factors
+    polynom_list: list[tuple[complex, tuple[int, ...]]] = []
+    for mon, coef in polynom.items():
+        pfaffian_wick_phase = 1.0j ** (-len(mon) // 2)  # the Pfaffian-Wick phase
+        new_coef = coef * pfaffian_wick_phase * pref  # add in global prefactor, and Pfaffian-Wick phase
 
-    # Drop terms for which the coefficient has zero real part
-    # TODO: explain why this is allowed / desired
-    if drop_real_zero:
-        phased_items = [(mon, coef) for mon, coef in phased_items if np.abs(np.real(coef)) > 1e-5]
+        if abs(new_coef) < tol:
+            continue  # Skip terms with negligible coefficients
 
-    # Sort terms by monomial length (shorter first) then lexicographic tuple order for deterministic output.
-    phased_items.sort(key=lambda kv: (len(kv[0]), kv[0]))
-    indices = tuple((coef, mon) for mon, coef in phased_items)
+        # Drop terms for which the coefficient has zero real part
+        # TODO: explain why/when this is allowed/desired
+        if drop_imag:
+            if np.abs(np.real(new_coef)) > tol:
+                polynom_list.append((np.real(new_coef), mon))
+        else:
+            polynom_list.append((new_coef, mon))
+
+    # Sort terms by monomial length (shorter first) then lexicographic order for deterministic output
+    polynom_list.sort(key=lambda kv: (len(kv[1]), kv[1]))
+    indices = tuple(polynom_list)
 
     return indices, constant
 
 
-def get_cov_matrix_idx(
-    color: int, copy: int, direction: int, majorana: int, ncolors: int, ncopies: int, ndirections: int = 2
-) -> int:
+def get_cov_matrix_idx(color: int, copy: int, side: int, majorana: int, ncolors: int, ncopies: int) -> int:
     """Get the index in the covariance matrix for a given mode.
+    This indexes into a matrix containing just the Majorana virtual modes on a single link.
 
     Args:
         color (int): color index (1 to ncolors) - 1-based
         copy (int): copy index (1 to ncopies) - 1-based
-        direction (int): direction index (1 to ndirections) - 1-based.
-                        for ndirections=2 - 1 to left or down and 2 to right or up.
+        side (int): index for outgoing or incoming mode, i.e. (l or r), (u or d) - 1-based.
+            1 for left/down, 2 for right/up.
         majorana (int): Majorana index (1 to 2) - 1-based
         ncolors (int): number of colors
         ncopies (int): number of copies
-        ndirections (int, optional): number of directions (system's spatial dimension). Defaults to 2.
 
     Returns:
         int: index in the covariance matrix - 0-based
     """
     idx = (
-        (color - 1) * (ncopies * ndirections * 2)
-        + (copy - 1) * (ndirections * 2)
-        + (direction - 1) * 2
+        (color - 1) * (ncopies * 2 * 2)  # one factor of 2 for two Majorana modes; another for l and r modes
+        + (copy - 1) * (2 * 2)
+        + (side - 1) * 2
         + (majorana - 1)
     )
     return idx
 
 
-def simplify_majorana_acc(acc):
+def simplify_polynomial(
+    polynomial: defaultdict[tuple[int, ...], complex], tol: float = 1e-10
+) -> defaultdict[tuple[int, ...], complex]:
     """
-    Simplifies the Majorana polynomial accumulator.
-    1. Sorts indices to order (applying sign flips for swaps).
+    Simplifies a Majorana polynomial.
+    1. Sorts indices to a canonical order (applying sign flips for swaps).
     2. Contracts identical adjacent pairs (c_i^2 = 1).
-
+    3. Combines terms with identical indices by summing their coefficients.
     """
-    new_acc = defaultdict(complex)
+    simplified: defaultdict[tuple[int, ...], complex] = defaultdict(complex)
 
-    for indices, factor in acc.items():
-        # Clean noise immediately
-        if abs(factor) < 1e-6:
-            continue
+    for indices, coeff in polynomial.items():
 
         # Convert to list for in-place sorting
         idx_list = list(indices)
 
         # 1. Canonical Sorting
         # Majorana fermions anti-commute: c_i c_j = -c_j c_i
+        # We need to sort the indices while keeping track of the sign changes due to swaps (i.e. whether the result
+        # is an even or odd permutation). We do this with a bubble sort type algorithm in order to count swaps.
         swaps = 0
         n = len(idx_list)
         for i in range(n):
-            for j in range(0, n - i - 1):
+            for j in range(0, n - i - 1):  # after i iterations of the outer loops, the last i elements are in place
                 if idx_list[j] > idx_list[j + 1]:
                     idx_list[j], idx_list[j + 1] = idx_list[j + 1], idx_list[j]
                     swaps += 1
 
         # Apply sign flip for odd number of swaps
         if swaps % 2 != 0:
-            factor = -factor
+            coeff = -coeff
 
-        # 2. Contraction of pairs (Stack method)
-        # Since the list is sorted, c_i^2 terms are adjacent.
-        stack = []
-        if len(idx_list) > 0:
+        # 2. Elimination of pairs
+        # Since the list is sorted, c_i^2 terms are adjacent
+        stack: list[int] = []
+        if len(idx_list) > 0:  # TODO: this check is probably not necessary
             for idx in idx_list:
                 if stack and stack[-1] == idx:
                     stack.pop()  # Remove pair (c^2 = 1)
@@ -807,12 +691,13 @@ def simplify_majorana_acc(acc):
             reduced_indices = ()
 
         # 3. Aggregate
-        new_acc[reduced_indices] += factor
+        simplified[reduced_indices] += coeff
 
     # Final cleanup of the simplified dictionary
-    final_acc = defaultdict(complex)
-    for k, v in new_acc.items():
-        if abs(v) > 1e-6:
-            final_acc[k] = v
+    # Without this check, some coefficients may be zero, but we want to drop those terms
+    final_polynomial = defaultdict(complex)
+    for k, v in simplified.items():
+        if abs(v) > tol:
+            final_polynomial[k] = v
 
-    return final_acc
+    return final_polynomial
