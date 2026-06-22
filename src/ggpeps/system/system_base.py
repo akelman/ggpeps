@@ -157,19 +157,15 @@ class System2DBase(ABC):
         # TRACKER_INV_MAG_THRESH).
         self._steps_since_refresh: int = 0
         self._last_step_max_inv_mag: float = 0.0
-        self.tracker_refresh_interval: int = getattr(
-            self.cfg, "tracker_refresh_interval", self.TRACKER_REFRESH_INTERVAL_DEFAULT
-        )
+        # Refresh cadence: read from the config when present (EvaluatorManager stamps it there per
+        # run, resolving the per-ansatz default), else fall back to 0 = magnitude-guard-only. That
+        # is the safe minimal default for ad-hoc/direct construction: the guard protects correctness
+        # while the periodic re-anchor is only a long-run heartbeat (drift is ~1e-13 over thousands
+        # of normal steps). See update_gauge_ind for the >0 / ==0 / <0 mode semantics.
+        self.tracker_refresh_interval: int = getattr(self.cfg, "tracker_refresh_interval", 0)
 
         return
 
-    # Periodic re-anchor cadence for the incremental trackers (gauge steps between from-scratch
-    # refreshes), used when tracker_refresh_interval > 0. Empirically the trackers drift only at
-    # machine precision (~1e-13) over thousands of normal MC steps with no refresh at all, so the
-    # periodic re-anchor is mostly a cheap long-run heartbeat -- the magnitude guard is the real
-    # safeguard for near-singular configs. A large value keeps overhead negligible; 1 reproduces
-    # always-from-scratch. Controlled per run from EvaluatorManager (-> system_cfg).
-    TRACKER_REFRESH_INTERVAL_DEFAULT: int = 256
     # Magnitude guard: re-anchor immediately if the largest entry of a tracked inverse exceeds this
     # threshold. A large inverse <=> a near-singular tracked matrix, where the incremental Woodbury
     # update loses precision; the from-scratch recompute is backward-stable and matches even

@@ -30,7 +30,6 @@ from ggpeps.system import Z2System2D_2col_Config
 from ggpeps.system import Z2System2D_2col_1copy_Config
 from ggpeps.system import Z2System2D
 from ggpeps.system import D2nSystem2D
-from ggpeps.system.system_base import System2DBase
 
 from ggpeps import utils
 from ggpeps import lattice as lat
@@ -399,6 +398,10 @@ def main(args):
             logger.error("The 'overlap' electric-energy method supports pure gauge only (num_fermionic_layer=0).")
             sys.exit(1)
 
+    # Resolve the incremental-tracker refresh cadence. The default lives here (not as a global on
+    # System2DBase); a user-supplied --tracker_refresh_interval overrides it.
+    tracker_interval = args.tracker_refresh_interval if args.tracker_refresh_interval is not None else 256
+
     # Switch to control the binning analysis on EOM (Error of mean)
     if args.no_bin_eom:
         Measurement.use_rebinning = False
@@ -535,7 +538,7 @@ def main(args):
                 system_cfg,
                 mc_config,
                 args.nrunner,
-                tracker_refresh_interval=args.tracker_refresh_interval,
+                tracker_refresh_interval=tracker_interval,
             )
         ggpeps.global_vars["eval_manager"] = mc_mgr  # save for global access
 
@@ -567,7 +570,7 @@ def main(args):
             # no need to compute grads if not using a gradient-based method
             mc_config.compute_grads = False
         mc_mgr = EvaluatorManager(
-            system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=args.tracker_refresh_interval
+            system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=tracker_interval
         )
 
         minimizer = Minimizer(min_cfg, mc_mgr)
@@ -583,7 +586,7 @@ def main(args):
 
         ec_config.compute_grads = args.compute_grads
         ex_eval = EvaluatorManager(
-            system_type, system_cfg, ec_config, args.nrunner, tracker_refresh_interval=args.tracker_refresh_interval
+            system_type, system_cfg, ec_config, args.nrunner, tracker_refresh_interval=tracker_interval
         )
         ggpeps.global_vars["eval_manager"] = ex_eval
 
@@ -610,7 +613,7 @@ def main(args):
             ec_config.compute_grads = False
 
         ex_mgr = EvaluatorManager(
-            system_type, system_cfg, ec_config, args.nrunner, tracker_refresh_interval=args.tracker_refresh_interval
+            system_type, system_cfg, ec_config, args.nrunner, tracker_refresh_interval=tracker_interval
         )
 
         minimizer = Minimizer(min_cfg, ex_mgr)
@@ -626,7 +629,7 @@ def main(args):
 
         mc_config.compute_grads = True
         mc_mgr = EvaluatorManager(
-            system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=args.tracker_refresh_interval
+            system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=tracker_interval
         )
 
         # Set the parameters of the minimizer according to the command line
@@ -937,7 +940,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--tracker_refresh_interval",
         type=int,
-        default=System2DBase.TRACKER_REFRESH_INTERVAL_DEFAULT,
+        default=None,
         help="Control the from-scratch re-anchoring of the incremental Woodbury/IncDet trackers. "
         ">0: re-anchor every N gauge steps AND on the magnitude guard (1 = always from scratch); "
         "0: magnitude guard only, no periodic re-anchor; <0: no refresh at all (pure incremental).",
