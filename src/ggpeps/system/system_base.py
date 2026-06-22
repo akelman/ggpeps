@@ -903,7 +903,7 @@ class System2DBase(ABC):
         """
         gamma_in_sys_vec = self.gamma_in_sys_vec
         wi_gamma_in_vec = xnp.linalg.inv(self.mat_d_inv_vec - gamma_in_sys_vec)
-        wi_gamma_out_vec = xnp.linalg.inv(self.mat_d_vec - gamma_in_sys_vec)
+        wi_gamma_out_vec = xnp.linalg.inv(self.mat_d_vec + gamma_in_sys_vec)
         _, incdet_vec = xnp.linalg.slogdet(self.mat_d_inv_vec - gamma_in_sys_vec)
         return wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec
 
@@ -1065,10 +1065,11 @@ class System2DBase(ABC):
         caller; ``update_vec``/``update_arr`` are the per-layer local updates at offset ``ind_mat``.
         """
         # --- Closed (full-system) trackers: incremental Woodbury / IncDet update ---
+        update_arr_out = -update_arr
         # Conditioning of this step (read the OLD inverses before they are overwritten).
         closed_cond = max(
             self._capacitance_cond(self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat),
-            self._capacitance_cond(self.wi_gamma_out_vec, update_arr, ind_mat, ind_mat),
+            self._capacitance_cond(self.wi_gamma_out_vec, update_arr_out, ind_mat, ind_mat),
         )
 
         self._incdet_vec = utils.IncLogAbsDeterminant.update_index(
@@ -1077,7 +1078,7 @@ class System2DBase(ABC):
         self.weight = 0.5 * np.sum(self.incdet_vec)
         self._wi_gamma_in_vec = utils.WoodburyInverter.update_index(self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat)
         self._wi_gamma_out_vec = utils.WoodburyInverter.update_index(
-            self.wi_gamma_out_vec, update_arr, ind_mat, ind_mat
+            self.wi_gamma_out_vec, update_arr_out, ind_mat, ind_mat
         )
         self._closed_tracker_age += 1
         closed_mag = max(
