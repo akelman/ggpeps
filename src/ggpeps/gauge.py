@@ -157,6 +157,13 @@ class ZNGauge(GaugeGroup):
         # el_energy = self.cfg.g_el *
         # (self.cfg.el_offset * nlinks - self.cfg.gaugemgr.el_mult_factor * self.el_energy_op)
 
+        self.mag_offset = 1
+        # The maximum value of the magnetic energy for a specific plaquette.
+        # To impose mag_energy >= 0 in system:
+        # mag_energy = (
+        #   self.cfg.g_mag * 2 * (nplaq * self.cfg.gaugemgr.mag_offset - self.mag_energy_op)
+        # )
+
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> np.ndarray:
         """
         Generate a random Z_N group element as a 1x1 complex matrix.
@@ -369,6 +376,13 @@ class D2nGauge(GaugeGroup):
         # To impose el_energy >= 0 in system:
         # el_energy = self.cfg.g_el *
         # (self.cfg.el_offset * nlinks - self.cfg.gaugemgr.el_mult_factor * self.el_energy_op)
+
+        self.mag_offset = 2
+        # The maximum value of the magnetic energy for a specific plaquette.
+        # To impose mag_energy >= 0 in system:
+        # mag_energy = (
+        #   self.cfg.g_mag * 2 * (nplaq * self.cfg.gaugemgr.mag_offset - self.mag_energy_op)
+        # )
 
     def get_representation(self, p: int, q: int) -> np.ndarray:
         """
@@ -714,6 +728,7 @@ class Z2RepGauge2D(GaugeGroup):
         self.group_order = 2
         self.el_mult_factor, self.group_elements_for_el_energy = self.get_group_elements_and_factors_for_el_energy()
         self.el_offset = 2
+        self.mag_offset = 2
 
     # ---- group structure ---------------------------------------------------
     def get_representation(self, sign: int) -> np.ndarray:
