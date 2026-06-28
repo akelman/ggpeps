@@ -165,6 +165,108 @@ def renamed_parameter_names(order: ParameterOrder, rename_map: ParameterRenameMa
     return tuple(renamed_parameter_name(name, rename_map) for name in names)
 
 
+# ==== Legacy Z2 parameter-order compatibility ====
+
+LEGACY_Z2_PARAMETER_ORDERS = {
+    "legacy_1c": (
+        ("tr", "yr", "zr", "ti", "yi", "zi"),
+        {
+            "tr": "t1r",
+            "yr": "y1r",
+            "zr": "z1r",
+            "ti": "t1i",
+            "yi": "y1i",
+            "zi": "z1i",
+        },
+        1,
+    ),
+    "legacy_g2c_f2c": (
+        (
+            "t1r", "y1r", "z1r",
+            "t2r", "y2r", "z2r",
+            "ar", "br", "cr", "dr",
+            "t1i", "y1i", "z1i",
+            "t2i", "y2i", "z2i",
+            "ai", "bi", "ci", "di",
+        ),
+        {
+            "ar": "a12r",
+            "br": "b12r",
+            "cr": "c12r",
+            "dr": "d12r",
+            "ai": "a12i",
+            "bi": "b12i",
+            "ci": "c12i",
+            "di": "d12i",
+        },
+        2,
+    ),
+    "legacy_g4c_f4c": (
+        (
+            "t1r", "t2r", "t3r", "t4r",
+            "y1r", "y2r", "y3r", "y4r",
+            "z1r", "z2r", "z3r", "z4r",
+            "a12r", "b12r", "c12r", "d12r",
+            "a13r", "b13r", "c13r", "d13r",
+            "a14r", "b14r", "c14r", "d14r",
+            "a23r", "b23r", "c23r", "d23r",
+            "a24r", "b24r", "c24r", "d24r",
+            "a34r", "b34r", "c34r", "d34r",
+            "t1i", "t2i", "t3i", "t4i",
+            "y1i", "y2i", "y3i", "y4i",
+            "z1i", "z2i", "z3i", "z4i",
+            "a12i", "b12i", "c12i", "d12i",
+            "a13i", "b13i", "c13i", "d13i",
+            "a14i", "b14i", "c14i", "d14i",
+            "a23i", "b23i", "c23i", "d23i",
+            "a24i", "b24i", "c24i", "d24i",
+            "a34i", "b34i", "c34i", "d34i",
+        ),
+        {},
+        4,
+    ),
+}
+
+
+def translate_legacy_z2_parameter_order(
+    system_cfg,
+    values: np.ndarray,
+    input_param_order: str,
+) -> np.ndarray:
+    """Translate legacy Z2 input parameters to the current generic config order.
+
+    This helper is intended for dev-vs-z2 regression checks. It allows generated
+    or loaded parameters to be interpreted according to a legacy Z2 config order
+    and then reordered into the current generic ``Z2System2D_Config`` convention.
+    """
+    if input_param_order == "current":
+        return values
+
+    if input_param_order not in LEGACY_Z2_PARAMETER_ORDERS:
+        raise ValueError(f"Unknown input parameter order: {input_param_order}.")
+
+    source_order, rename_map, expected_ncopy = LEGACY_Z2_PARAMETER_ORDERS[input_param_order]
+
+    if not isinstance(system_cfg, system.Z2System2D_Config):
+        raise ValueError("Legacy Z2 parameter-order translation is only supported for Z2System2D_Config.")
+
+    if system_cfg.ncopy != expected_ncopy:
+        raise ValueError(
+            f"Input parameter order '{input_param_order}' expects ncopy={expected_ncopy}, "
+            f"but the current config has ncopy={system_cfg.ncopy}."
+        )
+
+    source_order_renamed = renamed_parameter_names(source_order, rename_map)
+    target_order = parameter_names(system_cfg.symbolvec)
+
+    return reorder_parameter_vector(
+        values,
+        source_order=source_order_renamed,
+        target_order=target_order,
+        axis=-1,
+    )
+
+
 def zeroed_parameter_named_coords(cfg, rename_map: ParameterRenameMap = None) -> set[tuple[int, int, str]]:
     """Return zeroed parameter coordinates with parameter indices replaced by names.
 

@@ -97,13 +97,21 @@ def args2logname(args, couplings: dict) -> str:
     return os.path.join(args.output, fname)
 
 
-def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomState) -> tuple[np.ndarray, str]:
+def translate_parameters(
+    system_cfg,
+    params: str,
+    rng_state: np.random.RandomState,
+    input_param_order: str = "current",
+) -> tuple[np.ndarray, str]:
     """Translate the parameters given on the commandline to a form useful in the code
 
     Args:
         system_cfg (SystemConfig): Configuration of the system
         params (str): Parameters as given on the command line
         rng_state (np.random.RandomState): Input state of a PRNG
+        input_param_order (str): Parameter order used to interpret generated or loaded
+            parameters. The default, "current", uses the active config order.
+            Legacy Z2 values are translated to the current generic Z2 order.
 
     Returns:
         np.array: Array of parameters that are suited for the simulation according to the command line parameters
@@ -128,6 +136,9 @@ def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomSta
             logger.warning("Reshape of provided parameters impossible. Starting with random parameters.")
             dest = rng_state.rand(shape)
             source = "random state"
+    if input_param_order != "current":
+        dest = utils.translate_legacy_z2_parameter_order(system_cfg, dest, input_param_order)
+        source = f"{source}, interpreted as {input_param_order} and translated to current order"
     return dest, source
 
 
@@ -362,7 +373,12 @@ def main(args):
     mc_config.seed = seed
 
     # Translate the command line input to a valid parameter vector
-    paramvec, param_source = translate_parameters(system_cfg, args.params, rngstate)
+    paramvec, param_source = translate_parameters(
+        system_cfg,
+        args.params,
+        rngstate,
+        args.input_param_order,
+    )
     system_cfg.paramvec = paramvec
 
     if isinstance(system_cfg, U1System2DConfig):
@@ -744,6 +760,17 @@ if __name__ == "__main__":
         default=1,
         type=int,
         help="Number of virtual fermions on the links per layer",
+    )
+
+    parser.add_argument(
+        "--input_param_order",
+        default="current",
+        choices=["current", "legacy_1c", "legacy_g2c_f2c", "legacy_g4c_f4c"],
+        help=(
+            "Interpret generated or loaded parameters using a legacy Z2 parameter order "
+            "and translate them to the current generic Z2 order before evaluation. "
+            "Use this for dev-vs-z2 regression comparisons."
+        ),
     )
 
     # Other system parameters
