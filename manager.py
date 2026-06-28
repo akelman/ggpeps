@@ -352,20 +352,40 @@ def main(args):
         sys.exit(1)
 
     # Create the system configuration of the appropriate type
-    system_cfg = cfg_class(
-        lattice,
-        g_el,
-        g_mag,
-        g_int,
-        g_mass,
-        g_chem,
-        ncopy=args.ncopy,
-        num_pg_layer=args.num_pg_layer,
-        num_fermionic_layer=args.num_fermionic_layer,
-        mod_link_inds=el_links,
-        unitcell_size=args.unitcell_size,
-        enforce_u1_symmetry=not args.relax_u1,
-    )
+    if cfg_class is Z2System2D_Config:
+        system_cfg = cfg_class(
+            lattice,
+            g_el,
+            g_mag,
+            g_int,
+            g_mass,
+            g_chem,
+            ncopy=args.ncopy,
+            num_pg_layer=args.num_pg_layer,
+            num_fermionic_layer=args.num_fermionic_layer,
+            mod_link_inds=el_links,
+            unitcell_size=args.unitcell_size,
+            enforce_u1_symmetry=not args.relax_u1,
+            param_constraints=args.param_constraints,
+        )
+    else:
+        if args.param_constraints != "current":
+            logger.error("--param_constraints is only supported for the generic Z2 config.")
+            sys.exit(1)
+        system_cfg = cfg_class(
+            lattice,
+            g_el,
+            g_mag,
+            g_int,
+            g_mass,
+            g_chem,
+            ncopy=args.ncopy,
+            num_pg_layer=args.num_pg_layer,
+            num_fermionic_layer=args.num_fermionic_layer,
+            mod_link_inds=el_links,
+            unitcell_size=args.unitcell_size,
+            enforce_u1_symmetry=not args.relax_u1,
+        )
 
     # We use a local random number generator instead of the global numpy one to assure
     # reproducibility across different runs, even when using mulitple processes
