@@ -47,6 +47,9 @@ class D2nSystem2D(System2DBase):
     @classmethod
     def generate_rotmat(cls, ncopy: int, group_element: xnp.ndarray, coord: tuple, dir: Direction) -> xnp.ndarray:
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
+        We work in the convention where for majorana c_i: U_g c_i U_g^dagger = sum_{j} rotmat_{i,j} c_j
+        In this convention gamma_in_neutral, is gauged with gamma_in = rotmat @ gamma_neutral rotnat^T.
+        Where gamma_in is the covariance matrix of the state U_g^dagger w |Omega>.
 
         The mode order is (as for gamma_in_neutral):
             1 copy:
@@ -69,17 +72,16 @@ class D2nSystem2D(System2DBase):
         g = group_element
         # We are only rotating the right modes.
         # Thus, we leave an identity matrix for the left modes.
-        g_transpose = xnp.transpose(g)
-        real_g_transpose = xnp.real(g_transpose)
-        imag_g_transpose = xnp.imag(g_transpose)
+        real_g = xnp.real(g)
+        imag_g = xnp.imag(g)
         if xnp.sum(xnp.asarray(coord)) % 2 == 0:  # gauging is different for different sublattices
             # Note that this gauging is true only for b modes and c virtual modes
             # (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
             rot_right = xnp.block(
                 # TODO: Generalize this to fermionic layers as well.
                 [
-                    [real_g_transpose, imag_g_transpose],
-                    [-imag_g_transpose, real_g_transpose],
+                    [real_g, -imag_g],
+                    [imag_g, real_g],
                 ],
             )  # This is the rot_right for the mode order of {r_1_1, r_1_2,r_2_1,r_2_2}
         else:
@@ -88,8 +90,8 @@ class D2nSystem2D(System2DBase):
             # TODO: Generalizze this to fermionic layers as well.
             rot_right = xnp.block(
                 [
-                    [real_g_transpose, -imag_g_transpose],
-                    [imag_g_transpose, real_g_transpose],
+                    [real_g, imag_g],
+                    [-imag_g, real_g],
                 ],
             )
 
