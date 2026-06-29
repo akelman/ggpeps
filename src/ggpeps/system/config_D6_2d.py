@@ -67,7 +67,6 @@ class D6System2D_Config(Config2DBase):
         mod_link_inds=(0,),
         unitcell_size=1,
         enforce_u1_symmetry=True,
-        param_constraints="current",
     ) -> None:
         self.gaugemgr: gauge.D2nGauge
         super().__init__(
@@ -86,11 +85,6 @@ class D6System2D_Config(Config2DBase):
         )
         if ncopy != self.ncopy:
             raise ValueError(f"D6System2D_Config expects ncopy={self.ncopy}, got ncopy={ncopy}.")
-        if param_constraints != "current":
-            raise ValueError(
-                "D6System2D_Config only supports param_constraints='current'. "
-                f"Got param_constraints={param_constraints!r}."
-            )
 
         # Translation invariance (or variance)
         if self.unitcell_size not in [1]:

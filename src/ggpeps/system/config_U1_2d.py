@@ -28,13 +28,10 @@ class U1System2DConfig(Config2DBase):
         g_int,
         g_mass,
         g_chem,
-        ncopy=1,
         num_pg_layer=1,
         num_fermionic_layer=0,
         mod_link_inds=(0,),
         unitcell_size=1,
-        enforce_u1_symmetry=True,
-        param_constraints="current",
     ):
         # The parameters have the following order: [[t1,y1,z1],[t2,y2,z2],....]
         super().__init__(
@@ -49,15 +46,8 @@ class U1System2DConfig(Config2DBase):
             num_fermionic_layer,
             mod_link_inds,
             unitcell_size,
-            enforce_u1_symmetry,
         )
-        if ncopy != self.ncopy:
-            raise ValueError(f"U1System2DConfig expects ncopy={self.ncopy}, got ncopy={ncopy}.")
-        if param_constraints != "current":
-            raise ValueError(
-                "U1System2DConfig only supports param_constraints='current'. "
-                f"Got param_constraints={param_constraints!r}."
-            )
+
         # Translation invariance
         if self.unitcell_size not in [1]:
             logger.error(

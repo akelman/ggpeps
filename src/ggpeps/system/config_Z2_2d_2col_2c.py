@@ -63,7 +63,6 @@ class Z2System2D_2col_Config(Config2DBase):
         mod_link_inds=(0,),
         unitcell_size=1,
         enforce_u1_symmetry=True,
-        param_constraints="current",
     ) -> None:
         self.gaugemgr: gauge.Z2RepGauge2D
         super().__init__(
@@ -82,11 +81,6 @@ class Z2System2D_2col_Config(Config2DBase):
         )
         if ncopy != self.ncopy:
             raise ValueError(f"Z2System2D_2col_Config expects ncopy={self.ncopy}, got ncopy={ncopy}.")
-        if param_constraints != "current":
-            raise ValueError(
-                "Z2System2D_2col_Config only supports param_constraints='current'. "
-                f"Got param_constraints={param_constraints!r}."
-            )
 
         if self.unitcell_size not in [1]:
             logger.error("Z2System2D_2col only supports unitcell_size = 1.")
