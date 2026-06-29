@@ -793,17 +793,6 @@ if __name__ == "__main__":
         ),
     )
 
-    parser.add_argument(
-        "--param_constraints",
-        default="current",
-        choices=["current", "legacy_g4c_f4c"],
-        help=(
-            "Use a parameter-constraint compatibility mode before enforcing zeroed parameters. "
-            "The default uses the current config constraints. Use legacy_g4c_f4c for "
-            "dev-vs-z2 regression comparisons with the old four-copy Z2 config."
-        ),
-    )
-
     # Other system parameters
     parser.add_argument(
         "--params",
