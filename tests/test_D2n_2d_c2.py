@@ -1473,7 +1473,7 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
                 lattice.Direction.X,
                 group_element,
                 site=0,
-                drop_real_zero=drop_real_zero,
+                drop_imag=drop_real_zero,
             )
             idxarr_lay_pg_h_1, _ = generate_gauged_projector_terms(
                 cfg.ncopy,
@@ -1482,7 +1482,7 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
                 lattice.Direction.X,
                 group_element,
                 site=1,
-                drop_real_zero=drop_real_zero,
+                drop_imag=drop_real_zero,
             )
             idxarr_lay_pg_v_0, _ = generate_gauged_projector_terms(
                 cfg.ncopy,
@@ -1491,7 +1491,7 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
                 lattice.Direction.Y,
                 group_element,
                 site=0,
-                drop_real_zero=drop_real_zero,
+                drop_imag=drop_real_zero,
             )
             idxarr_lay_pg_v_1, _ = generate_gauged_projector_terms(
                 cfg.ncopy,
@@ -1500,7 +1500,7 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
                 lattice.Direction.Y,
                 group_element,
                 site=1,
-                drop_real_zero=drop_real_zero,
+                drop_imag=drop_real_zero,
             )
 
             # --- Fermionic (mix_copies=False) ---
@@ -1511,7 +1511,7 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
                 lattice.Direction.X,
                 group_element,
                 site=0,
-                drop_real_zero=drop_real_zero,
+                drop_imag=drop_real_zero,
             )
             idxarr_lay_pf_h_1, _ = generate_gauged_projector_terms(
                 cfg.ncopy,
@@ -1520,7 +1520,7 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
                 lattice.Direction.X,
                 group_element,
                 site=1,
-                drop_real_zero=drop_real_zero,
+                drop_imag=drop_real_zero,
             )
             idxarr_lay_pf_v_0, _ = generate_gauged_projector_terms(
                 cfg.ncopy,
@@ -1529,7 +1529,7 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
                 lattice.Direction.Y,
                 group_element,
                 site=0,
-                drop_real_zero=drop_real_zero,
+                drop_imag=drop_real_zero,
             )
             idxarr_lay_pf_v_1, _ = generate_gauged_projector_terms(
                 cfg.ncopy,
@@ -1538,7 +1538,7 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
                 lattice.Direction.Y,
                 group_element,
                 site=1,
-                drop_real_zero=drop_real_zero,
+                drop_imag=drop_real_zero,
             )
 
             zipped_pg = tuple(zip(idxarr_lay_pg_h_0, idxarr_lay_pg_h_1, idxarr_lay_pg_v_0, idxarr_lay_pg_v_1))
