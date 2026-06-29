@@ -419,6 +419,84 @@ class Testgaugefixing(unittest.TestCase):
         mgr = EvaluatorManager(system.Z2System2D, cfg, ExactEvaluatorConfig(), 0, tracker_refresh_interval=7)
         self.assertEqual(mgr.evaluator.system.tracker_refresh_interval, 7)
 
+    # ----------------------------------------------- per-config gauge invariance (Z2 & D6)
+
+    @staticmethod
+    def _apply_gauge_transform(lat, config, V):
+        """Standard pure gauge transformation U(x,k) -> V(x) U(x,k) V(x+k)^dagger.
+
+        config: list of group-element matrices indexed by link.
+        V: dict site (x, y) -> group-element matrix.
+        Works for any matrix representation.
+        """
+        out = [None] * lat.nlinks
+        for ind in range(lat.nlinks):
+            coord, dr = lat.ind2coord_dir(ind)
+            nb = lat.get_neighbor(coord, dr, orientation=True)
+            out[ind] = V[coord] @ config[ind] @ V[nb].conj().T
+        return out
+
+    def _assert_per_config_gauge_invariance(self, make_system, seed, ntrials=4):
+        """Assert |psi(G)|^2 and the electric/magnetic operators are invariant under a lattice
+        gauge transformation U(x,k) -> V(x) U(x,k) V(x+k)^dagger, config by config.
+
+        Args:
+            make_system: zero-arg callable returning a fresh system (gauge field at identity).
+            seed: RNG seed for the sampled gauge fields and transformations.
+            ntrials: number of (G, V) pairs to test.
+        """
+        rng = np.random.RandomState(seed)
+        probe = make_system()
+        lat = probe.cfg.lattice
+        vals = probe.cfg.gaugemgr.get_possible_gauge_values()
+
+        def observables(config):
+            s = make_system()
+            s.update_gauge_full_system(config)
+            return (
+                float(s.calculate_lognorm(all_factors=True)),
+                float(np.real(s.el_energy_op)),
+                float(np.real(s.mag_energy_op)),
+            )
+
+        for trial in range(ntrials):
+            G = [vals[rng.randint(len(vals))].copy() for _ in range(lat.nlinks)]
+            V = {(x, y): vals[rng.randint(len(vals))].copy() for y in range(lat.ny) for x in range(lat.nx)}
+            GV = self._apply_gauge_transform(lat, G, V)
+            ln_G, el_G, mag_G = observables(G)
+            ln_V, el_V, mag_V = observables(GV)
+            with self.subTest(trial=trial):
+                self.assertAlmostEqual(ln_G, ln_V, places=6, msg="norm not gauge invariant")
+                self.assertAlmostEqual(el_G, el_V, places=5, msg="electric operator not gauge invariant")
+                self.assertAlmostEqual(mag_G, mag_V, places=6, msg="magnetic operator not gauge invariant")
+
+    def test_z2_norm_and_observables_gauge_invariant(self):
+        """Z2 (abelian): the per-config norm and electric/magnetic operators must be gauge
+        invariant. Baseline guard for the shared invariance check used by D6."""
+        rng = np.random.RandomState(20260628)
+        lat = lattice.Lattice2D(2, 2)
+        paramvec = rng.rand(2, 20)
+        cfg = system.Z2System2D_G2C_F2C_Config(lat, 1, 1, 1, 1, None)
+        cfg.paramvec = paramvec
+        cfg.enforce_parameter_conditions(cfg.paramvec)
+
+        self._assert_per_config_gauge_invariance(lambda: system.Z2System2D(cfg), seed=3)
+
+    def test_d6_norm_and_observables_gauge_invariant(self):
+        """D6 (non-abelian): the per-config norm and electric/magnetic operators must be gauge
+        invariant. Regression for the generate_rotmat g^T anti-homomorphism bug, which broke
+        norm/electric invariance on the non-abelian (reflection) part of D6 and biased tree
+        gauge fixing of the magnetic energy.
+        """
+        rng = np.random.RandomState(20260628)
+        num_pg_layer = 2
+        lat = lattice.Lattice2D(2, 2)
+        cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer, 0)
+        cfg.paramvec = rng.rand(num_pg_layer, 1, 20)
+        cfg.enforce_parameter_conditions(cfg.paramvec)
+
+        self._assert_per_config_gauge_invariance(lambda: system.D2nSystem2D(cfg), seed=2)
+
     @skip("Too long and not precise enough")
     def test_mceval(self):
         """Ensure that MC evaluation gives the same results with and without
