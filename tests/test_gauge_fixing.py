@@ -472,7 +472,7 @@ class Testgaugefixing(unittest.TestCase):
 
     def test_z2_norm_and_observables_gauge_invariant(self):
         """Z2 (abelian): the per-config norm and electric/magnetic operators must be gauge
-        invariant. Baseline guard for the shared invariance check used by D6."""
+        invariant."""
         rng = np.random.RandomState(20260628)
         lat = lattice.Lattice2D(2, 2)
         paramvec = rng.rand(2, 20)
@@ -484,9 +484,7 @@ class Testgaugefixing(unittest.TestCase):
 
     def test_d6_norm_and_observables_gauge_invariant(self):
         """D6 (non-abelian): the per-config norm and electric/magnetic operators must be gauge
-        invariant. Regression for the generate_rotmat g^T anti-homomorphism bug, which broke
-        norm/electric invariance on the non-abelian (reflection) part of D6 and biased tree
-        gauge fixing of the magnetic energy.
+        invariant.
         """
         rng = np.random.RandomState(20260628)
         num_pg_layer = 2
