@@ -18,7 +18,7 @@ class Z2System2D_Config(Config2DBase):
     """Generic configuration of the Z2 system in 2D.
 
     This config describes a Z2 lattice gauge theory variational ansatz with
-    ``ncopy`` copies of virtual fermions on each link. 
+    ``ncopy`` copies of virtual fermions on each link.
 
     Supported copy numbers:
         The current gauged-projector construction supports ``ncopy == 1`` and
@@ -68,7 +68,6 @@ class Z2System2D_Config(Config2DBase):
         ``{p_1, p_2, l1_1, l1_2, r1_1, r1_2, d1_1, d1_2, u1_1, u1_2,
         ..., ln_1, ln_2, rn_1, rn_2, dn_1, dn_2, un_1, un_2}``.
     """
-
 
     def __init__(
         self,

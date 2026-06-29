@@ -291,8 +291,8 @@ def zeroed_parameter_names(cfg, rename_map: ParameterRenameMap = None) -> set[st
 def make_z2_2copy_config(*args, **kwargs):
     """Build the generic G4C/F4C Z2 config in its ncopy=2 compatibility mode."""
     return system.Z2System2D_Config(*args, ncopy=2, **kwargs)
-    
-    
+
+
 def make_z2_2copy_pure_gauge_config(*args, **kwargs):
     """Build the generic G4C/F4C Z2 config in pure-gauge ncopy=2 compatibility mode."""
     if kwargs.get("num_fermionic_layer", 0) != 0:

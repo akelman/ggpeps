@@ -14,6 +14,7 @@ from ggpeps.system.config_base import generate_gauged_projector_terms
 
 # ======================= Z2 fermionic system (4 copies) =======================
 
+
 class TestZ2System(unittest.TestCase):
     """Class for testing ansatz with matter, and 2 virtual copies per layer"""
 
@@ -1999,7 +2000,7 @@ class TestG4ConfigNcopyGeneric(unittest.TestCase):
             num_fermionic_layer=num_fermionic_layer,
             enforce_u1_symmetry=enforce_u1_symmetry,
         )
-    
+
     @staticmethod
     def _zeroed_symbol_names(cfg, layer_ind):
         """Return symbol names, rather than raw indices, zeroed in a given layer.
@@ -2040,7 +2041,7 @@ class TestG4ConfigNcopyGeneric(unittest.TestCase):
             for param in ["a", "b", "c", "d"]
             for part in ["r", "i"]
         }
-    
+
     def test_zeroed_params_pure_gauge_layers_zero_all_t_copies(self):
         """Pure-gauge layers should zero all physical-virtual t_i couplings.
 
@@ -2205,6 +2206,7 @@ class TestG4ConfigNcopyGeneric(unittest.TestCase):
             with self.subTest(ncopy=ncopy):
                 with self.assertRaises(ValueError):
                     self._make_cfg(ncopy)
+
 
 class TestGammaGaugeNeutralDict(unittest.TestCase):
     """Direct tests for single-link ungauged projector covariance matrices.
@@ -2473,9 +2475,6 @@ class TestGammaGaugeNeutralDict(unittest.TestCase):
         self.assertTrue(np.allclose(gamma_dict[1][Direction.Y], expected_unmixed_y))
 
 
-
-
-
 class TestLegacyG2CF2CG4Ncopy2Equivalence(unittest.TestCase):
     """Equivalence tests between legacy G2C/F2C and generic G4C/F4C with ncopy=2.
 
@@ -2521,7 +2520,6 @@ class TestLegacyG2CF2CG4Ncopy2Equivalence(unittest.TestCase):
         )
         return cfg_g2, cfg_g4
 
-
     def test_symbolvec_contains_same_parameters_after_g2_to_g4_renaming(self):
         """G2 and generic G4(ncopy=2) should contain the same symbols after relabeling."""
         cfg_g2, cfg_g4 = self._make_cfgs()
@@ -2551,7 +2549,8 @@ class TestLegacyG2CF2CG4Ncopy2Equivalence(unittest.TestCase):
         self.assertEqual(
             utils.zeroed_parameter_named_coords(cfg_g2, self.G2_TO_G4_SYMBOL_NAMES),
             utils.zeroed_parameter_named_coords(cfg_g4),
-)
+        )
+
     def test_make_pure_gauge_is_equivalent_after_parameter_reordering(self):
         """make_pure_gauge should have the same effect after converting G2 paramvec order to G4 order."""
         cfg_g2, cfg_g4 = self._make_cfgs()
@@ -2603,7 +2602,6 @@ class TestLegacyG2CF2CG4Ncopy2Equivalence(unittest.TestCase):
         self.assertEqual(cfg_g2.idx_vec, cfg_g4.idx_vec)
         self.assertEqual(cfg_g2.coeffs_vec, cfg_g4.coeffs_vec)
         self.assertEqual(cfg_g2.constants_vec, cfg_g4.constants_vec)
-
 
 
 class TestLegacy2CG4Ncopy2PureGaugeEquivalence(unittest.TestCase):
@@ -2711,7 +2709,7 @@ class TestLegacy2CG4Ncopy2PureGaugeEquivalence(unittest.TestCase):
         """make_pure_gauge should have the same effect after converting legacy 2C order to G4 order."""
         cfg_2c, cfg_g4 = self._make_cfgs()
         source_order = utils.renamed_parameter_names(cfg_2c.symbolvec, self.LEGACY_2C_TO_G4_SYMBOL_NAMES)
-        target_order = utils.parameter_names(cfg_g4.symbolvec) 
+        target_order = utils.parameter_names(cfg_g4.symbolvec)
 
         legacy_paramvec = np.arange(np.prod(cfg_2c.param_shape()), dtype=float).reshape(cfg_2c.param_shape()) + 1.0
         cfg_2c.paramvec = legacy_paramvec
@@ -2720,7 +2718,8 @@ class TestLegacy2CG4Ncopy2PureGaugeEquivalence(unittest.TestCase):
         cfg_2c.make_pure_gauge()
         cfg_g4.make_pure_gauge()
 
-        legacy_paramvec_in_g4_order = utils.reorder_parameter_vector(cfg_2c.paramvec, source_order, target_order, axis=2)
+        legacy_paramvec_in_g4_order = utils.reorder_parameter_vector(
+            cfg_2c.paramvec, source_order, target_order, axis=2)
         self.assertTrue(np.array_equal(legacy_paramvec_in_g4_order, cfg_g4.paramvec))
 
     def test_tmat_symb_is_equivalent_after_legacy_2c_to_g4_symbol_substitution(self):
@@ -2758,7 +2757,6 @@ class TestLegacy2CG4Ncopy2PureGaugeEquivalence(unittest.TestCase):
         self.assertEqual(cfg_2c.idx_vec, cfg_g4.idx_vec)
         self.assertEqual(cfg_2c.coeffs_vec, cfg_g4.coeffs_vec)
         self.assertEqual(cfg_2c.constants_vec, cfg_g4.constants_vec)
-
 
 
 class TestLegacy1CG4Ncopy1PureGaugeEquivalence(unittest.TestCase):
@@ -2855,7 +2853,8 @@ class TestLegacy1CG4Ncopy1PureGaugeEquivalence(unittest.TestCase):
         cfg_1c.make_pure_gauge()
         cfg_g4.make_pure_gauge()
 
-        legacy_paramvec_in_g4_order = utils.reorder_parameter_vector(cfg_1c.paramvec, source_order, target_order, axis=2)
+        legacy_paramvec_in_g4_order = utils.reorder_parameter_vector(
+            cfg_1c.paramvec, source_order, target_order, axis=2)
         self.assertTrue(np.array_equal(legacy_paramvec_in_g4_order, cfg_g4.paramvec))
 
     def test_tmat_symb_is_equivalent_after_legacy_1c_to_g4_symbol_substitution(self):

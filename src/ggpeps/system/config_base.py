@@ -418,6 +418,7 @@ def make_sigma(ncopy: int, mix_copies: bool) -> tuple[int, ...]:
         permutation = tuple(s)
     return permutation
 
+
 def make_sigma_matrix(ncopy: int, mix_copies: bool) -> np.ndarray:
     """
     Build the copy-space permutation matrix corresponding to `make_sigma`.
@@ -438,6 +439,7 @@ def make_sigma_matrix(ncopy: int, mix_copies: bool) -> np.ndarray:
     for copy_ind, sigma_copy in enumerate(sigma):
         mat[copy_ind, sigma_copy - 1] = 1.0
     return mat
+
 
 def _w_gauged_terms(
     copy: int, sigma_copy: int, eta2: complex, color: int, ncolors: int, ncopies: int, gauging_matrix: np.ndarray

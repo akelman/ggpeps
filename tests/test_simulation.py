@@ -39,6 +39,7 @@ G2_ORDER_IN_G4_CONVENTION = [
     "d12i",
 ]
 
+
 def reorder_g2_paramvec_to_g4_order(paramvec, cfg):
     """Convert legacy G2-ordered test parameters to generic G4(ncopy=2) order."""
     target_order = [str(symbol) for symbol in cfg.symbolvec]

@@ -1477,7 +1477,8 @@ class TestZ2SystemMethods(unittest.TestCase):
         nlayer = 3
         paramvec = np.random.rand(3, 6)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_1copy_pure_gauge_config(lat_2x2, 1.0, None, None, 0, None, num_pg_layer=3, num_fermionic_layer=0)
+        system_cfg = utils.make_z2_1copy_pure_gauge_config(
+            lat_2x2, 1.0, None, None, 0, None, num_pg_layer=3, num_fermionic_layer=0)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
@@ -1540,7 +1541,8 @@ class TestZ2SystemMethods(unittest.TestCase):
         # Calculate the electric energy of an empty system.
         paramvec = [[0, 0, 0, 0, 0, 0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_1copy_pure_gauge_config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=0)
+        system_cfg = utils.make_z2_1copy_pure_gauge_config(
+            lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=0)
         system_cfg.paramvec = paramvec
         mc_config = MonteCarloEvaluatorConfig(warmup_steps=10, meas_steps=10, binsize=1)
         mc_mgr = EvaluatorManager(system.Z2System2D, system_cfg, mc_config, 0)
