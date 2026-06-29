@@ -84,7 +84,6 @@ class Z2System2D_Config(Config2DBase):
         mod_link_inds=(0,),
         unitcell_size=1,
         enforce_u1_symmetry=True,
-        param_constraints="current",
     ) -> None:
         """Initialize the generic Z2 2D config.
 
@@ -109,10 +108,6 @@ class Z2System2D_Config(Config2DBase):
                 parameters on every site.
             enforce_u1_symmetry: Whether to enforce the U(1)-symmetric
                 fermionic-layer parameter constraints.
-            param_constraints: Parameter-constraint convention. The default,
-                ``"current"``, uses the generic Z2 zeroing rules. The value
-                ``"legacy_g4c_f4c"`` preserves the legacy four-copy fermionic
-                layer zeroing rules for regression comparisons.
         """
         # The current gauged-projector construction mixes copies pairwise in pure-gauge layers
         # via sigma = (1 <-> 2), (3 <-> 4), ... Therefore odd ncopy > 1 is not supported
@@ -120,18 +115,8 @@ class Z2System2D_Config(Config2DBase):
         # trivial unmixed case.
         if not (ncopy == 1 or ncopy % 2 == 0):
             raise ValueError("ncopy must be 1 or even.")
-        
-        allowed_param_constraints = {"current", "legacy_g4c_f4c"}
-        if param_constraints not in allowed_param_constraints:
-            raise ValueError(
-                f"Invalid param_constraints value: {param_constraints}. "
-                f"Allowed values are {sorted(allowed_param_constraints)}."
-            )
-        if param_constraints == "legacy_g4c_f4c" and ncopy != 4:
-            raise ValueError("legacy_g4c_f4c parameter constraints require ncopy=4.")
 
         self.ncopy = ncopy
-        self.param_constraints = param_constraints
         self.nvirtmodes_vertex = 4 * ncopy
         self.nvirtmodes_link = 2 * ncopy
         self.nphysmodes_site = 1
@@ -338,15 +323,11 @@ class Z2System2D_Config(Config2DBase):
                     add_real_imag_zeroed(layer_ind, uc_ind, t_ind)
 
         # Zero out the parameters which are not used in the fermionic layers.
-        # Under the current U(1)-symmetric convention, only odd-labelled copies
-        # couple directly to the physical fermion via t_i. Hence, t_2, t_4, ...
-        # are forced to zero. The legacy G4C/F4C config did not zero any t_i
-        # parameters in fermionic layers, so we preserve that behavior only when
-        # explicitly requested for regression comparisons.
-        if self.param_constraints == "legacy_g4c_f4c":
-            t_inds = []
-        else:
-            t_inds = [ind for ind in range(self.ncopy) if ind % 2 == 1]
+        # Under the U(1)-symmetric convention, only odd-labelled copies couple directly
+        # to the physical fermion via t_i. Hence, t_2, t_4, ... are forced to zero.
+        # The y_i and z_i intra-copy virtual couplings are also forced to zero, and
+        # mixed-copy couplings are allowed only between copies of opposite parity.
+        t_inds = [ind for ind in range(self.ncopy) if ind % 2 == 1]
         y_inds = [ind for ind in range(self.ncopy, 2 * self.ncopy)]
         z_inds = [ind for ind in range(2 * self.ncopy, 3 * self.ncopy)]
         mixed_copy_inds = []
