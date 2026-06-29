@@ -332,7 +332,7 @@ class TestD2nSystem(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 0.0, 1.0, None)
+        system_cfg = utils.make_z2_2copy_config(lat_2x2, 0.0, 0.0, 0.0, 1.0, None)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
 
@@ -353,8 +353,8 @@ class TestD2nSystem(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
-                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
+                    system_cfg_left = utils.make_z2_2copy_config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
+                    system_cfg_right = utils.make_z2_2copy_config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -379,7 +379,7 @@ class TestD2nSystem(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(3, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G2C_F2C_Config(
+        system_cfg = utils.make_z2_2copy_config(
             lat_2x2, 0.0, 0.0, 0.0, 1.0, None, num_pg_layer=1, num_fermionic_layer=2
         )
         system_cfg.paramvec = paramvec
@@ -402,7 +402,7 @@ class TestD2nSystem(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(
+                    system_cfg_left = utils.make_z2_2copy_config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -412,7 +412,7 @@ class TestD2nSystem(unittest.TestCase):
                         num_pg_layer=1,
                         num_fermionic_layer=2,
                     )
-                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(
+                    system_cfg_right = utils.make_z2_2copy_config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -446,7 +446,7 @@ class TestD2nSystem(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G2C_F2C_Config(
+        system_cfg = utils.make_z2_2copy_config(
             lat_2x2, 0.0, 0.0, 1.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=1
         )
         system_cfg.paramvec = paramvec
@@ -471,7 +471,7 @@ class TestD2nSystem(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(
+                    system_cfg_left = utils.make_z2_2copy_config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -481,7 +481,7 @@ class TestD2nSystem(unittest.TestCase):
                         num_pg_layer=1,
                         num_fermionic_layer=1,
                     )
-                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(
+                    system_cfg_right = utils.make_z2_2copy_config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -516,7 +516,7 @@ class TestD2nSystem(unittest.TestCase):
         g_chem = [0, -0.4, 2]
         paramvec = np.random.rand(3, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G2C_F2C_Config(
+        system_cfg = utils.make_z2_2copy_config(
             lat_2x2,
             0.0,
             0.0,
@@ -547,7 +547,7 @@ class TestD2nSystem(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(
+                    system_cfg_left = utils.make_z2_2copy_config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -557,7 +557,7 @@ class TestD2nSystem(unittest.TestCase):
                         num_pg_layer=1,
                         num_fermionic_layer=2,
                     )
-                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(
+                    system_cfg_right = utils.make_z2_2copy_config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -640,7 +640,7 @@ class TestD2nSystem(unittest.TestCase):
                 ],
             ]
         )
-        system_cfg = system.Z2System2D_G2C_F2C_Config(
+        system_cfg = utils.make_z2_2copy_config(
             lat,
             g0 / 2,
             1 / (2 * g0),
@@ -745,7 +745,7 @@ class TestD6TmatColorStructure(unittest.TestCase):
 #         nlayer = num_pg_layer + num_fermionic_layer
 #         unitcell_size = 2
 #         paramvec = np.random.rand(nlayer, unitcell_size, 20)
-#         cfg = system.Z2System2D_G2C_F2C_Config(
+#         cfg = utils.make_z2_2copy_config(
 #             lat,
 #             1,
 #             1,
@@ -1122,7 +1122,7 @@ class TestD6TmatColorStructure(unittest.TestCase):
 #                         paramvec_right = np.copy(paramvec)
 #                         paramvec_left[layerind, uc_ind, ind] -= eps
 #                         paramvec_right[layerind, uc_ind, ind] += eps
-#                         system_cfg_left = system.Z2System2D_G2C_F2C_Config(
+#                         system_cfg_left = utils.make_z2_2copy_config(
 #                             lat_2x2,
 #                             0.0,
 #                             0.0,
@@ -1133,7 +1133,7 @@ class TestD6TmatColorStructure(unittest.TestCase):
 #                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
 #                             unitcell_size=unitcell_size,
 #                         )
-#                         system_cfg_right = system.Z2System2D_G2C_F2C_Config(
+#                         system_cfg_right = utils.make_z2_2copy_config(
 #                             lat_2x2,
 #                             0.0,
 #                             0.0,
@@ -1187,7 +1187,7 @@ class TestD6TmatColorStructure(unittest.TestCase):
 #                         paramvec_right = np.copy(paramvec)
 #                         paramvec_left[layerind, uc_ind, ind] -= eps
 #                         paramvec_right[layerind, uc_ind, ind] += eps
-#                         system_cfg_left = system.Z2System2D_G2C_F2C_Config(
+#                         system_cfg_left = utils.make_z2_2copy_config(
 #                             lat_2x2,
 #                             0.0,
 #                             0.0,
@@ -1198,7 +1198,7 @@ class TestD6TmatColorStructure(unittest.TestCase):
 #                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
 #                             unitcell_size=unitcell_size,
 #                         )
-#                         system_cfg_right = system.Z2System2D_G2C_F2C_Config(
+#                         system_cfg_right = utils.make_z2_2copy_config(
 #                             lat_2x2,
 #                             0.0,
 #                             0.0,
@@ -1252,7 +1252,7 @@ class TestD6TmatColorStructure(unittest.TestCase):
 #                         paramvec_right = np.copy(paramvec)
 #                         paramvec_left[layerind, uc_ind, ind] -= eps
 #                         paramvec_right[layerind, uc_ind, ind] += eps
-#                         system_cfg_left = system.Z2System2D_G2C_F2C_Config(
+#                         system_cfg_left = utils.make_z2_2copy_config(
 #                             lat_2x2,
 #                             0.0,
 #                             0.0,
@@ -1263,7 +1263,7 @@ class TestD6TmatColorStructure(unittest.TestCase):
 #                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
 #                             unitcell_size=unitcell_size,
 #                         )
-#                         system_cfg_right = system.Z2System2D_G2C_F2C_Config(
+#                         system_cfg_right = utils.make_z2_2copy_config(
 #                             lat_2x2,
 #                             0.0,
 #                             0.0,

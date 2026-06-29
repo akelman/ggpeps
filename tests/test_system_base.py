@@ -12,7 +12,18 @@ class TestSystemBase(unittest.TestCase):
         lat = lattice.Lattice2D(2, 3)
 
         paramvec = [[0.3, 0.5, 0.8, 0.2, 0.3, 0.9]]
-        cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(
+            lat,
+            0,
+            0,
+            0,
+            0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
         cfg.paramvec = paramvec
         self.system_z2_1c = system.Z2System2D(cfg)
 

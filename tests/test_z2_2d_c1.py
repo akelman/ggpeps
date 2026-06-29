@@ -28,15 +28,23 @@ class TestZ2SystemMethods(unittest.TestCase):
         self.system_z2_2_2 = system.Z2System2D(cfg)
 
     def test_tmat_numeric(self):
-        # NOTE: This test intentionally keeps the legacy one-copy config.
-        # The hard-coded Mathematica reference below was generated with nonzero t
-        # parameters (tr=0.3). The generic pure-gauge ncopy=1 config forces the
-        # t parameters to zero via get_zeroed_params, so it represents a different
-        # parameter point and cannot be compared to this reference without
-        # regenerating the Mathematica data for t=0.
+        # NOTE: This test compares against Mathematica data generated at a nonzero
+        # t parameter. Use the generic ncopy=1 config in an unconstrained single-layer
+        # convention so the parameter point is not projected to the pure-gauge t=0 sector.
         lat = lattice.Lattice2D(2, 2)
         paramvec_real = [[0.3, 0.5, 0.8, 0.0, 0.0, 0.0]]
-        cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(
+            lat,
+            0,
+            0,
+            0,
+            0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
         cfg.paramvec = paramvec_real
         system_z2_2_2_real = system.Z2System2D(cfg)
         lay = 0
@@ -123,14 +131,22 @@ class TestZ2SystemMethods(unittest.TestCase):
         # This check is useful for the mode-ordering.
         # Independent of the order, gamma_maj is always a covariance matrix
         lat = lattice.Lattice2D(2, 2)
-        # NOTE: This test intentionally keeps the legacy one-copy config.
-        # The hard-coded Mathematica reference below was generated with nonzero t
-        # parameters (tr=0.17). The generic pure-gauge ncopy=1 config forces the
-        # t parameters to zero via get_zeroed_params, so it represents a different
-        # parameter point and cannot be compared to this reference without
-        # regenerating the Mathematica data for t=0.
+        # NOTE: This test compares against Mathematica data generated at a nonzero
+        # t parameter. Use the generic ncopy=1 config in an unconstrained single-layer
+        # convention so the parameter point is not projected to the pure-gauge t=0 sector.
         paramvec = [[0.17, 0.35, 0.56, 0, 0, 0]]
-        cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(
+            lat,
+            0,
+            0,
+            0,
+            0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
         cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(cfg)
         lay = 0
@@ -324,14 +340,22 @@ class TestZ2SystemMethods(unittest.TestCase):
         # This check is useful for the mode-ordering.
         # Independent of the order, gamma_maj is always a covariance matrix
         lat = lattice.Lattice2D(2, 2)
-        # NOTE: This test intentionally keeps the legacy one-copy config.
-        # The hard-coded Mathematica reference below was generated with nonzero t
-        # parameters (tr=0.17). The generic pure-gauge ncopy=1 config forces the
-        # t parameters to zero via get_zeroed_params, so it represents a different
-        # parameter point and cannot be compared to this reference without
-        # regenerating the Mathematica data for t=0.
+        # NOTE: This test compares against Mathematica data generated at a nonzero
+        # t parameter. Use the generic ncopy=1 config in an unconstrained single-layer
+        # convention so the parameter point is not projected to the pure-gauge t=0 sector.
         paramvec = [[0.17, 0.35, 0.56, 0, 0, 0]]
-        cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(
+            lat,
+            0,
+            0,
+            0,
+            0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
         cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(cfg)
         lay = 0
@@ -670,14 +694,22 @@ class TestZ2SystemMethods(unittest.TestCase):
         lay = 0
         uc_ind = 0
         lat = lattice.Lattice2D(2, 2)
-        # NOTE: This test intentionally keeps the legacy one-copy config.
-        # The hard-coded Mathematica reference below was generated with nonzero t
-        # parameters (tr=0.17). The generic pure-gauge ncopy=1 config forces the
-        # t parameters to zero via get_zeroed_params, so it represents a different
-        # parameter point and cannot be compared to this reference without
-        # regenerating the Mathematica data for t=0.
+        # NOTE: This test compares against Mathematica data generated at a nonzero
+        # t parameter. Use the generic ncopy=1 config in an unconstrained single-layer
+        # convention so the parameter point is not projected to the pure-gauge t=0 sector.
         paramvec = [[0.17, 0.35, 0.56, 0, 0, 0]]
-        cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(
+            lat,
+            0,
+            0,
+            0,
+            0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
         cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(cfg)
         res = system_z2_2_2.compute_gamma_maj_deriv(system_z2_2_2.symbolvec[1], lay, uc_ind)
@@ -813,14 +845,22 @@ class TestZ2SystemMethods(unittest.TestCase):
         lay = 0
         uc_ind = 0
         lat = lattice.Lattice2D(2, 2)
-        # NOTE: This test intentionally keeps the legacy one-copy config.
-        # The hard-coded Mathematica reference below was generated with nonzero t
-        # parameters (tr=0.17). The generic pure-gauge ncopy=1 config forces the
-        # t parameters to zero via get_zeroed_params, so it represents a different
-        # parameter point and cannot be compared to this reference without
-        # regenerating the Mathematica data for t=0.
+        # NOTE: This test compares against Mathematica data generated at a nonzero
+        # t parameter. Use the generic ncopy=1 config in an unconstrained single-layer
+        # convention so the parameter point is not projected to the pure-gauge t=0 sector.
         paramvec = [[0.17, 0.35, 0.56, 0, 0, 0]]
-        cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(
+            lat,
+            0,
+            0,
+            0,
+            0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
         cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(cfg)
         res = system_z2_2_2.compute_gamma_maj_deriv(system_z2_2_2.symbolvec[2], lay, uc_ind)
@@ -956,14 +996,22 @@ class TestZ2SystemMethods(unittest.TestCase):
         lay = 0
         uc_ind = 0
         lat = lattice.Lattice2D(2, 2)
-        # NOTE: This test intentionally keeps the legacy one-copy config.
-        # The hard-coded Mathematica reference below was generated with nonzero t
-        # parameters (tr=0.17). The generic pure-gauge ncopy=1 config forces the
-        # t parameters to zero via get_zeroed_params, so it represents a different
-        # parameter point and cannot be compared to this reference without
-        # regenerating the Mathematica data for t=0.
+        # NOTE: This test compares against Mathematica data generated at a nonzero
+        # t parameter. Use the generic ncopy=1 config in an unconstrained single-layer
+        # convention so the parameter point is not projected to the pure-gauge t=0 sector.
         paramvec = [[0.17, 0.35, 0.56, 0, 0, 0]]
-        cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(
+            lat,
+            0,
+            0,
+            0,
+            0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
         cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(cfg)
         res = system_z2_2_2.compute_gamma_maj_deriv(system_z2_2_2.symbolvec[0], lay, uc_ind)
@@ -1009,14 +1057,45 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec_left = [[0.17 - eps, 0.35, 0.56, 0, 0, 0]]
         paramvec_right = [[0.17 + eps, 0.35, 0.56, 0, 0, 0]]
 
-        # NOTE: This test intentionally keeps the legacy one-copy config.
-        # It differentiates with respect to the t parameter. The generic
-        # pure-gauge ncopy=1 config forces the t parameters to zero via
-        # get_zeroed_params, so finite differences in t are projected out and
-        # cannot be compared to the raw analytic t derivative tested here.
-        cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
-        cfg_left = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
-        cfg_right = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
+        # NOTE: This test compares against Mathematica data generated at a nonzero
+        # t parameter. Use the generic ncopy=1 config in an unconstrained single-layer
+        # convention so the parameter point is not projected to the pure-gauge t=0 sector.
+        cfg = system.Z2System2D_Config(
+            lat,
+            0,
+            0,
+            0,
+            0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
+        cfg_left = system.Z2System2D_Config(
+            lat,
+            0,
+            0,
+            0,
+            0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
+        cfg_right = system.Z2System2D_Config(
+            lat,
+            0,
+            0,
+            0,
+            0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
 
         cfg.paramvec = paramvec
         cfg_left.paramvec = paramvec_left
@@ -1121,14 +1200,22 @@ class TestZ2SystemMethods(unittest.TestCase):
         lay = 0
         uc_ind = 0
         lat = lattice.Lattice2D(2, 2)
-        # NOTE: This test intentionally keeps the legacy one-copy config.
-        # It differentiates with respect to the t parameter. The generic
-        # pure-gauge ncopy=1 config forces the t parameters to zero via
-        # get_zeroed_params, so the raw t derivative tested here is a legacy
-        # compatibility check rather than a generic pure-gauge variational
-        # derivative.
+        # NOTE: This test compares against Mathematica data generated at a nonzero
+        # t parameter. Use the generic ncopy=1 config in an unconstrained single-layer
+        # convention so the parameter point is not projected to the pure-gauge t=0 sector.
         paramvec = [[0.17, 0.35, 0.56, 0, 0, 0]]
-        cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(
+            lat,
+            0,
+            0,
+            0,
+            0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
         cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(cfg)
         res = system_z2_2_2.gamma_maj_sys_deriv_vec(system_z2_2_2.symbolvec[0])[lay, uc_ind]

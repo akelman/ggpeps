@@ -17,7 +17,18 @@ class TestMinimizerZ2(unittest.TestCase):
         eps = 1e-5
         paramvec = [[0.0, 0.5, 0.5, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=0)
+        system_cfg = system.Z2System2D_Config(
+            lat_2x2,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
         exact_cfg = ExactEvaluatorConfig()
@@ -34,25 +45,29 @@ class TestMinimizerZ2(unittest.TestCase):
                 paramvec_right = np.copy(paramvec)
                 paramvec_left[0, uc_ind, ind] -= eps
                 paramvec_right[0, uc_ind, ind] += eps
-                system_cfg_left = system.Z2System2DConfig(
+                system_cfg_left = system.Z2System2D_Config(
                     lat_2x2,
                     1.0,
                     0.0,
                     0.0,
                     0.0,
                     None,
-                    num_pg_layer=1,
-                    num_fermionic_layer=0,
+                    ncopy=1,
+                    num_pg_layer=0,
+                    num_fermionic_layer=1,
+                    enforce_u1_symmetry=False,
                 )
-                system_cfg_right = system.Z2System2DConfig(
+                system_cfg_right = system.Z2System2D_Config(
                     lat_2x2,
                     1.0,
                     0.0,
                     0.0,
                     0.0,
                     None,
-                    num_pg_layer=1,
-                    num_fermionic_layer=0,
+                    ncopy=1,
+                    num_pg_layer=0,
+                    num_fermionic_layer=1,
+                    enforce_u1_symmetry=False,
                 )
 
                 system_cfg_left.paramvec = paramvec_left
@@ -78,7 +93,18 @@ class TestMinimizerZ2(unittest.TestCase):
         nlayer = 2
         paramvec = [[0.0, 0.5, 0.5, 0.0, 0.0, 0.0], [0.0, 0.3, 0.8, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=2, num_fermionic_layer=0)
+        system_cfg = system.Z2System2D_Config(
+            lat_2x2,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=2,
+            enforce_u1_symmetry=False,
+        )
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
         exact_cfg = ExactEvaluatorConfig()
@@ -96,25 +122,29 @@ class TestMinimizerZ2(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layer, uc_ind, ind] -= eps
                     paramvec_right[layer, uc_ind, ind] += eps
-                    system_cfg_left = system.Z2System2DConfig(
+                    system_cfg_left = system.Z2System2D_Config(
                         lat_2x2,
                         1.0,
                         0.0,
                         0.0,
                         0.0,
                         None,
-                        num_pg_layer=2,
-                        num_fermionic_layer=0,
+                        ncopy=1,
+                        num_pg_layer=0,
+                        num_fermionic_layer=2,
+                        enforce_u1_symmetry=False,
                     )
-                    system_cfg_right = system.Z2System2DConfig(
+                    system_cfg_right = system.Z2System2D_Config(
                         lat_2x2,
                         1.0,
                         0.0,
                         0.0,
                         0.0,
                         None,
-                        num_pg_layer=2,
-                        num_fermionic_layer=0,
+                        ncopy=1,
+                        num_pg_layer=0,
+                        num_fermionic_layer=2,
+                        enforce_u1_symmetry=False,
                     )
 
                     system_cfg_left.paramvec = paramvec_left
@@ -140,7 +170,18 @@ class TestMinimizerZ2(unittest.TestCase):
         eps = 1e-5
         paramvec = [[0.2, 0.5, 0.5, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+        system_cfg = system.Z2System2D_Config(
+            lat_2x2,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
         exact_cfg = ExactEvaluatorConfig()
@@ -156,8 +197,30 @@ class TestMinimizerZ2(unittest.TestCase):
                 paramvec_right = np.copy(paramvec)
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
-                system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
-                system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+                system_cfg_left = system.Z2System2D_Config(
+                    lat_2x2,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    None,
+                    ncopy=1,
+                    num_pg_layer=0,
+                    num_fermionic_layer=1,
+                    enforce_u1_symmetry=False,
+                )
+                system_cfg_right = system.Z2System2D_Config(
+                    lat_2x2,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    None,
+                    ncopy=1,
+                    num_pg_layer=0,
+                    num_fermionic_layer=1,
+                    enforce_u1_symmetry=False,
+                )
 
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
@@ -183,7 +246,18 @@ class TestMinimizerZ2(unittest.TestCase):
         nlayer = 2
         paramvec = [[0.2, 0.5, 0.5, 0.0, 0.0, 0.0], [0.1, 0.4, 0.2, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=2, num_fermionic_layer=0)
+        system_cfg = system.Z2System2D_Config(
+            lat_2x2,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=2,
+            enforce_u1_symmetry=False,
+        )
         system_cfg.paramvec = paramvec
         sys = system.Z2System2D(system_cfg)
         exact_cfg = ExactEvaluatorConfig()
@@ -200,25 +274,29 @@ class TestMinimizerZ2(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2DConfig(
+                    system_cfg_left = system.Z2System2D_Config(
                         lat_2x2,
                         1.0,
                         0.0,
                         0.0,
                         0.0,
                         None,
-                        num_pg_layer=2,
-                        num_fermionic_layer=0,
+                        ncopy=1,
+                        num_pg_layer=0,
+                        num_fermionic_layer=2,
+                        enforce_u1_symmetry=False,
                     )
-                    system_cfg_right = system.Z2System2DConfig(
+                    system_cfg_right = system.Z2System2D_Config(
                         lat_2x2,
                         1.0,
                         0.0,
                         0.0,
                         0.0,
                         None,
-                        num_pg_layer=2,
-                        num_fermionic_layer=0,
+                        ncopy=1,
+                        num_pg_layer=0,
+                        num_fermionic_layer=2,
+                        enforce_u1_symmetry=False,
                     )
 
                     system_cfg_left.paramvec = paramvec_left
@@ -247,9 +325,42 @@ class TestMinimizerZ2(unittest.TestCase):
         paramvec_left = [[0.1, 0.3 - eps, 1.4, 0.0, 0.0, 0.0]]
         paramvec_right = [[0.1, 0.3 + eps, 1.4, 0.0, 0.0, 0.0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
-        system_cfg_left = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
-        system_cfg_right = system.Z2System2DConfig(lat_2x2, 1.0, 0.0, 0.0, 0.0)
+        system_cfg = system.Z2System2D_Config(
+            lat_2x2,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
+        system_cfg_left = system.Z2System2D_Config(
+            lat_2x2,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
+        system_cfg_right = system.Z2System2D_Config(
+            lat_2x2,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
         system_cfg.paramvec = paramvec
         system_cfg_left.paramvec = paramvec_left
         system_cfg_right.paramvec = paramvec_right

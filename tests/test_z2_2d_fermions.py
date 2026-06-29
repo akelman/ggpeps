@@ -1965,6 +1965,7 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
 ### Generic ncopy tests
 
 class TestG4ConfigNcopyGeneric(unittest.TestCase):
+    # TODO: fix this test
     """Tests for the ncopy-generic behavior of the G4C/F4C Z2 config.
 
     The long-term goal is to use this config as the generic Z2 ansatz class,
