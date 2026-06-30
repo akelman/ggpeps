@@ -1,9 +1,16 @@
 """Bravyi & Gosset three-state Gaussian-overlap identity (Commun. Math. Phys. 356, 451 (2017),
-eqs. 24-25), used to compute fermionic-PEPS amplitudes psi(G) = <phi_1(G)|phi_2> independently of
-the Pfaffian/bracket expansion. Pure-math, group-agnostic; operates on covariance matrices.
+eqs. 24-25 with |\phi_0> being the vacuum),
+can be used to compute the pure gauge amplitudes psi(G) = <B(G)|A>.
+This can be used to compute the electric energies for pure guge states
+independently of the pfaffian expansion method.
 
-Convention: covariance matrices follow Bravyi's M_{pq} = (-i/2)<[c_p, c_q]>. The vacuum covariance
-is M0 = (+) [[0,1],[-1,0]] per mode (eq 18, y=0). See docs/d6_combined.tex "Outlook" section.
+Convention: unlike our convrntion,
+covariance matrices follow Bravyi's M_{pq} = (-i/2)<[c_p, c_q]>
+with c_1 = c+c^\dagger c_2 = -i(c-c^\dagger)
+(both c_2 and the covariance matrix have opposite signs from our convention).
+
+The vacuum covariance
+is M0 = (+) [[0,1],[-1,0]] per mode.
 """
 
 from ggpeps import xnp
@@ -26,12 +33,8 @@ def vacuum_covmat(dim: int) -> xnp.ndarray:
     assert dim % 2 == 0, "covariance matrix dimension must be even"
     m0 = xnp.zeros((dim, dim), dtype=xnp.complex128)
     idx = xnp.arange(0, dim, 2)
-    if hasattr(m0, "at"):  # jax backend
-        m0 = m0.at[idx, idx + 1].set(1.0)
-        m0 = m0.at[idx + 1, idx].set(-1.0)
-    else:
-        m0[idx, idx + 1] = 1.0
-        m0[idx + 1, idx] = -1.0
+    m0 = backend.array_assign(m0, (idx, idx + 1), 1.0)
+    m0 = backend.array_assign(m0, (idx + 1, idx), -1.0)
     return m0
 
 
@@ -49,7 +52,7 @@ def to_bravyi_covmat(gamma: xnp.ndarray) -> xnp.ndarray:
 
         M = -S Gamma S,   i.e.   M_{pq} = -s_p s_q Gamma_{pq}
 
-    -- a global sign, plus a sign flip on every entry coupling a first-type to a second-type
+    - a global sign, plus a sign flip on every entry coupling a first-type to a second-type
     Majorana.
     """
     dim = gamma.shape[-1]

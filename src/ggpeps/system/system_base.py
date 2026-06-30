@@ -17,6 +17,7 @@ from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
 from ggpeps.system.config_base import Config2DBase, IdxVec, CoeffsVec, ConstantsVec
 from ggpeps.modearray import generate_permutation_matrix
+from ggpeps.system import overlap as ov
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -1957,7 +1958,6 @@ class System2DBase(ABC):
     def _overlap_chi_per_layer(self, gamma_in_vec: xnp.ndarray) -> xnp.ndarray:
         """chi_lay = Pf(M1+M2) Pf(Delta+M0) for each layer, given a full-system gauged link
         covariance `gamma_in_vec` (shape (nlayer, dim, dim)). Returns complex (nlayer,)."""
-        from ggpeps.system import overlap as ov
 
         mat_d = self.mat_d_vec
         dim = gamma_in_vec.shape[-1]
@@ -2006,9 +2006,8 @@ class System2DBase(ABC):
         return xnp.array(out)  # (n_h, nlayer, n_el_links)
 
     def _compute_el_energy_op_vec_overlap(self) -> xnp.ndarray:
-        """Overlap drop-in for el_energy_op_vec, summed over the standard electric-energy elements."""
-        # Pure gauge only. nphysmodes_site may be > 0 (Z2=1, D6=2) but those AUX modes decouple
-        # (mat_b=0), so the virtual-virtual block alone determines the amplitude. Guard ONLY on matter.
+        """Overlap drop-in for el_energy_op_vec, summed over the standard electric-energy group elements."""
+        # Pure gauge only.
         if self.cfg.num_fermionic_layer != 0:
             raise NotImplementedError("The overlap electric-energy path supports pure gauge only.")
         return self._overlap_el_op_vec_for_elements(self.cfg.gaugemgr.group_elements_for_el_energy)
@@ -2026,8 +2025,6 @@ class System2DBase(ABC):
             if getattr(self.cfg, "el_method", "pfaffian") == "overlap":
                 self._el_energy_op_vec = self._compute_el_energy_op_vec_overlap()
             else:
-                # This vector is the electric energy on a single link. Otherwise, we get a
-                # power of nlinks in the product and the electric energy term (with prefactors) gets negative
                 self._el_energy_op_vec = self._compute_el_energy_op_vec(
                     self.lognorm_default_vec,
                     self.cfg.mod_link_inds,
