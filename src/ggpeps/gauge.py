@@ -675,9 +675,8 @@ class D2nGauge(GaugeGroup):
         factor_for_el = []
         for h in group_elements:
             pref = 0.0
-            h_inv = np.conjugate(np.transpose(h))
             for irrep in irreps:
-                irrep_character = self.get_irrep_character(h_inv, irrep)
+                irrep_character = self.get_irrep_character(h, irrep)
                 electric_energy_factor = self.get_electric_energy_factor(irrep)
                 dim_irrep = self.get_irrep_dimension(irrep)
                 pref += electric_energy_factor * irrep_character * dim_irrep
