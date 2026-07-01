@@ -36,6 +36,7 @@ def phases_table(records):
         row = {
             "tag": r.get("tag"), "backend": r.get("resource", {}).get("backend"),
             "host": r.get("resource", {}).get("hostname"),
+            "ncpu": r.get("resource", {}).get("n_cpu_available"),
             "system": r.get("system"), "L": r.get("L"), "grads": r.get("grads"),
             "warmup": r.get("warmup_steps"), "meas": r.get("meas_steps"),
             "acceptance": r.get("derived", {}).get("acceptance"),
@@ -48,6 +49,22 @@ def phases_table(records):
             row[f"hot{i+1}"] = f"{fn}={d['secs']}s/{d['calls']}"
         out.append(row)
     return pd.DataFrame(out)
+
+
+def cpu_sweep_table(phases_df):
+    """From the cpusweep_* phase runs, pivot ms/run_step by (backend,L,ncpu) and
+    flag the optimal cpu count per (backend,L)."""
+    if phases_df.empty or "tag" not in phases_df:
+        return phases_df.iloc[0:0], phases_df.iloc[0:0]
+    sw = phases_df[phases_df["tag"].astype(str).str.startswith("cpusweep_")].copy()
+    if sw.empty:
+        return sw, sw
+    sw = sw[["backend", "L", "ncpu", "ms_per_run_step"]].sort_values(["backend", "L", "ncpu"])
+    # optimal cpu per (backend, L) = argmin ms/run_step
+    idx = sw.groupby(["backend", "L"])["ms_per_run_step"].idxmin()
+    best = sw.loc[idx].rename(columns={"ncpu": "optimal_ncpu", "ms_per_run_step": "best_ms_per_step"})
+    best = best[["backend", "L", "optimal_ncpu", "best_ms_per_step"]].reset_index(drop=True)
+    return sw, best
 
 
 def concurrency_table(records):
@@ -101,10 +118,12 @@ def main():
     args = ap.parse_args()
 
     phases = phases_table(load_jsonl(os.path.join(args.base, "phases.jsonl")))
+    cpu_sweep, cpu_best = cpu_sweep_table(phases)
     conc_proc, conc_agg = concurrency_table(load_jsonl(os.path.join(args.base, "concurrency.jsonl")))
     logs = parse_slurm_logs(args.base)
 
-    for name, df in [("phases", phases), ("concurrency_per_proc", conc_proc),
+    for name, df in [("phases", phases), ("cpu_sweep", cpu_sweep), ("cpu_optimal", cpu_best),
+                     ("concurrency_per_proc", conc_proc),
                      ("concurrency_aggregate", conc_agg), ("slurm_logs", logs)]:
         if isinstance(df, pd.DataFrame) and not df.empty:
             out = os.path.join(args.base, f"summary_{name}.csv")

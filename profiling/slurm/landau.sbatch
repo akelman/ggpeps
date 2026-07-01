@@ -2,15 +2,18 @@
 #SBATCH --job-name=d6prof
 #SBATCH --account=alex-account
 #SBATCH --partition=alexq
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=8
 #SBATCH --ntasks=1
-#SBATCH --mem=16G
+#SBATCH --mem=12G
 #SBATCH --time=02:00:00
 #SBATCH --output=%x_%j.out
-# NOTE: 4 CPUs (not 8) — Landau is saturated; 8-CPU jobs do not schedule for ~1yr,
-# whereas <=4-CPU jobs start within ~1h by preempting low-priority allq jobs
-# (alexq is a PriorityTier=100 preempting partition). Both CPU backends get the
-# same 4-core budget, so the numpy-vs-jax comparison stays fair.
+# NOTE: the alexq scheduling constraint is MEMORY, not CPU count. 8-CPU jobs
+# schedule immediately at <=12G but jump to a ~1yr estimate at >=16G (the alexq
+# nodes are memory-saturated by preemptible allq jobs; a big mem ask needs too
+# many preemptions). D6 MC is tiny in memory, so 12G is ample. cpus-per-task is
+# overridden per-job by the CPU-scaling sweep (submit_matrix.sh); the thread
+# budget below auto-tracks SLURM_CPUS_PER_TASK so numpy and jax stay on an equal
+# per-core footing.
 #
 # Landau (HUJI) profiling job for the D6 MC study. CPU-only; handles BOTH the
 # numpy-CPU and jax-CPU platforms via the BACKEND env var.
