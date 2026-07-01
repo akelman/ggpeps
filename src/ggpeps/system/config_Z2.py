@@ -282,7 +282,7 @@ class Z2System2D_Config(Config2DBase):
                     self.paramvec[coord] = 0
 
     def get_zeroed_params(self) -> tuple[tuple[int, int, int], ...]:
-        """Return parameter coordinates that are forced to zero by the ansatz.
+        """Return parameter coordinates that are forced to zero by the ansatz configuration.
 
         Coordinates are returned as ``(layer_ind, uc_ind, param_ind)`` and are
         later used by ``Config2DBase.enforce_parameter_conditions`` to zero the
@@ -366,7 +366,7 @@ class Z2System2D_Config(Config2DBase):
         # t params: couple physical to virtual modes
         t_params = []
         for cop in range(1, self.ncopy + 1):
-            for com in ["r", "i"]:  # real or imaginary
+            for com in ["r", "i"]:  # real or imaginary component
                 symbol = sympy.Symbol(f"t{cop}{com}", real=True)
                 t_params.append(symbol)
 
@@ -374,7 +374,7 @@ class Z2System2D_Config(Config2DBase):
         y_params = []
         z_params = []
         for cop in range(1, self.ncopy + 1):
-            for com in ["r", "i"]:  # real or imaginary
+            for com in ["r", "i"]:  # real or imaginary component
                 symbol = sympy.Symbol(f"y{cop}{com}", real=True)
                 y_params.append(symbol)
 
@@ -386,7 +386,7 @@ class Z2System2D_Config(Config2DBase):
         for cop1 in range(1, self.ncopy + 1):
             for cop2 in range(cop1 + 1, self.ncopy + 1):
                 for param in ["a", "b", "c", "d"]:
-                    for com in ["r", "i"]:  # real or imaginary
+                    for com in ["r", "i"]:  # real or imaginary component
                         symbol = sympy.Symbol(f"{param}{cop1}{cop2}{com}", real=True)
                         mixed_params.append(symbol)
 
