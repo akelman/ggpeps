@@ -38,8 +38,9 @@ WARMUP=500; MEAS=5000
 submit() {  # submit <sbatch> <tag> <extra EXPORTS...>
     local script="$1"; local tag="$2"; shift 2
     local exports="REPO=$REPO,VENV=$VENV,OUTDIR=$OUTROOT,TAG=$tag,SYS=d6,LAYERS=1,NCOPY=2,$*"
-    echo "sbatch --export=ALL,$exports --job-name=$tag $script"
-    sbatch --export="ALL,$exports" --job-name="$tag" "$script"
+    echo "sbatch -> $tag"
+    sbatch --export="ALL,$exports" --job-name="$tag" \
+           -o "$OUTROOT/slurm_%x_%j.out" -e "$OUTROOT/slurm_%x_%j.out" "$script"
 }
 
 for L in $Ls; do
@@ -91,8 +92,9 @@ if [[ "$CLUSTER" == alice ]]; then
       for MPS in 0 1; do
         tag="conc_K${K}_mps${MPS}_L${L}"
         exports="REPO=$REPO,VENV=$VENV,OUTDIR=$OUTROOT,K=$K,L=$L,USE_MPS=$MPS,SYS=d6,LAYERS=1,NCOPY=2,GRADS=1"
-        echo "sbatch --export=ALL,$exports --job-name=$tag $CONC"
-        sbatch --export="ALL,$exports" --job-name="$tag" "$CONC"
+        echo "sbatch -> $tag"
+        sbatch --export="ALL,$exports" --job-name="$tag" \
+               -o "$OUTROOT/slurm_%x_%j.out" -e "$OUTROOT/slurm_%x_%j.out" "$CONC"
       done
     done
   done
