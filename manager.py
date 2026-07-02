@@ -320,14 +320,10 @@ def main(args):
         system_type = Z2System2D
         if args.ncopy == 1:
             # The generic Z2 config supports ncopy=1 only in the pure-gauge sector.
-            if (
-                args.num_fermionic_layer != 0
-                or not np.allclose(g_mass, 0.0)
-                or not np.allclose(g_int, 0.0)
-                or not np.allclose(g_chem, 0.0)
-            ):
-                logger.error("Not Implemented: The 1 copy case does not support fermionic matter.")
-                sys.exit(1)
+            if not args.relax_u1 and args.num_fermionic_layer != 0:
+                logger.warning(
+                    "Using 1 copy without relaxing the U(1) symmetry does not allow virtual-virtual coupling."
+                )
         cfg_class = Z2System2D_Config
     elif args.gauge_group == "D6":
         system_type = D2nSystem2D
