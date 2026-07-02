@@ -123,7 +123,7 @@ class ExactEvaluator(Evaluator):
                 data["mass_energy_op"].append(self.system.mass_energy_op)
                 data["int_energy_op"].append(self.system.int_energy_op)
 
-                data["lognorm"].append(self.system.calculate_lognorm(all_factors=True))
+                data["lognorm"].append(self.system.calculate_lognorm_inc(all_factors=True))
                 data["polyakov_00_x"].append(np.real(self.system.compute_path(polyakov_loop)))
 
                 # Wilson loops
