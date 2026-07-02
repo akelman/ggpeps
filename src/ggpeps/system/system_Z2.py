@@ -116,18 +116,16 @@ class Z2System2D(System2DBase):
         self._incdet_vec = utils.IncLogAbsDeterminant.update_index(
             self.incdet_vec, self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat
         )
-        self.weight = 0.5 * np.sum(self.incdet_vec)
+        self.weight = 0.5 * xnp.sum(self.incdet_vec)
         self._wi_gamma_in_vec = utils.WoodburyInverter.update_index(self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat)
         self._wi_gamma_out_vec = utils.WoodburyInverter.update_index(
             self.wi_gamma_out_vec, update_arr_out, ind_mat, ind_mat
         )
         # Largest entry of any updated inverse (the GLOBAL near-singularity signal: large |inverse|
         # <=> small smallest singular value). The public update_gauge_ind wrapper uses it to trigger
-        # an out-of-schedule from-scratch refresh.
-        max_inv_mag = max(
-            float(xnp.max(xnp.abs(self._wi_gamma_in_vec))),
-            float(xnp.max(xnp.abs(self._wi_gamma_out_vec))),
-        )
+        # an out-of-schedule from-scratch refresh. Accumulate the per-tracker maxes as on-device
+        # scalars and defer the single device->host read to the end (one sync/step, not one each).
+        inv_mags = [xnp.max(xnp.abs(self._wi_gamma_in_vec)), xnp.max(xnp.abs(self._wi_gamma_out_vec))]
 
         # --- Incrementally update the modified (open-link) trackers. The link excluded from the
         # modified objects is skipped; for the others the local update is shifted by the carved-out
@@ -156,9 +154,11 @@ class Z2System2D(System2DBase):
                     self._wi_gamma_out_mod_vec[lay][ind], update_out, pos, pos
                 )
                 self._wi_gamma_out_mod_vec = backend.array_assign(self._wi_gamma_out_mod_vec, (lay, ind), new_out)
-                max_inv_mag = max(max_inv_mag, float(xnp.max(xnp.abs(new_in))), float(xnp.max(xnp.abs(new_out))))
+                inv_mags.append(xnp.max(xnp.abs(new_in)))
+                inv_mags.append(xnp.max(xnp.abs(new_out)))
 
-        self._last_step_max_inv_mag = max_inv_mag
+        # Single device->host read for the whole step (max over all per-tracker maxes).
+        self._last_step_max_inv_mag = float(xnp.max(xnp.asarray(inv_mags)))
 
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
