@@ -319,7 +319,6 @@ def main(args):
     if args.gauge_group == "Z2":
         system_type = Z2System2D
         if args.ncopy == 1:
-            # The generic Z2 config supports ncopy=1 only in the pure-gauge sector.
             if not args.relax_u1 and args.num_fermionic_layer != 0:
                 logger.warning(
                     "Using 1 copy without relaxing the U(1) symmetry does not allow virtual-virtual coupling."
