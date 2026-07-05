@@ -7,6 +7,7 @@ import jax.numpy as jnp
 
 from ggpeps import lattice, utils, gauge
 from ggpeps import system, exacteval
+from ggpeps.lattice import Direction
 from ggpeps.evaluator_manager import EvaluatorManager
 from ggpeps.modearray import generate_permutation_matrix
 from ggpeps.system.config_base import generate_gauged_projector_terms
@@ -25,7 +26,7 @@ class TestZ2System(unittest.TestCase):
         nlayer = num_pg_layer + num_fermionic_layer
         unitcell_size = 1
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
-        cfg = system.Z2System2D_G2C_F2C_Config(lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1)
+        cfg = utils.make_z2_2copy_config(lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1)
         cfg.paramvec = paramvec
         self.system_z2 = system.Z2System2D(cfg)
         self.system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
@@ -35,7 +36,8 @@ class TestZ2System(unittest.TestCase):
         do indeed vanish."""
 
         mat = self.system_z2.cfg.paramvec
-        t_indices = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
+        t_symbols = {"t1r", "t2r", "t1i", "t2i"}
+        t_indices = [ind for ind, symbol in enumerate(self.system_z2.cfg.symbolvec) if str(symbol) in t_symbols]
         for layer_ind in range(self.system_z2.cfg.num_pg_layer):
             for uc_ind in range(self.system_z2.cfg.unitcell_size):
                 for t_ind in t_indices:
@@ -43,18 +45,10 @@ class TestZ2System(unittest.TestCase):
                         coord = (layer_ind, uc_ind, t_ind)
                         self.assertAlmostEqual(mat[coord], 0)
 
+        zero_for_fermionic_symbols = {"t2r", "t2i", "y1r", "z1r", "y2r", "z2r", "y1i", "z1i", "y2i", "z2i"}
         zero_for_fermionic_layer = [
-            3,
-            13,
-            1,
-            2,
-            4,
-            5,
-            11,
-            12,
-            14,
-            15,
-        ]  # index of t2r, t2i, y1r, z1r, y2r, z2r, y1i, z1i, y2i, z2i in symbolvec
+            ind for ind, symbol in enumerate(self.system_z2.cfg.symbolvec) if str(symbol) in zero_for_fermionic_symbols
+        ]
         for layer_ind in range(self.system_z2.cfg.num_pg_layer, self.system_z2.cfg.nlayer):
             for uc_ind in range(self.system_z2.cfg.unitcell_size):
                 for ind in zero_for_fermionic_layer:
@@ -234,7 +228,7 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G2C_F2C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+        system_cfg = utils.make_z2_2copy_config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
@@ -252,8 +246,8 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
-                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+                    system_cfg_left = utils.make_z2_2copy_config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+                    system_cfg_right = utils.make_z2_2copy_config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -274,7 +268,7 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 52)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G4C_F4C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+        system_cfg = system.Z2System2D_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
@@ -289,8 +283,8 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G4C_F4C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
-                    system_cfg_right = system.Z2System2D_G4C_F4C_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+                    system_cfg_left = system.Z2System2D_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+                    system_cfg_right = system.Z2System2D_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -310,7 +304,7 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 0.0, 1.0, None)
+        system_cfg = utils.make_z2_2copy_config(lat_2x2, 0.0, 0.0, 0.0, 1.0, None)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
 
@@ -336,8 +330,8 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
-                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
+                    system_cfg_left = utils.make_z2_2copy_config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
+                    system_cfg_right = utils.make_z2_2copy_config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -359,7 +353,7 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(3, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G2C_F2C_Config(
+        system_cfg = utils.make_z2_2copy_config(
             lat_2x2, 0.0, 0.0, 0.0, 1.0, None, num_pg_layer=1, num_fermionic_layer=2
         )
         system_cfg.paramvec = paramvec
@@ -387,7 +381,7 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(
+                    system_cfg_left = utils.make_z2_2copy_config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -397,7 +391,7 @@ class TestZ2System(unittest.TestCase):
                         num_pg_layer=1,
                         num_fermionic_layer=2,
                     )
-                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(
+                    system_cfg_right = utils.make_z2_2copy_config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -429,7 +423,7 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 52)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G4C_F4C_Config(lat_2x2, 0.0, 0.0, 0.0, 1.0, None)
+        system_cfg = system.Z2System2D_Config(lat_2x2, 0.0, 0.0, 0.0, 1.0, None)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
 
@@ -452,7 +446,7 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G4C_F4C_Config(
+                    system_cfg_left = system.Z2System2D_Config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -462,7 +456,7 @@ class TestZ2System(unittest.TestCase):
                         num_pg_layer=1,
                         num_fermionic_layer=1,
                     )
-                    system_cfg_right = system.Z2System2D_G4C_F4C_Config(
+                    system_cfg_right = system.Z2System2D_Config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -493,7 +487,7 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G2C_F2C_Config(
+        system_cfg = utils.make_z2_2copy_config(
             lat_2x2, 0.0, 0.0, 1.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=1
         )
         system_cfg.paramvec = paramvec
@@ -524,7 +518,7 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(
+                    system_cfg_left = utils.make_z2_2copy_config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -534,7 +528,7 @@ class TestZ2System(unittest.TestCase):
                         num_pg_layer=1,
                         num_fermionic_layer=1,
                     )
-                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(
+                    system_cfg_right = utils.make_z2_2copy_config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -566,7 +560,7 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 52)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G4C_F4C_Config(
+        system_cfg = system.Z2System2D_Config(
             lat_2x2, 0.0, 0.0, 1.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=1
         )
         system_cfg.paramvec = paramvec
@@ -593,7 +587,7 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G4C_F4C_Config(
+                    system_cfg_left = system.Z2System2D_Config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -603,7 +597,7 @@ class TestZ2System(unittest.TestCase):
                         num_pg_layer=1,
                         num_fermionic_layer=1,
                     )
-                    system_cfg_right = system.Z2System2D_G4C_F4C_Config(
+                    system_cfg_right = system.Z2System2D_Config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -635,7 +629,7 @@ class TestZ2System(unittest.TestCase):
         g_chem = [-0.4, 2]
         paramvec = np.random.rand(3, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_G2C_F2C_Config(
+        system_cfg = utils.make_z2_2copy_config(
             lat_2x2,
             0.0,
             0.0,
@@ -675,7 +669,7 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_G2C_F2C_Config(
+                    system_cfg_left = utils.make_z2_2copy_config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -685,7 +679,7 @@ class TestZ2System(unittest.TestCase):
                         num_pg_layer=1,
                         num_fermionic_layer=2,
                     )
-                    system_cfg_right = system.Z2System2D_G2C_F2C_Config(
+                    system_cfg_right = utils.make_z2_2copy_config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -767,7 +761,7 @@ class TestZ2System(unittest.TestCase):
                 ],
             ]
         )
-        system_cfg = system.Z2System2D_G2C_F2C_Config(
+        system_cfg = utils.make_z2_2copy_config(
             lat,
             g0 / 2,
             1 / (2 * g0),
@@ -777,6 +771,30 @@ class TestZ2System(unittest.TestCase):
             num_pg_layer=1,
             num_fermionic_layer=1,
         )
+        g2_order_in_g4_convention = [
+            "t1r",
+            "y1r",
+            "z1r",
+            "t2r",
+            "y2r",
+            "z2r",
+            "a12r",
+            "b12r",
+            "c12r",
+            "d12r",
+            "t1i",
+            "y1i",
+            "z1i",
+            "t2i",
+            "y2i",
+            "z2i",
+            "a12i",
+            "b12i",
+            "c12i",
+            "d12i",
+        ]
+        target_order = [str(symbol) for symbol in system_cfg.symbolvec]
+        param = utils.reorder_parameter_vector(param, g2_order_in_g4_convention, target_order, axis=-1)
         system_cfg.paramvec = param
         sys = system_type(system_cfg)
         eval_config = exacteval.ExactEvaluatorConfig()
@@ -795,7 +813,7 @@ class TestZ2System(unittest.TestCase):
         unitcell_size = 2
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
         paramvec[2] = paramvec[1]
-        cfg = system.Z2System2D_G2C_F2C_Config(
+        cfg = utils.make_z2_2copy_config(
             lat,
             1,
             1,
@@ -844,7 +862,7 @@ class TestTransVariance(unittest.TestCase):
         nlayer = num_pg_layer + num_fermionic_layer
         unitcell_size = 2
         self.u1_symmetry = False
-        cfg = system.Z2System2D_G2C_F2C_Config(
+        cfg = utils.make_z2_2copy_config(
             lat,
             1,
             1,
@@ -900,7 +918,11 @@ class TestTransVariance(unittest.TestCase):
     def test_mat_a_even(self):
         """If t=0 on a given site, then mat_a should be [[0,1],[-1,0]] on that site."""
         # Set t = 0 on even sites
-        t_inds = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
+        t_symbols = {"t1r", "t2r", "t1i", "t2i"}
+        t_inds = [
+            ind for ind, symbol in enumerate(self.system_z2.cfg.symbolvec)
+            if str(symbol) in t_symbols
+        ]
         paramvec = self.system_z2.cfg.paramvec
         for lay in range(self.system_z2.cfg.nlayer):
             uc_ind = 0  # index for even sites
@@ -940,7 +962,11 @@ class TestTransVariance(unittest.TestCase):
         """If t=0 on a given site, then mat_a should be [[0, 1], [-1, 0]] on that site.
         Same as previous test, but for odd sites."""
         # Set t = 0 on odd sites
-        t_inds = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
+        t_symbols = {"t1r", "t2r", "t1i", "t2i"}
+        t_inds = [
+            ind for ind, symbol in enumerate(self.system_z2.cfg.symbolvec)
+            if str(symbol) in t_symbols
+        ]
         paramvec = self.system_z2.cfg.paramvec
         for lay in range(self.system_z2.cfg.nlayer):
             uc_ind = 1  # index for odd sites
@@ -979,7 +1005,11 @@ class TestTransVariance(unittest.TestCase):
     def test_mat_b_even(self):
         """If t=0 on a given site, then mat_b should be all zeros on that site."""
         # Set t = 0 on even sites
-        t_inds = [0, 3, 10, 13]  # index of t1r, t2r, t1i, t2i in symbolvec
+        t_symbols = {"t1r", "t2r", "t1i", "t2i"}
+        t_inds = [
+            ind for ind, symbol in enumerate(self.system_z2.cfg.symbolvec)
+            if str(symbol) in t_symbols
+        ]
         paramvec = self.system_z2.cfg.paramvec
         for lay in range(self.system_z2.cfg.nlayer):
             uc_ind = 0  # index for even sites
@@ -1271,7 +1301,7 @@ class TestTransVariance(unittest.TestCase):
                         paramvec_right = np.copy(paramvec)
                         paramvec_left[layerind, uc_ind, ind] -= eps
                         paramvec_right[layerind, uc_ind, ind] += eps
-                        system_cfg_left = system.Z2System2D_G2C_F2C_Config(
+                        system_cfg_left = utils.make_z2_2copy_config(
                             lat_2x2,
                             0.0,
                             0.0,
@@ -1283,7 +1313,7 @@ class TestTransVariance(unittest.TestCase):
                             unitcell_size=unitcell_size,
                             enforce_u1_symmetry=self.u1_symmetry,
                         )
-                        system_cfg_right = system.Z2System2D_G2C_F2C_Config(
+                        system_cfg_right = utils.make_z2_2copy_config(
                             lat_2x2,
                             0.0,
                             0.0,
@@ -1339,7 +1369,7 @@ class TestTransVariance(unittest.TestCase):
                         paramvec_right = np.copy(paramvec)
                         paramvec_left[layerind, uc_ind, ind] -= eps
                         paramvec_right[layerind, uc_ind, ind] += eps
-                        system_cfg_left = system.Z2System2D_G2C_F2C_Config(
+                        system_cfg_left = utils.make_z2_2copy_config(
                             lat_2x2,
                             0.0,
                             0.0,
@@ -1351,7 +1381,7 @@ class TestTransVariance(unittest.TestCase):
                             unitcell_size=unitcell_size,
                             enforce_u1_symmetry=self.u1_symmetry,
                         )
-                        system_cfg_right = system.Z2System2D_G2C_F2C_Config(
+                        system_cfg_right = utils.make_z2_2copy_config(
                             lat_2x2,
                             0.0,
                             0.0,
@@ -1407,7 +1437,7 @@ class TestTransVariance(unittest.TestCase):
                         paramvec_right = np.copy(paramvec)
                         paramvec_left[layerind, uc_ind, ind] -= eps
                         paramvec_right[layerind, uc_ind, ind] += eps
-                        system_cfg_left = system.Z2System2D_G2C_F2C_Config(
+                        system_cfg_left = utils.make_z2_2copy_config(
                             lat_2x2,
                             0.0,
                             0.0,
@@ -1419,7 +1449,7 @@ class TestTransVariance(unittest.TestCase):
                             unitcell_size=unitcell_size,
                             enforce_u1_symmetry=self.u1_symmetry,
                         )
-                        system_cfg_right = system.Z2System2D_G2C_F2C_Config(
+                        system_cfg_right = utils.make_z2_2copy_config(
                             lat_2x2,
                             0.0,
                             0.0,
@@ -1449,7 +1479,7 @@ class TestTransVariance(unittest.TestCase):
     def test_el_energy(self):
         link_inds = (0, 1)  # pick one from each sublattice
         lat = lattice.Lattice2D(2, 2)
-        cfg = system.Z2System2D_G2C_F2C_Config(
+        cfg = utils.make_z2_2copy_config(
             lat,
             g_el=1.0,
             g_mag=0.0,
@@ -1484,7 +1514,7 @@ class TestTransVariance(unittest.TestCase):
     def test_el_energy_grads(self):
         link_inds = (0, 1)  # pick one from each sublattice
         lat = lattice.Lattice2D(2, 2)
-        cfg = system.Z2System2D_G2C_F2C_Config(
+        cfg = utils.make_z2_2copy_config(
             lat,
             g_el=1.0,
             g_mag=0.0,
@@ -1540,7 +1570,7 @@ class TestFullGrads(unittest.TestCase):
         g_int = 1.0
         g_chem = [2.0, 3.0]
 
-        cfg = system.Z2System2D_G2C_F2C_Config(
+        cfg = utils.make_z2_2copy_config(
             lat_2x2,
             g_el=el,
             g_mag=mag,
@@ -1585,7 +1615,7 @@ class TestFullGrads(unittest.TestCase):
                         paramvec_right = np.copy(paramvec)
                         paramvec_left[layerind, uc_ind, ind] -= eps
                         paramvec_right[layerind, uc_ind, ind] += eps
-                        system_cfg_left = system.Z2System2D_G2C_F2C_Config(
+                        system_cfg_left = utils.make_z2_2copy_config(
                             lat_2x2,
                             g_el=el,
                             g_mag=mag,
@@ -1597,7 +1627,7 @@ class TestFullGrads(unittest.TestCase):
                             unitcell_size=unitcell_size,
                             enforce_u1_symmetry=u1_symmetry,
                         )
-                        system_cfg_right = system.Z2System2D_G2C_F2C_Config(
+                        system_cfg_right = utils.make_z2_2copy_config(
                             lat_2x2,
                             g_el=el,
                             g_mag=mag,
@@ -1662,7 +1692,7 @@ class TestElectricEnergyUniformityRandomk(unittest.TestCase):
 
     def _energy_for_subset(self, link_inds: tuple[int, ...]) -> float:
         """Return the mean per selected link (sys.el_energy_op) for the given subset."""
-        cfg = system.Z2System2D_G2C_F2C_Config(
+        cfg = utils.make_z2_2copy_config(
             self.lat,
             g_el=1.0,
             g_mag=0.0,
@@ -1879,7 +1909,7 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
         Returns:
             A fully constructed `system.Z2System2D` instance (gauge not yet applied).
         """
-        cfg = system.Z2System2D_G2C_F2C_Config(
+        cfg = utils.make_z2_2copy_config(
             self.lat,
             g_el=1.0,
             g_mag=0.0,
@@ -1930,3 +1960,935 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
             np.allclose(sys_drop.el_energy_op_vec, sys_keep.el_energy_op_vec, atol=1e-12, rtol=1e-12),
             msg="el_energy_op_vec changed when toggling drop_real_zero (should be invariant).",
         )
+
+
+### Generic ncopy tests
+
+class TestG4ConfigNcopyGeneric(unittest.TestCase):
+    # TODO: fix this test
+    """Tests for the ncopy-generic behavior of the G4C/F4C Z2 config.
+
+    The long-term goal is to use this config as the generic Z2 ansatz class,
+    with `ncopy` selecting the number of virtual-fermion copies. These tests
+    therefore check bookkeeping that must scale with ncopy, and the precise
+    `zeroed_params` rules that define which variational parameters are allowed
+    in pure-gauge and fermionic layers.
+
+    The tests intentionally inspect the generic G4C/F4C implementation directly.
+    They do not compare against the old G2C/F2C config, which should remain a
+    historical/reference implementation rather than the object being modified.
+    """
+
+    def _make_cfg(self, ncopy, *, num_pg_layer=1, num_fermionic_layer=1, enforce_u1_symmetry=True):
+        """Build a small generic G4C/F4C config for ncopy-dependent tests.
+
+        The lattice is deliberately small because these tests are about config
+        structure, symbol ordering, and zeroed-parameter rules rather than about
+        finite-size physics. Layer counts are configurable so that ncopy == 1 can
+        be tested in its supported pure-gauge-only setting.
+        """
+        lat = lattice.Lattice2D(2, 2)
+        return system.Z2System2D_Config(
+            lat,
+            g_el=1.0,
+            g_mag=1.0,
+            g_int=1.0,
+            g_mass=0.0,
+            g_chem=None,
+            ncopy=ncopy,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
+            enforce_u1_symmetry=enforce_u1_symmetry,
+        )
+
+    @staticmethod
+    def _zeroed_symbol_names(cfg, layer_ind):
+        """Return symbol names, rather than raw indices, zeroed in a given layer.
+
+        Using names makes these tests express the ansatz semantics directly and
+        avoids tying the assertions to incidental index values in `symbolvec`.
+        """
+        return {str(cfg.symbolvec[param_ind]) for lay, _, param_ind in cfg.zeroed_params if lay == layer_ind}
+
+    @staticmethod
+    def _t_symbol_names(copies):
+        """Return real and imaginary t_i symbol names for the given one-based copies."""
+        return {f"t{copy}{part}" for copy in copies for part in ["r", "i"]}
+
+    @staticmethod
+    def _yz_symbol_names(ncopy):
+        """Return all real and imaginary y_i and z_i intra-copy coupling symbols."""
+        return {
+            f"{param}{copy}{part}"
+            for param in ["y", "z"]
+            for copy in range(1, ncopy + 1)
+            for part in ["r", "i"]
+        }
+
+    @staticmethod
+    def _same_parity_mixed_symbol_names(ncopy):
+        """Return mixed-copy symbols between copies with the same parity.
+
+        Under the U(1)-symmetric convention these same-parity mixed-copy
+        couplings are forbidden in fermionic layers. Opposite-parity pairs remain
+        allowed.
+        """
+        return {
+            f"{param}{copy1}{copy2}{part}"
+            for copy1 in range(1, ncopy + 1)
+            for copy2 in range(copy1 + 1, ncopy + 1)
+            if (copy1 % 2) == (copy2 % 2)
+            for param in ["a", "b", "c", "d"]
+            for part in ["r", "i"]
+        }
+
+    def test_zeroed_params_pure_gauge_layers_zero_all_t_copies(self):
+        """Pure-gauge layers should zero all physical-virtual t_i couplings.
+
+        A pure-gauge layer should not couple to the physical fermion at all.
+        Therefore every t_i parameter, for every copy, must be forced to zero.
+        This is checked for ncopy = 1, 2, and 4 using symbol names.
+        """
+        for ncopy in [1, 2, 4]:
+            with self.subTest(ncopy=ncopy):
+                num_fermionic_layer = 0 if ncopy == 1 else 1
+                cfg = self._make_cfg(ncopy, num_fermionic_layer=num_fermionic_layer)
+                zeroed_pg = self._zeroed_symbol_names(cfg, layer_ind=0)
+                expected = self._t_symbol_names(range(1, ncopy + 1))
+                self.assertEqual(zeroed_pg, expected)
+
+    def test_zeroed_params_fermionic_layers_u1_rule(self):
+        """U(1)-symmetric fermionic layers should zero the forbidden symbols.
+
+        The generic rule is:
+        - zero t_2, t_4, ... so only odd-labelled copies couple directly to the
+        physical fermion;
+        - zero all y_i and z_i intra-copy virtual couplings;
+        - zero mixed-copy couplings between same-parity copies;
+        - keep opposite-parity mixed-copy couplings variational.
+
+        For ncopy = 2 this reproduces the old G2C/F2C zeroing rule
+        semantically, without modifying or importing that implementation here.
+        """
+        for ncopy in [2, 4]:
+            with self.subTest(ncopy=ncopy):
+                cfg = self._make_cfg(ncopy)
+                zeroed_ferm = self._zeroed_symbol_names(cfg, layer_ind=cfg.num_pg_layer)
+
+                even_copy_t = self._t_symbol_names(range(2, ncopy + 1, 2))
+                yz_symbols = self._yz_symbol_names(ncopy)
+                same_parity_mixed = self._same_parity_mixed_symbol_names(ncopy)
+                expected = even_copy_t | yz_symbols | same_parity_mixed
+
+                self.assertEqual(zeroed_ferm, expected)
+
+    def test_zeroed_params_fermionic_layers_do_not_zero_allowed_u1_symbols(self):
+        """Allowed U(1)-compatible symbols should not appear in zeroed_params.
+
+        This complements the previous test by checking the negative case: t_1,
+        t_3 and opposite-parity mixed-copy couplings should remain variational
+        for ncopy = 4.
+        """
+        cfg = self._make_cfg(ncopy=4)
+        zeroed_ferm = self._zeroed_symbol_names(cfg, layer_ind=cfg.num_pg_layer)
+
+        allowed_symbols = self._t_symbol_names([1, 3]) | {
+            f"{param}{copy1}{copy2}{part}"
+            for copy1, copy2 in [(1, 2), (1, 4), (2, 3), (3, 4)]
+            for param in ["a", "b", "c", "d"]
+            for part in ["r", "i"]
+        }
+
+        self.assertTrue(zeroed_ferm.isdisjoint(allowed_symbols))
+
+    def test_zeroed_params_fermionic_layers_empty_when_u1_not_enforced(self):
+        """Disabling U(1) symmetry should remove fermionic-layer zeroing.
+
+        Pure-gauge layers still zero t_i, but fermionic layers should not force
+        any symbols to zero when `enforce_u1_symmetry=False`.
+        """
+        cfg = self._make_cfg(ncopy=4, enforce_u1_symmetry=False)
+        zeroed_ferm = self._zeroed_symbol_names(cfg, layer_ind=cfg.num_pg_layer)
+        self.assertEqual(zeroed_ferm, set())
+
+    def test_zeroed_params_one_copy_no_fermionic_layer(self):
+        """For ncopy == 1, the supported use case is pure-gauge only.
+
+        There is no fermionic layer in the one-copy setting. This test documents
+        that convention explicitly and checks that the only forced parameters are
+        the one-copy physical-virtual couplings t1r and t1i in the pure-gauge layer.
+        """
+        cfg = self._make_cfg(ncopy=1, num_fermionic_layer=0)
+        self.assertEqual(cfg.nlayer, 1)
+        self.assertEqual(self._zeroed_symbol_names(cfg, layer_ind=0), {"t1r", "t1i"})
+
+    def test_make_pure_gauge_zeroes_only_t_symbols_for_representative_ncopy(self):
+        """make_pure_gauge should zero exactly the t_i symbols and leave all others unchanged."""
+        expected_zeroed_t_symbols = {
+            1: {"t1r", "t1i"},
+            2: {"t1r", "t2r", "t1i", "t2i"},
+            4: {"t1r", "t2r", "t3r", "t4r", "t1i", "t2i", "t3i", "t4i"},
+        }
+
+        for ncopy, expected_t_symbols in expected_zeroed_t_symbols.items():
+            with self.subTest(ncopy=ncopy):
+                num_fermionic_layer = 0 if ncopy == 1 else 1
+                cfg = self._make_cfg(ncopy, num_fermionic_layer=num_fermionic_layer)
+
+                paramvec = np.arange(np.prod(cfg.param_shape()), dtype=float).reshape(cfg.param_shape()) + 1.0
+                cfg.paramvec = paramvec
+                original_paramvec = np.copy(cfg.paramvec)
+
+                cfg.make_pure_gauge()
+
+                for param_ind, symbol in enumerate(cfg.symbolvec):
+                    symbol_name = str(symbol)
+                    for layer_ind in range(cfg.nlayer):
+                        for uc_ind in range(cfg.unitcell_size):
+                            coord = (layer_ind, uc_ind, param_ind)
+                            if symbol_name in expected_t_symbols:
+                                self.assertEqual(cfg.paramvec[coord], 0)
+                            else:
+                                self.assertEqual(cfg.paramvec[coord], original_paramvec[coord])
+
+    def test_ncopy_dependent_shapes(self):
+        """The generic config should derive all basic dimensions from ncopy.
+
+        This protects the ncopy generalization of the constructor and symbolic
+        T-matrix bookkeeping: number of parameters, symbolvec length, parameter
+        tensor shape, T-matrix shape, and virtual-mode counts must all follow
+        the ncopy-dependent formulas.
+        """
+        for ncopy in [1, 2, 4]:
+            with self.subTest(ncopy=ncopy):
+                num_fermionic_layer = 0 if ncopy == 1 else 1
+                cfg = self._make_cfg(ncopy, num_fermionic_layer=num_fermionic_layer)
+                expected_nparams = 2 * ncopy * (2 * ncopy + 1)
+                expected_tmat_size = 1 + 4 * ncopy
+                expected_nlayer = 1 if ncopy == 1 else 2
+
+                self.assertEqual(cfg.ncopy, ncopy)
+                self.assertEqual(cfg._nparams, expected_nparams)
+                self.assertEqual(len(cfg.symbolvec), expected_nparams)
+                self.assertEqual(cfg.param_shape(), (expected_nlayer, 1, expected_nparams))
+                self.assertEqual(cfg.tmat_symb.shape, (expected_tmat_size, expected_tmat_size))
+                self.assertEqual(cfg.nvirtmodes_vertex, 4 * ncopy)
+                self.assertEqual(cfg.nvirtmodes_link, 2 * ncopy)
+
+    def test_zeroed_params_are_in_range(self):
+        """Every zeroed-parameter coordinate should be valid for the param_shape.
+
+        This is a structural guard against off-by-one errors in the generic index
+        formulas used by `get_zeroed_params`, especially as ncopy changes.
+        """
+        for ncopy in [1, 2, 4]:
+            with self.subTest(ncopy=ncopy):
+                num_fermionic_layer = 0 if ncopy == 1 else 1
+                cfg = self._make_cfg(ncopy, num_fermionic_layer=num_fermionic_layer)
+                shape = cfg.param_shape()
+
+                for coord in cfg.zeroed_params:
+                    self.assertGreaterEqual(coord[0], 0)
+                    self.assertLess(coord[0], shape[0])
+                    self.assertGreaterEqual(coord[1], 0)
+                    self.assertLess(coord[1], shape[1])
+                    self.assertGreaterEqual(coord[2], 0)
+                    self.assertLess(coord[2], shape[2])
+
+    def test_odd_ncopy_greater_than_one_is_rejected(self):
+        """Odd ncopy > 1 should be rejected by the current pairwise convention.
+
+        The current pure-gauge projector pairs copies as (1 <-> 2), (3 <-> 4), ... .
+        Therefore ncopy must be either 1 or even until a different convention is
+        implemented.
+        """
+        for ncopy in [3, 5]:
+            with self.subTest(ncopy=ncopy):
+                with self.assertRaises(ValueError):
+                    self._make_cfg(ncopy)
+
+
+class TestGammaGaugeNeutralDict(unittest.TestCase):
+    """Direct tests for single-link ungauged projector covariance matrices.
+
+    These tests pin down the exact X/Y projector matrices returned by
+    `generate_gamma_gauge_neutral_dict`. They serve two purposes:
+    1. protect the legacy two-copy and four-copy behavior during refactoring;
+    2. verify that the ncopy-generic G4C/F4C implementation reproduces the
+    expected one-copy, two-copy, and four-copy projectors.
+    """
+
+    @staticmethod
+    def expected_x_1copy():
+        """Expected 4x4 horizontal one-copy projector covariance matrix."""
+        return np.array(
+            [
+                [0.0, 0.0, 0.0, 1.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, -1.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0, 0.0],
+            ]
+        )
+
+    @staticmethod
+    def expected_y_1copy():
+        """Expected 4x4 vertical one-copy projector covariance matrix."""
+        return np.array(
+            [
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, -1.0],
+                [-1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+            ]
+        )
+
+    @staticmethod
+    def expected_mixed_x_2copy():
+        """Expected 8x8 horizontal mixed-copy projector covariance matrix."""
+        return np.array(
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            ]
+        )
+
+    @staticmethod
+    def expected_mixed_y_2copy():
+        """Expected 8x8 vertical mixed-copy projector covariance matrix."""
+        return np.array(
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0],
+                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            ]
+        )
+
+    @staticmethod
+    def expected_unmixed_x_2copy():
+        """Expected 8x8 horizontal unmixed-copy projector covariance matrix."""
+        return np.array(
+            [
+                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+            ]
+        )
+
+    @staticmethod
+    def expected_unmixed_y_2copy():
+        """Expected 8x8 vertical unmixed-copy projector covariance matrix."""
+        return np.array(
+            [
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0],
+                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+            ]
+        )
+
+    @staticmethod
+    def block_diag_2copy(mat):
+        """Build the expected four-copy matrix from two independent two-copy blocks.
+
+        This represents the existing G4C/F4C convention: copies (1,2) and (3,4)
+        are paired independently, so the four-copy projector is block diagonal in
+        the two-copy projector blocks.
+        """
+        zeros = np.zeros_like(mat)
+        return np.block([[mat, zeros], [zeros, mat]])
+
+    def test_generate_gamma_gauge_neutral_dict_2copy_exact(self):
+        """Check the exact G2C/F2C single-link projector covariance matrices.
+
+        The first returned layer is the pure-gauge layer and must use mixed-copy
+        projectors. The second returned layer is the fermionic layer and must use
+        unmixed-copy projectors.
+        """
+        lat = lattice.Lattice2D(2, 2)
+        cfg = utils.make_z2_2copy_config(lat, 1, 1, 1, 1, None)
+        gamma_dict = cfg.generate_gamma_gauge_neutral_dict()
+
+        self.assertEqual(len(gamma_dict), 2)
+
+        self.assertEqual(gamma_dict[0][Direction.X].shape, (8, 8))
+        self.assertEqual(gamma_dict[0][Direction.Y].shape, (8, 8))
+        self.assertEqual(gamma_dict[1][Direction.X].shape, (8, 8))
+        self.assertEqual(gamma_dict[1][Direction.Y].shape, (8, 8))
+
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.X], self.expected_mixed_x_2copy()))
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.Y], self.expected_mixed_y_2copy()))
+        self.assertTrue(np.allclose(gamma_dict[1][Direction.X], self.expected_unmixed_x_2copy()))
+        self.assertTrue(np.allclose(gamma_dict[1][Direction.Y], self.expected_unmixed_y_2copy()))
+
+    def test_generate_gamma_gauge_neutral_dict_layer_assignment(self):
+        """Check that layer type determines whether projectors are mixed or unmixed.
+
+        The returned list must preserve the production layer ordering: all
+        pure-gauge layers first, followed by all fermionic layers. Pure-gauge
+        layers receive mixed-copy projectors; fermionic layers receive unmixed
+        projectors.
+        """
+        lat = lattice.Lattice2D(2, 2)
+
+        num_pg_layer = 2
+        num_fermionic_layer = 3
+
+        cfg = utils.make_z2_2copy_config(
+            lat,
+            1,
+            1,
+            1,
+            1,
+            None,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
+        )
+        gamma_dict = cfg.generate_gamma_gauge_neutral_dict()
+
+        self.assertEqual(len(gamma_dict), 5)
+
+        for lay in range(num_pg_layer):
+            with self.subTest(layer=lay, layer_type="pure_gauge"):
+                self.assertTrue(np.allclose(gamma_dict[lay][Direction.X], self.expected_mixed_x_2copy()))
+                self.assertTrue(np.allclose(gamma_dict[lay][Direction.Y], self.expected_mixed_y_2copy()))
+
+        for lay in range(num_pg_layer, num_pg_layer + num_fermionic_layer):
+            with self.subTest(layer=lay, layer_type="fermionic"):
+                self.assertTrue(np.allclose(gamma_dict[lay][Direction.X], self.expected_unmixed_x_2copy()))
+                self.assertTrue(np.allclose(gamma_dict[lay][Direction.Y], self.expected_unmixed_y_2copy()))
+
+    def test_generate_gamma_gauge_neutral_dict_g4_ncopy1_exact(self):
+        """Check that the generic G4C/F4C config reproduces the one-copy projectors.
+
+        With ncopy == 1 and no fermionic layer, only the pure-gauge projector list is
+        returned. The mixed-copy permutation is the identity in this case, so the
+        returned matrices must be the original 4x4 one-copy X/Y projectors.
+        """
+        lat = lattice.Lattice2D(2, 2)
+        cfg = system.Z2System2D_Config(
+            lat,
+            1,
+            1,
+            1,
+            1,
+            None,
+            ncopy=1,
+            num_pg_layer=1,
+            num_fermionic_layer=0,
+        )
+        gamma_dict = cfg.generate_gamma_gauge_neutral_dict()
+
+        self.assertEqual(len(gamma_dict), 1)
+        self.assertEqual(gamma_dict[0][Direction.X].shape, (4, 4))
+        self.assertEqual(gamma_dict[0][Direction.Y].shape, (4, 4))
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.X], self.expected_x_1copy()))
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.Y], self.expected_y_1copy()))
+
+    def test_generate_gamma_gauge_neutral_dict_g4_ncopy2_exact(self):
+        """Check the exact G4C/F4C single-link projectors for ncopy == 2.
+
+        This verifies that the generic G4C/F4C config produces the same two-copy
+        mixed and unmixed projector matrices as the dedicated G2C/F2C config, but
+        without relying on the G2C/F2C implementation itself.
+        """
+        lat = lattice.Lattice2D(2, 2)
+        cfg = system.Z2System2D_Config(
+            lat,
+            1,
+            1,
+            1,
+            1,
+            None,
+            ncopy=2,
+            num_pg_layer=1,
+            num_fermionic_layer=1,
+        )
+        gamma_dict = cfg.generate_gamma_gauge_neutral_dict()
+
+        self.assertEqual(len(gamma_dict), 2)
+
+        self.assertEqual(gamma_dict[0][Direction.X].shape, (8, 8))
+        self.assertEqual(gamma_dict[0][Direction.Y].shape, (8, 8))
+        self.assertEqual(gamma_dict[1][Direction.X].shape, (8, 8))
+        self.assertEqual(gamma_dict[1][Direction.Y].shape, (8, 8))
+
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.X], self.expected_mixed_x_2copy()))
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.Y], self.expected_mixed_y_2copy()))
+        self.assertTrue(np.allclose(gamma_dict[1][Direction.X], self.expected_unmixed_x_2copy()))
+        self.assertTrue(np.allclose(gamma_dict[1][Direction.Y], self.expected_unmixed_y_2copy()))
+
+    def test_generate_gamma_gauge_neutral_dict_4copy_exact(self):
+        """Check the exact current G4C/F4C single-link projector covariance matrices.
+
+        The current four-copy implementation is built by placing two identical
+        two-copy blocks on the diagonal. This protects backward compatibility
+        before refactoring the implementation.
+        """
+        lat = lattice.Lattice2D(2, 2)
+        cfg = system.Z2System2D_Config(
+            lat,
+            1,
+            1,
+            1,
+            1,
+            None,
+            num_pg_layer=1,
+            num_fermionic_layer=1,
+        )
+        gamma_dict = cfg.generate_gamma_gauge_neutral_dict()
+
+        expected_mixed_x = self.block_diag_2copy(self.expected_mixed_x_2copy())
+        expected_mixed_y = self.block_diag_2copy(self.expected_mixed_y_2copy())
+        expected_unmixed_x = self.block_diag_2copy(self.expected_unmixed_x_2copy())
+        expected_unmixed_y = self.block_diag_2copy(self.expected_unmixed_y_2copy())
+
+        self.assertEqual(len(gamma_dict), 2)
+
+        self.assertEqual(gamma_dict[0][Direction.X].shape, (16, 16))
+        self.assertEqual(gamma_dict[0][Direction.Y].shape, (16, 16))
+        self.assertEqual(gamma_dict[1][Direction.X].shape, (16, 16))
+        self.assertEqual(gamma_dict[1][Direction.Y].shape, (16, 16))
+
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.X], expected_mixed_x))
+        self.assertTrue(np.allclose(gamma_dict[0][Direction.Y], expected_mixed_y))
+        self.assertTrue(np.allclose(gamma_dict[1][Direction.X], expected_unmixed_x))
+        self.assertTrue(np.allclose(gamma_dict[1][Direction.Y], expected_unmixed_y))
+
+
+class TestLegacyG2CF2CG4Ncopy2Equivalence(unittest.TestCase):
+    """Equivalence tests between legacy G2C/F2C and generic G4C/F4C with ncopy=2.
+
+    These tests do not modify the legacy G2 implementation. Instead, they verify
+    that the generic G4C/F4C config reproduces the same two-copy ansatz after the
+    expected parameter-name relabeling and parameter-order conversion.
+    """
+
+    G2_TO_G4_SYMBOL_NAMES = {
+        "ar": "a12r",
+        "br": "b12r",
+        "cr": "c12r",
+        "dr": "d12r",
+        "ai": "a12i",
+        "bi": "b12i",
+        "ci": "c12i",
+        "di": "d12i",
+    }
+
+    def _make_cfgs(self):
+        """Build matching legacy G2 and generic G4(ncopy=2) configs."""
+        lat = lattice.Lattice2D(2, 2)
+        cfg_g2 = system.Z2System2D_G2C_F2C_Config(
+            lat,
+            g_el=1.0,
+            g_mag=1.0,
+            g_int=1.0,
+            g_mass=0.0,
+            g_chem=None,
+            num_pg_layer=1,
+            num_fermionic_layer=1,
+        )
+        cfg_g4 = system.Z2System2D_Config(
+            lat,
+            g_el=1.0,
+            g_mag=1.0,
+            g_int=1.0,
+            g_mass=0.0,
+            g_chem=None,
+            ncopy=2,
+            num_pg_layer=1,
+            num_fermionic_layer=1,
+        )
+        return cfg_g2, cfg_g4
+
+    def test_symbolvec_contains_same_parameters_after_g2_to_g4_renaming(self):
+        """G2 and generic G4(ncopy=2) should contain the same symbols after relabeling."""
+        cfg_g2, cfg_g4 = self._make_cfgs()
+
+        g2_names = utils.renamed_parameter_names(cfg_g2.symbolvec, self.G2_TO_G4_SYMBOL_NAMES)
+        g4_names = utils.parameter_names(cfg_g4.symbolvec)
+
+        self.assertEqual(set(g2_names), set(g4_names))
+        self.assertEqual(len(g2_names), len(g4_names))
+
+    def test_reorder_parameter_vector_maps_g2_order_to_g4_ncopy2_order(self):
+        """reorder_parameter_vector should convert legacy G2 order to generic G4(ncopy=2) order."""
+        cfg_g2, cfg_g4 = self._make_cfgs()
+        source_order = utils.renamed_parameter_names(cfg_g2.symbolvec, self.G2_TO_G4_SYMBOL_NAMES)
+        target_order = utils.parameter_names(cfg_g4.symbolvec)
+        g2_values = np.arange(cfg_g2._nparams)
+
+        reordered = utils.reorder_parameter_vector(g2_values, source_order, target_order)
+
+        expected = np.array([0, 3, 1, 4, 2, 5, 6, 7, 8, 9, 10, 13, 11, 14, 12, 15, 16, 17, 18, 19])
+        self.assertTrue(np.array_equal(reordered, expected))
+
+    def test_zeroed_params_are_semantically_equivalent(self):
+        """G2 and generic G4(ncopy=2) should force the same named parameters to zero."""
+        cfg_g2, cfg_g4 = self._make_cfgs()
+
+        self.assertEqual(
+            utils.zeroed_parameter_named_coords(cfg_g2, self.G2_TO_G4_SYMBOL_NAMES),
+            utils.zeroed_parameter_named_coords(cfg_g4),
+        )
+
+    def test_make_pure_gauge_is_equivalent_after_parameter_reordering(self):
+        """make_pure_gauge should have the same effect after converting G2 paramvec order to G4 order."""
+        cfg_g2, cfg_g4 = self._make_cfgs()
+        source_order = utils.renamed_parameter_names(cfg_g2.symbolvec, self.G2_TO_G4_SYMBOL_NAMES)
+        target_order = utils.parameter_names(cfg_g4.symbolvec)
+
+        g2_paramvec = np.arange(np.prod(cfg_g2.param_shape()), dtype=float).reshape(cfg_g2.param_shape()) + 1.0
+        cfg_g2.paramvec = g2_paramvec
+        cfg_g4.paramvec = utils.reorder_parameter_vector(g2_paramvec, source_order, target_order, axis=2)
+
+        cfg_g2.make_pure_gauge()
+        cfg_g4.make_pure_gauge()
+
+        g2_paramvec_in_g4_order = utils.reorder_parameter_vector(cfg_g2.paramvec, source_order, target_order, axis=2)
+        self.assertTrue(np.array_equal(g2_paramvec_in_g4_order, cfg_g4.paramvec))
+
+    def test_tmat_symb_is_equivalent_after_g2_to_g4_symbol_substitution(self):
+        """The symbolic T matrices should be identical after G2 symbols are relabeled to G4 names."""
+        cfg_g2, cfg_g4 = self._make_cfgs()
+        g4_symbols_by_name = {str(symbol): symbol for symbol in cfg_g4.symbolvec}
+        substitutions = {
+            symbol: g4_symbols_by_name[utils.renamed_parameter_name(symbol, self.G2_TO_G4_SYMBOL_NAMES)]
+            for symbol in cfg_g2.symbolvec
+        }
+
+        tmat_g2_in_g4_symbols = cfg_g2.tmat_symb.subs(substitutions)
+        tmat_g4 = cfg_g4.tmat_symb
+
+        self.assertEqual(tmat_g2_in_g4_symbols.shape, tmat_g4.shape)
+        diff = tmat_g2_in_g4_symbols - tmat_g4
+        for entry in diff:
+            self.assertEqual(sp.simplify(entry), 0)
+
+    def test_gamma_gauge_neutral_dict_is_equivalent(self):
+        """The single-link ungauged projector covariance matrices should match exactly."""
+        cfg_g2, cfg_g4 = self._make_cfgs()
+        gamma_g2 = cfg_g2.generate_gamma_gauge_neutral_dict()
+        gamma_g4 = cfg_g4.generate_gamma_gauge_neutral_dict()
+
+        self.assertEqual(len(gamma_g2), len(gamma_g4))
+        for layer_ind in range(len(gamma_g2)):
+            for direction in [Direction.X, Direction.Y]:
+                self.assertTrue(np.allclose(gamma_g2[layer_ind][direction], gamma_g4[layer_ind][direction]))
+
+    def test_init_el_energy_terms_are_equivalent(self):
+        """Electric-energy index, coefficient, and constant structures should match."""
+        cfg_g2, cfg_g4 = self._make_cfgs()
+
+        self.assertEqual(cfg_g2.idx_vec, cfg_g4.idx_vec)
+        self.assertEqual(cfg_g2.coeffs_vec, cfg_g4.coeffs_vec)
+        self.assertEqual(cfg_g2.constants_vec, cfg_g4.constants_vec)
+
+
+class TestLegacy2CG4Ncopy2PureGaugeEquivalence(unittest.TestCase):
+    """Equivalence tests between legacy pure-gauge 2C and generic G4C/F4C with ncopy=2.
+
+    The legacy Z2System2D2CConfig is pure-gauge only: it rejects fermionic
+    layers. Therefore the generic comparison target is G4C/F4C with ncopy=2
+    and num_fermionic_layer=0.
+    """
+
+    LEGACY_2C_TO_G4_SYMBOL_NAMES = {
+        "ar": "a12r",
+        "br": "b12r",
+        "cr": "c12r",
+        "dr": "d12r",
+        "ai": "a12i",
+        "bi": "b12i",
+        "ci": "c12i",
+        "di": "d12i",
+    }
+
+    def _make_cfgs(self):
+        """Build matching legacy 2C and generic G4(ncopy=2) pure-gauge configs."""
+        lat = lattice.Lattice2D(2, 2)
+        cfg_2c = system.Z2System2D2CConfig(
+            lat,
+            g_el=1.0,
+            g_mag=1.0,
+            g_int=1.0,
+            g_mass=0.0,
+            g_chem=None,
+            num_pg_layer=1,
+            num_fermionic_layer=0,
+        )
+        cfg_g4 = system.Z2System2D_Config(
+            lat,
+            g_el=1.0,
+            g_mag=1.0,
+            g_int=1.0,
+            g_mass=0.0,
+            g_chem=None,
+            ncopy=2,
+            num_pg_layer=1,
+            num_fermionic_layer=0,
+        )
+        return cfg_2c, cfg_g4
+
+    @classmethod
+    def _legacy_2c_symbol_name_in_g4_convention(cls, symbol):
+        """Rename legacy 2C symbols to the corresponding generic G4(ncopy=2) names."""
+        name = str(symbol)
+        return cls.LEGACY_2C_TO_G4_SYMBOL_NAMES.get(name, name)
+
+    @classmethod
+    def _legacy_2c_symbol_names_in_g4_convention(cls, cfg_2c):
+        """Return legacy 2C symbol names after applying the G4(ncopy=2) naming convention."""
+        return [cls._legacy_2c_symbol_name_in_g4_convention(symbol) for symbol in cfg_2c.symbolvec]
+
+    @staticmethod
+    def _symbol_names(cfg):
+        """Return symbolvec names as strings."""
+        return [str(symbol) for symbol in cfg.symbolvec]
+
+    @classmethod
+    def _zeroed_symbol_names(cls, cfg):
+        """Return forced-zero parameter symbols in G4 naming convention."""
+        return {
+            cls._legacy_2c_symbol_name_in_g4_convention(cfg.symbolvec[param_ind])
+            for _, _, param_ind in cfg.zeroed_params
+        }
+
+    def test_symbolvec_contains_same_parameters_after_legacy_2c_to_g4_renaming(self):
+        """Legacy 2C and generic G4(ncopy=2) should contain the same symbols after relabeling."""
+        cfg_2c, cfg_g4 = self._make_cfgs()
+
+        legacy_names = utils.renamed_parameter_names(cfg_2c.symbolvec, self.LEGACY_2C_TO_G4_SYMBOL_NAMES)
+        g4_names = utils.parameter_names(cfg_g4.symbolvec)
+
+        self.assertEqual(set(legacy_names), set(g4_names))
+        self.assertEqual(len(legacy_names), len(g4_names))
+
+    def test_reorder_parameter_vector_maps_legacy_2c_order_to_g4_ncopy2_order(self):
+        """reorder_parameter_vector should convert legacy 2C order to generic G4(ncopy=2) order."""
+        cfg_2c, cfg_g4 = self._make_cfgs()
+        source_order = utils.renamed_parameter_names(cfg_2c.symbolvec, self.LEGACY_2C_TO_G4_SYMBOL_NAMES)
+        target_order = utils.parameter_names(cfg_g4.symbolvec)
+        legacy_values = np.arange(cfg_2c._nparams)
+
+        reordered = utils.reorder_parameter_vector(legacy_values, source_order, target_order)
+
+        expected = np.array([0, 3, 1, 4, 2, 5, 6, 7, 8, 9, 10, 13, 11, 14, 12, 15, 16, 17, 18, 19])
+        self.assertTrue(np.array_equal(reordered, expected))
+
+    def test_zeroed_params_difference_documents_legacy_compatibility(self):
+        """Legacy 2C keeps zeroed_params empty, while generic G4(ncopy=2) forces pure-gauge t_i zero.
+
+        This documents the one known compatibility difference.
+        """
+        cfg_2c, cfg_g4 = self._make_cfgs()
+
+        self.assertEqual(cfg_2c.zeroed_params, tuple())
+        self.assertEqual(utils.zeroed_parameter_names(cfg_g4), {"t1r", "t2r", "t1i", "t2i"})
+
+    def test_make_pure_gauge_is_equivalent_after_parameter_reordering(self):
+        """make_pure_gauge should have the same effect after converting legacy 2C order to G4 order."""
+        cfg_2c, cfg_g4 = self._make_cfgs()
+        source_order = utils.renamed_parameter_names(cfg_2c.symbolvec, self.LEGACY_2C_TO_G4_SYMBOL_NAMES)
+        target_order = utils.parameter_names(cfg_g4.symbolvec)
+
+        legacy_paramvec = np.arange(np.prod(cfg_2c.param_shape()), dtype=float).reshape(cfg_2c.param_shape()) + 1.0
+        cfg_2c.paramvec = legacy_paramvec
+        cfg_g4.paramvec = utils.reorder_parameter_vector(legacy_paramvec, source_order, target_order, axis=2)
+
+        cfg_2c.make_pure_gauge()
+        cfg_g4.make_pure_gauge()
+
+        legacy_paramvec_in_g4_order = utils.reorder_parameter_vector(
+            cfg_2c.paramvec, source_order, target_order, axis=2)
+        self.assertTrue(np.array_equal(legacy_paramvec_in_g4_order, cfg_g4.paramvec))
+
+    def test_tmat_symb_is_equivalent_after_legacy_2c_to_g4_symbol_substitution(self):
+        """The symbolic T matrices should be identical after legacy 2C symbols are relabeled to G4 names."""
+        cfg_2c, cfg_g4 = self._make_cfgs()
+        g4_symbols_by_name = {str(symbol): symbol for symbol in cfg_g4.symbolvec}
+        substitutions = {
+            symbol: g4_symbols_by_name[utils.renamed_parameter_name(symbol, self.LEGACY_2C_TO_G4_SYMBOL_NAMES)]
+            for symbol in cfg_2c.symbolvec
+        }
+
+        tmat_2c_in_g4_symbols = cfg_2c.tmat_symb.subs(substitutions)
+        tmat_g4 = cfg_g4.tmat_symb
+
+        self.assertEqual(tmat_2c_in_g4_symbols.shape, tmat_g4.shape)
+        diff = tmat_2c_in_g4_symbols - tmat_g4
+        for entry in diff:
+            self.assertEqual(sp.simplify(entry), 0)
+
+    def test_gamma_gauge_neutral_dict_is_equivalent(self):
+        """The single-link pure-gauge projector covariance matrices should match exactly."""
+        cfg_2c, cfg_g4 = self._make_cfgs()
+        gamma_2c = cfg_2c.generate_gamma_gauge_neutral_dict()
+        gamma_g4 = cfg_g4.generate_gamma_gauge_neutral_dict()
+
+        self.assertEqual(len(gamma_2c), len(gamma_g4))
+        for layer_ind in range(len(gamma_2c)):
+            for direction in [Direction.X, Direction.Y]:
+                self.assertTrue(np.allclose(gamma_2c[layer_ind][direction], gamma_g4[layer_ind][direction]))
+
+    def test_init_el_energy_terms_are_equivalent(self):
+        """Electric-energy index, coefficient, and constant structures should match."""
+        cfg_2c, cfg_g4 = self._make_cfgs()
+
+        self.assertEqual(cfg_2c.idx_vec, cfg_g4.idx_vec)
+        self.assertEqual(cfg_2c.coeffs_vec, cfg_g4.coeffs_vec)
+        self.assertEqual(cfg_2c.constants_vec, cfg_g4.constants_vec)
+
+
+class TestLegacy1CG4Ncopy1PureGaugeEquivalence(unittest.TestCase):
+    """Equivalence tests between legacy pure-gauge 1C and generic G4C/F4C with ncopy=1.
+
+    The legacy Z2System2DConfig is pure-gauge only: it rejects fermionic layers,
+    unit cells larger than one, and relaxed U(1) symmetry. Therefore the generic
+    comparison target is G4C/F4C with ncopy=1, num_fermionic_layer=0,
+    unitcell_size=1, and enforce_u1_symmetry=True.
+    """
+
+    LEGACY_1C_TO_G4_SYMBOL_NAMES = {
+        "tr": "t1r",
+        "yr": "y1r",
+        "zr": "z1r",
+        "ti": "t1i",
+        "yi": "y1i",
+        "zi": "z1i",
+    }
+
+    def _make_cfgs(self):
+        """Build matching legacy 1C and generic G4(ncopy=1) pure-gauge configs."""
+        lat = lattice.Lattice2D(2, 2)
+        cfg_1c = system.Z2System2DConfig(
+            lat,
+            g_el=1.0,
+            g_mag=1.0,
+            g_int=1.0,
+            g_mass=0.0,
+            g_chem=None,
+            num_pg_layer=1,
+            num_fermionic_layer=0,
+            unitcell_size=1,
+            enforce_u1_symmetry=True,
+        )
+        cfg_g4 = system.Z2System2D_Config(
+            lat,
+            g_el=1.0,
+            g_mag=1.0,
+            g_int=1.0,
+            g_mass=0.0,
+            g_chem=None,
+            ncopy=1,
+            num_pg_layer=1,
+            num_fermionic_layer=0,
+            unitcell_size=1,
+            enforce_u1_symmetry=True,
+        )
+        return cfg_1c, cfg_g4
+
+    def test_symbolvec_contains_same_parameters_after_legacy_1c_to_g4_renaming(self):
+        """Legacy 1C and generic G4(ncopy=1) should contain the same symbols after relabeling."""
+        cfg_1c, cfg_g4 = self._make_cfgs()
+
+        legacy_names = utils.renamed_parameter_names(cfg_1c.symbolvec, self.LEGACY_1C_TO_G4_SYMBOL_NAMES)
+        g4_names = utils.parameter_names(cfg_g4.symbolvec)
+
+        self.assertEqual(set(legacy_names), set(g4_names))
+        self.assertEqual(len(legacy_names), len(g4_names))
+
+    def test_reorder_parameter_vector_maps_legacy_1c_order_to_g4_ncopy1_order(self):
+        """reorder_parameter_vector should convert legacy 1C order to generic G4(ncopy=1) order."""
+        cfg_1c, cfg_g4 = self._make_cfgs()
+        source_order = utils.renamed_parameter_names(cfg_1c.symbolvec, self.LEGACY_1C_TO_G4_SYMBOL_NAMES)
+        target_order = utils.parameter_names(cfg_g4.symbolvec)
+        legacy_values = np.arange(cfg_1c._nparams)
+
+        reordered = utils.reorder_parameter_vector(legacy_values, source_order, target_order)
+
+        expected = np.array([0, 1, 2, 3, 4, 5])
+        self.assertTrue(np.array_equal(reordered, expected))
+
+    def test_zeroed_params_difference_documents_legacy_compatibility(self):
+        """Legacy 1C keeps zeroed_params empty, while generic G4(ncopy=1) forces pure-gauge t_i zero.
+
+        This documents the known compatibility difference before migrating tests
+        away from the legacy 1C class.
+        """
+        cfg_1c, cfg_g4 = self._make_cfgs()
+
+        self.assertEqual(cfg_1c.zeroed_params, tuple())
+        self.assertEqual(utils.zeroed_parameter_names(cfg_g4), {"t1r", "t1i"})
+
+    def test_make_pure_gauge_is_equivalent_after_parameter_relabeling(self):
+        """make_pure_gauge should have the same effect after relabeling legacy 1C symbols to G4 names."""
+        cfg_1c, cfg_g4 = self._make_cfgs()
+        source_order = utils.renamed_parameter_names(cfg_1c.symbolvec, self.LEGACY_1C_TO_G4_SYMBOL_NAMES)
+        target_order = utils.parameter_names(cfg_g4.symbolvec)
+
+        legacy_paramvec = np.arange(np.prod(cfg_1c.param_shape()), dtype=float).reshape(cfg_1c.param_shape()) + 1.0
+        cfg_1c.paramvec = legacy_paramvec
+        cfg_g4.paramvec = utils.reorder_parameter_vector(legacy_paramvec, source_order, target_order, axis=2)
+
+        cfg_1c.make_pure_gauge()
+        cfg_g4.make_pure_gauge()
+
+        legacy_paramvec_in_g4_order = utils.reorder_parameter_vector(
+            cfg_1c.paramvec, source_order, target_order, axis=2)
+        self.assertTrue(np.array_equal(legacy_paramvec_in_g4_order, cfg_g4.paramvec))
+
+    def test_tmat_symb_is_equivalent_after_legacy_1c_to_g4_symbol_substitution(self):
+        """The symbolic T matrices should be identical after legacy 1C symbols are relabeled to G4 names."""
+        cfg_1c, cfg_g4 = self._make_cfgs()
+        g4_symbols_by_name = {str(symbol): symbol for symbol in cfg_g4.symbolvec}
+        substitutions = {
+            symbol: g4_symbols_by_name[utils.renamed_parameter_name(symbol, self.LEGACY_1C_TO_G4_SYMBOL_NAMES)]
+            for symbol in cfg_1c.symbolvec
+        }
+
+        tmat_1c_in_g4_symbols = cfg_1c.tmat_symb.subs(substitutions)
+        tmat_g4 = cfg_g4.tmat_symb
+
+        self.assertEqual(tmat_1c_in_g4_symbols.shape, tmat_g4.shape)
+        diff = tmat_1c_in_g4_symbols - tmat_g4
+        for entry in diff:
+            self.assertEqual(sp.simplify(entry), 0)
+
+    def test_gamma_gauge_neutral_dict_is_equivalent(self):
+        """The single-link pure-gauge projector covariance matrices should match exactly."""
+        cfg_1c, cfg_g4 = self._make_cfgs()
+        gamma_1c = cfg_1c.generate_gamma_gauge_neutral_dict()
+        gamma_g4 = cfg_g4.generate_gamma_gauge_neutral_dict()
+
+        self.assertEqual(len(gamma_1c), len(gamma_g4))
+        for layer_ind in range(len(gamma_1c)):
+            for direction in [Direction.X, Direction.Y]:
+                self.assertTrue(np.allclose(gamma_1c[layer_ind][direction], gamma_g4[layer_ind][direction]))
+
+    def test_init_el_energy_terms_are_equivalent(self):
+        """Electric-energy index, coefficient, and constant structures should match."""
+        cfg_1c, cfg_g4 = self._make_cfgs()
+
+        self.assertEqual(cfg_1c.idx_vec, cfg_g4.idx_vec)
+        self.assertEqual(cfg_1c.coeffs_vec, cfg_g4.coeffs_vec)
+        self.assertEqual(cfg_1c.constants_vec, cfg_g4.constants_vec)

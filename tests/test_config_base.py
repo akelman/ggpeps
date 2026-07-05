@@ -4,9 +4,7 @@ from collections import defaultdict
 import numpy as np
 
 import ggpeps.system.config_base as config_base
-from ggpeps import gauge
-from ggpeps import system
-from ggpeps import lattice
+from ggpeps import gauge, system, lattice, utils
 
 from ggpeps.lattice import Direction
 
@@ -333,7 +331,7 @@ class TestElectricContstants(unittest.TestCase):
         nlayer = num_pg_layer + num_fermionic_layer
         unitcell_size = 1
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
-        cfg = system.Z2System2D_G2C_F2C_Config(lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1)
+        cfg = utils.make_z2_2copy_config(lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1)
         cfg.paramvec = paramvec
         self.system_z2 = system.Z2System2D(cfg)
         self.system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)

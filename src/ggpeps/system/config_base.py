@@ -423,6 +423,28 @@ def make_sigma(ncopy: int, mix_copies: bool) -> tuple[int, ...]:
     return permutation
 
 
+def make_sigma_matrix(ncopy: int, mix_copies: bool) -> np.ndarray:
+    """
+    Build the copy-space permutation matrix corresponding to `make_sigma`.
+
+    The returned matrix acts on copy space only. For mixed-copy projectors it swaps
+    copies pairwise, (1 <-> 2), (3 <-> 4), ... . For unmixed projectors it is the
+    identity. For ncopy == 1 both choices reduce to the 1x1 identity matrix.
+
+    Args:
+        ncopy (int): Number of copies (must be 1 or even).
+        mix_copies (bool): Whether to use the mixed-copy pairing convention.
+
+    Returns:
+        np.ndarray: The ncopy x ncopy copy-space permutation matrix.
+    """
+    sigma = make_sigma(ncopy, mix_copies)
+    mat = np.zeros((ncopy, ncopy))
+    for copy_ind, sigma_copy in enumerate(sigma):
+        mat[copy_ind, sigma_copy - 1] = 1.0
+    return mat
+
+
 def _w_gauged_terms(
     copy: int, sigma_copy: int, eta2: complex, color: int, ncolors: int, ncopies: int, gauging_matrix: np.ndarray
 ) -> defaultdict[tuple[int, ...], complex]:

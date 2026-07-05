@@ -6,7 +6,7 @@ import pickle
 import logging
 import functools
 import subprocess  # Start process for git hash
-from typing import Optional, Sequence, Union
+from typing import Mapping, Optional, Sequence, Union
 
 import numba as nb
 import pandas as pd
@@ -16,6 +16,7 @@ from scipy.linalg import svd, block_diag
 import numpy as np
 import jax.numpy as jnp
 from ggpeps import xnp as xnp
+from ggpeps import system
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
@@ -33,6 +34,287 @@ logger = logging.getLogger(ggpeps.LOGGER_NAME)
 paulix = np.array([[0, 1], [1, 0]])
 pauliy = np.array([[0, -1.0j], [1.0j, 0]])
 pauliz = np.array([[1, 0], [0, -1]])
+
+
+# Parameter order utilities
+ParameterOrder = Union[str, Sequence[str]]
+ParameterRenameMap = Optional[Mapping[str, str]]
+
+
+def parse_parameter_order(order: ParameterOrder) -> tuple[str, ...]:
+    """Normalize a parameter-order specification to a tuple of parameter names.
+
+    This helper is useful when comparing ansatz configs that contain the same
+    symbolic parameters but store them in different orders. The input can be a
+    sequence of names or a compact string such as
+    ``"[t1r, y1r, z1r]"`` or ``"t1r y1r z1r"``.
+
+    Args:
+        order: Parameter names, either as a sequence of strings or as a comma- or
+            whitespace-separated string.
+
+    Returns:
+        tuple[str, ...]: Normalized parameter names.
+    """
+    if isinstance(order, str):
+        clean_order = order.replace("[", " ").replace("]", " ").replace("(", " ").replace(")", " ")
+        clean_order = clean_order.replace("'", " ").replace('"', " ").replace(",", " ")
+        return tuple(name for name in clean_order.split() if name)
+    return tuple(str(name) for name in order)
+
+
+def parameter_order_permutation(source_order: ParameterOrder, target_order: ParameterOrder) -> tuple[int, ...]:
+    """Return indices that reorder values from ``source_order`` to ``target_order``.
+
+    If ``values`` are ordered according to ``source_order``, then
+    ``values[..., permutation]`` is ordered according to ``target_order``, where
+    ``permutation`` is the tuple returned by this function.
+
+    Args:
+        source_order: Current order of the parameter values.
+        target_order: Desired order of the parameter values.
+
+    Returns:
+        tuple[int, ...]: Indices into ``source_order`` in the order required by
+            ``target_order``.
+
+    Raises:
+        ValueError: If either order contains duplicates or if the two orders do
+            not contain exactly the same parameter names.
+    """
+    source = parse_parameter_order(source_order)
+    target = parse_parameter_order(target_order)
+
+    duplicate_source = sorted({name for name in source if source.count(name) > 1})
+    duplicate_target = sorted({name for name in target if target.count(name) > 1})
+    if duplicate_source:
+        raise ValueError(f"source_order contains duplicate parameter names: {duplicate_source}")
+    if duplicate_target:
+        raise ValueError(f"target_order contains duplicate parameter names: {duplicate_target}")
+
+    source_set = set(source)
+    target_set = set(target)
+    if source_set != target_set:
+        missing_from_source = sorted(target_set - source_set)
+        missing_from_target = sorted(source_set - target_set)
+        raise ValueError(
+            "source_order and target_order must contain the same parameter names. "
+            f"Missing from source_order: {missing_from_source}. "
+            f"Missing from target_order: {missing_from_target}."
+        )
+
+    source_index = {name: ind for ind, name in enumerate(source)}
+    return tuple(source_index[name] for name in target)
+
+
+def reorder_parameter_vector(
+    values: np.ndarray,
+    source_order: ParameterOrder,
+    target_order: ParameterOrder,
+    axis: int = -1,
+) -> np.ndarray:
+    """Reorder parameter values from one symbolic order to another.
+
+    This is intended for tests and compatibility checks between configs with
+    different parameter-vector conventions. For example, it can convert a vector
+    ordered as the old G2C/F2C ``symbolvec`` into the order used by the generic
+    G4C/F4C config with ``ncopy=2``.
+
+    Args:
+        values: Parameter values ordered according to ``source_order``.
+        source_order: Current order of ``values``.
+        target_order: Desired output order.
+        axis: Axis of ``values`` that stores the parameter index. Defaults to the
+            last axis.
+
+    Returns:
+        np.ndarray: A copy/view of ``values`` reordered along ``axis`` according
+            to ``target_order``.
+    """
+    permutation = parameter_order_permutation(source_order, target_order)
+    return np.take(values, permutation, axis=axis)
+
+
+# ==== Parameter name helpers ====
+
+def parameter_names(order: ParameterOrder) -> tuple[str, ...]:
+    """Return normalized parameter names as strings.
+
+    This is a small semantic alias around parse_parameter_order for call sites
+    that work with config.symbolvec values rather than textual order specs.
+    """
+    return parse_parameter_order(order)
+
+
+def renamed_parameter_name(name: object, rename_map: ParameterRenameMap = None) -> str:
+    """Return a parameter name after applying an optional rename map."""
+    name_str = str(name)
+    if rename_map is None:
+        return name_str
+    return rename_map.get(name_str, name_str)
+
+
+def renamed_parameter_names(order: ParameterOrder, rename_map: ParameterRenameMap = None) -> tuple[str, ...]:
+    """Return parameter names after applying an optional rename map.
+
+    The rename map is useful for comparing equivalent ansatz configs that use
+    different symbolic names for the same parameter, for example ``tr`` versus
+    ``t1r`` or ``ar`` versus ``a12r``.
+    """
+    names = parameter_names(order)
+    return tuple(renamed_parameter_name(name, rename_map) for name in names)
+
+
+# ==== Legacy Z2 parameter-order compatibility ====
+
+LEGACY_Z2_PARAMETER_ORDERS = {
+    "legacy_1c": (
+        ("tr", "yr", "zr", "ti", "yi", "zi"),
+        {
+            "tr": "t1r",
+            "yr": "y1r",
+            "zr": "z1r",
+            "ti": "t1i",
+            "yi": "y1i",
+            "zi": "z1i",
+        },
+        1,
+    ),
+    "legacy_g2c_f2c": (
+        (
+            "t1r", "y1r", "z1r",
+            "t2r", "y2r", "z2r",
+            "ar", "br", "cr", "dr",
+            "t1i", "y1i", "z1i",
+            "t2i", "y2i", "z2i",
+            "ai", "bi", "ci", "di",
+        ),
+        {
+            "ar": "a12r",
+            "br": "b12r",
+            "cr": "c12r",
+            "dr": "d12r",
+            "ai": "a12i",
+            "bi": "b12i",
+            "ci": "c12i",
+            "di": "d12i",
+        },
+        2,
+    ),
+    "legacy_g4c_f4c": (
+        (
+            "t1r", "t2r", "t3r", "t4r",
+            "y1r", "y2r", "y3r", "y4r",
+            "z1r", "z2r", "z3r", "z4r",
+            "a12r", "b12r", "c12r", "d12r",
+            "a13r", "b13r", "c13r", "d13r",
+            "a14r", "b14r", "c14r", "d14r",
+            "a23r", "b23r", "c23r", "d23r",
+            "a24r", "b24r", "c24r", "d24r",
+            "a34r", "b34r", "c34r", "d34r",
+            "t1i", "t2i", "t3i", "t4i",
+            "y1i", "y2i", "y3i", "y4i",
+            "z1i", "z2i", "z3i", "z4i",
+            "a12i", "b12i", "c12i", "d12i",
+            "a13i", "b13i", "c13i", "d13i",
+            "a14i", "b14i", "c14i", "d14i",
+            "a23i", "b23i", "c23i", "d23i",
+            "a24i", "b24i", "c24i", "d24i",
+            "a34i", "b34i", "c34i", "d34i",
+        ),
+        {},
+        4,
+    ),
+}
+
+
+def translate_legacy_z2_parameter_order(
+    system_cfg,
+    values: np.ndarray,
+    input_param_order: str,
+) -> np.ndarray:
+    """Translate legacy Z2 input parameters to the current generic config order.
+
+    This helper is intended for dev-vs-z2 regression checks. It allows generated
+    or loaded parameters to be interpreted according to a legacy Z2 config order
+    and then reordered into the current generic ``Z2System2D_Config`` convention.
+    """
+    if input_param_order == "current":
+        return values
+
+    if input_param_order not in LEGACY_Z2_PARAMETER_ORDERS:
+        raise ValueError(f"Unknown input parameter order: {input_param_order}.")
+
+    source_order, rename_map, expected_ncopy = LEGACY_Z2_PARAMETER_ORDERS[input_param_order]
+
+    if not isinstance(system_cfg, system.Z2System2D_Config):
+        raise ValueError("Legacy Z2 parameter-order translation is only supported for Z2System2D_Config.")
+
+    if system_cfg.ncopy != expected_ncopy:
+        raise ValueError(
+            f"Input parameter order '{input_param_order}' expects ncopy={expected_ncopy}, "
+            f"but the current config has ncopy={system_cfg.ncopy}."
+        )
+
+    source_order_renamed = renamed_parameter_names(source_order, rename_map)
+    target_order = parameter_names(system_cfg.symbolvec)
+
+    return reorder_parameter_vector(
+        values,
+        source_order=source_order_renamed,
+        target_order=target_order,
+        axis=-1,
+    )
+
+
+def zeroed_parameter_named_coords(cfg, rename_map: ParameterRenameMap = None) -> set[tuple[int, int, str]]:
+    """Return zeroed parameter coordinates with parameter indices replaced by names.
+
+    Args:
+        cfg: Config object with ``symbolvec`` and ``zeroed_params`` attributes.
+        rename_map: Optional mapping used to compare equivalent parameters whose
+            symbols have different names in different configs.
+
+    Returns:
+        set[tuple[int, int, str]]: Tuples ``(layer_ind, uc_ind, parameter_name)``.
+    """
+    names = renamed_parameter_names(cfg.symbolvec, rename_map)
+    return {(layer_ind, uc_ind, names[param_ind]) for layer_ind, uc_ind, param_ind in cfg.zeroed_params}
+
+
+def zeroed_parameter_names(cfg, rename_map: ParameterRenameMap = None) -> set[str]:
+    """Return the names of parameters forced to zero by a config."""
+    names = renamed_parameter_names(cfg.symbolvec, rename_map)
+    return {names[param_ind] for _, _, param_ind in cfg.zeroed_params}
+
+
+def make_z2_2copy_config(*args, **kwargs):
+    """Build the generic G4C/F4C Z2 config in its ncopy=2 compatibility mode."""
+    return system.Z2System2D_Config(*args, ncopy=2, **kwargs)
+
+
+def make_z2_2copy_pure_gauge_config(*args, **kwargs):
+    """Build the generic G4C/F4C Z2 config in pure-gauge ncopy=2 compatibility mode."""
+    if kwargs.get("num_fermionic_layer", 0) != 0:
+        raise ValueError("Pure-gauge 2C compatibility mode requires num_fermionic_layer=0.")
+
+    kwargs["num_fermionic_layer"] = 0
+    return system.Z2System2D_Config(*args, ncopy=2, **kwargs)
+
+
+def make_z2_1copy_pure_gauge_config(*args, **kwargs):
+    """Build the generic G4C/F4C Z2 config in pure-gauge ncopy=1 compatibility mode."""
+    if kwargs.get("num_fermionic_layer", 0) != 0:
+        raise ValueError("Pure-gauge 1C compatibility mode requires num_fermionic_layer=0.")
+    if kwargs.get("unitcell_size", 1) != 1:
+        raise ValueError("Pure-gauge 1C compatibility mode requires unitcell_size=1.")
+    if kwargs.get("enforce_u1_symmetry", True) is not True:
+        raise ValueError("Pure-gauge 1C compatibility mode requires enforce_u1_symmetry=True.")
+
+    kwargs["num_fermionic_layer"] = 0
+    kwargs["unitcell_size"] = 1
+    kwargs["enforce_u1_symmetry"] = True
+    return system.Z2System2D_Config(*args, ncopy=1, **kwargs)
 
 # ========== Utility Functions ====================
 

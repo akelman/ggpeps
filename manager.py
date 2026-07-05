@@ -21,10 +21,7 @@ np.set_printoptions(linewidth=200)
 import ggpeps
 from ggpeps.caching import Cache
 from ggpeps.system import U1System2DConfig
-from ggpeps.system import Z2System2DConfig
-from ggpeps.system import Z2System2D_G2C_F2C_Config
-from ggpeps.system import Z2System2D_G4C_F4C_Config
-from ggpeps.system import Z2System2D_G8C_F8C_Config
+from ggpeps.system import Z2System2D_Config
 from ggpeps.system import D6System2D_Config
 from ggpeps.system import Z2System2D_2col_Config
 from ggpeps.system import Z2System2D_2col_1copy_Config
@@ -100,13 +97,21 @@ def args2logname(args, couplings: dict) -> str:
     return os.path.join(args.output, fname)
 
 
-def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomState) -> tuple[np.ndarray, str]:
+def translate_parameters(
+    system_cfg,
+    params: str,
+    rng_state: np.random.RandomState,
+    input_param_order: str = "current",
+) -> tuple[np.ndarray, str]:
     """Translate the parameters given on the commandline to a form useful in the code
 
     Args:
         system_cfg (SystemConfig): Configuration of the system
         params (str): Parameters as given on the command line
         rng_state (np.random.RandomState): Input state of a PRNG
+        input_param_order (str): Parameter order used to interpret generated or loaded
+            parameters. The default, "current", uses the active config order.
+            Legacy Z2 values are translated to the current generic Z2 order.
 
     Returns:
         np.array: Array of parameters that are suited for the simulation according to the command line parameters
@@ -131,6 +136,9 @@ def translate_parameters(system_cfg, params: str, rng_state: np.random.RandomSta
             logger.warning("Reshape of provided parameters impossible. Starting with random parameters.")
             dest = rng_state.rand(shape)
             source = "random state"
+    if input_param_order != "current":
+        dest = utils.translate_legacy_z2_parameter_order(system_cfg, dest, input_param_order)
+        source = f"{source}, interpreted as {input_param_order} and translated to current order"
     return dest, source
 
 
@@ -142,8 +150,8 @@ def validate_inputs(args) -> bool:
     if args.ncopy == 1 and args.g_mass != 0:
         logger.error("Not Implemented: the mass term has not yet been implemented for the 1 copy case.")
         return False
-    if args.ncopy not in [1, 2, 4, 8]:
-        logger.error("Not Implemented: only 1,2,4, or 8 copies are possible.")
+    if not (args.ncopy == 1 or args.ncopy % 2 == 0):
+        logger.error("Not Implemented: Z2 currently supports ncopy=1 or even ncopy values.")
         return False
 
     return True
@@ -328,9 +336,8 @@ def main(args):
     # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.gauge_group == "Z2":
         system_type = Z2System2D
-
         if args.ncopy == 1:
-            # Z2 system with one copy of virtual fermions on the links and no support for fermions
+            # The generic Z2 config supports ncopy=1 only in the pure-gauge sector.
             if (
                 args.num_fermionic_layer != 0
                 or not np.allclose(g_mass, 0.0)
@@ -339,16 +346,7 @@ def main(args):
             ):
                 logger.error("Not Implemented: The 1 copy case does not support fermionic matter.")
                 sys.exit(1)
-            cfg_class = Z2System2DConfig
-        elif args.ncopy == 2:
-            cfg_class = Z2System2D_G2C_F2C_Config
-        elif args.ncopy == 4:
-            cfg_class = Z2System2D_G4C_F4C_Config
-        elif args.ncopy == 8:
-            cfg_class = Z2System2D_G8C_F8C_Config
-        else:
-            logger.error("Not Implemented: Only 1, 2, 4, or 8 copies are currently supported for Z2.")
-            sys.exit(1)
+        cfg_class = Z2System2D_Config
     elif args.gauge_group == "D6":
         system_type = D2nSystem2D
         cfg_class = D6System2D_Config
@@ -379,6 +377,7 @@ def main(args):
         g_int,
         g_mass,
         g_chem,
+        ncopy=args.ncopy,
         num_pg_layer=args.num_pg_layer,
         num_fermionic_layer=args.num_fermionic_layer,
         mod_link_inds=el_links,
@@ -392,10 +391,15 @@ def main(args):
     mc_config.seed = seed
 
     # Translate the command line input to a valid parameter vector
-    paramvec, param_source = translate_parameters(system_cfg, args.params, rngstate)
+    paramvec, param_source = translate_parameters(
+        system_cfg,
+        args.params,
+        rngstate,
+        args.input_param_order,
+    )
     system_cfg.paramvec = paramvec
 
-    if isinstance(system_cfg, Z2System2DConfig) or isinstance(system_cfg, U1System2DConfig):
+    if isinstance(system_cfg, U1System2DConfig):
         # This is a holdover for compatibility with these ansatz's,
         # since they have never been tested or used without being forced to be pure gauge.
         system_cfg.make_pure_gauge()
@@ -809,6 +813,17 @@ if __name__ == "__main__":
         default=1,
         type=int,
         help="Number of virtual fermions on the links per layer",
+    )
+
+    parser.add_argument(
+        "--input_param_order",
+        default="current",
+        choices=["current", "legacy_1c", "legacy_g2c_f2c", "legacy_g4c_f4c"],
+        help=(
+            "Interpret generated or loaded parameters using a legacy Z2 parameter order "
+            "and translate them to the current generic Z2 order before evaluation. "
+            "Use this for dev-vs-z2 regression comparisons."
+        ),
     )
 
     # Other system parameters

@@ -12,12 +12,23 @@ class TestSystemBase(unittest.TestCase):
         lat = lattice.Lattice2D(2, 3)
 
         paramvec = [[0.3, 0.5, 0.8, 0.2, 0.3, 0.9]]
-        cfg = system.Z2System2DConfig(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(
+            lat,
+            0,
+            0,
+            0,
+            0,
+            None,
+            ncopy=1,
+            num_pg_layer=0,
+            num_fermionic_layer=1,
+            enforce_u1_symmetry=False,
+        )
         cfg.paramvec = paramvec
         self.system_z2_1c = system.Z2System2D(cfg)
 
         paramvec2C = np.random.rand(1, 20)
-        cfg2C = system.Z2System2D2CConfig(lat, 0, 0, 0, 0, None)
+        cfg2C = utils.make_z2_2copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
         cfg2C.paramvec = paramvec2C
         self.system_z2_2c = system.Z2System2D(cfg2C)
 
@@ -389,8 +400,17 @@ class TestSystemBaseDimensions(unittest.TestCase):
         mod_link_inds = (0,)
         unitcell_size = 2
         paramvec2C = np.random.rand(nlayers, unitcell_size, 20)
-        cfg2C = system.Z2System2D_G2C_F2C_Config(
-            lat, 0, 0, 0, 0, None, pg_layers, fermionic_layers, mod_link_inds, unitcell_size
+        cfg2C = utils.make_z2_2copy_config(
+            lat,
+            0,
+            0,
+            0,
+            0,
+            None,
+            num_pg_layer=pg_layers,
+            num_fermionic_layer=fermionic_layers,
+            mod_link_inds=mod_link_inds,
+            unitcell_size=unitcell_size,
         )
         cfg2C.paramvec = paramvec2C
         self.system_z2_2c = system.Z2System2D(cfg2C)
@@ -521,7 +541,17 @@ class TestMultiColorModeOrder(unittest.TestCase):
         num_pg_layer = 1
         num_fermionic_layer = 0
         paramvec = np.random.rand(num_pg_layer + num_fermionic_layer, 1, 20)
-        cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer, num_fermionic_layer)
+        cfg = system.D6System2D_Config(
+            lat,
+            1,
+            1,
+            0,
+            0,
+            None,
+            ncopy=2,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
+        )
         cfg.paramvec = paramvec
         self.system_D6 = system.D2nSystem2D(cfg)
         self.system_D6.cfg.enforce_parameter_conditions(self.system_D6.cfg.paramvec)
