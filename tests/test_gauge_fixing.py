@@ -489,7 +489,7 @@ class Testgaugefixing(unittest.TestCase):
         rng = np.random.RandomState(20260628)
         num_pg_layer = 2
         lat = lattice.Lattice2D(2, 2)
-        cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer, 0)
+        cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer=num_pg_layer, num_fermionic_layer=0)
         cfg.paramvec = rng.rand(num_pg_layer, 1, 20)
         cfg.enforce_parameter_conditions(cfg.paramvec)
 
