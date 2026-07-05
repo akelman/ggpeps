@@ -94,6 +94,7 @@ class System2DBase(ABC):
         self._det_mat_d_mod_vec: Optional[xnp.ndarray] = None
         self._mat_d_mod_inv_vec: Optional[xnp.ndarray] = None
         self._deriv_mod_mats: Optional[tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]] = None
+        self._dmatd_trace_sparse: Optional[tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]] = None
         # Electric energy intermediate values - if we compute the electric energy,
         # we store intermediate values to be reused in the gradient calculation
         self._covmat_out_mod_vec: Optional[xnp.ndarray] = None
@@ -2122,6 +2123,35 @@ class System2DBase(ABC):
             self._deriv_mod_mats = (dA, dB, dD)
         return self._deriv_mod_mats
 
+    def dmatd_trace_sparse(self, inds: tuple) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
+        """Precompute the sparse (nonzero) structure of d_mat_d for the electric-gradient trace.
+
+        d_mat_d is a parameter-derivative, so it is INDEPENDENT of the gauge configuration and very
+        sparse (~1-3% nonzero for D6). The electric-gradient trace Tr(d_mat_d_a @ prod_a) therefore
+        only needs prod_a at the nonzero positions of d_mat_d_a. We precompute those positions and
+        values ONCE per evaluation (paramvec is fixed during an MC run) and reuse them every step.
+
+        Returns padded rectangular arrays (num_active, kmax): row indices, col indices, values.
+        Padding entries have value 0 (index 0), so they contribute nothing to the trace.
+
+        Args:
+            inds (tuple): the (l, m, u, s) mask indices of the non-zeroed params (as in deriv_mod_mats).
+        """
+        if self._dmatd_trace_sparse is None:
+            dD = np.asarray(self.deriv_mod_mats(inds)[2])  # (num_active, D, D), config-independent
+            na = dD.shape[0]
+            nzs = [np.argwhere(np.abs(dD[a]) > 1e-14) for a in range(na)]
+            kmax = max((nz.shape[0] for nz in nzs), default=1)
+            ii = np.zeros((na, kmax), dtype=np.int64)
+            jj = np.zeros((na, kmax), dtype=np.int64)
+            vals = np.zeros((na, kmax))
+            for a, nz in enumerate(nzs):
+                kk = nz.shape[0]
+                ii[a, :kk], jj[a, :kk] = nz[:, 0], nz[:, 1]
+                vals[a, :kk] = dD[a, nz[:, 0], nz[:, 1]]
+            self._dmatd_trace_sparse = (xnp.asarray(ii), xnp.asarray(jj), xnp.asarray(vals))
+        return self._dmatd_trace_sparse
+
     # Functions that return the layer-resolved gradients of each energy operator
     @property
     def el_energy_op_grad_vec(self) -> xnp.ndarray:
@@ -2136,6 +2166,8 @@ class System2DBase(ABC):
 
             # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
             d_mat_a_vec_vec, d_mat_b_vec_vec, d_mat_d_vec_vec = self.deriv_mod_mats((l, m, u, s))
+            # Sparse structure of d_mat_d for the electric-gradient trace (config-independent, cached).
+            sp_ii, sp_jj, sp_vals = self.dmatd_trace_sparse((l, m, u, s))
 
             rotmat_vec = xnp.stack(
                 [
@@ -2174,6 +2206,9 @@ class System2DBase(ABC):
                 self.cfg.idx_vec,
                 self.cfg.coeffs_vec,
                 rotmat_vec,
+                sp_ii,
+                sp_jj,
+                sp_vals,
             )
         return self._el_energy_op_grad_vec
 

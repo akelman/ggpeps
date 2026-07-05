@@ -363,6 +363,9 @@ class D2nSystem2D(System2DBase):
         idxarr_vec: IdxVec,
         coeffs_vec: CoeffsVec,
         rotmat_vec: xnp.ndarray,
+        sp_ii: xnp.ndarray,
+        sp_jj: xnp.ndarray,
+        sp_vals: xnp.ndarray,
     ) -> xnp.ndarray:
         """In early 2026, this function was significantly optimized.
         This was done after it was generalized in various ways over the previous months:
@@ -426,16 +429,18 @@ class D2nSystem2D(System2DBase):
 
         d_covmat_out_virt_vec = backend.array_assign(d_covmat_out_virt_vec, (l, m, u, s), vals)
 
-        # Calculate the modified norms
+        # Calculate the modified norms: trace(d_mat_d_a @ prod_mod_norm_a) for every active param a.
+        # d_mat_d is a parameter-derivative -> config-independent and ~99% zero, so instead of the
+        # dense form utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec[l, m])) - whose fancy-index
+        # copy + full O(D^2) einsum dominated this function (>40% on numpy) - we sum only over the
+        # nonzero entries of d_mat_d: Tr(dD_a @ P_a) = sum_k vals[a,k] * P_a[jj[a,k], ii[a,k]], with
+        # P_a = prod_mod_norm_vec[l[a], m[a]]. The (ii, jj, vals) are precomputed once per eval
+        # (dmatd_trace_sparse). This gathers only the nonzeros -> ~30x faster on numpy, ~7x on jax.
         norm_shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
         prod_vec = xnp.zeros(norm_shape)
-        # This computes trace(d_mat_d @ prod_mod_norm) for every active parameter in one batched trace.
-        # The fancy index prod_mod_norm_vec[l, m] forces a large copy, which dominates this line on numpy
-        # (>50% of the function's runtime historically). The Z2 implementation (system_Z2.py) instead
-        # loops over active params to avoid that copy. Benchmarked for D6 (June 2026): on jax CPU the loop
-        # and this vectorized form are comparable (within run-to-run noise; identical compile cost), so we
-        # keep the vectorized form here -- it is the better bet on GPU.
-        vals = utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec[l, m]))
+        # (num_active, kmax): prod at the nonzero (row=ii, col=jj) positions; trace uses P[jj, ii].
+        p_gather = prod_mod_norm_vec[l[:, None], m[:, None], sp_jj, sp_ii]
+        vals = xnp.sum(sp_vals * p_gather, axis=-1)
         prod_vec = backend.array_assign(prod_vec, (l, m, u, s), vals)
 
         for group_element_idx in range(num_group_elements):
