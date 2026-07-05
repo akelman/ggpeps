@@ -66,7 +66,7 @@ For the next step, please navigate into the repo that you just downloaded and ac
     ```
     This command installs the package as an editable package, i.e. all changes in the source code will be directly reflected in the installed package.
 
-    If you wish to install the optional depencies, instead run
+    If you wish to install the optional dependencies, instead run
     ```
     pip install  -e .[dev,test]
     ```
@@ -150,7 +150,7 @@ Occasionally `assert` statements or `# type: ignore` comments are used to addres
 
 ### Tests
 
-The code is accompagnied by an extensive suit of tests which are located in the folder `tests`.
+The code is accompanied by an extensive suit of tests which are located in the folder `tests`.
 The full test-suite can be executed with
 ```
 python -m unittest
@@ -199,7 +199,7 @@ Pull requests would be appreciated for minor improvements; for  major updates we
 The script `manager.py` is the central point for data generation. It supports different modes: `eval` and `min` where both can be evaluated with `exact` and `mc`.
 
 To run with JAX (whether on CPU or GPU), first export the environment variable: `export GGPEPS_BACKEND=jax` (it can also be set to `numpy`, but numpy will also be used by default regardless).
-If using multiple runners in conjuction with a GPU (we have not tested using multiple GPUs simultaneously, though this should only require small changes), memory issues can arise. JAX preallocates 75% of GPU memory upon startup; with multiple runners, each runner tries to allocate this memory, causing a crash. This can be solved using an environment variable: `XLA_PYTHON_CLIENT_MEM_FRACTION=.XX` where `XX` should be $1/n_\text{runner}$, rounded down if necessary. Note that this only addresses preallocation, and the program may crash if a runner tries to request more memory. See the [JAX documentation on GPU Memory Allocation](https://docs.jax.dev/en/latest/gpu_memory_allocation.html) for more information.
+If using multiple runners in conjunction with a GPU (we have not tested using multiple GPUs simultaneously, though this should only require small changes), memory issues can arise. JAX preallocates 75% of GPU memory upon startup; with multiple runners, each runner tries to allocate this memory, causing a crash. This can be solved using an environment variable: `XLA_PYTHON_CLIENT_MEM_FRACTION=.XX` where `XX` should be $1/n_\text{runner}$, rounded down if necessary. Note that this only addresses preallocation, and the program may crash if a runner tries to request more memory. See the [JAX documentation on GPU Memory Allocation](https://docs.jax.dev/en/latest/gpu_memory_allocation.html) for more information.
 
 All modes write log files to disk and to console. 
 The files are named according to the parameters that were provided via the commandline. 
@@ -276,7 +276,7 @@ python inspect_data.py <fname>
 
 All scripts prefixed with `plot_*` will plot some aspect of the provided datasets.
 The most used script is `plot_summary.py` which displays the data of a `summary_*.pkl` file.
-Minimization and evalautions of single parameters produce summary files.
+Minimization and evaluations of single parameters produce summary files.
 
 A typical use can look like
 ```
