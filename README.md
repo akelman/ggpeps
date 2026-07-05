@@ -116,10 +116,10 @@ All scripts in the main folder call parts of the package and provide the infrast
 
 The package `ggpeps` is divided into several parts:
 
-- `system/`: Module containing all system implementations. Currently, two-dimensional systems for $\mathbb{Z}_2$ with one and two copies of virtual fermions on the links are implemented for the pure gauge case, and 2D systems with 2,4,8 copies of virtual fermions on the links for the fermionic case.
+- `system/`: Module containing all system implementations. Currently, only two-dimensional systems are supported, and each gauge group has its own class.
 The system configs contain all information defining an ansatz (the $T$ matrix, $\Gamma_\text{in}$, etc.), while the system classes define observables, intermediate calculations, etc.
 The implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
-- `exacteval.py`: For small systems and finite gauge groups, the expectation values of the states can be evaluated exactly by contracting the full PEPS.
+- `exacteval.py`: For small systems with finite gauge groups, the expectation values of the states can be evaluated exactly by contracting the full PEPS.
 - `gauge.py`: Implementation of the gauge groups.
 - `lattice.py`: Implementation of two- and three-dimensional lattices.
 - `mc.py`: Implementation of the Monte Carlo sampling.
@@ -130,11 +130,7 @@ The implementation of $U(1)$ is transferred from a C++ implementation and is not
 Each implemented ansatz has it's own config class, each a subclass of Config2DBase (found in `config_base.py`). Currently, these are the implemented ansatz's (each located in a file of the same name):
 - `config_u1_2d`: Not working - the implementation of $U(1)$ is transferred from a C++ implementation and is not fully operational.
 - `config_D6_2d`: $D_6$ ansatz.
-- `config_z2_2d`: $\mathbb{Z}_2$, 1 copy of virtual modes per layer, pure gauge.
-- `config_z2_2d_2c`: $\mathbb{Z}_2$, 2 copies of virtual modes per layer, pure gauge.
-- `config_z2_2d_G2c_F2c`: $\mathbb{Z}_2$, 2 copies of virtual modes per layer (PG and matter layers), includes matter.
-- `config_z2_2d_G4c_F4c`: $\mathbb{Z}_2$, 4 copies of virtual modes per layer (PG and matter layers), includes matter.
-- `config_z2_2d_G8c_F8c`: $\mathbb{Z}_2$, 8 copies of virtual modes per layer. This is extremely impractical to run, even for $2\times2$ systems, due to the large number of virtual modes; it was built for testing purposes. Because there are so many parameters, this ansatz is more systematic in handling them. Note that not all theoretically allowed parameters are included (e.g. the $y,z$ parameters which couple a copy to itself are only created for the first four copies).
+- `config_z2`: $\mathbb{Z}_2$ ansatz.
 
 Our code supports use on both CPU and GPU. To run on GPU, we use JAX ([documentation](https://docs.jax.dev/en/latest/index.html), [github](https://github.com/jax-ml/jax/blob/main/README.md)), which mostly follows the numpy syntax (see also [the Array API](https://data-apis.org/array-api/latest/index.html)).
 This is handled by importing numpy/jax as `xnp` in `ggpeps/__init__.py`, and using `xnp` throughout the code.
