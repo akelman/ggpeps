@@ -711,8 +711,8 @@ def derivative_pfaffian_vectorized(mat: xnp.ndarray, d_mat: xnp.ndarray, pfavals
     safe_mat = xnp.where(mask[..., None, None], mat, eye)
 
     inv_mat = xnp.linalg.inv(safe_mat)  # (N, M, M)
-    prod = inv_mat @ d_mat  # (N, M, M)
-    traces = xnp.trace(prod, axis1=-2, axis2=-1)  # (N,)
+    # trace(inv_mat @ d_mat) without forming the product
+    traces = trace_of_product((inv_mat, d_mat))  # (N,)
 
     res = 0.5 * pfavals * traces * mask
     return res
