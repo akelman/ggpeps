@@ -937,3 +937,99 @@ class TestUniqueElTermsSystemConsumption(unittest.TestCase):
                         atol=1e-12,
                         err_msg=f"pf_tot mismatch at ge {ge}, layer {lay}, link {link_pos}",
                     )
+
+
+class TestPaddedElTerms(unittest.TestCase):
+    """The padded evaluation layout (cfg.el_eval_mode == "padded"): all monomials padded to one
+    matrix dimension K via auxiliary indices into a Pf = 1 aux block, so the electric pipeline is
+    a single batched Pfaffian call. Padding must not change any value."""
+
+    def test_padding_preserves_pfaffian_values(self):
+        """Direct check of the J-block trick on random antisymmetric matrices: gathering a padded
+        index tuple from the aux-extended matrix gives the same Pfaffian as the bare tuple."""
+        rng = np.random.RandomState(3)
+        nmodes, K = 10, 8
+        m = rng.standard_normal((nmodes, nmodes))
+        cov = m - m.T
+        aux = np.kron(np.eye(K // 2), np.array([[0.0, 1.0], [-1.0, 0.0]]))
+        padded = np.block(
+            [[cov, np.zeros((nmodes, K))], [np.zeros((K, nmodes)), aux]]
+        )
+        for k in (2, 4, 6, 8):
+            tup = list(rng.choice(nmodes, size=k, replace=False))
+            padded_tup = np.array(tup + [nmodes + i for i in range(K - k)])
+            bare = backend.pfaffian(cov[np.ix_(tup, tup)])
+            via_pad = backend.pfaffian(padded[np.ix_(padded_tup, padded_tup)])
+            self.assertAlmostEqual(bare, via_pad, places=10, msg=f"padding changed Pf for size {k}")
+
+    def test_build_padded_el_terms_structure(self):
+        """Exact expected padded arrays for a small hand-built unique basis: aux indices appended
+        after nmodes, dummy rows all-aux with zero coefficient, coefficients aligned."""
+        uniq_idx = (  # 1 layer, 2 links; link 0 has sizes 2 and 4, link 1 has one size-2 term
+            (
+                (((0, 1), (2, 3)), ((0, 1, 2, 3),)),
+                (((4, 5),),),
+            ),
+        )
+        uniq_coeffs = (  # 2 group elements
+            ((((1.0, 2.0), (3.0,)), ((4.0,),)),),
+            ((((0.0, 5j), (6.0,)), ((7.0,),)),),
+        )
+        nmodes = 6
+        idx_arr, coeffs_arr, aux_block = config_base.build_padded_el_terms(uniq_idx, uniq_coeffs, nmodes)
+
+        self.assertEqual(idx_arr.shape, (1, 2, 3, 4))  # T = 3 terms, K = 4
+        self.assertEqual(coeffs_arr.shape, (2, 1, 2, 3))
+        np.testing.assert_array_equal(
+            idx_arr[0, 0], [[0, 1, 6, 7], [2, 3, 6, 7], [0, 1, 2, 3]]
+        )
+        np.testing.assert_array_equal(
+            idx_arr[0, 1], [[4, 5, 6, 7], [6, 7, 8, 9], [6, 7, 8, 9]]  # 2 dummy rows
+        )
+        np.testing.assert_array_equal(coeffs_arr[0, 0, 0], [1.0, 2.0, 3.0])
+        np.testing.assert_array_equal(coeffs_arr[1, 0, 0], [0.0, 5j, 6.0])
+        np.testing.assert_array_equal(coeffs_arr[0, 0, 1], [4.0, 0.0, 0.0])
+        np.testing.assert_array_equal(coeffs_arr[1, 0, 1], [7.0, 0.0, 0.0])
+        expected_aux = np.array(
+            [[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 0, 1], [0, 0, -1, 0]], dtype=float
+        )
+        np.testing.assert_array_equal(aux_block, expected_aux)
+
+    def _assert_modes_agree(self, make_system):
+        sizes = make_system("sizes")
+        padded = make_system("padded")
+        ev_s, ev_p = np.asarray(sizes.el_energy_op_vec), np.asarray(padded.el_energy_op_vec)
+        np.testing.assert_allclose(ev_p, ev_s, rtol=1e-10, atol=1e-12, err_msg="el_energy_op_vec differs")
+        g_s, g_p = np.asarray(sizes.el_energy_op_grad_vec), np.asarray(padded.el_energy_op_grad_vec)
+        scale = max(np.max(np.abs(g_s)), 1.0)
+        self.assertLess(np.max(np.abs(g_p - g_s)) / scale, 1e-10, "el gradients differ between modes")
+
+    def test_d6_padded_matches_sizes(self):
+        def make_system(mode):
+            rng = np.random.RandomState(11)
+            lat = lattice.Lattice2D(2, 2)
+            cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer=1, num_fermionic_layer=0)
+            cfg.paramvec = rng.rand(1, 1, 20)
+            cfg.enforce_parameter_conditions(cfg.paramvec)
+            cfg.el_eval_mode = mode
+            s = system.D2nSystem2D(cfg)
+            vals = cfg.gaugemgr.get_possible_gauge_values()
+            s.update_gauge_full_system([vals[rng.randint(len(vals))].copy() for _ in range(lat.nlinks)])
+            return s
+
+        self._assert_modes_agree(make_system)
+
+    def test_z2_padded_matches_sizes(self):
+        def make_system(mode):
+            rng = np.random.RandomState(12)
+            lat = lattice.Lattice2D(2, 2)
+            cfg = system.Z2System2D_Config(lat, 1, 1, 0, 0, None, ncopy=2)
+            cfg.paramvec = rng.rand(cfg.nlayer, 1, 20)
+            cfg.enforce_parameter_conditions(cfg.paramvec)
+            cfg.el_eval_mode = mode
+            s = system.Z2System2D(cfg)
+            vals = cfg.gaugemgr.get_possible_gauge_values()
+            s.update_gauge_full_system([vals[rng.randint(len(vals))].copy() for _ in range(lat.nlinks)])
+            return s
+
+        self._assert_modes_agree(make_system)

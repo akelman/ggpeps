@@ -405,6 +405,9 @@ def main(args):
     # Select the electric-energy backend (default "pfaffian"). The "overlap" path is an independent
     # Gaussian-overlap oracle: pure gauge, exact-eval, energies only (no gradients/minimization).
     system_cfg.el_method = args.el_method
+    # Pfaffian-evaluation layout: per-size-class calls ("sizes", default) or a single padded batch
+    # ("padded"); identical values up to float rounding.
+    system_cfg.el_eval_mode = args.el_eval_mode
     if args.el_method == "overlap":
         if args.compute_grads or args.mode in ("min-exact", "min-mc", "min-nevmc", "minmult-mc"):
             logger.error("The 'overlap' electric-energy method supports energies only (no gradients / minimization).")
@@ -880,6 +883,15 @@ if __name__ == "__main__":
         default="pfaffian",
         help="Electric-energy backend: 'pfaffian' (default) or 'overlap' (independent Bravyi-Gosset "
         "Gaussian three-state overlap; pure-gauge, exact-eval, energies only).",
+    )
+    parser.add_argument(
+        "--el_eval_mode",
+        type=str,
+        choices=["sizes", "padded"],
+        default="sizes",
+        help="Pfaffian-evaluation layout for the electric energy: 'sizes' (default; one vectorized "
+        "call per monomial size class) or 'padded' (all monomials padded to one size class; a single "
+        "batched call and dense einsums -- same values up to float rounding).",
     )
 
     # Monte Carlo settings

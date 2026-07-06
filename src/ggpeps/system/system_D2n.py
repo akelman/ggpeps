@@ -333,6 +333,7 @@ class D2nSystem2D(System2DBase):
             "symbolvec",
             "idxarr_vec",
             "coeffs_vec",
+            "use_padded",
         ]
     )
     def _compute_el_grad_vec(
@@ -366,6 +367,10 @@ class D2nSystem2D(System2DBase):
         sp_ii: xnp.ndarray,
         sp_jj: xnp.ndarray,
         sp_vals: xnp.ndarray,
+        use_padded: bool,
+        padded_idx_arr: xnp.ndarray,
+        padded_coeffs_arr: xnp.ndarray,
+        padded_aux_block: xnp.ndarray,
     ) -> xnp.ndarray:
         """In early 2026, this function was significantly optimized.
         This was done after it was generalized in various ways over the previous months:
@@ -451,35 +456,66 @@ class D2nSystem2D(System2DBase):
             (num_group_elements, nlayer, len(mod_link_inds), unitcell_size, len(symbolvec)), dtype=complex
         )
 
-        for layerind in range(nlayer):
+        if use_padded:
+            # Padded mode (cfg.el_eval_mode == "padded"): all monomials share one matrix dimension
+            # K, so the size-class loop collapses to a single derivative call per (layer, link).
+            # The link covariance (and its zero parameter-derivative) is extended by the fixed
+            # Pf-preserving aux block the padding indices point into (see build_padded_el_terms).
+            K = padded_aux_block.shape[-1]
+            for layerind in range(nlayer):
+                for link_pos, _ in enumerate(mod_link_inds):
+                    inds_arr = padded_idx_arr[layerind, link_pos]  # (num_terms, K)
+                    pfafs = el_pfaffians[layerind, link_pos]  # (num_terms,) padded basis
 
-            for link_pos, _ in enumerate(mod_link_inds):
-
-                for lens_ind in range(len(idxarr_vec[layerind][link_pos])):
-                    # (# pfafs, pfaf submat dim)
-                    inds_arr = xnp.asarray(idxarr_vec[layerind][link_pos][lens_ind])
-                    # (num_group_elements, num_pfafs) coefficients in the unique basis
-                    prefactors = xnp.asarray(
-                        [coeffs_vec[ge][layerind][link_pos][lens_ind] for ge in range(num_group_elements)]
+                    covpad = xnp.zeros((k + K, k + K), dtype=covmat_out_mod_vec.dtype)
+                    covpad = backend.array_assign(
+                        covpad, (slice(None, k), slice(None, k)), covmat_out_mod_vec[layerind, link_pos]
                     )
+                    covpad = backend.array_assign(covpad, (slice(k, None), slice(k, None)), padded_aux_block)
+                    virts = covpad[None, None, inds_arr[:, :, None], inds_arr[:, None, :]]
 
-                    # We slice the last dimension because the el_pfaffians array is padded with zeros.
-                    pfafs = el_pfaffians[layerind, link_pos, lens_ind, : len(inds_arr)]
+                    d_cov = d_covmat_out_virt_vec[layerind, link_pos]  # (unitcell_size, nsymb, k, k)
+                    d_covpad = xnp.zeros(d_cov.shape[:-2] + (k + K, k + K), dtype=d_cov.dtype)
+                    d_covpad = backend.array_assign(d_covpad, (Ellipsis, slice(None, k), slice(None, k)), d_cov)
+                    d_virts = d_covpad[:, :, inds_arr[:, :, None], inds_arr[:, None, :]]
 
-                    virts = covmat_out_mod_vec[layerind][link_pos][
-                        None, None, inds_arr[:, :, None], inds_arr[:, None, :]
-                    ]
-                    d_virts = d_covmat_out_virt_vec[layerind, link_pos][
-                        :, :, inds_arr[:, :, None], inds_arr[:, None, :]
-                    ]
-
-                    # (unitcell_size, len(symbolvec), num_pfafs)
+                    # (unitcell_size, len(symbolvec), num_terms)
                     deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(virts, d_virts, pfafs)
                     deriv_pf_tot_vec_vec = backend.array_add(
                         deriv_pf_tot_vec_vec,
                         (slice(None), layerind, link_pos),
-                        xnp.einsum("usn,gn->gus", deriv_pf_tot_vectorized, prefactors),
+                        xnp.einsum("ust,gt->gus", deriv_pf_tot_vectorized, padded_coeffs_arr[:, layerind, link_pos]),
                     )
+        else:
+            for layerind in range(nlayer):
+
+                for link_pos, _ in enumerate(mod_link_inds):
+
+                    for lens_ind in range(len(idxarr_vec[layerind][link_pos])):
+                        # (# pfafs, pfaf submat dim)
+                        inds_arr = xnp.asarray(idxarr_vec[layerind][link_pos][lens_ind])
+                        # (num_group_elements, num_pfafs) coefficients in the unique basis
+                        prefactors = xnp.asarray(
+                            [coeffs_vec[ge][layerind][link_pos][lens_ind] for ge in range(num_group_elements)]
+                        )
+
+                        # We slice the last dimension because the el_pfaffians array is padded with zeros.
+                        pfafs = el_pfaffians[layerind, link_pos, lens_ind, : len(inds_arr)]
+
+                        virts = covmat_out_mod_vec[layerind][link_pos][
+                            None, None, inds_arr[:, :, None], inds_arr[:, None, :]
+                        ]
+                        d_virts = d_covmat_out_virt_vec[layerind, link_pos][
+                            :, :, inds_arr[:, :, None], inds_arr[:, None, :]
+                        ]
+
+                        # (unitcell_size, len(symbolvec), num_pfafs)
+                        deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(virts, d_virts, pfafs)
+                        deriv_pf_tot_vec_vec = backend.array_add(
+                            deriv_pf_tot_vec_vec,
+                            (slice(None), layerind, link_pos),
+                            xnp.einsum("usn,gn->gus", deriv_pf_tot_vectorized, prefactors),
+                        )
 
         for group_element_idx in range(num_group_elements):
             for layerind in range(nlayer):

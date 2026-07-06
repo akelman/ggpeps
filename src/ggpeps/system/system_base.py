@@ -101,6 +101,9 @@ class System2DBase(ABC):
         self._norm_mod_vec: Optional[xnp.ndarray] = None
         self._el_pfaffians: Optional[xnp.ndarray] = None
         self._lognorm_default_vec: Optional[xnp.ndarray] = None
+        # Backend copies of the padded el-energy structures (config constants -- converted once,
+        # NOT reset on gauge updates)
+        self._el_padded_device: Optional[tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]] = None
 
         # Management of the gauge fields
         # vec for layers (choices of projectors may be different for each layer), dirs for directions
@@ -706,21 +709,47 @@ class System2DBase(ABC):
         return self._covmat_out_mod_vec
 
     @property
+    def el_padded_device(self) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
+        """The padded el-energy structures (idx_arr, coeffs_arr, aux_block) as backend arrays.
+
+        Converted from the config's numpy arrays once per system (on the device for jax), so the
+        jitted functions receive stable device buffers instead of per-call host transfers.
+        """
+        if self._el_padded_device is None:
+            self._el_padded_device = (
+                xnp.asarray(self.cfg.padded_idx_arr),
+                xnp.asarray(self.cfg.padded_coeffs_arr),
+                xnp.asarray(self.cfg.padded_aux_block),
+            )
+        return self._el_padded_device
+
+    @property
     def el_pfaffians(self) -> xnp.ndarray:
         """Compute the pfaffians of the modified covariance matrices used for the electric energy and its derivative.
         This function returns a vector over layers and links of these pfaffians.
         This is a get function.
 
+        Shape depends on cfg.el_eval_mode: (nlayer, num_el_links, num_size_classes, num_terms_max)
+        for "sizes", (nlayer, num_el_links, num_terms) for "padded".
+
         Returns:
             xnp.array: a vector of pfaffians
         """
         if self._el_pfaffians is None:
-            self._el_pfaffians = self._compute_el_pfaffians(
-                self.cfg.nlayer,
-                self.cfg.mod_link_inds,
-                self.covmat_out_mod_vec,
-                self.cfg.uniq_idx_vec,
-            )
+            if getattr(self.cfg, "el_eval_mode", "sizes") == "padded":
+                padded_idx_arr, _, padded_aux_block = self.el_padded_device
+                self._el_pfaffians = self._compute_el_pfaffians_padded(
+                    self.covmat_out_mod_vec,
+                    padded_idx_arr,
+                    padded_aux_block,
+                )
+            else:
+                self._el_pfaffians = self._compute_el_pfaffians(
+                    self.cfg.nlayer,
+                    self.cfg.mod_link_inds,
+                    self.covmat_out_mod_vec,
+                    self.cfg.uniq_idx_vec,
+                )
         return self._el_pfaffians
 
     @staticmethod
@@ -775,6 +804,67 @@ class System2DBase(ABC):
                     )
 
         return el_pfaffians
+
+    @staticmethod
+    @maybe_jit()
+    def _compute_el_pfaffians_padded(
+        covmat_out_virt_vec: xnp.ndarray,
+        padded_idx_arr: xnp.ndarray,
+        padded_aux_block: xnp.ndarray,
+    ) -> xnp.ndarray:
+        """Padded-mode variant of _compute_el_pfaffians (cfg.el_eval_mode == "padded").
+
+        All monomials share one matrix dimension K (cfg.padded_idx_arr): each link covariance
+        matrix is extended by the fixed antisymmetric aux block the padding indices point into
+        (Pf-preserving, see build_padded_el_terms), and the whole electric pipeline becomes a
+        single batched Pfaffian call.
+
+        Returns:
+            xnp.ndarray: pfaffians, shape (nlayer, num_el_links, num_terms)
+        """
+        nlayer, num_el_links, nmodes, _ = covmat_out_virt_vec.shape
+        num_terms, K = padded_idx_arr.shape[-2:]
+
+        padded_cov = xnp.zeros((nlayer, num_el_links, nmodes + K, nmodes + K), dtype=covmat_out_virt_vec.dtype)
+        padded_cov = backend.array_assign(
+            padded_cov, (slice(None), slice(None), slice(None, nmodes), slice(None, nmodes)), covmat_out_virt_vec
+        )
+        padded_cov = backend.array_assign(
+            padded_cov, (slice(None), slice(None), slice(nmodes, None), slice(nmodes, None)), padded_aux_block[None, None]
+        )
+
+        lay_ix = xnp.arange(nlayer)[:, None, None, None, None]
+        link_ix = xnp.arange(num_el_links)[None, :, None, None, None]
+        rows = padded_idx_arr[:, :, :, :, None]
+        cols = padded_idx_arr[:, :, :, None, :]
+        submatrices = padded_cov[lay_ix, link_ix, rows, cols]  # (nlayer, num_el_links, num_terms, K, K)
+
+        pfavals = backend.pfaffian_vectorized(xnp.reshape(submatrices, (-1, K, K)))
+        return xnp.reshape(pfavals, (nlayer, num_el_links, num_terms))
+
+    @staticmethod
+    @maybe_jit(static_argnames=["constants_vec"])
+    def _compute_el_energy_op_vec_padded(
+        lognormvec_default: xnp.ndarray,
+        el_pfaffians: xnp.ndarray,
+        norm_mod_vec: xnp.ndarray,
+        padded_coeffs_arr: xnp.ndarray,
+        constants_vec: ConstantsVec,
+    ) -> xnp.ndarray:
+        """Padded-mode el_energy_op_vec, shared by all ansaetze.
+
+        pf_tot for every (group element, layer, link) is one dense einsum of the padded
+        coefficient array against the padded-basis pfaffians (no per-size python loops).
+        Kept COMPLEX: the gauged projector is not hermitian for non-Abelian reflections, so the
+        real part is taken only after the product over layers and the sum over group elements
+        (see el_energy_op).
+
+        Returns:
+            xnp.ndarray: complex, shape (num_group_elements, nlayer, num_el_links)
+        """
+        lognorm_default = xnp.sum(lognormvec_default)
+        pf_tot = xnp.asarray(constants_vec) + xnp.einsum("glkt,lkt->glk", padded_coeffs_arr, el_pfaffians)
+        return pf_tot * xnp.exp(xnp.asarray(norm_mod_vec)[None, :, :] - lognorm_default)
 
     @property
     def norm_mod_vec(self) -> xnp.ndarray:
@@ -1669,6 +1759,13 @@ class System2DBase(ABC):
         idxarr_vec: IdxGroup,
         coeffs_vec: CoeffsVec,
         rotmat_vec: xnp.ndarray,
+        sp_ii: xnp.ndarray,
+        sp_jj: xnp.ndarray,
+        sp_vals: xnp.ndarray,
+        use_padded: bool,
+        padded_idx_arr: xnp.ndarray,
+        padded_coeffs_arr: xnp.ndarray,
+        padded_aux_block: xnp.ndarray,
     ) -> xnp.ndarray:
         """Compute the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
@@ -2021,6 +2118,15 @@ class System2DBase(ABC):
         if self._el_energy_op_vec is None:
             if getattr(self.cfg, "el_method", "pfaffian") == "overlap":
                 self._el_energy_op_vec = self._compute_el_energy_op_vec_overlap()
+            elif getattr(self.cfg, "el_eval_mode", "sizes") == "padded":
+                _, padded_coeffs_arr, _ = self.el_padded_device
+                self._el_energy_op_vec = self._compute_el_energy_op_vec_padded(
+                    self.lognorm_default_vec,
+                    self.el_pfaffians,
+                    self.norm_mod_vec,
+                    padded_coeffs_arr,
+                    self.cfg.constants_vec,
+                )
             else:
                 self._el_energy_op_vec = self._compute_el_energy_op_vec(
                     self.lognorm_default_vec,
@@ -2205,6 +2311,8 @@ class System2DBase(ABC):
                 sp_ii,
                 sp_jj,
                 sp_vals,
+                getattr(self.cfg, "el_eval_mode", "sizes") == "padded",
+                *self.el_padded_device,
             )
         return self._el_energy_op_grad_vec
 
