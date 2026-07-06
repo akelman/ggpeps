@@ -15,7 +15,7 @@ import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
-from ggpeps.system.config_base import Config2DBase, IdxVec, CoeffsVec, ConstantsVec
+from ggpeps.system.config_base import Config2DBase, IdxGroup, CoeffsVec, ConstantsVec
 from ggpeps.modearray import generate_permutation_matrix
 from ggpeps.system import overlap as ov
 
@@ -719,8 +719,7 @@ class System2DBase(ABC):
                 self.cfg.nlayer,
                 self.cfg.mod_link_inds,
                 self.covmat_out_mod_vec,
-                self.cfg.gaugemgr.group_elements_for_el_energy,
-                self.cfg.idx_vec,
+                self.cfg.uniq_idx_vec,
             )
         return self._el_pfaffians
 
@@ -730,53 +729,50 @@ class System2DBase(ABC):
         nlayer: int,
         mod_link_inds: tuple[int, ...],
         covmat_out_virt_vec: xnp.ndarray,
-        group_elements_for_el_energy: tuple[xnp.ndarray, ...],
-        idxarr_vec: IdxVec,
+        idxarr_vec: IdxGroup,
     ) -> xnp.ndarray:
         """Compute the pfaffians of the modified covariance matrices used for the electric energy and its derivative.
         This function returns a vector over layers and links of these pfaffians.
-        The pfaffians are not multiplied by the prefactors included in idxarr_vec.
+        The pfaffians are not multiplied by any prefactors.
+
+        idxarr_vec is the unique index structure (cfg.uniq_idx_vec): the Pfaffian of a stored
+        monomial depends only on (layer, link, index tuple), so each unique tuple is computed once
+        and the per-group-element coefficients are applied by the el_energy and el_energy_grad functions
+        (via cfg.uniq_coeffs_vec).
 
         Returns:
-            xnp.ndarray: a vector of pfaffians
+            xnp.ndarray: pfaffians, shape (nlayer, num_el_links, num_size_classes, num_terms_max)
         """
 
         num_el_links = len(mod_link_inds)  # number of links to calculate the electric energy on.
-        num_terms_per_size = max(
-            len(size) for group_element in idxarr_vec for layer in group_element for link in layer for size in link
-        )
-        # Max terms per layer; elements may vary in term count.
-        num_group_elements = len(group_elements_for_el_energy)
-        num_lens = max(len(link) for group_element in idxarr_vec for layer in group_element for link in layer)
-        # Max terms per link; elements may vary in term count.
-        el_pfaffians = xnp.zeros((num_group_elements, nlayer, num_el_links, num_lens, num_terms_per_size))
+        num_terms_per_size = max(len(size) for layer in idxarr_vec for link in layer for size in link)
+        # Max terms per size class; size classes may vary in term count.
+        num_lens = max(len(link) for layer in idxarr_vec for link in layer)
+        el_pfaffians = xnp.zeros((nlayer, num_el_links, num_lens, num_terms_per_size))
 
-        # TODO: vectorize!
-        for group_element_idx in range(num_group_elements):
-            idxarr_vec_group_element = idxarr_vec[group_element_idx]
-            for layerind in range(nlayer):
-                layer_idxs = idxarr_vec_group_element[layerind]  # tuple of tuples of indices
+        for layerind in range(nlayer):
+            layer_idxs = idxarr_vec[layerind]  # tuple of tuples of indices
 
-                covmat_out_virt_linkvec = covmat_out_virt_vec[layerind]
+            covmat_out_virt_linkvec = covmat_out_virt_vec[layerind]
 
-                # Iterate over the links
-                for link_pos, covmat_out_virt in enumerate(covmat_out_virt_linkvec):
-                    link_idxs = layer_idxs[link_pos]
+            # Iterate over the links
+            for link_pos, covmat_out_virt in enumerate(covmat_out_virt_linkvec):
+                link_idxs = layer_idxs[link_pos]
 
-                    # Go over the different lengthed tuples of tuples of indices
-                    for size_idxs_ind, size_idxs in enumerate(link_idxs):
-                        inds_batch = xnp.asarray(size_idxs)
-                        rows = inds_batch[:, :, None]
-                        cols = inds_batch[:, None, :]
-                        submatrices = covmat_out_virt[rows, cols]  # shape (num_terms, size, size)
+                # Go over the different lengthed tuples of tuples of indices
+                for size_idxs_ind, size_idxs in enumerate(link_idxs):
+                    inds_batch = xnp.asarray(size_idxs)
+                    rows = inds_batch[:, :, None]
+                    cols = inds_batch[:, None, :]
+                    submatrices = covmat_out_virt[rows, cols]  # shape (num_terms, size, size)
 
-                        pfavals = backend.pfaffian_vectorized(submatrices)
+                    pfavals = backend.pfaffian_vectorized(submatrices)
 
-                        el_pfaffians = backend.array_assign(
-                            el_pfaffians,
-                            (group_element_idx, layerind, link_pos, size_idxs_ind, slice(0, len(pfavals))),
-                            pfavals,
-                        )
+                    el_pfaffians = backend.array_assign(
+                        el_pfaffians,
+                        (layerind, link_pos, size_idxs_ind, slice(0, len(pfavals))),
+                        pfavals,
+                    )
 
         return el_pfaffians
 
@@ -1670,7 +1666,7 @@ class System2DBase(ABC):
         grad_over_norm_vec: xnp.ndarray,
         inds: tuple,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
-        idxarr_vec: IdxVec,
+        idxarr_vec: IdxGroup,
         coeffs_vec: CoeffsVec,
         rotmat_vec: xnp.ndarray,
     ) -> xnp.ndarray:
@@ -2033,7 +2029,7 @@ class System2DBase(ABC):
                     self.el_pfaffians,
                     self.norm_mod_vec,
                     self.cfg.gaugemgr.group_elements_for_el_energy,
-                    self.cfg.coeffs_vec,
+                    self.cfg.uniq_coeffs_vec,
                     self.cfg.constants_vec,
                 )
         return self._el_energy_op_vec
@@ -2203,8 +2199,8 @@ class System2DBase(ABC):
                 self.grad_over_norm_vec,
                 (l, m, u, s),
                 self.cfg.gaugemgr.group_elements_for_el_energy,
-                self.cfg.idx_vec,
-                self.cfg.coeffs_vec,
+                self.cfg.uniq_idx_vec,
+                self.cfg.uniq_coeffs_vec,
                 rotmat_vec,
                 sp_ii,
                 sp_jj,

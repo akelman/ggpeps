@@ -5,6 +5,7 @@ import numpy as np
 
 import ggpeps.system.config_base as config_base
 from ggpeps import gauge, system, lattice, utils
+from ggpeps.system.backend import backend
 
 from ggpeps.lattice import Direction
 
@@ -724,3 +725,204 @@ class TestGaugedProjectorAssembly(_PolyAssertMixin, unittest.TestCase):
             )
             got_poly = _ref_canon({mon: coef for coef, mon in got_ind})
             self.assert_poly_close(got_poly, exp_items, msg=tag)
+
+
+# ==================== Unique electric-energy terms (dedup across group elements) ====================
+
+
+class _IdxCoeffStub:
+    """Bare container exposing only what _build_unique_el_terms reads and writes."""
+
+    _build_unique_el_terms = config_base.Config2DBase._build_unique_el_terms
+
+    def __init__(self, idx_vec, coeffs_vec):
+        self.idx_vec = idx_vec
+        self.coeffs_vec = coeffs_vec
+        self._uniq_idx_vec = None
+        self._uniq_coeffs_vec = None
+
+
+class TestBuildUniqueElTerms(unittest.TestCase):
+    """_build_unique_el_terms re-expresses idx_vec/coeffs_vec in a unique-index basis shared
+    across group elements (the system then computes each Pfaffian once). The defining invariant:
+    for every (group element, layer, link), the map {index tuple -> total coefficient} must be
+    unchanged by the re-expression."""
+
+    @classmethod
+    def setUpClass(cls):
+        lat = lattice.Lattice2D(2, 2)
+        cls.cfg_d6 = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer=1, num_fermionic_layer=0)
+        cls.cfg_z2 = utils.make_z2_2copy_config(lattice.Lattice2D(2, 2), 1, 1, 1, 1, None)
+
+    @staticmethod
+    def _term_dict(idx_link, coeffs_link, tol=1e-15):
+        """Collapse one link's (buckets-of-tuples, buckets-of-coeffs) into {tuple: summed coeff}."""
+        acc = defaultdict(complex)
+        for bucket, coeff_bucket in zip(idx_link, coeffs_link):
+            for tup, coeff in zip(bucket, coeff_bucket):
+                acc[tup] += complex(coeff)
+        return {k: v for k, v in acc.items() if abs(v) > tol}
+
+    def _assert_dicts_close(self, got, exp, msg, tol=1e-12):
+        self.assertEqual(set(got), set(exp), f"{msg}: index tuples differ")
+        for tup in exp:
+            self.assertTrue(abs(got[tup] - exp[tup]) < tol, f"{msg}: coeff at {tup}: {got[tup]} vs {exp[tup]}")
+
+    def test_handcrafted_union_and_coefficients(self):
+        """Exact expected output on a hand-built structure covering: union across group elements
+        with first-seen ordering, zero-padding where an element lacks a tuple, summing of
+        duplicate tuples within one element, size classes sorted ascending, and empty-bucket
+        skipping. (0,1) vs (1,0) kept distinct pins the keying contract: real monomials are
+        always canonically sorted by simplify_polynomial, so dedup must key on the exact tuple
+        rather than the index set -- merging orderings would flip the Pfaffian sign if a
+        non-canonical tuple ever appeared."""
+        # 2 group elements, 1 layer, 2 links
+        idx_vec = (
+            (  # ge0
+                (
+                    (((0, 1), (2, 3), (0, 1)),),  # link 0: one size-2 bucket, (0,1) listed twice
+                    ((), ((4, 5),)),  # link 1: empty bucket must be skipped
+                ),
+            ),
+            (  # ge1
+                (
+                    ((((2, 3)), (1, 0)), ((0, 1, 2, 3),)),  # link 0: size-2 and size-4 buckets
+                    (((4, 5),),),  # link 1
+                ),
+            ),
+        )
+        coeffs_vec = (
+            ((((1.0, 2.0, 0.5),), ((), (1j,))),),  # ge0
+            ((((3.0, 4j), (5.0,)), ((2.0,),)),),  # ge1
+        )
+        stub = _IdxCoeffStub(idx_vec, coeffs_vec)
+        stub._build_unique_el_terms()
+
+        expected_idx = (  # [layer][link][size_class]
+            (
+                (((0, 1), (2, 3), (1, 0)), ((0, 1, 2, 3),)),
+                (((4, 5),),),
+            ),
+        )
+        expected_coeffs = (  # [ge][layer][link][size_class]
+            ((((1.5, 2.0, 0.0), (0.0,)), ((1j,),)),),
+            ((((0.0, 3.0, 4j), (5.0,)), ((2.0,),)),),
+        )
+        self.assertEqual(stub._uniq_idx_vec, expected_idx)
+        self.assertEqual(stub._uniq_coeffs_vec, expected_coeffs)
+
+    def test_z2_single_group_element_is_noop_reindexing(self):
+        """For a single stored group element (Z2) the unique basis must be the original structure
+        verbatim: same index tuples in the same order, same coefficients, nothing dropped or merged."""
+        cfg = self.cfg_z2
+        self.assertEqual(len(cfg.idx_vec), 1)
+        self.assertEqual(len(cfg.uniq_coeffs_vec), 1)
+        self.assertEqual(cfg.uniq_idx_vec, cfg.idx_vec[0])
+        for lay in range(len(cfg.idx_vec[0])):
+            for link in range(len(cfg.idx_vec[0][lay])):
+                for size_ind, coeff_bucket in enumerate(cfg.coeffs_vec[0][lay][link]):
+                    got = cfg.uniq_coeffs_vec[0][lay][link][size_ind]
+                    self.assertTrue(
+                        np.allclose(np.asarray(got), np.asarray(coeff_bucket, dtype=complex)),
+                        f"Z2 coeffs changed at layer {lay}, link {link}, size class {size_ind}",
+                    )
+
+    def test_d6_unique_basis_preserves_terms_per_group_element(self):
+        """D6 (3 group elements with genuinely different sparsity): re-expressing each element's
+        coefficients in the shared unique basis must preserve its {index tuple -> coefficient} map,
+        and the unique basis itself must be sane (aligned shapes, no duplicate tuples, ascending
+        size classes, no invented tuples)."""
+        cfg = self.cfg_d6
+        num_ge = len(cfg.idx_vec)
+        self.assertEqual(num_ge, 3)
+        for lay in range(len(cfg.uniq_idx_vec)):
+            for link in range(len(cfg.uniq_idx_vec[lay])):
+                uniq_link = cfg.uniq_idx_vec[lay][link]
+                sizes = [len(bucket[0]) for bucket in uniq_link]
+                self.assertEqual(sizes, sorted(sizes), "size classes not ascending")
+                all_original = set()
+                for ge in range(num_ge):
+                    for bucket in cfg.idx_vec[ge][lay][link]:
+                        all_original.update(bucket)
+                for size_ind, bucket in enumerate(uniq_link):
+                    self.assertEqual(len(bucket), len(set(bucket)), "duplicate tuples in unique basis")
+                    self.assertTrue(set(bucket) <= all_original, "unique basis invented a tuple")
+                    self.assertTrue(all(len(t) == sizes[size_ind] for t in bucket), "mixed sizes in a bucket")
+                    for ge in range(num_ge):
+                        self.assertEqual(
+                            len(cfg.uniq_coeffs_vec[ge][lay][link][size_ind]),
+                            len(bucket),
+                            "coeffs not aligned with unique index basis",
+                        )
+                for ge in range(num_ge):
+                    got = self._term_dict(
+                        [uniq_link[i] for i in range(len(uniq_link))],
+                        cfg.uniq_coeffs_vec[ge][lay][link],
+                    )
+                    exp = self._term_dict(cfg.idx_vec[ge][lay][link], cfg.coeffs_vec[ge][lay][link])
+                    self._assert_dicts_close(got, exp, f"ge {ge}, layer {lay}, link {link}")
+
+    def test_d6_dedup_actually_reduces_pfaffian_count(self):
+        """The point of the unique basis: D6's group elements share index sets (the two
+        color-mixing reflections have identical sets, the color-diagonal one is a subset), so the
+        number of Pfaffians per link must drop by at least 2x vs computing per group element."""
+        cfg = self.cfg_d6
+        num_ge = len(cfg.idx_vec)
+        for lay in range(len(cfg.uniq_idx_vec)):
+            for link in range(len(cfg.uniq_idx_vec[lay])):
+                uniq_count = sum(len(bucket) for bucket in cfg.uniq_idx_vec[lay][link])
+                per_ge_counts = [sum(len(bucket) for bucket in cfg.idx_vec[ge][lay][link]) for ge in range(num_ge)]
+                self.assertEqual(
+                    uniq_count,
+                    max(per_ge_counts),
+                    "expected the largest group element's index sets to contain all others (D6 structure)",
+                )
+                self.assertLessEqual(2 * uniq_count, sum(per_ge_counts), "dedup saves less than 2x on D6")
+
+
+class TestUniqueElTermsSystemConsumption(unittest.TestCase):
+    """Integration: the system evaluates Pfaffians once in the unique basis (_compute_el_pfaffians
+    with cfg.uniq_idx_vec) and applies per-group-element coefficient dots (cfg.uniq_coeffs_vec).
+    This must reproduce the pre-dedup semantics: Pfaffians evaluated directly from each group
+    element's own idx_vec/coeffs_vec."""
+
+    def test_d6_dedup_pf_tot_matches_per_group_element_evaluation(self):
+        rng = np.random.RandomState(20260706)
+        lat = lattice.Lattice2D(2, 2)
+        cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer=1, num_fermionic_layer=0)
+        cfg.paramvec = rng.rand(1, 1, 20)
+        cfg.enforce_parameter_conditions(cfg.paramvec)
+        sys_d6 = system.D2nSystem2D(cfg)
+
+        # Random (non-identity) gauge field so the covariance matrices are generic
+        vals = cfg.gaugemgr.get_possible_gauge_values()
+        gauge_config = [vals[rng.randint(len(vals))].copy() for _ in range(lat.nlinks)]
+        sys_d6.update_gauge_full_system(gauge_config)
+
+        el_pfaffians = np.asarray(sys_d6.el_pfaffians)  # unique basis, no group-element axis
+        covmats = np.asarray(sys_d6.covmat_out_mod_vec)
+        num_ge = len(cfg.idx_vec)
+        for ge in range(num_ge):
+            for lay in range(cfg.nlayer):
+                for link_pos in range(len(cfg.mod_link_inds)):
+                    # Production assembly (as in _compute_el_energy_op_vec): constant + coefficient
+                    # dots against the shared unique-basis Pfaffians
+                    pf_dedup = complex(cfg.constants_vec[ge][lay][link_pos])
+                    for size_ind, coeffs in enumerate(cfg.uniq_coeffs_vec[ge][lay][link_pos]):
+                        pf_dedup += np.dot(np.asarray(coeffs), el_pfaffians[lay, link_pos, size_ind, : len(coeffs)])
+
+                    # Reference: this group element's own terms, one Pfaffian per stored tuple
+                    pf_ref = complex(cfg.constants_vec[ge][lay][link_pos])
+                    for bucket, coeff_bucket in zip(cfg.idx_vec[ge][lay][link_pos], cfg.coeffs_vec[ge][lay][link_pos]):
+                        for tup, coeff in zip(bucket, coeff_bucket):
+                            inds = np.asarray(tup)
+                            sub = covmats[lay][link_pos][np.ix_(inds, inds)]
+                            pf_ref += complex(coeff) * backend.pfaffian(sub)
+
+                    np.testing.assert_allclose(
+                        pf_dedup,
+                        pf_ref,
+                        rtol=1e-9,
+                        atol=1e-12,
+                        err_msg=f"pf_tot mismatch at ge {ge}, layer {lay}, link {link_pos}",
+                    )

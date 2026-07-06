@@ -9,7 +9,7 @@ from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
 
-from .config_base import IdxVec, CoeffsVec, ConstantsVec
+from .config_base import IdxGroup, CoeffsVec, ConstantsVec
 
 from .system_base import System2DBase
 from .system_base import maybe_jit
@@ -203,7 +203,10 @@ class Z2System2D(System2DBase):
 
         # TODO: vectorize!
         for group_element_idx in range(num_group_elements):
-            # idxarrs for the specific group element, for Z_N we expect only 1 anyway
+            # coeffs for the specific group element, in the unique-index basis (cfg.uniq_coeffs_vec):
+            # the pfaffians are computed once per unique index tuple (no group-element axis) and
+            # each group element applies its own coefficient dot product. For Z2 there is only 1
+            # stored group element anyway.
             coeffs_group_element = coeffs_vec[group_element_idx]
             for layerind in range(nlayer):
                 layer_coeffs = coeffs_group_element[layerind]  # tuple of tuples of coeffs
@@ -218,9 +221,7 @@ class Z2System2D(System2DBase):
                     # for Z2 it should be 0
                     for size_ind, size_term in enumerate(link_coeffs):
                         array_size_term = xnp.asarray(size_term)
-                        current_pfaffians = el_pfaffians[
-                            group_element_idx, layerind, link_pos, size_ind, : len(size_term)
-                        ]
+                        current_pfaffians = el_pfaffians[layerind, link_pos, size_ind, : len(size_term)]
                         pf_tot += xnp.dot(array_size_term, current_pfaffians)
 
                     # Keep el_energy_link COMPLEX. The real part is taken only after the product over
@@ -271,7 +272,7 @@ class Z2System2D(System2DBase):
         grad_over_norm_vec: xnp.ndarray,
         inds: tuple,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
-        idxarr_vec: IdxVec,
+        idxarr_vec: IdxGroup,
         coeffs_vec: CoeffsVec,
         rotmat_vec: xnp.ndarray,
         sp_ii: xnp.ndarray,
@@ -348,40 +349,48 @@ class Z2System2D(System2DBase):
         vals = xnp.sum(sp_vals * p_gather, axis=-1)
         prod_vec = backend.array_assign(prod_vec, (l, m, u, s), vals)
 
+        # The pfaffian derivatives depend only on (layer, link, index tuple) -- NOT on the group
+        # element: the pfaffians live in the unique-index basis (cfg.uniq_idx_vec), so each
+        # derivative is computed once and the per-group-element coefficients (cfg.uniq_coeffs_vec,
+        # same unique basis and length for every group element) are applied as a stacked dot below.
+        # For Z2 there is only 1 stored group element anyway.
+        deriv_pf_tot_vec_vec = xnp.zeros(
+            (num_group_elements, nlayer, len(mod_link_inds), unitcell_size, len(symbolvec)), dtype=complex
+        )
+
+        for layerind in range(nlayer):
+
+            for link_pos, _ in enumerate(mod_link_inds):
+
+                for lens_ind in range(len(idxarr_vec[layerind][link_pos])):
+                    # (# pfafs, pfaf submat dim)
+                    inds_arr = xnp.asarray(idxarr_vec[layerind][link_pos][lens_ind])
+                    # (num_group_elements, num_pfafs) coefficients in the unique basis
+                    prefactors = xnp.asarray(
+                        [coeffs_vec[ge][layerind][link_pos][lens_ind] for ge in range(num_group_elements)]
+                    )
+
+                    # We slice the last dimension because the el_pfaffians array is padded with zeros.
+                    pfafs = el_pfaffians[layerind, link_pos, lens_ind, : len(inds_arr)]
+
+                    virts = covmat_out_mod_vec[layerind][link_pos][
+                        None, None, inds_arr[:, :, None], inds_arr[:, None, :]
+                    ]
+                    d_virts = d_covmat_out_virt_vec[layerind, link_pos][
+                        :, :, inds_arr[:, :, None], inds_arr[:, None, :]
+                    ]
+
+                    # (unitcell_size, len(symbolvec), num_pfafs)
+                    deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(virts, d_virts, pfafs)
+                    deriv_pf_tot_vec_vec = backend.array_add(
+                        deriv_pf_tot_vec_vec,
+                        (slice(None), layerind, link_pos),
+                        xnp.einsum("usn,gn->gus", deriv_pf_tot_vectorized, prefactors),
+                    )
+
         for group_element_idx in range(num_group_elements):
-            # idxarrs for the specific group element, for Z_N we expect only 1 anyway
-            idxarrs_group_element = idxarr_vec[group_element_idx]
-            coeffs_vec_group_element = coeffs_vec[group_element_idx]
-
-            deriv_pf_tot_vec_vec = xnp.zeros(
-                (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec)), dtype=complex
-            )
-
             for layerind in range(nlayer):
-
                 for link_pos, _ in enumerate(mod_link_inds):
-
-                    for lens_ind in range(len(idxarrs_group_element[layerind][link_pos])):
-                        # (# pfafs, pfaf submat dim)
-                        inds_arr = xnp.asarray(idxarrs_group_element[layerind][link_pos][lens_ind])
-                        prefactors = xnp.asarray(coeffs_vec_group_element[layerind][link_pos][lens_ind])  # num_pfafs
-
-                        # We slice the last dimension because the el_pfaffians array is padded with zeros.
-                        pfafs = el_pfaffians[group_element_idx, layerind, link_pos, lens_ind, : len(inds_arr)]
-
-                        virts = covmat_out_mod_vec[layerind][link_pos][
-                            None, None, inds_arr[:, :, None], inds_arr[:, None, :]
-                        ]
-                        d_virts = d_covmat_out_virt_vec[layerind, link_pos][
-                            :, :, inds_arr[:, :, None], inds_arr[:, None, :]
-                        ]
-
-                        deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(virts, d_virts, pfafs)
-                        deriv_pf_tot_vec_vec = backend.array_add(
-                            deriv_pf_tot_vec_vec,
-                            (layerind, link_pos),
-                            xnp.sum(prefactors * deriv_pf_tot_vectorized, axis=-1),
-                        )
 
                     # In previous versions of the code, Pfaffians with complex/imaginary coefficients
                     # were included, but dropped here. Since operators of interest (electric energy + grad)
@@ -389,7 +398,7 @@ class Z2System2D(System2DBase):
                     # At present, we drop these complex/imaginary terms higher in the stack to save on
                     # computation. We leave the xnp.real() for testing purposes.
                     # Keep COMPLEX; the real part is taken after the layer product + group sum below.
-                    d_el_energy_vec = deriv_pf_tot_vec_vec[layerind, link_pos] * xnp.exp(
+                    d_el_energy_vec = deriv_pf_tot_vec_vec[group_element_idx, layerind, link_pos] * xnp.exp(
                         norm_mod_vec[layerind][link_pos] - lognorm_default
                     )
 
