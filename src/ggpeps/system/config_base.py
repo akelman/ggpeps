@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Union
+from typing import Optional, Sequence, Union
 from collections import defaultdict
 
 import sys
@@ -37,6 +37,69 @@ ConstantsTermLink = complex
 ConstantsLayer = tuple[ConstantsTermLink, ...]  # all link terms for one layer
 ConstantsGroup = tuple[ConstantsLayer, ...]  # Per group element
 ConstantsVec = tuple[ConstantsGroup, ...]  # over group elements
+
+
+def build_unique_el_terms(
+    idx_vec: Sequence[IdxGroup], coeffs_vec: Sequence[CoeffsGroup]
+) -> tuple[IdxGroup, CoeffsVec]:
+    """Deduplicate the electric-energy Pfaffian index sets across group elements.
+
+    The Pfaffian of a stored monomial depends only on (layer, link, index tuple) -- the
+    covariance matrix it is evaluated on is the same for every group element -- while the group
+    element only changes the coefficient in front. For D6 for instance,
+    the group elements share most index sets
+    (the two color-mixing elements have identical sets and the color-diagonal one is a subset),
+    so evaluating the Pfaffians per group element repeats about half the work. From the raw
+    per-group-element structures this builds:
+        - uniq_idx_vec[layer][link][size_class]: the ordered union of index tuples over group
+          elements (size classes ordered by ascending matrix dimension)
+        - uniq_coeffs_vec[ge][layer][link][size_class]: each group element's coefficients
+          re-expressed in that unique basis (zero where the group element lacks the tuple)
+    so the system computes each Pfaffian (and its derivative) once and applies per-group-element
+    coefficient dot products. For a single stored group element (Z2) this is a no-op reindexing.
+
+    Returns:
+        tuple: (uniq_idx_vec, uniq_coeffs_vec)
+    """
+    num_ge = len(idx_vec)
+    nlayer = len(idx_vec[0])
+    nlinks = len(idx_vec[0][0])
+
+    uniq_idx_layers = []
+    uniq_coeff_layers: list[list] = [[] for _ in range(num_ge)]
+    for lay in range(nlayer):
+        uniq_idx_links = []
+        uniq_coeff_links: list[list] = [[] for _ in range(num_ge)]
+        for link in range(nlinks):
+            # Union of index tuples, bucketed by matrix dimension (= tuple length).
+            # Dicts preserve insertion order, giving a stable first-seen ordering.
+            posmaps: dict[int, dict[tuple, int]] = {}
+            for ge in range(num_ge):
+                for bucket in idx_vec[ge][lay][link]:
+                    if not bucket:
+                        continue
+                    posmap = posmaps.setdefault(len(bucket[0]), {})
+                    for tup in bucket:
+                        if tup not in posmap:
+                            posmap[tup] = len(posmap)
+            dims = sorted(posmaps)
+            uniq_idx_links.append(tuple(tuple(posmaps[d].keys()) for d in dims))
+
+            # Re-express each group element's coefficients in the unique basis
+            for ge in range(num_ge):
+                cvecs = {d: [complex(0.0)] * len(posmaps[d]) for d in dims}
+                for bucket, coeff_bucket in zip(idx_vec[ge][lay][link], coeffs_vec[ge][lay][link]):
+                    if not bucket:
+                        continue
+                    posmap = posmaps[len(bucket[0])]
+                    for tup, coeff in zip(bucket, coeff_bucket):
+                        cvecs[len(tup)][posmap[tup]] += complex(coeff)
+                uniq_coeff_links[ge].append(tuple(tuple(cvecs[d]) for d in dims))
+        uniq_idx_layers.append(tuple(uniq_idx_links))
+        for ge in range(num_ge):
+            uniq_coeff_layers[ge].append(tuple(uniq_coeff_links[ge]))
+
+    return tuple(uniq_idx_layers), tuple(tuple(layers) for layers in uniq_coeff_layers)
 
 
 ################## Config2DBase ######################
@@ -146,15 +209,13 @@ class Config2DBase(ABC):
             self.g_chem = np.asarray(g_chem)
 
         # Settings for the electric energy
-        # these depend on the ansatz, so we only declare their type here
-        self.idx_vec: IdxVec
-        self.coeffs_vec: CoeffsVec
+        # these depend on the ansatz, so we only declare their type here.
+        # Set together by set_el_energy_terms (called from init_el_energy_terms): the per-group-element
+        # constants and the unique-basis (deduplicated across group elements) term structures, which is
+        # all that evaluation needs.
         self.constants_vec: ConstantsVec
-
-        # Unique-basis electric-energy terms (deduplicated across group elements),
-        # derived from idx_vec/coeffs_vec (see _build_unique_el_terms)
-        self._uniq_idx_vec: Optional[IdxGroup] = None
-        self._uniq_coeffs_vec: Optional[CoeffsVec] = None
+        self.uniq_idx_vec: IdxGroup
+        self.uniq_coeffs_vec: CoeffsVec
 
         # Electric-energy backend: "pfaffian" (default, bracket/Pfaffian expansion) or
         # "overlap" (independent Bravyi-Gosset three-state Gaussian overlap; pure-gauge, energies only).
@@ -292,90 +353,32 @@ class Config2DBase(ABC):
     def init_el_energy_terms(self) -> None:
         """Initialize electric-energy-related structures for this ansatz.
 
-        Implementations must set:
-            - self.idx_vec: IdxVec
-            - self.coeffs_vec: CoeffsVec
+        Implementations must build the per-group-element term structures and hand them to
+        self.set_el_energy_terms(idx_vec, coeffs_vec, constants_vec), which keeps only the
+        constants and the derived unique-basis (deduplicated) form the system evaluates.
         """
-        raise NotImplementedError("Implement in subclass: must set idx_vec and coeffs_vec.")
+        raise NotImplementedError("Implement in subclass: must call set_el_energy_terms.")
 
-    @property
-    def uniq_idx_vec(self) -> IdxGroup:
-        """Unique electric-energy index tuples, deduplicated across group elements.
+    def set_el_energy_terms(
+        self,
+        idx_vec: Sequence[IdxGroup],
+        coeffs_vec: Sequence[CoeffsGroup],
+        constants_vec: Sequence[ConstantsGroup],
+    ) -> None:
+        """Digest the per-group-element electric-energy terms built by init_el_energy_terms.
 
-        Structure: [layer][link][size_class] -> tuple of index tuples (see _build_unique_el_terms).
+        Only what evaluation needs is stored: the per-group-element constants and the unique-basis
+        (deduplicated across group elements) index/coefficient structures. The raw per-group-element
+        idx/coeffs structures are consumed here and not kept.
+
+        Sets:
+            - constants_vec[ge][layer][link]: constant term of the gauged projector
+            - uniq_idx_vec[layer][link][size_class]: unique index tuples shared across group elements
+            - uniq_coeffs_vec[ge][layer][link][size_class]: per-group-element coefficients aligned
+              with uniq_idx_vec (zero where the group element does not contain that index tuple)
         """
-        if self._uniq_idx_vec is None:
-            self._build_unique_el_terms()
-        return self._uniq_idx_vec
-
-    @property
-    def uniq_coeffs_vec(self) -> CoeffsVec:
-        """Per-group-element coefficients in the unique-index basis (see _build_unique_el_terms).
-
-        Structure: [group_element][layer][link][size_class] -> tuple of coefficients aligned with
-        uniq_idx_vec (zero where the group element does not contain that index tuple).
-        """
-        if self._uniq_coeffs_vec is None:
-            self._build_unique_el_terms()
-        return self._uniq_coeffs_vec
-
-    def _build_unique_el_terms(self) -> None:
-        """Deduplicate the electric-energy Pfaffian index sets across group elements.
-
-        The Pfaffian of a stored monomial depends only on (layer, link, index tuple) -- the
-        covariance matrix it is evaluated on is the same for every group element -- while the group
-        element only changes the coefficient in front. For D6 for instance,
-        the group elements share most index sets
-        (the two color-mixing elements have identical sets and the color-diagonal one is a subset),
-        so evaluating the Pfaffians per group element repeats about half the work. Here we build,
-        once per config, from idx_vec/coeffs_vec:
-            - uniq_idx_vec[layer][link][size_class]: the ordered union of index tuples over group
-              elements (size classes ordered by ascending matrix dimension)
-            - uniq_coeffs_vec[ge][layer][link][size_class]: each group element's coefficients
-              re-expressed in that unique basis (zero where the group element lacks the tuple)
-        so the system computes each Pfaffian (and its derivative) once and applies per-group-element
-        coefficient dot products. For a single stored group element (Z2) this is a no-op reindexing.
-        """
-        num_ge = len(self.idx_vec)
-        nlayer = len(self.idx_vec[0])
-        nlinks = len(self.idx_vec[0][0])
-
-        uniq_idx_layers = []
-        uniq_coeff_layers: list[list] = [[] for _ in range(num_ge)]
-        for lay in range(nlayer):
-            uniq_idx_links = []
-            uniq_coeff_links: list[list] = [[] for _ in range(num_ge)]
-            for link in range(nlinks):
-                # Union of index tuples, bucketed by matrix dimension (= tuple length).
-                # Dicts preserve insertion order, giving a stable first-seen ordering.
-                posmaps: dict[int, dict[tuple, int]] = {}
-                for ge in range(num_ge):
-                    for bucket in self.idx_vec[ge][lay][link]:
-                        if not bucket:
-                            continue
-                        posmap = posmaps.setdefault(len(bucket[0]), {})
-                        for tup in bucket:
-                            if tup not in posmap:
-                                posmap[tup] = len(posmap)
-                dims = sorted(posmaps)
-                uniq_idx_links.append(tuple(tuple(posmaps[d].keys()) for d in dims))
-
-                # Re-express each group element's coefficients in the unique basis
-                for ge in range(num_ge):
-                    cvecs = {d: [complex(0.0)] * len(posmaps[d]) for d in dims}
-                    for bucket, coeff_bucket in zip(self.idx_vec[ge][lay][link], self.coeffs_vec[ge][lay][link]):
-                        if not bucket:
-                            continue
-                        posmap = posmaps[len(bucket[0])]
-                        for tup, coeff in zip(bucket, coeff_bucket):
-                            cvecs[len(tup)][posmap[tup]] += complex(coeff)
-                    uniq_coeff_links[ge].append(tuple(tuple(cvecs[d]) for d in dims))
-            uniq_idx_layers.append(tuple(uniq_idx_links))
-            for ge in range(num_ge):
-                uniq_coeff_layers[ge].append(tuple(uniq_coeff_links[ge]))
-
-        self._uniq_idx_vec = tuple(uniq_idx_layers)
-        self._uniq_coeffs_vec = tuple(tuple(layers) for layers in uniq_coeff_layers)
+        self.constants_vec = tuple(constants_vec)
+        self.uniq_idx_vec, self.uniq_coeffs_vec = build_unique_el_terms(idx_vec, coeffs_vec)
 
     def enforce_parameter_conditions(self, mat: xnp.ndarray) -> None:
         """Enforce conditions on the parameters according to the requirements of the ansatz.

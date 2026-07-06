@@ -95,7 +95,7 @@ class D6System2D_Config(Config2DBase):
         self.init_el_energy_terms()
 
     def init_el_energy_terms(self) -> None:
-        """Build idx_vec, coeffs_vec and constants_vec."""
+        """Build the per-group-element el-energy terms and hand them to set_el_energy_terms."""
         idx_vec = []
         coeffs_vec = []
         constants_vec = []
@@ -185,9 +185,7 @@ class D6System2D_Config(Config2DBase):
 
             idx_vec.append((pg_base_indices,) * self.num_pg_layer + (ferm_base_indices,) * self.num_fermionic_layer)
 
-        self.idx_vec = tuple(idx_vec)
-        self.coeffs_vec = tuple(coeffs_vec)
-        self.constants_vec = tuple(constants_vec)
+        self.set_el_energy_terms(idx_vec, coeffs_vec, constants_vec)
 
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.

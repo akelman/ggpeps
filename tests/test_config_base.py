@@ -730,29 +730,35 @@ class TestGaugedProjectorAssembly(_PolyAssertMixin, unittest.TestCase):
 # ==================== Unique electric-energy terms (dedup across group elements) ====================
 
 
-class _IdxCoeffStub:
-    """Bare container exposing only what _build_unique_el_terms reads and writes."""
+def _with_captured_raw_terms(cfg_cls):
+    """Subclass of a config class that records the raw per-group-element structures on their way
+    into set_el_energy_terms (the config itself keeps only the derived unique-basis form), so
+    tests can use them as an independent ground truth."""
 
-    _build_unique_el_terms = config_base.Config2DBase._build_unique_el_terms
+    class _Capturing(cfg_cls):  # type: ignore[valid-type, misc]
+        def set_el_energy_terms(self, idx_vec, coeffs_vec, constants_vec):
+            self.raw_idx_vec = tuple(idx_vec)
+            self.raw_coeffs_vec = tuple(coeffs_vec)
+            super().set_el_energy_terms(idx_vec, coeffs_vec, constants_vec)
 
-    def __init__(self, idx_vec, coeffs_vec):
-        self.idx_vec = idx_vec
-        self.coeffs_vec = coeffs_vec
-        self._uniq_idx_vec = None
-        self._uniq_coeffs_vec = None
+    return _Capturing
 
 
 class TestBuildUniqueElTerms(unittest.TestCase):
-    """_build_unique_el_terms re-expresses idx_vec/coeffs_vec in a unique-index basis shared
-    across group elements (the system then computes each Pfaffian once). The defining invariant:
-    for every (group element, layer, link), the map {index tuple -> total coefficient} must be
-    unchanged by the re-expression."""
+    """build_unique_el_terms re-expresses the raw idx/coeffs structures in a unique-index basis
+    shared across group elements (the system then computes each Pfaffian once). The defining
+    invariant: for every (group element, layer, link), the map {index tuple -> total coefficient}
+    must be unchanged by the re-expression."""
 
     @classmethod
     def setUpClass(cls):
         lat = lattice.Lattice2D(2, 2)
-        cls.cfg_d6 = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer=1, num_fermionic_layer=0)
-        cls.cfg_z2 = utils.make_z2_2copy_config(lattice.Lattice2D(2, 2), 1, 1, 1, 1, None)
+        cls.cfg_d6 = _with_captured_raw_terms(system.D6System2D_Config)(
+            lat, 1, 1, 0, 0, None, num_pg_layer=1, num_fermionic_layer=0
+        )
+        cls.cfg_z2 = _with_captured_raw_terms(system.Z2System2D_Config)(
+            lattice.Lattice2D(2, 2), 1, 1, 1, 1, None, ncopy=2
+        )
 
     @staticmethod
     def _term_dict(idx_link, coeffs_link, tol=1e-15):
@@ -795,8 +801,7 @@ class TestBuildUniqueElTerms(unittest.TestCase):
             ((((1.0, 2.0, 0.5),), ((), (1j,))),),  # ge0
             ((((3.0, 4j), (5.0,)), ((2.0,),)),),  # ge1
         )
-        stub = _IdxCoeffStub(idx_vec, coeffs_vec)
-        stub._build_unique_el_terms()
+        uniq_idx, uniq_coeffs = config_base.build_unique_el_terms(idx_vec, coeffs_vec)
 
         expected_idx = (  # [layer][link][size_class]
             (
@@ -808,19 +813,19 @@ class TestBuildUniqueElTerms(unittest.TestCase):
             ((((1.5, 2.0, 0.0), (0.0,)), ((1j,),)),),
             ((((0.0, 3.0, 4j), (5.0,)), ((2.0,),)),),
         )
-        self.assertEqual(stub._uniq_idx_vec, expected_idx)
-        self.assertEqual(stub._uniq_coeffs_vec, expected_coeffs)
+        self.assertEqual(uniq_idx, expected_idx)
+        self.assertEqual(uniq_coeffs, expected_coeffs)
 
     def test_z2_single_group_element_is_noop_reindexing(self):
         """For a single stored group element (Z2) the unique basis must be the original structure
         verbatim: same index tuples in the same order, same coefficients, nothing dropped or merged."""
         cfg = self.cfg_z2
-        self.assertEqual(len(cfg.idx_vec), 1)
+        self.assertEqual(len(cfg.raw_idx_vec), 1)
         self.assertEqual(len(cfg.uniq_coeffs_vec), 1)
-        self.assertEqual(cfg.uniq_idx_vec, cfg.idx_vec[0])
-        for lay in range(len(cfg.idx_vec[0])):
-            for link in range(len(cfg.idx_vec[0][lay])):
-                for size_ind, coeff_bucket in enumerate(cfg.coeffs_vec[0][lay][link]):
+        self.assertEqual(cfg.uniq_idx_vec, cfg.raw_idx_vec[0])
+        for lay in range(len(cfg.raw_idx_vec[0])):
+            for link in range(len(cfg.raw_idx_vec[0][lay])):
+                for size_ind, coeff_bucket in enumerate(cfg.raw_coeffs_vec[0][lay][link]):
                     got = cfg.uniq_coeffs_vec[0][lay][link][size_ind]
                     self.assertTrue(
                         np.allclose(np.asarray(got), np.asarray(coeff_bucket, dtype=complex)),
@@ -833,7 +838,7 @@ class TestBuildUniqueElTerms(unittest.TestCase):
         and the unique basis itself must be sane (aligned shapes, no duplicate tuples, ascending
         size classes, no invented tuples)."""
         cfg = self.cfg_d6
-        num_ge = len(cfg.idx_vec)
+        num_ge = len(cfg.raw_idx_vec)
         self.assertEqual(num_ge, 3)
         for lay in range(len(cfg.uniq_idx_vec)):
             for link in range(len(cfg.uniq_idx_vec[lay])):
@@ -842,7 +847,7 @@ class TestBuildUniqueElTerms(unittest.TestCase):
                 self.assertEqual(sizes, sorted(sizes), "size classes not ascending")
                 all_original = set()
                 for ge in range(num_ge):
-                    for bucket in cfg.idx_vec[ge][lay][link]:
+                    for bucket in cfg.raw_idx_vec[ge][lay][link]:
                         all_original.update(bucket)
                 for size_ind, bucket in enumerate(uniq_link):
                     self.assertEqual(len(bucket), len(set(bucket)), "duplicate tuples in unique basis")
@@ -859,7 +864,7 @@ class TestBuildUniqueElTerms(unittest.TestCase):
                         [uniq_link[i] for i in range(len(uniq_link))],
                         cfg.uniq_coeffs_vec[ge][lay][link],
                     )
-                    exp = self._term_dict(cfg.idx_vec[ge][lay][link], cfg.coeffs_vec[ge][lay][link])
+                    exp = self._term_dict(cfg.raw_idx_vec[ge][lay][link], cfg.raw_coeffs_vec[ge][lay][link])
                     self._assert_dicts_close(got, exp, f"ge {ge}, layer {lay}, link {link}")
 
     def test_d6_dedup_actually_reduces_pfaffian_count(self):
@@ -867,11 +872,13 @@ class TestBuildUniqueElTerms(unittest.TestCase):
         color-mixing reflections have identical sets, the color-diagonal one is a subset), so the
         number of Pfaffians per link must drop by at least 2x vs computing per group element."""
         cfg = self.cfg_d6
-        num_ge = len(cfg.idx_vec)
+        num_ge = len(cfg.raw_idx_vec)
         for lay in range(len(cfg.uniq_idx_vec)):
             for link in range(len(cfg.uniq_idx_vec[lay])):
                 uniq_count = sum(len(bucket) for bucket in cfg.uniq_idx_vec[lay][link])
-                per_ge_counts = [sum(len(bucket) for bucket in cfg.idx_vec[ge][lay][link]) for ge in range(num_ge)]
+                per_ge_counts = [
+                    sum(len(bucket) for bucket in cfg.raw_idx_vec[ge][lay][link]) for ge in range(num_ge)
+                ]
                 self.assertEqual(
                     uniq_count,
                     max(per_ge_counts),
@@ -884,12 +891,14 @@ class TestUniqueElTermsSystemConsumption(unittest.TestCase):
     """Integration: the system evaluates Pfaffians once in the unique basis (_compute_el_pfaffians
     with cfg.uniq_idx_vec) and applies per-group-element coefficient dots (cfg.uniq_coeffs_vec).
     This must reproduce the pre-dedup semantics: Pfaffians evaluated directly from each group
-    element's own idx_vec/coeffs_vec."""
+    element's own raw idx/coeffs structures (captured on their way into set_el_energy_terms)."""
 
     def test_d6_dedup_pf_tot_matches_per_group_element_evaluation(self):
         rng = np.random.RandomState(20260706)
         lat = lattice.Lattice2D(2, 2)
-        cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer=1, num_fermionic_layer=0)
+        cfg = _with_captured_raw_terms(system.D6System2D_Config)(
+            lat, 1, 1, 0, 0, None, num_pg_layer=1, num_fermionic_layer=0
+        )
         cfg.paramvec = rng.rand(1, 1, 20)
         cfg.enforce_parameter_conditions(cfg.paramvec)
         sys_d6 = system.D2nSystem2D(cfg)
@@ -901,7 +910,7 @@ class TestUniqueElTermsSystemConsumption(unittest.TestCase):
 
         el_pfaffians = np.asarray(sys_d6.el_pfaffians)  # unique basis, no group-element axis
         covmats = np.asarray(sys_d6.covmat_out_mod_vec)
-        num_ge = len(cfg.idx_vec)
+        num_ge = len(cfg.raw_idx_vec)
         for ge in range(num_ge):
             for lay in range(cfg.nlayer):
                 for link_pos in range(len(cfg.mod_link_inds)):
@@ -913,7 +922,9 @@ class TestUniqueElTermsSystemConsumption(unittest.TestCase):
 
                     # Reference: this group element's own terms, one Pfaffian per stored tuple
                     pf_ref = complex(cfg.constants_vec[ge][lay][link_pos])
-                    for bucket, coeff_bucket in zip(cfg.idx_vec[ge][lay][link_pos], cfg.coeffs_vec[ge][lay][link_pos]):
+                    for bucket, coeff_bucket in zip(
+                        cfg.raw_idx_vec[ge][lay][link_pos], cfg.raw_coeffs_vec[ge][lay][link_pos]
+                    ):
                         for tup, coeff in zip(bucket, coeff_bucket):
                             inds = np.asarray(tup)
                             sub = covmats[lay][link_pos][np.ix_(inds, inds)]
