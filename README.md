@@ -54,11 +54,7 @@ For the rest of the tutorial, we assume it to be in `~/.pyenv/`.
 <br/>
 2. **Clone the code**
 You can obtain the code by cloning the repo with:
-    ```
-    git clone git@gitlab.com:patrick.emonts/gaussian-peps.git
-    ```
-    Note that you have to be a member of the project to clone it.
-    Cloning via SSH works only if you have added a (public) SSH key to the repository.
+```git clone <repo_url>```
 <br/>
 3. **Install the package**
 For the next step, please navigate into the repo that you just downloaded and activate the empty environment that we created in step 1.
@@ -70,7 +66,7 @@ For the next step, please navigate into the repo that you just downloaded and ac
     ```
     This command installs the package as an editable package, i.e. all changes in the source code will be directly reflected in the installed package.
 
-    If you wish to install the optional depencies, instead run
+    If you wish to install the optional dependencies, instead run
     ```
     pip install  -e .[dev,test]
     ```
@@ -87,7 +83,7 @@ You can test your installation by opening a python console (just type `python`) 
 import ggpeps
 ggpeps.__version__
 ```
-The result should be a version string, e.g. `0.1.dev952+ga571e99.d20240918`, which can be interpreted as: `version 0.1` on the `dev` branch, which is `952` commits ahead of master, with the git commit hash beginning `a571e99`, on the date `2024-09-18`.
+The result should be a version string, e.g. `0.1.dev952+ga571e99.d20240918`, which can be interpreted as: `version 0.1` on the `dev` branch, which is `952` commits ahead of `main`, with the git commit hash beginning `a571e99`, on the date `2024-09-18`.
 
 #### Installation with GPUs
 Installation for use with GPUs can be tricky. JAX is the library we use for running on GPUs, and JAX must be be installed with jaxlib and connected to the GPU in the correct manner in order to function. The versions required will depend on what's available on a given cluster.
@@ -134,11 +130,10 @@ Each implemented ansatz has it's own config class, each a subclass of Config2DBa
 
 Our code supports use on both CPU and GPU. To run on GPU, we use JAX ([documentation](https://docs.jax.dev/en/latest/index.html), [github](https://github.com/jax-ml/jax/blob/main/README.md)), which mostly follows the numpy syntax (see also [the Array API](https://data-apis.org/array-api/latest/index.html)).
 This is handled by importing numpy/jax as `xnp` in `ggpeps/__init__.py`, and using `xnp` throughout the code.
-The system configs only use `numpy`; they system classes use `xnp`. Objects which interface with the system (primarily `Evaluator` objects) can send numpy arrays (e.g. when updating a gauge field) but may receive jax or numpy arrays depending on the particular quantity they access.
+The system configs only use `numpy`; the system classes use `xnp`. Objects which interface with the system (primarily `Evaluator` objects) can send numpy arrays (e.g. when updating a gauge field) but may receive jax or numpy arrays depending on the particular quantity they access.
 
 In addition the `system/backend/` directory contains functions whose syntax depends on the use of numpy/jax.
 
-NOTE: The pure gauge ansatz's all techincally contain a parameter for coupling to matter, but (a) it is manually set to zero, (b) other parts of the ansatz (e.g. the $\Gamma_{\text{in}}$) do not obey the symmetries required for including matter.
 
 ### Code Style
 Code is formatted using `black` with the default configuration, except that the maximum allowed line length is 119.
@@ -151,7 +146,7 @@ Occasionally `assert` statements or `# type: ignore` comments are used to addres
 
 ### Tests
 
-The code is accompagnied by an extensive suit of tests which are located in the folder `tests`.
+The code is accompanied by an extensive suit of tests which are located in the folder `tests`.
 The full test-suite can be executed with
 ```
 python -m unittest
@@ -200,7 +195,7 @@ Pull requests would be appreciated for minor improvements; for  major updates we
 The script `manager.py` is the central point for data generation. It supports different modes: `eval` and `min` where both can be evaluated with `exact` and `mc`.
 
 To run with JAX (whether on CPU or GPU), first export the environment variable: `export GGPEPS_BACKEND=jax` (it can also be set to `numpy`, but numpy will also be used by default regardless).
-If using multiple runners in conjuction with a GPU (we have not tested using multiple GPUs simultaneously, though this should only require small changes), then memory issues can arise. JAX preallocates 75% of GPU memory upon startup; with multiple runners, each runner tries to allocate this memory, causing a crash. This can be solved using an environment variable: `XLA_PYTHON_CLIENT_MEM_FRACTION=.XX` where `XX` should be $1/\text{nrunner}$, rounded down if necessary. Note that this only addresses preallocation, and the program may crash if a runner tries to request more memory. See the [JAX documentation on GPU Memory Allocation](https://docs.jax.dev/en/latest/gpu_memory_allocation.html) for more information.
+If using multiple runners in conjunction with a GPU (we have not tested using multiple GPUs simultaneously, though this should only require small changes), memory issues can arise. JAX preallocates 75% of GPU memory upon startup; with multiple runners, each runner tries to allocate this memory, causing a crash. This can be solved using an environment variable: `XLA_PYTHON_CLIENT_MEM_FRACTION=.XX` where `XX` should be $1/n_\text{runner}$, rounded down if necessary. Note that this only addresses preallocation, and the program may crash if a runner tries to request more memory. See the [JAX documentation on GPU Memory Allocation](https://docs.jax.dev/en/latest/gpu_memory_allocation.html) for more information.
 
 All modes write log files to disk and to console. 
 The files are named according to the parameters that were provided via the commandline. 
@@ -214,9 +209,9 @@ In the following, we will describe the different modes in more detail.
 
 `eval-mc`: 
 The evaluation mode computes the expectation value of a set of observables with given set of parameters using Monte Carlo.
-To simulate a $2\times 2$ system with MC, we can run
+To simulate a $2\times 2$ system with MC, with the $\mathbb{Z}_2$ gauge group and a coupling of $g = 1.0$, we can run
 ```
-python manager.py eval-mc 2
+python manager.py eval-mc Z2 --L 2 --g 1.0
 ```
 The call generates three files: a log file, a data file, and a summary file.
 The log file is identical to the text printed on the console.
@@ -232,7 +227,7 @@ The exact evaluation mode computes the expectation value of a set of observables
 This works only for small systems of $L=2$. For systems of size $L=4$, it may also be possible to run in `exact` mode if gauge fixing is turned on, though this will still be slower than MC with the default number of steps. 
 
 ```
-python manager.py eval-exact 2
+python manager.py eval-exact Z2 --L 2 --g 1.0
 ```
 
 `min-mc`:
@@ -243,15 +238,13 @@ Several different minimizers are available.
 Currently, scipy optimizers (such as `BFGS`) as well as a custom gradient based optimizer are available.
 
 ```
-python manager.py min-mc 2 --method BFGS
+python manager.py min-mc Z2 --L 2 --g 1.0
 ```
 
 `min-exact`:
 For small systems, we can substitute the Monte Carlo evaluation part in the minimization (just as we did in `eval` mode) with an exact contraction.
-Exact contraction is only practical for systems of size 2x2.
-
 ```
-python manager.py min-exact 2 --method BFGS
+python manager.py min-exact Z2 --L 2 --g 1.0 
 ```
 
 For an overview of all command line parameters call `python manager.py --help`.
@@ -279,11 +272,11 @@ python inspect_data.py <fname>
 
 All scripts prefixed with `plot_*` will plot some aspect of the provided datasets.
 The most used script is `plot_summary.py` which displays the data of a `summary_*.pkl` file.
-Minimization and evalautions of single parameters produce summary files.
+Minimization and evaluations of single parameters produce summary files.
 
 A typical use can look like
 ```
-python plot_summary.py --ec summary_min* --obs el_energy mag_energy energy --show
+python plot_summary.py --mc <path/to/summary*.pkl> --obs energy el_energy --x_axis g --show
 ```
 The option `--show` displays the interactive matplotlib plot before saving the plot to disk.
 
@@ -293,6 +286,11 @@ Further information about the capabilities of `plot_summary.py` can be obtained 
 ## Papers
 
 The following is a list of papers that have used (versions of) this code:
-1. Emonts et al, Finding the ground state of a lattice gauge theory with fermionic tensor networks: A $2+1\mathrm{D}$ ${\mathbb{Z}}_{2}$ demonstration, PRD vol 107 (2023).
+1. Emonts et al., _Finding the ground state of a lattice gauge theory with fermionic tensor networks: A $2+1\mathrm{D}$ ${\mathbb{Z}}_{2}$ demonstration_, PRD, vol 107 (2023).
+2. Kelman et al., _Projected Entangled Pair States for Lattice Gauge Theories with Dynamical Fermions_, Communications Physics, vol 9 (2026).
+3. Gomelski et al., _Algorithmic Aspects of Gauged Gaussian Fermionic Projected Entangled Pair States_, PRR, vol 8 (2026).
+
+The most up-to-date analytical analysis of GGPEPS is:
+- Kelman et al., _Gauged Gaussian PEPS — A High Dimensional Tensor Network Formulation for Lattice Gauge Theories_, PRD, vol 110 (2024).
 
 There are also some papers that used a previous C++ implementation of this code.
