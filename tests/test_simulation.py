@@ -76,7 +76,7 @@ class TestZ2System(unittest.TestCase):
         # Construct the system
         lat = lattice.Lattice2D(L, L, gf_num_of_rows=gauge_fixing)
 
-        system_cfg = utils.make_z2_2copy_config(
+        system_cfg = system.Z2System2D_Config(
             lat,
             g / 2,
             1.0 / (2.0 * g),
@@ -88,6 +88,7 @@ class TestZ2System(unittest.TestCase):
             mod_link_inds=el_links,
             unitcell_size=unitcell_size,
             enforce_u1_symmetry=enforce_u1,
+            ncopy=2,
         )  # 2 copy ansatz
 
         # Set parameters - the comparisons below depend on the parameters
@@ -142,7 +143,7 @@ class TestZ2System(unittest.TestCase):
         # Construct the system
         lat = lattice.Lattice2D(L, L, gf_num_of_rows=gauge_fixing)
 
-        system_cfg = utils.make_z2_2copy_config(
+        system_cfg = system.Z2System2D_Config(
             lat,
             g / 2,
             1.0 / (2.0 * g),
@@ -154,6 +155,7 @@ class TestZ2System(unittest.TestCase):
             mod_link_inds=el_links,
             unitcell_size=unitcell_size,
             enforce_u1_symmetry=enforce_u1,
+            ncopy=2,
         )  # 2 copy ansatz
 
         # Set parameters - the comparisons below depend on the parameters
@@ -216,7 +218,7 @@ class TestZ2System(unittest.TestCase):
         # Construct the system
         lat = lattice.Lattice2D(L, L, gf_num_of_rows=gauge_fixing)
 
-        system_cfg = utils.make_z2_2copy_config(
+        system_cfg = system.Z2System2D_Config(
             lat,
             g / 2,
             1.0 / (2.0 * g),
@@ -228,6 +230,7 @@ class TestZ2System(unittest.TestCase):
             mod_link_inds=el_links,
             unitcell_size=unitcell_size,
             enforce_u1_symmetry=enforce_u1,
+            ncopy=2,
         )  # 2 copy ansatz
 
         # Set parameters - the comparisons below depend on the parameters
@@ -382,7 +385,7 @@ class TestZ2System(unittest.TestCase):
         lat = lattice.Lattice2D(L, L, gf_num_of_rows=gauge_fixing)
 
         # paramvec = np.random.rand(nlayer, unitcell_size, 20)
-        cfg = utils.make_z2_2copy_config(
+        cfg = system.Z2System2D_Config(
             lat,
             g / 2,
             1.0 / (2.0 * g),
@@ -394,6 +397,7 @@ class TestZ2System(unittest.TestCase):
             mod_link_inds=el_links,
             unitcell_size=unitcell_size,
             enforce_u1_symmetry=enforce_u1,
+            ncopy=2,
         )  # 2 copy ansatz
         paramvec = reorder_g2_paramvec_to_g4_order(paramvec, cfg)
         cfg.paramvec = paramvec

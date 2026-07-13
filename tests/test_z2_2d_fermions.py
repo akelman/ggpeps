@@ -26,7 +26,7 @@ class TestZ2System(unittest.TestCase):
         nlayer = num_pg_layer + num_fermionic_layer
         unitcell_size = 1
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
-        cfg = utils.make_z2_2copy_config(lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1)
+        cfg = system.Z2System2D_Config(lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1, ncopy=2)
         cfg.paramvec = paramvec
         self.system_z2 = system.Z2System2D(cfg)
         self.system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
@@ -228,7 +228,7 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_2copy_config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+        system_cfg = system.Z2System2D_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None, ncopy=2)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
@@ -246,8 +246,8 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = utils.make_z2_2copy_config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
-                    system_cfg_right = utils.make_z2_2copy_config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None)
+                    system_cfg_left = system.Z2System2D_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None, ncopy=2)
+                    system_cfg_right = system.Z2System2D_Config(lat_2x2, 1.0, 0.0, 0.0, 0.0, None, ncopy=2)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -304,7 +304,7 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_2copy_config(lat_2x2, 0.0, 0.0, 0.0, 1.0, None)
+        system_cfg = system.Z2System2D_Config(lat_2x2, 0.0, 0.0, 0.0, 1.0, None, ncopy=2)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
 
@@ -330,8 +330,8 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = utils.make_z2_2copy_config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
-                    system_cfg_right = utils.make_z2_2copy_config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None)
+                    system_cfg_left = system.Z2System2D_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None, ncopy=2)
+                    system_cfg_right = system.Z2System2D_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None, ncopy=2)
 
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -353,8 +353,9 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(3, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_2copy_config(
-            lat_2x2, 0.0, 0.0, 0.0, 1.0, None, num_pg_layer=1, num_fermionic_layer=2
+        system_cfg = system.Z2System2D_Config(
+            lat_2x2, 0.0, 0.0, 0.0, 1.0, None, num_pg_layer=1, num_fermionic_layer=2,
+            ncopy=2,
         )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
@@ -381,7 +382,7 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = utils.make_z2_2copy_config(
+                    system_cfg_left = system.Z2System2D_Config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -390,8 +391,9 @@ class TestZ2System(unittest.TestCase):
                         None,
                         num_pg_layer=1,
                         num_fermionic_layer=2,
+                        ncopy=2,
                     )
-                    system_cfg_right = utils.make_z2_2copy_config(
+                    system_cfg_right = system.Z2System2D_Config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -400,6 +402,7 @@ class TestZ2System(unittest.TestCase):
                         None,
                         num_pg_layer=1,
                         num_fermionic_layer=2,
+                        ncopy=2,
                     )
 
                     system_cfg_left.paramvec = paramvec_left
@@ -487,8 +490,9 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_2copy_config(
-            lat_2x2, 0.0, 0.0, 1.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=1
+        system_cfg = system.Z2System2D_Config(
+            lat_2x2, 0.0, 0.0, 1.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=1,
+            ncopy=2,
         )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
@@ -518,7 +522,7 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = utils.make_z2_2copy_config(
+                    system_cfg_left = system.Z2System2D_Config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -527,8 +531,9 @@ class TestZ2System(unittest.TestCase):
                         None,
                         num_pg_layer=1,
                         num_fermionic_layer=1,
+                        ncopy=2,
                     )
-                    system_cfg_right = utils.make_z2_2copy_config(
+                    system_cfg_right = system.Z2System2D_Config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -537,6 +542,7 @@ class TestZ2System(unittest.TestCase):
                         None,
                         num_pg_layer=1,
                         num_fermionic_layer=1,
+                        ncopy=2,
                     )
 
                     system_cfg_left.paramvec = paramvec_left
@@ -629,7 +635,7 @@ class TestZ2System(unittest.TestCase):
         g_chem = [-0.4, 2]
         paramvec = np.random.rand(3, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_2copy_config(
+        system_cfg = system.Z2System2D_Config(
             lat_2x2,
             0.0,
             0.0,
@@ -638,6 +644,7 @@ class TestZ2System(unittest.TestCase):
             g_chem,
             num_pg_layer=1,
             num_fermionic_layer=2,
+            ncopy=2,
         )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
@@ -669,7 +676,7 @@ class TestZ2System(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = utils.make_z2_2copy_config(
+                    system_cfg_left = system.Z2System2D_Config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -678,8 +685,9 @@ class TestZ2System(unittest.TestCase):
                         g_chem,
                         num_pg_layer=1,
                         num_fermionic_layer=2,
+                        ncopy=2,
                     )
-                    system_cfg_right = utils.make_z2_2copy_config(
+                    system_cfg_right = system.Z2System2D_Config(
                         lat_2x2,
                         0.0,
                         0.0,
@@ -688,6 +696,7 @@ class TestZ2System(unittest.TestCase):
                         g_chem,
                         num_pg_layer=1,
                         num_fermionic_layer=2,
+                        ncopy=2,
                     )
 
                     system_cfg_left.paramvec = paramvec_left
@@ -761,7 +770,7 @@ class TestZ2System(unittest.TestCase):
                 ],
             ]
         )
-        system_cfg = utils.make_z2_2copy_config(
+        system_cfg = system.Z2System2D_Config(
             lat,
             g0 / 2,
             1 / (2 * g0),
@@ -770,6 +779,7 @@ class TestZ2System(unittest.TestCase):
             None,
             num_pg_layer=1,
             num_fermionic_layer=1,
+            ncopy=2,
         )
         g2_order_in_g4_convention = [
             "t1r",
@@ -813,7 +823,7 @@ class TestZ2System(unittest.TestCase):
         unitcell_size = 2
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
         paramvec[2] = paramvec[1]
-        cfg = utils.make_z2_2copy_config(
+        cfg = system.Z2System2D_Config(
             lat,
             1,
             1,
@@ -823,6 +833,7 @@ class TestZ2System(unittest.TestCase):
             num_pg_layer=num_pg_layer,
             num_fermionic_layer=num_fermionic_layer,
             unitcell_size=unitcell_size,
+            ncopy=2,
         )
         cfg.paramvec = paramvec
         system_z2 = system.Z2System2D(cfg)
@@ -862,7 +873,7 @@ class TestTransVariance(unittest.TestCase):
         nlayer = num_pg_layer + num_fermionic_layer
         unitcell_size = 2
         self.u1_symmetry = False
-        cfg = utils.make_z2_2copy_config(
+        cfg = system.Z2System2D_Config(
             lat,
             1,
             1,
@@ -873,6 +884,7 @@ class TestTransVariance(unittest.TestCase):
             num_fermionic_layer=num_fermionic_layer,
             unitcell_size=unitcell_size,
             enforce_u1_symmetry=self.u1_symmetry,
+            ncopy=2,
         )
 
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
@@ -1301,7 +1313,7 @@ class TestTransVariance(unittest.TestCase):
                         paramvec_right = np.copy(paramvec)
                         paramvec_left[layerind, uc_ind, ind] -= eps
                         paramvec_right[layerind, uc_ind, ind] += eps
-                        system_cfg_left = utils.make_z2_2copy_config(
+                        system_cfg_left = system.Z2System2D_Config(
                             lat_2x2,
                             0.0,
                             0.0,
@@ -1312,8 +1324,9 @@ class TestTransVariance(unittest.TestCase):
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
                             enforce_u1_symmetry=self.u1_symmetry,
+                            ncopy=2,
                         )
-                        system_cfg_right = utils.make_z2_2copy_config(
+                        system_cfg_right = system.Z2System2D_Config(
                             lat_2x2,
                             0.0,
                             0.0,
@@ -1324,6 +1337,7 @@ class TestTransVariance(unittest.TestCase):
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
                             enforce_u1_symmetry=self.u1_symmetry,
+                            ncopy=2,
                         )
 
                         system_cfg_left.paramvec = paramvec_left
@@ -1369,7 +1383,7 @@ class TestTransVariance(unittest.TestCase):
                         paramvec_right = np.copy(paramvec)
                         paramvec_left[layerind, uc_ind, ind] -= eps
                         paramvec_right[layerind, uc_ind, ind] += eps
-                        system_cfg_left = utils.make_z2_2copy_config(
+                        system_cfg_left = system.Z2System2D_Config(
                             lat_2x2,
                             0.0,
                             0.0,
@@ -1380,8 +1394,9 @@ class TestTransVariance(unittest.TestCase):
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
                             enforce_u1_symmetry=self.u1_symmetry,
+                            ncopy=2,
                         )
-                        system_cfg_right = utils.make_z2_2copy_config(
+                        system_cfg_right = system.Z2System2D_Config(
                             lat_2x2,
                             0.0,
                             0.0,
@@ -1392,6 +1407,7 @@ class TestTransVariance(unittest.TestCase):
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
                             enforce_u1_symmetry=self.u1_symmetry,
+                            ncopy=2,
                         )
 
                         system_cfg_left.paramvec = paramvec_left
@@ -1437,7 +1453,7 @@ class TestTransVariance(unittest.TestCase):
                         paramvec_right = np.copy(paramvec)
                         paramvec_left[layerind, uc_ind, ind] -= eps
                         paramvec_right[layerind, uc_ind, ind] += eps
-                        system_cfg_left = utils.make_z2_2copy_config(
+                        system_cfg_left = system.Z2System2D_Config(
                             lat_2x2,
                             0.0,
                             0.0,
@@ -1448,8 +1464,9 @@ class TestTransVariance(unittest.TestCase):
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
                             enforce_u1_symmetry=self.u1_symmetry,
+                            ncopy=2,
                         )
-                        system_cfg_right = utils.make_z2_2copy_config(
+                        system_cfg_right = system.Z2System2D_Config(
                             lat_2x2,
                             0.0,
                             0.0,
@@ -1460,6 +1477,7 @@ class TestTransVariance(unittest.TestCase):
                             num_fermionic_layer=self.system_z2.cfg.num_fermionic_layer,
                             unitcell_size=unitcell_size,
                             enforce_u1_symmetry=self.u1_symmetry,
+                            ncopy=2,
                         )
 
                         system_cfg_left.paramvec = paramvec_left
@@ -1479,7 +1497,7 @@ class TestTransVariance(unittest.TestCase):
     def test_el_energy(self):
         link_inds = (0, 1)  # pick one from each sublattice
         lat = lattice.Lattice2D(2, 2)
-        cfg = utils.make_z2_2copy_config(
+        cfg = system.Z2System2D_Config(
             lat,
             g_el=1.0,
             g_mag=0.0,
@@ -1490,6 +1508,7 @@ class TestTransVariance(unittest.TestCase):
             num_fermionic_layer=1,
             unitcell_size=2,
             mod_link_inds=tuple(sorted(link_inds)),
+            ncopy=2,
         )
         cfg.paramvec = np.random.rand(2, 2, 20)
         sys = system.Z2System2D(cfg)
@@ -1514,7 +1533,7 @@ class TestTransVariance(unittest.TestCase):
     def test_el_energy_grads(self):
         link_inds = (0, 1)  # pick one from each sublattice
         lat = lattice.Lattice2D(2, 2)
-        cfg = utils.make_z2_2copy_config(
+        cfg = system.Z2System2D_Config(
             lat,
             g_el=1.0,
             g_mag=0.0,
@@ -1525,6 +1544,7 @@ class TestTransVariance(unittest.TestCase):
             num_fermionic_layer=1,
             unitcell_size=2,
             mod_link_inds=tuple(sorted(link_inds)),
+            ncopy=2,
         )
         cfg.paramvec = np.random.rand(2, 2, 20)
         sys = system.Z2System2D(cfg)
@@ -1570,7 +1590,7 @@ class TestFullGrads(unittest.TestCase):
         g_int = 1.0
         g_chem = [2.0, 3.0]
 
-        cfg = utils.make_z2_2copy_config(
+        cfg = system.Z2System2D_Config(
             lat_2x2,
             g_el=el,
             g_mag=mag,
@@ -1581,6 +1601,7 @@ class TestFullGrads(unittest.TestCase):
             num_fermionic_layer=num_fermionic_layer,
             unitcell_size=unitcell_size,
             enforce_u1_symmetry=u1_symmetry,
+            ncopy=2,
         )
 
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
@@ -1615,7 +1636,7 @@ class TestFullGrads(unittest.TestCase):
                         paramvec_right = np.copy(paramvec)
                         paramvec_left[layerind, uc_ind, ind] -= eps
                         paramvec_right[layerind, uc_ind, ind] += eps
-                        system_cfg_left = utils.make_z2_2copy_config(
+                        system_cfg_left = system.Z2System2D_Config(
                             lat_2x2,
                             g_el=el,
                             g_mag=mag,
@@ -1626,8 +1647,9 @@ class TestFullGrads(unittest.TestCase):
                             num_fermionic_layer=num_fermionic_layer,
                             unitcell_size=unitcell_size,
                             enforce_u1_symmetry=u1_symmetry,
+                            ncopy=2,
                         )
-                        system_cfg_right = utils.make_z2_2copy_config(
+                        system_cfg_right = system.Z2System2D_Config(
                             lat_2x2,
                             g_el=el,
                             g_mag=mag,
@@ -1638,6 +1660,7 @@ class TestFullGrads(unittest.TestCase):
                             num_fermionic_layer=num_fermionic_layer,
                             unitcell_size=unitcell_size,
                             enforce_u1_symmetry=u1_symmetry,
+                            ncopy=2,
                         )
 
                         system_cfg_left.paramvec = paramvec_left
@@ -1692,7 +1715,7 @@ class TestElectricEnergyUniformityRandomk(unittest.TestCase):
 
     def _energy_for_subset(self, link_inds: tuple[int, ...]) -> float:
         """Return the mean per selected link (sys.el_energy_op) for the given subset."""
-        cfg = utils.make_z2_2copy_config(
+        cfg = system.Z2System2D_Config(
             self.lat,
             g_el=1.0,
             g_mag=0.0,
@@ -1703,6 +1726,7 @@ class TestElectricEnergyUniformityRandomk(unittest.TestCase):
             num_fermionic_layer=self.num_fermionic_layer,
             unitcell_size=self.unitcell_size,
             mod_link_inds=tuple(sorted(link_inds)),
+            ncopy=2,
         )
         cfg.paramvec = np.copy(self.paramvec)
         sys = system.Z2System2D(cfg)
@@ -1909,7 +1933,7 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
         Returns:
             A fully constructed `system.Z2System2D` instance (gauge not yet applied).
         """
-        cfg = utils.make_z2_2copy_config(
+        cfg = system.Z2System2D_Config(
             self.lat,
             g_el=1.0,
             g_mag=0.0,
@@ -1920,6 +1944,7 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
             num_fermionic_layer=self.num_fermionic_layer,
             unitcell_size=self.unitcell_size,
             mod_link_inds=(0,),
+            ncopy=2,
         )
         cfg.paramvec = np.copy(self.paramvec)
         sys_obj = system.Z2System2D(cfg)
@@ -2325,7 +2350,7 @@ class TestGammaGaugeNeutralDict(unittest.TestCase):
         unmixed-copy projectors.
         """
         lat = lattice.Lattice2D(2, 2)
-        cfg = utils.make_z2_2copy_config(lat, 1, 1, 1, 1, None)
+        cfg = system.Z2System2D_Config(lat, 1, 1, 1, 1, None, ncopy=2)
         gamma_dict = cfg.generate_gamma_gauge_neutral_dict()
 
         self.assertEqual(len(gamma_dict), 2)
@@ -2353,7 +2378,7 @@ class TestGammaGaugeNeutralDict(unittest.TestCase):
         num_pg_layer = 2
         num_fermionic_layer = 3
 
-        cfg = utils.make_z2_2copy_config(
+        cfg = system.Z2System2D_Config(
             lat,
             1,
             1,
@@ -2362,6 +2387,7 @@ class TestGammaGaugeNeutralDict(unittest.TestCase):
             None,
             num_pg_layer=num_pg_layer,
             num_fermionic_layer=num_fermionic_layer,
+            ncopy=2,
         )
         gamma_dict = cfg.generate_gamma_gauge_neutral_dict()
 

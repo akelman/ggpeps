@@ -275,34 +275,6 @@ def zeroed_parameter_names(cfg, rename_map: ParameterRenameMap = None) -> set[st
     return {names[param_ind] for _, _, param_ind in cfg.zeroed_params}
 
 
-def make_z2_2copy_config(*args, **kwargs):
-    """Build the generic G4C/F4C Z2 config in its ncopy=2 compatibility mode."""
-    return system.Z2System2D_Config(*args, ncopy=2, **kwargs)
-
-
-def make_z2_2copy_pure_gauge_config(*args, **kwargs):
-    """Build the generic G4C/F4C Z2 config in pure-gauge ncopy=2 compatibility mode."""
-    if kwargs.get("num_fermionic_layer", 0) != 0:
-        raise ValueError("Pure-gauge 2C compatibility mode requires num_fermionic_layer=0.")
-
-    kwargs["num_fermionic_layer"] = 0
-    return system.Z2System2D_Config(*args, ncopy=2, **kwargs)
-
-
-def make_z2_1copy_pure_gauge_config(*args, **kwargs):
-    """Build the generic G4C/F4C Z2 config in pure-gauge ncopy=1 compatibility mode."""
-    if kwargs.get("num_fermionic_layer", 0) != 0:
-        raise ValueError("Pure-gauge 1C compatibility mode requires num_fermionic_layer=0.")
-    if kwargs.get("unitcell_size", 1) != 1:
-        raise ValueError("Pure-gauge 1C compatibility mode requires unitcell_size=1.")
-    if kwargs.get("enforce_u1_symmetry", True) is not True:
-        raise ValueError("Pure-gauge 1C compatibility mode requires enforce_u1_symmetry=True.")
-
-    kwargs["num_fermionic_layer"] = 0
-    kwargs["unitcell_size"] = 1
-    kwargs["enforce_u1_symmetry"] = True
-    return system.Z2System2D_Config(*args, ncopy=1, **kwargs)
-
 # ========== Utility Functions ====================
 
 

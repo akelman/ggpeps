@@ -28,7 +28,7 @@ class TestSystemBase(unittest.TestCase):
         self.system_z2_1c = system.Z2System2D(cfg)
 
         paramvec2C = np.random.rand(1, 20)
-        cfg2C = utils.make_z2_2copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        cfg2C = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=2, num_fermionic_layer=0)
         cfg2C.paramvec = paramvec2C
         self.system_z2_2c = system.Z2System2D(cfg2C)
 
@@ -400,7 +400,7 @@ class TestSystemBaseDimensions(unittest.TestCase):
         mod_link_inds = (0,)
         unitcell_size = 2
         paramvec2C = np.random.rand(nlayers, unitcell_size, 20)
-        cfg2C = utils.make_z2_2copy_config(
+        cfg2C = system.Z2System2D_Config(
             lat,
             0,
             0,
@@ -411,6 +411,7 @@ class TestSystemBaseDimensions(unittest.TestCase):
             num_fermionic_layer=fermionic_layers,
             mod_link_inds=mod_link_inds,
             unitcell_size=unitcell_size,
+            ncopy=2,
         )
         cfg2C.paramvec = paramvec2C
         self.system_z2_2c = system.Z2System2D(cfg2C)

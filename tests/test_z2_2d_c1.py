@@ -18,12 +18,12 @@ class TestZ2SystemMethods(unittest.TestCase):
     def setUp(self):
         lat = lattice.Lattice2D(2, 2)
         paramvec_real = [[0.3, 0.5, 0.8, 0.0, 0.0, 0.0]]
-        cfg = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
         cfg.paramvec = paramvec_real
         self.system_z2_2_2_real = system.Z2System2D(cfg)
 
         paramvec = [[0.3, 0.5, 0.8, 0.2, 0.1, 0.9]]
-        cfg = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
         cfg.paramvec = paramvec
         self.system_z2_2_2 = system.Z2System2D(cfg)
 
@@ -71,11 +71,11 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec_left = [[t, y - eps, z, 0, 0, 0]]
         paramvec_right = [[t, y + eps, z, 0, 0, 0]]
 
-        cfg = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
         cfg.paramvec = paramvec
-        cfg_left = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        cfg_left = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
         cfg_left.paramvec = paramvec_left
-        cfg_right = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        cfg_right = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
         cfg_right.paramvec = paramvec_right
 
         system_z2_2_2 = system.Z2System2D(cfg)
@@ -289,9 +289,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec_left = [[t, y - eps, z, 0, 0, 0]]
         paramvec_right = [[t, y + eps, z, 0, 0, 0]]
 
-        cfg = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
-        cfg_left = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
-        cfg_right = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
+        cfg_left = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
+        cfg_right = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
         cfg.paramvec = paramvec
         cfg_left.paramvec = paramvec_left
         cfg_right.paramvec = paramvec_right
@@ -555,7 +555,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         # If t=0, then mat_d must be a valid covariance matrix
         lat = lattice.Lattice2D(2, 2)
         paramvec = [[0.0, 0.5, 0.8, 0, 0, 0]]
-        cfg = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
         cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(cfg)
         mat = system_z2_2_2.mat_d_vec[0]
@@ -1027,9 +1027,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec_left = [[t, y - eps, z, 0, 0, 0]]
         paramvec_right = [[t, y + eps, z, 0, 0, 0]]
 
-        cfg = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
-        cfg_left = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
-        cfg_right = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
+        cfg_left = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
+        cfg_right = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
         cfg.paramvec = paramvec
         cfg_left.paramvec = paramvec_left
         cfg_right.paramvec = paramvec_right
@@ -1123,9 +1123,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec_left = [[0.17, 0.35 - eps, 0.56, 0, 0, 0]]
         paramvec_right = [[0.17, 0.35 + eps, 0.56, 0, 0, 0]]
 
-        cfg = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
-        cfg_left = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
-        cfg_right = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
+        cfg_left = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
+        cfg_right = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
 
         cfg.paramvec = paramvec
         cfg_left.paramvec = paramvec_left
@@ -1153,9 +1153,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec_left = [[0.17, 0.35, 0.56 - eps, 0, 0, 0]]
         paramvec_right = [[0.17, 0.35, 0.56 + eps, 0, 0, 0]]
 
-        cfg = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
-        cfg_left = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
-        cfg_right = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
+        cfg_left = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
+        cfg_right = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
         cfg.paramvec = paramvec
         cfg_left.paramvec = paramvec_left
         cfg_right.paramvec = paramvec_right
@@ -1179,7 +1179,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         uc_ind = 0
         lat = lattice.Lattice2D(2, 2)
         paramvec = [[0.17, 0.35, 0.56, 0, 0, 0]]
-        cfg = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
         cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(cfg)
         res = system_z2_2_2.gamma_maj_sys_deriv_vec(system_z2_2_2.symbolvec[1])[lay, uc_ind]
@@ -1190,7 +1190,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         uc_ind = 0
         lat = lattice.Lattice2D(2, 2)
         paramvec = [[0.17, 0.35, 0.56, 0, 0, 0]]
-        cfg = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
         cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(cfg)
         res = system_z2_2_2.gamma_maj_sys_deriv_vec(system_z2_2_2.symbolvec[2])[lay, uc_ind]
@@ -1235,7 +1235,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         zi = 0.74
         paramvec = [[tr, yr, zr, ti, yi, zi]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_1copy_pure_gauge_config(lat_2x2, 1.0, None, None, 0, None)
+        system_cfg = system.Z2System2D_Config(lat_2x2, 1.0, None, None, 0, None, ncopy=1, num_fermionic_layer=0)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         symbolvec = system_z2_2_2.symbolvec
@@ -1255,8 +1255,12 @@ class TestZ2SystemMethods(unittest.TestCase):
                 # We are only modifying the first layer (there is only one)
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
-                system_cfg_left = utils.make_z2_1copy_pure_gauge_config(lat_2x2, 1.0, None, None, 0, None)
-                system_cfg_right = utils.make_z2_1copy_pure_gauge_config(lat_2x2, 1.0, None, None, 0, None)
+                system_cfg_left = system.Z2System2D_Config(
+                    lat_2x2, 1.0, None, None, 0, None, ncopy=1, num_fermionic_layer=0
+                )
+                system_cfg_right = system.Z2System2D_Config(
+                    lat_2x2, 1.0, None, None, 0, None, ncopy=1, num_fermionic_layer=0
+                )
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
 
@@ -1312,9 +1316,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec_left = [[t, y - eps, z, 0, 0, 0]]
         paramvec_right = [[t, y + eps, z, 0, 0, 0]]
 
-        cfg = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
-        cfg_left = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
-        cfg_right = utils.make_z2_1copy_pure_gauge_config(lat, 0, 0, 0, 0, None)
+        cfg = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
+        cfg_left = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
+        cfg_right = system.Z2System2D_Config(lat, 0, 0, 0, 0, None, ncopy=1, num_fermionic_layer=0)
 
         cfg.paramvec = paramvec
         cfg_left.paramvec = paramvec_left
@@ -1351,7 +1355,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         uc_ind = 0
         paramvec = [[tr, yr, zr, ti, yi, zi]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_1copy_pure_gauge_config(lat_2x2, 1.0, None, None, None, None)
+        system_cfg = system.Z2System2D_Config(lat_2x2, 1.0, None, None, None, None, ncopy=1, num_fermionic_layer=0)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         symbolvec = self.system_z2_2_2_real.symbolvec
@@ -1361,8 +1365,12 @@ class TestZ2SystemMethods(unittest.TestCase):
                 paramvec_right = np.copy(paramvec)
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
-                system_cfg_left = utils.make_z2_1copy_pure_gauge_config(lat_2x2, 1.0, None, None, None, None)
-                system_cfg_right = utils.make_z2_1copy_pure_gauge_config(lat_2x2, 1.0, None, None, None, None)
+                system_cfg_left = system.Z2System2D_Config(
+                    lat_2x2, 1.0, None, None, None, None, ncopy=1, num_fermionic_layer=0
+                )
+                system_cfg_right = system.Z2System2D_Config(
+                    lat_2x2, 1.0, None, None, None, None, ncopy=1, num_fermionic_layer=0
+                )
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
 
@@ -1388,7 +1396,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         zi = 0.41
         paramvec = [[tr, yr, zr, ti, yi, zi]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_1copy_pure_gauge_config(lat_2x2, 1.0, None, None, None, None)
+        system_cfg = system.Z2System2D_Config(lat_2x2, 1.0, None, None, None, None, ncopy=1, num_fermionic_layer=0)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
@@ -1402,8 +1410,12 @@ class TestZ2SystemMethods(unittest.TestCase):
                 paramvec_right = np.copy(paramvec)
                 paramvec_left[0, ind] -= eps
                 paramvec_right[0, ind] += eps
-                system_cfg_left = utils.make_z2_1copy_pure_gauge_config(lat_2x2, 1.0, None, None, None, None)
-                system_cfg_right = utils.make_z2_1copy_pure_gauge_config(lat_2x2, 1.0, None, None, None, None)
+                system_cfg_left = system.Z2System2D_Config(
+                    lat_2x2, 1.0, None, None, None, None, ncopy=1, num_fermionic_layer=0
+                )
+                system_cfg_right = system.Z2System2D_Config(
+                    lat_2x2, 1.0, None, None, None, None, ncopy=1, num_fermionic_layer=0
+                )
                 system_cfg_left.paramvec = paramvec_left
                 system_cfg_right.paramvec = paramvec_right
 
@@ -1422,8 +1434,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         nlayer = 2
         paramvec = np.asarray([[0.17, 0.35, 0.56, 0.39, 0.42, 0.12], [0.3, 0.2, 0.8, 0.68, 0.32, 0.19]])
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_1copy_pure_gauge_config(
-            lat_2x2, 1.0, None, None, None, None, num_pg_layer=2, num_fermionic_layer=0
+        system_cfg = system.Z2System2D_Config(
+            lat_2x2, 1.0, None, None, None, None, num_pg_layer=2, num_fermionic_layer=0,
+            ncopy=1,
         )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
@@ -1439,7 +1452,7 @@ class TestZ2SystemMethods(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = utils.make_z2_1copy_pure_gauge_config(
+                    system_cfg_left = system.Z2System2D_Config(
                         lat_2x2,
                         1.0,
                         None,
@@ -1448,8 +1461,9 @@ class TestZ2SystemMethods(unittest.TestCase):
                         None,
                         num_pg_layer=2,
                         num_fermionic_layer=0,
+                        ncopy=1,
                     )
-                    system_cfg_right = utils.make_z2_1copy_pure_gauge_config(
+                    system_cfg_right = system.Z2System2D_Config(
                         lat_2x2,
                         1.0,
                         None,
@@ -1458,6 +1472,7 @@ class TestZ2SystemMethods(unittest.TestCase):
                         None,
                         num_pg_layer=2,
                         num_fermionic_layer=0,
+                        ncopy=1,
                     )
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -1477,8 +1492,8 @@ class TestZ2SystemMethods(unittest.TestCase):
         nlayer = 3
         paramvec = np.random.rand(3, 6)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_1copy_pure_gauge_config(
-            lat_2x2, 1.0, None, None, 0, None, num_pg_layer=3, num_fermionic_layer=0)
+        system_cfg = system.Z2System2D_Config(
+            lat_2x2, 1.0, None, None, 0, None, num_pg_layer=3, num_fermionic_layer=0, ncopy=1)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
@@ -1493,7 +1508,7 @@ class TestZ2SystemMethods(unittest.TestCase):
                     paramvec_right = np.copy(paramvec)
                     paramvec_left[layerind, ind] -= eps
                     paramvec_right[layerind, ind] += eps
-                    system_cfg_left = utils.make_z2_1copy_pure_gauge_config(
+                    system_cfg_left = system.Z2System2D_Config(
                         lat_2x2,
                         1.0,
                         None,
@@ -1502,8 +1517,9 @@ class TestZ2SystemMethods(unittest.TestCase):
                         None,
                         num_pg_layer=3,
                         num_fermionic_layer=0,
+                        ncopy=1,
                     )
-                    system_cfg_right = utils.make_z2_1copy_pure_gauge_config(
+                    system_cfg_right = system.Z2System2D_Config(
                         lat_2x2,
                         1.0,
                         None,
@@ -1512,6 +1528,7 @@ class TestZ2SystemMethods(unittest.TestCase):
                         None,
                         num_pg_layer=3,
                         num_fermionic_layer=0,
+                        ncopy=1,
                     )
                     system_cfg_left.paramvec = paramvec_left
                     system_cfg_right.paramvec = paramvec_right
@@ -1529,8 +1546,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         # Calculate the electric energy of an empty system.
         paramvec = [[0, 0, 0, 0, 0, 0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_1copy_pure_gauge_config(
-            lat_2x2, 1.0, None, None, None, None, num_pg_layer=1, num_fermionic_layer=0
+        system_cfg = system.Z2System2D_Config(
+            lat_2x2, 1.0, None, None, None, None, num_pg_layer=1, num_fermionic_layer=0,
+            ncopy=1,
         )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
@@ -1541,8 +1559,8 @@ class TestZ2SystemMethods(unittest.TestCase):
         # Calculate the electric energy of an empty system.
         paramvec = [[0, 0, 0, 0, 0, 0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_1copy_pure_gauge_config(
-            lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=0)
+        system_cfg = system.Z2System2D_Config(
+            lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=0, ncopy=1)
         system_cfg.paramvec = paramvec
         mc_config = MonteCarloEvaluatorConfig(warmup_steps=10, meas_steps=10, binsize=1)
         mc_mgr = EvaluatorManager(system.Z2System2D, system_cfg, mc_config, 0)
@@ -1558,7 +1576,9 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec = [[t, y, z, 0, 0, 0]]
 
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = utils.make_z2_1copy_pure_gauge_config(paramvec, lat_2x2, 1.0, None, None, 0, None)
+        system_cfg = system.Z2System2D_Config(
+            paramvec, lat_2x2, 1.0, None, None, 0, None, ncopy=1, num_fermionic_layer=0
+        )
         sys_exact = system.Z2System2D(system_cfg)
         sys_mc = system.Z2System2D(system_cfg)
 
