@@ -18,17 +18,17 @@ class Z2System2D_Config(Config2DBase):
     """Generic configuration of the Z2 system in 2D.
 
     This config describes a Z2 lattice gauge theory variational ansatz with
-    ``ncopy`` copies of virtual fermions on each link.
+    ncopy copies of virtual fermions on each link.
 
     Supported copy numbers:
-        The current gauged-projector construction supports ``ncopy == 1`` and
-        even values of ``ncopy``. Odd values larger than 1 are not supported,
+        The current gauged-projector construction supports ncopy == 1 and
+        even values of ncopy. Odd values larger than 1 are not supported,
         because pure-gauge projectors mix copies pairwise through
-        ``sigma = (1 <-> 2), (3 <-> 4), ...``.
+        sigma = (1 <-> 2), (3 <-> 4), ....
 
     Parameter-vector convention:
         The parameter vector stores all real parts first and all imaginary
-        parts second. For ``ncopy = n`` the symbolic order is:
+        parts second. For ncopy = n the symbolic order is:
 
         real part:
             t1r, ..., tnr,
@@ -49,24 +49,23 @@ class Z2System2D_Config(Config2DBase):
             a(n-1)ni, b(n-1)ni, c(n-1)ni, d(n-1)ni
 
     Meaning of parameter families:
-        - ``t_i`` couples the physical mode to virtual copy ``i``.
-        - ``y_i`` and ``z_i`` couple virtual modes within copy ``i``.
-        - ``a_ij``, ``b_ij``, ``c_ij`` and ``d_ij`` couple virtual copies
-          ``i`` and ``j``.
+        - t_i couples the physical mode to virtual copy i.
+        - y_i and z_i couple virtual modes within copy i.
+        - a_ij, b_ij, c_ij and d_ij couple virtual copies i and j.
 
-    Mode order of ``tmat``:
-        ``{p, l1, r1, d1, u1, l2, r2, d2, u2, ..., ln, rn, dn, un}``.
+    Mode order of tmat:
+        {p, l1, r1, d1, u1, l2, r2, d2, u2, ..., ln, rn, dn, un}.
 
-    Mode order of ``gamma_dirac``:
+    Mode order of gamma_dirac:
         Annihilation operators first, followed by creation operators, using the
-        same copy ordering as ``tmat``:
-        ``{p, l1, r1, d1, u1, ..., ln, rn, dn, un,
-        p_dag, l1_dag, r1_dag, d1_dag, u1_dag, ..., ln_dag, rn_dag, dn_dag, un_dag}``.
+        same copy ordering as tmat:
+        {p, l1, r1, d1, u1, ..., ln, rn, dn, un,
+        p_dag, l1_dag, r1_dag, d1_dag, u1_dag, ..., ln_dag, rn_dag, dn_dag, un_dag}.
 
-    Mode order of ``gamma_maj``:
+    Mode order of gamma_maj:
         Each Dirac mode is expanded into two Majorana modes in the same order:
-        ``{p_1, p_2, l1_1, l1_2, r1_1, r1_2, d1_1, d1_2, u1_1, u1_2,
-        ..., ln_1, ln_2, rn_1, rn_2, dn_1, dn_2, un_1, un_2}``.
+        {p_1, p_2, l1_1, l1_2, r1_1, r1_2, d1_1, d1_2, u1_1, u1_2,
+        ..., ln_1, ln_2, rn_1, rn_2, dn_1, dn_2, un_1, un_2}.
     """
 
     def __init__(
@@ -93,17 +92,17 @@ class Z2System2D_Config(Config2DBase):
             g_int: Gauge-matter interaction coupling.
             g_mass: Fermion mass coupling.
             g_chem: Chemical potential values for the fermionic layers. If
-                ``None``, all chemical potentials are set to zero by the base
+                None, all chemical potentials are set to zero by the base
                 class.
             ncopy: Number of virtual fermion copies per link. Supported values
-                are ``1`` and even integers.
+                are 1 and even integers.
             num_pg_layer: Number of pure-gauge PEPS layers.
             num_fermionic_layer: Number of fermionic PEPS layers.
             mod_link_inds: Link indices on which electric-energy terms are
                 measured.
             unitcell_size: Translation-invariance unit-cell convention. Allowed
-                values are ``1`` for full translation invariance, ``2`` for a
-                two-site checkerboard unit cell, and ``-1`` for independent
+                values are 1 for full translation invariance, 2 for a
+                two-site checkerboard unit cell, and -1 for independent
                 parameters on every site.
             enforce_u1_symmetry: Whether to enforce the U(1)-symmetric
                 fermionic-layer parameter constraints.
@@ -158,9 +157,9 @@ class Z2System2D_Config(Config2DBase):
           conjugated on odd sites.
 
         The method sets:
-            - ``self.idx_vec``: grouped Majorana-index tuples;
-            - ``self.coeffs_vec``: coefficients matching ``self.idx_vec``;
-            - ``self.constants_vec``: scalar constant terms of the projector
+            - self.idx_vec: grouped Majorana-index tuples;
+            - self.coeffs_vec: coefficients matching self.idx_vec;
+            - self.constants_vec: scalar constant terms of the projector
               expansion. For Z2 these constants are expected to be zero.
         """
         idx_vec = []
@@ -284,27 +283,27 @@ class Z2System2D_Config(Config2DBase):
     def get_zeroed_params(self) -> tuple[tuple[int, int, int], ...]:
         """Return parameter coordinates that are forced to zero by the ansatz configuration.
 
-        Coordinates are returned as ``(layer_ind, uc_ind, param_ind)`` and are
-        later used by ``Config2DBase.enforce_parameter_conditions`` to zero the
+        Coordinates are returned as (layer_ind, uc_ind, param_ind) and are
+        later used by Config2DBase.enforce_parameter_conditions to zero the
         corresponding entries in-place.
 
         Pure-gauge layers:
-            All ``t_i`` parameters are zeroed. These parameters couple the
+            All t_i parameters are zeroed. These parameters couple the
             physical mode to the virtual modes, so they are not part of a
             pure-gauge layer.
 
         Fermionic layers with U(1) symmetry enforced:
             The ansatz keeps only the U(1)-compatible subset of parameters:
 
-            - even-labelled ``t`` parameters are zeroed;
-            - all intra-copy ``y_i`` and ``z_i`` parameters are zeroed;
+            - even-labelled t parameters are zeroed;
+            - all intra-copy y_i and z_i parameters are zeroed;
             - mixed-copy couplings are zeroed when the two copies have the same
               parity.
 
-            In zero-based indexing this means that ``t_inds`` contains indices
-            ``1, 3, 5, ...``, corresponding to copy labels ``2, 4, 6, ...``.
+            In zero-based indexing this means that t_inds contains indices
+            1, 3, 5, ..., corresponding to copy labels 2, 4, 6, ....
 
-        If ``self.u1_symmetry`` is false, the fermionic-layer U(1) zeroing rules
+        If self.u1_symmetry is false, the fermionic-layer U(1) zeroing rules
         are not applied. Pure-gauge zeroing is always applied.
         """
         offset = self._nparams // 2  # offset to get index of imaginary part
@@ -407,20 +406,20 @@ class Z2System2D_Config(Config2DBase):
         virtual modes. The entries are symbolic so that derivatives of the
         covariance matrices can be computed analytically with SymPy.
 
-        The matrix is assembled block-wise for arbitrary supported ``ncopy``:
+        The matrix is assembled block-wise for arbitrary supported ncopy:
 
-        - one physical-virtual block for each copy, controlled by ``t_i``;
+        - one physical-virtual block for each copy, controlled by t_i;
         - one intra-copy virtual-virtual block for each copy, controlled by
-          ``y_i`` and ``z_i``;
+          y_i and z_i;
         - one inter-copy virtual-virtual block for each pair of copies,
-          controlled by ``a_ij``, ``b_ij``, ``c_ij`` and ``d_ij``.
+          controlled by a_ij, b_ij, c_ij and d_ij.
 
         The mode order is:
-            ``Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, ..., l_n, r_n, d_n, u_n``.
+            Psi, l_1, r_1, d_1, u_1, l_2, r_2, d_2, u_2, ..., l_n, r_n, d_n, u_n.
 
-        The order ``{l, r, d, u}`` is used instead of ``{r, u, l, d}``, which
+        The order {l, r, d, u} is used instead of {r, u, l, d}, which
         appears in some analytic calculations, because it avoids extra
-        permutation matrices when converting from ``T`` to ``gamma_maj``.
+        permutation matrices when converting from T to gamma_maj.
 
         Returns:
             sympy.Matrix: Symbolic T matrix of the fiducial state.
@@ -519,21 +518,21 @@ class Z2System2D_Config(Config2DBase):
         are needed:
 
         - mixed-copy projectors for pure-gauge layers, using the pairwise copy
-          permutation ``sigma = (1 <-> 2), (3 <-> 4), ...)``;
+          permutation sigma = (1 <-> 2), (3 <-> 4), ...;
         - unmixed-copy projectors for fermionic layers, preserving the copy
           labels and hence the U(1)-symmetric convention.
 
-        For ``ncopy == 1`` both conventions reduce to the same 1-copy projector,
+        For ncopy == 1 both conventions reduce to the same 1-copy projector,
         since the mixed and unmixed copy-space matrices are both the identity.
 
         Mode order for horizontal links:
-            ``{l1_1, l1_2, r1_1, r1_2, ..., ln_1, ln_2, rn_1, rn_2}``.
+            {l1_1, l1_2, r1_1, r1_2, ..., ln_1, ln_2, rn_1, rn_2}.
 
         Mode order for vertical links:
-            ``{d1_1, d1_2, u1_1, u1_2, ..., dn_1, dn_2, un_1, un_2}``.
+            {d1_1, d1_2, u1_1, u1_2, ..., dn_1, dn_2, un_1, un_2}.
 
-        The naming convention is ``<mode letter><copy index>_<Majorana index>``.
-        For example, ``r3_2`` denotes the second Majorana mode of the right
+        The naming convention is <mode letter><copy index>_<Majorana index>.
+        For example, r3_2 denotes the second Majorana mode of the right
         virtual mode in copy 3.
 
         The paired modes are chosen to live on the same physical link with
