@@ -167,8 +167,8 @@ def renamed_parameter_names(order: ParameterOrder, rename_map: ParameterRenameMa
 
 # ==== Legacy Z2 parameter-order compatibility ====
 
-LEGACY_Z2_PARAMETER_ORDERS = {
-    "legacy_1c": (
+LEGACY_Z2_PARAMETER_ORDERS_BY_NCOPY = {
+    1: (
         ("tr", "yr", "zr", "ti", "yi", "zi"),
         {
             "tr": "t1r",
@@ -178,9 +178,8 @@ LEGACY_Z2_PARAMETER_ORDERS = {
             "yi": "y1i",
             "zi": "z1i",
         },
-        1,
     ),
-    "legacy_g2c_f2c": (
+    2: (
         (
             "t1r", "y1r", "z1r",
             "t2r", "y2r", "z2r",
@@ -199,9 +198,8 @@ LEGACY_Z2_PARAMETER_ORDERS = {
             "ci": "c12i",
             "di": "d12i",
         },
-        2,
     ),
-    "legacy_g4c_f4c": (
+    4: (
         (
             "t1r", "t2r", "t3r", "t4r",
             "y1r", "y2r", "y3r", "y4r",
@@ -223,7 +221,6 @@ LEGACY_Z2_PARAMETER_ORDERS = {
             "a34i", "b34i", "c34i", "d34i",
         ),
         {},
-        4,
     ),
 }
 
@@ -231,31 +228,21 @@ LEGACY_Z2_PARAMETER_ORDERS = {
 def translate_legacy_z2_parameter_order(
     system_cfg,
     values: np.ndarray,
-    input_param_order: str,
 ) -> np.ndarray:
     """Translate legacy Z2 input parameters to the current generic config order.
 
     This helper is intended for dev-vs-z2 regression checks. It allows generated
-    or loaded parameters to be interpreted according to a legacy Z2 config order
-    and then reordered into the current generic ``Z2System2D_Config`` convention.
+    or loaded parameters to be interpreted according to the legacy Z2 order for
+    the config's number of copies and then reordered into the current generic
+    Z2System2D_Config convention.
     """
-    if input_param_order == "current":
-        return values
-
-    if input_param_order not in LEGACY_Z2_PARAMETER_ORDERS:
-        raise ValueError(f"Unknown input parameter order: {input_param_order}.")
-
-    source_order, rename_map, expected_ncopy = LEGACY_Z2_PARAMETER_ORDERS[input_param_order]
-
     if not isinstance(system_cfg, system.Z2System2D_Config):
         raise ValueError("Legacy Z2 parameter-order translation is only supported for Z2System2D_Config.")
 
-    if system_cfg.ncopy != expected_ncopy:
-        raise ValueError(
-            f"Input parameter order '{input_param_order}' expects ncopy={expected_ncopy}, "
-            f"but the current config has ncopy={system_cfg.ncopy}."
-        )
+    if system_cfg.ncopy not in LEGACY_Z2_PARAMETER_ORDERS_BY_NCOPY:
+        raise ValueError(f"No legacy Z2 parameter order is defined for ncopy={system_cfg.ncopy}.")
 
+    source_order, rename_map = LEGACY_Z2_PARAMETER_ORDERS_BY_NCOPY[system_cfg.ncopy]
     source_order_renamed = renamed_parameter_names(source_order, rename_map)
     target_order = parameter_names(system_cfg.symbolvec)
 

@@ -25,7 +25,7 @@ The `ncopy=8` path remains blocked/postponed because generic config construction
 
 The generic Z2 config uses a systematic parameter order generated from `ncopy`. Saved parameter vectors from older config classes should not be assumed to be index-compatible with `Z2System2D_Config`.
 
-When comparing against older results or loading old saved parameters, translate parameters by name/order rather than assuming that raw array indices match. `manager.py` provides `--input_param_order` for this purpose.
+When comparing against older results or loading old saved parameters, translate parameters by name/order rather than assuming that raw array indices match. `manager.py` provides the `--legacy_param_order` flag for this purpose. The legacy order is selected from `--ncopy`.
 
 For `ncopy = n`, the generic Z2 parameter order is:
 
@@ -67,8 +67,8 @@ Validation was performed against `dev` commit `3679276ce7fe78f781118393d22435016
 
 The following regression comparisons were run with identical seeds, couplings, lattice sizes, layer counts, and equivalent parameter vectors:
 
-- `ncopy=1`: legacy one-copy pure-gauge comparisons passed using `--input_param_order legacy_1c`.
-- `ncopy=2`: legacy G2C/F2C comparisons passed using `--input_param_order legacy_g2c_f2c`.
+- `ncopy=1`: legacy one-copy pure-gauge comparisons passed using `--ncopy 1 --legacy_param_order`.
+- `ncopy=2`: legacy G2C/F2C comparisons passed using `--ncopy 2 --legacy_param_order`.
 - `ncopy=4`: legacy G4C/F4C comparisons were tested. Exact reproduction of the old four-copy constraint convention required a temporary `param_constraints` compatibility flag.
 
 Additional `L=4` Monte Carlo comparisons were run with short statistics for `ncopy=1`, `ncopy=2`, and `ncopy=4` during validation. The `ncopy=1` and `ncopy=2` checks remain supported by the current code through parameter-order translation.

@@ -95,6 +95,32 @@ class TestUtils(unittest.TestCase):
         expected = np.array([0, 3, 1, 4, 2, 5, 6, 7, 8, 9, 10, 13, 11, 14, 12, 15, 16, 17, 18, 19])
         self.assertTrue(np.array_equal(reordered, expected))
 
+    def test_legacy_z2_parameter_order_is_selected_from_ncopy(self):
+        """Legacy translation should infer the two-copy order from the config."""
+        cfg = object.__new__(system.Z2System2D_Config)
+        cfg.ncopy = 2
+        cfg._nparams = 20
+        cfg._symbolvec = None
+        legacy_values = np.arange(20)
+
+        translated = utils.translate_legacy_z2_parameter_order(cfg, legacy_values)
+
+        expected = np.array(
+            [0, 3, 1, 4, 2, 5, 6, 7, 8, 9, 10, 13, 11, 14, 12, 15, 16, 17, 18, 19]
+        )
+        self.assertTrue(np.array_equal(translated, expected))
+
+    def test_legacy_z2_parameter_order_rejects_unknown_ncopy(self):
+        """Legacy translation should fail clearly when no old order exists."""
+        cfg = object.__new__(system.Z2System2D_Config)
+        cfg.ncopy = 8
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "No legacy Z2 parameter order is defined for ncopy=8",
+        ):
+            utils.translate_legacy_z2_parameter_order(cfg, np.empty(0))
+
     def test_parameter_order_permutation_rejects_duplicate_names(self):
         """Ambiguous parameter orders should be rejected before reordering."""
         with self.assertRaisesRegex(ValueError, "duplicate"):

@@ -101,7 +101,7 @@ def translate_parameters(
     system_cfg,
     params: str,
     rng_state: np.random.RandomState,
-    input_param_order: str = "current",
+    legacy_param_order: bool = False,
 ) -> tuple[np.ndarray, str]:
     """Translate the parameters given on the commandline to a form useful in the code
 
@@ -109,9 +109,9 @@ def translate_parameters(
         system_cfg (SystemConfig): Configuration of the system
         params (str): Parameters as given on the command line
         rng_state (np.random.RandomState): Input state of a PRNG
-        input_param_order (str): Parameter order used to interpret generated or loaded
-            parameters. The default, "current", uses the active config order.
-            Legacy Z2 values are translated to the current generic Z2 order.
+        legacy_param_order (bool): Whether to interpret generated or loaded
+            parameters using the legacy Z2 order corresponding to the
+            configuration's number of copies.
 
     Returns:
         np.array: Array of parameters that are suited for the simulation according to the command line parameters
@@ -136,9 +136,9 @@ def translate_parameters(
             logger.warning("Reshape of provided parameters impossible. Starting with random parameters.")
             dest = rng_state.rand(shape)
             source = "random state"
-    if input_param_order != "current":
-        dest = utils.translate_legacy_z2_parameter_order(system_cfg, dest, input_param_order)
-        source = f"{source}, interpreted as {input_param_order} and translated to current order"
+    if legacy_param_order:
+        dest = utils.translate_legacy_z2_parameter_order(system_cfg, dest)
+        source = f"{source}, interpreted using the legacy ncopy={system_cfg.ncopy} order"
     return dest, source
 
 
@@ -372,7 +372,7 @@ def main(args):
         system_cfg,
         args.params,
         rngstate,
-        args.input_param_order,
+        args.legacy_param_order,
     )
     system_cfg.paramvec = paramvec
 
@@ -758,13 +758,11 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--input_param_order",
-        default="current",
-        choices=["current", "legacy_1c", "legacy_g2c_f2c", "legacy_g4c_f4c"],
+        "--legacy_param_order",
+        action="store_true",
         help=(
-            "Interpret generated or loaded parameters using a legacy Z2 parameter order "
-            "and translate them to the current generic Z2 order before evaluation. "
-            "Use this for dev-vs-z2 regression comparisons."
+            "Interpret generated or loaded parameters using the legacy Z2 parameter "
+            "order corresponding to --ncopy, and translate them to the current order."
         ),
     )
 
