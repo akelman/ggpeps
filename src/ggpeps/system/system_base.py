@@ -95,6 +95,9 @@ class System2DBase(ABC):
         self._mat_d_mod_inv_vec: Optional[xnp.ndarray] = None
         self._deriv_mod_mats: Optional[tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]] = None
         self._dmatd_trace_sparse: Optional[tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]] = None
+        # Block-structured norm-gradient helpers (see compute_grad_over_norm_vec).
+        self._grad_norm_block_maps: Optional[tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]] = None
+        self._grad_norm_site_deriv_blocks: Optional[xnp.ndarray] = None
         # Electric energy intermediate values - if we compute the electric energy,
         # we store intermediate values to be reused in the gradient calculation
         self._covmat_out_mod_vec: Optional[xnp.ndarray] = None
@@ -1206,79 +1209,167 @@ class System2DBase(ABC):
         arr = self.gamma_maj_sys_deriv_layvec_ucvec_symbvec[:, :, self.symbolvec.index(symb), :, :]
         return arr
 
+    @property
+    def grad_norm_block_maps(self) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
+        """Index/mask helpers for the block-structured norm gradient (geometry-only, gauge/param-independent).
+
+        Returns ``(virt_inds, uc_mask, nonzero_mask)``:
+          - ``virt_inds`` (nsites, modes_per_site) int: for each site, the row/column indices of that site's
+            virtual modes inside the system covariance matrices, ordered to match the site-local mode
+            ordering of ``compute_gamma_maj_deriv`` -- so ``prod[virt_inds[s]][:, virt_inds[s]]`` is site s's
+            block, aligned entry-for-entry with the site-level derivative block. Derivation below.
+          - ``uc_mask`` (unitcell_size, nsites) float: 1 where a site belongs to a unit-cell group, else 0.
+          - ``nonzero_mask`` (nlayer, unitcell_size, nparams) float: 0 for symmetry-zeroed parameters, else 1.
+
+        Deriving ``virt_inds``: the system covariance orders virtual modes by link, whereas the per-site
+        blocks are naturally contiguous in "site order" (all of site 0's modes, then all of site 1's, ...).
+        ``site_to_link_perm`` is the permutation between the two orderings, so a mode ``i`` in link order sits
+        at site-order position ``site_to_link_perm.argmax(axis=0)[i]``. In site order that position equals
+        ``site * modes_per_site + local_mode``, so ``// modes_per_site`` gives the site and ``% modes_per_site``
+        the local mode; grouping indices by site and sorting each group by local mode yields ``virt_inds``.
+        """
+        if self._grad_norm_block_maps is None:
+            nsites = self.cfg.lattice.size
+            # Permutation from site-order (contiguous per site) to link-order (used by the system matrices).
+            site_to_link_perm = np.asarray(
+                generate_permutation_matrix(self.get_site_based_mode_order(), self.get_link_based_mode_order())
+            )
+            n_virt_modes = site_to_link_perm.shape[0]
+            modes_per_site = n_virt_modes // nsites  # virtual majorana modes on one site (32 for 2-copy D6)
+
+            # site_to_link_perm has a single 1 per column; argmax over rows gives, for each mode in the
+            # system (link) ordering, the position it occupies in the contiguous per-site (site) ordering.
+            site_order_of_mode = site_to_link_perm.argmax(axis=0)
+            # Split the contiguous site-order index into (which site, which local mode 0..modes_per_site-1).
+            site_of_mode = site_order_of_mode // modes_per_site  # which site each system-order mode belongs to
+            local_mode_of_mode = site_order_of_mode % modes_per_site  # its mode index within that site
+
+            # virt_inds[s] = system-order indices of site s's virtual modes, in site-local order (so the
+            # per-site block sliced from prod aligns entry-for-entry with the site-level derivative block).
+            virt_inds = np.zeros((nsites, modes_per_site), dtype=np.int64)
+            for s in range(nsites):
+                modes_on_site = np.where(site_of_mode == s)[0]  # system indices belonging to site s
+                virt_inds[s] = modes_on_site[np.argsort(local_mode_of_mode[modes_on_site])]  # order by local mode
+
+            # uc_mask[u, s] = 1 iff site s is in unit-cell group u (used to sum per-site blocks within a group).
+            uc_mask = np.zeros((self.cfg.unitcell_size, nsites))
+            for s in range(nsites):
+                uc_mask[self.cfg.site_params_dict[s], s] = 1.0
+
+            # nonzero_mask = 0 for parameters frozen to zero by symmetry (their gradient is unused), else 1.
+            nonzero_mask = np.ones((self.cfg.nlayer, self.cfg.unitcell_size, len(self.symbolvec)))
+            for lay, uc_ind, symbol_ind in self.cfg.zeroed_params:
+                nonzero_mask[lay, uc_ind, symbol_ind] = 0.0
+            self._grad_norm_block_maps = (
+                xnp.asarray(virt_inds),
+                xnp.asarray(uc_mask),
+                xnp.asarray(nonzero_mask),
+            )
+        return self._grad_norm_block_maps
+
+    @property
+    def grad_norm_site_deriv_blocks(self) -> xnp.ndarray:
+        """Site-level parameter derivatives, virtual block only, shape
+        (nlayer, unitcell_size, nparams, modes_per_site, modes_per_site).
+
+        Param-dependent (rebuilt per ``initialize``), gauge-independent. This is the small site-level
+        counterpart of the dense system-sized derivative ``gamma_maj_sys_deriv_layvec_ucvec_symbvec``, used
+        by ``compute_grad_over_norm_vec``: because the system derivative is block-diagonal per site with an
+        identical block on every site (translation invariance), one per-site block per parameter carries all
+        the information, so this stores that block instead of the full system-sized matrix.
+        """
+        if self._grad_norm_site_deriv_blocks is None:
+            offset_site = 2 * self.cfg.nphysmodes_site  # physical majorana modes per site
+            lay_blocks = []
+            for lay in range(self.cfg.nlayer):
+                uc_blocks = []
+                for uc_ind in range(self.cfg.unitcell_size):
+                    param_blocks = [
+                        self.compute_gamma_maj_deriv(symb, lay, uc_ind)[offset_site:, offset_site:]
+                        for symb in self.symbolvec
+                    ]
+                    uc_blocks.append(xnp.stack(param_blocks))
+                lay_blocks.append(xnp.stack(uc_blocks))
+            self._grad_norm_site_deriv_blocks = xnp.stack(lay_blocks)
+        return self._grad_norm_site_deriv_blocks
+
     @staticmethod
     @maybe_jit(
         static_argnames=[
-            "lattice_size",
-            "nphysmodes_site",
             "nlayer",
             "unitcell_size",
             "nparams",
-            "zeroed_params",
         ]
     )
     def compute_grad_over_norm_vec(
-        lattice_size: int,
-        nphysmodes_site: int,
         nlayer: int,
         unitcell_size: int,
         nparams: int,
-        zeroed_params: list,
+        nonzero_mask: xnp.ndarray,
         gamma_in_inv_vec: xnp.ndarray,
         gamma_in_sys_vec: xnp.ndarray,
         mat_d_inv_vec: xnp.ndarray,
-        gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
+        site_deriv_blocks: xnp.ndarray,
+        virt_inds: xnp.ndarray,
+        uc_mask: xnp.ndarray,
     ) -> xnp.ndarray:
-        """Compute the gradient of the norm divided by the norm for all layers with respect to all parameters.
+        r"""Compute the gradient of the norm divided by the norm for all layers with respect to all parameters.
+
+        NOTE: this is a performance-optimized (block-structured) rewrite. A simpler, easier-to-follow dense
+        reference implementation of this function lives at commit 3679276.
+
+        The gradient is ``grad_a = -0.5 * Tr(deriv_d_a @ prod)`` with
+        ``prod = mat_d_inv_vec @ gamma_in_inv_vec @ gamma_in_sys_vec`` (per layer) and ``deriv_d_a`` the
+        virtual-virtual block of ``d gamma_maj_sys / d theta_a``.
+
+        Block-structured evaluation (exploited structure): ``deriv_d_a`` is block-diagonal per site, and
+        every site in a unit-cell class shares one *identical* diagonal block -- the site-level derivative
+        block ``site_deriv_blocks[layer, uc, a]`` (from ``compute_gamma_maj_deriv``). (For a translation-
+        invariant ansatz there is a single class of all sites; for unitcell_size > 1 each class is summed
+        separately via ``uc_mask``.) Therefore only the same-site diagonal blocks of ``prod`` are ever needed:
+        ``grad_a = -0.5 * Tr(site_deriv_block_a @ prod_sum)`` where
+        ``prod_sum = sum over sites s in the unit-cell group of prod[virt_inds[s], virt_inds[s]]``.
+        This replaces the 20 full-system-sized traces of the previous dense implementation with one small
+        per-site trace per parameter. (The dense triple product ``prod`` is still formed here; a later step
+        removes the need for the dense derivative stack entirely.)
 
         Args:
-            lattice_size (int): Number of sites in the lattice
-            nphysmodes_site (int): Number of physical modes per site
             nlayer (int): Number of layers
             unitcell_size (int): Size of the unit cell
-            nparams (int):
-            zeroed_params (list): List of tuples (layerind, uc_ind, symbol_ind) of parameters that are forced to be
-                zero by the ansatz
-            gamma_in_inv_vec (xnp.ndarray): Vector of inverses of gamma_in_sys
+            nparams (int): Number of parameters per (layer, unit-cell) site
+            nonzero_mask (xnp.ndarray): (nlayer, unitcell_size, nparams) float mask; 0 for parameters forced
+                to zero by the ansatz (their gradient is not used), 1 otherwise.
+            gamma_in_inv_vec (xnp.ndarray): the system's wi_gamma_in_vec, i.e. (mat_d^-1 - gamma_in_sys)^-1,
+                per layer
             gamma_in_sys_vec (xnp.ndarray):
             mat_d_inv_vec (xnp.ndarray): Vector of inverses of mat_d
-            gamma_maj_sys_deriv_layvec_ucvec_symbvec (xnp.ndarray): Array of derivatives of gamma_maj_sys
+            site_deriv_blocks (xnp.ndarray): (nlayer, unitcell_size, nparams, modes_per_site, modes_per_site)
+                virtual-block site-level parameter derivatives.
+            virt_inds (xnp.ndarray): (nsites, modes_per_site) int; per-site virtual-mode indices, ordered
+                to match the site-local mode ordering of ``site_deriv_blocks``.
+            uc_mask (xnp.ndarray): (unitcell_size, nsites) float; uc-group membership of each site.
 
         Returns:
-            xnp.ndarray: Vector of gradients of the norm divided by the norm wrt all parameters of all layers, etc.
+            xnp.ndarray: Vector of gradients of the norm divided by the norm wrt all parameters.
         """
         dest_grad = xnp.zeros((nlayer, unitcell_size, nparams))
 
-        # TODO: vectorize and make use of self.deriv_mod_mats(self.mod_mask_inds)
         for layerind in range(nlayer):
-            offset = 2 * lattice_size * nphysmodes_site  # offset past the physical modes
-            diff = gamma_in_inv_vec[layerind]
+            gamma_in_inv = gamma_in_inv_vec[layerind]
             mat_d_inv = mat_d_inv_vec[layerind]
             gamma_in_sys = gamma_in_sys_vec[layerind]
 
-            # Save the product, so that it is not recomputed for every parameter
-            prod = mat_d_inv @ diff @ gamma_in_sys
+            prod = mat_d_inv @ gamma_in_inv @ gamma_in_sys
 
-            for uc_ind in range(unitcell_size):
-                for symbol_ind in range(nparams):
-                    if (layerind, uc_ind, symbol_ind) not in zeroed_params:
-                        # the derivative calculation is computationally expensive
-                        # we can skip it for parameters that are forced by the ansatz to be zero
+            # Diagonal per-site blocks of prod: (nsites, modes_per_site, modes_per_site)
+            site_blocks = prod[virt_inds[:, :, None], virt_inds[:, None, :]]
+            # Sum those blocks over the sites of each unit-cell group: (unitcell_size, modes_per_site, ...)
+            prod_sum = xnp.einsum("us,smn->umn", uc_mask, site_blocks)
+            # grad[uc, param] = -0.5 * trace(site_deriv_block[uc, param] @ prod_sum[uc])
+            grad = -0.5 * xnp.einsum("uaij,uji->ua", site_deriv_blocks[layerind], prod_sum)
+            grad = grad * nonzero_mask[layerind]  # drop parameters frozen to zero
 
-                        # Extract only the part of the virtual-virtual correlations
-                        _, __, deriv_d = utils.extract_partial_covmats(
-                            gamma_maj_sys_deriv_layvec_ucvec_symbvec[layerind, uc_ind, symbol_ind], offset
-                        )
-
-                        # Instead of computing the modified grad over the norm as:
-                        #   grad = utils.compute_grad_over_norm(gamma_in_sys, deriv_d, mat_d_inv, diff)
-                        # we have saved the product of several mats above (since they don't change),
-                        # and use it here:
-                        grad = -0.5 * utils.trace_of_product((deriv_d, prod))
-
-                        # Save
-                        inds = (layerind, uc_ind, symbol_ind)
-                        dest_grad = backend.array_assign(dest_grad, inds, grad)
+            dest_grad = backend.array_assign(dest_grad, layerind, grad)
 
         return dest_grad
 
@@ -1437,17 +1528,18 @@ class System2DBase(ABC):
             xnp.ndarray: Vector of gradients of the norm divided by the norm with respect to all parameters
         """
         if self._grad_over_norm_vec is None:
+            virt_inds, uc_mask, nonzero_mask = self.grad_norm_block_maps
             self._grad_over_norm_vec = self.compute_grad_over_norm_vec(
-                self.cfg.lattice.size,
-                self.cfg.nphysmodes_site,
                 self.cfg.nlayer,
                 self.cfg.unitcell_size,
                 len(self.symbolvec),
-                self.cfg.zeroed_params,
+                nonzero_mask,
                 self.wi_gamma_in_vec,
                 self.gamma_in_sys_vec,
                 self.mat_d_inv_vec,
-                self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
+                self.grad_norm_site_deriv_blocks,
+                virt_inds,
+                uc_mask,
             )
         return self._grad_over_norm_vec
 
