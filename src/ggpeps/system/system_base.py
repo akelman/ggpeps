@@ -210,7 +210,9 @@ class System2DBase(ABC):
         self._norm_mod_vec = None
         self._el_pfaffians = None
         self._lognorm_default_vec = None
-        self._gamma_in_sys_mod_vec = None
+        # NB: _gamma_in_sys_mod_vec is NOT reset here. Like gamma_in_sys and the Woodbury trackers it is
+        # persistent incremental state, maintained block-by-block in each backend's _update_gauge_ind
+        # (via _patch_gamma_in_sys_mod). Any backend that does not patch must reset it there explicitly.
 
         return
 
@@ -1019,6 +1021,34 @@ class System2DBase(ABC):
         )
         gamma_in_sys_mod_linkvec_layervec = res[2]  # extract the "virtual-virtual" part
         return gamma_in_sys_mod_linkvec_layervec
+
+    def _patch_gamma_in_sys_mod(self, old_mod: Optional[xnp.ndarray], link_ind: int) -> Optional[xnp.ndarray]:
+        """Incrementally patch the cached gamma_in_sys_mod after a single-link gauge change.
+
+        gamma_in_sys is block-diagonal per link, so changing link ``link_ind`` changes only that link's
+        block. In each measured-link copy (the mod layout drops that measured link's k=2*nvirtmodes_link
+        modes), the changed block sits at ``ind_mat`` if ``link_ind`` is below the measured link, else at
+        ``ind_mat - k`` (shifted by the carved-out link) -- the same position the mod trackers use. If
+        ``link_ind`` IS a measured link, its modes are in the open block, so that copy is unchanged.
+
+        Must be called AFTER gamma_in_sys has been substituted (it reads the new block from there).
+        Returns None if there was nothing cached to patch (it is recomputed on next access).
+        """
+        if old_mod is None:
+            return None
+        k = 2 * self.cfg.nvirtmodes_link
+        ind_mat = k * link_ind
+        patched = old_mod
+        for mi, m in enumerate(self.cfg.mod_link_inds):
+            if link_ind == m:
+                continue
+            modpos = ind_mat if link_ind < m else ind_mat - k
+            for layer in range(self.cfg.nlayer):
+                new_block = self.gamma_in_sys_vec[layer, ind_mat : ind_mat + k, ind_mat : ind_mat + k]
+                patched = backend.array_assign(
+                    patched, (layer, mi, slice(modpos, modpos + k), slice(modpos, modpos + k)), new_block
+                )
+        return patched
 
     def _compute_mod_trackers(self) -> tuple:
         """Recompute the modified (open-link) Woodbury inverses and incremental determinant
