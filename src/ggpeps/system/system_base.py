@@ -143,11 +143,11 @@ class System2DBase(ABC):
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in_vec: Optional[xnp.ndarray] = None  # Tracks (D^-1 - gammain)^-1
-        self._wi_gamma_out_vec: Optional[xnp.ndarray] = None  # Tracks (D - gammain)^-1
+        self._wi_gamma_out_vec: Optional[xnp.ndarray] = None  # Tracks (D + gammain)^-1
         self._incdet_vec: Optional[xnp.ndarray] = None  # Tracks det(D^-1 - gammain)
 
         self._wi_gamma_in_mod_vec: Optional[xnp.ndarray] = None  # Tracks (Dmod^-1 - gammain)^-1
-        self._wi_gamma_out_mod_vec: Optional[xnp.ndarray] = None  # Tracks (Dmod - gammain)^-1
+        self._wi_gamma_out_mod_vec: Optional[xnp.ndarray] = None  # Tracks (Dmod + gammain)^-1
         self._incdet_mod_vec: Optional[xnp.ndarray] = None  # Tracks det(Dmod^-1 - gammain)
 
         # Drift control for the incremental (Woodbury/IncDet) trackers.
