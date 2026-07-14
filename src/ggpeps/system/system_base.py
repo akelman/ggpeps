@@ -111,6 +111,8 @@ class System2DBase(ABC):
 
         # In cases when different layers use the same projectors, all elements will point to the same gamma_in_sys:
         self._gamma_in_sys_vec: Optional[xnp.ndarray] = None
+        # Cached open-link ("mod") extraction of gamma_in_sys.
+        self._gamma_in_sys_mod_vec: Optional[xnp.ndarray] = None
 
         neutral_gauge = self.cfg.gaugemgr.get_neutral_gauge_value()
         self._gaugefieldvec: xnp.ndarray = xnp.array([neutral_gauge] * self.cfg.lattice.nlinks)
@@ -208,6 +210,7 @@ class System2DBase(ABC):
         self._norm_mod_vec = None
         self._el_pfaffians = None
         self._lognorm_default_vec = None
+        self._gamma_in_sys_mod_vec = None
 
         return
 
@@ -987,8 +990,11 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Gauged, modified covariance matrices of the system for each layer
         """
-        gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(self.cfg.mod_link_inds, self.gamma_in_sys_vec)
-        return gamma_in_sys_mod_vec
+        if self._gamma_in_sys_mod_vec is None:
+            self._gamma_in_sys_mod_vec = self._extract_gamma_in_sys_mod_vec(
+                self.cfg.mod_link_inds, self.gamma_in_sys_vec
+            )
+        return self._gamma_in_sys_mod_vec
 
     def _extract_gamma_in_sys_mod_vec(self, link_inds: tuple[int, ...], gamma_in_sys: xnp.ndarray) -> xnp.ndarray:
         """Get function to return the gauged gamma_in_sys_vec with a single link modification
