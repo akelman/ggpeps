@@ -102,60 +102,6 @@ def build_unique_el_terms(
     return tuple(uniq_idx_layers), tuple(tuple(layers) for layers in uniq_coeff_layers)
 
 
-def build_padded_el_terms(
-    uniq_idx_vec: IdxGroup, uniq_coeffs_vec: CoeffsVec, nmodes: int
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Pad the unique-basis electric-energy terms to a single size class for batched evaluation.
-
-    In the unique basis the monomials come in several matrix dimensions (size classes), so the
-    Pfaffians are evaluated in one vectorized call per size class. Here every monomial is padded
-    to the maximal dimension K by appending auxiliary indices that point into a fixed
-    antisymmetric extension appended after the nmodes physical rows/columns of the link
-    covariance matrix: aux_block = J + J + ... (direct sum) with J = [[0, 1], [-1, 0]], so
-    Pf(A + J + ... + J) = Pf(A) exactly and no Pfaffian value changes. All (layer, link) pairs
-    are likewise padded to a uniform number of terms T with all-auxiliary dummy monomials
-    (Pf = 1) carrying zero coefficient. The whole electric pipeline then becomes a single
-    batched Pfaffian call plus dense einsums (no per-size python loops) -- see
-    el_eval_mode == "padded" in the systems.
-
-    Args:
-        uniq_idx_vec / uniq_coeffs_vec: output of build_unique_el_terms
-        nmodes (int): dimension of the link covariance matrix the indices point into
-            (2 * nvirtmodes_link); auxiliary indices start at nmodes.
-
-    Returns:
-        tuple: (idx_arr, coeffs_arr, aux_block) with
-            idx_arr: (nlayer, nlinks, T, K) int array of padded index tuples
-            coeffs_arr: (num_ge, nlayer, nlinks, T) complex array aligned with idx_arr
-            aux_block: (K, K) float antisymmetric extension the auxiliary indices point into
-    """
-    num_ge = len(uniq_coeffs_vec)
-    nlayer = len(uniq_idx_vec)
-    nlinks = len(uniq_idx_vec[0])
-
-    K = max((len(bucket[0]) for layer in uniq_idx_vec for link in layer for bucket in link), default=0)
-    T = max(sum(len(bucket) for bucket in link) for layer in uniq_idx_vec for link in layer)
-
-    idx_arr = np.zeros((nlayer, nlinks, T, K), dtype=np.int64)
-    coeffs_arr = np.zeros((num_ge, nlayer, nlinks, T), dtype=complex)
-    dummy_row = [nmodes + i for i in range(K)]  # all-auxiliary monomial: Pf = 1, coefficient 0
-    for lay in range(nlayer):
-        for link in range(nlinks):
-            pos = 0
-            for size_ind, bucket in enumerate(uniq_idx_vec[lay][link]):
-                for term_ind, tup in enumerate(bucket):
-                    # K - len(tup) is even, so the auxiliary tail is a direct sum of complete
-                    # J pairs and contributes a factor Pf = 1
-                    idx_arr[lay, link, pos] = list(tup) + [nmodes + i for i in range(K - len(tup))]
-                    for ge in range(num_ge):
-                        coeffs_arr[ge, lay, link, pos] = uniq_coeffs_vec[ge][lay][link][size_ind][term_ind]
-                    pos += 1
-            idx_arr[lay, link, pos:] = dummy_row
-
-    aux_block = np.kron(np.eye(K // 2), np.array([[0.0, 1.0], [-1.0, 0.0]]))
-    return idx_arr, coeffs_arr, aux_block
-
-
 ################## Config2DBase ######################
 class Config2DBase(ABC):
     """Configuration for a system in two dimensions
@@ -266,23 +212,14 @@ class Config2DBase(ABC):
         # these depend on the ansatz, so we only declare their type here.
         # Set together by set_el_energy_terms (called from init_el_energy_terms): the per-group-element
         # constants and the unique-basis (deduplicated across group elements) term structures, which is
-        # all that evaluation needs, plus the single-size-class padded form of the latter
-        # (see build_padded_el_terms).
+        # all that evaluation needs.
         self.constants_vec: ConstantsVec
         self.uniq_idx_vec: IdxGroup
         self.uniq_coeffs_vec: CoeffsVec
-        self.padded_idx_arr: np.ndarray
-        self.padded_coeffs_arr: np.ndarray
-        self.padded_aux_block: np.ndarray
 
         # Electric-energy backend: "pfaffian" (default, bracket/Pfaffian expansion) or
         # "overlap" (independent Bravyi-Gosset three-state Gaussian overlap; pure-gauge, energies only).
         self.el_method: str = "pfaffian"
-
-        # Pfaffian-evaluation layout: "sizes" (default; one vectorized Pfaffian call per size
-        # class) or "padded" (all monomials padded to one size class -> a single batched call
-        # and dense einsums; same values up to float rounding).
-        self.el_eval_mode: str = "sizes"
 
     def __str__(self) -> str:
         """Define a string method that can be used, e.g., in filenaming.
@@ -439,14 +376,9 @@ class Config2DBase(ABC):
             - uniq_idx_vec[layer][link][size_class]: unique index tuples shared across group elements
             - uniq_coeffs_vec[ge][layer][link][size_class]: per-group-element coefficients aligned
               with uniq_idx_vec (zero where the group element does not contain that index tuple)
-            - padded_idx_arr / padded_coeffs_arr / padded_aux_block: the unique basis padded to a
-              single size class (see build_padded_el_terms), used when el_eval_mode == "padded"
         """
         self.constants_vec = tuple(constants_vec)
         self.uniq_idx_vec, self.uniq_coeffs_vec = build_unique_el_terms(idx_vec, coeffs_vec)
-        self.padded_idx_arr, self.padded_coeffs_arr, self.padded_aux_block = build_padded_el_terms(
-            self.uniq_idx_vec, self.uniq_coeffs_vec, 2 * self.nvirtmodes_link
-        )
 
     def enforce_parameter_conditions(self, mat: xnp.ndarray) -> None:
         """Enforce conditions on the parameters according to the requirements of the ansatz.
