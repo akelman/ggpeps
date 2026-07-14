@@ -210,10 +210,6 @@ class System2DBase(ABC):
         self._norm_mod_vec = None
         self._el_pfaffians = None
         self._lognorm_default_vec = None
-        # NB: _gamma_in_sys_mod_vec is NOT reset here. Like gamma_in_sys and the Woodbury trackers it is
-        # persistent incremental state, maintained block-by-block in each backend's _update_gauge_ind
-        # (via _patch_gamma_in_sys_mod). Any backend that does not patch must reset it there explicitly.
-
         return
 
     @property

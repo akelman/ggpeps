@@ -107,9 +107,6 @@ class Z2System2D(System2DBase):
             inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
             self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
 
-        # gamma_in_sys_mod is block-diagonal per link like gamma_in_sys, so patch the changed link's block
-        # into the cached copy (the mod-ordered analog of the substitution above). Persistent incremental
-        # state -> not reset by invalidate_gauge_update.
         self._gamma_in_sys_mod_vec = self._patch_gamma_in_sys_mod(self._gamma_in_sys_mod_vec, link_ind)
 
         update_arr = xnp.array(update_vec)
