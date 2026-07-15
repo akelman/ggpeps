@@ -50,6 +50,25 @@ def _randomize_gauge(cfg, sys_, rng, nsteps=25):
         sys_.update_gauge_ind(link, gvals[int(rng.randint(0, len(gvals)))])
 
 
+def _dense_grad_over_norm_reference(sys_):
+    """Straightforward reference for the norm gradient: grad_a = -0.5 Tr(dD_a @ prod) with the
+    full dense system derivative and prod = -wi_gamma_out (the identity checked above). The
+    block-structured compute_grad_over_norm_vec must reproduce this."""
+    cfg = sys_.cfg
+    prod_vec = -np.asarray(sys_.wi_gamma_out_vec)
+    dense = np.asarray(sys_.gamma_maj_sys_deriv_layvec_ucvec_symbvec)
+    offset = 2 * cfg.lattice.size * cfg.nphysmodes_site  # skip the physical modes
+    grads = np.zeros((cfg.nlayer, cfg.unitcell_size, len(cfg.symbolvec)))
+    for lay in range(cfg.nlayer):
+        for uc in range(cfg.unitcell_size):
+            for a in range(len(cfg.symbolvec)):
+                deriv_virt = dense[lay, uc, a][offset:, offset:]
+                grads[lay, uc, a] = np.real(-0.5 * np.trace(deriv_virt @ prod_vec[lay]))
+    for lay, uc_ind, symbol_ind in cfg.zeroed_params:
+        grads[lay, uc_ind, symbol_ind] = 0.0
+    return grads
+
+
 class GradStructureChecks:
     """Mixin with the actual assertions; subclasses provide the system."""
 
@@ -74,6 +93,14 @@ class GradStructureChecks:
         prod_mod = np.asarray(sys_.mat_d_mod_inv_vec) @ np.asarray(sys_.wi_gamma_in_mod_vec) @ gamma_mod
         self.assertLess(np.abs(prod_mod + np.asarray(sys_.wi_gamma_out_mod_vec)).max(), TOL)
 
+    def _check_grad_over_norm(self, cfg, sys_, rng):
+        sys_.initialize()
+        _randomize_gauge(cfg, sys_, rng)
+        block = np.asarray(sys_.grad_over_norm_vec)
+        dense = _dense_grad_over_norm_reference(sys_)
+        scale = max(np.abs(dense).max(), 1.0)
+        self.assertLess(np.abs(block - dense).max() / scale, TOL)
+
 
 class TestGradStructureD6(unittest.TestCase, GradStructureChecks):
     def test_identity_two_layers(self):
@@ -82,10 +109,16 @@ class TestGradStructureD6(unittest.TestCase, GradStructureChecks):
     def test_identity_one_layer(self):
         self._check(*_build_d6(seed=11, num_pg_layer=1))
 
+    def test_grad_over_norm_matches_dense_reference(self):
+        self._check_grad_over_norm(*_build_d6(seed=5, num_pg_layer=2))
+
 
 class TestGradStructureZ2(unittest.TestCase, GradStructureChecks):
     def test_identity(self):
         self._check(*_build_z2(seed=7, num_pg_layer=1))
+
+    def test_grad_over_norm_matches_dense_reference(self):
+        self._check_grad_over_norm(*_build_z2(seed=13, num_pg_layer=1))
 
 
 if __name__ == "__main__":

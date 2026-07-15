@@ -644,3 +644,83 @@ class TestMultiColorModeOrder(unittest.TestCase):
                 self.assertTrue(np.allclose(g.imag, 0))
                 self.assertTrue(np.allclose(g, -np.transpose(g)))
                 self.assertTrue(np.allclose(g @ g, -np.eye(g.shape[0])))
+
+
+class TestIncrementalModCovmats(unittest.TestCase):
+    """The open-link ("mod") family is maintained incrementally across single-link gauge updates:
+    gamma_in_sys_mod is patched in place (_patch_gamma_in_sys_mod) instead of re-extracted, and
+    during warmup the whole family is deferred and re-anchored once (reanchor_mod_trackers).
+    Both must reproduce the from-scratch computation."""
+
+    @staticmethod
+    def _build_d6(seed):
+        lat = lattice.Lattice2D(2, 2)
+        cfg = system.D6System2D_Config(
+            lat, 1, 1, 0, 0, None, ncopy=2, num_pg_layer=2, num_fermionic_layer=0, mod_link_inds=(0,)
+        )
+        rng = np.random.RandomState(seed)
+        cfg.paramvec = rng.rand(*cfg.param_shape())
+        cfg.enforce_parameter_conditions(cfg.paramvec)
+        return cfg, system.D2nSystem2D(cfg), rng
+
+    @staticmethod
+    def _build_z2(seed):
+        lat = lattice.Lattice2D(2, 2)
+        cfg = system.Z2System2D_G2C_F2C_Config(
+            lat, 1.0, 1.0, 0.0, 0.0, np.zeros(0), num_pg_layer=1, num_fermionic_layer=0, mod_link_inds=(0,)
+        )
+        rng = np.random.RandomState(seed)
+        cfg.paramvec = rng.rand(*cfg.param_shape())
+        cfg.enforce_parameter_conditions(cfg.paramvec)
+        return cfg, system.Z2System2D(cfg), rng
+
+    @staticmethod
+    def _update_sequence(cfg, rng, nsteps=25):
+        gvals = cfg.gaugemgr.get_possible_gauge_values()
+        return [
+            (int(rng.randint(0, cfg.lattice.nlinks)), gvals[int(rng.randint(0, len(gvals)))])
+            for _ in range(nsteps)
+        ]
+
+    def _check_mod_patch(self, cfg, sys_, rng):
+        sys_.initialize()
+        for link, theta in self._update_sequence(cfg, rng):
+            sys_.update_gauge_ind(link, theta)
+        patched = np.asarray(sys_.gamma_in_sys_mod_vec)  # maintained by _patch_gamma_in_sys_mod
+        fresh = np.asarray(sys_._extract_gamma_in_sys_mod_vec(cfg.mod_link_inds, sys_.gamma_in_sys_vec))
+        self.assertLess(np.abs(patched - fresh).max(), 1e-14)
+
+    def _check_defer_reanchor(self, build, seed):
+        cfg_a, sys_a, rng = build(seed)
+        cfg_b, sys_b, _ = build(seed)
+        updates = self._update_sequence(cfg_a, rng)
+
+        sys_a.initialize()
+        sys_a.defer_mod_trackers = True  # warmup mode: mod family not maintained
+        for link, theta in updates:
+            sys_a.update_gauge_ind(link, theta)
+        sys_a.defer_mod_trackers = False
+        sys_a.reanchor_mod_trackers()
+
+        sys_b.initialize()  # mod family maintained incrementally on every accepted step
+        _ = sys_b.gamma_in_sys_mod_vec, sys_b.wi_gamma_in_mod_vec  # force live tracking from the start
+        for link, theta in updates:
+            sys_b.update_gauge_ind(link, theta)
+
+        for name in ("gamma_in_sys_mod_vec", "wi_gamma_in_mod_vec", "wi_gamma_out_mod_vec", "incdet_mod_vec"):
+            a = np.asarray(getattr(sys_a, name))
+            b = np.asarray(getattr(sys_b, name))
+            scale = max(np.abs(a).max(), 1.0)
+            self.assertLess(np.abs(a - b).max() / scale, 1e-9, msg=name)
+
+    def test_mod_patch_matches_fresh_extract_d6(self):
+        self._check_mod_patch(*self._build_d6(seed=5))
+
+    def test_mod_patch_matches_fresh_extract_z2(self):
+        self._check_mod_patch(*self._build_z2(seed=13))
+
+    def test_defer_reanchor_matches_live_tracking_d6(self):
+        self._check_defer_reanchor(self._build_d6, seed=7)
+
+    def test_defer_reanchor_matches_live_tracking_z2(self):
+        self._check_defer_reanchor(self._build_z2, seed=17)

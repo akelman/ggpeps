@@ -1411,8 +1411,9 @@ class System2DBase(ABC):
             site_blocks = prod[virt_inds[:, :, None], virt_inds[:, None, :]]
             # Sum those blocks over the sites of each unit-cell group: (unitcell_size, modes_per_site, ...)
             prod_sum = xnp.einsum("us,smn->umn", uc_mask, site_blocks)
-            # grad[uc, param] = -0.5 * trace(site_deriv_block[uc, param] @ prod_sum[uc])
-            grad = -0.5 * xnp.einsum("uaij,uji->ua", site_deriv_blocks[layerind], prod_sum)
+            # grad[uc, param] = -0.5 * trace(site_deriv_block[uc, param] @ prod_sum[uc]);
+            # the trace is real for these antisymmetric factors -- make the cast explicit.
+            grad = xnp.real(-0.5 * xnp.einsum("uaij,uji->ua", site_deriv_blocks[layerind], prod_sum))
             grad = grad * nonzero_mask[layerind]  # drop parameters frozen to zero
 
             dest_grad = backend.array_assign(dest_grad, layerind, grad)
