@@ -196,7 +196,9 @@ class D2nSystem2D(System2DBase):
             inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
             self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
 
-        self._gamma_in_sys_mod_vec = self._patch_gamma_in_sys_mod(self._gamma_in_sys_mod_vec, link_ind)
+        # The mod family (gamma_in_sys_mod + mod trackers) is measurement-only; skip it during warmup.
+        if not self.defer_mod_trackers:
+            self._gamma_in_sys_mod_vec = self._patch_gamma_in_sys_mod(self._gamma_in_sys_mod_vec, link_ind)
 
         update_arr = xnp.array(update_vec)
 
@@ -222,31 +224,34 @@ class D2nSystem2D(System2DBase):
         # modified objects is skipped; for the others the local update is shifted by the carved-out
         # link when it sits below the changed link. The vectorized index update supports neither
         # skipping a link nor a variable offset, so we loop explicitly.
-        assert self._wi_gamma_in_mod_vec is not None  # for mypy
-        assert self._wi_gamma_out_mod_vec is not None
-        for lay in range(self.cfg.nlayer):
-            for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
-                if mod_link_ind == link_ind:
-                    continue
-                offset = 2 * self.cfg.nvirtmodes_link if link_ind > mod_link_ind else 0
-                pos = ind_mat - offset
+        # Skipped entirely during warmup (defer_mod_trackers): these are measurement-only and are
+        # re-anchored from scratch (reanchor_mod_trackers) when warmup ends.
+        if not self.defer_mod_trackers:
+            assert self._wi_gamma_in_mod_vec is not None  # for mypy
+            assert self._wi_gamma_out_mod_vec is not None
+            for lay in range(self.cfg.nlayer):
+                for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
+                    if mod_link_ind == link_ind:
+                        continue
+                    offset = 2 * self.cfg.nvirtmodes_link if link_ind > mod_link_ind else 0
+                    pos = ind_mat - offset
 
-                mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
-                update_out = -update_vec[lay]
-                new_det = utils.IncLogAbsDeterminant.update_index(
-                    self.incdet_mod_vec[lay][ind], mat_inv, update_vec[lay], pos, pos
-                )
-                self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, (lay, ind), new_det)
-                new_in = utils.WoodburyInverter.update_index(
-                    self._wi_gamma_in_mod_vec[lay][ind], update_vec[lay], pos, pos
-                )
-                self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (lay, ind), new_in)
-                new_out = utils.WoodburyInverter.update_index(
-                    self._wi_gamma_out_mod_vec[lay][ind], update_out, pos, pos
-                )
-                self._wi_gamma_out_mod_vec = backend.array_assign(self._wi_gamma_out_mod_vec, (lay, ind), new_out)
-                inv_mags.append(xnp.max(xnp.abs(new_in)))
-                inv_mags.append(xnp.max(xnp.abs(new_out)))
+                    mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
+                    update_out = -update_vec[lay]
+                    new_det = utils.IncLogAbsDeterminant.update_index(
+                        self.incdet_mod_vec[lay][ind], mat_inv, update_vec[lay], pos, pos
+                    )
+                    self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, (lay, ind), new_det)
+                    new_in = utils.WoodburyInverter.update_index(
+                        self._wi_gamma_in_mod_vec[lay][ind], update_vec[lay], pos, pos
+                    )
+                    self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (lay, ind), new_in)
+                    new_out = utils.WoodburyInverter.update_index(
+                        self._wi_gamma_out_mod_vec[lay][ind], update_out, pos, pos
+                    )
+                    self._wi_gamma_out_mod_vec = backend.array_assign(self._wi_gamma_out_mod_vec, (lay, ind), new_out)
+                    inv_mags.append(xnp.max(xnp.abs(new_in)))
+                    inv_mags.append(xnp.max(xnp.abs(new_out)))
 
         # Single device->host read for the whole step (max over all per-tracker maxes).
         self._last_step_max_inv_mag = float(xnp.max(xnp.asarray(inv_mags)))

@@ -294,11 +294,16 @@ class MonteCarloEvaluator(Evaluator):
         """Warm up phase without measurement"""
 
         logger.debug("Starting MC warmup")
+        # Warmup does no measurements, so skip maintaining the measurement-only open-link ("mod") trackers
+        # on every accepted step; re-anchor them once from scratch before the measurement phase begins.
+        self.system.defer_mod_trackers = True
         while self.step < self.cfg.warmup_steps:
             if self.step % self.cfg.warmup_log_freq == 0:
                 logger.debug(f"Warmup: {self.step}")
             self.update()
             self.step += 1
+        self.system.defer_mod_trackers = False
+        self.system.reanchor_mod_trackers()
         logger.debug("Finished MC warmup")
 
     def run(self) -> None:
