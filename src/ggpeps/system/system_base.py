@@ -1355,9 +1355,7 @@ class System2DBase(ABC):
         unitcell_size: int,
         nparams: int,
         nonzero_mask: xnp.ndarray,
-        gamma_in_inv_vec: xnp.ndarray,
-        gamma_in_sys_vec: xnp.ndarray,
-        mat_d_inv_vec: xnp.ndarray,
+        wi_gamma_out_vec: xnp.ndarray,
         site_deriv_blocks: xnp.ndarray,
         virt_inds: xnp.ndarray,
         uc_mask: xnp.ndarray,
@@ -1368,8 +1366,13 @@ class System2DBase(ABC):
         reference implementation of this function lives at commit 3679276.
 
         The gradient is ``grad_a = -0.5 * Tr(deriv_d_a @ prod)`` with
-        ``prod = mat_d_inv_vec @ gamma_in_inv_vec @ gamma_in_sys_vec`` (per layer) and ``deriv_d_a`` the
+        ``prod = mat_d_inv @ wi_gamma_in @ gamma_in_sys`` (per layer) and ``deriv_d_a`` the
         virtual-virtual block of ``d gamma_maj_sys / d theta_a``.
+
+        ``prod`` is not computed here: since ``gamma_in_sys`` is a pure-state covariance
+        (:math:`\Gamma^2 = -1`, each link block is a pure gauged projector state),
+        ``mat_d_inv @ (mat_d_inv - gamma_in_sys)^{-1} @ gamma_in_sys = (1 - \Gamma D)^{-1}\Gamma
+        = -(D + \Gamma)^{-1} = -wi_gamma_out``, which is already tracked incrementally.
 
         Block-structured evaluation (exploited structure): ``deriv_d_a`` is block-diagonal per site, and
         every site in a unit-cell class shares one *identical* diagonal block -- the site-level derivative
@@ -1379,8 +1382,7 @@ class System2DBase(ABC):
         ``grad_a = -0.5 * Tr(site_deriv_block_a @ prod_sum)`` where
         ``prod_sum = sum over sites s in the unit-cell group of prod[virt_inds[s], virt_inds[s]]``.
         This replaces the 20 full-system-sized traces of the previous dense implementation with one small
-        per-site trace per parameter. (The dense triple product ``prod`` is still formed here; a later step
-        removes the need for the dense derivative stack entirely.)
+        per-site trace per parameter.
 
         Args:
             nlayer (int): Number of layers
@@ -1388,10 +1390,8 @@ class System2DBase(ABC):
             nparams (int): Number of parameters per (layer, unit-cell) site
             nonzero_mask (xnp.ndarray): (nlayer, unitcell_size, nparams) float mask; 0 for parameters forced
                 to zero by the ansatz (their gradient is not used), 1 otherwise.
-            gamma_in_inv_vec (xnp.ndarray): the system's wi_gamma_in_vec, i.e. (mat_d^-1 - gamma_in_sys)^-1,
-                per layer
-            gamma_in_sys_vec (xnp.ndarray):
-            mat_d_inv_vec (xnp.ndarray): Vector of inverses of mat_d
+            wi_gamma_out_vec (xnp.ndarray): the system's wi_gamma_out_vec, i.e. (mat_d + gamma_in_sys)^-1,
+                per layer (equals ``-prod``, see above).
             site_deriv_blocks (xnp.ndarray): (nlayer, unitcell_size, nparams, modes_per_site, modes_per_site)
                 virtual-block site-level parameter derivatives.
             virt_inds (xnp.ndarray): (nsites, modes_per_site) int; per-site virtual-mode indices, ordered
@@ -1404,11 +1404,8 @@ class System2DBase(ABC):
         dest_grad = xnp.zeros((nlayer, unitcell_size, nparams))
 
         for layerind in range(nlayer):
-            gamma_in_inv = gamma_in_inv_vec[layerind]
-            mat_d_inv = mat_d_inv_vec[layerind]
-            gamma_in_sys = gamma_in_sys_vec[layerind]
-
-            prod = mat_d_inv @ gamma_in_inv @ gamma_in_sys
+            # prod = mat_d_inv @ wi_gamma_in @ gamma_in_sys = -(D + gamma_in)^-1 (pure-state identity).
+            prod = -wi_gamma_out_vec[layerind]
 
             # Diagonal per-site blocks of prod: (nsites, modes_per_site, modes_per_site)
             site_blocks = prod[virt_inds[:, :, None], virt_inds[:, None, :]]
@@ -1583,9 +1580,7 @@ class System2DBase(ABC):
                 self.cfg.unitcell_size,
                 len(self.symbolvec),
                 nonzero_mask,
-                self.wi_gamma_in_vec,
-                self.gamma_in_sys_vec,
-                self.mat_d_inv_vec,
+                self.wi_gamma_out_vec,
                 self.grad_norm_site_deriv_blocks,
                 virt_inds,
                 uc_mask,
@@ -1793,14 +1788,11 @@ class System2DBase(ABC):
         symbolvec: tuple,
         el_energy_vec: xnp.ndarray,
         mat_b_mod_vec: xnp.ndarray,
-        gamma_in_sys_mod_vec: xnp.ndarray,
         covmat_out_mod_vec: xnp.ndarray,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
         lognorm_default_vec: xnp.ndarray,
-        gamma_in_mod_inv_vec: xnp.ndarray,
         gamma_out_mod_inv_vec: xnp.ndarray,
-        mat_d_mod_inv_vec: xnp.ndarray,
         d_mat_a_vec: xnp.ndarray,
         d_mat_b_vec: xnp.ndarray,
         d_mat_d_vec: xnp.ndarray,
@@ -2326,14 +2318,11 @@ class System2DBase(ABC):
                 tuple(self.cfg.symbolvec),
                 self.el_energy_op_vec,
                 self.mat_b_mod_vec,
-                self.gamma_in_sys_mod_vec,
                 self.covmat_out_mod_vec,
                 self.el_pfaffians,
                 self.norm_mod_vec,
                 self.lognorm_default_vec,
-                self.wi_gamma_in_mod_vec,
                 self.wi_gamma_out_mod_vec,
-                self.mat_d_mod_inv_vec,
                 d_mat_a_vec_vec,
                 d_mat_b_vec_vec,
                 d_mat_d_vec_vec,

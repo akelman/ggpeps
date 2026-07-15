@@ -352,14 +352,11 @@ class D2nSystem2D(System2DBase):
         symbolvec: tuple,
         el_energy_vec: xnp.ndarray,
         mat_b_mod_vec: xnp.ndarray,
-        gamma_in_sys_mod_vec: xnp.ndarray,
         covmat_out_mod_vec: xnp.ndarray,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
         lognorm_default_vec: xnp.ndarray,
-        gamma_in_mod_inv_vec: xnp.ndarray,
         gamma_out_mod_inv_vec: xnp.ndarray,
-        mat_d_mod_inv_vec: xnp.ndarray,
         d_mat_a_vec: xnp.ndarray,
         d_mat_b_vec: xnp.ndarray,
         d_mat_d_vec: xnp.ndarray,
@@ -399,10 +396,11 @@ class D2nSystem2D(System2DBase):
         d_covmat_out_virt_vec = xnp.zeros(shape)
 
         l, m, u, s = inds
-        # NOTE: from limited testing, it appears that masking these is not worth it, as that creates extra copies.
-        # But it could be worth it if some of the matmuls were moved out of here, to happen once per eval.
         # (nlayer, nmodlinks, mod_virt_dim, mod_virt_dim)
-        prod_mod_norm_vec = mat_d_mod_inv_vec @ gamma_in_mod_inv_vec @ gamma_in_sys_mod_vec
+        # prod = mat_d_mod_inv @ wi_gamma_in_mod @ gamma_in_sys_mod = -(Dmod + gamma_in_mod)^-1:
+        # gamma_in_sys_mod is a pure-state covariance (Gamma^2 = -1), so
+        # (1 - Gamma D)^-1 Gamma = -(D + Gamma)^-1, which is the tracked wi_gamma_out_mod.
+        prod_mod_norm_vec = -gamma_out_mod_inv_vec
         # (nlayer, nmodlinks, mod_virt_dim, link_dim), take only the last k columns
         diff_times_b_vec = gamma_out_mod_inv_vec @ xnp.swapaxes(mat_b_mod_vec, -1, -2)[:, :, :, -k:]
         # (nlayer, nmodlinks, link_dim, mod_virt_dim), take only the last k rows
