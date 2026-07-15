@@ -164,17 +164,11 @@ class System2DBase(ABC):
         # TRACKER_INV_MAG_THRESH).
         self._steps_since_refresh: int = 0
         self._last_step_max_inv_mag: float = 0.0
-        # Refresh cadence: read from the config when present (EvaluatorManager stamps it there per
-        # run, resolving the per-ansatz default), else fall back to 0 = magnitude-guard-only. That
-        # is the safe minimal default for ad-hoc/direct construction: the guard protects correctness
-        # while the periodic re-anchor is only a long-run heartbeat (drift is ~1e-13 over thousands
-        # of normal steps). See update_gauge_ind for the >0 / ==0 / <0 mode semantics.
         self.tracker_refresh_interval: int = getattr(self.cfg, "tracker_refresh_interval", 0)
 
         # When True (set by the evaluator around the warmup loop), _update_gauge_ind skips maintaining the
         # open-link ("mod") family (gamma_in_sys_mod + wi_gamma_*_mod + incdet_mod), which is consumed only
-        # by measurements. warmup has no measurements, so those updates are pure waste there. The mod family
-        # is re-anchored once from scratch (reanchor_mod_trackers) when the flag is cleared at warmup end.
+        # by measurements.
         self.defer_mod_trackers: bool = False
 
         return
