@@ -137,6 +137,7 @@ def reorder_parameter_vector(
 
 # ==== Parameter name helpers ====
 
+
 def parameter_names(order: ParameterOrder) -> tuple[str, ...]:
     """Return normalized parameter names as strings.
 
@@ -182,12 +183,26 @@ LEGACY_Z2_PARAMETER_ORDERS = {
     ),
     "legacy_g2c_f2c": (
         (
-            "t1r", "y1r", "z1r",
-            "t2r", "y2r", "z2r",
-            "ar", "br", "cr", "dr",
-            "t1i", "y1i", "z1i",
-            "t2i", "y2i", "z2i",
-            "ai", "bi", "ci", "di",
+            "t1r",
+            "y1r",
+            "z1r",
+            "t2r",
+            "y2r",
+            "z2r",
+            "ar",
+            "br",
+            "cr",
+            "dr",
+            "t1i",
+            "y1i",
+            "z1i",
+            "t2i",
+            "y2i",
+            "z2i",
+            "ai",
+            "bi",
+            "ci",
+            "di",
         ),
         {
             "ar": "a12r",
@@ -203,24 +218,78 @@ LEGACY_Z2_PARAMETER_ORDERS = {
     ),
     "legacy_g4c_f4c": (
         (
-            "t1r", "t2r", "t3r", "t4r",
-            "y1r", "y2r", "y3r", "y4r",
-            "z1r", "z2r", "z3r", "z4r",
-            "a12r", "b12r", "c12r", "d12r",
-            "a13r", "b13r", "c13r", "d13r",
-            "a14r", "b14r", "c14r", "d14r",
-            "a23r", "b23r", "c23r", "d23r",
-            "a24r", "b24r", "c24r", "d24r",
-            "a34r", "b34r", "c34r", "d34r",
-            "t1i", "t2i", "t3i", "t4i",
-            "y1i", "y2i", "y3i", "y4i",
-            "z1i", "z2i", "z3i", "z4i",
-            "a12i", "b12i", "c12i", "d12i",
-            "a13i", "b13i", "c13i", "d13i",
-            "a14i", "b14i", "c14i", "d14i",
-            "a23i", "b23i", "c23i", "d23i",
-            "a24i", "b24i", "c24i", "d24i",
-            "a34i", "b34i", "c34i", "d34i",
+            "t1r",
+            "t2r",
+            "t3r",
+            "t4r",
+            "y1r",
+            "y2r",
+            "y3r",
+            "y4r",
+            "z1r",
+            "z2r",
+            "z3r",
+            "z4r",
+            "a12r",
+            "b12r",
+            "c12r",
+            "d12r",
+            "a13r",
+            "b13r",
+            "c13r",
+            "d13r",
+            "a14r",
+            "b14r",
+            "c14r",
+            "d14r",
+            "a23r",
+            "b23r",
+            "c23r",
+            "d23r",
+            "a24r",
+            "b24r",
+            "c24r",
+            "d24r",
+            "a34r",
+            "b34r",
+            "c34r",
+            "d34r",
+            "t1i",
+            "t2i",
+            "t3i",
+            "t4i",
+            "y1i",
+            "y2i",
+            "y3i",
+            "y4i",
+            "z1i",
+            "z2i",
+            "z3i",
+            "z4i",
+            "a12i",
+            "b12i",
+            "c12i",
+            "d12i",
+            "a13i",
+            "b13i",
+            "c13i",
+            "d13i",
+            "a14i",
+            "b14i",
+            "c14i",
+            "d14i",
+            "a23i",
+            "b23i",
+            "c23i",
+            "d23i",
+            "a24i",
+            "b24i",
+            "c24i",
+            "d24i",
+            "a34i",
+            "b34i",
+            "c34i",
+            "d34i",
         ),
         {},
         4,
@@ -315,6 +384,7 @@ def make_z2_1copy_pure_gauge_config(*args, **kwargs):
     kwargs["unitcell_size"] = 1
     kwargs["enforce_u1_symmetry"] = True
     return system.Z2System2D_Config(*args, ncopy=1, **kwargs)
+
 
 # ========== Utility Functions ====================
 
@@ -1069,33 +1139,28 @@ class WoodburyInverter:
     def update_index(ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """
         Update the inverse of the matrix A using the Woodbury formula, given indices indicating the positions in A
-        where the update M is placed. This is done by generating the U and V matrix for the update method.
+        where the update M is placed (U/V are identity blocks at (indi, indj)).
+
+        Woodbury: ``(A + UMV)^-1 = A^-1 - (A^-1 U) (I + M V A^-1 U)^-1 (M V A^-1)``.
+        Because U/V are identity blocks, ``A^-1 U`` / ``V A^-1`` are just column/row blocks of
+        ainv at indi/indj, read with ``backend.take_block`` (numpy slice / jax gather with a
+        traced index, so jit compiles once) -- no placement matmuls; only the final rank-k
+        update is O(D^2 k).
 
         Args:
             ainv (xnp.ndarray): the matrix to which to apply the update
-            mat (xnp.ndarray): a stack of matrices M with arbitrary leading dimensions matching self.ainv
+            m (xnp.ndarray): a stack of matrices M with arbitrary leading dimensions matching ainv.
                 This is a stack of the local update matrices for A.
             indi (int): Index in the first dimension of A where the update m is placed.
             indj (int): Index in the second dimension of A where the update m is placed.
         Returns:
             xnp.ndarray: Updated inverse matrix (A+UMV)^{-1}
         """
-        # Construct two matrices to shift m to the correct position in A.
         m_m, n_m = m.shape[-2:]
-        m_a, n_a = ainv.shape[-2:]
-
-        # u2d[r,k] = 1 where row r == indi + k -> identity block the size of m, starting at row indi.
-        # Built by comparison (not a Python slice(indi, ...)), so indi may be a jax tracer -> no per-index recompile.
-        u2d = xnp.where(xnp.arange(m_a)[:, None] == indi + xnp.arange(m_m)[None, :], 1.0, 0.0)
-        # v2d[k,c] = 1 where col c == indj + k -> identity block the size of m, starting at col indj.
-        v2d = xnp.where(xnp.arange(n_a)[None, :] == indj + xnp.arange(n_m)[:, None], 1.0, 0.0)
-        # Broadcast the 2-D placement matrices over m's leading batch dims so the update matmuls batch.
-        u = xnp.broadcast_to(u2d, m.shape[:-2] + (m_a, m_m))
-        v = xnp.broadcast_to(v2d, m.shape[:-2] + (n_m, n_a))
-
-        # Compute the update
-        updated = WoodburyInverter.update(ainv, u, m, v)
-        return updated
+        ainv_u = backend.take_block(ainv, indi, m_m, -1)  # A^{-1} @ U
+        m_v_ainv = m @ backend.take_block(ainv, indj, n_m, -2)  # (M @ V) @ A^{-1}
+        small = xnp.linalg.inv(xnp.eye(m_m) + backend.take_block(m_v_ainv, indi, m_m, -1))
+        return ainv - (ainv_u @ small) @ m_v_ainv
 
 
 # =========================== IncDeterminant ===============================
@@ -1159,8 +1224,13 @@ class IncLogAbsDeterminant:
     @maybe_jit(static_argnames=[])  # indi/indj are traced, not static -> jit compiles once, not per (indi,indj)
     def update_index(detval: xnp.ndarray, ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma,
-        given indices indicating the positions in A where the update M is placed.
-        This is done by generating the U and V matrix for the update method.
+        given indices indicating the positions in A where the update M is placed
+        (U/V are identity blocks at (indi, indj)).
+
+        Determinant lemma: ``det(A + UMV) = det(A) * det(I + V A^-1 U M)``.
+        V @ A^{-1} @ U is just the (indj, indi) block of A^{-1}, read with ``backend.take_block``
+        (numpy slice / jax gather with a traced index, so jit compiles once): the whole update is
+        a k x k block + slogdet -- no O(D^2 k) matmuls at all.
 
         Args:
             ainv (xnp.ndarray): Inverse of the matrix A
@@ -1168,24 +1238,10 @@ class IncLogAbsDeterminant:
             indi (int): Index in the first dimension of A where the update m is placed.
             indj (int): Index in the second dimension of A where the update m is placed
         """
-
-        # Construct two matrices to shift M to the correct position in A.
-        # Traced-index-safe one-hot placement (see WoodburyInverter.update_index) so indi/indj
-        # can be traced -> compiles ONCE instead of per (indi,indj) pair.
         m_m, n_m = m.shape[-2:]
-        m_a, n_a = ainv.shape[-2:]
-
-        # u2d[r,k] = 1 where row r == indi + k -> identity block the size of m, starting at row indi.
-        # Built by comparison (not a Python slice(indi, ...)), so indi may be a jax tracer -> no per-index recompile.
-        u2d = xnp.where(xnp.arange(m_a)[:, None] == indi + xnp.arange(m_m)[None, :], 1.0, 0.0)
-        # v2d[k,c] = 1 where col c == indj + k -> identity block the size of m, starting at col indj.
-        v2d = xnp.where(xnp.arange(n_a)[None, :] == indj + xnp.arange(n_m)[:, None], 1.0, 0.0)
-        # Broadcast the 2-D placement matrices over m's leading batch dims so the update matmuls batch.
-        u = xnp.broadcast_to(u2d, m.shape[:-2] + (m_a, m_m))
-        v = xnp.broadcast_to(v2d, m.shape[:-2] + (n_m, n_a))
-
-        detval = IncLogAbsDeterminant.update(detval, ainv, u, m, v)
-        return detval
+        middle = backend.take_block(backend.take_block(ainv, indj, n_m, -2), indi, m_m, -1)
+        _, logdet = xnp.linalg.slogdet(xnp.eye(n_m) + middle @ m)
+        return detval + logdet
 
 
 # Not used (though still appears in tests)

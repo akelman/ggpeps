@@ -140,6 +140,12 @@ class BackendNumpy(BackendBase):
         return mat
 
     @staticmethod
+    def take_block(mat, start, size, axis):
+        index = [slice(None)] * mat.ndim
+        index[axis] = slice(start, start + size)
+        return mat[tuple(index)]
+
+    @staticmethod
     def array_add(mat, inds, val):
         mat[inds] += val
         return mat
