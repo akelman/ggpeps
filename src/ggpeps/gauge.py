@@ -23,6 +23,7 @@ class GaugeGroup(ABC):
         group_order (int): Total number of group elements.
         el_mult_factor (float): Uniform prefactor for the electric energy operator.
         el_offset (int): Offset used to keep the electric energy non-negative.
+        mag_offset (int): Offset used to keep the magnetic energy non-negative.
         group_elements_for_el_energy (tuple[np.ndarray, ...]): Group elements that contribute
             non-zero weight to the electric energy.
     """
@@ -32,6 +33,7 @@ class GaugeGroup(ABC):
     group_order: int
     el_mult_factor: float
     el_offset: int
+    mag_offset: int
     group_elements_for_el_energy: tuple[np.ndarray, ...]
 
     @abstractmethod

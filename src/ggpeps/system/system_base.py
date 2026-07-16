@@ -1669,6 +1669,9 @@ class System2DBase(ABC):
         idxarr_vec: IdxGroup,
         coeffs_vec: CoeffsVec,
         rotmat_vec: xnp.ndarray,
+        sp_ii: xnp.ndarray,
+        sp_jj: xnp.ndarray,
+        sp_vals: xnp.ndarray,
     ) -> xnp.ndarray:
         """Compute the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
