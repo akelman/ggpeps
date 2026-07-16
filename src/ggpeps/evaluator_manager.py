@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Optional, Union
 
 import ray
 import copy
@@ -86,10 +86,17 @@ class EvaluatorManager:
         system_cfg: Config2DBase,
         cfg: Union[MonteCarloEvaluatorConfig, ExactEvaluatorConfig, NEVMC_EvaluatorConfig],
         nrunner: int = 0,
+        tracker_refresh_interval: Optional[int] = None,
     ):
 
         self.system_cls = system_cls
         self.system_cfg = system_cfg
+        # Single control point for the incremental-tracker refresh cadence: when provided, stamp it
+        # onto system_cfg so every system built from it (here and in the deepcopied configs handed to
+        # Ray runners) picks it up via System2DBase's getattr hook. If None, the system falls back to
+        # its own default (magnitude-guard-only). See update_gauge_ind for the mode semantics.
+        if tracker_refresh_interval is not None:
+            self.system_cfg.tracker_refresh_interval = tracker_refresh_interval
         self.cfg = cfg
         self.nrunner = nrunner
 

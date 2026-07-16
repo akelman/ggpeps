@@ -15,8 +15,9 @@ import ggpeps
 from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
-from ggpeps.system.config_base import Config2DBase, IdxVec, CoeffsVec, ConstantsVec
+from ggpeps.system.config_base import Config2DBase, IdxGroup, CoeffsVec, ConstantsVec
 from ggpeps.modearray import generate_permutation_matrix
+from ggpeps.system import overlap as ov
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
@@ -93,6 +94,7 @@ class System2DBase(ABC):
         self._det_mat_d_mod_vec: Optional[xnp.ndarray] = None
         self._mat_d_mod_inv_vec: Optional[xnp.ndarray] = None
         self._deriv_mod_mats: Optional[tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]] = None
+        self._dmatd_trace_sparse: Optional[tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]] = None
         # Electric energy intermediate values - if we compute the electric energy,
         # we store intermediate values to be reused in the gradient calculation
         self._covmat_out_mod_vec: Optional[xnp.ndarray] = None
@@ -141,14 +143,36 @@ class System2DBase(ABC):
 
         # Woodbury Update and Matrix Inversion
         self._wi_gamma_in_vec: Optional[xnp.ndarray] = None  # Tracks (D^-1 - gammain)^-1
-        self._wi_gamma_out_vec: Optional[xnp.ndarray] = None  # Tracks (D - gammain)^-1
+        self._wi_gamma_out_vec: Optional[xnp.ndarray] = None  # Tracks (D + gammain)^-1
         self._incdet_vec: Optional[xnp.ndarray] = None  # Tracks det(D^-1 - gammain)
 
         self._wi_gamma_in_mod_vec: Optional[xnp.ndarray] = None  # Tracks (Dmod^-1 - gammain)^-1
-        self._wi_gamma_out_mod_vec: Optional[xnp.ndarray] = None  # Tracks (Dmod - gammain)^-1
+        self._wi_gamma_out_mod_vec: Optional[xnp.ndarray] = None  # Tracks (Dmod + gammain)^-1
         self._incdet_mod_vec: Optional[xnp.ndarray] = None  # Tracks det(Dmod^-1 - gammain)
 
+        # Drift control for the incremental (Woodbury/IncDet) trackers.
+        # The closed and modified trackers are maintained incrementally for cheaper single-link
+        # updates, but the per-step error accumulates and is amplified through near-singular updates.
+        # To keep it bounded, the public update_gauge_ind wrapper re-anchors BOTH families from
+        # scratch (a) periodically every ``tracker_refresh_interval`` gauge steps and (b) whenever
+        # the last incremental step left a near-singular tracked inverse (its largest entry exceeds
+        # TRACKER_INV_MAG_THRESH).
+        self._steps_since_refresh: int = 0
+        self._last_step_max_inv_mag: float = 0.0
+        # Refresh cadence: read from the config when present (EvaluatorManager stamps it there per
+        # run, resolving the per-ansatz default), else fall back to 0 = magnitude-guard-only. That
+        # is the safe minimal default for ad-hoc/direct construction: the guard protects correctness
+        # while the periodic re-anchor is only a long-run heartbeat (drift is ~1e-13 over thousands
+        # of normal steps). See update_gauge_ind for the >0 / ==0 / <0 mode semantics.
+        self.tracker_refresh_interval: int = getattr(self.cfg, "tracker_refresh_interval", 0)
+
         return
+
+    # Magnitude guard: re-anchor immediately if the largest entry of a tracked inverse exceeds this
+    # threshold. A large inverse <=> a near-singular tracked matrix, where the incremental Woodbury
+    # update loses precision; the from-scratch recompute is backward-stable and matches even
+    # where the inverse is genuinely large.
+    TRACKER_INV_MAG_THRESH: float = 1e2
 
     def invalidate_gauge_update(self) -> None:
         """Reset the values of computed quantitities to avoid spillover from previous computations.
@@ -181,6 +205,7 @@ class System2DBase(ABC):
         self._norm_mod_vec = None
         self._el_pfaffians = None
         self._lognorm_default_vec = None
+
         return
 
     @property
@@ -694,8 +719,7 @@ class System2DBase(ABC):
                 self.cfg.nlayer,
                 self.cfg.mod_link_inds,
                 self.covmat_out_mod_vec,
-                self.cfg.gaugemgr.group_elements_for_el_energy,
-                self.cfg.idx_vec,
+                self.cfg.uniq_idx_vec,
             )
         return self._el_pfaffians
 
@@ -705,53 +729,50 @@ class System2DBase(ABC):
         nlayer: int,
         mod_link_inds: tuple[int, ...],
         covmat_out_virt_vec: xnp.ndarray,
-        group_elements_for_el_energy: tuple[xnp.ndarray, ...],
-        idxarr_vec: IdxVec,
+        idxarr_vec: IdxGroup,
     ) -> xnp.ndarray:
         """Compute the pfaffians of the modified covariance matrices used for the electric energy and its derivative.
         This function returns a vector over layers and links of these pfaffians.
-        The pfaffians are not multiplied by the prefactors included in idxarr_vec.
+        The pfaffians are not multiplied by any prefactors.
+
+        idxarr_vec is the unique index structure (cfg.uniq_idx_vec): the Pfaffian of a stored
+        monomial depends only on (layer, link, index tuple), so each unique tuple is computed once
+        and the per-group-element coefficients are applied by the el_energy and el_energy_grad functions
+        (via cfg.uniq_coeffs_vec).
 
         Returns:
-            xnp.ndarray: a vector of pfaffians
+            xnp.ndarray: pfaffians, shape (nlayer, num_el_links, num_size_classes, num_terms_max)
         """
 
         num_el_links = len(mod_link_inds)  # number of links to calculate the electric energy on.
-        num_terms_per_size = max(
-            len(size) for group_element in idxarr_vec for layer in group_element for link in layer for size in link
-        )
-        # Max terms per layer; elements may vary in term count.
-        num_group_elements = len(group_elements_for_el_energy)
-        num_lens = max(len(link) for group_element in idxarr_vec for layer in group_element for link in layer)
-        # Max terms per link; elements may vary in term count.
-        el_pfaffians = xnp.zeros((num_group_elements, nlayer, num_el_links, num_lens, num_terms_per_size))
+        num_terms_per_size = max(len(size) for layer in idxarr_vec for link in layer for size in link)
+        # Max terms per size class; size classes may vary in term count.
+        num_lens = max(len(link) for layer in idxarr_vec for link in layer)
+        el_pfaffians = xnp.zeros((nlayer, num_el_links, num_lens, num_terms_per_size))
 
-        # TODO: vectorize!
-        for group_element_idx in range(num_group_elements):
-            idxarr_vec_group_element = idxarr_vec[group_element_idx]
-            for layerind in range(nlayer):
-                layer_idxs = idxarr_vec_group_element[layerind]  # tuple of tuples of indices
+        for layerind in range(nlayer):
+            layer_idxs = idxarr_vec[layerind]  # tuple of tuples of indices
 
-                covmat_out_virt_linkvec = covmat_out_virt_vec[layerind]
+            covmat_out_virt_linkvec = covmat_out_virt_vec[layerind]
 
-                # Iterate over the links
-                for link_pos, covmat_out_virt in enumerate(covmat_out_virt_linkvec):
-                    link_idxs = layer_idxs[link_pos]
+            # Iterate over the links
+            for link_pos, covmat_out_virt in enumerate(covmat_out_virt_linkvec):
+                link_idxs = layer_idxs[link_pos]
 
-                    # Go over the different lengthed tuples of tuples of indices
-                    for size_idxs_ind, size_idxs in enumerate(link_idxs):
-                        inds_batch = xnp.asarray(size_idxs)
-                        rows = inds_batch[:, :, None]
-                        cols = inds_batch[:, None, :]
-                        submatrices = covmat_out_virt[rows, cols]  # shape (num_terms, size, size)
+                # Go over the different lengthed tuples of tuples of indices
+                for size_idxs_ind, size_idxs in enumerate(link_idxs):
+                    inds_batch = xnp.asarray(size_idxs)
+                    rows = inds_batch[:, :, None]
+                    cols = inds_batch[:, None, :]
+                    submatrices = covmat_out_virt[rows, cols]  # shape (num_terms, size, size)
 
-                        pfavals = backend.pfaffian_vectorized(submatrices)
+                    pfavals = backend.pfaffian_vectorized(submatrices)
 
-                        el_pfaffians = backend.array_assign(
-                            el_pfaffians,
-                            (group_element_idx, layerind, link_pos, size_idxs_ind, slice(0, len(pfavals))),
-                            pfavals,
-                        )
+                    el_pfaffians = backend.array_assign(
+                        el_pfaffians,
+                        (layerind, link_pos, size_idxs_ind, slice(0, len(pfavals))),
+                        pfavals,
+                    )
 
         return el_pfaffians
 
@@ -853,24 +874,32 @@ class System2DBase(ABC):
             gamma_in_sys_listvec.append(gamma_in_sys)
 
         gamma_in_sys_vec = xnp.array(gamma_in_sys_listvec)
+        # Set gamma_in_sys_vec now so the from-scratch tracker helpers below can read it via the
+        # property without re-triggering initialization.
+        self._gamma_in_sys_vec = gamma_in_sys_vec
+
+        # Build both tracker families from scratch and reset the drift-control counter
+        closed_trackers = self._compute_closed_trackers()
+        mod_trackers = self._compute_mod_trackers()
+        self._steps_since_refresh = 0
+
+        return (gamma_in_sys_vec, closed_trackers, mod_trackers)
+
+    def _compute_closed_trackers(self) -> tuple:
+        """Recompute the closed (full-system) Woodbury inverses and incremental determinant from
+        scratch from the CURRENT ``gamma_in_sys_vec``.
+
+
+        Returns:
+            tuple: ``(wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec)`` -- the closed Woodbury
+                inverses of ``mat_d_inv - gamma_in`` and ``mat_d + gamma_in`` and the log-abs
+                determinant of ``mat_d_inv - gamma_in``, all for the current gauge field.
+        """
+        gamma_in_sys_vec = self.gamma_in_sys_vec
         wi_gamma_in_vec = xnp.linalg.inv(self.mat_d_inv_vec - gamma_in_sys_vec)
-        wi_gamma_out_vec = xnp.linalg.inv(self.mat_d_vec - gamma_in_sys_vec)
+        wi_gamma_out_vec = xnp.linalg.inv(self.mat_d_vec + gamma_in_sys_vec)
         _, incdet_vec = xnp.linalg.slogdet(self.mat_d_inv_vec - gamma_in_sys_vec)
-
-        # Initialize the modified gamma_in_sys and trackers for the full system
-        gamma_in_sys_mod_layervec_linkvec = self._extract_gamma_in_sys_mod_vec(
-            self.cfg.mod_link_inds, gamma_in_sys_vec
-        )
-
-        wi_gamma_in_mod_vec = xnp.linalg.inv(self.mat_d_mod_inv_vec - gamma_in_sys_mod_layervec_linkvec)
-        wi_gamma_out_mod_vec = xnp.linalg.inv(self.mat_d_mod_vec - gamma_in_sys_mod_layervec_linkvec)
-        _, incdet_mod_vec = xnp.linalg.slogdet(self.mat_d_mod_inv_vec - gamma_in_sys_mod_layervec_linkvec)
-
-        return (
-            gamma_in_sys_vec,
-            (wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec),
-            (wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec),
-        )
+        return wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec
 
     @property
     def gamma_in_sys_vec(self) -> xnp.ndarray:
@@ -982,6 +1011,54 @@ class System2DBase(ABC):
         gamma_in_sys_mod_linkvec_layervec = res[2]  # extract the "virtual-virtual" part
         return gamma_in_sys_mod_linkvec_layervec
 
+    def _compute_mod_trackers(self) -> tuple:
+        """Recompute the modified (open-link) Woodbury inverses and incremental determinant
+        from scratch from the CURRENT ``gamma_in_sys_vec``.
+
+        This is the from-scratch re-anchor point for the modified trackers. The modified objects
+        ARE tracked incrementally (see the subclasses' ``_update_gauge_ind``) for a cheaper
+        single-link update, but their incremental Woodbury/IncDet update could drift catastrophically
+        along an eval. To bound that drift ``refresh_trackers`` re-anchors from scratch
+        here -- periodically and on the magnitude guard (see ``update_gauge_ind``).
+        ``gamma_in_sys_vec`` itself is maintained exactly, so recomputing the modified objects from
+        it is correct and numerically stable.
+
+        Returns:
+            tuple: ``(wi_gamma_in_mod, wi_gamma_out_mod, incdet_mod)`` -- the open-link Woodbury
+                inverses of ``mat_d_mod_inv - gamma_in_mod`` and ``mat_d_mod + gamma_in_mod`` and the
+                log-abs determinant of ``mat_d_mod_inv - gamma_in_mod``, stacked over (layer, link).
+        """
+        gamma_in_sys_mod = self.gamma_in_sys_mod_vec
+        diff_in = self.mat_d_mod_inv_vec - gamma_in_sys_mod
+        wi_gamma_in_mod = xnp.linalg.inv(diff_in)
+        wi_gamma_out_mod = xnp.linalg.inv(self.mat_d_mod_vec + gamma_in_sys_mod)
+        _, incdet_mod = xnp.linalg.slogdet(diff_in)
+        return wi_gamma_in_mod, wi_gamma_out_mod, incdet_mod
+
+    # ---------------- Incremental tracker update + drift control ----------------
+
+    def refresh_trackers(self) -> None:
+        """Re-anchor BOTH the closed and modified incremental trackers from scratch.
+
+        The closed (`wi_gamma_in/out_vec`, `incdet_vec`) and modified (`wi_gamma_*_mod_vec`,
+        `incdet_mod_vec`) trackers are maintained incrementally by ``_update_gauge_ind`` for the
+        cheaper single-link update, but the per-step error accumulates along a long gauge chain. This
+        recomputes both families from the CURRENT ``gamma_in_sys_vec`` (which is maintained exactly),
+        bounding that drift. Called from the public
+        ``update_gauge_ind`` periodically and on the magnitude guard; resets the step counter.
+
+        Returns:
+            None
+        """
+        self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = self._compute_closed_trackers()
+        self.weight = 0.5 * np.sum(self._incdet_vec)
+        (
+            self._wi_gamma_in_mod_vec,
+            self._wi_gamma_out_mod_vec,
+            self._incdet_mod_vec,
+        ) = self._compute_mod_trackers()
+        self._steps_since_refresh = 0
+
     @property
     def incdet_mod_vec(self) -> xnp.ndarray:
         """Return the vector of incremental determinants for the modified matrices for the different layers.
@@ -991,13 +1068,11 @@ class System2DBase(ABC):
             xnp.ndarray: Array of incremental determinant trackers, over layers and links
         """
         if self._incdet_mod_vec is None:
-            self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_and_trackers()
-            self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
                 self._wi_gamma_in_mod_vec,
                 self._wi_gamma_out_mod_vec,
                 self._incdet_mod_vec,
-            ) = mod_tuple
+            ) = self._compute_mod_trackers()
         return self._incdet_mod_vec
 
     @property
@@ -1009,13 +1084,11 @@ class System2DBase(ABC):
             xnp.ndarray: Array of Woodbury inverters, over layers and links
         """
         if self._wi_gamma_in_mod_vec is None:
-            self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_and_trackers()
-            self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
                 self._wi_gamma_in_mod_vec,
                 self._wi_gamma_out_mod_vec,
                 self._incdet_mod_vec,
-            ) = mod_tuple
+            ) = self._compute_mod_trackers()
         return self._wi_gamma_in_mod_vec
 
     @property
@@ -1027,13 +1100,11 @@ class System2DBase(ABC):
             xnp.ndarray: Array of Woodbury inverters, over layers and links
         """
         if self._wi_gamma_out_mod_vec is None:
-            self._gamma_in_sys_vec, full_tuple, mod_tuple = self.initialize_gamma_in_and_trackers()
-            self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = full_tuple
             (
                 self._wi_gamma_in_mod_vec,
                 self._wi_gamma_out_mod_vec,
                 self._incdet_mod_vec,
-            ) = mod_tuple
+            ) = self._compute_mod_trackers()
         return self._wi_gamma_out_mod_vec
 
     ################## Computation of derivatives ######################
@@ -1458,16 +1529,35 @@ class System2DBase(ABC):
     def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray) -> None:
         """Update a gauge field at a given link index by a new value.
         This function can be called from outside the system, and so accepts a gauge field value as np.ndarray.
-        We convert here to xnp.ndarray.
+        We convert here to xnp.ndarray. After the incremental update it re-anchors the trackers from
+        scratch when the periodic interval elapsed or the magnitude guard fired.
 
         Args:
             link_ind (int): Link index of the gauge field to be updated
-            theta (np.array): New value for the gauge field
+            gauge_val (np.ndarray): New value for the gauge field
+
+        Returns:
+            None
         """
         theta = xnp.asarray(gauge_val)
         if not xnp.allclose(self.gaugefieldvec[link_ind], theta):
             # only actually do the update if it's a different gauge field
-            self._update_gauge_ind(link_ind, theta)
+            self._update_gauge_ind(link_ind, theta)  # incremental; sets self._last_step_max_inv_mag
+
+            # Re-anchor both tracker families from scratch to bound the incremental Woodbury/IncDet
+            # drift. Three modes via tracker_refresh_interval (set per run from EvaluatorManager /
+            # --tracker_refresh_interval):
+            #   > 0 : periodic every `interval` steps AND the magnitude guard (default; 1 == every step)
+            #   == 0: magnitude guard only, no periodic re-anchor ("no_periodic")
+            #   <  0: no refresh at all -- pure incremental, even if a tracked inverse blows up
+            interval = self.tracker_refresh_interval
+            if interval >= 0:
+                periodic_due = False
+                if interval > 0:
+                    self._steps_since_refresh += 1
+                    periodic_due = self._steps_since_refresh >= interval
+                if periodic_due or self._last_step_max_inv_mag > self.TRACKER_INV_MAG_THRESH:
+                    self.refresh_trackers()
 
     def update_gauge_full_system(self, gaugeconfig: list[np.ndarray]) -> None:
         """Replace all gauge fields on the links by the values given in gaugeconfig.
@@ -1576,9 +1666,12 @@ class System2DBase(ABC):
         grad_over_norm_vec: xnp.ndarray,
         inds: tuple,
         group_elements_for_el_energy: tuple[xnp.ndarray, ...],
-        idxarr_vec: IdxVec,
+        idxarr_vec: IdxGroup,
         coeffs_vec: CoeffsVec,
         rotmat_vec: xnp.ndarray,
+        sp_ii: xnp.ndarray,
+        sp_jj: xnp.ndarray,
+        sp_vals: xnp.ndarray,
     ) -> xnp.ndarray:
         """Compute the electric energy gradients.
         We start by calculating the electric energies, since these are needed for evaluating the gradients.
@@ -1748,7 +1841,9 @@ class System2DBase(ABC):
             float: magnetic energy
         """
         nplaq = self.cfg.lattice.nplaquettes
-        mag_energy = self.cfg.g_mag * 2 * (nplaq - self.mag_energy_op)  # The 2 is for the hermitian conjugate
+        mag_energy = (
+            self.cfg.g_mag * 2 * (nplaq * self.cfg.gaugemgr.mag_offset - self.mag_energy_op)
+        )  # The 2 is for the hermitian conjugate
         return mag_energy
 
     # Functions that return a term of the energy in the Hamiltonian, including all
@@ -1860,6 +1955,63 @@ class System2DBase(ABC):
             self._int_energy_op = xnp.sum(self.int_energy_op_vec)
         return self._int_energy_op
 
+    def _overlap_chi_per_layer(self, gamma_in_vec: xnp.ndarray) -> xnp.ndarray:
+        """chi_lay = Pf(M1+M2) Pf(Delta+M0) for each layer, given a full-system gauged link
+        covariance `gamma_in_vec` (shape (nlayer, dim, dim)). Returns complex (nlayer,)."""
+
+        mat_d = self.mat_d_vec
+        dim = gamma_in_vec.shape[-1]
+        m0 = xnp.asarray(ov.vacuum_covmat(dim))
+        chis = []
+        for lay in range(self.cfg.nlayer):
+            # Convert our covariance matrices to Bravyi's convention: M = -S Gamma S with
+            # S = diag(1,-1,...) flipping every second Majorana (our gamma^(2) = -c_Bravyi).
+            # See ov.to_bravyi_covmat. M0 is already supplied in Bravyi's convention
+            # (which is identical to ours in this case).
+            m1 = ov.to_bravyi_covmat(gamma_in_vec[lay])
+            m2 = ov.to_bravyi_covmat(mat_d[lay])
+            chis.append(ov.gaussian_overlap_chi(m1, m2, m0))
+        return xnp.array(chis)
+
+    def _overlap_gamma_in_with_modified_link(self, link_ind: int, gauge_val: xnp.ndarray) -> xnp.ndarray:
+        """Fresh copy of gamma_in_sys_vec with link `link_ind`'s block rebuilt for `gauge_val`.
+        Mirrors _update_gauge_ind's block construction but touches no trackers. No Woodbury."""
+        ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
+        coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
+        rotmat = self.generate_rotmat(self.cfg.ncopy, gauge_val, coord, dir)
+        gamma = xnp.array(self.gamma_in_sys_vec)  # copy (nlayer, dim, dim)
+        blockdim = rotmat.shape[0]
+        for layer in range(self.cfg.nlayer):
+            gamma_neutral = self.gamma_gauge_neutral_vec[layer][dir]
+            block = rotmat @ gamma_neutral @ xnp.transpose(rotmat)
+            inds = (layer, slice(ind_mat, ind_mat + blockdim), slice(ind_mat, ind_mat + blockdim))
+            gamma = backend.array_assign(gamma, inds, block)
+        return gamma
+
+    def _overlap_el_op_vec_for_elements(self, elements: tuple) -> xnp.ndarray:
+        """Per-(element, layer, measured-link) cross-overlap ratio conj(chi_lay(G')/chi_lay(G)),
+        where G' is the current config with link q's gauge value right-multiplied by `element`.
+        Shape (len(elements), nlayer, n_el_links). Drop-in for el_energy_op_vec."""
+        chi_G = self._overlap_chi_per_layer(self.gamma_in_sys_vec)  # (nlayer,)
+        out = []
+        for h in elements:
+            per_link = []
+            for q in self.cfg.mod_link_inds:
+                g_q = self.gaugefieldvec[q]
+                g_prime = xnp.asarray(g_q) @ xnp.asarray(h)  # g_q h
+                gamma_prime = self._overlap_gamma_in_with_modified_link(q, g_prime)
+                chi_Gp = self._overlap_chi_per_layer(gamma_prime)  # (nlayer,)
+                per_link.append(xnp.conj(chi_Gp / chi_G))  # (nlayer,)
+            out.append(xnp.transpose(xnp.array(per_link), (1, 0)))  # (nlayer, n_el_links)
+        return xnp.array(out)  # (n_h, nlayer, n_el_links)
+
+    def _compute_el_energy_op_vec_overlap(self) -> xnp.ndarray:
+        """Overlap drop-in for el_energy_op_vec, summed over the standard electric-energy group elements."""
+        # Pure gauge only.
+        if self.cfg.num_fermionic_layer != 0:
+            raise NotImplementedError("The overlap electric-energy path supports pure gauge only.")
+        return self._overlap_el_op_vec_for_elements(self.cfg.gaugemgr.group_elements_for_el_energy)
+
     # Functions that return the layer-resolved energies of each energy operator
     @property
     def el_energy_op_vec(self) -> xnp.ndarray:
@@ -1870,18 +2022,19 @@ class System2DBase(ABC):
             array: Layer-resolved electric energy w/o shift of shape (nlayer, len(self.cfg.mod_link_inds))
         """
         if self._el_energy_op_vec is None:
-            # This vector is the electric energy on a single link. Otherwise, we get a
-            # power of nlinks in the product and the electric energy term (with prefactors) gets negative
-            self._el_energy_op_vec = self._compute_el_energy_op_vec(
-                self.lognorm_default_vec,
-                self.cfg.mod_link_inds,
-                self.cfg.nlayer,
-                self.el_pfaffians,
-                self.norm_mod_vec,
-                self.cfg.gaugemgr.group_elements_for_el_energy,
-                self.cfg.coeffs_vec,
-                self.cfg.constants_vec,
-            )
+            if getattr(self.cfg, "el_method", "pfaffian") == "overlap":
+                self._el_energy_op_vec = self._compute_el_energy_op_vec_overlap()
+            else:
+                self._el_energy_op_vec = self._compute_el_energy_op_vec(
+                    self.lognorm_default_vec,
+                    self.cfg.mod_link_inds,
+                    self.cfg.nlayer,
+                    self.el_pfaffians,
+                    self.norm_mod_vec,
+                    self.cfg.gaugemgr.group_elements_for_el_energy,
+                    self.cfg.uniq_coeffs_vec,
+                    self.cfg.constants_vec,
+                )
         return self._el_energy_op_vec
 
     @property
@@ -1969,6 +2122,35 @@ class System2DBase(ABC):
             self._deriv_mod_mats = (dA, dB, dD)
         return self._deriv_mod_mats
 
+    def dmatd_trace_sparse(self, inds: tuple) -> tuple[xnp.ndarray, xnp.ndarray, xnp.ndarray]:
+        """Precompute the sparse (nonzero) structure of d_mat_d for the electric-gradient trace.
+
+        d_mat_d is a parameter-derivative, so it is INDEPENDENT of the gauge configuration and very
+        sparse (~1-3% nonzero for D6). The electric-gradient trace Tr(d_mat_d_a @ prod_a) therefore
+        only needs prod_a at the nonzero positions of d_mat_d_a. We precompute those positions and
+        values ONCE per evaluation (paramvec is fixed during an MC run) and reuse them every step.
+
+        Returns padded rectangular arrays (num_active, kmax): row indices, col indices, values.
+        Padding entries have value 0 (index 0), so they contribute nothing to the trace.
+
+        Args:
+            inds (tuple): the (l, m, u, s) mask indices of the non-zeroed params (as in deriv_mod_mats).
+        """
+        if self._dmatd_trace_sparse is None:
+            dD = np.asarray(self.deriv_mod_mats(inds)[2])  # (num_active, D, D), config-independent
+            na = dD.shape[0]
+            nzs = [np.argwhere(np.abs(dD[a]) > 1e-14) for a in range(na)]
+            kmax = max((nz.shape[0] for nz in nzs), default=1)
+            ii = np.zeros((na, kmax), dtype=np.int64)
+            jj = np.zeros((na, kmax), dtype=np.int64)
+            vals = np.zeros((na, kmax))
+            for a, nz in enumerate(nzs):
+                kk = nz.shape[0]
+                ii[a, :kk], jj[a, :kk] = nz[:, 0], nz[:, 1]
+                vals[a, :kk] = dD[a, nz[:, 0], nz[:, 1]]
+            self._dmatd_trace_sparse = (xnp.asarray(ii), xnp.asarray(jj), xnp.asarray(vals))
+        return self._dmatd_trace_sparse
+
     # Functions that return the layer-resolved gradients of each energy operator
     @property
     def el_energy_op_grad_vec(self) -> xnp.ndarray:
@@ -1983,6 +2165,8 @@ class System2DBase(ABC):
 
             # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
             d_mat_a_vec_vec, d_mat_b_vec_vec, d_mat_d_vec_vec = self.deriv_mod_mats((l, m, u, s))
+            # Sparse structure of d_mat_d for the electric-gradient trace (config-independent, cached).
+            sp_ii, sp_jj, sp_vals = self.dmatd_trace_sparse((l, m, u, s))
 
             rotmat_vec = xnp.stack(
                 [
@@ -2018,9 +2202,12 @@ class System2DBase(ABC):
                 self.grad_over_norm_vec,
                 (l, m, u, s),
                 self.cfg.gaugemgr.group_elements_for_el_energy,
-                self.cfg.idx_vec,
-                self.cfg.coeffs_vec,
+                self.cfg.uniq_idx_vec,
+                self.cfg.uniq_coeffs_vec,
                 rotmat_vec,
+                sp_ii,
+                sp_jj,
+                sp_vals,
             )
         return self._el_energy_op_grad_vec
 

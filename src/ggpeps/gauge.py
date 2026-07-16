@@ -23,6 +23,7 @@ class GaugeGroup(ABC):
         group_order (int): Total number of group elements.
         el_mult_factor (float): Uniform prefactor for the electric energy operator.
         el_offset (int): Offset used to keep the electric energy non-negative.
+        mag_offset (int): Offset used to keep the magnetic energy non-negative.
         group_elements_for_el_energy (tuple[np.ndarray, ...]): Group elements that contribute
             non-zero weight to the electric energy.
     """
@@ -32,6 +33,7 @@ class GaugeGroup(ABC):
     group_order: int
     el_mult_factor: float
     el_offset: int
+    mag_offset: int
     group_elements_for_el_energy: tuple[np.ndarray, ...]
 
     @abstractmethod
@@ -156,6 +158,13 @@ class ZNGauge(GaugeGroup):
         # To impose el_energy >= 0 in system:
         # el_energy = self.cfg.g_el *
         # (self.cfg.el_offset * nlinks - self.cfg.gaugemgr.el_mult_factor * self.el_energy_op)
+
+        self.mag_offset = 1
+        # The maximum value of the magnetic energy for a specific plaquette.
+        # To impose mag_energy >= 0 in system:
+        # mag_energy = (
+        #   self.cfg.g_mag * 2 * (nplaq * self.cfg.gaugemgr.mag_offset - self.mag_energy_op)
+        # )
 
     def get_random_gauge_value(self, rng_state: np.random.RandomState) -> np.ndarray:
         """
@@ -369,6 +378,13 @@ class D2nGauge(GaugeGroup):
         # To impose el_energy >= 0 in system:
         # el_energy = self.cfg.g_el *
         # (self.cfg.el_offset * nlinks - self.cfg.gaugemgr.el_mult_factor * self.el_energy_op)
+
+        self.mag_offset = 2
+        # The maximum value of the magnetic energy for a specific plaquette.
+        # To impose mag_energy >= 0 in system:
+        # mag_energy = (
+        #   self.cfg.g_mag * 2 * (nplaq * self.cfg.gaugemgr.mag_offset - self.mag_energy_op)
+        # )
 
     def get_representation(self, p: int, q: int) -> np.ndarray:
         """
@@ -661,9 +677,8 @@ class D2nGauge(GaugeGroup):
         factor_for_el = []
         for h in group_elements:
             pref = 0.0
-            h_inv = np.conjugate(np.transpose(h))
             for irrep in irreps:
-                irrep_character = self.get_irrep_character(h_inv, irrep)
+                irrep_character = self.get_irrep_character(h, irrep)
                 electric_energy_factor = self.get_electric_energy_factor(irrep)
                 dim_irrep = self.get_irrep_dimension(irrep)
                 pref += electric_energy_factor * irrep_character * dim_irrep
@@ -714,6 +729,7 @@ class Z2RepGauge2D(GaugeGroup):
         self.group_order = 2
         self.el_mult_factor, self.group_elements_for_el_energy = self.get_group_elements_and_factors_for_el_energy()
         self.el_offset = 2
+        self.mag_offset = 2
 
     # ---- group structure ---------------------------------------------------
     def get_representation(self, sign: int) -> np.ndarray:

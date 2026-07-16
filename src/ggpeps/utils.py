@@ -670,8 +670,8 @@ def derivative_pfaffian_vectorized(mat: xnp.ndarray, d_mat: xnp.ndarray, pfavals
     safe_mat = xnp.where(mask[..., None, None], mat, eye)
 
     inv_mat = xnp.linalg.inv(safe_mat)  # (N, M, M)
-    prod = inv_mat @ d_mat  # (N, M, M)
-    traces = xnp.trace(prod, axis1=-2, axis2=-1)  # (N,)
+    # trace(inv_mat @ d_mat) without forming the product
+    traces = trace_of_product((inv_mat, d_mat))  # (N,)
 
     res = 0.5 * pfavals * traces * mask
     return res
@@ -1024,7 +1024,7 @@ class WoodburyInverter:
         return ainv
 
     @staticmethod
-    @maybe_jit(static_argnames=["indi", "indj"])
+    @maybe_jit(static_argnames=[])  # indi/indj are traced, not static -> jit compiles once, not per (indi,indj)
     def update_index(ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """
         Update the inverse of the matrix A using the Woodbury formula, given indices indicating the positions in A
@@ -1039,24 +1039,18 @@ class WoodburyInverter:
         Returns:
             xnp.ndarray: Updated inverse matrix (A+UMV)^{-1}
         """
-        # Construct two matrices to shift m to the correct position in A
-
+        # Construct two matrices to shift m to the correct position in A.
         m_m, n_m = m.shape[-2:]
         m_a, n_a = ainv.shape[-2:]
 
-        # Identity broadcasted to batch
-        idmat = xnp.eye(m_m, n_m)
-        idmat = xnp.broadcast_to(idmat, m.shape)
-
-        # Build u
-        u = xnp.zeros(m.shape[:-2] + (m_a, m_m))
-        inds = (Ellipsis, slice(indi, indi + m_m), slice(None))
-        u = backend.array_assign(u, inds, idmat)
-
-        # Build v
-        v = xnp.zeros(m.shape[:-2] + (n_m, n_a))
-        inds = (Ellipsis, slice(None), slice(indj, indj + n_m))
-        v = backend.array_assign(v, inds, idmat)
+        # u2d[r,k] = 1 where row r == indi + k -> identity block the size of m, starting at row indi.
+        # Built by comparison (not a Python slice(indi, ...)), so indi may be a jax tracer -> no per-index recompile.
+        u2d = xnp.where(xnp.arange(m_a)[:, None] == indi + xnp.arange(m_m)[None, :], 1.0, 0.0)
+        # v2d[k,c] = 1 where col c == indj + k -> identity block the size of m, starting at col indj.
+        v2d = xnp.where(xnp.arange(n_a)[None, :] == indj + xnp.arange(n_m)[:, None], 1.0, 0.0)
+        # Broadcast the 2-D placement matrices over m's leading batch dims so the update matmuls batch.
+        u = xnp.broadcast_to(u2d, m.shape[:-2] + (m_a, m_m))
+        v = xnp.broadcast_to(v2d, m.shape[:-2] + (n_m, n_a))
 
         # Compute the update
         updated = WoodburyInverter.update(ainv, u, m, v)
@@ -1121,7 +1115,7 @@ class IncLogAbsDeterminant:
         return detval + logdet
 
     @staticmethod
-    @maybe_jit(static_argnames=["indi", "indj"])
+    @maybe_jit(static_argnames=[])  # indi/indj are traced, not static -> jit compiles once, not per (indi,indj)
     def update_index(detval: xnp.ndarray, ainv: xnp.ndarray, m: xnp.ndarray, indi: int, indj: int) -> xnp.ndarray:
         """Update the log of the determinant of a matrix A using the matrix determinant lemma,
         given indices indicating the positions in A where the update M is placed.
@@ -1134,24 +1128,20 @@ class IncLogAbsDeterminant:
             indj (int): Index in the second dimension of A where the update m is placed
         """
 
-        # Construct two matrices to shift M to the correct position in A
-
+        # Construct two matrices to shift M to the correct position in A.
+        # Traced-index-safe one-hot placement (see WoodburyInverter.update_index) so indi/indj
+        # can be traced -> compiles ONCE instead of per (indi,indj) pair.
         m_m, n_m = m.shape[-2:]
         m_a, n_a = ainv.shape[-2:]
 
-        # Identity broadcasted to batch
-        idmat = xnp.eye(m_m, n_m)
-        idmat = xnp.broadcast_to(idmat, m.shape)
-
-        # Build u
-        u = xnp.zeros(m.shape[:-2] + (m_a, m_m))
-        inds = (Ellipsis, slice(indi, indi + m_m), slice(0, n_m))  # equivalen to slice(None) in last dim
-        u = backend.array_assign(u, inds, idmat)
-
-        # Build v
-        v = xnp.zeros(m.shape[:-2] + (n_m, n_a))
-        inds = (Ellipsis, slice(0, m_m), slice(indj, indj + n_m))
-        v = backend.array_assign(v, inds, idmat)
+        # u2d[r,k] = 1 where row r == indi + k -> identity block the size of m, starting at row indi.
+        # Built by comparison (not a Python slice(indi, ...)), so indi may be a jax tracer -> no per-index recompile.
+        u2d = xnp.where(xnp.arange(m_a)[:, None] == indi + xnp.arange(m_m)[None, :], 1.0, 0.0)
+        # v2d[k,c] = 1 where col c == indj + k -> identity block the size of m, starting at col indj.
+        v2d = xnp.where(xnp.arange(n_a)[None, :] == indj + xnp.arange(n_m)[:, None], 1.0, 0.0)
+        # Broadcast the 2-D placement matrices over m's leading batch dims so the update matmuls batch.
+        u = xnp.broadcast_to(u2d, m.shape[:-2] + (m_a, m_m))
+        v = xnp.broadcast_to(v2d, m.shape[:-2] + (n_m, n_a))
 
         detval = IncLogAbsDeterminant.update(detval, ainv, u, m, v)
         return detval

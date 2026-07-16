@@ -161,6 +161,11 @@ class Z2System2D_Config(Config2DBase):
             - self.coeffs_vec: coefficients matching self.idx_vec;
             - self.constants_vec: scalar constant terms of the projector
               expansion. For Z2 these constants are expected to be zero.
+
+        The raw per-group-element structures (grouped Majorana-index tuples, matching
+        coefficients, and scalar constant terms -- for Z2 the constants are expected to be
+        zero) are handed to set_el_energy_terms, which keeps the constants and the derived
+        unique-basis form used in evaluation.
         """
         idx_vec = []
         coeffs_vec = []
@@ -255,9 +260,7 @@ class Z2System2D_Config(Config2DBase):
 
             idx_vec.append((pg_base_indices,) * self.num_pg_layer + (ferm_base_indices,) * self.num_fermionic_layer)
 
-        self.idx_vec = tuple(idx_vec)
-        self.coeffs_vec = tuple(coeffs_vec)
-        self.constants_vec = tuple(constants_vec)
+        self.set_el_energy_terms(idx_vec, coeffs_vec, constants_vec)
 
     def make_pure_gauge(self) -> None:
         """Make the ansatz pure gauge by setting all t_i parameters to zero.

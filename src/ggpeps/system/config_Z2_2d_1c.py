@@ -60,10 +60,8 @@ class Z2System2DConfig(Config2DBase):
 
         # Translation invariance
         if self.unitcell_size not in [1]:
-            logger.error(
-                "This ansatz only supports unitcell_size = 1. \
-                This can be adapted by adding in a specification in the config to map sites to parameters."
-            )
+            logger.error("This ansatz only supports unitcell_size = 1. \
+                This can be adapted by adding in a specification in the config to map sites to parameters.")
             raise ValueError("Invalid unitcell_size.")
 
         if not self.u1_symmetry:
@@ -73,7 +71,7 @@ class Z2System2DConfig(Config2DBase):
         self.init_el_energy_terms()
 
     def init_el_energy_terms(self) -> None:
-        """Build idx_vec, coeffs_vec and constants_vec.
+        """Build the per-group-element el-energy terms and hand them to set_el_energy_terms.
         constants_vec is expected to contain only zeros for Z2"""
         idx_vec = []
         coeffs_vec = []
@@ -134,9 +132,7 @@ class Z2System2DConfig(Config2DBase):
 
             idx_vec.append((pg_base_indices,) * self.num_pg_layer)
 
-        self.idx_vec = tuple(idx_vec)
-        self.coeffs_vec = tuple(coeffs_vec)
-        self.constants_vec = tuple(constants_vec)
+        self.set_el_energy_terms(idx_vec, coeffs_vec, constants_vec)
 
     def make_pure_gauge(self):
         # The order of the parameters is [tr,yr,zr,ti,yi,zi] ({r,i} referring to the real/imaginary components)

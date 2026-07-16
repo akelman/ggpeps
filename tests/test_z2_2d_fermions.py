@@ -2625,8 +2625,8 @@ class TestLegacyG2CF2CG4Ncopy2Equivalence(unittest.TestCase):
         """Electric-energy index, coefficient, and constant structures should match."""
         cfg_g2, cfg_g4 = self._make_cfgs()
 
-        self.assertEqual(cfg_g2.idx_vec, cfg_g4.idx_vec)
-        self.assertEqual(cfg_g2.coeffs_vec, cfg_g4.coeffs_vec)
+        self.assertEqual(cfg_g2.uniq_idx_vec, cfg_g4.uniq_idx_vec)
+        self.assertEqual(cfg_g2.uniq_coeffs_vec, cfg_g4.uniq_coeffs_vec)
         self.assertEqual(cfg_g2.constants_vec, cfg_g4.constants_vec)
 
 
@@ -2780,8 +2780,8 @@ class TestLegacy2CG4Ncopy2PureGaugeEquivalence(unittest.TestCase):
         """Electric-energy index, coefficient, and constant structures should match."""
         cfg_2c, cfg_g4 = self._make_cfgs()
 
-        self.assertEqual(cfg_2c.idx_vec, cfg_g4.idx_vec)
-        self.assertEqual(cfg_2c.coeffs_vec, cfg_g4.coeffs_vec)
+        self.assertEqual(cfg_2c.uniq_idx_vec, cfg_g4.uniq_idx_vec)
+        self.assertEqual(cfg_2c.uniq_coeffs_vec, cfg_g4.uniq_coeffs_vec)
         self.assertEqual(cfg_2c.constants_vec, cfg_g4.constants_vec)
 
 
@@ -2915,6 +2915,6 @@ class TestLegacy1CG4Ncopy1PureGaugeEquivalence(unittest.TestCase):
         """Electric-energy index, coefficient, and constant structures should match."""
         cfg_1c, cfg_g4 = self._make_cfgs()
 
-        self.assertEqual(cfg_1c.idx_vec, cfg_g4.idx_vec)
-        self.assertEqual(cfg_1c.coeffs_vec, cfg_g4.coeffs_vec)
+        self.assertEqual(cfg_1c.uniq_idx_vec, cfg_g4.uniq_idx_vec)
+        self.assertEqual(cfg_1c.uniq_coeffs_vec, cfg_g4.uniq_coeffs_vec)
         self.assertEqual(cfg_1c.constants_vec, cfg_g4.constants_vec)

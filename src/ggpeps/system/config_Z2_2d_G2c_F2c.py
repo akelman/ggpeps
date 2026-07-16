@@ -9,7 +9,6 @@ from ggpeps.lattice import Direction
 
 from .config_base import Config2DBase, generate_gauged_projector_terms
 
-
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
 
@@ -65,16 +64,14 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
         )
 
         if self.unitcell_size not in [1, 2, -1]:
-            logger.error(
-                "This ansatz only supports unitcell_size = 1, 2, or -1 (all sites independent). \
-                This can be adapted by adding in a specification in the config to map sites to parameters."
-            )
+            logger.error("This ansatz only supports unitcell_size = 1, 2, or -1 (all sites independent). \
+                This can be adapted by adding in a specification in the config to map sites to parameters.")
             raise ValueError("Invalid unitcell_size.")
 
         self.init_el_energy_terms()
 
     def init_el_energy_terms(self) -> None:
-        """Build idx_vec, coeffs_vec and constants_vec.
+        """Build the per-group-element el-energy terms and hand them to set_el_energy_terms.
         constants_vec is expected to contain only zeros for Z2"""
         idx_vec = []
         coeffs_vec = []
@@ -169,9 +166,7 @@ class Z2System2D_G2C_F2C_Config(Config2DBase):
 
             idx_vec.append((pg_base_indices,) * self.num_pg_layer + (ferm_base_indices,) * self.num_fermionic_layer)
 
-        self.idx_vec = tuple(idx_vec)
-        self.coeffs_vec = tuple(coeffs_vec)
-        self.constants_vec = tuple(constants_vec)
+        self.set_el_energy_terms(idx_vec, coeffs_vec, constants_vec)
 
     def make_pure_gauge(self) -> None:
         """Make the ansatz pure gauge by setting t-params to zero.

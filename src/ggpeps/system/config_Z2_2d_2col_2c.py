@@ -160,9 +160,7 @@ class Z2System2D_2col_Config(Config2DBase):
                 (tuple(pg_link_indices),) * self.num_pg_layer + (tuple(ferm_link_indices),) * self.num_fermionic_layer
             )
 
-        self.idx_vec = tuple(idx_vec)
-        self.coeffs_vec = tuple(coeffs_vec)
-        self.constants_vec = tuple(constants_vec)
+        self.set_el_energy_terms(idx_vec, coeffs_vec, constants_vec)
 
     def make_pure_gauge(self):
         """Zero the t-parameters in every layer (pure-gauge ansatz)."""

@@ -95,24 +95,27 @@ class D6System2D_Config(Config2DBase):
         self.init_el_energy_terms()
 
     def init_el_energy_terms(self) -> None:
-        """Build idx_vec, coeffs_vec and constants_vec."""
+        """Build the per-group-element el-energy terms and hand them to set_el_energy_terms."""
         idx_vec = []
         coeffs_vec = []
         constants_vec = []
+        drop_real = False
+        if self.nlayer == 1:
+            drop_real = True
 
         for group_element in self.gaugemgr.group_elements_for_el_energy:
             # Pure Gauge (PG) ---
             idxarr_pg_h_0, const_pg_h_0 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.X, group_element, site=0
+                self.ncopy, self.ncolors, False, Direction.X, group_element, site=0, drop_imag=drop_real
             )
             idxarr_pg_h_1, const_pg_h_1 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.X, group_element, site=1
+                self.ncopy, self.ncolors, False, Direction.X, group_element, site=1, drop_imag=drop_real
             )
             idxarr_pg_v_0, const_pg_v_0 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=0
+                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=0, drop_imag=drop_real
             )
             idxarr_pg_v_1, const_pg_v_1 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=1
+                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=1, drop_imag=drop_real
             )
 
             # generate fermionic terms
@@ -182,9 +185,7 @@ class D6System2D_Config(Config2DBase):
 
             idx_vec.append((pg_base_indices,) * self.num_pg_layer + (ferm_base_indices,) * self.num_fermionic_layer)
 
-        self.idx_vec = tuple(idx_vec)
-        self.coeffs_vec = tuple(coeffs_vec)
-        self.constants_vec = tuple(constants_vec)
+        self.set_el_energy_terms(idx_vec, coeffs_vec, constants_vec)
 
     def make_pure_gauge(self):
         """Make the ansatz pure gauge by setting t-params to zero.
@@ -444,7 +445,7 @@ class D6System2D_Config(Config2DBase):
 
         This function returns the covariance matrices for ungauged projectors:
         Unlike the Z2, copies are always coupled to themselves without mixing different copies.
-        Here we work in the same convention as Z2 w=exp(rl)and not w=exp(r^{\dagger}l^{\dagger}) as in some references.
+        Here we work in the same convention as Z2 w=exp(rl)and not w=exp(lr) as in some references.
 
         This method overwrites an abstract method in System2DBase.
 
