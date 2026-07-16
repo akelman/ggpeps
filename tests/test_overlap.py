@@ -19,6 +19,7 @@ Test layers:
 """
 
 import unittest
+from functools import partial
 
 import numpy as np
 import scipy.linalg as sla
@@ -154,7 +155,7 @@ class TestOverlapPerConfigZ2(unittest.TestCase):
     def test_z2_2c_per_config_matches_pfaffian(self):
         """Per-config F(G) from the overlap backend equals the pfaffian backend for several explicit
         2-copy Z2 configs (no gauge fixing)."""
-        build = lambda: _build_z2_2c_system(seed=7, gf=0)
+        build = partial(_build_z2_2c_system, seed=7, gf=0)
         for ci, cv in enumerate(self._configs(build())):
             vp = _el_op_per_config(build, cv, "pfaffian")
             vo = _el_op_per_config(build, cv, "overlap")

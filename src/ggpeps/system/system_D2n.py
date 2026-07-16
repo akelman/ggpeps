@@ -1,6 +1,5 @@
 import logging
 
-import numpy as np
 from ggpeps import xnp as xnp
 from ggpeps import xscipy as xscipy
 

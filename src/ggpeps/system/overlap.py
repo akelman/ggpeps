@@ -1,10 +1,10 @@
-"""Bravyi & Gosset three-state Gaussian-overlap identity (Commun. Math. Phys. 356, 451 (2017),
+r"""Bravyi & Gosset three-state Gaussian-overlap identity (Commun. Math. Phys. 356, 451 (2017),
 eqs. 24-25 with |\phi_0> being the vacuum),
 can be used to compute the pure gauge amplitudes psi(G) = <B(G)|A>.
 This can be used to compute the electric energies for pure guge states
 independently of the pfaffian expansion method.
 
-Convention: unlike our convrntion,
+Convention: unlike our convention,
 covariance matrices follow Bravyi's M_{pq} = (-i/2)<[c_p, c_q]>
 with c_1 = c+c^\dagger c_2 = -i(c-c^\dagger)
 (both c_2 and the covariance matrix have opposite signs from our convention).
