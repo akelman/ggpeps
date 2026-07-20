@@ -1691,17 +1691,12 @@ class System2DBase(ABC):
         # There are two directions per vertex
         ind_mat = 2 * nvirtmodes_link * link_ind
 
-        blocksize = 2 * nvirtmodes_link
-        update_arr = xnp.zeros((self.cfg.nlayer, blocksize, blocksize), dtype=self.gamma_in_sys_vec.dtype)
-        for layer in range(self.cfg.nlayer):
-            gamma_neutral_gauge = self.gamma_gauge_neutral_vec[layer][dir]
-            gamma_in_subst = rotmat @ gamma_neutral_gauge @ xnp.transpose(rotmat)
-            update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer])
-            update_arr = backend.array_assign(update_arr, layer, update)
+        gamma_neutral = self.gamma_gauge_neutral_vec[:, dir]  # (nlayer, k, k)
+        gamma_in_subst = rotmat @ gamma_neutral @ xnp.transpose(rotmat)  # broadcasts over layers
+        update_arr = self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec)
 
-            # Substitute in the array
-            inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
-            self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
+        # Substitute in the array, all layers at once
+        self._gamma_in_sys_vec = backend.put_block(self.gamma_in_sys_vec, (0, ind_mat, ind_mat), gamma_in_subst)
 
         # The mod family (gamma_in_sys_mod + mod trackers) is measurement-only; skip it during warmup.
         if not self.defer_mod_trackers:
@@ -1842,7 +1837,8 @@ class System2DBase(ABC):
             xnp.ndarray: Additional update to reach update_mat at gamma_in[offset:,offset:]
         """
         m_up, n_up = update_mat.shape[-2:]
-        gamma_in_old = gamma_in_sys[..., offset : offset + m_up, offset : offset + n_up]
+        gamma_in_old = backend.take_block(gamma_in_sys, offset, m_up, axis=-2)
+        gamma_in_old = backend.take_block(gamma_in_old, offset, n_up, axis=-1)
         return -(update_mat - gamma_in_old)
 
     ################## Observables ######################
