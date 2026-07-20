@@ -1684,12 +1684,12 @@ class System2DBase(ABC):
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
 
-        update_vec = []
+        update_arr = xnp.zeros(self.cfg.nlayer)
         for layer in range(self.cfg.nlayer):
             gamma_neutral_gauge = self.gamma_gauge_neutral_vec[layer][dir]
             gamma_in_subst = rotmat @ gamma_neutral_gauge @ xnp.transpose(rotmat)
-            update_vec.append(
-                self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer])
+            update_arr[layer] = self.calculate_update_gamma_in(
+                ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]
             )
 
             # Substitute in the array
@@ -1699,8 +1699,6 @@ class System2DBase(ABC):
         # The mod family (gamma_in_sys_mod + mod trackers) is measurement-only; skip it during warmup.
         if not self.defer_mod_trackers:
             self._gamma_in_sys_mod_vec = self._patch_gamma_in_sys_mod(self._gamma_in_sys_mod_vec, link_ind)
-
-        update_arr = xnp.array(update_vec)
 
         # --- Incrementally update the closed (full-system) trackers via Woodbury / IncDet.
         # gamma_out now inverts (mat_d + gamma_in), so a +Delta change in gamma_in enters its
@@ -1736,13 +1734,13 @@ class System2DBase(ABC):
                     pos = ind_mat - offset
 
                     mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
-                    update_out = -update_vec[lay]
+                    update_out = -update_arr[lay]
                     new_det = utils.IncLogAbsDeterminant.update_index(
-                        self.incdet_mod_vec[lay][ind], mat_inv, update_vec[lay], pos, pos
+                        self.incdet_mod_vec[lay][ind], mat_inv, update_arr[lay], pos, pos
                     )
                     self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, (lay, ind), new_det)
                     new_in = utils.WoodburyInverter.update_index(
-                        self._wi_gamma_in_mod_vec[lay][ind], update_vec[lay], pos, pos
+                        self._wi_gamma_in_mod_vec[lay][ind], update_arr[lay], pos, pos
                     )
                     self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (lay, ind), new_in)
                     new_out = utils.WoodburyInverter.update_index(
@@ -1811,9 +1809,8 @@ class System2DBase(ABC):
         ind = self.cfg.lattice.coord2ind_dir(coord, dir)
         self.update_gauge_ind(ind, gauge_val)
 
-    def calculate_update_gamma_in(
-        self, offset: int, update_mat: xnp.ndarray, gamma_in_sys: xnp.ndarray
-    ) -> xnp.ndarray:
+    @staticmethod
+    def calculate_update_gamma_in(offset: int, update_mat: xnp.ndarray, gamma_in_sys: xnp.ndarray) -> xnp.ndarray:
         """Compute an update between the current gamma_in and the new gamma_in.
 
         Args:
