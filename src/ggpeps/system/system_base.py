@@ -1662,7 +1662,7 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
-    def _update_gauge_ind(self, link_ind: int, theta: xnp.ndarray) -> None:
+    def _update_gauge_ind(self, link_ind: int, rotmat: xnp.ndarray, nvirtmodes_link: int, dir: Direction) -> None:
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
         and updates all incremental trackers of determinants and inverses.
@@ -1674,15 +1674,13 @@ class System2DBase(ABC):
 
         Args:
             link_ind (int): Link index to be updated
-            theta (xnp.array): New gauge field value
+            rotmat (xnp.array): Gauging matrix
+            nvirtmodes_link (int): Number of virtual modes per link
+            dir (lattice.Direction): Direction of the link from (x,y)
         """
-        # Update the gaugefield
-        self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
 
         # There are two directions per vertex
-        ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
-        coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
+        ind_mat = 2 * nvirtmodes_link * link_ind
 
         update_arr = xnp.zeros(self.cfg.nlayer)
         for layer in range(self.cfg.nlayer):
@@ -1730,7 +1728,7 @@ class System2DBase(ABC):
                 for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
                     if mod_link_ind == link_ind:
                         continue
-                    offset = 2 * self.cfg.nvirtmodes_link if link_ind > mod_link_ind else 0
+                    offset = 2 * nvirtmodes_link if link_ind > mod_link_ind else 0
                     pos = ind_mat - offset
 
                     mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
@@ -1772,7 +1770,13 @@ class System2DBase(ABC):
         theta = xnp.asarray(gauge_val)
         if not xnp.allclose(self.gaugefieldvec[link_ind], theta):
             # only actually do the update if it's a different gauge field
-            self._update_gauge_ind(link_ind, theta)  # incremental; sets self._last_step_max_inv_mag
+
+            # Update the gaugefield
+            self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
+
+            coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
+            rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
+            self._update_gauge_ind(link_ind, rotmat, self.cfg.nvirtmodes_link, dir)
 
             # Re-anchor both tracker families from scratch to bound the incremental Woodbury/IncDet
             # drift. Three modes via tracker_refresh_interval (set per run from EvaluatorManager /
