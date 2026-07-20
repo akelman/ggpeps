@@ -122,8 +122,7 @@ class Z2System2D(System2DBase):
         )
         # Largest entry of any updated inverse (the GLOBAL near-singularity signal: large |inverse|
         # <=> small smallest singular value). The public update_gauge_ind wrapper uses it to trigger
-        # an out-of-schedule from-scratch refresh. Accumulate the per-tracker maxes as on-device
-        # scalars and defer the single device->host read to the end (one sync/step, not one each).
+        # an out-of-schedule from-scratch refresh.
         inv_mags = [xnp.max(xnp.abs(self._wi_gamma_in_vec)), xnp.max(xnp.abs(self._wi_gamma_out_vec))]
 
         # --- Incrementally update the modified (open-link) trackers. The link excluded from the
