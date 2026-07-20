@@ -1274,11 +1274,19 @@ class TestZ2SystemMethods(unittest.TestCase):
     def test_norm_minimal(self):
         # This update is a nullop since we initialize the gauge-field with 0
         zeroarr = (np.zeros((1, 1)),)
-        # The factor of 2 compensates for the
-        logdet_inc = 2 * self.system_z2_2_2_real.update_lognorm_inc(0, np.asarray(zeroarr), all_factors=False)
+        sys = self.system_z2_2_2_real
+        logdet_inc = 2 * sys.update_lognorm_inc(
+            sys.incdet_vec,
+            sys.wi_gamma_in_vec,
+            sys.gamma_in_sys_vec,
+            sys.mat_d_vec,
+            0,
+            np.asarray(zeroarr),
+            all_factors=False,
+        )
         # This is equivalent to
-        # logdet_inc = self.system_z2_2_2.incdet.det()
-        diff = self.system_z2_2_2_real.mat_d_inv_vec[0] - self.system_z2_2_2_real.gamma_in_sys_vec[0]
+        # logdet_inc = sys.incdet.det()
+        diff = sys.mat_d_inv_vec[0] - sys.gamma_in_sys_vec[0]
         sign, logdet = np.linalg.slogdet(diff)
         self.assertGreater(sign, 0)
         self.assertAlmostEqual(logdet_inc, logdet)
@@ -1287,8 +1295,17 @@ class TestZ2SystemMethods(unittest.TestCase):
         # Test that the incremental update is equivalent to re-calculation of the norm
         # This update is a nullop since we initialize the gauge-field with 0
         zeroarr = (np.zeros((1, 1)),)
-        weight_inc = self.system_z2_2_2_real.update_lognorm_inc(0, np.asarray(zeroarr), all_factors=True)
-        weight_recalc = self.system_z2_2_2_real.calculate_lognorm(all_factors=True)
+        sys = self.system_z2_2_2_real
+        weight_inc = sys.update_lognorm_inc(
+            sys.incdet_vec,
+            sys.wi_gamma_in_vec,
+            sys.gamma_in_sys_vec,
+            sys.mat_d_vec,
+            0,
+            np.asarray(zeroarr),
+            all_factors=True,
+        )
+        weight_recalc = sys.calculate_lognorm(all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
     def test_norm_incremental_update(self):
@@ -1478,7 +1495,8 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec = np.random.rand(3, 6)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = utils.make_z2_1copy_pure_gauge_config(
-            lat_2x2, 1.0, None, None, 0, None, num_pg_layer=3, num_fermionic_layer=0)
+            lat_2x2, 1.0, None, None, 0, None, num_pg_layer=3, num_fermionic_layer=0
+        )
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
         deriv_ana = system_z2_2_2.el_energy_op_grad_vec
@@ -1542,7 +1560,8 @@ class TestZ2SystemMethods(unittest.TestCase):
         paramvec = [[0, 0, 0, 0, 0, 0]]
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = utils.make_z2_1copy_pure_gauge_config(
-            lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=0)
+            lat_2x2, 1.0, 0.0, 0.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=0
+        )
         system_cfg.paramvec = paramvec
         mc_config = MonteCarloEvaluatorConfig(warmup_steps=10, meas_steps=10, binsize=1)
         mc_mgr = EvaluatorManager(system.Z2System2D, system_cfg, mc_config, 0)
