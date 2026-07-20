@@ -747,14 +747,14 @@ class TestIncrementalModCovmats(unittest.TestCase):
     @unittest.skipUnless(ggpeps.PREFERRED_BACKEND == "jax", "compile count is only meaningful under jit")
     def test_update_impl_compiles_once_per_direction(self):
         """link_ind and the gauge value are traced: a run of single-link updates must compile
-        _update_gauge_ind_impl at most once per link direction."""
+        the _update_gauge_ind kernel at most once per link direction."""
         cfg, sys_, rng = self._build_d6(seed=3)
         sys_.initialize()
         _ = sys_.gamma_in_sys_mod_vec, sys_.wi_gamma_in_mod_vec  # live mod tracking from the start
-        System2DBase._update_gauge_ind_impl.clear_cache()
+        System2DBase._update_gauge_ind.clear_cache()
         for link, theta in self._update_sequence(cfg, rng, nsteps=12):
             sys_.update_gauge_ind(link, theta)
-        self.assertLessEqual(System2DBase._update_gauge_ind_impl._cache_size(), 2)
+        self.assertLessEqual(System2DBase._update_gauge_ind._cache_size(), 2)
 
     @unittest.skipUnless(ggpeps.PREFERRED_BACKEND == "jax", "compile count is only meaningful under jit")
     def test_patch_compiles_once_across_link_inds(self):

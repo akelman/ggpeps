@@ -193,13 +193,19 @@ class U1System2D(System2DBase):
         rot_minus = self._generate_rotmat_half(np.transpose(np.conj(gauge_field)))
         return block_diag(rot_plus, rot_minus)
 
-    def _update_gauge_ind(self, link_ind: int, rotmat: xnp.ndarray, nvirtmodes_link: int, dir: Direction) -> None:
-        # Overrides the combined base implementation: gamma_in_sys is shared by all layers here,
-        # so a single update serves every tracker. The base wrapper (update_gauge_ind) has already
-        # stored the gauge value and built rotmat.
+    def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray) -> None:
+        # Overrides the base entirely: gamma_in_sys is shared by all layers here, so a single
+        # update serves every tracker. Stateful and unjitted; the base's pure _update_gauge_ind
+        # kernel is not used.
+        theta = xnp.asarray(gauge_val)
+        if xnp.allclose(self.gaugefieldvec[link_ind], theta):
+            return
+        self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
 
         # There are two directions per vertex
-        ind_mat = 2 * nvirtmodes_link * link_ind
+        ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
+        coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
+        rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
         gamma_in_subst = (
             rotmat @ self.gamma_gauge_neutral_vec[0][dir] @ np.transpose(rotmat)
         )  # just use the first gamma_gauge_neutral, since they're shared by all layers
@@ -257,6 +263,7 @@ class U1System2D(System2DBase):
 
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
+        self._maybe_refresh_trackers()
 
     ################## Observables ######################
     def _compute_mass_energy_op_vec(self, use_trans_inv=True):

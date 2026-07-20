@@ -1672,63 +1672,10 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
-    def _update_gauge_ind(self, link_ind: int, rotmat: xnp.ndarray, nvirtmodes_link: int, dir: Direction) -> None:
-        """Update method that is called upon changing a gauge field.
-        This method is central to the algorithm since it changes the gauged projectors
-        and updates all incremental trackers of determinants and inverses.
-        The re-calculation of determinants and inverses for the norm would be
-        prohibitively expensive.
-
-        The heavy work is done by the pure (jittable) _update_gauge_ind_impl; this wrapper only
-        moves instance state in and out.
-
-        This method is private because it should only accept xnp.ndarray as input
-        (though it may work with np.ndarrary, because jax will often convert it automatically).
-
-        Args:
-            link_ind (int): Link index to be updated
-            rotmat (xnp.array): Gauging matrix
-            nvirtmodes_link (int): Number of virtual modes per link
-            dir (lattice.Direction): Direction of the link from (x,y)
-        """
-        defer_mod = self.defer_mod_trackers
-        res = self._update_gauge_ind_impl(
-            self.gamma_in_sys_vec,
-            self.gamma_gauge_neutral_vec,
-            rotmat,
-            link_ind,
-            self.wi_gamma_in_vec,
-            self.wi_gamma_out_vec,
-            self.incdet_vec,
-            None if defer_mod else self.gamma_in_sys_mod_vec,
-            None if defer_mod else self.wi_gamma_in_mod_vec,
-            None if defer_mod else self.wi_gamma_out_mod_vec,
-            None if defer_mod else self.incdet_mod_vec,
-            mod_link_inds=self.cfg.mod_link_inds,
-            nvirtmodes_link=nvirtmodes_link,
-            dir=dir,
-            defer_mod=defer_mod,
-        )
-        (self._gamma_in_sys_vec, self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec, self.weight) = res[
-            :5
-        ]
-        if not defer_mod:
-            (
-                self._gamma_in_sys_mod_vec,
-                self._wi_gamma_in_mod_vec,
-                self._wi_gamma_out_mod_vec,
-                self._incdet_mod_vec,
-            ) = res[5:9]
-        # Single device->host read for the whole step (max over all per-tracker maxes). The public
-        # update_gauge_ind wrapper uses it to trigger an out-of-schedule from-scratch refresh.
-        self._last_step_max_inv_mag = float(res[9])
-
-        # Invalidate gauge dependent quantities
-        self.invalidate_gauge_update()
-
-    @staticmethod
-    @maybe_jit(static_argnames=["mod_link_inds", "nvirtmodes_link", "dir", "defer_mod"])
-    def _update_gauge_ind_impl(
+    @classmethod
+    @maybe_jit(static_argnames=["cls", "mod_link_inds", "nvirtmodes_link", "dir", "defer_mod"])
+    def _update_gauge_ind(
+        cls,
         gamma_in_sys_vec: xnp.ndarray,
         gamma_gauge_neutral_vec: xnp.ndarray,
         rotmat: xnp.ndarray,
@@ -1761,14 +1708,14 @@ class System2DBase(ABC):
 
         gamma_neutral = gamma_gauge_neutral_vec[:, dir]  # (nlayer, k, k)
         gamma_in_subst = rotmat @ gamma_neutral @ xnp.transpose(rotmat)  # broadcasts over layers
-        update_arr = System2DBase.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=gamma_in_sys_vec)
+        update_arr = cls.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=gamma_in_sys_vec)
 
         # Substitute in the array, all layers at once
         gamma_in_sys_vec = backend.put_block(gamma_in_sys_vec, (0, ind_mat, ind_mat), gamma_in_subst)
 
         # The mod family (gamma_in_sys_mod + mod trackers) is measurement-only; skip it during warmup.
         if not defer_mod:
-            gamma_in_sys_mod_vec = System2DBase._patch_gamma_in_sys_mod(
+            gamma_in_sys_mod_vec = cls._patch_gamma_in_sys_mod(
                 gamma_in_sys_vec, gamma_in_sys_mod_vec, link_ind, mod_link_inds, nvirtmodes_link
             )
 
@@ -1829,8 +1776,10 @@ class System2DBase(ABC):
     def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray) -> None:
         """Update a gauge field at a given link index by a new value.
         This function can be called from outside the system, and so accepts a gauge field value as np.ndarray.
-        We convert here to xnp.ndarray. After the incremental update it re-anchors the trackers from
-        scratch when the periodic interval elapsed or the magnitude guard fired.
+        We convert here to xnp.ndarray. The heavy per-step work runs in the pure jitted classmethod
+        _update_gauge_ind; this method moves instance state in and out. After the incremental update
+        it re-anchors the trackers from scratch when the periodic interval elapsed or the magnitude
+        guard fired.
 
         Args:
             link_ind (int): Link index of the gauge field to be updated
@@ -1848,22 +1797,60 @@ class System2DBase(ABC):
 
             coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
             rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
-            self._update_gauge_ind(link_ind, rotmat, self.cfg.nvirtmodes_link, dir)
 
-            # Re-anchor both tracker families from scratch to bound the incremental Woodbury/IncDet
-            # drift. Three modes via tracker_refresh_interval (set per run from EvaluatorManager /
-            # --tracker_refresh_interval):
-            #   > 0 : periodic every `interval` steps AND the magnitude guard (default; 1 == every step)
-            #   == 0: magnitude guard only, no periodic re-anchor ("no_periodic")
-            #   <  0: no refresh at all -- pure incremental, even if a tracked inverse blows up
-            interval = self.tracker_refresh_interval
-            if interval >= 0:
-                periodic_due = False
-                if interval > 0:
-                    self._steps_since_refresh += 1
-                    periodic_due = self._steps_since_refresh >= interval
-                if periodic_due or self._last_step_max_inv_mag > self.TRACKER_INV_MAG_THRESH:
-                    self.refresh_trackers()
+            defer_mod = self.defer_mod_trackers
+            res = self._update_gauge_ind(
+                self.gamma_in_sys_vec,
+                self.gamma_gauge_neutral_vec,
+                rotmat,
+                link_ind,
+                self.wi_gamma_in_vec,
+                self.wi_gamma_out_vec,
+                self.incdet_vec,
+                None if defer_mod else self.gamma_in_sys_mod_vec,
+                None if defer_mod else self.wi_gamma_in_mod_vec,
+                None if defer_mod else self.wi_gamma_out_mod_vec,
+                None if defer_mod else self.incdet_mod_vec,
+                mod_link_inds=self.cfg.mod_link_inds,
+                nvirtmodes_link=self.cfg.nvirtmodes_link,
+                dir=dir,
+                defer_mod=defer_mod,
+            )
+            (self._gamma_in_sys_vec, self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec, self.weight) = (
+                res[:5]
+            )
+            if not defer_mod:
+                (
+                    self._gamma_in_sys_mod_vec,
+                    self._wi_gamma_in_mod_vec,
+                    self._wi_gamma_out_mod_vec,
+                    self._incdet_mod_vec,
+                ) = res[5:9]
+            # Single device->host read for the whole step (max over all per-tracker maxes); feeds the
+            # refresh magnitude guard.
+            self._last_step_max_inv_mag = float(res[9])
+
+            # Invalidate gauge dependent quantities
+            self.invalidate_gauge_update()
+
+            self._maybe_refresh_trackers()
+
+    def _maybe_refresh_trackers(self) -> None:
+        """Re-anchor both tracker families from scratch to bound the incremental Woodbury/IncDet
+        drift. Three modes via tracker_refresh_interval (set per run from EvaluatorManager /
+        --tracker_refresh_interval):
+          > 0 : periodic every `interval` steps AND the magnitude guard (default; 1 == every step)
+          == 0: magnitude guard only, no periodic re-anchor ("no_periodic")
+          <  0: no refresh at all -- pure incremental, even if a tracked inverse blows up
+        """
+        interval = self.tracker_refresh_interval
+        if interval >= 0:
+            periodic_due = False
+            if interval > 0:
+                self._steps_since_refresh += 1
+                periodic_due = self._steps_since_refresh >= interval
+            if periodic_due or self._last_step_max_inv_mag > self.TRACKER_INV_MAG_THRESH:
+                self.refresh_trackers()
 
     def update_gauge_full_system(self, gaugeconfig: list[np.ndarray]) -> None:
         """Replace all gauge fields on the links by the values given in gaugeconfig.
