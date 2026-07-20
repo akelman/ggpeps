@@ -1679,6 +1679,9 @@ class System2DBase(ABC):
         The re-calculation of determinants and inverses for the norm would be
         prohibitively expensive.
 
+        The heavy work is done by the pure (jittable) _update_gauge_ind_impl; this wrapper only
+        moves instance state in and out.
+
         This method is private because it should only accept xnp.ndarray as input
         (though it may work with np.ndarrary, because jax will often convert it automatically).
 
@@ -1688,42 +1691,96 @@ class System2DBase(ABC):
             nvirtmodes_link (int): Number of virtual modes per link
             dir (lattice.Direction): Direction of the link from (x,y)
         """
+        defer_mod = self.defer_mod_trackers
+        res = self._update_gauge_ind_impl(
+            self.gamma_in_sys_vec,
+            self.gamma_gauge_neutral_vec,
+            rotmat,
+            link_ind,
+            self.wi_gamma_in_vec,
+            self.wi_gamma_out_vec,
+            self.incdet_vec,
+            None if defer_mod else self.gamma_in_sys_mod_vec,
+            None if defer_mod else self.wi_gamma_in_mod_vec,
+            None if defer_mod else self.wi_gamma_out_mod_vec,
+            None if defer_mod else self.incdet_mod_vec,
+            mod_link_inds=self.cfg.mod_link_inds,
+            nvirtmodes_link=nvirtmodes_link,
+            dir=dir,
+            defer_mod=defer_mod,
+        )
+        (self._gamma_in_sys_vec, self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec, self.weight) = res[
+            :5
+        ]
+        if not defer_mod:
+            (
+                self._gamma_in_sys_mod_vec,
+                self._wi_gamma_in_mod_vec,
+                self._wi_gamma_out_mod_vec,
+                self._incdet_mod_vec,
+            ) = res[5:9]
+        # Single device->host read for the whole step (max over all per-tracker maxes). The public
+        # update_gauge_ind wrapper uses it to trigger an out-of-schedule from-scratch refresh.
+        self._last_step_max_inv_mag = float(res[9])
 
+        # Invalidate gauge dependent quantities
+        self.invalidate_gauge_update()
+
+    @staticmethod
+    @maybe_jit(static_argnames=["mod_link_inds", "nvirtmodes_link", "dir", "defer_mod"])
+    def _update_gauge_ind_impl(
+        gamma_in_sys_vec: xnp.ndarray,
+        gamma_gauge_neutral_vec: xnp.ndarray,
+        rotmat: xnp.ndarray,
+        link_ind: int,
+        wi_gamma_in_vec: xnp.ndarray,
+        wi_gamma_out_vec: xnp.ndarray,
+        incdet_vec: xnp.ndarray,
+        gamma_in_sys_mod_vec: Optional[xnp.ndarray],
+        wi_gamma_in_mod_vec: Optional[xnp.ndarray],
+        wi_gamma_out_mod_vec: Optional[xnp.ndarray],
+        incdet_mod_vec: Optional[xnp.ndarray],
+        mod_link_inds: tuple[int, ...],
+        nvirtmodes_link: int,
+        dir: Direction,
+        defer_mod: bool,
+    ) -> tuple:
+        """Pure single-link update of gamma_in_sys and all incremental trackers.
+
+        link_ind and all arrays may be traced; the static arguments select one compilation per
+        (direction, warmup/measurement). With defer_mod=True (warmup) the mod family arguments are
+        ignored and returned unchanged.
+
+        Returns:
+            tuple: (gamma_in_sys_vec, wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec, weight,
+                gamma_in_sys_mod_vec, wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec,
+                max_inv_mag)
+        """
         # There are two directions per vertex
         ind_mat = 2 * nvirtmodes_link * link_ind
 
-        gamma_neutral = self.gamma_gauge_neutral_vec[:, dir]  # (nlayer, k, k)
+        gamma_neutral = gamma_gauge_neutral_vec[:, dir]  # (nlayer, k, k)
         gamma_in_subst = rotmat @ gamma_neutral @ xnp.transpose(rotmat)  # broadcasts over layers
-        update_arr = self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec)
+        update_arr = System2DBase.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=gamma_in_sys_vec)
 
         # Substitute in the array, all layers at once
-        self._gamma_in_sys_vec = backend.put_block(self.gamma_in_sys_vec, (0, ind_mat, ind_mat), gamma_in_subst)
+        gamma_in_sys_vec = backend.put_block(gamma_in_sys_vec, (0, ind_mat, ind_mat), gamma_in_subst)
 
         # The mod family (gamma_in_sys_mod + mod trackers) is measurement-only; skip it during warmup.
-        if not self.defer_mod_trackers:
-            self._gamma_in_sys_mod_vec = self._patch_gamma_in_sys_mod(
-                self.gamma_in_sys_vec,
-                self.gamma_in_sys_mod_vec,
-                link_ind,
-                self.cfg.mod_link_inds,
-                self.cfg.nvirtmodes_link,
+        if not defer_mod:
+            gamma_in_sys_mod_vec = System2DBase._patch_gamma_in_sys_mod(
+                gamma_in_sys_vec, gamma_in_sys_mod_vec, link_ind, mod_link_inds, nvirtmodes_link
             )
 
         # --- Incrementally update the closed (full-system) trackers via Woodbury / IncDet.
         # gamma_out now inverts (mat_d + gamma_in), so a +Delta change in gamma_in enters its
         # inverted matrix with the opposite sign -> the out-tracker Woodbury step uses -update.
-        update_arr_out = -update_arr
-        self._incdet_vec = utils.IncLogAbsDeterminant.update_index(
-            self.incdet_vec, self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat
-        )
-        self.weight = 0.5 * xnp.sum(self.incdet_vec)
-        self._wi_gamma_in_vec = utils.WoodburyInverter.update_index(self.wi_gamma_in_vec, update_arr, ind_mat, ind_mat)
-        self._wi_gamma_out_vec = utils.WoodburyInverter.update_index(
-            self.wi_gamma_out_vec, update_arr_out, ind_mat, ind_mat
-        )
-        # Largest entry of any updated inverse. The public update_gauge_ind wrapper uses it to trigger
-        # an out-of-schedule from-scratch refresh.
-        inv_mags = [xnp.max(xnp.abs(self._wi_gamma_in_vec)), xnp.max(xnp.abs(self._wi_gamma_out_vec))]
+        incdet_vec = utils.IncLogAbsDeterminant.update_index(incdet_vec, wi_gamma_in_vec, update_arr, ind_mat, ind_mat)
+        weight = 0.5 * xnp.sum(incdet_vec)
+        wi_gamma_in_vec = utils.WoodburyInverter.update_index(wi_gamma_in_vec, update_arr, ind_mat, ind_mat)
+        wi_gamma_out_vec = utils.WoodburyInverter.update_index(wi_gamma_out_vec, -update_arr, ind_mat, ind_mat)
+        # Largest entry of any updated inverse, for the refresh magnitude guard.
+        inv_mags = [xnp.max(xnp.abs(wi_gamma_in_vec)), xnp.max(xnp.abs(wi_gamma_out_vec))]
 
         # --- Incrementally update the modified (open-link) trackers, batched over layers. The local
         # update is shifted by the carved-out link when it sits below the changed link. When the
@@ -1732,35 +1789,42 @@ class System2DBase(ABC):
 
         # Skipped entirely during warmup (defer_mod_trackers): these are measurement-only and are
         # re-anchored from scratch (reanchor_mod_trackers) when warmup ends.
-        if not self.defer_mod_trackers:
-            assert self._wi_gamma_in_mod_vec is not None  # for mypy
-            assert self._wi_gamma_out_mod_vec is not None
+        if not defer_mod:
+            assert wi_gamma_in_mod_vec is not None  # for mypy
+            assert wi_gamma_out_mod_vec is not None
+            assert incdet_mod_vec is not None
             k = 2 * nvirtmodes_link
-            maxpos = self.wi_gamma_in_mod_vec.shape[-1] - k
-            for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
+            maxpos = wi_gamma_in_mod_vec.shape[-1] - k
+            for ind, mod_link_ind in enumerate(mod_link_inds):
                 # When link_ind == mod_link_ind the update is zero and pos is a dummy read
                 # position; clip it into range (the raw formula can exceed the smaller mod matrix).
                 pos = xnp.clip(ind_mat - k * (link_ind > mod_link_ind), 0, maxpos)
                 update = xnp.where(link_ind == mod_link_ind, 0.0, update_arr)
 
                 new_det = utils.IncLogAbsDeterminant.update_index(
-                    self.incdet_mod_vec[:, ind], self.wi_gamma_in_mod_vec[:, ind], update, pos, pos
+                    incdet_mod_vec[:, ind], wi_gamma_in_mod_vec[:, ind], update, pos, pos
                 )
-                self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, (slice(None), ind), new_det)
-                new_in = utils.WoodburyInverter.update_index(self._wi_gamma_in_mod_vec[:, ind], update, pos, pos)
-                self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (slice(None), ind), new_in)
-                new_out = utils.WoodburyInverter.update_index(self._wi_gamma_out_mod_vec[:, ind], -update, pos, pos)
-                self._wi_gamma_out_mod_vec = backend.array_assign(
-                    self._wi_gamma_out_mod_vec, (slice(None), ind), new_out
-                )
+                incdet_mod_vec = backend.array_assign(incdet_mod_vec, (slice(None), ind), new_det)
+                new_in = utils.WoodburyInverter.update_index(wi_gamma_in_mod_vec[:, ind], update, pos, pos)
+                wi_gamma_in_mod_vec = backend.array_assign(wi_gamma_in_mod_vec, (slice(None), ind), new_in)
+                new_out = utils.WoodburyInverter.update_index(wi_gamma_out_mod_vec[:, ind], -update, pos, pos)
+                wi_gamma_out_mod_vec = backend.array_assign(wi_gamma_out_mod_vec, (slice(None), ind), new_out)
                 inv_mags.append(xnp.max(xnp.abs(new_in)))
                 inv_mags.append(xnp.max(xnp.abs(new_out)))
 
-        # Single device->host read for the whole step (max over all per-tracker maxes).
-        self._last_step_max_inv_mag = float(xnp.max(xnp.asarray(inv_mags)))
-
-        # Invalidate gauge dependent quantities
-        self.invalidate_gauge_update()
+        max_inv_mag = xnp.max(xnp.asarray(inv_mags))
+        return (
+            gamma_in_sys_vec,
+            wi_gamma_in_vec,
+            wi_gamma_out_vec,
+            incdet_vec,
+            weight,
+            gamma_in_sys_mod_vec,
+            wi_gamma_in_mod_vec,
+            wi_gamma_out_mod_vec,
+            incdet_mod_vec,
+            max_inv_mag,
+        )
 
     def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray) -> None:
         """Update a gauge field at a given link index by a new value.
