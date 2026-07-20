@@ -1725,39 +1725,36 @@ class System2DBase(ABC):
         # an out-of-schedule from-scratch refresh.
         inv_mags = [xnp.max(xnp.abs(self._wi_gamma_in_vec)), xnp.max(xnp.abs(self._wi_gamma_out_vec))]
 
-        # --- Incrementally update the modified (open-link) trackers. The link excluded from the
-        # modified objects is skipped; for the others the local update is shifted by the carved-out
-        # link when it sits below the changed link. The vectorized index update supports neither
-        # skipping a link nor a variable offset, so we loop explicitly.
+        # --- Incrementally update the modified (open-link) trackers, batched over layers. The local
+        # update is shifted by the carved-out link when it sits below the changed link. When the
+        # changed link IS the measured link its modes are not in that entry: the update is masked to
+        # zero, an exact no-op of both Woodbury and the determinant lemma (link_ind may be traced).
 
         # Skipped entirely during warmup (defer_mod_trackers): these are measurement-only and are
         # re-anchored from scratch (reanchor_mod_trackers) when warmup ends.
         if not self.defer_mod_trackers:
             assert self._wi_gamma_in_mod_vec is not None  # for mypy
             assert self._wi_gamma_out_mod_vec is not None
-            for lay in range(self.cfg.nlayer):
-                for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
-                    if mod_link_ind == link_ind:
-                        continue
-                    offset = 2 * nvirtmodes_link if link_ind > mod_link_ind else 0
-                    pos = ind_mat - offset
+            k = 2 * nvirtmodes_link
+            maxpos = self.wi_gamma_in_mod_vec.shape[-1] - k
+            for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
+                # When link_ind == mod_link_ind the update is zero and pos is a dummy read
+                # position; clip it into range (the raw formula can exceed the smaller mod matrix).
+                pos = xnp.clip(ind_mat - k * (link_ind > mod_link_ind), 0, maxpos)
+                update = xnp.where(link_ind == mod_link_ind, 0.0, update_arr)
 
-                    mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
-                    update_out = -update_arr[lay]
-                    new_det = utils.IncLogAbsDeterminant.update_index(
-                        self.incdet_mod_vec[lay][ind], mat_inv, update_arr[lay], pos, pos
-                    )
-                    self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, (lay, ind), new_det)
-                    new_in = utils.WoodburyInverter.update_index(
-                        self._wi_gamma_in_mod_vec[lay][ind], update_arr[lay], pos, pos
-                    )
-                    self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (lay, ind), new_in)
-                    new_out = utils.WoodburyInverter.update_index(
-                        self._wi_gamma_out_mod_vec[lay][ind], update_out, pos, pos
-                    )
-                    self._wi_gamma_out_mod_vec = backend.array_assign(self._wi_gamma_out_mod_vec, (lay, ind), new_out)
-                    inv_mags.append(xnp.max(xnp.abs(new_in)))
-                    inv_mags.append(xnp.max(xnp.abs(new_out)))
+                new_det = utils.IncLogAbsDeterminant.update_index(
+                    self.incdet_mod_vec[:, ind], self.wi_gamma_in_mod_vec[:, ind], update, pos, pos
+                )
+                self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, (slice(None), ind), new_det)
+                new_in = utils.WoodburyInverter.update_index(self._wi_gamma_in_mod_vec[:, ind], update, pos, pos)
+                self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (slice(None), ind), new_in)
+                new_out = utils.WoodburyInverter.update_index(self._wi_gamma_out_mod_vec[:, ind], -update, pos, pos)
+                self._wi_gamma_out_mod_vec = backend.array_assign(
+                    self._wi_gamma_out_mod_vec, (slice(None), ind), new_out
+                )
+                inv_mags.append(xnp.max(xnp.abs(new_in)))
+                inv_mags.append(xnp.max(xnp.abs(new_out)))
 
         # Single device->host read for the whole step (max over all per-tracker maxes).
         self._last_step_max_inv_mag = float(xnp.max(xnp.asarray(inv_mags)))
