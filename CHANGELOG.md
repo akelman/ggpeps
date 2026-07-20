@@ -1,3 +1,7 @@
 # Changelog
 
-Z2 manager runs switched to the generic configuration in commit `68d8821bca576d6fbd091d7208cb02c7707da495`; among the resulting changes, parameter order now differs between the generic and legacy fixed-copy configs, so pass `--legacy_param_order` when using parameters saved in a legacy order. Legacy-parameter comparisons were performed against the pre-change commit `3679276ce7fe78f781118393d22435016609136a`, where the old config-specific parameter orders were still in use.
+Notable changes, particularly those that affect numerical reproducibility:
+
+- As part of generalizing the $\mathbb{Z}_2$ ansatz config, the parameter order was changed. The new order was changed to the default in `manager.py` in commit `68d8821`. To use the old order, pass the flag `--legacy_param_order` to `manager.py`. 
+
+- Pfaffians with imaginary coefficients (see derivation of the electric energy calculation) were dropped based on an argument in Appendix C of (Emonts, 2023). However this is unjustified in the multi-layer case. This change was merged into the main branch in commit `d190675`. Passing `drop_imag=True` to the function `generate_gauged_projector_terms()` restores the old behavior. 
