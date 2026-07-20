@@ -146,6 +146,17 @@ class BackendNumpy(BackendBase):
         return mat[tuple(index)]
 
     @staticmethod
+    def put_block(mat, starts, val):
+        index = []
+        for ax, start in enumerate(starts):
+            if start < 0:
+                start = start + mat.shape[ax]
+            start = int(np.clip(start, 0, mat.shape[ax] - val.shape[ax]))
+            index.append(slice(start, start + val.shape[ax]))
+        mat[tuple(index)] = val
+        return mat
+
+    @staticmethod
     def array_add(mat, inds, val):
         mat[inds] += val
         return mat

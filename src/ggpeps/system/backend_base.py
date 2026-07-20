@@ -25,6 +25,14 @@ class BackendBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @staticmethod
+    def put_block(mat, starts, val):
+        """Write block ``val`` into ``mat`` at per-axis ``starts`` (one per axis of ``mat``).
+        lax.dynamic_update_slice semantics: negative starts wrap, then starts are clamped so the
+        block fits. ``val`` must have ``mat.ndim`` axes with static shape; starts may be jax
+        tracers (jax backend)."""
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @staticmethod
     def array_assign(mat, inds, val):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 

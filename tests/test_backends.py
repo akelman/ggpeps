@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import jax
 import jax.numpy as jnp
 
 from ggpeps import utils
@@ -47,6 +48,44 @@ class TestBackends(unittest.TestCase):
         pfaval_np4 = self.numpy_backend.pfaffian(mat4_np)
         pfaval_jax4 = self.jax_backend.pfaffian(mat4_jax)
         self.assertAlmostEqual(pfaval_np4, np.asarray(pfaval_jax4))
+
+    def test_put_block(self):
+        """put_block writes a block at the given per-axis starts with lax.dynamic_update_slice
+        semantics (negative starts wrap, then starts clamp so the block fits). Both backends
+        must agree."""
+        rng = np.random.RandomState(3)
+        cases = [
+            (0, 1, 2, 2),  # interior
+            (0, 2, -4, -4),  # negative: wraps to n - 4
+            (0, 0, 5, 5),  # above range: clamps to n - size
+        ]
+        for starts in cases:
+            mat = rng.rand(2, 3, 6, 6)
+            val = rng.rand(2, 1, 3, 3)
+
+            expected = mat.copy()
+            index = []
+            for ax, start in enumerate(starts):
+                if start < 0:
+                    start = start + mat.shape[ax]
+                start = int(np.clip(start, 0, mat.shape[ax] - val.shape[ax]))
+                index.append(slice(start, start + val.shape[ax]))
+            expected[tuple(index)] = val
+
+            res_np = np.asarray(self.numpy_backend.put_block(mat.copy(), starts, val))
+            res_jax = np.asarray(self.jax_backend.put_block(jnp.asarray(mat), starts, jnp.asarray(val)))
+            with self.subTest(starts=starts):
+                self.assertTrue(np.array_equal(res_np, expected))
+                self.assertTrue(np.array_equal(res_jax, expected))
+
+    def test_put_block_jit_compiles_once(self):
+        """put_block starts may be traced: a jitted caller must not recompile per start value."""
+        mat = jnp.zeros((2, 3, 6, 6))
+        val = jnp.ones((2, 1, 3, 3))
+        jitted = jax.jit(self.jax_backend.put_block)
+        jitted(mat, (0, 1, 2, 2), val)
+        jitted(mat, (0, 2, 0, 0), val)
+        self.assertEqual(jitted._cache_size(), 1)
 
     def test_vectorized_pfaffians(self):
         """Test that the vectorized pfaffian function gives the same results for as the non-vectorized version."""
