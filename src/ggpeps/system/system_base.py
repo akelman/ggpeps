@@ -1662,7 +1662,6 @@ class System2DBase(ABC):
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
-    @abstractmethod
     def _update_gauge_ind(self, link_ind: int, theta: xnp.ndarray) -> None:
         """Update method that is called upon changing a gauge field.
         This method is central to the algorithm since it changes the gauged projectors
