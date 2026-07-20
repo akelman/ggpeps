@@ -1689,13 +1689,13 @@ class System2DBase(ABC):
         # There are two directions per vertex
         ind_mat = 2 * nvirtmodes_link * link_ind
 
-        update_arr = xnp.zeros(self.cfg.nlayer)
+        blocksize = 2 * nvirtmodes_link
+        update_arr = xnp.zeros((self.cfg.nlayer, blocksize, blocksize), dtype=self.gamma_in_sys_vec.dtype)
         for layer in range(self.cfg.nlayer):
             gamma_neutral_gauge = self.gamma_gauge_neutral_vec[layer][dir]
             gamma_in_subst = rotmat @ gamma_neutral_gauge @ xnp.transpose(rotmat)
-            update_arr[layer] = self.calculate_update_gamma_in(
-                ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer]
-            )
+            update = self.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=self.gamma_in_sys_vec[layer])
+            update_arr = backend.array_assign(update_arr, layer, update)
 
             # Substitute in the array
             inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
