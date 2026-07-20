@@ -124,11 +124,7 @@ class MonteCarloEvaluator(Evaluator):
 
         # Choose how to update in each MC step
         # (This might change in the future if we implement different updates)
-        if evaluator_cfg.update_size_per_step == self.system.cfg.lattice.nlinks:
-            self.update = self.update_all_sites_single_site
-        else:
-            # self.update = self.update_single_site
-            self.update = self.update_N_sites
+        self.update = self.update_N_sites
 
     def _initialize_measurement_geometry(self) -> None:
         """Precompute static loop/string definitions used by `measure`.
@@ -331,59 +327,6 @@ class MonteCarloEvaluator(Evaluator):
 
         logger.debug("Finished MC measurement")
         return
-
-    def update_single_site(self) -> None:
-        """Update for the MC simulation.
-        This updates randomly chooses a single site and updates it.
-        The update is local. The new gauge field value is drawn uniformly from the
-        distribution of possible gauge fields (according to the gauge group).
-
-        """
-        # Pick a site to update
-        lattice = self.system.cfg.lattice
-        link_ind = self.cfg.rng_state.choice(lattice.comp_tree, replace=False)
-
-        # Uniformly pick a gauge value
-        theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
-
-        # Store the old values
-        weight_old = self.system.weight
-        weight_new = self.system.calculate_weight_attempt(link_ind, theta)
-
-        if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
-            # Accept
-            self.obsdict["acceptance_prob"].append(1)
-            self.system.update_gauge_ind(link_ind, theta)
-        else:
-            # Reject
-            self.obsdict["acceptance_prob"].append(0)
-
-    def update_all_sites_single_site(self) -> None:
-        """Update for the MC simulation.
-        This updates iterates over all lattice sites and updates every site once.
-        The update is local.
-        The new gauge field value is drawn uniformly from the distribution of possible gauge fields
-        (according to the gauge group).
-        """
-        # Pick a site to update
-        lattice = self.system.cfg.lattice
-        comp_tree = lattice.comp_tree  # non gauge fixed links
-
-        for i in comp_tree:
-            # Uniformly pick a gauge to replace
-            theta = self.system.cfg.gaugemgr.get_random_gauge_value(self.cfg.rng_state)
-
-            # Store the old values
-            weight_old = self.system.weight
-            weight_new = self.system.calculate_weight_attempt(i, theta)
-
-            if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
-                # Accept
-                self.obsdict["acceptance_prob"].append(1)
-                self.system.update_gauge_ind(i, theta)
-            else:
-                # Reject
-                self.obsdict["acceptance_prob"].append(0)
 
     def update_N_sites(self) -> None:
         """Update for the MC simulation.
