@@ -1,9 +1,11 @@
 import unittest
 import numpy as np
 
+import ggpeps
 from ggpeps import lattice, system, utils
 from ggpeps import xnp as xnp
 from ggpeps.system.config_base import get_cov_matrix_idx
+from ggpeps.system.system_base import System2DBase
 
 
 class TestSystemBase(unittest.TestCase):
@@ -678,8 +680,7 @@ class TestIncrementalModCovmats(unittest.TestCase):
     def _update_sequence(cfg, rng, nsteps=25):
         gvals = cfg.gaugemgr.get_possible_gauge_values()
         return [
-            (int(rng.randint(0, cfg.lattice.nlinks)), gvals[int(rng.randint(0, len(gvals)))])
-            for _ in range(nsteps)
+            (int(rng.randint(0, cfg.lattice.nlinks)), gvals[int(rng.randint(0, len(gvals)))]) for _ in range(nsteps)
         ]
 
     def _check_mod_patch(self, cfg, sys_, rng):
@@ -715,6 +716,49 @@ class TestIncrementalModCovmats(unittest.TestCase):
 
     def test_mod_patch_matches_fresh_extract_d6(self):
         self._check_mod_patch(*self._build_d6(seed=5))
+
+    def test_patch_matches_reference_for_every_link(self):
+        """Direct check of _patch_gamma_in_sys_mod on synthetic data against a plain-numpy
+        reference, for every link_ind: below / between / above / equal to the measured links
+        (the equal case must leave that measured-link copy untouched)."""
+        nlayer, nvirt, nlinks = 2, 2, 6
+        mod_link_inds = (0, 3)
+        k = 2 * nvirt
+        n = k * nlinks
+        rng = np.random.RandomState(11)
+        gamma = rng.rand(nlayer, n, n)
+        old_mod = rng.rand(nlayer, len(mod_link_inds), n - k, n - k)
+
+        for link_ind in range(nlinks):
+            reference = old_mod.copy()
+            ind_mat = k * link_ind
+            for mi, m in enumerate(mod_link_inds):
+                if link_ind == m:
+                    continue
+                pos = ind_mat if link_ind < m else ind_mat - k
+                reference[:, mi, pos : pos + k, pos : pos + k] = gamma[:, ind_mat : ind_mat + k, ind_mat : ind_mat + k]
+
+            patched = System2DBase._patch_gamma_in_sys_mod(
+                xnp.asarray(gamma), xnp.asarray(old_mod.copy()), link_ind, mod_link_inds, nvirt
+            )
+            with self.subTest(link_ind=link_ind):
+                self.assertTrue(np.array_equal(np.asarray(patched), reference))
+
+    @unittest.skipUnless(ggpeps.PREFERRED_BACKEND == "jax", "compile count is only meaningful under jit")
+    def test_patch_compiles_once_across_link_inds(self):
+        """link_ind is traced, not static: changing it between calls must not recompile."""
+        nlayer, nvirt, nlinks = 2, 2, 6
+        k = 2 * nvirt
+        n = k * nlinks
+        rng = np.random.RandomState(11)
+        gamma = xnp.asarray(rng.rand(nlayer, n, n))
+        old_mod = xnp.asarray(rng.rand(nlayer, 2, n - k, n - k))
+
+        patch = System2DBase._patch_gamma_in_sys_mod
+        patch.clear_cache()
+        for link_ind in range(nlinks):
+            patch(gamma, old_mod, link_ind, (0, 3), nvirt)
+        self.assertEqual(patch._cache_size(), 1)
 
     def test_mod_patch_matches_fresh_extract_z2(self):
         self._check_mod_patch(*self._build_z2(seed=13))

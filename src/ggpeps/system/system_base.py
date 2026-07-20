@@ -1019,38 +1019,40 @@ class System2DBase(ABC):
         return gamma_in_sys_mod_linkvec_layervec
 
     @staticmethod
-    @maybe_jit(static_argnames=["link_ind", "nlayer", "mod_link_inds"])
+    @maybe_jit(static_argnames=["mod_link_inds", "nvirtmodes_link"])
     def _patch_gamma_in_sys_mod(
         gamma_in_sys_vec: xnp.ndarray,
-        old_mod: Optional[xnp.ndarray],
+        old_mod: xnp.ndarray,
         link_ind: int,
         mod_link_inds: tuple[int, ...],
-        nlayer,
         nvirtmodes_link: int,
-    ) -> Optional[xnp.ndarray]:
+    ) -> xnp.ndarray:
         """Incrementally patch the cached gamma_in_sys_mod after a single-link gauge change.
 
         gamma_in_sys is block-diagonal per link, so changing link ``link_ind`` changes only that link's
         block. In each measured-link copy (the mod layout drops that measured link's k=2*nvirtmodes_link
         modes), the changed block sits at ``ind_mat`` if ``link_ind`` is below the measured link, else at
         ``ind_mat - k`` (shifted by the carved-out link) -- the same position the mod trackers use. If
-        ``link_ind`` IS a measured link, its modes are in the open block, so that copy is unchanged.
+        ``link_ind`` IS a measured link, its modes are in the open block, so that copy is unchanged --
+        the ``where`` then writes the current block back in place (a no-op).
+
+        ``link_ind`` may be a jax tracer: block reads/writes go through take_block/put_block and the
+        skip case is a select, so under jit this compiles once for all links.
 
         Must be called AFTER gamma_in_sys has been substituted (it reads the new block from there).
-        Returns None if there was nothing cached to patch (it is recomputed on next access).
         """
         k = 2 * nvirtmodes_link
         ind_mat = k * link_ind
+        new_block = backend.take_block(gamma_in_sys_vec, ind_mat, k, axis=-2)
+        new_block = backend.take_block(new_block, ind_mat, k, axis=-1)
         patched = old_mod
         for mi, m in enumerate(mod_link_inds):
-            if link_ind == m:
-                continue
-            modpos = ind_mat if link_ind < m else ind_mat - k
-            for layer in range(nlayer):
-                new_block = gamma_in_sys_vec[layer, ind_mat : ind_mat + k, ind_mat : ind_mat + k]
-                patched = backend.array_assign(
-                    patched, (layer, mi, slice(modpos, modpos + k), slice(modpos, modpos + k)), new_block
-                )
+            # Clip keeps the no-op position in range at the edges (link_ind == m == 0 or last link).
+            modpos = xnp.clip(ind_mat - k * (link_ind > m), 0, old_mod.shape[-1] - k)
+            cur_block = backend.take_block(patched[:, mi], modpos, k, axis=-2)
+            cur_block = backend.take_block(cur_block, modpos, k, axis=-1)
+            block = xnp.where(link_ind == m, cur_block, new_block)
+            patched = backend.put_block(patched, (0, mi, modpos, modpos), block[:, None])
         return patched
 
     def _compute_mod_trackers(self) -> tuple:
@@ -1708,7 +1710,6 @@ class System2DBase(ABC):
                 self.gamma_in_sys_mod_vec,
                 link_ind,
                 self.cfg.mod_link_inds,
-                self.cfg.nlayer,
                 self.cfg.nvirtmodes_link,
             )
 
