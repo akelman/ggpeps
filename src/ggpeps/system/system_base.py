@@ -1047,7 +1047,8 @@ class System2DBase(ABC):
         new_block = backend.take_block(new_block, ind_mat, k, axis=-1)
         patched = old_mod
         for mi, m in enumerate(mod_link_inds):
-            # Clip keeps the no-op position in range at the edges (link_ind == m == 0 or last link).
+            # When link_ind == m the write just rewrites existing content and modpos is a dummy
+            # position; clip it into range (the raw formula can exceed the smaller mod matrix).
             modpos = xnp.clip(ind_mat - k * (link_ind > m), 0, old_mod.shape[-1] - k)
             cur_block = backend.take_block(patched[:, mi], modpos, k, axis=-2)
             cur_block = backend.take_block(cur_block, modpos, k, axis=-1)
