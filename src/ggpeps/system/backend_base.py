@@ -19,6 +19,12 @@ class BackendBase(ABC):
         return mat[a:b, c:d]
 
     @staticmethod
+    def take_block(mat, start, size, axis):
+        """Contiguous block of ``size`` indices starting at ``start`` along ``axis``.
+        ``size`` and ``axis`` must be static; ``start`` may be a jax tracer (jax backend)."""
+        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+
+    @staticmethod
     def array_assign(mat, inds, val):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 

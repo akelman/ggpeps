@@ -550,6 +550,7 @@ def main(args):
         # Evaluate observables for a given set of parameters with Monte Carlo
 
         mc_config.compute_grads = args.compute_grads
+        mc_config.observables_mode = args.observables or "all"
         if cache.load_obj_from_local_cache("evaluator_manager") is not None:
             mc_mgr = cache.load_obj_from_local_cache("evaluator_manager")
             logger.info("Loaded evaluator manager from cache.")
@@ -590,6 +591,8 @@ def main(args):
         else:
             # no need to compute grads if not using a gradient-based method
             mc_config.compute_grads = False
+        # During minimization only the energy (+ gradient) observables are needed per step
+        mc_config.observables_mode = args.observables or "energy"
         mc_mgr = EvaluatorManager(
             system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=tracker_interval
         )
@@ -602,6 +605,20 @@ def main(args):
         stop = timer()
         logger.info(result)
         minimizer.save(output_dir=args.output)
+
+        if mc_config.observables_mode == "energy":
+            # Full-observable MC evaluation at the optimized parameters (same pattern as minmult-mc)
+            logger.info("Running a final full-observable evaluation at the optimized parameters.")
+            system_cfg.paramvec = result.paramvec
+            mc_config.compute_grads = False
+            mc_config.observables_mode = "all"
+            mc_mgr = EvaluatorManager(
+                system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=tracker_interval
+            )
+            _ = mc_mgr.simulate()
+            mc_result = mc_mgr.get_evaluator()
+            mc_result.print_stats()
+            mc_result.save(output_dir=args.output)
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
 
@@ -872,6 +889,15 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
         help="Compute grads even if in eval mode",
+    )
+    parser.add_argument(
+        "--observables",
+        type=str,
+        choices=["all", "energy"],
+        default=None,
+        help="Which observables to measure per MC step: 'all' or 'energy' (only what the energy and its "
+        "gradient need). Defaults to 'energy' for min-mc (a final full-observable evaluation is then run "
+        "at the optimum) and 'all' otherwise.",
     )
     parser.add_argument(
         "--el_method",

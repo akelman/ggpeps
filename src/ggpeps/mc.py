@@ -38,6 +38,7 @@ class MonteCarloEvaluatorConfig:
         update_size_per_step: int = 1,
         warmup_log_freq: int = 5000,
         run_log_freq: int = 20000,
+        observables_mode: str = "all",
     ) -> None:
 
         self.warmup_steps = warmup_steps
@@ -45,6 +46,11 @@ class MonteCarloEvaluatorConfig:
         self.binsize = binsize
         self.compute_grads = compute_grads
         self.update_size_per_step = update_size_per_step  # this can be set anywhere from 1 to nlinks (inclusive)
+        # "all": measure every observable. "energy": only what the energy (and, with compute_grads,
+        # the energy gradient) needs -- for minimization, where the other observables are unused.
+        if observables_mode not in ("all", "energy"):
+            raise ValueError(f"observables_mode must be 'all' or 'energy', got {observables_mode!r}")
+        self.observables_mode = observables_mode
 
         # Logging frequency
         self.warmup_log_freq: int = warmup_log_freq
@@ -143,35 +149,44 @@ class MonteCarloEvaluator(Evaluator):
         self._meson_names = [f"square_string_0-0_{k}x{k}" for k in range(1, max_string)]
 
     def init_measurements(self) -> None:
-        """Add empty measurement vectors to the measurement dictionary"""
+        """Add empty measurement vectors to the measurement dictionary.
+
+        With ``observables_mode == "energy"`` only the observables consumed by the energy and by
+        ``energy_gradient_mc`` are created (and later measured): the bare ``*_energy_op`` operators,
+        ``energy``, ``chem_energy`` and the gradients. Everything else (loops, strings, lognorm,
+        occupations, the derived per-term energies) is skipped -- it is not needed for minimization.
+        """
         binsize = self.cfg.binsize
+        energy_only = self.cfg.observables_mode == "energy"
         self.obsdict = {}  # reset
 
         self.obsdict["acceptance_prob"] = Measurement("Acceptance Probablity", binsize)
         self.obsdict["energy"] = Measurement("Energy", binsize)
-        self.obsdict["mag_energy"] = Measurement("Magnetic Energy", binsize)
-        self.obsdict["el_energy"] = Measurement("Electric Energy", binsize)
-        self.obsdict["int_energy"] = Measurement("Interaction Energy", binsize)
-        self.obsdict["mass_energy"] = Measurement("Mass Energy", binsize)
         self.obsdict["chem_energy"] = Measurement("Chemical Energy", binsize)
         self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
         self.obsdict["el_energy_op"] = Measurement("Electric Energy Operator (bare)", binsize)
         self.obsdict["int_energy_op"] = Measurement("Interaction Energy Operator (bare)", binsize)
         self.obsdict["mass_energy_op"] = Measurement("Mass Energy Operator (bare)", binsize)
-        self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
-        self.obsdict["lognorm"] = Measurement("LogNorm", binsize)
-        if self.system.cfg.num_fermionic_layer > 0:
-            self.obsdict["all_occupations"] = Measurement("All Occupations (after PH)", binsize)
-            self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
-            self.obsdict["variance_occupation"] = Measurement("Variance Occupation", binsize)
 
-        # Wilson loops (of various sizes)
-        for loop_name in self._wilson_names:
-            self.obsdict[loop_name] = Measurement(loop_name, binsize)
+        if not energy_only:
+            self.obsdict["mag_energy"] = Measurement("Magnetic Energy", binsize)
+            self.obsdict["el_energy"] = Measurement("Electric Energy", binsize)
+            self.obsdict["int_energy"] = Measurement("Interaction Energy", binsize)
+            self.obsdict["mass_energy"] = Measurement("Mass Energy", binsize)
+            self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
+            self.obsdict["lognorm"] = Measurement("LogNorm", binsize)
+            if self.system.cfg.num_fermionic_layer > 0:
+                self.obsdict["all_occupations"] = Measurement("All Occupations (after PH)", binsize)
+                self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
+                self.obsdict["variance_occupation"] = Measurement("Variance Occupation", binsize)
 
-        # Meson strings
-        for string_name in self._meson_names:
-            self.obsdict[string_name] = Measurement(string_name, binsize)
+            # Wilson loops (of various sizes)
+            for loop_name in self._wilson_names:
+                self.obsdict[loop_name] = Measurement(loop_name, binsize)
+
+            # Meson strings
+            for string_name in self._meson_names:
+                self.obsdict[string_name] = Measurement(string_name, binsize)
 
         # Gradients
         if self.cfg.compute_grads:
@@ -184,33 +199,37 @@ class MonteCarloEvaluator(Evaluator):
 
     def measure(self) -> None:
         """Measure the corresponding observables in the dictionary"""
-        self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(self._polyakov_loop)))
-        # self.obsdict["cov_ferm"].append(self.system.ferm_covmat_vec)
+        # The bare operators, the energy and chem_energy are always measured: the energy is the
+        # minimization objective and energy_gradient_mc needs the operators for its covariances.
         self.obsdict["mag_energy_op"].append(np.asarray(self.system.mag_energy_op))
         self.obsdict["el_energy_op"].append(np.asarray(self.system.el_energy_op))
         self.obsdict["int_energy_op"].append(np.asarray(self.system.int_energy_op))
         self.obsdict["mass_energy_op"].append(np.asarray(self.system.mass_energy_op))
-
-        # Most of these values could be calculated in a post-processing step
         self.obsdict["energy"].append(float(self.system.energy))
-        self.obsdict["el_energy"].append(float(self.system.el_energy))
-        self.obsdict["mag_energy"].append(float(self.system.mag_energy))
-        self.obsdict["int_energy"].append(float(self.system.int_energy))
-        self.obsdict["mass_energy"].append(float(self.system.mass_energy))
         self.obsdict["chem_energy"].append(float(self.system.chem_energy))
-        self.obsdict["lognorm"].append(float(self.system.calculate_lognorm_inc(all_factors=True)))
-        if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
-            self.obsdict["all_occupations"].append(np.asarray(self.system.occupations_before_ph))
-            self.obsdict["average_occupation"].append(np.asarray(self.system.average_occupation()))
 
-        # Wilson loops
-        # TODO: save sizes/loops/strings in a more efficient way, so that they are not recomputed each step
-        for loop_name, loop_path in zip(self._wilson_names, self._wilson_loops):
-            self.obsdict[loop_name].append(np.real(self.system.compute_path(loop_path)))
+        if self.cfg.observables_mode != "energy":
+            self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(self._polyakov_loop)))
+            # self.obsdict["cov_ferm"].append(self.system.ferm_covmat_vec)
 
-        # Meson strings
-        for string_name, string_path in zip(self._meson_names, self._meson_strings):
-            self.obsdict[string_name].append(np.asarray(self.system.meson_string(string_path)))
+            # Most of these values could be calculated in a post-processing step
+            self.obsdict["el_energy"].append(float(self.system.el_energy))
+            self.obsdict["mag_energy"].append(float(self.system.mag_energy))
+            self.obsdict["int_energy"].append(float(self.system.int_energy))
+            self.obsdict["mass_energy"].append(float(self.system.mass_energy))
+            self.obsdict["lognorm"].append(float(self.system.calculate_lognorm_inc(all_factors=True)))
+            if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations for fermionic layers
+                self.obsdict["all_occupations"].append(np.asarray(self.system.occupations_before_ph))
+                self.obsdict["average_occupation"].append(np.asarray(self.system.average_occupation()))
+
+            # Wilson loops
+            # TODO: save sizes/loops/strings in a more efficient way, so that they are not recomputed each step
+            for loop_name, loop_path in zip(self._wilson_names, self._wilson_loops):
+                self.obsdict[loop_name].append(np.real(self.system.compute_path(loop_path)))
+
+            # Meson strings
+            for string_name, string_path in zip(self._meson_names, self._meson_strings):
+                self.obsdict[string_name].append(np.asarray(self.system.meson_string(string_path)))
 
         if self.cfg.compute_grads:
             self.obsdict["el_energy_op_grad"].append(np.asarray(self.system.el_energy_op_grad_vec))
@@ -290,11 +309,16 @@ class MonteCarloEvaluator(Evaluator):
         """Warm up phase without measurement"""
 
         logger.debug("Starting MC warmup")
+        # Warmup does no measurements, so skip maintaining the measurement-only open-link ("mod") trackers
+        # on every accepted step; re-anchor them once from scratch before the measurement phase begins.
+        self.system.defer_mod_trackers = True
         while self.step < self.cfg.warmup_steps:
             if self.step % self.cfg.warmup_log_freq == 0:
                 logger.debug(f"Warmup: {self.step}")
             self.update()
             self.step += 1
+        self.system.defer_mod_trackers = False
+        self.system.reanchor_mod_trackers()
         logger.debug("Finished MC warmup")
 
     def run(self) -> None:
