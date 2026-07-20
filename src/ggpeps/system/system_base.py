@@ -1326,7 +1326,9 @@ class System2DBase(ABC):
         gamma_neutral_gauge_vec = self.gamma_gauge_neutral_vec
         gamma_in_subst_layers = rotmat @ gamma_neutral_gauge_vec[:, dir] @ xnp.transpose(rotmat)
         updates = self.calculate_update_gamma_in(ind_mat, gamma_in_subst_layers, self.gamma_in_sys_vec)
-        return self.update_lognorm_inc(ind_mat, updates, all_factors)
+        return self.update_lognorm_inc(
+            self.incdet_vec, self.wi_gamma_in_vec, self.gamma_in_sys_vec, self.mat_d_vec, ind_mat, updates, all_factors
+        )
 
     @staticmethod
     @maybe_jit(static_argnames=["all_factors"])
@@ -1406,12 +1408,26 @@ class System2DBase(ABC):
         normvec = self.calculate_lognormvec_inc(all_factors=all_factors)
         return xnp.sum(normvec)
 
-    def update_lognorm_inc(self, offset: int, updates: xnp.ndarray, all_factors: bool = False) -> float:
+    @staticmethod
+    @maybe_jit(static_argnames=["all_factors"])
+    def update_lognorm_inc(
+        incdet_vec: xnp.ndarray,
+        d_inv_minus_gammain_inv_vec: xnp.ndarray,
+        gamma_in_sys_vec: xnp.ndarray,
+        mat_d_vec: xnp.ndarray,
+        offset: int,
+        updates: xnp.ndarray,
+        all_factors: bool = False,
+    ) -> float:
         """Update the logarithm of the norm incrementally with the given update.
 
         Args:
+            incdet_vec (xnp.ndarray): Vector of incremental determinants of (D^-1 - gammain)^-1
+            d_inv_minus_gammain_inv_vec (xnp.ndarray): Vector of (D^-1 - gammain)^-1
+            gamma_in_sys_vec (xnp.ndarray): gamma_in for the whole system
+            mat_d_vec (xnp.ndarray): Vector of D matrices
             offset (int): Offset into the matrix.
-            update (xnp.ndarray): Update matrix to replace the current sub-matrix
+            updates (xnp.ndarray): Update matrix to replace the current sub-matrix
             all_factors (bool, optional): Include all constant pre-factors. Defaults to False.
 
         Returns:
@@ -1419,11 +1435,11 @@ class System2DBase(ABC):
         """
         cumval = 0
         detval_vec = utils.IncLogAbsDeterminant.update_index(
-            self.incdet_vec, self.wi_gamma_in_vec, updates, offset, offset
+            incdet_vec, d_inv_minus_gammain_inv_vec, updates, offset, offset
         )
         if all_factors:
-            detval_vec -= self.gamma_in_sys_vec[0].shape[0] * xnp.log(2)
-            detval_vec += xnp.linalg.slogdet(self.mat_d_vec)[1]
+            detval_vec -= gamma_in_sys_vec[0].shape[0] * xnp.log(2)
+            detval_vec += xnp.linalg.slogdet(mat_d_vec)[1]
         # The factor 0.5 is the sqrt of the formula. We are storing the logarithm of the norm.
         # The addition of the cumval is the multiplication of the indpendent PEPS
         cumval += 0.5 * xnp.sum(detval_vec)
