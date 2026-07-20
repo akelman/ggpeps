@@ -1018,7 +1018,16 @@ class System2DBase(ABC):
         gamma_in_sys_mod_linkvec_layervec = res[2]  # extract the "virtual-virtual" part
         return gamma_in_sys_mod_linkvec_layervec
 
-    def _patch_gamma_in_sys_mod(self, old_mod: Optional[xnp.ndarray], link_ind: int) -> Optional[xnp.ndarray]:
+    @staticmethod
+    @maybe_jit(static_argnames=["link_ind", "nlayer", "mod_link_inds"])
+    def _patch_gamma_in_sys_mod(
+        gamma_in_sys_vec: xnp.ndarray,
+        old_mod: Optional[xnp.ndarray],
+        link_ind: int,
+        mod_link_inds: tuple[int, ...],
+        nlayer,
+        nvirtmodes_link: int,
+    ) -> Optional[xnp.ndarray]:
         """Incrementally patch the cached gamma_in_sys_mod after a single-link gauge change.
 
         gamma_in_sys is block-diagonal per link, so changing link ``link_ind`` changes only that link's
@@ -1030,17 +1039,15 @@ class System2DBase(ABC):
         Must be called AFTER gamma_in_sys has been substituted (it reads the new block from there).
         Returns None if there was nothing cached to patch (it is recomputed on next access).
         """
-        if old_mod is None:
-            return None
-        k = 2 * self.cfg.nvirtmodes_link
+        k = 2 * nvirtmodes_link
         ind_mat = k * link_ind
         patched = old_mod
-        for mi, m in enumerate(self.cfg.mod_link_inds):
+        for mi, m in enumerate(mod_link_inds):
             if link_ind == m:
                 continue
             modpos = ind_mat if link_ind < m else ind_mat - k
-            for layer in range(self.cfg.nlayer):
-                new_block = self.gamma_in_sys_vec[layer, ind_mat : ind_mat + k, ind_mat : ind_mat + k]
+            for layer in range(nlayer):
+                new_block = gamma_in_sys_vec[layer, ind_mat : ind_mat + k, ind_mat : ind_mat + k]
                 patched = backend.array_assign(
                     patched, (layer, mi, slice(modpos, modpos + k), slice(modpos, modpos + k)), new_block
                 )
@@ -1696,7 +1703,14 @@ class System2DBase(ABC):
 
         # The mod family (gamma_in_sys_mod + mod trackers) is measurement-only; skip it during warmup.
         if not self.defer_mod_trackers:
-            self._gamma_in_sys_mod_vec = self._patch_gamma_in_sys_mod(self._gamma_in_sys_mod_vec, link_ind)
+            self._gamma_in_sys_mod_vec = self._patch_gamma_in_sys_mod(
+                self.gamma_in_sys_vec,
+                self.gamma_in_sys_mod_vec,
+                link_ind,
+                self.cfg.mod_link_inds,
+                self.cfg.nlayer,
+                self.cfg.nvirtmodes_link,
+            )
 
         # --- Incrementally update the closed (full-system) trackers via Woodbury / IncDet.
         # gamma_out now inverts (mat_d + gamma_in), so a +Delta change in gamma_in enters its
