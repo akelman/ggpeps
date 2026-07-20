@@ -1816,18 +1816,18 @@ class System2DBase(ABC):
                 dir=dir,
                 defer_mod=defer_mod,
             )
-            (self._gamma_in_sys_vec, self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec, self.weight) = (
-                res[:5]
-            )
+            self._gamma_in_sys_vec, self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec, self.weight = res[
+                :5
+            ]
             if not defer_mod:
+                # modified trackers family
                 (
                     self._gamma_in_sys_mod_vec,
                     self._wi_gamma_in_mod_vec,
                     self._wi_gamma_out_mod_vec,
                     self._incdet_mod_vec,
                 ) = res[5:9]
-            # Single device->host read for the whole step (max over all per-tracker maxes); feeds the
-            # refresh magnitude guard.
+            # float() = sync point: pull the tracker max from GPU for the refresh guard
             self._last_step_max_inv_mag = float(res[9])
 
             # Invalidate gauge dependent quantities
