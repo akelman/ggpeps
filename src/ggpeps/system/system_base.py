@@ -153,7 +153,7 @@ class System2DBase(ABC):
         # Drift control for the incremental (Woodbury/IncDet) trackers.
         # The closed and modified trackers are maintained incrementally for cheaper single-link
         # updates, but the per-step error accumulates and is amplified through near-singular updates.
-        # To keep it bounded, the public update_gauge_ind wrapper re-anchors BOTH families from
+        # To keep it bounded, the public update_gauge_ind wrapper recomputes BOTH families from
         # scratch (a) periodically every ``tracker_refresh_interval`` gauge steps and (b) whenever
         # the last incremental step left a near-singular tracked inverse (its largest entry exceeds
         # TRACKER_INV_MAG_THRESH).
@@ -162,13 +162,13 @@ class System2DBase(ABC):
         # Refresh cadence: read from the config when present (EvaluatorManager stamps it there per
         # run, resolving the per-ansatz default), else fall back to 0 = magnitude-guard-only. That
         # is the safe minimal default for ad-hoc/direct construction: the guard protects correctness
-        # while the periodic re-anchor is only a long-run heartbeat (drift is ~1e-13 over thousands
+        # while the periodic recomputation is only a long-run heartbeat (drift is ~1e-13 over thousands
         # of normal steps). See update_gauge_ind for the >0 / ==0 / <0 mode semantics.
         self.tracker_refresh_interval: int = getattr(self.cfg, "tracker_refresh_interval", 0)
 
         return
 
-    # Magnitude guard: re-anchor immediately if the largest entry of a tracked inverse exceeds this
+    # Magnitude guard: recompute immediately if the largest entry of a tracked inverse exceeds this
     # threshold. A large inverse <=> a near-singular tracked matrix, where the incremental Woodbury
     # update loses precision; the from-scratch recompute is backward-stable and matches even
     # where the inverse is genuinely large.
@@ -959,7 +959,7 @@ class System2DBase(ABC):
 
     @property
     def wi_gamma_out_vec(self) -> xnp.ndarray:
-        """Return the vector of Woodbury inverters for (D - gammain)^-1 for the different layers.
+        """Return the vector of Woodbury inverters for (D + gammain)^-1 for the different layers.
         The length of the first axis is equal to the number of layers.
         This is a get function.
 
@@ -1015,10 +1015,10 @@ class System2DBase(ABC):
         """Recompute the modified (open-link) Woodbury inverses and incremental determinant
         from scratch from the CURRENT ``gamma_in_sys_vec``.
 
-        This is the from-scratch re-anchor point for the modified trackers. The modified objects
+        This is the from-scratch recomputation point for the modified trackers. The modified objects
         ARE tracked incrementally (see the subclasses' ``_update_gauge_ind``) for a cheaper
-        single-link update, but their incremental Woodbury/IncDet update could drift catastrophically
-        along an eval. To bound that drift ``refresh_trackers`` re-anchors from scratch
+        single-link update, but their incremental Woodbury/IncDet update can drift
+        during an eval. To bound that drift ``refresh_trackers`` recomputes from scratch
         here -- periodically and on the magnitude guard (see ``update_gauge_ind``).
         ``gamma_in_sys_vec`` itself is maintained exactly, so recomputing the modified objects from
         it is correct and numerically stable.
@@ -1038,12 +1038,12 @@ class System2DBase(ABC):
     # ---------------- Incremental tracker update + drift control ----------------
 
     def refresh_trackers(self) -> None:
-        """Re-anchor BOTH the closed and modified incremental trackers from scratch.
+        """Recompute BOTH the closed and modified incremental trackers from scratch.
 
         The closed (`wi_gamma_in/out_vec`, `incdet_vec`) and modified (`wi_gamma_*_mod_vec`,
         `incdet_mod_vec`) trackers are maintained incrementally by ``_update_gauge_ind`` for the
-        cheaper single-link update, but the per-step error accumulates along a long gauge chain. This
-        recomputes both families from the CURRENT ``gamma_in_sys_vec`` (which is maintained exactly),
+        cheaper single-link update, but the per-step error accumulates along a long update chain. This
+        function recomputes both families from the CURRENT ``gamma_in_sys_vec`` (which is maintained exactly),
         bounding that drift. Called from the public
         ``update_gauge_ind`` periodically and on the magnitude guard; resets the step counter.
 
@@ -1093,7 +1093,7 @@ class System2DBase(ABC):
 
     @property
     def wi_gamma_out_mod_vec(self) -> xnp.ndarray:
-        """Return the vector of Woodbury inverters for (D - gammain_mod)^-1 for the different layers.
+        """Return the vector of Woodbury inverters for (D + gammain_mod)^-1 for the different layers.
         This is a get function.
 
         Returns:
@@ -1529,7 +1529,7 @@ class System2DBase(ABC):
     def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray) -> None:
         """Update a gauge field at a given link index by a new value.
         This function can be called from outside the system, and so accepts a gauge field value as np.ndarray.
-        We convert here to xnp.ndarray. After the incremental update it re-anchors the trackers from
+        We convert here to xnp.ndarray. After the incremental update it recomputes the trackers from
         scratch when the periodic interval elapsed or the magnitude guard fired.
 
         Args:
@@ -1544,11 +1544,11 @@ class System2DBase(ABC):
             # only actually do the update if it's a different gauge field
             self._update_gauge_ind(link_ind, theta)  # incremental; sets self._last_step_max_inv_mag
 
-            # Re-anchor both tracker families from scratch to bound the incremental Woodbury/IncDet
+            # Recompute both tracker families from scratch to bound the incremental Woodbury/IncDet
             # drift. Three modes via tracker_refresh_interval (set per run from EvaluatorManager /
             # --tracker_refresh_interval):
             #   > 0 : periodic every `interval` steps AND the magnitude guard (default; 1 == every step)
-            #   == 0: magnitude guard only, no periodic re-anchor ("no_periodic")
+            #   == 0: magnitude guard only, no periodic recomputation ("no_periodic")
             #   <  0: no refresh at all -- pure incremental, even if a tracked inverse blows up
             interval = self.tracker_refresh_interval
             if interval >= 0:
