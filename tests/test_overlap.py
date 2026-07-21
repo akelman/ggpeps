@@ -67,8 +67,8 @@ class TestOverlapMath(unittest.TestCase):
 
 def _build_z2_2c_system(seed=1, gf=0, num_pg_layer=2):
     lat = lattice.Lattice2D(2, 2, gf)
-    cfg = system.Z2System2D_G2C_F2C_Config(
-        lat, 1.0, 1.0, 0.0, 0.0, None, num_pg_layer=num_pg_layer, num_fermionic_layer=0, mod_link_inds=(0,)
+    cfg = system.Z2System2D_Config(
+        lat, 1.0, 1.0, 0.0, 0.0, None, ncopy=2, num_pg_layer=num_pg_layer, num_fermionic_layer=0, mod_link_inds=(0,)
     )
     rng = np.random.default_rng(seed)
     cfg.paramvec = rng.standard_normal(cfg.param_shape())
@@ -170,8 +170,8 @@ class TestOverlapPerConfigZ2(unittest.TestCase):
 
         def build():
             lat = lattice.Lattice2D(2, 2, 0)
-            cfg = system.Z2System2DConfig(
-                lat, 1.0, 1.0, 0.0, 0.0, None, num_pg_layer=2, num_fermionic_layer=0, mod_link_inds=(0,)
+            cfg = system.Z2System2D_Config(
+                lat, 1.0, 1.0, 0.0, 0.0, None, ncopy=1, num_pg_layer=2, num_fermionic_layer=0, mod_link_inds=(0,)
             )
             rng = np.random.default_rng(13)
             cfg.paramvec = rng.standard_normal(cfg.param_shape())
@@ -188,6 +188,10 @@ class TestOverlapPerConfigZ2(unittest.TestCase):
             )
 
 
+_Z2_GENERIC_1C = partial(system.Z2System2D_Config, ncopy=1)
+_Z2_GENERIC_2C = partial(system.Z2System2D_Config, ncopy=2)
+
+
 def _exact_el_energy(
     cfg_class, lat, paramvec, el_method, system_type, num_pg_layer=2, g_el=1.0, g_mag=1.0, mod_links=(0,)
 ):
@@ -197,7 +201,7 @@ def _exact_el_energy(
         lat, g_el, g_mag, 0.0, 0.0, None, num_pg_layer=num_pg_layer, num_fermionic_layer=0, mod_link_inds=mod_links
     )
     cfg.paramvec = np.reshape(paramvec, cfg.param_shape())
-    if isinstance(cfg, system.Z2System2DConfig):
+    if cfg.ncopy == 1:
         cfg.make_pure_gauge()  # 1-copy Z2 must be forced pure gauge (manager.py:383)
     cfg.enforce_parameter_conditions(cfg.paramvec)
     cfg.el_method = el_method
@@ -216,8 +220,8 @@ class TestOverlapReproducesZ2(unittest.TestCase):
         lat = lattice.Lattice2D(2, 2, 0)
         rng = np.random.default_rng(7)
         paramvec = rng.standard_normal((2, 1, 20))
-        el_p = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec, "pfaffian", system.Z2System2D)
-        el_b = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec, "overlap", system.Z2System2D)
+        el_p = _exact_el_energy(_Z2_GENERIC_2C, lat, paramvec, "pfaffian", system.Z2System2D)
+        el_b = _exact_el_energy(_Z2_GENERIC_2C, lat, paramvec, "overlap", system.Z2System2D)
         self.assertTrue(
             np.allclose(el_b, el_p, rtol=1e-7, atol=1e-8), msg=f"el_energy: overlap {el_b} != pfaffian {el_p}"
         )
@@ -228,15 +232,15 @@ class TestOverlapReproducesZ2(unittest.TestCase):
         lat = lattice.Lattice2D(2, 2, 0)
         for num_pg_layer in (1, 2, 3):  # odd AND even: locks the (-1)^nlayer Wick-phase fix
             rng = np.random.default_rng(100 + num_pg_layer)
-            sh = system.Z2System2DConfig(
-                lat, 1.0, 1.0, 0.0, 0.0, None, num_pg_layer=num_pg_layer, num_fermionic_layer=0
+            sh = system.Z2System2D_Config(
+                lat, 1.0, 1.0, 0.0, 0.0, None, ncopy=1, num_pg_layer=num_pg_layer, num_fermionic_layer=0
             ).param_shape()
             paramvec = rng.standard_normal(sh)
             el_p = _exact_el_energy(
-                system.Z2System2DConfig, lat, paramvec, "pfaffian", system.Z2System2D, num_pg_layer=num_pg_layer
+                _Z2_GENERIC_1C, lat, paramvec, "pfaffian", system.Z2System2D, num_pg_layer=num_pg_layer
             )
             el_b = _exact_el_energy(
-                system.Z2System2DConfig, lat, paramvec, "overlap", system.Z2System2D, num_pg_layer=num_pg_layer
+                _Z2_GENERIC_1C, lat, paramvec, "overlap", system.Z2System2D, num_pg_layer=num_pg_layer
             )
             self.assertTrue(
                 np.allclose(el_b, el_p, rtol=1e-6, atol=1e-7),
@@ -249,8 +253,8 @@ class TestOverlapReproducesZ2(unittest.TestCase):
         lat = lattice.Lattice2D(2, 2, -1)
         rng = np.random.default_rng(11)
         paramvec = rng.standard_normal((2, 1, 20))
-        el_p = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec, "pfaffian", system.Z2System2D)
-        el_b = _exact_el_energy(system.Z2System2D_G2C_F2C_Config, lat, paramvec, "overlap", system.Z2System2D)
+        el_p = _exact_el_energy(_Z2_GENERIC_2C, lat, paramvec, "pfaffian", system.Z2System2D)
+        el_b = _exact_el_energy(_Z2_GENERIC_2C, lat, paramvec, "overlap", system.Z2System2D)
         self.assertTrue(np.allclose(el_b, el_p, rtol=1e-6, atol=1e-7))
 
 

@@ -667,8 +667,8 @@ class TestIncrementalModCovmats(unittest.TestCase):
     @staticmethod
     def _build_z2(seed):
         lat = lattice.Lattice2D(2, 2)
-        cfg = system.Z2System2D_G2C_F2C_Config(
-            lat, 1.0, 1.0, 0.0, 0.0, np.zeros(0), num_pg_layer=1, num_fermionic_layer=0, mod_link_inds=(0,)
+        cfg = system.Z2System2D_Config(
+            lat, 1.0, 1.0, 0.0, 0.0, np.zeros(0), ncopy=2, num_pg_layer=1, num_fermionic_layer=0, mod_link_inds=(0,)
         )
         rng = np.random.RandomState(seed)
         cfg.paramvec = rng.rand(*cfg.param_shape())
@@ -679,8 +679,7 @@ class TestIncrementalModCovmats(unittest.TestCase):
     def _update_sequence(cfg, rng, nsteps=25):
         gvals = cfg.gaugemgr.get_possible_gauge_values()
         return [
-            (int(rng.randint(0, cfg.lattice.nlinks)), gvals[int(rng.randint(0, len(gvals)))])
-            for _ in range(nsteps)
+            (int(rng.randint(0, cfg.lattice.nlinks)), gvals[int(rng.randint(0, len(gvals)))]) for _ in range(nsteps)
         ]
 
     def _check_mod_patch(self, cfg, sys_, rng):
