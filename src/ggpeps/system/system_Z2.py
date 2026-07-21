@@ -106,6 +106,10 @@ class Z2System2D(System2DBase):
             inds = (layer, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
             self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
 
+        # The mod family (gamma_in_sys_mod + mod trackers) is measurement-only; skip it during warmup.
+        if not self.defer_mod_trackers:
+            self._gamma_in_sys_mod_vec = self._patch_gamma_in_sys_mod(self._gamma_in_sys_mod_vec, link_ind)
+
         update_arr = xnp.array(update_vec)
 
         # --- Incrementally update the closed (full-system) trackers via Woodbury / IncDet.
@@ -120,41 +124,42 @@ class Z2System2D(System2DBase):
         self._wi_gamma_out_vec = utils.WoodburyInverter.update_index(
             self.wi_gamma_out_vec, update_arr_out, ind_mat, ind_mat
         )
-        # Largest entry of any updated inverse (the GLOBAL near-singularity signal: large |inverse|
-        # <=> small smallest singular value). The public update_gauge_ind wrapper uses it to trigger
-        # an out-of-schedule from-scratch refresh. Accumulate the per-tracker maxes as on-device
-        # scalars and defer the single device->host read to the end (one sync/step, not one each).
+        # Largest entry of any updated inverse. The public update_gauge_ind wrapper uses it to trigger
+        # an out-of-schedule from-scratch refresh.
         inv_mags = [xnp.max(xnp.abs(self._wi_gamma_in_vec)), xnp.max(xnp.abs(self._wi_gamma_out_vec))]
 
         # --- Incrementally update the modified (open-link) trackers. The link excluded from the
         # modified objects is skipped; for the others the local update is shifted by the carved-out
         # link when it sits below the changed link. The vectorized index update supports neither
         # skipping a link nor a variable offset, so we loop explicitly.
-        assert self._wi_gamma_in_mod_vec is not None  # for mypy
-        assert self._wi_gamma_out_mod_vec is not None
-        for lay in range(self.cfg.nlayer):
-            for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
-                if mod_link_ind == link_ind:
-                    continue
-                offset = 2 * self.cfg.nvirtmodes_link if link_ind > mod_link_ind else 0
-                pos = ind_mat - offset
+        # Skipped entirely during warmup (defer_mod_trackers): these are measurement-only and are
+        # re-anchored from scratch (reanchor_mod_trackers) when warmup ends.
+        if not self.defer_mod_trackers:
+            assert self._wi_gamma_in_mod_vec is not None  # for mypy
+            assert self._wi_gamma_out_mod_vec is not None
+            for lay in range(self.cfg.nlayer):
+                for ind, mod_link_ind in enumerate(self.cfg.mod_link_inds):
+                    if mod_link_ind == link_ind:
+                        continue
+                    offset = 2 * self.cfg.nvirtmodes_link if link_ind > mod_link_ind else 0
+                    pos = ind_mat - offset
 
-                mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
-                update_out = -update_vec[lay]
-                new_det = utils.IncLogAbsDeterminant.update_index(
-                    self.incdet_mod_vec[lay][ind], mat_inv, update_vec[lay], pos, pos
-                )
-                self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, (lay, ind), new_det)
-                new_in = utils.WoodburyInverter.update_index(
-                    self._wi_gamma_in_mod_vec[lay][ind], update_vec[lay], pos, pos
-                )
-                self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (lay, ind), new_in)
-                new_out = utils.WoodburyInverter.update_index(
-                    self._wi_gamma_out_mod_vec[lay][ind], update_out, pos, pos
-                )
-                self._wi_gamma_out_mod_vec = backend.array_assign(self._wi_gamma_out_mod_vec, (lay, ind), new_out)
-                inv_mags.append(xnp.max(xnp.abs(new_in)))
-                inv_mags.append(xnp.max(xnp.abs(new_out)))
+                    mat_inv = self.wi_gamma_in_mod_vec[lay][ind]
+                    update_out = -update_vec[lay]
+                    new_det = utils.IncLogAbsDeterminant.update_index(
+                        self.incdet_mod_vec[lay][ind], mat_inv, update_vec[lay], pos, pos
+                    )
+                    self._incdet_mod_vec = backend.array_assign(self._incdet_mod_vec, (lay, ind), new_det)
+                    new_in = utils.WoodburyInverter.update_index(
+                        self._wi_gamma_in_mod_vec[lay][ind], update_vec[lay], pos, pos
+                    )
+                    self._wi_gamma_in_mod_vec = backend.array_assign(self._wi_gamma_in_mod_vec, (lay, ind), new_in)
+                    new_out = utils.WoodburyInverter.update_index(
+                        self._wi_gamma_out_mod_vec[lay][ind], update_out, pos, pos
+                    )
+                    self._wi_gamma_out_mod_vec = backend.array_assign(self._wi_gamma_out_mod_vec, (lay, ind), new_out)
+                    inv_mags.append(xnp.max(xnp.abs(new_in)))
+                    inv_mags.append(xnp.max(xnp.abs(new_out)))
 
         # Single device->host read for the whole step (max over all per-tracker maxes).
         self._last_step_max_inv_mag = float(xnp.max(xnp.asarray(inv_mags)))
@@ -257,14 +262,11 @@ class Z2System2D(System2DBase):
         symbolvec: tuple,
         el_energy_vec: xnp.ndarray,
         mat_b_mod_vec: xnp.ndarray,
-        gamma_in_sys_mod_vec: xnp.ndarray,
         covmat_out_mod_vec: xnp.ndarray,
         el_pfaffians: xnp.ndarray,
         norm_mod_vec: xnp.ndarray,
         lognorm_default_vec: xnp.ndarray,
-        gamma_in_mod_inv_vec: xnp.ndarray,
         gamma_out_mod_inv_vec: xnp.ndarray,
-        mat_d_mod_inv_vec: xnp.ndarray,
         d_mat_a_vec: xnp.ndarray,
         d_mat_b_vec: xnp.ndarray,
         d_mat_d_vec: xnp.ndarray,
@@ -302,10 +304,11 @@ class Z2System2D(System2DBase):
         d_covmat_out_virt_vec = xnp.zeros(shape)
 
         l, m, u, s = inds
-        # NOTE: from limited testing, it appears that masking these is not worth it, as that creates extra copies.
-        # But it could be worth it if some of the matmuls were moved out of here, to happen once per eval.
         # (nlayer, nmodlinks, mod_virt_dim, mod_virt_dim)
-        prod_mod_norm_vec = mat_d_mod_inv_vec @ gamma_in_mod_inv_vec @ gamma_in_sys_mod_vec
+        # prod = mat_d_mod_inv @ wi_gamma_in_mod @ gamma_in_sys_mod = -(Dmod + gamma_in_mod)^-1:
+        # gamma_in_sys_mod is a pure-state covariance (Gamma^2 = -1), so
+        # (1 - Gamma D)^-1 Gamma = -(D + Gamma)^-1, which is the tracked wi_gamma_out_mod.
+        prod_mod_norm_vec = -gamma_out_mod_inv_vec
         # (nlayer, nmodlinks, mod_virt_dim, link_dim), take only the last k columns
         diff_times_b_vec = gamma_out_mod_inv_vec @ xnp.swapaxes(mat_b_mod_vec, -1, -2)[:, :, :, -k:]
         # (nlayer, nmodlinks, link_dim, mod_virt_dim), take only the last k rows

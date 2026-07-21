@@ -252,6 +252,10 @@ class U1System2D(System2DBase):
         inds = (0, slice(ind_mat, ind_mat + rotmat.shape[0]), slice(ind_mat, ind_mat + rotmat.shape[1]))
         self._gamma_in_sys_vec = backend.array_assign(self._gamma_in_sys_vec, inds, gamma_in_subst)
 
+        # invalidate_gauge_update no longer resets the cached gamma_in_sys_mod (it is persistent incremental
+        # state maintained by the other backends). This backend does not patch it, so reset it explicitly.
+        self._gamma_in_sys_mod_vec = None
+
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
 

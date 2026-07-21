@@ -187,11 +187,19 @@ class TestZ2C2SystemMethods(unittest.TestCase):
     def test_norm_minimal(self):
         # This update is a nullop since we initialize the gauge-field with 0
         zeroarr = (np.zeros((1, 1)),)
-        # The factor of 2 compensates for the
-        logdet_inc = 2 * self.system_z2_2_2_real.update_lognorm_inc(0, np.asarray(zeroarr), all_factors=False)
+        sys = self.system_z2_2_2_real
+        logdet_inc = 2 * sys.update_lognorm_inc(
+            sys.incdet_vec,
+            sys.wi_gamma_in_vec,
+            sys.gamma_in_sys_vec,
+            sys.mat_d_vec,
+            0,
+            np.asarray(zeroarr),
+            all_factors=False,
+        )
         # This is equivalent to
-        # logdet_inc = self.system_z2_2_2.incdet.det()
-        diff = self.system_z2_2_2_real.mat_d_inv_vec[0] - self.system_z2_2_2_real.gamma_in_sys_vec[0]
+        # logdet_inc = sys.incdet.det()
+        diff = sys.mat_d_inv_vec[0] - sys.gamma_in_sys_vec[0]
         sign, logdet = np.linalg.slogdet(diff)
         self.assertGreater(sign, 0)
         self.assertAlmostEqual(logdet_inc, logdet)
@@ -200,8 +208,17 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         # Test that the incremental update is equivalent to re-calculation of the norm
         # This update is a nullop since we initialize the gauge-field with 0
         zeroarr = (np.zeros((1, 1)),)
-        weight_inc = self.system_z2_2_2_real.update_lognorm_inc(0, np.asarray(zeroarr), all_factors=True)
-        weight_recalc = self.system_z2_2_2_real.calculate_lognorm(all_factors=True)
+        sys = self.system_z2_2_2_real
+        weight_inc = sys.update_lognorm_inc(
+            sys.incdet_vec,
+            sys.wi_gamma_in_vec,
+            sys.gamma_in_sys_vec,
+            sys.mat_d_vec,
+            0,
+            np.asarray(zeroarr),
+            all_factors=True,
+        )
+        weight_recalc = sys.calculate_lognorm(all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
     def test_norm_incremental_update(self):

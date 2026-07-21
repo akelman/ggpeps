@@ -88,6 +88,11 @@ class BackendJax(BackendBase):
         return mat
 
     @staticmethod
+    def take_block(mat, start, size, axis):
+        # Gather with a traced index vector: `start` may be a tracer -> jitted callers compile once.
+        return jnp.take(mat, start + jnp.arange(size), axis=axis)
+
+    @staticmethod
     def array_add(mat, inds, val):
         mat = mat.at[inds].add(val)
         return mat

@@ -610,9 +610,13 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
         grad_paramvec = None
         max_grad_paramvec = np.nan
 
-    plaquette = utils.get_obs_mean_df(res, "wilson_loop_0-0_1x1")
+    # In observables_mode == "energy" only the objective observables exist (not the loops,
+    # occupations or per-term energies); skip the parts of the report that need the rest.
+    full_obs = getattr(minimizer.evaluator_manager.cfg, "observables_mode", "all") != "energy"
+
     mass_energy_op = utils.get_obs_mean_df(res, "mass_energy_op")
-    if minimizer.evaluator_manager.system_cfg.num_fermionic_layer > 0:
+    plaquette = f"{utils.get_obs_mean_df(res, 'wilson_loop_0-0_1x1'):.6f}" if full_obs else "N/A"
+    if full_obs and minimizer.evaluator_manager.system_cfg.num_fermionic_layer > 0:
         # If we have fermionic layers, we can compute the average occupation
         avg_occupation = utils.get_obs_mean_df(res, "average_occupation")
         avg_occ = ", ".join([f"{val:.4f}" for val in avg_occupation])
@@ -620,7 +624,7 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
         avg_occ = "None"
 
     message = f"Energy: {energy:.9f}, Total Mass: {mass_energy_op}, Occupation: {avg_occ}, "
-    message += f"Plaquette: {plaquette:.6f}, Max grad paramvec: {max_grad_paramvec:.6f}"
+    message += f"Plaquette: {plaquette}, Max grad paramvec: {max_grad_paramvec:.6f}"
     if minimizer.cfg.method in ["CUSTOM", "ADAM"]:
         # We only have access to the iteration number if we are using our own minimizer implementation
         message = f"Iter: {x:03d}, {message}"
@@ -630,26 +634,27 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
         message += f", acceptance prob: {acceptance_prob:.6f}"
     logger.info(message)
 
-    if minimizer.evaluator_manager.system_cfg.num_fermionic_layer > 0:
-        all_occupations = utils.get_obs_mean_df(res, "all_occupations")
-        occ_str = ""
-        for lay in range(len(all_occupations)):
-            occ_str += ", ".join([f"{val:.10f}" for val in all_occupations[lay]])
-            occ_str += " | "  # layer separator
-    else:
-        occ_str = "None"
-    logger.debug(f"Occupations: {occ_str}")
+    if full_obs:
+        if minimizer.evaluator_manager.system_cfg.num_fermionic_layer > 0:
+            all_occupations = utils.get_obs_mean_df(res, "all_occupations")
+            occ_str = ""
+            for lay in range(len(all_occupations)):
+                occ_str += ", ".join([f"{val:.10f}" for val in all_occupations[lay]])
+                occ_str += " | "  # layer separator
+        else:
+            occ_str = "None"
+        logger.debug(f"Occupations: {occ_str}")
 
-    el_energy = utils.get_obs_mean_df(res, "el_energy")
-    mag_energy = utils.get_obs_mean_df(res, "mag_energy")
-    int_energy = utils.get_obs_mean_df(res, "int_energy")
-    mass_energy = utils.get_obs_mean_df(res, "mass_energy")
-    chem_energy = utils.get_obs_mean_df(res, "chem_energy")
+        el_energy = utils.get_obs_mean_df(res, "el_energy")
+        mag_energy = utils.get_obs_mean_df(res, "mag_energy")
+        int_energy = utils.get_obs_mean_df(res, "int_energy")
+        mass_energy = utils.get_obs_mean_df(res, "mass_energy")
+        chem_energy = utils.get_obs_mean_df(res, "chem_energy")
 
-    logger.debug(
-        f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, int: {int_energy:.6f}, mass: {mass_energy:.6f}, "
-        f"chem: {chem_energy:.6f}"
-    )
+        logger.debug(
+            f"el: {el_energy:.6f}, mag: {mag_energy:.6f}, int: {int_energy:.6f}, mass: {mass_energy:.6f}, "
+            f"chem: {chem_energy:.6f}"
+        )
     # logger.debug(f"Paramvec: {utils.get_obs_mean_df(res, 'energy', column='paramvec')}")
 
     # If python recieves a signal to stop computation gracefully, we catch it here.
