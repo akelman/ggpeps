@@ -86,7 +86,7 @@ class D2nSystem2D(System2DBase):
         else:
             # Note that this gauging is true only for b modes and c virtual modes
             # (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
-            # TODO: Generalizze this to fermionic layers as well.
+            # TODO: Generalize this to fermionic layers as well.
             rot_right = xnp.block(
                 [
                     [real_g, imag_g],

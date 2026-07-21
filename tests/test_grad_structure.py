@@ -10,6 +10,7 @@ with ``-wi_gamma_out(_mod)`` via the pure-state identity
 These tests pin both the purity of the (gauged) link covariance and the identity itself,
 against explicitly computed products, after genuine single-link gauge updates.
 """
+
 import unittest
 
 import numpy as np
@@ -34,8 +35,17 @@ def _build_d6(seed=3, num_pg_layer=2):
 
 def _build_z2(seed=7, num_pg_layer=1):
     lat = lattice.Lattice2D(2, 2)
-    cfg = system.Z2System2D_G2C_F2C_Config(
-        lat, 1.0, 1.0, 0.0, 0.0, np.zeros(0), num_pg_layer=num_pg_layer, num_fermionic_layer=0, mod_link_inds=(0,)
+    cfg = system.Z2System2D_Config(
+        lat,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        np.zeros(0),
+        ncopy=2,
+        num_pg_layer=num_pg_layer,
+        num_fermionic_layer=0,
+        mod_link_inds=(0,),
     )
     rng = np.random.RandomState(seed)
     cfg.paramvec = rng.rand(*cfg.param_shape())

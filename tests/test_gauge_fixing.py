@@ -23,7 +23,7 @@ class Testgaugefixing(unittest.TestCase):
         """
         lat2 = lattice.Lattice2D(2, 2, -1)  # With gauge fixing
         paramvec = np.random.rand(2, 20)
-        cfg2 = utils.make_z2_2copy_config(lat2, 1, 1, 1, 1, None)
+        cfg2 = system.Z2System2D_Config(lat2, 1, 1, 1, 1, None, ncopy=2)
         cfg2.paramvec = paramvec
         system_z2_2 = system.Z2System2D(cfg2)
         system_z2_2.cfg.enforce_parameter_conditions(system_z2_2.cfg.paramvec)
@@ -49,7 +49,7 @@ class Testgaugefixing(unittest.TestCase):
 
         lat4 = lattice.Lattice2D(4, 4, -1)  # Without gauge fixing
         paramvec = np.random.rand(2, 20)
-        cfg4 = utils.make_z2_2copy_config(lat4, 1, 1, 1, 1, None)
+        cfg4 = system.Z2System2D_Config(lat4, 1, 1, 1, 1, None, ncopy=2)
         cfg4.paramvec = paramvec
         system_z2_4 = system.Z2System2D(cfg4)
         system_z2_4.cfg.enforce_parameter_conditions(system_z2_4.cfg.paramvec)
@@ -80,13 +80,13 @@ class Testgaugefixing(unittest.TestCase):
         paramvec = np.random.rand(2, 20)
 
         # System with gauge fixing
-        cfg_with_gf = utils.make_z2_2copy_config(lat2_with_gf, 1, 1, 1, 1, None)
+        cfg_with_gf = system.Z2System2D_Config(lat2_with_gf, 1, 1, 1, 1, None, ncopy=2)
         cfg_with_gf.paramvec = paramvec
         system_with_gf = system.Z2System2D(cfg_with_gf)
         system_with_gf.cfg.enforce_parameter_conditions(cfg_with_gf.paramvec)
 
         # System without gauge fixing
-        cfg_without_gf = utils.make_z2_2copy_config(lat2_without_gf, 1, 1, 1, 1, None)
+        cfg_without_gf = system.Z2System2D_Config(lat2_without_gf, 1, 1, 1, 1, None, ncopy=2)
         cfg_without_gf.paramvec = paramvec
         system_without_gf = system.Z2System2D(cfg_without_gf)
         system_without_gf.cfg.enforce_parameter_conditions(cfg_without_gf.paramvec)
@@ -110,13 +110,13 @@ class Testgaugefixing(unittest.TestCase):
         paramvec = np.random.rand(2, 20)
 
         # System with gauge fixing
-        cfg_with_gf = utils.make_z2_2copy_config(lat2_with_gf, 1, 1, 1, 1, None)
+        cfg_with_gf = system.Z2System2D_Config(lat2_with_gf, 1, 1, 1, 1, None, ncopy=2)
         cfg_with_gf.paramvec = paramvec
         system_with_gf = system.Z2System2D(cfg_with_gf)
         system_with_gf.cfg.enforce_parameter_conditions(cfg_with_gf.paramvec)
 
         # System without gauge fixing
-        cfg_without_gf = utils.make_z2_2copy_config(lat2_without_gf, 1, 1, 1, 1, None)
+        cfg_without_gf = system.Z2System2D_Config(lat2_without_gf, 1, 1, 1, 1, None, ncopy=2)
         cfg_without_gf.paramvec = paramvec
         system_without_gf = system.Z2System2D(cfg_without_gf)
         system_without_gf.cfg.enforce_parameter_conditions(cfg_without_gf.paramvec)
@@ -141,13 +141,13 @@ class Testgaugefixing(unittest.TestCase):
         paramvec = np.random.rand(2, 20)
 
         # System with gauge fixing
-        cfg_with_gf = utils.make_z2_2copy_config(lat2_with_gf, 1, 1, 1, 1, [0])
+        cfg_with_gf = system.Z2System2D_Config(lat2_with_gf, 1, 1, 1, 1, [0], ncopy=2)
         cfg_with_gf.paramvec = paramvec
         system_with_gf = system.Z2System2D(cfg_with_gf)
         system_with_gf.cfg.enforce_parameter_conditions(cfg_with_gf.paramvec)
 
         # System without gauge fixing
-        cfg_without_gf = utils.make_z2_2copy_config(lat2_without_gf, 1, 1, 1, 1, [0])
+        cfg_without_gf = system.Z2System2D_Config(lat2_without_gf, 1, 1, 1, 1, [0], ncopy=2)
         cfg_without_gf.paramvec = paramvec
         system_without_gf = system.Z2System2D(cfg_without_gf)
         system_without_gf.cfg.enforce_parameter_conditions(cfg_without_gf.paramvec)
@@ -182,20 +182,23 @@ class Testgaugefixing(unittest.TestCase):
 
         def run(gf_flag):
             lat2 = lattice.Lattice2D(2, 2, gf_flag)
-            cfg = system.Z2System2DConfig(
+            cfg = system.Z2System2D_Config(
                 lat2,
                 1.0,
                 1.0,
                 0.0,
                 0.0,
                 [],
+                ncopy=1,
                 num_pg_layer=1,
                 num_fermionic_layer=0,
                 mod_link_inds=(0,),
                 unitcell_size=1,
                 enforce_u1_symmetry=True,
             )
-            cfg.paramvec = np.reshape(explosive_params, cfg.param_shape())
+            cfg.paramvec = np.reshape(
+                utils.translate_legacy_z2_parameter_order(cfg, explosive_params), cfg.param_shape()
+            )
             cfg.make_pure_gauge()
             cfg.enforce_parameter_conditions(cfg.paramvec)
             sys_ = system.Z2System2D(cfg)
@@ -229,20 +232,23 @@ class Testgaugefixing(unittest.TestCase):
 
         def build():
             lat2 = lattice.Lattice2D(2, 2, -1)  # maximal tree: the measured link 0 is pinned
-            cfg = system.Z2System2DConfig(
+            cfg = system.Z2System2D_Config(
                 lat2,
                 1.0,
                 1.0,
                 0.0,
                 0.0,
                 [],
+                ncopy=1,
                 num_pg_layer=1,
                 num_fermionic_layer=0,
                 mod_link_inds=(0,),
                 unitcell_size=1,
                 enforce_u1_symmetry=True,
             )
-            cfg.paramvec = np.reshape(explosive_params, cfg.param_shape())
+            cfg.paramvec = np.reshape(
+                utils.translate_legacy_z2_parameter_order(cfg, explosive_params), cfg.param_shape()
+            )
             cfg.make_pure_gauge()
             cfg.enforce_parameter_conditions(cfg.paramvec)
             return system.Z2System2D(cfg)
@@ -268,20 +274,21 @@ class Testgaugefixing(unittest.TestCase):
         link (0) pinned by maximal-tree gauge fixing. Shared by the tracker-refresh tests."""
         explosive_params = np.array([0.0, 2.79433214e-04, -7.06773559e-01, 0.0, 9.99670799e-01, 7.06984522e-01])
         lat2 = lattice.Lattice2D(2, 2, gf_flag)
-        cfg = system.Z2System2DConfig(
+        cfg = system.Z2System2D_Config(
             lat2,
             1.0,
             1.0,
             0.0,
             0.0,
             [],
+            ncopy=1,
             num_pg_layer=1,
             num_fermionic_layer=0,
             mod_link_inds=(0,),
             unitcell_size=1,
             enforce_u1_symmetry=True,
         )
-        cfg.paramvec = np.reshape(explosive_params, cfg.param_shape())
+        cfg.paramvec = np.reshape(utils.translate_legacy_z2_parameter_order(cfg, explosive_params), cfg.param_shape())
         cfg.make_pure_gauge()
         cfg.enforce_parameter_conditions(cfg.paramvec)
         return system.Z2System2D(cfg)
@@ -399,20 +406,21 @@ class Testgaugefixing(unittest.TestCase):
         controllable from the manager / CLI as a single control point."""
         explosive_params = np.array([0.0, 2.79433214e-04, -7.06773559e-01, 0.0, 9.99670799e-01, 7.06984522e-01])
         lat2 = lattice.Lattice2D(2, 2, -1)
-        cfg = system.Z2System2DConfig(
+        cfg = system.Z2System2D_Config(
             lat2,
             1.0,
             1.0,
             0.0,
             0.0,
             [],
+            ncopy=1,
             num_pg_layer=1,
             num_fermionic_layer=0,
             mod_link_inds=(0,),
             unitcell_size=1,
             enforce_u1_symmetry=True,
         )
-        cfg.paramvec = np.reshape(explosive_params, cfg.param_shape())
+        cfg.paramvec = np.reshape(utils.translate_legacy_z2_parameter_order(cfg, explosive_params), cfg.param_shape())
         cfg.make_pure_gauge()
         cfg.enforce_parameter_conditions(cfg.paramvec)
 
@@ -476,7 +484,7 @@ class Testgaugefixing(unittest.TestCase):
         rng = np.random.RandomState(20260628)
         lat = lattice.Lattice2D(2, 2)
         paramvec = rng.rand(2, 20)
-        cfg = system.Z2System2D_G2C_F2C_Config(lat, 1, 1, 1, 1, None)
+        cfg = system.Z2System2D_Config(lat, 1, 1, 1, 1, None, ncopy=2)
         cfg.paramvec = paramvec
         cfg.enforce_parameter_conditions(cfg.paramvec)
 
@@ -506,9 +514,9 @@ class Testgaugefixing(unittest.TestCase):
         paramvec = np.random.rand(2, 20)
 
         # Configuration
-        cfg_with_gf = utils.make_z2_2copy_config(lat2_with_gf, 1, 1, 1, 1, [0])
+        cfg_with_gf = system.Z2System2D_Config(lat2_with_gf, 1, 1, 1, 1, [0], ncopy=2)
         cfg_with_gf.paramvec = paramvec
-        cfg_without_gf = utils.make_z2_2copy_config(lat2_without_gf, 1, 1, 1, 1, [0])
+        cfg_without_gf = system.Z2System2D_Config(lat2_without_gf, 1, 1, 1, 1, [0], ncopy=2)
         cfg_without_gf.paramvec = paramvec
 
         system_with_gf = system.Z2System2D(cfg_with_gf)

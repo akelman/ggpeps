@@ -325,8 +325,8 @@ class ZNGauge(GaugeGroup):
         and taking the real part, which is done in system and in config.
 
         Returns:
-            float: The coeefficient for the electric energy.
-                    In theory there's a coeefficient for each group element,
+            float: The coefficient for the electric energy.
+                    In theory there's a coefficient for each group element,
                     but it could be shown that they should be equal.
             tuple: group elements for which the electric energy term should be calculated
         """

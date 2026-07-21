@@ -4,7 +4,7 @@ from collections import defaultdict
 import numpy as np
 
 import ggpeps.system.config_base as config_base
-from ggpeps import gauge, system, lattice, utils
+from ggpeps import gauge, system, lattice
 from ggpeps.system.backend import backend
 
 from ggpeps.lattice import Direction
@@ -332,7 +332,7 @@ class TestElectricContstants(unittest.TestCase):
         nlayer = num_pg_layer + num_fermionic_layer
         unitcell_size = 1
         paramvec = np.random.rand(nlayer, unitcell_size, 20)
-        cfg = utils.make_z2_2copy_config(lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1)
+        cfg = system.Z2System2D_Config(lat, 1, 1, 1, 1, None, num_pg_layer=1, num_fermionic_layer=1, ncopy=2)
         cfg.paramvec = paramvec
         self.system_z2 = system.Z2System2D(cfg)
         self.system_z2.cfg.enforce_parameter_conditions(self.system_z2.cfg.paramvec)
@@ -876,9 +876,7 @@ class TestBuildUniqueElTerms(unittest.TestCase):
         for lay in range(len(cfg.uniq_idx_vec)):
             for link in range(len(cfg.uniq_idx_vec[lay])):
                 uniq_count = sum(len(bucket) for bucket in cfg.uniq_idx_vec[lay][link])
-                per_ge_counts = [
-                    sum(len(bucket) for bucket in cfg.raw_idx_vec[ge][lay][link]) for ge in range(num_ge)
-                ]
+                per_ge_counts = [sum(len(bucket) for bucket in cfg.raw_idx_vec[ge][lay][link]) for ge in range(num_ge)]
                 self.assertEqual(
                     uniq_count,
                     max(per_ge_counts),
