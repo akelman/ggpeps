@@ -1160,7 +1160,8 @@ class WoodburyInverter:
         ainv_u = backend.take_block(ainv, indi, m_m, -1)  # A^{-1} @ U
         m_v_ainv = m @ backend.take_block(ainv, indj, n_m, -2)  # (M @ V) @ A^{-1}
         small = xnp.linalg.inv(xnp.eye(m_m) + backend.take_block(m_v_ainv, indi, m_m, -1))
-        return ainv - (ainv_u @ small) @ m_v_ainv
+        ainv -= (ainv_u @ small) @ m_v_ainv
+        return ainv
 
 
 # =========================== IncDeterminant ===============================
