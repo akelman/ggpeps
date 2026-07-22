@@ -1018,44 +1018,6 @@ class System2DBase(ABC):
         gamma_in_sys_mod_linkvec_layervec = res[2]  # extract the "virtual-virtual" part
         return gamma_in_sys_mod_linkvec_layervec
 
-    @staticmethod
-    @maybe_jit(static_argnames=["mod_link_inds", "nvirtmodes_link"])
-    def _patch_gamma_in_sys_mod(
-        gamma_in_sys_vec: xnp.ndarray,
-        old_mod: xnp.ndarray,
-        link_ind: int,
-        mod_link_inds: tuple[int, ...],
-        nvirtmodes_link: int,
-    ) -> xnp.ndarray:
-        """Incrementally patch the cached gamma_in_sys_mod after a single-link gauge change.
-
-        gamma_in_sys is block-diagonal per link, so changing link ``link_ind`` changes only that link's
-        block. In each measured-link copy (the mod layout drops that measured link's k=2*nvirtmodes_link
-        modes), the changed block sits at ``ind_mat`` if ``link_ind`` is below the measured link, else at
-        ``ind_mat - k`` (shifted by the carved-out link) -- the same position the mod trackers use. If
-        ``link_ind`` IS a measured link, its modes are in the open block, so that copy is unchanged --
-        the ``where`` then writes the current block back in place (a no-op).
-
-        ``link_ind`` may be a jax tracer: block reads/writes go through take_block/put_block and the
-        skip case is a select, so under jit this compiles once for all links.
-
-        Must be called AFTER gamma_in_sys has been substituted (it reads the new block from there).
-        """
-        k = 2 * nvirtmodes_link
-        ind_mat = k * link_ind
-        new_block = backend.take_block(gamma_in_sys_vec, ind_mat, k, axis=-2)
-        new_block = backend.take_block(new_block, ind_mat, k, axis=-1)
-        patched = old_mod
-        for mi, m in enumerate(mod_link_inds):
-            # When link_ind == m the write just rewrites existing content and modpos is a dummy
-            # position; clip it into range (the raw formula can exceed the smaller mod matrix).
-            modpos = xnp.clip(ind_mat - k * (link_ind > m), 0, old_mod.shape[-1] - k)
-            cur_block = backend.take_block(patched[:, mi], modpos, k, axis=-2)
-            cur_block = backend.take_block(cur_block, modpos, k, axis=-1)
-            block = xnp.where(link_ind == m, cur_block, new_block)
-            patched = backend.put_block(patched, (0, mi, modpos, modpos), block[:, None])
-        return patched
-
     def _compute_mod_trackers(self) -> tuple:
         """Recompute the modified (open-link) Woodbury inverses and incremental determinant
         from scratch from the CURRENT ``gamma_in_sys_vec``.
@@ -1713,12 +1675,6 @@ class System2DBase(ABC):
         # Substitute in the array, all layers at once
         gamma_in_sys_vec = backend.put_block(gamma_in_sys_vec, (0, ind_mat, ind_mat), gamma_in_subst)
 
-        # The mod family (gamma_in_sys_mod + mod trackers) is measurement-only; skip it during warmup.
-        if not defer_mod:
-            gamma_in_sys_mod_vec = cls._patch_gamma_in_sys_mod(
-                gamma_in_sys_vec, gamma_in_sys_mod_vec, link_ind, mod_link_inds, nvirtmodes_link
-            )
-
         # --- Incrementally update the closed (full-system) trackers via Woodbury / IncDet.
         # gamma_out now inverts (mat_d + gamma_in), so a +Delta change in gamma_in enters its
         # inverted matrix with the opposite sign -> the out-tracker Woodbury step uses -update.
@@ -1729,24 +1685,34 @@ class System2DBase(ABC):
         # Largest entry of any updated inverse, for the refresh magnitude guard.
         inv_mags = [xnp.max(xnp.abs(wi_gamma_in_vec)), xnp.max(xnp.abs(wi_gamma_out_vec))]
 
-        # --- Incrementally update the modified (open-link) trackers, batched over layers. The local
-        # update is shifted by the carved-out link when it sits below the changed link. When the
-        # changed link IS the measured link its modes are not in that entry: the update is masked to
-        # zero, an exact no-op of both Woodbury and the determinant lemma (link_ind may be traced).
+        # --- Incrementally update the modified (open-link) family - gamma_in_sys_mod and its
+        # trackers -- batched over layers. The local update is shifted by the carved-out link when
+        # it sits below the changed link. When the changed link IS the measured link its modes are
+        # not in that entry: the update is masked to zero, so Woodbury, the determinant lemma
+        # and the block add all leave that entry exactly unchanged (link_ind may be traced).
 
         # Skipped entirely during warmup (defer_mod_trackers): these are measurement-only and are
         # re-anchored from scratch (reanchor_mod_trackers) when warmup ends.
         if not defer_mod:
-            assert wi_gamma_in_mod_vec is not None  # for mypy
+            assert gamma_in_sys_mod_vec is not None  # for mypy
+            assert wi_gamma_in_mod_vec is not None
             assert wi_gamma_out_mod_vec is not None
             assert incdet_mod_vec is not None
             k = 2 * nvirtmodes_link
             maxpos = wi_gamma_in_mod_vec.shape[-1] - k
             for ind, mod_link_ind in enumerate(mod_link_inds):
-                # When link_ind == mod_link_ind the update is zero and pos is a dummy read
-                # position; clip it into range (the raw formula can exceed the smaller mod matrix).
+                # If the changed link is the measured link itself, there is nothing to update here:
+                # update is set to zero. Then, if it is also the last link, pos falls past the matrix
+                # end and the clip brings it back inside.
                 pos = xnp.clip(ind_mat - k * (link_ind > mod_link_ind), 0, maxpos)
                 update = xnp.where(link_ind == mod_link_ind, 0.0, update_arr)
+
+                # update = cur - new block, so cur - update is the new block.
+                cur = backend.take_block(gamma_in_sys_mod_vec[:, ind], pos, k, axis=-2)
+                cur = backend.take_block(cur, pos, k, axis=-1)
+                gamma_in_sys_mod_vec = backend.put_block(
+                    gamma_in_sys_mod_vec, (0, ind, pos, pos), (cur - update)[:, None]
+                )
 
                 new_det = utils.IncLogAbsDeterminant.update_index(
                     incdet_mod_vec[:, ind], wi_gamma_in_mod_vec[:, ind], update, pos, pos
