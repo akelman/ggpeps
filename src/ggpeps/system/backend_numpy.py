@@ -146,14 +146,15 @@ class BackendNumpy(BackendBase):
         return mat[tuple(index)]
 
     @staticmethod
-    def put_block(mat, starts, val):
+    def dynamic_update_slice(mat, inds, vals):
+        """Set mat[inds] = vals."""
         index = []
-        for ax, start in enumerate(starts):
+        for ax, start in enumerate(inds):
             if start < 0:
                 start = start + mat.shape[ax]
-            start = int(np.clip(start, 0, mat.shape[ax] - val.shape[ax]))
-            index.append(slice(start, start + val.shape[ax]))
-        mat[tuple(index)] = val
+            start = int(np.clip(start, 0, mat.shape[ax] - vals.shape[ax]))
+            index.append(slice(start, start + vals.shape[ax]))
+        mat[tuple(index)] = vals
         return mat
 
     @staticmethod

@@ -93,9 +93,9 @@ class BackendJax(BackendBase):
         return jnp.take(mat, start + jnp.arange(size), axis=axis)
 
     @staticmethod
-    def put_block(mat, starts, val):
-        # Starts may be tracers -> jitted callers compile once; they are clamped so the block fits.
-        return jax.lax.dynamic_update_slice(mat, val, starts)
+    def dynamic_update_slice(mat, inds, vals):
+        """Set mat[inds] = vals in a jax.jit compatible way"""
+        return jax.lax.dynamic_update_slice(mat, vals, inds)
 
     @staticmethod
     def array_add(mat, inds, val):

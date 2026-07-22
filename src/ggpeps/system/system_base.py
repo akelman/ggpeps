@@ -1673,7 +1673,7 @@ class System2DBase(ABC):
         update_arr = cls.calculate_update_gamma_in(ind_mat, gamma_in_subst, gamma_in_sys=gamma_in_sys_vec)
 
         # Substitute in the array, all layers at once
-        gamma_in_sys_vec = backend.put_block(gamma_in_sys_vec, (0, ind_mat, ind_mat), gamma_in_subst)
+        gamma_in_sys_vec = backend.dynamic_update_slice(gamma_in_sys_vec, (0, ind_mat, ind_mat), gamma_in_subst)
 
         # --- Incrementally update the closed (full-system) trackers via Woodbury / IncDet.
         # gamma_out now inverts (mat_d + gamma_in), so a +Delta change in gamma_in enters its
@@ -1710,7 +1710,7 @@ class System2DBase(ABC):
                 # update = cur - new block, so cur - update is the new block.
                 cur = backend.take_block(gamma_in_sys_mod_vec[:, ind], pos, k, axis=-2)
                 cur = backend.take_block(cur, pos, k, axis=-1)
-                gamma_in_sys_mod_vec = backend.put_block(
+                gamma_in_sys_mod_vec = backend.dynamic_update_slice(
                     gamma_in_sys_mod_vec, (0, ind, pos, pos), (cur - update)[:, None]
                 )
 

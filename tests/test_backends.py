@@ -49,9 +49,9 @@ class TestBackends(unittest.TestCase):
         pfaval_jax4 = self.jax_backend.pfaffian(mat4_jax)
         self.assertAlmostEqual(pfaval_np4, np.asarray(pfaval_jax4))
 
-    def test_put_block(self):
-        """put_block writes a block at the given per-axis starts with lax.dynamic_update_slice
-        semantics (negative starts wrap, then starts clamp so the block fits). Both backends
+    def test_dynamic_update_slice(self):
+        """dynamic_update_slice writes a block at the given per-axis start indices with lax
+        semantics (negative inds wrap, then inds clamp so the block fits). Both backends
         must agree."""
         rng = np.random.RandomState(3)
         cases = [
@@ -72,17 +72,17 @@ class TestBackends(unittest.TestCase):
                 index.append(slice(start, start + val.shape[ax]))
             expected[tuple(index)] = val
 
-            res_np = np.asarray(self.numpy_backend.put_block(mat.copy(), starts, val))
-            res_jax = np.asarray(self.jax_backend.put_block(jnp.asarray(mat), starts, jnp.asarray(val)))
+            res_np = np.asarray(self.numpy_backend.dynamic_update_slice(mat.copy(), starts, val))
+            res_jax = np.asarray(self.jax_backend.dynamic_update_slice(jnp.asarray(mat), starts, jnp.asarray(val)))
             with self.subTest(starts=starts):
                 self.assertTrue(np.array_equal(res_np, expected))
                 self.assertTrue(np.array_equal(res_jax, expected))
 
-    def test_put_block_jit_compiles_once(self):
-        """put_block starts may be traced: a jitted caller must not recompile per start value."""
+    def test_dynamic_update_slice_jit_compiles_once(self):
+        """dynamic_update_slice inds may be traced: a jitted caller must not recompile per value."""
         mat = jnp.zeros((2, 3, 6, 6))
         val = jnp.ones((2, 1, 3, 3))
-        jitted = jax.jit(self.jax_backend.put_block)
+        jitted = jax.jit(self.jax_backend.dynamic_update_slice)
         jitted(mat, (0, 1, 2, 2), val)
         jitted(mat, (0, 2, 0, 0), val)
         self.assertEqual(jitted._cache_size(), 1)

@@ -25,11 +25,8 @@ class BackendBase(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @staticmethod
-    def put_block(mat, starts, val):
-        """Write block ``val`` into ``mat`` at per-axis ``starts`` (one per axis of ``mat``).
-        lax.dynamic_update_slice semantics: negative starts wrap, then starts are clamped so the
-        block fits. ``val`` must have ``mat.ndim`` axes with static shape; starts may be jax
-        tracers (jax backend)."""
+    def dynamic_update_slice(mat, inds, vals):
+        """Set mat[inds] = vals in a jax.jit compatible way."""
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @staticmethod
