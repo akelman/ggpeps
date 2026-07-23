@@ -1,4 +1,7 @@
+import functools
 import logging
+
+import numpy as np
 
 from ggpeps import xnp as xnp
 from ggpeps import xscipy as xscipy
@@ -44,6 +47,7 @@ class D2nSystem2D(System2DBase):
 
     # Gauging
     @classmethod
+    @maybe_jit(static_argnames=["cls", "ncopy"])
     def generate_rotmat(cls, ncopy: int, group_element: xnp.ndarray, coord: tuple, dir: Direction) -> xnp.ndarray:
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
         We work in the convention where for majorana c_i: U_g c_i U_g^dagger = sum_{j} rotmat_{i,j} c_j
@@ -73,26 +77,17 @@ class D2nSystem2D(System2DBase):
         # Thus, we leave an identity matrix for the left modes.
         real_g = xnp.real(g)
         imag_g = xnp.imag(g)
-        if xnp.sum(xnp.asarray(coord)) % 2 == 0:  # gauging is different for different sublattices
-            # Note that this gauging is true only for b modes and c virtual modes
-            # (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
-            rot_right = xnp.block(
-                # TODO: Generalize this to fermionic layers as well.
-                [
-                    [real_g, -imag_g],
-                    [imag_g, real_g],
-                ],
-            )  # This is the rot_right for the mode order of {r_1_1, r_1_2,r_2_1,r_2_2}
-        else:
-            # Note that this gauging is true only for b modes and c virtual modes
-            # (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
-            # TODO: Generalize this to fermionic layers as well.
-            rot_right = xnp.block(
-                [
-                    [real_g, imag_g],
-                    [-imag_g, real_g],
-                ],
-            )
+        # Gauging is different for different sublattices: even sites use g, odd sites conjugate(g).
+        # Note that this gauging is true only for b modes and c virtual modes
+        # (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
+        # TODO: Generalize this to fermionic layers as well.
+        sign = (-1) ** xnp.sum(xnp.asarray(coord))
+        rot_right = xnp.block(
+            [
+                [real_g, -sign * imag_g],
+                [sign * imag_g, real_g],
+            ],
+        )  # This is the rot_right for the mode order of {r_1_1, r_1_2,r_2_1,r_2_2}
 
         # We have dim(representation) left mode => 2*dim(representation) Majorana modes
         dim_rep = len(g)  # dimension of the representation
@@ -107,20 +102,28 @@ class D2nSystem2D(System2DBase):
         rotmat = xnp.kron(xnp.eye(ncopy), dest)
 
         # TODO: we should rather just order correctly from the start
-        wrong_order = cls.get_single_link_majorana_mode_order_first_copy_then_color(ncopy)
-        rep_dim = 2  # for this system, the representation dimension is always 2
-        correct_order_first_color_then_copy = cls.get_single_link_majorana_mode_order(ncopy, rep_dim)
-        # Generate permutation matrix to change the modes's order to
-        # {l1_1_1,l1_2_1,r1_1_1,r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2,l1_2_2,r1_1_2,r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}.
-        perm_mat = xnp.array(
-            modearray.generate_permutation_matrix(
-                wrong_order,
-                correct_order_first_color_then_copy,
-            )
-        )
+        perm_mat = cls._rotmat_perm_mat(ncopy)
         rotmat = xnp.transpose(perm_mat) @ rotmat @ perm_mat
 
         return rotmat
+
+    @classmethod
+    @functools.lru_cache
+    def _rotmat_perm_mat(cls, ncopy: int) -> np.ndarray:
+        """Constant permutation taking generate_rotmat's copy-then-color block order to the
+        color-then-copy order used everywhere else. Depends only on ncopy, so it is cached.
+        Plain numpy on purpose: caching an array created inside a jit trace would leak a tracer."""
+        copy_then_color_order = cls.get_single_link_majorana_mode_order_first_copy_then_color(ncopy)
+        rep_dim = 2  # for this system, the representation dimension is always 2
+        color_then_copy_order = cls.get_single_link_majorana_mode_order(ncopy, rep_dim)
+        # Permutation matrix to change the modes's order to
+        # {l1_1_1,l1_2_1,r1_1_1,r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2,l1_2_2,r1_1_2,r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}.
+        return np.array(
+            modearray.generate_permutation_matrix(
+                copy_then_color_order,
+                color_then_copy_order,
+            )
+        )
 
     @staticmethod
     def get_single_link_majorana_mode_order_first_copy_then_color(num_copies: int) -> list:

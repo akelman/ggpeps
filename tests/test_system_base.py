@@ -649,6 +649,60 @@ class TestMultiColorModeOrder(unittest.TestCase):
                 self.assertTrue(np.allclose(g @ g, -np.eye(g.shape[0])))
 
 
+class TestGenerateRotmatD6(unittest.TestCase):
+    """generate_rotmat must be a pure traced-safe function: same result as the explicit
+    branch-based reference on both sublattices, and (under jit) one compilation for all
+    gauge values and coords."""
+
+    @staticmethod
+    def _reference_rotmat(ncopy, g, coord):
+        """Plain-numpy reference: the original algorithm with the explicit sublattice branch."""
+        from scipy.linalg import block_diag
+        from ggpeps import modearray
+        from ggpeps.system.system_D2n import D2nSystem2D
+
+        real_g, imag_g = np.real(g), np.imag(g)
+        if np.sum(coord) % 2 == 0:
+            rot_right = np.block([[real_g, -imag_g], [imag_g, real_g]])
+        else:
+            rot_right = np.block([[real_g, imag_g], [-imag_g, real_g]])
+        dest = block_diag(np.eye(2 * len(g)), rot_right)
+        rotmat = np.kron(np.eye(ncopy), dest)
+        copy_then_color = D2nSystem2D.get_single_link_majorana_mode_order_first_copy_then_color(ncopy)
+        color_then_copy = D2nSystem2D.get_single_link_majorana_mode_order(ncopy, 2)
+        perm = np.array(modearray.generate_permutation_matrix(copy_then_color, color_then_copy))
+        return np.transpose(perm) @ rotmat @ perm
+
+    def test_matches_reference_all_elements_both_sublattices(self):
+        from ggpeps import gauge
+        from ggpeps.lattice import Direction
+        from ggpeps.system.system_D2n import D2nSystem2D
+
+        gvals = list(gauge.D2nGauge(3).get_possible_gauge_values())
+        rng = np.random.RandomState(2)
+        gvals.append(rng.rand(2, 2) + 1j * rng.rand(2, 2))  # complex element exercises the sublattice sign
+        for g in gvals:
+            for coord in [(0, 0), (1, 0), (1, 1)]:
+                for dir in (Direction.X, Direction.Y):
+                    got = np.asarray(D2nSystem2D.generate_rotmat(2, xnp.asarray(g), coord, dir))
+                    ref = self._reference_rotmat(2, g, coord)
+                    with self.subTest(coord=coord, dir=dir):
+                        self.assertLess(np.abs(got - ref).max(), 1e-14)
+
+    @unittest.skipUnless(ggpeps.PREFERRED_BACKEND == "jax", "compile count is only meaningful under jit")
+    def test_compiles_once_across_gauge_values_and_coords(self):
+        from ggpeps import gauge
+        from ggpeps.lattice import Direction
+        from ggpeps.system.system_D2n import D2nSystem2D
+
+        gvals = gauge.D2nGauge(3).get_possible_gauge_values()
+        D2nSystem2D.generate_rotmat.clear_cache()
+        for g in gvals:
+            for coord in [(0, 0), (1, 0)]:
+                D2nSystem2D.generate_rotmat(2, xnp.asarray(g), coord, Direction.X)
+        self.assertEqual(D2nSystem2D.generate_rotmat._cache_size(), 1)
+
+
 class TestIncrementalModCovmats(unittest.TestCase):
     """The open-link ("mod") family is maintained incrementally across single-link gauge updates:
     gamma_in_sys_mod is patched in place by the _update_gauge_ind kernel instead of re-extracted,
