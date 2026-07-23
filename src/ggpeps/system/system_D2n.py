@@ -107,7 +107,7 @@ class D2nSystem2D(System2DBase):
         rotmat = xnp.kron(xnp.eye(ncopy), dest)
 
         # TODO: we should rather just order correctly from the start
-        wrong_order = cls.get_wrong_single_link_majorana_mode_order_by_copy_then_color(ncopy)
+        wrong_order = cls.get_single_link_majorana_mode_order_first_copy_then_color(ncopy)
         rep_dim = 2  # for this system, the representation dimension is always 2
         correct_order_first_color_then_copy = cls.get_single_link_majorana_mode_order(ncopy, rep_dim)
         # Generate permutation matrix to change the modes's order to
@@ -123,7 +123,7 @@ class D2nSystem2D(System2DBase):
         return rotmat
 
     @staticmethod
-    def get_wrong_single_link_majorana_mode_order_by_copy_then_color(num_copies: int) -> list:
+    def get_single_link_majorana_mode_order_first_copy_then_color(num_copies: int) -> list:
         """Generate the link-based majorana mode order for a single link. We first order by copy and then by color.
         This is not the order we use in the code. This is just to change the generate_rotmat ordering.
 
