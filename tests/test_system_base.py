@@ -649,6 +649,43 @@ class TestMultiColorModeOrder(unittest.TestCase):
                 self.assertTrue(np.allclose(g @ g, -np.eye(g.shape[0])))
 
 
+class TestWeightAttempt(unittest.TestCase):
+    """calculate_weight_attempt computes the weight of a proposed change without applying it:
+    for every link and proposed value it must return exactly the weight that update_gauge_ind
+    sets when the change is applied, and (under jit) the kernel must compile at most once per
+    link direction."""
+
+    def _check_attempt_matches_accept(self, cfg, sys_, rng):
+        sys_.initialize()
+        gvals = cfg.gaugemgr.get_possible_gauge_values()
+        for link, theta in TestIncrementalModCovmats._update_sequence(cfg, rng, nsteps=10):
+            sys_.update_gauge_ind(link, theta)
+        for link in range(cfg.lattice.nlinks):
+            theta = gvals[(link + 1) % len(gvals)]
+            if np.allclose(np.asarray(sys_.gaugefieldvec[link]), np.asarray(theta)):
+                continue
+            attempt = float(np.real(sys_.calculate_weight_attempt(link, theta)))
+            sys_.update_gauge_ind(link, theta)
+            with self.subTest(link=link):
+                self.assertLess(abs(attempt - float(np.real(sys_.weight))), 1e-8)
+
+    def test_attempt_matches_accept_d6(self):
+        self._check_attempt_matches_accept(*TestIncrementalModCovmats._build_d6(seed=21))
+
+    def test_attempt_matches_accept_z2(self):
+        self._check_attempt_matches_accept(*TestIncrementalModCovmats._build_z2(seed=23))
+
+    @unittest.skipUnless(ggpeps.PREFERRED_BACKEND == "jax", "compile count is only meaningful under jit")
+    def test_attempt_compiles_once_per_direction(self):
+        cfg, sys_, rng = TestIncrementalModCovmats._build_d6(seed=3)
+        sys_.initialize()
+        gvals = cfg.gaugemgr.get_possible_gauge_values()
+        System2DBase._calculate_weight_attempt.clear_cache()
+        for link in range(cfg.lattice.nlinks):
+            sys_.calculate_weight_attempt(link, gvals[(link + 2) % len(gvals)])
+        self.assertLessEqual(System2DBase._calculate_weight_attempt._cache_size(), 2)
+
+
 class TestGenerateRotmatD6(unittest.TestCase):
     """generate_rotmat must be a pure traced-safe function: same result as the explicit
     branch-based reference on both sublattices, and (under jit) one compilation for all

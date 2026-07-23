@@ -1428,16 +1428,55 @@ class System2DBase(ABC):
         Returns:
             float: Logarithm of the weight of the proposed configuration
         """
-        # There are two directions per vertex and some number of Majoranas per link
         theta = xnp.asarray(theta)
-        ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
-        rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
-        gamma_neutral_gauge_vec = self.gamma_gauge_neutral_vec
-        gamma_in_subst_layers = rotmat @ gamma_neutral_gauge_vec[:, dir] @ xnp.transpose(rotmat)
-        updates = self.calculate_update_gamma_in(ind_mat, gamma_in_subst_layers, self.gamma_in_sys_vec)
-        return self.update_lognorm_inc(
-            self.incdet_vec, self.wi_gamma_in_vec, self.gamma_in_sys_vec, self.mat_d_vec, ind_mat, updates, all_factors
+        return self._calculate_weight_attempt(
+            self.gamma_in_sys_vec,
+            self.gamma_gauge_neutral_vec,
+            theta,
+            coord,
+            link_ind,
+            self.incdet_vec,
+            self.wi_gamma_in_vec,
+            self.mat_d_vec,
+            ncopy=self.cfg.ncopy,
+            nvirtmodes_link=self.cfg.nvirtmodes_link,
+            dir=dir,
+            all_factors=all_factors,
+        )
+
+    @classmethod
+    @maybe_jit(static_argnames=["cls", "ncopy", "nvirtmodes_link", "dir", "all_factors"])
+    def _calculate_weight_attempt(
+        cls,
+        gamma_in_sys_vec: xnp.ndarray,
+        gamma_gauge_neutral_vec: xnp.ndarray,
+        theta: xnp.ndarray,
+        coord: tuple,
+        link_ind: int,
+        incdet_vec: xnp.ndarray,
+        wi_gamma_in_vec: xnp.ndarray,
+        mat_d_vec: xnp.ndarray,
+        ncopy: int,
+        nvirtmodes_link: int,
+        dir: Direction,
+        all_factors: bool,
+    ) -> float:
+        """Pure weight of a single-link update attempt, without touching any tracker.
+
+        link_ind, theta, coord and all arrays may be traced; the static arguments select one
+        compilation per (direction, all_factors).
+
+        Returns:
+            float: Logarithm of the weight of the proposed configuration
+        """
+        # Each virtual mode is two Majorana modes -> 2*nvirtmodes_link Majoranas per link
+        ind_mat = 2 * nvirtmodes_link * link_ind
+        rotmat = cls.generate_rotmat(ncopy, theta, coord, dir)
+        gamma_in_subst_layers = rotmat @ gamma_gauge_neutral_vec[:, dir] @ xnp.transpose(rotmat)
+        updates = cls.calculate_update_gamma_in(ind_mat, gamma_in_subst_layers, gamma_in_sys_vec)
+        return cls.update_lognorm_inc(
+            incdet_vec, wi_gamma_in_vec, gamma_in_sys_vec, mat_d_vec, ind_mat, updates, all_factors
         )
 
     @staticmethod
@@ -1665,7 +1704,7 @@ class System2DBase(ABC):
                 gamma_in_sys_mod_vec, wi_gamma_in_mod_vec, wi_gamma_out_mod_vec, incdet_mod_vec,
                 max_inv_mag)
         """
-        # There are two directions per vertex
+        # Each virtual mode is two Majorana modes -> 2*nvirtmodes_link Majoranas per link
         ind_mat = 2 * nvirtmodes_link * link_ind
 
         gamma_neutral = gamma_gauge_neutral_vec[:, dir]  # (nlayer, k, k)

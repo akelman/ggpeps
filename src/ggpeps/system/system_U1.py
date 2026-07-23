@@ -193,6 +193,19 @@ class U1System2D(System2DBase):
         rot_minus = self._generate_rotmat_half(np.transpose(np.conj(gauge_field)))
         return block_diag(rot_plus, rot_minus)
 
+    def calculate_weight_attempt(self, link_ind: int, theta: np.ndarray, all_factors=False) -> float:
+        # Overrides the base's jitted kernel: generate_rotmat here is a stateful instance method
+        # built with plain numpy, so the attempt runs eagerly like the rest of this class.
+        theta = xnp.asarray(theta)
+        ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
+        coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
+        rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
+        gamma_in_subst_layers = rotmat @ self.gamma_gauge_neutral_vec[:, dir] @ xnp.transpose(rotmat)
+        updates = self.calculate_update_gamma_in(ind_mat, gamma_in_subst_layers, self.gamma_in_sys_vec)
+        return self.update_lognorm_inc(
+            self.incdet_vec, self.wi_gamma_in_vec, self.gamma_in_sys_vec, self.mat_d_vec, ind_mat, updates, all_factors
+        )
+
     def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray) -> None:
         # Overrides the base entirely: gamma_in_sys is shared by all layers here, so a single
         # update serves every tracker. Stateful and unjitted; the base's pure _update_gauge_ind
@@ -202,7 +215,7 @@ class U1System2D(System2DBase):
             return
         self._gaugefieldvec = backend.array_assign(self._gaugefieldvec, link_ind, theta)
 
-        # There are two directions per vertex
+        # Each virtual mode is two Majorana modes -> 2*nvirtmodes_link Majoranas per link
         ind_mat = 2 * self.cfg.nvirtmodes_link * link_ind
         coord, dir = self.cfg.lattice.ind2coord_dir(link_ind)
         rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
