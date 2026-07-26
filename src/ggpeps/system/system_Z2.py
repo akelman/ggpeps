@@ -133,7 +133,7 @@ class Z2System2D(System2DBase):
         # link when it sits below the changed link. The vectorized index update supports neither
         # skipping a link nor a variable offset, so we loop explicitly.
         # Skipped entirely during warmup (defer_mod_trackers): these are measurement-only and are
-        # re-anchored from scratch (reanchor_mod_trackers) when warmup ends.
+        # recomputed from scratch (recompute_mod_trackers) when warmup ends.
         if not self.defer_mod_trackers:
             assert self._wi_gamma_in_mod_vec is not None  # for mypy
             assert self._wi_gamma_out_mod_vec is not None

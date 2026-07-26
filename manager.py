@@ -158,7 +158,7 @@ def validate_inputs(args) -> bool:
 
 
 def default_tracker_refresh_interval(system_cfg) -> int:
-    """Per-ansatz default for the periodic tracker re-anchor cadence (the magnitude guard is always
+    """Per-ansatz default for the periodic tracker recompute cadence (the magnitude guard is always
     on regardless). D6 uses 256 -- a cheap long-run heartbeat for the near-singular-prone non-Abelian
     ansatz. All other ansaetze (incl. the well-conditioned Z2) default to 0 (guard-only): their
     trackers drift only at machine precision over thousands of normal MC steps, so the guard alone
@@ -995,9 +995,9 @@ if __name__ == "__main__":
         "--tracker_refresh_interval",
         type=int,
         default=None,
-        help="Control the from-scratch re-anchoring of the incremental Woodbury/IncDet trackers. "
-        ">0: re-anchor every N gauge steps AND on the magnitude guard (1 = always from scratch); "
-        "0: magnitude guard only, no periodic re-anchor; <0: no refresh at all (pure incremental).",
+        help="Control the from-scratch recomputing of the incremental Woodbury/IncDet trackers. "
+        ">0: recompute every N gauge steps AND on the magnitude guard (1 = always from scratch); "
+        "0: magnitude guard only, no periodic recompute; <0: no refresh at all (pure incremental).",
     )
 
     # Profiling

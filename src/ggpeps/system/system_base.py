@@ -1087,8 +1087,8 @@ class System2DBase(ABC):
         """
         self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = self._compute_closed_trackers()
         self.weight = 0.5 * np.sum(self._incdet_vec)
-        # During warmup the mod family is deferred (see defer_mod_trackers). don't re-anchor it here
-        # either - it is rebuilt once when warmup ends (reanchor_mod_trackers).
+        # During warmup the mod family is deferred (see defer_mod_trackers). Don't recompute it here
+        # either - it is rebuilt once when warmup ends (recompute_mod_trackers).
         if not self.defer_mod_trackers:
             (
                 self._wi_gamma_in_mod_vec,
@@ -1097,8 +1097,8 @@ class System2DBase(ABC):
             ) = self._compute_mod_trackers()
         self._steps_since_refresh = 0
 
-    def reanchor_mod_trackers(self) -> None:
-        """Re-anchor the open-link ("mod") family from scratch from the CURRENT gamma_in_sys.
+    def recompute_mod_trackers(self) -> None:
+        """Recompute the open-link ("mod") family from scratch from the CURRENT gamma_in_sys.
 
         Called by the evaluator when it clears ``defer_mod_trackers`` at the end of warmup: during warmup
         the mod trackers were not maintained, so rebuild them (and re-extract gamma_in_sys_mod) fresh from
