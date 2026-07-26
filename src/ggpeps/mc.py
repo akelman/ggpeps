@@ -1,3 +1,4 @@
+from ctypes import sizeof
 from typing import Union, Optional
 
 import os
@@ -532,6 +533,10 @@ class MonteCarloEvaluator(Evaluator):
             f"summary_mc_L_{sys_cfg.lattice.nx:02d}-{sys_cfg.lattice.ny:02d}_{couplings_str}"
             f"_nlayer_{sys_cfg.nlayer:02d}_wsteps_{warmup_steps:07d}_msteps_{meas_steps:07d}.pkl"
         )
+
+        # Especially for large lattices, the system can have a very large memory footprint,
+        # so we remove the large data which is not needed
+        self.system.initialize()
 
         self.save_full(os.path.join(output_dir, fname_full))
         self.save_summary(os.path.join(output_dir, fname_summary))
