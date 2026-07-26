@@ -932,7 +932,7 @@ if __name__ == "__main__":
 
     # Arguments for the minimizer
     parser.add_argument(
-        "--method", type=str, default="bfgs", help="Minimization method. See the Minimizer class for options."
+        "--method", type=str.upper, default="BFGS", help="Minimization method. See the Minimizer class for options."
     )
     parser.add_argument(
         "--maxiter",
