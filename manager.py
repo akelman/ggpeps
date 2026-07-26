@@ -260,7 +260,7 @@ def main(args):
         raise ValueError("The number of chemical potentials must match the number of fermionic layers.")
 
     # Determine whether to compute gradients
-    compute_grads = args.compute_grads or ("min" in args.mods and args.method in Minimizer.grad_methods)
+    compute_grads = args.compute_grads or ("min" in args.mode and args.method in Minimizer.grad_methods)
 
     # Set up the logger
     log_filename = args2logname(args, couplings)
