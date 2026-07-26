@@ -1,4 +1,3 @@
-from ctypes import sizeof
 from typing import Union, Optional
 
 import os
