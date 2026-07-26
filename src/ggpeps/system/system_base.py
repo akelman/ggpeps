@@ -16,7 +16,7 @@ from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
 from ggpeps.system.config_base import Config2DBase, IdxGroup, CoeffsVec, ConstantsVec
-from ggpeps.modearray import generate_permutation_matrix
+from ggpeps.modearray import generate_permutation_matrix, generate_permutation
 from ggpeps.system import overlap as ov
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -345,15 +345,18 @@ class System2DBase(ABC):
             xnp.ndarray: 2D covariance matrix of the full system
         """
 
-        # Build permutation matrix to convert modes from site order to link order
-        # be careful with the convention of the permutation matrix vs its transpose; this way works with the code below
+        # Build permutation to convert modes from site order to link order;
+        # be careful with the convention of the permutation vs its transpose; this way works with the code below.
+        # We do this without explicitely building a permutation matrix, instead doing indexing, which is more efficient
         modes_link_order = self.get_link_based_mode_order()
         modes_site_order = self.get_site_based_mode_order()
-        mat_perm_links = generate_permutation_matrix(modes_site_order, modes_link_order)
-        sites_perm = xnp.eye(
-            2 * self.cfg.lattice.nx * self.cfg.lattice.ny * self.cfg.nphysmodes_site
-        )  # total number of physical fermionic majorana modes on all the sites together
-        mat_perm = block_diag(sites_perm, mat_perm_links)
+
+        # total number of physical fermionic majorana modes on all the sites together
+        num_phys = 2 * self.cfg.lattice.nx * self.cfg.lattice.ny * self.cfg.nphysmodes_site
+
+        # Get permutation
+        perm = generate_permutation(modes_link_order, modes_site_order)
+        full_perm = xnp.concatenate([xnp.arange(num_phys), perm + num_phys])
 
         # TODO: properly vectorize!
         gamma_maj_sys_vec = []
@@ -371,7 +374,7 @@ class System2DBase(ABC):
             dmat_sys = block_diag(*dmats)
             # Reassemble them in the correct order
             mat_sys_unordered = xnp.block([[amat_sys, bmat_sys], [-xnp.transpose(bmat_sys), dmat_sys]])
-            dest = xnp.transpose(mat_perm) @ mat_sys_unordered @ mat_perm
+            dest = mat_sys_unordered[full_perm[:, None], full_perm]
             gamma_maj_sys_vec.append(dest)
         return xnp.array(gamma_maj_sys_vec)
 

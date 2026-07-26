@@ -289,3 +289,13 @@ def generate_permutation_matrix(start_modes, end_modes):
         arr[ind_i, ind_j] = 1
 
     return ModeArray(arr, [start_modes, end_modes])
+
+
+def generate_permutation(start_modes, end_modes):
+    """Return the column permutation that maps start_modes to end_modes.
+    If M has columns in start_modes order, then:
+        M[:, perm] has columns in end_modes order.
+    """
+
+    end_index = {mode: i for i, mode in enumerate(end_modes)}
+    return np.array([end_index[mode] for mode in start_modes])
