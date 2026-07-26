@@ -336,8 +336,9 @@ class MonteCarloEvaluator(Evaluator):
             self.step += 1
 
         # Update observables which depend on expectation values
-        if self.system.cfg.num_fermionic_layer > 0:
+        if self.system.cfg.num_fermionic_layer > 0 and self.cfg.observables_mode != "energy":
             # We only compute occupations if there are fermionic layers
+            # and the required observables are being measured (not in "energy"-only mode)
             # TODO: this could be done much more efficiently with arrays
             # TODO: this variance observable has not been properly tested
             avg = self.obsdict["average_occupation"].mean()
