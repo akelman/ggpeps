@@ -106,6 +106,43 @@ def jax_eval(session):
     )
 
 
+@nox.session(python=["3"])
+def min_mc(session):
+    """Run a simple min with MC, to make sure it's working fine."""
+
+    session.install("-e", ".")
+
+    session.run(
+        "python",
+        "manager.py",
+        "min-mc",
+        "Z2",
+        "--L",
+        "2",
+        "--g",
+        "1.0",
+        "--int",
+        "1.0",
+        "--mass",
+        "1.0",
+        "--el_links",
+        "0",
+        "--ncopy",
+        "2",
+        "--num_pg_layer",
+        "1",
+        "--num_fermionic_layer",
+        "1",
+        "--warmup_steps",
+        "10",
+        "--meas_steps",
+        "10",
+        "--compute_grads",
+        "--maxiter",
+        "4",
+    )
+
+
 @nox.session
 def coverage(session):
     session.install("coverage")
