@@ -259,6 +259,9 @@ def main(args):
     if len(g_chem) != args.num_fermionic_layer:
         raise ValueError("The number of chemical potentials must match the number of fermionic layers.")
 
+    # Determine whether to compute gradients
+    compute_grads = args.compute_grads or ("min" in args.mods and args.method in Minimizer.grad_methods)
+
     # Set up the logger
     log_filename = args2logname(args, couplings)
     ggpeps.logger_file = log_filename
@@ -406,7 +409,7 @@ def main(args):
     # Gaussian-overlap oracle: pure gauge, exact-eval, energies only (no gradients/minimization).
     system_cfg.el_method = args.el_method
     if args.el_method == "overlap":
-        if args.compute_grads or args.mode in ("min-exact", "min-mc", "min-nevmc", "minmult-mc"):
+        if compute_grads or args.mode in ("min-exact", "min-mc", "min-nevmc", "minmult-mc"):
             logger.error("The 'overlap' electric-energy method supports energies only (no gradients / minimization).")
             sys.exit(1)
         if args.mode != "eval-exact":
@@ -496,6 +499,8 @@ def main(args):
         logger.info(f"Measurement steps: {mc_config.meas_steps}")
         logger.info(f"Bin size: {mc_config.binsize}")
         logger.info(f"Update size: {mc_config.update_size_per_step} (out of {2 * L ** 2} total links)")
+        logger.info(f"Observables: {args.observables}")
+        logger.info(f"Gradients: {compute_grads}")
         logger.info(f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)")
         logger.info("============================")
     if "min" in args.mode:
@@ -549,7 +554,7 @@ def main(args):
     if args.mode == "eval-mc":
         # Evaluate observables for a given set of parameters with Monte Carlo
 
-        mc_config.compute_grads = args.compute_grads
+        mc_config.compute_grads = compute_grads
         mc_config.observables_mode = args.observables or "all"
         if cache.load_obj_from_local_cache("evaluator_manager") is not None:
             mc_mgr = cache.load_obj_from_local_cache("evaluator_manager")
@@ -584,15 +589,11 @@ def main(args):
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
         min_cfg.tol = args.tol
+        mc_config.compute_grads = compute_grads
 
-        # Set up the evaluator
-        if min_cfg.method in Minimizer.grad_methods or args.compute_grads:
-            mc_config.compute_grads = True
-        else:
-            # no need to compute grads if not using a gradient-based method
-            mc_config.compute_grads = False
         # During minimization only the energy (+ gradient) observables are needed per step
         mc_config.observables_mode = args.observables or "energy"
+
         mc_mgr = EvaluatorManager(
             system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=tracker_interval
         )
@@ -622,7 +623,7 @@ def main(args):
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
 
-        ec_config.compute_grads = args.compute_grads
+        ec_config.compute_grads = compute_grads
         ex_eval = EvaluatorManager(
             system_type, system_cfg, ec_config, args.nrunner, tracker_refresh_interval=tracker_interval
         )
@@ -643,12 +644,7 @@ def main(args):
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
         min_cfg.tol = args.tol
-
-        if min_cfg.method in Minimizer.grad_methods or args.compute_grads:
-            ec_config.compute_grads = True
-        else:
-            # no need to compute grads if not using a gradient-based method
-            ec_config.compute_grads = False
+        ec_config.compute_grads = compute_grads
 
         ex_mgr = EvaluatorManager(
             system_type, system_cfg, ec_config, args.nrunner, tracker_refresh_interval=tracker_interval
@@ -894,8 +890,8 @@ if __name__ == "__main__":
         choices=["all", "energy"],
         default=None,
         help="Which observables to measure per MC step: 'all' or 'energy' (only what the energy and its "
-        "gradient need). Defaults to 'energy' for min-mc (a final full-observable evaluation is then run "
-        "at the optimum) and 'all' otherwise.",
+        "gradient need). Defaults to 'energy' for min-mc (a final full-observable evaluation must then"
+        "be run on the final params) and 'all' otherwise.",
     )
     parser.add_argument(
         "--el_method",
