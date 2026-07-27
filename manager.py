@@ -259,8 +259,14 @@ def main(args):
     if len(g_chem) != args.num_fermionic_layer:
         raise ValueError("The number of chemical potentials must match the number of fermionic layers.")
 
-    # Determine whether to compute gradients
+    # Determine whether to compute gradients and other observables (the observables setting only affects MC)
     compute_grads = args.compute_grads or ("min" in args.mode and args.method in Minimizer.grad_methods)
+    if args.observables is not None:
+        observables_mode = args.observables
+    elif "min" in args.mode:
+        observables_mode = "energy"
+    else:
+        observables_mode = "all"
 
     # Set up the logger
     log_filename = args2logname(args, couplings)
@@ -301,6 +307,7 @@ def main(args):
             update_size_per_step=update_size,
             warmup_log_freq=args.warmup_log_freq,
             run_log_freq=args.run_log_freq,
+            observables_mode=observables_mode,
         )
         mc_config.seed = seed
     else:
@@ -500,7 +507,7 @@ def main(args):
         logger.info(f"Measurement steps: {mc_config.meas_steps}")
         logger.info(f"Bin size: {mc_config.binsize}")
         logger.info(f"Update size: {mc_config.update_size_per_step} (out of {2 * L ** 2} total links)")
-        logger.info(f"Observables: {args.observables}")
+        logger.info(f"Observables: {mc_config.observables_mode}")
         logger.info(f"Gradients: {compute_grads}")
         logger.info(f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)")
         logger.info("============================")
@@ -556,7 +563,6 @@ def main(args):
         # Evaluate observables for a given set of parameters with Monte Carlo
 
         mc_config.compute_grads = compute_grads
-        mc_config.observables_mode = args.observables or "all"
         if cache.load_obj_from_local_cache("evaluator_manager") is not None:
             mc_mgr = cache.load_obj_from_local_cache("evaluator_manager")
             logger.info("Loaded evaluator manager from cache.")
@@ -591,9 +597,6 @@ def main(args):
         min_cfg.alpha = args.alpha
         min_cfg.tol = args.tol
         mc_config.compute_grads = compute_grads
-
-        # During minimization only the energy (+ gradient) observables are needed per step
-        mc_config.observables_mode = args.observables or "energy"
 
         mc_mgr = EvaluatorManager(
             system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=tracker_interval
