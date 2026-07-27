@@ -278,6 +278,11 @@ def main(args):
         logger.error("Unrecognized value for update_size.")
         sys.exit(1)
 
+    if args.seed is not None:
+        seed = args.seed
+    else:
+        seed = np.random.randint(np.iinfo(np.int32).max)
+
     if "nevmc" in args.mode:
         mc_config = NEVMC_EvaluatorConfig(
             warmup_steps=args.warmup_steps,
@@ -287,7 +292,8 @@ def main(args):
             warmup_log_freq=args.warmup_log_freq,
             run_log_freq=args.run_log_freq,
         )
-    else:
+        mc_config.seed = seed
+    elif "mc" in args.mode:
         mc_config = MonteCarloEvaluatorConfig(
             warmup_steps=args.warmup_steps,
             meas_steps=args.meas_steps,
@@ -296,14 +302,10 @@ def main(args):
             warmup_log_freq=args.warmup_log_freq,
             run_log_freq=args.run_log_freq,
         )
-
-    # Set up EC config
-    ec_config = ExactEvaluatorConfig()
-
-    if args.seed is not None:
-        seed = args.seed
+        mc_config.seed = seed
     else:
-        seed = np.random.randint(np.iinfo(np.int32).max)
+        # Set up EC config
+        ec_config = ExactEvaluatorConfig()
 
     # Log basic info
     logger.info(f"Git hash: {utils.get_git_hash()}")
@@ -386,7 +388,6 @@ def main(args):
     # We use a local random number generator instead of the global numpy one to assure
     # reproducibility across different runs, even when using mulitple processes
     rngstate = np.random.RandomState(seed)
-    mc_config.seed = seed
 
     # Translate the command line input to a valid parameter vector
     paramvec, param_source = translate_parameters(
