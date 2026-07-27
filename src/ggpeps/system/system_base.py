@@ -387,6 +387,7 @@ class System2DBase(ABC):
             "num_fermionic_layer",
             "unitcell_size",
             "nparams",
+            "zeroed_params",
         ]
     )
     def _compute_d_gamma_out_symbolvec(
@@ -396,7 +397,7 @@ class System2DBase(ABC):
         num_fermionic_layer: int,
         unitcell_size: int,
         nparams: int,
-        mask: xnp.ndarray,
+        zeroed_params: tuple,
         mat_b_vec: xnp.ndarray,
         gamma_out_inv_vec: xnp.ndarray,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
@@ -416,7 +417,7 @@ class System2DBase(ABC):
 
             for uc_ind in range(unitcell_size):
                 for symbol_ind in range(nparams):
-                    if mask[layer, uc_ind, symbol_ind]:
+                    if (layer, uc_ind, symbol_ind) not in zeroed_params:
 
                         deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layer, uc_ind, symbol_ind]
                         d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, dim_gamma_out)
@@ -450,7 +451,7 @@ class System2DBase(ABC):
                 self.cfg.num_fermionic_layer,
                 self.cfg.unitcell_size,
                 len(self.cfg.symbolvec),
-                self.mask,
+                self.cfg.zeroed_params,
                 self.mat_b_vec,
                 self.wi_gamma_out_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
