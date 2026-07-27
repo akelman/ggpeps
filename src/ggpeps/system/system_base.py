@@ -396,6 +396,7 @@ class System2DBase(ABC):
         num_fermionic_layer: int,
         unitcell_size: int,
         nparams: int,
+        mask: xnp.ndarray,
         mat_b_vec: xnp.ndarray,
         gamma_out_inv_vec: xnp.ndarray,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
@@ -410,26 +411,26 @@ class System2DBase(ABC):
             diff_d_gamma_inv = gamma_out_inv_vec[layer]
 
             # Precompute terms to save time in the inner loops
-            diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)
+            diff_times_b = diff_d_gamma_inv @ xnp.swapaxes(mat_b, -2, -1)
             b_times_diff = mat_b @ diff_d_gamma_inv
 
             for uc_ind in range(unitcell_size):
                 for symbol_ind in range(nparams):
-                    # TODO: skip for zeroed params
+                    if mask[layer, uc_ind, symbol_ind]:
 
-                    deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layer, uc_ind, symbol_ind]
-                    d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, dim_gamma_out)
+                        deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layer, uc_ind, symbol_ind]
+                        d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, dim_gamma_out)
 
-                    d_gamma_out = (
-                        d_mat_a
-                        + d_mat_b @ diff_times_b
-                        + b_times_diff @ xnp.transpose(d_mat_b)
-                        - b_times_diff @ d_mat_d @ diff_times_b
-                    )
+                        d_gamma_out = (
+                            d_mat_a
+                            + d_mat_b @ diff_times_b
+                            + b_times_diff @ xnp.swapaxes(d_mat_b, -2, -1)
+                            - b_times_diff @ d_mat_d @ diff_times_b
+                        )
 
-                    d_gamma_out_symbolvec = backend.array_assign(
-                        d_gamma_out_symbolvec, (layer, uc_ind, symbol_ind), d_gamma_out
-                    )
+                        d_gamma_out_symbolvec = backend.array_assign(
+                            d_gamma_out_symbolvec, (layer, uc_ind, symbol_ind), d_gamma_out
+                        )
 
         return d_gamma_out_symbolvec
 
@@ -449,6 +450,7 @@ class System2DBase(ABC):
                 self.cfg.num_fermionic_layer,
                 self.cfg.unitcell_size,
                 len(self.cfg.symbolvec),
+                self.mask,
                 self.mat_b_vec,
                 self.wi_gamma_out_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
