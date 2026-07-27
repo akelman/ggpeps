@@ -401,37 +401,36 @@ class System2DBase(ABC):
         gamma_out_inv_vec: xnp.ndarray,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
     ) -> xnp.ndarray:
+
         nlayer = num_pg_layer + num_fermionic_layer
         dim_gamma_out = 2 * lattice_size * nphysmodes_site
         shape = (nlayer, unitcell_size, nparams, dim_gamma_out, dim_gamma_out)
         d_gamma_out_symbolvec = xnp.zeros(shape)
 
-        for layer in range(num_pg_layer, nlayer):
-            mat_b = mat_b_vec[layer]
-            diff_d_gamma_inv = gamma_out_inv_vec[layer]
+        d_mat_a_vec, d_mat_b_vec, d_mat_d_vec = utils.extract_partial_covmats(
+            gamma_maj_sys_deriv_layvec_ucvec_symbvec, dim_gamma_out
+        )
 
-            # Precompute terms to save time in the inner loops
-            diff_times_b = diff_d_gamma_inv @ xnp.swapaxes(mat_b, -2, -1)
-            b_times_diff = mat_b @ diff_d_gamma_inv
+        l, u, s = xnp.nonzero(mask)  # layer, unitcell, symbol indices where mask is True
 
-            for uc_ind in range(unitcell_size):
-                for symbol_ind in range(nparams):
-                    if mask[layer, uc_ind, symbol_ind]:
+        mat_b_masked = mat_b_vec[l]
+        diff_d_gamma_inv_masked = gamma_out_inv_vec[l]
 
-                        deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layer, uc_ind, symbol_ind]
-                        d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, dim_gamma_out)
+        diff_times_b_masked = diff_d_gamma_inv_masked @ xnp.swapaxes(mat_b_masked, -2, -1)
+        b_times_diff_masked = mat_b_masked @ diff_d_gamma_inv_masked
 
-                        d_gamma_out = (
-                            d_mat_a
-                            + d_mat_b @ diff_times_b
-                            + b_times_diff @ xnp.swapaxes(d_mat_b, -2, -1)
-                            - b_times_diff @ d_mat_d @ diff_times_b
-                        )
+        d_mat_a_masked = d_mat_a_vec[l, u, s]
+        d_mat_b_masked = d_mat_b_vec[l, u, s]
+        d_mat_d_masked = d_mat_d_vec[l, u, s]
 
-                        d_gamma_out_symbolvec = backend.array_assign(
-                            d_gamma_out_symbolvec, (layer, uc_ind, symbol_ind), d_gamma_out
-                        )
+        d_gamma_out_masked = (
+            d_mat_a_masked
+            + d_mat_b_masked @ diff_times_b_masked
+            + b_times_diff_masked @ xnp.swapaxes(d_mat_b_masked, -2, -1)
+            - b_times_diff_masked @ d_mat_d_masked @ diff_times_b_masked
+        )
 
+        d_gamma_out_symbolvec = backend.array_assign(d_gamma_out_symbolvec, (l, u, s), d_gamma_out_symbolvec)
         return d_gamma_out_symbolvec
 
     @property
