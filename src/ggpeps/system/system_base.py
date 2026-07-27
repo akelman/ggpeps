@@ -2247,7 +2247,7 @@ class System2DBase(ABC):
                 The mask is 1 where the parameter is not zeroed, and 0 where it is zeroed.
 
         Returns:
-            tuple: Tuple of the derivatives of the modified covmats (d_mat_a, d_mat_b, d_mat_d)
+            tuple: Tuple of the derivatives of the modified covmats (d_mat_a_mod, d_mat_b_mod, d_mat_d_mod)
                 These would have shape (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2) if not masked by inds.
                 However, the masking changes the shape to (num_active, dim1, dim2), where num_active comes from
                 collapsing the leading dimensions.
@@ -2256,7 +2256,7 @@ class System2DBase(ABC):
         if self._deriv_mod_mats is None:
             # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
             # where dim1, dim2 are the (effective) physical and virtual dimensions as appropriate
-            d_mat_a_vec, d_mat_b_vec, d_mat_d_vec = utils.extract_mod_covmats(
+            d_mat_a_mod_vec, d_mat_b_mod_vec, d_mat_d_mod_vec = utils.extract_mod_covmats(
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
                 self.cfg.mod_link_inds,
                 self.cfg.lattice.size,
@@ -2269,9 +2269,9 @@ class System2DBase(ABC):
             # (It might be better to do this before extract_mod_covmats(), since that will speed up the extraction,
             # but since this only runs once per evaluation on a given set of params, it doesn't matter much)
             l, m, u, s = inds  # layer, mod_link, unitcell, symbol
-            dA = d_mat_a_vec[l, m, u, s]
-            dB = d_mat_b_vec[l, m, u, s]
-            dD = d_mat_d_vec[l, m, u, s]
+            dA = d_mat_a_mod_vec[l, m, u, s]
+            dB = d_mat_b_mod_vec[l, m, u, s]
+            dD = d_mat_d_mod_vec[l, m, u, s]
             self._deriv_mod_mats = (dA, dB, dD)
         return self._deriv_mod_mats
 
