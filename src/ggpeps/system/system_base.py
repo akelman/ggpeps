@@ -1781,10 +1781,9 @@ class System2DBase(ABC):
     def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray) -> None:
         """Update a gauge field at a given link index by a new value.
         This function can be called from outside the system, and so accepts a gauge field value as np.ndarray.
-        We convert here to xnp.ndarray. The heavy per-step work runs in the pure jitted classmethod
-        _update_gauge_ind; this method moves instance state in and out. After the incremental update
-        it recomputes the trackers from scratch when the periodic interval elapsed or the magnitude
-        guard fired.
+        We convert here to xnp.ndarray. The heavy per-step work runs in the jitted classmethod
+        _update_gauge_ind. After the incremental update it recomputes the trackers from scratch
+        when the periodic interval elapsed or the magnitude guard fired.
 
         Args:
             link_ind (int): Link index of the gauge field to be updated
