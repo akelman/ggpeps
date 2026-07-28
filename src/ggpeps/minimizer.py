@@ -614,7 +614,10 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
     # occupations or per-term energies); skip the parts of the report that need the rest.
     full_obs = getattr(minimizer.evaluator_manager.cfg, "observables_mode", "all") != "energy"
 
-    mass_energy_op = utils.get_obs_mean_df(res, "mass_energy_op")
+    if full_obs or abs(minimizer.evaluator_manager.system_cfg.g_mass) > 0:
+        mass_energy_op = utils.get_obs_mean_df(res, "mass_energy_op")
+    else:
+        mass_energy_op = "N/A"
     plaquette = f"{utils.get_obs_mean_df(res, 'wilson_loop_0-0_1x1'):.6f}" if full_obs else "N/A"
     if full_obs and minimizer.evaluator_manager.system_cfg.num_fermionic_layer > 0:
         # If we have fermionic layers, we can compute the average occupation
