@@ -449,6 +449,7 @@ def main(args):
         logger.info(f"Found GPU, using device: {main_device}.")
     else:
         logger.info("No GPUs found, falling back to CPU.")
+    logger.info(f"Machine: {platform.machine()}, system: {platform.system()}")
     logger.info(f"Numerical backend: {ggpeps.PREFERRED_BACKEND}")
     arr = ggpeps.xnp.array([1.2, 1.3])
     logger.info(f"Precision: {arr.dtype}")
