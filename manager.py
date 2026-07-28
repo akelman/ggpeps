@@ -507,7 +507,7 @@ def main(args):
         logger.info(f"Measurement steps: {mc_config.meas_steps}")
         logger.info(f"Bin size: {mc_config.binsize}")
         logger.info(f"Update size: {mc_config.update_size_per_step} (out of {2 * L ** 2} total links)")
-        logger.info(f"Observables: {mc_config.observables_mode}")
+        logger.info(f"Observables (other than gradients): {mc_config.observables_mode}")
         logger.info(f"Gradients: {compute_grads}")
         logger.info(f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)")
         logger.info("============================")
@@ -613,17 +613,33 @@ def main(args):
 
         if mc_config.observables_mode == "energy":
             # Full-observable MC evaluation at the optimized parameters (same pattern as minmult-mc)
-            logger.info("Running a final full-observable evaluation at the optimized parameters.")
+
+            # Log the time taken for the above minimzer
+            logger.info("========== TIME ============")
+            logger.info(f"The simulation took {stop - start}s.")
+            logger.info("============================\n\n")  # add new lines to separate from next run
+
+            logger.info("====== COMPUTING EVAL ======")
+            logger.info("Running a final full-observable evaluation at the found optimized parameters.")
+            logger.info("============================")
+
             system_cfg.paramvec = result.paramvec
             mc_config.compute_grads = False
             mc_config.observables_mode = "all"
             mc_mgr = EvaluatorManager(
                 system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=tracker_interval
             )
+
+            start = timer()
             _ = mc_mgr.simulate()
+            stop = timer()
+
             mc_result = mc_mgr.get_evaluator()
             mc_result.print_stats()
             mc_result.save(output_dir=args.output)
+            logger.info("==== Acceptance prob =======")
+            logger.info(f"Acceptance probability: {mc_result.get_obs_mean('acceptance_prob')}")
+            logger.info("============================")
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
 
