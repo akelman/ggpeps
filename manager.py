@@ -442,19 +442,21 @@ def main(args):
     if args.mode == "min-nevmc":
         args.method = "NEVMC"
 
+    cluster_name = os.environ.get("SLURM_CLUSTER_NAME", default=None)
+    arr = ggpeps.xnp.array([1.2, 1.3])
+
     # Update Log
     # Log backend info - GPU/CPU, JAX/NUMPY, precision, etc.
     logger.info("======= BACKEND INFO =======")
+    logger.info(f"Cluster name: {cluster_name}")
+    logger.info(f"Machine: {platform.machine()}, system: {platform.system()}")
+    logger.info(f"Numerical backend: {ggpeps.PREFERRED_BACKEND}")
+    logger.info(f"Precision: {arr.dtype}")
     if ggpeps.GPU_AVAILABLE:
         logger.info(f"Found GPU, using device: {main_device}.")
     else:
         logger.info("No GPUs found, falling back to CPU.")
-    logger.info(f"Machine: {platform.machine()}, system: {platform.system()}")
-    logger.info(f"Numerical backend: {ggpeps.PREFERRED_BACKEND}")
-    arr = ggpeps.xnp.array([1.2, 1.3])
-    logger.info(f"Precision: {arr.dtype}")
     if isinstance(arr, jax.numpy.ndarray):
-        # dev = arr.device
         # logger.info(f"JAX default device: {dev.platform}")  # general
         logger.info(f"Device info: {main_device.device_kind}")  # specific
     logger.info("============================")
