@@ -66,9 +66,6 @@ class D2nSystem2D(System2DBase):
         The naming convention here is <mode letter><number of copy>_<majorana mode>_<color>.
         We order first by link and then by copy then by color.
 
-        For both fermionic and pure gauge layers, the projectors don't mix copies.
-        This ensures the U(1) symmetry is obeyed for the fermionic layers, and is a convention for the pure gauge ones.
-
         This method overwrites an abstract method in System2DBase.
         See this method in System2DBase for further documentation.
         """
