@@ -157,18 +157,23 @@ class MonteCarloEvaluator(Evaluator):
         occupations, the derived per-term energies) is skipped -- it is not needed for minimization.
         """
         binsize = self.cfg.binsize
-        energy_only = self.cfg.observables_mode == "energy"
         self.obsdict = {}  # reset
 
         self.obsdict["acceptance_prob"] = Measurement("Acceptance Probablity", binsize)
         self.obsdict["energy"] = Measurement("Energy", binsize)
-        self.obsdict["chem_energy"] = Measurement("Chemical Energy", binsize)
-        self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
-        self.obsdict["el_energy_op"] = Measurement("Electric Energy Operator (bare)", binsize)
-        self.obsdict["int_energy_op"] = Measurement("Interaction Energy Operator (bare)", binsize)
-        self.obsdict["mass_energy_op"] = Measurement("Mass Energy Operator (bare)", binsize)
 
-        if not energy_only:
+        if self.cfg.observables_mode == "all" or abs(self.system.cfg.g_mag) > 0:
+            self.obsdict["mag_energy_op"] = Measurement("Magnetic Energy Operator (bare)", binsize)
+        if self.cfg.observables_mode == "all" or abs(self.system.cfg.g_el) > 0:
+            self.obsdict["el_energy_op"] = Measurement("Electric Energy Operator (bare)", binsize)
+        if self.cfg.observables_mode == "all" or abs(self.system.cfg.g_int) > 0:
+            self.obsdict["int_energy_op"] = Measurement("Interaction Energy Operator (bare)", binsize)
+        if self.cfg.observables_mode == "all" or abs(self.system.cfg.g_mass) > 0:
+            self.obsdict["mass_energy_op"] = Measurement("Mass Energy Operator (bare)", binsize)
+        if self.cfg.observables_mode == "all" or not np.allclose(self.system.cfg.g_chem, 0):
+            self.obsdict["chem_energy"] = Measurement("Chemical Energy", binsize)
+
+        if self.cfg.observables_mode == "all":
             self.obsdict["mag_energy"] = Measurement("Magnetic Energy", binsize)
             self.obsdict["el_energy"] = Measurement("Electric Energy", binsize)
             self.obsdict["int_energy"] = Measurement("Interaction Energy", binsize)
@@ -199,14 +204,22 @@ class MonteCarloEvaluator(Evaluator):
 
     def measure(self) -> None:
         """Measure the corresponding observables in the dictionary"""
-        # The bare operators, the energy and chem_energy are always measured: the energy is the
-        # minimization objective and energy_gradient_mc needs the operators for its covariances.
-        self.obsdict["mag_energy_op"].append(np.asarray(self.system.mag_energy_op))
-        self.obsdict["el_energy_op"].append(np.asarray(self.system.el_energy_op))
-        self.obsdict["int_energy_op"].append(np.asarray(self.system.int_energy_op))
-        self.obsdict["mass_energy_op"].append(np.asarray(self.system.mass_energy_op))
+
         self.obsdict["energy"].append(float(self.system.energy))
-        self.obsdict["chem_energy"].append(float(self.system.chem_energy))
+
+        # Only measure each term if necessary
+        # TODO: this is not a great way to implement this - it requires coordination all over this class
+        # Better would be to implement guards in the system, but this will require some care
+        if self.cfg.observables_mode == "all" or abs(self.system.cfg.g_mag) > 0:
+            self.obsdict["mag_energy_op"].append(np.asarray(self.system.mag_energy_op))
+        if self.cfg.observables_mode == "all" or abs(self.system.cfg.g_el) > 0:
+            self.obsdict["el_energy_op"].append(np.asarray(self.system.el_energy_op))
+        if self.cfg.observables_mode == "all" or abs(self.system.cfg.g_int) > 0:
+            self.obsdict["int_energy_op"].append(np.asarray(self.system.int_energy_op))
+        if self.cfg.observables_mode == "all" or abs(self.system.cfg.g_mass) > 0:
+            self.obsdict["mass_energy_op"].append(np.asarray(self.system.mass_energy_op))
+        if self.cfg.observables_mode == "all" or not np.allclose(self.system.cfg.g_chem, 0):
+            self.obsdict["chem_energy"].append(float(self.system.chem_energy))
 
         if self.cfg.observables_mode != "energy":
             self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(self._polyakov_loop)))
@@ -232,11 +245,28 @@ class MonteCarloEvaluator(Evaluator):
                 self.obsdict[string_name].append(np.asarray(self.system.meson_string(string_path)))
 
         if self.cfg.compute_grads:
-            self.obsdict["el_energy_op_grad"].append(np.asarray(self.system.el_energy_op_grad_vec))
-            self.obsdict["int_energy_op_grad"].append(np.asarray(self.system.int_energy_op_grad_vec))
-            self.obsdict["mass_energy_op_grad"].append(np.asarray(self.system.mass_energy_op_grad_vec))
-            self.obsdict["chem_energy_op_grad"].append(np.asarray(self.system.chem_energy_op_grad_vec))
-            self.obsdict["grad_norm"].append(np.asarray(self.system.grad_over_norm_vec))
+            grad_over_norm = self.system.grad_over_norm_vec
+            self.obsdict["grad_norm"].append(np.asarray(grad_over_norm))
+
+            if abs(self.system.cfg.g_el) > 0:
+                self.obsdict["el_energy_op_grad"].append(np.asarray(self.system.el_energy_op_grad_vec))
+            else:
+                self.obsdict["el_energy_op_grad"].append(np.zeros_like(grad_over_norm))
+
+            if abs(self.system.cfg.g_int) > 0:
+                self.obsdict["int_energy_op_grad"].append(np.asarray(self.system.int_energy_op_grad_vec))
+            else:
+                self.obsdict["int_energy_op_grad"].append(np.zeros_like(grad_over_norm))
+
+            if abs(self.system.cfg.g_mass) > 0:
+                self.obsdict["mass_energy_op_grad"].append(np.asarray(self.system.mass_energy_op_grad_vec))
+            else:
+                self.obsdict["mass_energy_op_grad"].append(np.zeros_like(grad_over_norm))
+
+            if np.allclose(self.system.cfg.g_chem, 0):
+                self.obsdict["chem_energy_op_grad"].append(np.asarray(self.system.chem_energy_op_grad_vec))
+            else:
+                self.obsdict["chem_energy_op_grad"].append(np.zeros_like(grad_over_norm))
 
         return
 
@@ -244,62 +274,74 @@ class MonteCarloEvaluator(Evaluator):
         # Compute the energy gradient from the MC results
         meas_grad_over_norm = self.obsdict["grad_norm"]
 
+        # Initialize
+        mag_energy_grad = np.zeros_like(meas_grad_over_norm)
+        el_energy_grad = np.zeros_like(meas_grad_over_norm)
+        int_energy_grad = np.zeros_like(meas_grad_over_norm)
+        mass_energy_grad = np.zeros_like(meas_grad_over_norm)
+        chem_energy_grad = np.zeros_like(meas_grad_over_norm)
+
         # Gradient of the magnetic energy
-        meas_mag_energy_op = self.obsdict["mag_energy_op"]
-        prod_mag_energy_grad = meas_mag_energy_op * meas_grad_over_norm
-        mag_energy_op_grad = prod_mag_energy_grad.mean() - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
-        # Add the constants back into the expression of the magnetic energy
-        mag_energy_grad = -2 * self.system.cfg.g_mag * mag_energy_op_grad
+        if self.cfg.observables_mode == "all" or abs(self.system.cfg.g_mag) > 0:
+            meas_mag_energy_op = self.obsdict["mag_energy_op"]
+            prod_mag_energy_grad = meas_mag_energy_op * meas_grad_over_norm
+            mag_energy_op_grad = prod_mag_energy_grad.mean() - meas_mag_energy_op.mean() * meas_grad_over_norm.mean()
+            # Add the constants back into the expression of the magnetic energy
+            mag_energy_grad = -2 * self.system.cfg.g_mag * mag_energy_op_grad
 
         # Gradient of the electric energy
-        meas_el_energy_op = self.obsdict["el_energy_op"]
-        meas_el_energy_op_grad = self.obsdict["el_energy_op_grad"]
-        prod_el_energy_grad = meas_el_energy_op * meas_grad_over_norm
-        el_energy_op_grad = (
-            prod_el_energy_grad.mean()
-            - meas_el_energy_op.mean() * meas_grad_over_norm.mean()
-            + meas_el_energy_op_grad.mean()
-        )
-        # Add the constants back into the expression of the electric energy
-        el_energy_grad = -self.system.cfg.gaugemgr.el_mult_factor * self.system.cfg.g_el * el_energy_op_grad
+        if self.cfg.observables_mode == "all" or abs(self.system.cfg.g_el) > 0:
+            meas_el_energy_op = self.obsdict["el_energy_op"]
+            meas_el_energy_op_grad = self.obsdict["el_energy_op_grad"]
+            prod_el_energy_grad = meas_el_energy_op * meas_grad_over_norm
+            el_energy_op_grad = (
+                prod_el_energy_grad.mean()
+                - meas_el_energy_op.mean() * meas_grad_over_norm.mean()
+                + meas_el_energy_op_grad.mean()
+            )
+            # Add the constants back into the expression of the electric energy
+            el_energy_grad = -self.system.cfg.gaugemgr.el_mult_factor * self.system.cfg.g_el * el_energy_op_grad
 
         # Gradient of the interaction energy
-        meas_int_energy_op = self.obsdict["int_energy_op"]
-        meas_int_energy_op_grad = self.obsdict["int_energy_op_grad"]
-        prod_int_energy_grad = meas_int_energy_op * meas_grad_over_norm
-        int_energy_op_grad = (
-            prod_int_energy_grad.mean()
-            - meas_int_energy_op.mean() * meas_grad_over_norm.mean()
-            + meas_int_energy_op_grad.mean()
-        )
-        # Add the constants back into the expression of the interaction energy
-        int_energy_grad = self.system.cfg.g_int * int_energy_op_grad
+        if self.cfg.observables_mode == "all" or abs(self.system.cfg.g_int) > 0:
+            meas_int_energy_op = self.obsdict["int_energy_op"]
+            meas_int_energy_op_grad = self.obsdict["int_energy_op_grad"]
+            prod_int_energy_grad = meas_int_energy_op * meas_grad_over_norm
+            int_energy_op_grad = (
+                prod_int_energy_grad.mean()
+                - meas_int_energy_op.mean() * meas_grad_over_norm.mean()
+                + meas_int_energy_op_grad.mean()
+            )
+            # Add the constants back into the expression of the interaction energy
+            int_energy_grad = self.system.cfg.g_int * int_energy_op_grad
 
         # Gradient of the mass energy
-        meas_mass_energy_op = self.obsdict["mass_energy_op"]
-        meas_mass_energy_op_grad = self.obsdict["mass_energy_op_grad"]
-        prod_mass_energy_grad = meas_mass_energy_op * meas_grad_over_norm
-        mass_energy_op_grad = (
-            prod_mass_energy_grad.mean()
-            - meas_mass_energy_op.mean() * meas_grad_over_norm.mean()
-            + meas_mass_energy_op_grad.mean()
-        )
-        # Add the constants back into the expression of the mass energy
-        mass_energy_grad = self.system.cfg.g_mass * mass_energy_op_grad
+        if self.cfg.observables_mode == "all" or abs(self.system.cfg.g_mass) > 0:
+            meas_mass_energy_op = self.obsdict["mass_energy_op"]
+            meas_mass_energy_op_grad = self.obsdict["mass_energy_op_grad"]
+            prod_mass_energy_grad = meas_mass_energy_op * meas_grad_over_norm
+            mass_energy_op_grad = (
+                prod_mass_energy_grad.mean()
+                - meas_mass_energy_op.mean() * meas_grad_over_norm.mean()
+                + meas_mass_energy_op_grad.mean()
+            )
+            # Add the constants back into the expression of the mass energy
+            mass_energy_grad = self.system.cfg.g_mass * mass_energy_op_grad
 
         # Gradient of the chemical potential
-        meas_chem_energy = self.obsdict["chem_energy"]
-        meas_chem_energy_op_grad = copy.deepcopy(self.obsdict["chem_energy_op_grad"])
-        for lay in range(self.system.cfg.num_pg_layer, self.system.cfg.nlayer):
-            # the gradients must be scaled by the chemical potential
-            ind = lay - self.system.cfg.num_pg_layer
-            meas_chem_energy_op_grad.datavec[lay] *= self.system.cfg.g_chem[ind]
-        prod_chem_energy_grad = meas_chem_energy * meas_grad_over_norm
-        chem_energy_grad = (
-            prod_chem_energy_grad.mean()
-            - meas_chem_energy.mean() * meas_grad_over_norm.mean()
-            + meas_chem_energy_op_grad.mean()
-        )
+        if self.cfg.observables_mode == "all" or not np.allclose(self.system.cfg.g_chem, 0):
+            meas_chem_energy = self.obsdict["chem_energy"]
+            meas_chem_energy_op_grad = copy.deepcopy(self.obsdict["chem_energy_op_grad"])
+            for lay in range(self.system.cfg.num_pg_layer, self.system.cfg.nlayer):
+                # the gradients must be scaled by the chemical potential
+                ind = lay - self.system.cfg.num_pg_layer
+                meas_chem_energy_op_grad.datavec[lay] *= self.system.cfg.g_chem[ind]
+            prod_chem_energy_grad = meas_chem_energy * meas_grad_over_norm
+            chem_energy_grad = (
+                prod_chem_energy_grad.mean()
+                - meas_chem_energy.mean() * meas_grad_over_norm.mean()
+                + meas_chem_energy_op_grad.mean()
+            )
 
         # Total gradient
         grad = mag_energy_grad + el_energy_grad + int_energy_grad + mass_energy_grad + chem_energy_grad
