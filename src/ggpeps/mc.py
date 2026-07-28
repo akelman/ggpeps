@@ -275,11 +275,11 @@ class MonteCarloEvaluator(Evaluator):
         meas_grad_over_norm = self.obsdict["grad_norm"]
 
         # Initialize
-        mag_energy_grad = np.zeros_like(meas_grad_over_norm)
-        el_energy_grad = np.zeros_like(meas_grad_over_norm)
-        int_energy_grad = np.zeros_like(meas_grad_over_norm)
-        mass_energy_grad = np.zeros_like(meas_grad_over_norm)
-        chem_energy_grad = np.zeros_like(meas_grad_over_norm)
+        mag_energy_grad = 0.0
+        el_energy_grad = 0.0
+        int_energy_grad = 0.0
+        mass_energy_grad = 0.0
+        chem_energy_grad = 0.0
 
         # Gradient of the magnetic energy
         if self.cfg.observables_mode == "all" or abs(self.system.cfg.g_mag) > 0:
