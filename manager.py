@@ -158,7 +158,7 @@ def validate_inputs(args) -> bool:
 
 
 def default_tracker_refresh_interval(system_cfg) -> int:
-    """Per-ansatz default for the periodic tracker re-anchor cadence (the magnitude guard is always
+    """Per-ansatz default for the periodic tracker recompute cadence (the magnitude guard is always
     on regardless). D6 uses 256 -- a cheap long-run heartbeat for the near-singular-prone non-Abelian
     ansatz. All other ansaetze (incl. the well-conditioned Z2) default to 0 (guard-only): their
     trackers drift only at machine precision over thousands of normal MC steps, so the guard alone
@@ -259,6 +259,15 @@ def main(args):
     if len(g_chem) != args.num_fermionic_layer:
         raise ValueError("The number of chemical potentials must match the number of fermionic layers.")
 
+    # Determine whether to compute gradients and other observables (the observables setting only affects MC)
+    compute_grads = args.compute_grads or ("min" in args.mode and args.method in Minimizer.grad_methods)
+    if args.observables is not None:
+        observables_mode = args.observables
+    elif "min" in args.mode:
+        observables_mode = "energy"
+    else:
+        observables_mode = "all"
+
     # Set up the logger
     log_filename = args2logname(args, couplings)
     ggpeps.logger_file = log_filename
@@ -275,6 +284,11 @@ def main(args):
         logger.error("Unrecognized value for update_size.")
         sys.exit(1)
 
+    if args.seed is not None:
+        seed = args.seed
+    else:
+        seed = np.random.randint(np.iinfo(np.int32).max)
+
     if "nevmc" in args.mode:
         mc_config = NEVMC_EvaluatorConfig(
             warmup_steps=args.warmup_steps,
@@ -284,7 +298,8 @@ def main(args):
             warmup_log_freq=args.warmup_log_freq,
             run_log_freq=args.run_log_freq,
         )
-    else:
+        mc_config.seed = seed
+    elif "mc" in args.mode:
         mc_config = MonteCarloEvaluatorConfig(
             warmup_steps=args.warmup_steps,
             meas_steps=args.meas_steps,
@@ -292,15 +307,12 @@ def main(args):
             update_size_per_step=update_size,
             warmup_log_freq=args.warmup_log_freq,
             run_log_freq=args.run_log_freq,
+            observables_mode=observables_mode,
         )
-
-    # Set up EC config
-    ec_config = ExactEvaluatorConfig()
-
-    if args.seed is not None:
-        seed = args.seed
+        mc_config.seed = seed
     else:
-        seed = np.random.randint(np.iinfo(np.int32).max)
+        # Set up EC config
+        ec_config = ExactEvaluatorConfig()
 
     # Log basic info
     logger.info(f"Git hash: {utils.get_git_hash()}")
@@ -383,7 +395,6 @@ def main(args):
     # We use a local random number generator instead of the global numpy one to assure
     # reproducibility across different runs, even when using mulitple processes
     rngstate = np.random.RandomState(seed)
-    mc_config.seed = seed
 
     # Translate the command line input to a valid parameter vector
     paramvec, param_source = translate_parameters(
@@ -406,7 +417,7 @@ def main(args):
     # Gaussian-overlap oracle: pure gauge, exact-eval, energies only (no gradients/minimization).
     system_cfg.el_method = args.el_method
     if args.el_method == "overlap":
-        if args.compute_grads or args.mode in ("min-exact", "min-mc", "min-nevmc", "minmult-mc"):
+        if compute_grads or args.mode in ("min-exact", "min-mc", "min-nevmc", "minmult-mc"):
             logger.error("The 'overlap' electric-energy method supports energies only (no gradients / minimization).")
             sys.exit(1)
         if args.mode != "eval-exact":
@@ -496,6 +507,8 @@ def main(args):
         logger.info(f"Measurement steps: {mc_config.meas_steps}")
         logger.info(f"Bin size: {mc_config.binsize}")
         logger.info(f"Update size: {mc_config.update_size_per_step} (out of {2 * L ** 2} total links)")
+        logger.info(f"Observables (other than gradients): {mc_config.observables_mode}")
+        logger.info(f"Gradients: {compute_grads}")
         logger.info(f"Number of Ray runners: {args.nrunner} (zero indicates not using Ray)")
         logger.info("============================")
     if "min" in args.mode:
@@ -549,8 +562,7 @@ def main(args):
     if args.mode == "eval-mc":
         # Evaluate observables for a given set of parameters with Monte Carlo
 
-        mc_config.compute_grads = args.compute_grads
-        mc_config.observables_mode = args.observables or "all"
+        mc_config.compute_grads = compute_grads
         if cache.load_obj_from_local_cache("evaluator_manager") is not None:
             mc_mgr = cache.load_obj_from_local_cache("evaluator_manager")
             logger.info("Loaded evaluator manager from cache.")
@@ -584,15 +596,8 @@ def main(args):
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
         min_cfg.tol = args.tol
+        mc_config.compute_grads = compute_grads
 
-        # Set up the evaluator
-        if min_cfg.method in Minimizer.grad_methods or args.compute_grads:
-            mc_config.compute_grads = True
-        else:
-            # no need to compute grads if not using a gradient-based method
-            mc_config.compute_grads = False
-        # During minimization only the energy (+ gradient) observables are needed per step
-        mc_config.observables_mode = args.observables or "energy"
         mc_mgr = EvaluatorManager(
             system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=tracker_interval
         )
@@ -608,21 +613,37 @@ def main(args):
 
         if mc_config.observables_mode == "energy":
             # Full-observable MC evaluation at the optimized parameters (same pattern as minmult-mc)
-            logger.info("Running a final full-observable evaluation at the optimized parameters.")
+
+            # Log the time taken for the above minimzer
+            logger.info("========== TIME ============")
+            logger.info(f"The simulation took {stop - start}s.")
+            logger.info("============================\n\n")  # add new lines to separate from next run
+
+            logger.info("====== COMPUTING EVAL ======")
+            logger.info("Running a final full-observable evaluation at the found optimized parameters.")
+            logger.info("============================")
+
             system_cfg.paramvec = result.paramvec
             mc_config.compute_grads = False
             mc_config.observables_mode = "all"
             mc_mgr = EvaluatorManager(
                 system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=tracker_interval
             )
+
+            start = timer()
             _ = mc_mgr.simulate()
+            stop = timer()
+
             mc_result = mc_mgr.get_evaluator()
             mc_result.print_stats()
             mc_result.save(output_dir=args.output)
+            logger.info("==== Acceptance prob =======")
+            logger.info(f"Acceptance probability: {mc_result.get_obs_mean('acceptance_prob')}")
+            logger.info("============================")
     elif args.mode == "eval-exact":
         # Evaluate observables for a given set of parameters with exact contraction
 
-        ec_config.compute_grads = args.compute_grads
+        ec_config.compute_grads = compute_grads
         ex_eval = EvaluatorManager(
             system_type, system_cfg, ec_config, args.nrunner, tracker_refresh_interval=tracker_interval
         )
@@ -643,12 +664,7 @@ def main(args):
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
         min_cfg.tol = args.tol
-
-        if min_cfg.method in Minimizer.grad_methods or args.compute_grads:
-            ec_config.compute_grads = True
-        else:
-            # no need to compute grads if not using a gradient-based method
-            ec_config.compute_grads = False
+        ec_config.compute_grads = compute_grads
 
         ex_mgr = EvaluatorManager(
             system_type, system_cfg, ec_config, args.nrunner, tracker_refresh_interval=tracker_interval
@@ -894,8 +910,8 @@ if __name__ == "__main__":
         choices=["all", "energy"],
         default=None,
         help="Which observables to measure per MC step: 'all' or 'energy' (only what the energy and its "
-        "gradient need). Defaults to 'energy' for min-mc (a final full-observable evaluation is then run "
-        "at the optimum) and 'all' otherwise.",
+        "gradient need). Defaults to 'energy' for min-mc (a final full-observable evaluation must then"
+        "be run on the final params) and 'all' otherwise.",
     )
     parser.add_argument(
         "--el_method",
@@ -936,7 +952,7 @@ if __name__ == "__main__":
 
     # Arguments for the minimizer
     parser.add_argument(
-        "--method", type=str, default="bfgs", help="Minimization method. See the Minimizer class for options."
+        "--method", type=str.upper, default="BFGS", help="Minimization method. See the Minimizer class for options."
     )
     parser.add_argument(
         "--maxiter",
@@ -999,9 +1015,9 @@ if __name__ == "__main__":
         "--tracker_refresh_interval",
         type=int,
         default=None,
-        help="Control the from-scratch re-anchoring of the incremental Woodbury/IncDet trackers. "
-        ">0: re-anchor every N gauge steps AND on the magnitude guard (1 = always from scratch); "
-        "0: magnitude guard only, no periodic re-anchor; <0: no refresh at all (pure incremental).",
+        help="Control the from-scratch recomputing of the incremental Woodbury/IncDet trackers. "
+        ">0: recompute every N gauge steps AND on the magnitude guard (1 = always from scratch); "
+        "0: magnitude guard only, no periodic recompute; <0: no refresh at all (pure incremental).",
     )
 
     # Profiling

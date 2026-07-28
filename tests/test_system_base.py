@@ -743,7 +743,7 @@ class TestGenerateRotmatD6(unittest.TestCase):
 class TestIncrementalModCovmats(unittest.TestCase):
     """The open-link ("mod") family is maintained incrementally across single-link gauge updates:
     gamma_in_sys_mod is patched in place by the _update_gauge_ind kernel instead of re-extracted,
-    and during warmup the whole family is deferred and re-anchored once (reanchor_mod_trackers).
+    and during warmup the whole family is deferred and recomputed once (recompute_mod_trackers).
     Both must reproduce the from-scratch computation."""
 
     @staticmethod
@@ -783,7 +783,7 @@ class TestIncrementalModCovmats(unittest.TestCase):
         fresh = np.asarray(sys_._extract_gamma_in_sys_mod_vec(cfg.mod_link_inds, sys_.gamma_in_sys_vec))
         self.assertLess(np.abs(patched - fresh).max(), 1e-14)
 
-    def _check_defer_reanchor(self, build, seed):
+    def _check_defer_recompute(self, build, seed):
         cfg_a, sys_a, rng = build(seed)
         cfg_b, sys_b, _ = build(seed)
         updates = self._update_sequence(cfg_a, rng)
@@ -793,7 +793,7 @@ class TestIncrementalModCovmats(unittest.TestCase):
         for link, theta in updates:
             sys_a.update_gauge_ind(link, theta)
         sys_a.defer_mod_trackers = False
-        sys_a.reanchor_mod_trackers()
+        sys_a.recompute_mod_trackers()
 
         sys_b.initialize()  # mod family maintained incrementally on every accepted step
         _ = sys_b.gamma_in_sys_mod_vec, sys_b.wi_gamma_in_mod_vec  # force live tracking from the start
@@ -857,8 +857,8 @@ class TestIncrementalModCovmats(unittest.TestCase):
     def test_mod_patch_matches_fresh_extract_z2(self):
         self._check_mod_patch(*self._build_z2(seed=13))
 
-    def test_defer_reanchor_matches_live_tracking_d6(self):
-        self._check_defer_reanchor(self._build_d6, seed=7)
+    def test_defer_recompute_matches_live_tracking_d6(self):
+        self._check_defer_recompute(self._build_d6, seed=7)
 
-    def test_defer_reanchor_matches_live_tracking_z2(self):
-        self._check_defer_reanchor(self._build_z2, seed=17)
+    def test_defer_recompute_matches_live_tracking_z2(self):
+        self._check_defer_recompute(self._build_z2, seed=17)

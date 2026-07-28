@@ -16,7 +16,7 @@ from ggpeps import utils
 from ggpeps.lattice import Direction
 from ggpeps.system.backend import backend
 from ggpeps.system.config_base import Config2DBase, IdxGroup, CoeffsVec, ConstantsVec
-from ggpeps.modearray import generate_permutation_matrix
+from ggpeps.modearray import generate_permutation_matrix, generate_permutation
 from ggpeps.system import overlap as ov
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
@@ -345,15 +345,18 @@ class System2DBase(ABC):
             xnp.ndarray: 2D covariance matrix of the full system
         """
 
-        # Build permutation matrix to convert modes from site order to link order
-        # be careful with the convention of the permutation matrix vs its transpose; this way works with the code below
+        # Build permutation to convert modes from site order to link order;
+        # be careful with the convention of the permutation vs its transpose; this way works with the code below.
+        # We do this without explicitely building a permutation matrix, instead doing indexing, which is more efficient
         modes_link_order = self.get_link_based_mode_order()
         modes_site_order = self.get_site_based_mode_order()
-        mat_perm_links = generate_permutation_matrix(modes_site_order, modes_link_order)
-        sites_perm = xnp.eye(
-            2 * self.cfg.lattice.nx * self.cfg.lattice.ny * self.cfg.nphysmodes_site
-        )  # total number of physical fermionic majorana modes on all the sites together
-        mat_perm = block_diag(sites_perm, mat_perm_links)
+
+        # total number of physical fermionic majorana modes on all the sites together
+        num_phys = 2 * self.cfg.lattice.nx * self.cfg.lattice.ny * self.cfg.nphysmodes_site
+
+        # Get permutation
+        perm = generate_permutation(modes_link_order, modes_site_order)
+        full_perm = xnp.concatenate([xnp.arange(num_phys), perm + num_phys])
 
         # TODO: properly vectorize!
         gamma_maj_sys_vec = []
@@ -371,7 +374,7 @@ class System2DBase(ABC):
             dmat_sys = block_diag(*dmats)
             # Reassemble them in the correct order
             mat_sys_unordered = xnp.block([[amat_sys, bmat_sys], [-xnp.transpose(bmat_sys), dmat_sys]])
-            dest = xnp.transpose(mat_perm) @ mat_sys_unordered @ mat_perm
+            dest = mat_sys_unordered[full_perm[:, None], full_perm]
             gamma_maj_sys_vec.append(dest)
         return xnp.array(gamma_maj_sys_vec)
 
@@ -384,6 +387,7 @@ class System2DBase(ABC):
             "num_fermionic_layer",
             "unitcell_size",
             "nparams",
+            "zeroed_params",
         ]
     )
     def _compute_d_gamma_out_symbolvec(
@@ -393,6 +397,7 @@ class System2DBase(ABC):
         num_fermionic_layer: int,
         unitcell_size: int,
         nparams: int,
+        zeroed_params: tuple,
         mat_b_vec: xnp.ndarray,
         gamma_out_inv_vec: xnp.ndarray,
         gamma_maj_sys_deriv_layvec_ucvec_symbvec: xnp.ndarray,
@@ -407,26 +412,26 @@ class System2DBase(ABC):
             diff_d_gamma_inv = gamma_out_inv_vec[layer]
 
             # Precompute terms to save time in the inner loops
-            diff_times_b = diff_d_gamma_inv @ xnp.transpose(mat_b)
+            diff_times_b = diff_d_gamma_inv @ xnp.swapaxes(mat_b, -2, -1)
             b_times_diff = mat_b @ diff_d_gamma_inv
 
             for uc_ind in range(unitcell_size):
                 for symbol_ind in range(nparams):
-                    # TODO: skip for zeroed params
+                    if (layer, uc_ind, symbol_ind) not in zeroed_params:
 
-                    deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layer, uc_ind, symbol_ind]
-                    d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, dim_gamma_out)
+                        deriv_gamma_maj_sys = gamma_maj_sys_deriv_layvec_ucvec_symbvec[layer, uc_ind, symbol_ind]
+                        d_mat_a, d_mat_b, d_mat_d = utils.extract_partial_covmats(deriv_gamma_maj_sys, dim_gamma_out)
 
-                    d_gamma_out = (
-                        d_mat_a
-                        + d_mat_b @ diff_times_b
-                        + b_times_diff @ xnp.transpose(d_mat_b)
-                        - b_times_diff @ d_mat_d @ diff_times_b
-                    )
+                        d_gamma_out = (
+                            d_mat_a
+                            + d_mat_b @ diff_times_b
+                            + b_times_diff @ xnp.swapaxes(d_mat_b, -2, -1)
+                            - b_times_diff @ d_mat_d @ diff_times_b
+                        )
 
-                    d_gamma_out_symbolvec = backend.array_assign(
-                        d_gamma_out_symbolvec, (layer, uc_ind, symbol_ind), d_gamma_out
-                    )
+                        d_gamma_out_symbolvec = backend.array_assign(
+                            d_gamma_out_symbolvec, (layer, uc_ind, symbol_ind), d_gamma_out
+                        )
 
         return d_gamma_out_symbolvec
 
@@ -446,6 +451,7 @@ class System2DBase(ABC):
                 self.cfg.num_fermionic_layer,
                 self.cfg.unitcell_size,
                 len(self.cfg.symbolvec),
+                self.cfg.zeroed_params,
                 self.mat_b_vec,
                 self.wi_gamma_out_vec,
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
@@ -1059,8 +1065,8 @@ class System2DBase(ABC):
         """
         self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec = self._compute_closed_trackers()
         self.weight = 0.5 * np.sum(self._incdet_vec)
-        # During warmup the mod family is deferred (see defer_mod_trackers). don't re-anchor it here
-        # either - it is rebuilt once when warmup ends (reanchor_mod_trackers).
+        # During warmup the mod family is deferred (see defer_mod_trackers). Don't recompute it here
+        # either - it is rebuilt once when warmup ends (recompute_mod_trackers).
         if not self.defer_mod_trackers:
             (
                 self._wi_gamma_in_mod_vec,
@@ -1069,8 +1075,8 @@ class System2DBase(ABC):
             ) = self._compute_mod_trackers()
         self._steps_since_refresh = 0
 
-    def reanchor_mod_trackers(self) -> None:
-        """Re-anchor the open-link ("mod") family from scratch from the CURRENT gamma_in_sys.
+    def recompute_mod_trackers(self) -> None:
+        """Recompute the open-link ("mod") family from scratch from the CURRENT gamma_in_sys.
 
         Called by the evaluator when it clears ``defer_mod_trackers`` at the end of warmup: during warmup
         the mod trackers were not maintained, so rebuild them (and re-extract gamma_in_sys_mod) fresh from
@@ -1731,7 +1737,7 @@ class System2DBase(ABC):
         # and the block add all leave that entry exactly unchanged (link_ind may be traced).
 
         # Skipped entirely during warmup (defer_mod_trackers): these are measurement-only and are
-        # re-anchored from scratch (reanchor_mod_trackers) when warmup ends.
+        # recomputed from scratch (recompute_mod_trackers) when warmup ends.
         if not defer_mod:
             assert gamma_in_sys_mod_vec is not None  # for mypy
             assert wi_gamma_in_mod_vec is not None
@@ -1844,7 +1850,7 @@ class System2DBase(ABC):
         drift. Three modes via tracker_refresh_interval (set per run from EvaluatorManager /
         --tracker_refresh_interval):
           > 0 : periodic every `interval` steps AND the magnitude guard (default; 1 == every step)
-          == 0: magnitude guard only, no periodic re-anchor ("no_periodic")
+          == 0: magnitude guard only, no periodic recomputation ("no_periodic")
           <  0: no refresh at all -- pure incremental, even if a tracked inverse blows up
         """
         interval = self.tracker_refresh_interval
@@ -2388,7 +2394,7 @@ class System2DBase(ABC):
                 The mask is 1 where the parameter is not zeroed, and 0 where it is zeroed.
 
         Returns:
-            tuple: Tuple of the derivatives of the modified covmats (d_mat_a, d_mat_b, d_mat_d)
+            tuple: Tuple of the derivatives of the modified covmats (d_mat_a_mod, d_mat_b_mod, d_mat_d_mod)
                 These would have shape (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2) if not masked by inds.
                 However, the masking changes the shape to (num_active, dim1, dim2), where num_active comes from
                 collapsing the leading dimensions.
@@ -2397,7 +2403,7 @@ class System2DBase(ABC):
         if self._deriv_mod_mats is None:
             # each of shape: (nlayer, nmodlinks, unitcell_size, n_symbols, dim1, dim2)
             # where dim1, dim2 are the (effective) physical and virtual dimensions as appropriate
-            d_mat_a_vec, d_mat_b_vec, d_mat_d_vec = utils.extract_mod_covmats(
+            d_mat_a_mod_vec, d_mat_b_mod_vec, d_mat_d_mod_vec = utils.extract_mod_covmats(
                 self.gamma_maj_sys_deriv_layvec_ucvec_symbvec,
                 self.cfg.mod_link_inds,
                 self.cfg.lattice.size,
@@ -2410,9 +2416,9 @@ class System2DBase(ABC):
             # (It might be better to do this before extract_mod_covmats(), since that will speed up the extraction,
             # but since this only runs once per evaluation on a given set of params, it doesn't matter much)
             l, m, u, s = inds  # layer, mod_link, unitcell, symbol
-            dA = d_mat_a_vec[l, m, u, s]
-            dB = d_mat_b_vec[l, m, u, s]
-            dD = d_mat_d_vec[l, m, u, s]
+            dA = d_mat_a_mod_vec[l, m, u, s]
+            dB = d_mat_b_mod_vec[l, m, u, s]
+            dD = d_mat_d_mod_vec[l, m, u, s]
             self._deriv_mod_mats = (dA, dB, dD)
         return self._deriv_mod_mats
 
