@@ -1,3 +1,4 @@
+import functools
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -1652,21 +1653,19 @@ class System2DBase(ABC):
         return xnp.array(gamma_gauge_neutral_vec_dirs)
 
     @classmethod
-    @abstractmethod
+    @maybe_jit(static_argnames=["cls", "ncopy"])
     def generate_rotmat(cls, ncopy: int, group_element: xnp.ndarray, coord: tuple, dir: Direction) -> xnp.ndarray:
         """Generate the matrix to rotate gamma_in_neutral according to a given gauge field value.
+        We work in the convention where for majorana c_i: U_g c_i U_g^dagger = sum_{j} rotmat_{i,j} c_j
+        In this convention gamma_in_neutral, is gauged with gamma_in = rotmat @ gamma_neutral rotnat^T.
+        Where gamma_in is the covariance matrix of the state U_g^dagger w |Omega>.
 
-        The mode order is (the same as for gamma_in_neutral and) provided explicitly in each subclass.
-        We order first by link, then by copy, then by color.
-
-        For pure gauge layers, modes of copy one are coupled to modes of copy 2. The projectors mix copies.
-        For fermionic layers, the projectors don't mix copies to ensure the U(1) symmetry is obeyed.
+        The mode order is the same as for gamma_in_neutral:
+        we order first by link, then by copy, then by color.
 
         The sites are picked such that the left mode is right of the right modes,
         i.e. they are sitting on the same link.
         The same is true for the for the up and down modes.
-
-        This method must be overwritten in a subclass.
 
         Args:
             ncopy (int): number of copies of the ansatz
@@ -1677,7 +1676,51 @@ class System2DBase(ABC):
         Returns:
             xnp.ndarray: Rotation matrix for gamma_in_neutral
         """
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+        g = group_element
+        # We are only rotating the right modes.
+        # Thus, we leave an identity matrix for the left modes.
+        real_g = xnp.real(g)
+        imag_g = xnp.imag(g)
+        # Gauging is different for different sublattices: even sites use g, odd sites conjugate(g).
+        # Note that this gauging is true only for b modes and c virtual modes
+        # (in the conventions of https://journals.aps.org/prd/pdf/10.1103/PhysRevD.110.054511).
+        # TODO: Generalize this to fermionic layers as well.
+        sign = (-1) ** xnp.sum(xnp.asarray(coord))
+        rot_right = xnp.block(
+            [
+                [real_g, -sign * imag_g],
+                [sign * imag_g, real_g],
+            ],
+        )  # This is the rot_right for the mode order of {r_1_1, r_1_2,r_2_1,r_2_2}
+
+        # We have dim(representation) left mode => 2*dim(representation) Majorana modes
+        dim_rep = len(g)  # dimension of the representation
+        rot_left = xnp.eye(2 * dim_rep)
+
+        # The mode order is lr (horizontally) or du (vertically).
+        # We rotate the different copies in the SAME way.
+        dest = xscipy.linalg.block_diag(
+            rot_left, rot_right
+        )  # This is the rot for the mode order of {l_1_1, l_1_2,l_2_1,l_2_2, r_1_1, r_1_2,r_2_1,r_2_2}
+
+        rotmat = xnp.kron(xnp.eye(ncopy), dest)
+
+        # TODO: we should rather just order correctly from the start
+        perm_mat = cls._rotmat_perm_mat(ncopy, dim_rep)
+        rotmat = xnp.transpose(perm_mat) @ rotmat @ perm_mat
+
+        return rotmat
+
+    @classmethod
+    @functools.lru_cache
+    def _rotmat_perm_mat(cls, ncopy: int, rep_dim: int) -> np.ndarray:
+        """Constant permutation taking generate_rotmat's copy-then-color block order to the
+        color-then-copy order used everywhere else. Depends only on ncopy and the representation
+        dimension, so it is cached. Plain numpy on purpose: caching an array created inside a
+        jit trace would leak a tracer."""
+        copy_then_color_order = cls.get_single_link_majorana_mode_order_first_copy_then_color(ncopy, rep_dim)
+        color_then_copy_order = cls.get_single_link_majorana_mode_order(ncopy, rep_dim)
+        return np.array(generate_permutation_matrix(copy_then_color_order, color_then_copy_order))
 
     @classmethod
     @maybe_jit(static_argnames=["cls", "mod_link_inds", "nvirtmodes_link", "dir", "defer_mod"])
@@ -1901,24 +1944,37 @@ class System2DBase(ABC):
         return -(update_mat - gamma_in_old)
 
     ################## Observables ######################
-    @abstractmethod
-    def _compute_mag_energy_op(self) -> float:
+    def _compute_mag_energy_op(self, use_trans_inv: bool = False) -> float:
         """Compute the magnetic energy operator (w/o shift).
         This operator is diagonal in the gauge field (group element) basis and can thus
         be computed easily.
 
-        This is an abstract method and has to be overwritten in a subclass.
-
         Args:
-            use_trans_inv (bool, optional): Use the translationally invariant computation method. Defaults to True.
+            use_trans_inv (bool, optional): Evaluate a single plaquette and multiply by the number
+                of plaquettes. Only valid for a translation invariant ansatz. Defaults to False.
 
         Returns:
-            float: magnetic energy w/o shift for a single plaquette
+            float: magnetic energy w/o shift for the whole system
         """
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+        if use_trans_inv:
+            if self.cfg.unitcell_size > 1:
+                raise ValueError("Cannot rely on translation invariance if unitcell size is >1.")
+
+            # Evaluate one plaquette and multiply by number of plaquettes
+            wilson_plaquette = self.cfg.lattice.generate_wilson_loop((0, 0), (1, 1))
+            nplaq = self.cfg.lattice.nplaquettes
+            mag_energy_bare = nplaq * xnp.real(self.compute_path(wilson_plaquette))
+        else:
+            # Evaluate every plaquette of the system
+            mag_energy_bare = 0
+            for x in range(self.cfg.lattice.nx):
+                for y in range(self.cfg.lattice.ny):
+                    wilson_plaquette = self.cfg.lattice.generate_wilson_loop((x, y), (1, 1))
+                    mag_energy_bare += xnp.real(self.compute_path(wilson_plaquette))
+        return mag_energy_bare
 
     @staticmethod
-    @abstractmethod
+    @maybe_jit(static_argnames=["mod_link_inds", "nlayer", "coeffs_vec", "constants_vec"])
     def _compute_el_energy_op_vec(
         lognormvec_default: xnp.ndarray,
         mod_link_inds: tuple[int, ...],
@@ -1931,8 +1987,6 @@ class System2DBase(ABC):
     ) -> xnp.ndarray:
         """Compute the electric energy.
 
-        This is an abstract method and has to be overwritten in a subclass.
-
         Args:
             TODO: describe arguments
 
@@ -1940,10 +1994,58 @@ class System2DBase(ABC):
             array: electric energies for the links specified in self.cfg.mod_link_inds for all layers
                    with shape: (num_group_elements, nlayer, len(self.cfg.mod_link_inds))
         """
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+        lognorm_default = xnp.sum(lognormvec_default)
+
+        num_el_links = len(mod_link_inds)  # number of links on which the electric energy is computed
+        num_group_elements = len(group_elements_for_el_energy)
+        dest = xnp.zeros((num_group_elements, nlayer, num_el_links), dtype=complex)
+
+        # TODO: vectorize!
+        for group_element_idx in range(num_group_elements):
+            # coeffs for the specific group element, in the unique-index basis (cfg.uniq_coeffs_vec):
+            # the pfaffians are computed once per unique index tuple (no group-element axis) and
+            # each group element applies its own coefficient dot product. For Z2 there is only 1
+            # stored group element anyway.
+            coeffs_group_element = coeffs_vec[group_element_idx]
+            for layerind in range(nlayer):
+                layer_coeffs = coeffs_group_element[layerind]  # tuple of tuples of coeffs
+                norm_mod_linkvec = norm_mod_vec[layerind]
+
+                # Iterate over the links
+                for link_pos, norm_mod in enumerate(norm_mod_linkvec):
+                    ###################### Calculation of sum f_j |jmn><jmn| ########################
+                    link_coeffs = layer_coeffs[link_pos]
+                    pf_tot: complex = constants_vec[group_element_idx][layerind][link_pos]
+                    # this is the constant term in the sum, which does not come with a Pfaffian,
+                    # for Z2 it should be 0
+                    for size_ind, size_term in enumerate(link_coeffs):
+                        # TODO: We should convert this to array outside the loop
+                        array_size_term = xnp.asarray(size_term)
+                        current_pfaffians = el_pfaffians[layerind, link_pos, size_ind, : len(size_term)]
+                        pf_tot += xnp.dot(array_size_term, current_pfaffians)
+
+                    # Keep el_energy_link COMPLEX. The real part is taken only after the product over
+                    # layers and the sum over group elements (prod(Re) != Re(prod)).
+                    el_energy_link = pf_tot * xnp.exp(norm_mod - lognorm_default)
+
+                    dest = backend.array_assign(dest, (group_element_idx, layerind, link_pos), el_energy_link)
+        return dest
 
     @staticmethod
-    @abstractmethod
+    @maybe_jit(
+        static_argnames=[
+            "lattice_size",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "unitcell_size",
+            "nvirtmodes_link",
+            "nphysmodes_site",
+            "mod_link_inds",
+            "symbolvec",
+            "idxarr_vec",
+            "coeffs_vec",
+        ]
+    )
     def _compute_el_grad_vec(
         lattice_size: int,
         num_pg_layer: int,
@@ -1974,18 +2076,159 @@ class System2DBase(ABC):
         sp_vals: xnp.ndarray,
     ) -> xnp.ndarray:
         """Compute the electric energy gradients.
-        We start by calculating the electric energies, since these are needed for evaluating the gradients.
-        Since several operations needed for the computation of the gradient and the energy are similar,
-        we can reuse many intermediate steps.
 
-        This is an abstract method and has to be overwritten in a subclass.
-
-        Args:
-
-        Returns:
-            list: list of gradients for the full system
+        In early 2026, this function was significantly optimized.
+        This was done after it was generalized in various ways over the previous months:
+            compute on multiple links, horizontal and vertical links, on different sublattices, for non-Abelian groups.
+        As a result, it is somewhat harder to read.
+        It may be easier to read the (slower and less general) versions at (in reverse chronological order)
+            commit 6cbabbd: before significant vectorization
+            commit 1d63a6b: after generalization to multiple hor/vert links, but before many optimizations,
+        or even earlier versions.
         """
-        raise NotImplementedError("This is an abstract method. Implement in child class please.")
+        num_group_elements = len(group_elements_for_el_energy)
+
+        nlayer = num_pg_layer + num_fermionic_layer
+        grad_shape = (num_group_elements, nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
+        # real part is taken only after the product over layers (and sum over group elements).
+        dest_grad = xnp.zeros(grad_shape, dtype=complex)
+
+        nlinks = 2 * lattice_size  # valid for 2D with periodic boundary conditions
+        k = 2 * nvirtmodes_link  # single link offset
+        lognorm_default = xnp.sum(lognorm_default_vec)
+
+        # Calculate the derivatives (wrt all non-zero parameters) of the modified covmat_out
+        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec), k, k)
+        d_covmat_out_virt_vec = xnp.zeros(shape)
+
+        l, m, u, s = inds
+        # (nlayer, nmodlinks, mod_virt_dim, mod_virt_dim)
+        # prod = mat_d_mod_inv @ wi_gamma_in_mod @ gamma_in_sys_mod = -(Dmod + gamma_in_mod)^-1:
+        # gamma_in_sys_mod is a pure-state covariance (Gamma^2 = -1), so
+        # (1 - Gamma D)^-1 Gamma = -(D + Gamma)^-1, which is the tracked wi_gamma_out_mod.
+        prod_mod_norm_vec = -gamma_out_mod_inv_vec
+        # (nlayer, nmodlinks, mod_virt_dim, link_dim), take only the last k columns
+        diff_times_b_vec = gamma_out_mod_inv_vec @ xnp.swapaxes(mat_b_mod_vec, -1, -2)[:, :, :, -k:]
+        # (nlayer, nmodlinks, link_dim, mod_virt_dim), take only the last k rows
+        b_times_diff_vec = mat_b_mod_vec[:, :, -k:, :] @ gamma_out_mod_inv_vec
+
+        shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec), k, k)
+        d_covmat_out_virt_vec = xnp.zeros(shape)
+
+        l, m, u, s = inds
+
+        R_active = rotmat_vec[m]
+        R_active_T = xnp.swapaxes(R_active, -1, -2)
+
+        diffB = diff_times_b_vec[l, m]
+        Bdiff = b_times_diff_vec[l, m]
+
+        vals = (
+            R_active_T
+            @ (
+                d_mat_a_vec[..., -k:, -k:]
+                + d_mat_b_vec[..., -k:, :] @ diffB
+                + Bdiff @ xnp.swapaxes(d_mat_b_vec, -1, -2)[..., :, -k:]
+                - Bdiff @ d_mat_d_vec @ diffB
+            )
+            @ R_active
+        )
+
+        d_covmat_out_virt_vec = backend.array_assign(d_covmat_out_virt_vec, (l, m, u, s), vals)
+
+        # Calculate the modified norms: trace(d_mat_d_a @ prod_mod_norm_a) for every active param a.
+        # d_mat_d is a parameter-derivative -> config-independent and ~99% zero, so instead of the
+        # dense form utils.trace_of_product((d_mat_d_vec, prod_mod_norm_vec[l, m])) - whose fancy-index
+        # copy + full O(D^2) einsum dominated this function - we sum only over the
+        # nonzero entries of d_mat_d: Tr(dD_a @ P_a) = sum_k vals[a,k] * P_a[jj[a,k], ii[a,k]], with
+        # P_a = prod_mod_norm_vec[l[a], m[a]]. The (ii, jj, vals) are precomputed once per eval
+        # (dmatd_trace_sparse). This gathers only the nonzeros.
+        norm_shape = (nlayer, len(mod_link_inds), unitcell_size, len(symbolvec))
+        prod_vec = xnp.zeros(norm_shape)
+        # (num_active, kmax): prod at the nonzero (row=ii, col=jj) positions; trace uses P[jj, ii].
+        p_gather = prod_mod_norm_vec[l[:, None], m[:, None], sp_jj, sp_ii]
+        vals = xnp.sum(sp_vals * p_gather, axis=-1)
+        prod_vec = backend.array_assign(prod_vec, (l, m, u, s), vals)
+
+        # The pfaffian derivatives depend only on (layer, link, index tuple) -- NOT on the group
+        # element: the pfaffians live in the unique-index basis (cfg.uniq_idx_vec), so each
+        # derivative is computed once and the per-group-element coefficients (cfg.uniq_coeffs_vec,
+        # same unique basis and length for every group element) are applied as a stacked dot below.
+        # For Z2 there is only 1 stored group element anyway.
+        deriv_pf_tot_vec_vec = xnp.zeros(
+            (num_group_elements, nlayer, len(mod_link_inds), unitcell_size, len(symbolvec)), dtype=complex
+        )
+
+        for layerind in range(nlayer):
+
+            for link_pos, _ in enumerate(mod_link_inds):
+
+                for lens_ind in range(len(idxarr_vec[layerind][link_pos])):
+                    # (# pfafs, pfaf submat dim)
+                    inds_arr = xnp.asarray(idxarr_vec[layerind][link_pos][lens_ind])
+                    # (num_group_elements, num_pfafs) coefficients in the unique basis
+                    prefactors = xnp.asarray(
+                        [coeffs_vec[ge][layerind][link_pos][lens_ind] for ge in range(num_group_elements)]
+                    )
+
+                    # We slice the last dimension because the el_pfaffians array is padded with zeros.
+                    pfafs = el_pfaffians[layerind, link_pos, lens_ind, : len(inds_arr)]
+
+                    virts = covmat_out_mod_vec[layerind][link_pos][
+                        None, None, inds_arr[:, :, None], inds_arr[:, None, :]
+                    ]
+                    d_virts = d_covmat_out_virt_vec[layerind, link_pos][
+                        :, :, inds_arr[:, :, None], inds_arr[:, None, :]
+                    ]
+
+                    # (unitcell_size, len(symbolvec), num_pfafs)
+                    deriv_pf_tot_vectorized = utils.derivative_pfaffian_vectorized(virts, d_virts, pfafs)
+                    deriv_pf_tot_vec_vec = backend.array_add(
+                        deriv_pf_tot_vec_vec,
+                        (slice(None), layerind, link_pos),
+                        xnp.einsum("usn,gn->gus", deriv_pf_tot_vectorized, prefactors),
+                    )
+
+        for group_element_idx in range(num_group_elements):
+            for layerind in range(nlayer):
+                for link_pos, _ in enumerate(mod_link_inds):
+
+                    d_el_energy_vec = deriv_pf_tot_vec_vec[group_element_idx, layerind, link_pos] * xnp.exp(
+                        norm_mod_vec[layerind][link_pos] - lognorm_default
+                    )
+
+                    # Summand with derivative of norms
+                    trace_def = grad_over_norm_vec[layerind]
+
+                    # Instead of computing the modified grad over the norm as:
+                    # compute_grad_over_norm(gamma_in_sys_mod, d_mat_d, mat_d_mod_inv, diff_d_inv_gamma_inv)
+                    #    = -0.5 * trace(gamma_in_sys @ deriv_d @ mat_d_inv @ diff)
+                    # we have saved the product of several mats above
+                    # (since they don't change in inner loops), and use it here
+                    trace_mod = -0.5 * prod_vec[layerind, link_pos]
+
+                    # This is the second contribution of the elctric energy gradient F_{el} (\tilde(v) - v)
+                    d_el_energy_vec += el_energy_vec[group_element_idx][layerind][link_pos] * (trace_mod - trace_def)
+
+                    dest_grad = backend.array_add(dest_grad, (group_element_idx, layerind, link_pos), d_el_energy_vec)
+
+        # scale to system size - currently only valid when all links should be weighed equally
+        dest_grad *= nlinks / len(mod_link_inds)
+
+        # We have to weigh the different layers with the electric energy operator expectation of the other layers.
+        # They act as a prefactor in the derivative.
+        # This must be done separately over all links.
+        if nlayer > 1:
+            for group_idx in range(num_group_elements):
+                for lay in range(nlayer):
+                    for linkind in range(len(mod_link_inds)):
+                        prod_other_layers = utils.multiply_except(el_energy_vec[group_idx, :, linkind], lay)
+                        dest_grad = backend.array_mult(dest_grad, (group_idx, lay, linkind), prod_other_layers)
+        dest_grad = xnp.sum(dest_grad, axis=0)  # sum over group elements
+        dest_grad = xnp.sum(dest_grad, axis=1)  # sum over the links
+
+        # Take the real part only now, after the layer product and the group-element sum.
+        return xnp.real(dest_grad)
 
     @staticmethod
     @abstractmethod
@@ -2908,6 +3151,40 @@ class System2DBase(ABC):
                 mode3 = ("r1", copy, color)
                 mode4 = ("r2", copy, color)
                 mode_order += [mode1, mode2, mode3, mode4]
+
+        # Convert to a list of strings
+        # This was left as a tuple above in case there was ever any use for that format
+        mode_order_str = []
+        for mode in mode_order:
+            mode_str = mode[0] + "_" + str(mode[1]) + "_" + str(mode[2])
+            mode_order_str.append(mode_str)
+
+        return mode_order_str
+
+    @staticmethod
+    def get_single_link_majorana_mode_order_first_copy_then_color(num_copies: int, num_colors: int) -> list:
+        """Generate the link-based majorana mode order for a single link. We first order by copy and then by color.
+        This is not the order we use in the code. This is just to change the generate_rotmat ordering.
+
+        Returns:
+            list: List of strings of the form <mode_letter:majorana mode>_<copy>_<color>
+        """
+
+        mode_order = []
+        # We demonstrate the order for a single horizontal link -
+        for copy in range(1, num_copies + 1):
+            for color in range(1, num_colors + 1):
+                mode1 = ("l1", copy, color)  # majorana mode l1
+                mode_order += [mode1]
+            for color in range(1, num_colors + 1):
+                mode2 = ("l2", copy, color)  # majorana mode l2
+                mode_order += [mode2]
+            for color in range(1, num_colors + 1):
+                mode1 = ("r1", copy, color)
+                mode_order += [mode1]
+            for color in range(1, num_colors + 1):
+                mode2 = ("r2", copy, color)
+                mode_order += [mode2]
 
         # Convert to a list of strings
         # This was left as a tuple above in case there was ever any use for that format

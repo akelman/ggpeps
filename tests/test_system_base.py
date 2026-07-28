@@ -705,7 +705,7 @@ class TestGenerateRotmatD6(unittest.TestCase):
             rot_right = np.block([[real_g, imag_g], [-imag_g, real_g]])
         dest = block_diag(np.eye(2 * len(g)), rot_right)
         rotmat = np.kron(np.eye(ncopy), dest)
-        copy_then_color = D2nSystem2D.get_single_link_majorana_mode_order_first_copy_then_color(ncopy)
+        copy_then_color = D2nSystem2D.get_single_link_majorana_mode_order_first_copy_then_color(ncopy, 2)
         color_then_copy = D2nSystem2D.get_single_link_majorana_mode_order(ncopy, 2)
         perm = np.array(modearray.generate_permutation_matrix(copy_then_color, color_then_copy))
         return np.transpose(perm) @ rotmat @ perm
@@ -738,6 +738,36 @@ class TestGenerateRotmatD6(unittest.TestCase):
             for coord in [(0, 0), (1, 0)]:
                 D2nSystem2D.generate_rotmat(2, xnp.asarray(g), coord, Direction.X)
         self.assertEqual(D2nSystem2D.generate_rotmat._cache_size(), 1)
+
+
+class TestGenerateRotmatZ2(unittest.TestCase):
+    """generate_rotmat for the Z2 system must reproduce the original Z2 algorithm
+    (angle-based rotation of the right modes, no sublattice dependence)."""
+
+    @staticmethod
+    def _reference_rotmat(ncopy, g):
+        """Plain-numpy reference: the original Z2 algorithm."""
+        from scipy.linalg import block_diag
+
+        theta = np.angle(g[0][0])
+        rot_right = np.array([[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]])
+        dest = block_diag(np.eye(2), rot_right)
+        return np.kron(np.eye(ncopy), dest)
+
+    def test_matches_reference_both_elements(self):
+        from ggpeps import gauge
+        from ggpeps.lattice import Direction
+        from ggpeps.system.system_Z2 import Z2System2D
+
+        gvals = gauge.ZNGauge(2).get_possible_gauge_values()
+        for g in gvals:
+            for ncopy in (1, 2):
+                for coord in [(0, 0), (1, 0), (1, 1)]:
+                    for dir in (Direction.X, Direction.Y):
+                        got = np.asarray(Z2System2D.generate_rotmat(ncopy, xnp.asarray(g), coord, dir))
+                        ref = self._reference_rotmat(ncopy, g)
+                        with self.subTest(g=g, ncopy=ncopy, coord=coord, dir=dir):
+                            self.assertLess(np.abs(got - ref).max(), 1e-14)
 
 
 class TestIncrementalModCovmats(unittest.TestCase):

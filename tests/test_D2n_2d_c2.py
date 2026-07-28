@@ -1653,7 +1653,9 @@ class TestMajoranaModeOrdering(unittest.TestCase):
             "r2_1_1",
             "r2_1_2",  # copy 1, colors 1 & 2 for r2
         ]
-        result_1_copy = system.D2nSystem2D.get_single_link_majorana_mode_order_first_copy_then_color(num_copies=1)
+        result_1_copy = system.D2nSystem2D.get_single_link_majorana_mode_order_first_copy_then_color(
+            num_copies=1, num_colors=2
+        )
         self.assertEqual(result_1_copy, expected_1_copy)
 
         # Test for 2 copies (num_copies=2)
@@ -1677,7 +1679,9 @@ class TestMajoranaModeOrdering(unittest.TestCase):
             "r2_2_1",
             "r2_2_2",
         ]
-        result_2_copies = system.D2nSystem2D.get_single_link_majorana_mode_order_first_copy_then_color(num_copies=2)
+        result_2_copies = system.D2nSystem2D.get_single_link_majorana_mode_order_first_copy_then_color(
+            num_copies=2, num_colors=2
+        )
         self.assertEqual(result_2_copies, expected_2_copies)
 
     def test_get_single_link_majorana_mode_order(self):
