@@ -332,12 +332,14 @@ class U1System2D(System2DBase):
                 covmat_out = mat_a + mat_b @ self.wi_gamma_out_mod_vec[layerind] @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_link_offset:, -single_link_offset:]
                 # For the modified norm, we still have to take into account the contributions from the unmodified parts
-                norm_mod = self._calculate_lognorm_inc(
+                norm_mod_vec = self._calculate_lognormvec_inc(
                     [self.incdet_mod_vec[layerind]],
                     [self.det_mat_d_mod_vec[layerind]],
                     gamma_in_sys_mod.shape[0],
                     all_factors=True,
                 )
+                norm_mod = xnp.sum(norm_mod_vec)
+
                 # norm_mod = calculate_lognorm(gamma_in_sys_mod, [mat_d],
                 # all_factors=True)
                 norm_mod += np.sum(utils.select_except(lognormvec_default_inc, layerind))

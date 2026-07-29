@@ -53,7 +53,7 @@ def calculate_lognormvec_jax(
     all_factors: bool = False,
 ) -> jnp.ndarray:
 
-    dest = batch_calculate_lognormvec(jnp.array(gamma_in_sys_vec), mat_d_vec)
+    dest = batch_calculate_lognormvec(gamma_in_sys_vec, mat_d_vec)
 
     if all_factors:
         # add back in global factor of 2**(-n)

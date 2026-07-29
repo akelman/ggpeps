@@ -810,12 +810,13 @@ class System2DBase(ABC):
 
                     # For the modified norm, we still have to take into account the other contributions
                     # from the unmodified parts
-                    norm_mod = self._calculate_lognorm_inc(
+                    norm_mod_vec = self._calculate_lognormvec_inc(
                         [self.incdet_mod_vec[layerind][ind]],
                         [self.det_mat_d_mod_vec[layerind, ind]],
                         self.gamma_in_sys_mod_vec[layerind, ind].shape[0],
                         all_factors=True,
                     )
+                    norm_mod = xnp.sum(norm_mod_vec)
 
                     norm_mod += utils.add_except(lognormvec_default, layerind)
                     norm_mod_linkvec.append(norm_mod)
@@ -1514,11 +1515,6 @@ class System2DBase(ABC):
             float: Logarithm of the norm
         """
         return backend.calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
-
-    @classmethod
-    def _calculate_lognorm_inc(cls, incdet_vec, det_mat_d_vec, n: int, all_factors: bool = False):
-        lognormvec = cls._calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=all_factors)
-        return xnp.sum(lognormvec)
 
     @staticmethod
     @maybe_jit(static_argnames=["n", "all_factors"])
