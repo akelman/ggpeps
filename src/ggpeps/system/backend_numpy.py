@@ -38,7 +38,7 @@ def calculate_lognormvec_numpy(
     all_factors: bool = False,
 ) -> np.ndarray:
     # This is still the plain formula, without any update mechanism
-    nlayer = len(mat_d_vec)
+    nlayer = mat_d_vec.shape[0]
     n = mat_d_vec[0].shape[0]
 
     prod_vec = gamma_in_sys_vec @ mat_d_vec

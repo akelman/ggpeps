@@ -53,14 +53,22 @@ def calculate_lognormvec_jax(
     all_factors: bool = False,
 ) -> jnp.ndarray:
 
-    dest = batch_calculate_lognormvec(gamma_in_sys_vec, mat_d_vec)
+    # This is still the plain formula, without any update mechanism
+    nlayer = mat_d_vec.shape[0]
+    n = mat_d_vec[0].shape[0]
 
+    prod_vec = gamma_in_sys_vec @ mat_d_vec
+    eye_vec = jnp.broadcast_to(jnp.eye(n), (nlayer, n, n))
+
+    sign_vec, logval_vec = jnp.linalg.slogdet((eye_vec - prod_vec))
     if all_factors:
-        # add back in global factor of 2**(-n)
-        dest = dest - mat_d_vec[0].shape[0] * jnp.log(2)
+        logval_vec -= n * jnp.log(2)
+    else:
+        # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
+        pass
 
     # The factor 1/2 is the square-root
-    return dest / 2
+    return logval_vec / 2
 
 
 @jax.jit
