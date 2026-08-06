@@ -104,7 +104,7 @@ class System2DBase(ABC):
         self._covmat_out_mod_vec: Optional[xnp.ndarray] = None
         self._norm_mod_vec: Optional[xnp.ndarray] = None
         self._el_pfaffians: Optional[xnp.ndarray] = None
-        self._lognorm_default_vec: Optional[xnp.ndarray] = None
+        self._lognormvec_default: Optional[xnp.ndarray] = None
 
         # Management of the gauge fields
         # vec for layers (choices of projectors may be different for each layer), dirs for directions
@@ -210,7 +210,7 @@ class System2DBase(ABC):
         self._covmat_out_mod_vec = None
         self._norm_mod_vec = None
         self._el_pfaffians = None
-        self._lognorm_default_vec = None
+        self._lognormvec_default = None
         return
 
     @property
@@ -799,7 +799,7 @@ class System2DBase(ABC):
         """
         if self._norm_mod_vec is None:
             norm_mod_layervec_linkvec = []
-            lognormvec_default = self.lognorm_default_vec
+            lognormvec_default = self.lognormvec_default
 
             for layerind in range(self.cfg.nlayer):
 
@@ -826,7 +826,7 @@ class System2DBase(ABC):
         return self._norm_mod_vec
 
     @property
-    def lognorm_default_vec(self) -> xnp.ndarray:
+    def lognormvec_default(self) -> xnp.ndarray:
         """Compute the log of the norm of the state, with no modifications (e.g. those of the electric energy),
         including all factors.
         This function returns a vector over layers of these norms.
@@ -835,9 +835,9 @@ class System2DBase(ABC):
         Returns:
             array: a vector of norms
         """
-        if self._lognorm_default_vec is None:
-            self._lognorm_default_vec = self.calculate_lognormvec(incremental=True, all_factors=True)
-        return self._lognorm_default_vec
+        if self._lognormvec_default is None:
+            self._lognormvec_default = self.calculate_lognormvec(incremental=True, all_factors=True)
+        return self._lognormvec_default
 
     def initialize_gamma_in_and_trackers(self) -> tuple:
         """Initialize gamma_in (the covariance matrix of the projectors),
@@ -2569,7 +2569,7 @@ class System2DBase(ABC):
                 self._el_energy_op_vec = self._compute_el_energy_op_vec_overlap()
             else:
                 self._el_energy_op_vec = self._compute_el_energy_op_vec(
-                    self.lognorm_default_vec,
+                    self.lognormvec_default,
                     self.cfg.mod_link_inds,
                     self.cfg.nlayer,
                     self.el_pfaffians,
@@ -2734,7 +2734,7 @@ class System2DBase(ABC):
                 self.covmat_out_mod_vec,
                 self.el_pfaffians,
                 self.norm_mod_vec,
-                self.lognorm_default_vec,
+                self.lognormvec_default,
                 self.wi_gamma_out_mod_vec,
                 d_mat_a_vec_vec,
                 d_mat_b_vec_vec,
