@@ -218,7 +218,8 @@ class TestZ2C2SystemMethods(unittest.TestCase):
             np.asarray(zeroarr),
             all_factors=True,
         )
-        weight_recalc = sys.calculate_lognorm(all_factors=True)
+        weight_recalc_vec = sys.calculate_lognormvec(all_factors=True)
+        weight_recalc = np.sum(weight_recalc_vec)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
     def test_norm_incremental_update(self):
@@ -227,7 +228,8 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         theta = np.array([[-1.0]])
         weight_inc = self.system_z2_2_2_real.calculate_weight_attempt(ind, theta, all_factors=True)
         self.system_z2_2_2_real.update_gauge_ind(ind, theta)
-        weight_recalc = self.system_z2_2_2_real.calculate_lognorm(all_factors=True)
+        weight_recalc_vec = self.system_z2_2_2_real.calculate_lognormvec(all_factors=True)
+        weight_recalc = np.sum(weight_recalc_vec)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
     def test_grad_over_norm(self):
@@ -238,7 +240,14 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         paramvec = np.random.rand(1, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D_Config(
-            lat_2x2, 1.0, None, None, None, None, num_pg_layer=1, num_fermionic_layer=0,
+            lat_2x2,
+            1.0,
+            None,
+            None,
+            None,
+            None,
+            num_pg_layer=1,
+            num_fermionic_layer=0,
             ncopy=2,
         )
         system_cfg.paramvec = paramvec
@@ -280,8 +289,8 @@ class TestZ2C2SystemMethods(unittest.TestCase):
 
                 # This is a single layer construction, we always use layer 0 to test.
                 deriv_ana = system_z2_2_2.grad_over_norm_vec[lay, uc_ind, ind]
-                norm_left = system_z2_2_2_left.calculate_lognorm(all_factors=True)
-                norm_right = system_z2_2_2_right.calculate_lognorm(all_factors=True)
+                norm_left = np.sum(system_z2_2_2_left.calculate_lognormvec(all_factors=True))
+                norm_right = np.sum(system_z2_2_2_right.calculate_lognormvec(all_factors=True))
                 deriv_num = (norm_right - norm_left) / (2 * eps)
 
                 self.assertAlmostEqual(deriv_ana, deriv_num, places=5)
@@ -347,7 +356,14 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         paramvec = np.random.rand(2, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D_Config(
-            lat_2x2, 1.0, None, None, None, None, num_pg_layer=2, num_fermionic_layer=0,
+            lat_2x2,
+            1.0,
+            None,
+            None,
+            None,
+            None,
+            num_pg_layer=2,
+            num_fermionic_layer=0,
             ncopy=2,
         )
         system_cfg.paramvec = paramvec
@@ -404,7 +420,14 @@ class TestZ2C2SystemMethods(unittest.TestCase):
         paramvec = np.zeros((1, 20))
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D_Config(
-            lat_2x2, 1.0, None, None, None, None, num_pg_layer=1, num_fermionic_layer=0,
+            lat_2x2,
+            1.0,
+            None,
+            None,
+            None,
+            None,
+            num_pg_layer=1,
+            num_fermionic_layer=0,
             ncopy=2,
         )
         system_cfg.paramvec = paramvec

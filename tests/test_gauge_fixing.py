@@ -461,8 +461,9 @@ class Testgaugefixing(unittest.TestCase):
         def observables(config):
             s = make_system()
             s.update_gauge_full_system(config)
+            norm = np.sum(s.calculate_lognormvec(all_factors=True))
             return (
-                float(s.calculate_lognorm(all_factors=True)),
+                float(norm),
                 float(np.real(s.el_energy_op)),
                 float(np.real(s.mag_energy_op)),
             )

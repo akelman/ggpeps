@@ -1487,24 +1487,6 @@ class System2DBase(ABC):
             incdet_vec, wi_gamma_in_vec, gamma_in_sys_vec, mat_d_vec, ind_mat, updates, all_factors
         )
 
-    @staticmethod
-    @maybe_jit(static_argnames=["all_factors"])
-    def _calculate_lognorm(gamma_in_sys_vec: xnp.ndarray, mat_d_vec: xnp.ndarray, all_factors: bool = False) -> float:
-        # This is still the plain formula, without any update mechanism
-        normvec = backend.calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
-        return xnp.sum(normvec)
-
-    def calculate_lognorm(self, all_factors: bool = False) -> float:
-        """Compute the logarithm of the norm
-
-        Args:
-            all_factors (bool, optional): Include all constant prefactors. Defaults to False.
-
-        Returns:
-            float: Logarithm of the norm
-        """
-        return self._calculate_lognorm(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
-
     def calculate_lognormvec(self, all_factors: bool = False) -> xnp.ndarray:
         """Compute the logarithm of the norm for each layer
 
