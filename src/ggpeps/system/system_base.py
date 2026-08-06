@@ -836,7 +836,7 @@ class System2DBase(ABC):
             array: a vector of norms
         """
         if self._lognorm_default_vec is None:
-            self._lognorm_default_vec = self.calculate_lognormvec_inc(all_factors=True)
+            self._lognorm_default_vec = self.calculate_lognormvec(incremental=True, all_factors=True)
         return self._lognorm_default_vec
 
     def initialize_gamma_in_and_trackers(self) -> tuple:
@@ -1487,23 +1487,47 @@ class System2DBase(ABC):
             incdet_vec, wi_gamma_in_vec, gamma_in_sys_vec, mat_d_vec, ind_mat, updates, all_factors
         )
 
-    def calculate_lognormvec(self, all_factors: bool = False) -> xnp.ndarray:
-        """Compute the logarithm of the norm for each layer from scratch (not incrementally).
+    def calculate_lognorm_inc(self, all_factors: bool = False) -> float:
+        """Compute the logarithm of the norm incrementally (using IncDet and Woodbury)
 
         Args:
+            all_factors (bool, optional): Include all pre-factors in the computation. Defaults to False.
+
+        Returns:
+            float: Logarithm of the norm (computed from IncDet and Woodbury)
+        """
+        normvec = self.calculate_lognormvec(incremental=True, all_factors=all_factors)
+        return xnp.sum(normvec)
+
+    def calculate_lognormvec(self, incremental: bool, all_factors: bool = False) -> xnp.ndarray:
+        """Compute the logarithm of the norm for each layer.
+
+        Args:
+            incremental (bool): Whether to use the incremental trackers.
             all_factors (bool, optional): Include all constant prefactors. Defaults to False.
 
         Returns:
             float: Logarithm of the norm
         """
-        return self._calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
+        if incremental:
+            res = self._calculate_lognormvec_inc(
+                self.incdet_vec,
+                self.det_mat_d_vec,
+                self.gamma_in_sys_vec[0].shape[0],
+                all_factors=all_factors,
+            )
+        else:
+            res = self._calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
+        return res
 
+    @staticmethod
     @maybe_jit(static_argnames=["all_factors"])
     def _calculate_lognormvec(
         gamma_in_sys_vec: xnp.ndarray,
         mat_d_vec: xnp.ndarray,
         all_factors: bool = False,
     ) -> xnp.ndarray:
+        """Calculate the lognormvec from scratch (not incrementally)."""
 
         # This is still the plain formula, without any update mechanism
         nlayer = mat_d_vec.shape[0]
@@ -1525,6 +1549,9 @@ class System2DBase(ABC):
     @staticmethod
     @maybe_jit(static_argnames=["n", "all_factors"])
     def _calculate_lognormvec_inc(det_vec, det_mat_d_vec, n: int, all_factors: bool = False) -> xnp.ndarray:
+        """Calculate the lognormvec incrementally, i.e. by incrementally updating the previous value
+        (using IncDet and Woodbury)."""
+
         dest = []
         for ind in range(len(det_vec)):
             detval = det_vec[ind]
@@ -1535,36 +1562,6 @@ class System2DBase(ABC):
             # The addition of the cumval is the multiplication of the indpendent PEPS
             dest.append(0.5 * detval)
         return xnp.array(dest)
-
-    def calculate_lognormvec_inc(self, all_factors: bool = False) -> xnp.ndarray:
-        """Compute the logarithm of the norm for all layers by incrementally updating the previous value
-        (using IncDet and Woodbury)
-
-        Args:
-            all_factors (bool, optional): Include all pre-factors in the computation. Defaults to False.
-
-        Returns:
-            xnp.ndarray: Vector of the incrementally updated norms for all layers
-        """
-        res = self._calculate_lognormvec_inc(
-            self.incdet_vec,
-            self.det_mat_d_vec,
-            self.gamma_in_sys_vec[0].shape[0],
-            all_factors=all_factors,
-        )
-        return res
-
-    def calculate_lognorm_inc(self, all_factors: bool = False) -> float:
-        """Update the logarithm of the norm incrementally (using IncDet and Woodbury)
-
-        Args:
-            all_factors (bool, optional): Include all pre-factors in the computation. Defaults to False.
-
-        Returns:
-            float: Logarithm of the norm (computed from IncDet and Woodbury)
-        """
-        normvec = self.calculate_lognormvec_inc(all_factors=all_factors)
-        return xnp.sum(normvec)
 
     @staticmethod
     @maybe_jit(static_argnames=["all_factors"])
