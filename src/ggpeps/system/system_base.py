@@ -795,15 +795,15 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list[float]: a vector of modified normalization factors
+            xnp.ndarray: a vector of modified normalization factors
         """
         if self._norm_mod_vec is None:
-            norm_mod_layervec_linkvec = []
+            norm_mod_layervec_linkvec = xnp.zeros((self.cfg.nlayer, len(self.cfg.mod_link_inds)))
             lognormvec_default = self.lognormvec_default
 
             for layerind in range(self.cfg.nlayer):
 
-                norm_mod_linkvec = []
+                norm_mod_linkvec = xnp.zeros(len(self.cfg.mod_link_inds))
 
                 # TODO: this is not yet actually vectorized
                 for ind, link_ind in enumerate(self.cfg.mod_link_inds):
@@ -817,12 +817,11 @@ class System2DBase(ABC):
                         all_factors=True,
                     )
                     norm_mod = xnp.sum(norm_mod_vec)
-
                     norm_mod += utils.add_except(lognormvec_default, layerind)
-                    norm_mod_linkvec.append(norm_mod)
-                norm_mod_layervec_linkvec.append(norm_mod_linkvec)
 
-            self._norm_mod_vec = xnp.asarray(norm_mod_layervec_linkvec)
+                    norm_mod_linkvec = backend.array_assign(norm_mod_linkvec, ind, norm_mod)
+                norm_mod_layervec_linkvec = backend.array_assign(norm_mod_layervec_linkvec, layerind, norm_mod_linkvec)
+            self._norm_mod_vec = norm_mod_layervec_linkvec
         return self._norm_mod_vec
 
     @property
