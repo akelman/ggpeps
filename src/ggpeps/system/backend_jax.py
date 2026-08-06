@@ -1,6 +1,5 @@
 ############## JAX VERSIONS ##############
 from typing import Optional
-from functools import partial
 
 import jax
 import jax.numpy as jnp
