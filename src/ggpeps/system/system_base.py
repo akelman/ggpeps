@@ -1414,7 +1414,7 @@ class System2DBase(ABC):
             float: Weight of the MC configuration
         """
         if self._weight is None:
-            self._weight = self.calculate_lognorm_inc()
+            self._weight = self.calculate_lognorm(incremental=True)
         return self._weight
 
     @weight.setter
@@ -1487,17 +1487,18 @@ class System2DBase(ABC):
             incdet_vec, wi_gamma_in_vec, gamma_in_sys_vec, mat_d_vec, ind_mat, updates, all_factors
         )
 
-    def calculate_lognorm_inc(self, all_factors: bool = False) -> float:
-        """Compute the logarithm of the norm incrementally (using IncDet and Woodbury)
+    def calculate_lognorm(self, incremental: bool, all_factors: bool = False) -> float:
+        """Compute the logarithm of the norm.
 
         Args:
+            incremental (bool): Whether to use the incremental trackers.
             all_factors (bool, optional): Include all pre-factors in the computation. Defaults to False.
 
         Returns:
-            float: Logarithm of the norm (computed from IncDet and Woodbury)
+            float: Logarithm of the norm
         """
-        normvec = self.calculate_lognormvec(incremental=True, all_factors=all_factors)
-        return xnp.sum(normvec)
+        lognormvec = self.calculate_lognormvec(incremental=incremental, all_factors=all_factors)
+        return xnp.sum(lognormvec)
 
     def calculate_lognormvec(self, incremental: bool, all_factors: bool = False) -> xnp.ndarray:
         """Compute the logarithm of the norm for each layer.

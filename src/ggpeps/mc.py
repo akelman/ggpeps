@@ -230,7 +230,7 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict["mag_energy"].append(float(self.system.mag_energy))
             self.obsdict["int_energy"].append(float(self.system.int_energy))
             self.obsdict["mass_energy"].append(float(self.system.mass_energy))
-            self.obsdict["lognorm"].append(float(self.system.calculate_lognorm_inc(all_factors=True)))
+            self.obsdict["lognorm"].append(float(self.system.calculate_lognorm(incremental=True, all_factors=True)))
             if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations for fermionic layers
                 self.obsdict["all_occupations"].append(np.asarray(self.system.occupations_before_ph))
                 self.obsdict["average_occupation"].append(np.asarray(self.system.average_occupation()))
