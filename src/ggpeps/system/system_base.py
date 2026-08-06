@@ -901,7 +901,6 @@ class System2DBase(ABC):
         """Recompute the closed (full-system) Woodbury inverses and incremental determinant from
         scratch from the CURRENT ``gamma_in_sys_vec``.
 
-
         Returns:
             tuple: ``(wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec)`` -- the closed Woodbury
                 inverses of ``mat_d_inv - gamma_in`` and ``mat_d + gamma_in`` and the log-abs
@@ -1549,7 +1548,9 @@ class System2DBase(ABC):
 
     @staticmethod
     @maybe_jit(static_argnames=["n", "all_factors"])
-    def _calculate_lognormvec_inc(det_vec, det_mat_d_vec, n: int, all_factors: bool = False) -> xnp.ndarray:
+    def _calculate_lognormvec_inc(
+        det_vec: xnp.ndarray, det_mat_d_vec: xnp.ndarray, n: int, all_factors: bool = False
+    ) -> xnp.ndarray:
         """Calculate the lognormvec incrementally, i.e. by incrementally updating the previous value
         (using IncDet and Woodbury)."""
 
