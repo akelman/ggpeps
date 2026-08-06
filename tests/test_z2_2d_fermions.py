@@ -354,7 +354,14 @@ class TestZ2System(unittest.TestCase):
         paramvec = np.random.rand(3, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D_Config(
-            lat_2x2, 0.0, 0.0, 0.0, 1.0, None, num_pg_layer=1, num_fermionic_layer=2,
+            lat_2x2,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            None,
+            num_pg_layer=1,
+            num_fermionic_layer=2,
             ncopy=2,
         )
         system_cfg.paramvec = paramvec
@@ -491,7 +498,14 @@ class TestZ2System(unittest.TestCase):
         paramvec = np.random.rand(2, 20)
         lat_2x2 = lattice.Lattice2D(2, 2)
         system_cfg = system.Z2System2D_Config(
-            lat_2x2, 0.0, 0.0, 1.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=1,
+            lat_2x2,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            None,
+            num_pg_layer=1,
+            num_fermionic_layer=1,
             ncopy=2,
         )
         system_cfg.paramvec = paramvec
@@ -566,9 +580,7 @@ class TestZ2System(unittest.TestCase):
         eps = 1e-5
         paramvec = np.random.rand(2, 52)
         lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_Config(
-            lat_2x2, 0.0, 0.0, 1.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=1
-        )
+        system_cfg = system.Z2System2D_Config(lat_2x2, 0.0, 0.0, 1.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=1)
         system_cfg.paramvec = paramvec
         system_z2_2_2 = system.Z2System2D(system_cfg)
 
@@ -931,10 +943,7 @@ class TestTransVariance(unittest.TestCase):
         """If t=0 on a given site, then mat_a should be [[0,1],[-1,0]] on that site."""
         # Set t = 0 on even sites
         t_symbols = {"t1r", "t2r", "t1i", "t2i"}
-        t_inds = [
-            ind for ind, symbol in enumerate(self.system_z2.cfg.symbolvec)
-            if str(symbol) in t_symbols
-        ]
+        t_inds = [ind for ind, symbol in enumerate(self.system_z2.cfg.symbolvec) if str(symbol) in t_symbols]
         paramvec = self.system_z2.cfg.paramvec
         for lay in range(self.system_z2.cfg.nlayer):
             uc_ind = 0  # index for even sites
@@ -975,10 +984,7 @@ class TestTransVariance(unittest.TestCase):
         Same as previous test, but for odd sites."""
         # Set t = 0 on odd sites
         t_symbols = {"t1r", "t2r", "t1i", "t2i"}
-        t_inds = [
-            ind for ind, symbol in enumerate(self.system_z2.cfg.symbolvec)
-            if str(symbol) in t_symbols
-        ]
+        t_inds = [ind for ind, symbol in enumerate(self.system_z2.cfg.symbolvec) if str(symbol) in t_symbols]
         paramvec = self.system_z2.cfg.paramvec
         for lay in range(self.system_z2.cfg.nlayer):
             uc_ind = 1  # index for odd sites
@@ -1018,10 +1024,7 @@ class TestTransVariance(unittest.TestCase):
         """If t=0 on a given site, then mat_b should be all zeros on that site."""
         # Set t = 0 on even sites
         t_symbols = {"t1r", "t2r", "t1i", "t2i"}
-        t_inds = [
-            ind for ind, symbol in enumerate(self.system_z2.cfg.symbolvec)
-            if str(symbol) in t_symbols
-        ]
+        t_inds = [ind for ind, symbol in enumerate(self.system_z2.cfg.symbolvec) if str(symbol) in t_symbols]
         paramvec = self.system_z2.cfg.paramvec
         for lay in range(self.system_z2.cfg.nlayer):
             uc_ind = 0  # index for even sites
@@ -1989,6 +1992,7 @@ class TestElectricEnergyDropRealZero(unittest.TestCase):
 
 ### Generic ncopy tests
 
+
 class TestG4ConfigNcopyGeneric(unittest.TestCase):
     # TODO: fix this test
     """Tests for the ncopy-generic behavior of the G4C/F4C Z2 config.
@@ -2043,12 +2047,7 @@ class TestG4ConfigNcopyGeneric(unittest.TestCase):
     @staticmethod
     def _yz_symbol_names(ncopy):
         """Return all real and imaginary y_i and z_i intra-copy coupling symbols."""
-        return {
-            f"{param}{copy}{part}"
-            for param in ["y", "z"]
-            for copy in range(1, ncopy + 1)
-            for part in ["r", "i"]
-        }
+        return {f"{param}{copy}{part}" for param in ["y", "z"] for copy in range(1, ncopy + 1) for part in ["r", "i"]}
 
     @staticmethod
     def _same_parity_mixed_symbol_names(ncopy):
@@ -2745,7 +2744,8 @@ class TestLegacy2CG4Ncopy2PureGaugeEquivalence(unittest.TestCase):
         cfg_g4.make_pure_gauge()
 
         legacy_paramvec_in_g4_order = utils.reorder_parameter_vector(
-            cfg_2c.paramvec, source_order, target_order, axis=2)
+            cfg_2c.paramvec, source_order, target_order, axis=2
+        )
         self.assertTrue(np.array_equal(legacy_paramvec_in_g4_order, cfg_g4.paramvec))
 
     def test_tmat_symb_is_equivalent_after_legacy_2c_to_g4_symbol_substitution(self):
@@ -2880,7 +2880,8 @@ class TestLegacy1CG4Ncopy1PureGaugeEquivalence(unittest.TestCase):
         cfg_g4.make_pure_gauge()
 
         legacy_paramvec_in_g4_order = utils.reorder_parameter_vector(
-            cfg_1c.paramvec, source_order, target_order, axis=2)
+            cfg_1c.paramvec, source_order, target_order, axis=2
+        )
         self.assertTrue(np.array_equal(legacy_paramvec_in_g4_order, cfg_g4.paramvec))
 
     def test_tmat_symb_is_equivalent_after_legacy_1c_to_g4_symbol_substitution(self):
