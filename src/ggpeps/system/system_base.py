@@ -811,8 +811,8 @@ class System2DBase(ABC):
                     # For the modified norm, we still have to take into account the other contributions
                     # from the unmodified parts
                     norm_mod_vec = self._calculate_lognormvec_inc(
-                        [self.incdet_mod_vec[layerind][ind]],
-                        [self.det_mat_d_mod_vec[layerind, ind]],
+                        xnp.expand_dims(self.incdet_mod_vec[layerind, ind], axis=0),
+                        xnp.expand_dims(self.det_mat_d_mod_vec[layerind, ind], axis=0),
                         self.gamma_in_sys_mod_vec[layerind, ind].shape[0],
                         all_factors=True,
                     )
