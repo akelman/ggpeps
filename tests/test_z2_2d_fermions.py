@@ -1491,10 +1491,9 @@ class TestTransVariance(unittest.TestCase):
                         system_z2_2_2_left.update_gauge_full_system(config)
                         system_z2_2_2_right.update_gauge_full_system(config)
 
-                        val_left = np.sum(system_z2_2_2_left.calculate_lognormvec(incremental=False, all_factors=True))
-                        val_right = np.sum(
-                            system_z2_2_2_right.calculate_lognormvec(incremental=False, all_factors=True)
-                        )
+                        val_left = system_z2_2_2_left.calculate_lognorm(incremental=False, all_factors=True)
+                        val_right = system_z2_2_2_right.calculate_lognorm(incremental=False, all_factors=True)
+
                         deriv_num = (val_right - val_left) / (2 * eps)
 
                         self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=3)

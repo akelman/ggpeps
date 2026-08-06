@@ -94,7 +94,7 @@ class TestU1SystemMethods(unittest.TestCase):
         weight_inc = sys.update_lognorm_inc(
             sys.incdet_vec, sys.wi_gamma_in_vec, sys.gamma_in_sys_vec, sys.mat_d_vec, 0, zeroarr, all_factors=True
         )
-        weight_recalc = np.sum(sys.calculate_lognormvec(incremental=False, all_factors=True))
+        weight_recalc = sys.calculate_lognorm(incremental=False, all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
     def test_norm_incremental_update(self):
@@ -103,7 +103,7 @@ class TestU1SystemMethods(unittest.TestCase):
         theta = np.array([[-1.0]])
         weight_inc = self.system_u1_2_2.calculate_weight_attempt(ind, theta, all_factors=True)
         self.system_u1_2_2.update_gauge_ind(ind, theta)
-        weight_recalc = np.sum(self.system_u1_2_2.calculate_lognormvec(incremental=False, all_factors=True))
+        weight_recalc = self.system_u1_2_2.calculate_lognorm(incremental=False, all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
     def test_compare_gauge_gamma_dirac(self):

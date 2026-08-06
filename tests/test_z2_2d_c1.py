@@ -1309,8 +1309,7 @@ class TestZ2SystemMethods(unittest.TestCase):
             np.asarray(zeroarr),
             all_factors=True,
         )
-        weight_recalc_vec = sys.calculate_lognormvec(incremental=False, all_factors=True)
-        weight_recalc = np.sum(weight_recalc_vec)
+        weight_recalc = sys.calculate_lognorm(incremental=False, all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
     def test_norm_incremental_update(self):
@@ -1319,8 +1318,7 @@ class TestZ2SystemMethods(unittest.TestCase):
         theta = np.array([[-1.0]])
         weight_inc = self.system_z2_2_2_real.calculate_weight_attempt(ind, theta, all_factors=True)
         self.system_z2_2_2_real.update_gauge_ind(ind, theta)
-        weight_recalc_vec = self.system_z2_2_2_real.calculate_lognormvec(incremental=False, all_factors=True)
-        weight_recalc = np.sum(weight_recalc_vec)
+        weight_recalc = self.system_z2_2_2_real.calculate_lognorm(incremental=False, all_factors=True)
         self.assertAlmostEqual(weight_inc, weight_recalc)
 
     def test_grad_over_norm_pure_gauge_real(self):
@@ -1354,8 +1352,8 @@ class TestZ2SystemMethods(unittest.TestCase):
         lay = 0
         uc_ind = 0
         deriv_ana = system_z2_2_2.grad_over_norm_vec[lay, uc_ind, 1]
-        lognorm_left = np.sum(system_z2_2_2_left.calculate_lognormvec(incremental=False, all_factors=True))
-        lognorm_right = np.sum(system_z2_2_2_right.calculate_lognormvec(incremental=False, all_factors=True))
+        lognorm_left = system_z2_2_2_left.calculate_lognorm(incremental=False, all_factors=True)
+        lognorm_right = system_z2_2_2_right.calculate_lognorm(incremental=False, all_factors=True)
         deriv_num = (lognorm_right - lognorm_left) / (2 * eps)
         # print("Analytical",deriv_ana)
         # print("Numerical",deriv_num)
@@ -1398,8 +1396,8 @@ class TestZ2SystemMethods(unittest.TestCase):
 
                 # This is a single layer construction, we always use layer 0 to test.
                 deriv_ana = system_z2_2_2.grad_over_norm_vec[lay, uc_ind, ind]
-                norm_left = np.sum(system_z2_2_2_left.calculate_lognormvec(incremental=False, all_factors=True))
-                norm_right = np.sum(system_z2_2_2_right.calculate_lognormvec(incremental=False, all_factors=True))
+                norm_left = system_z2_2_2_left.calculate_lognorm(incremental=False, all_factors=True)
+                norm_right = system_z2_2_2_right.calculate_lognorm(incremental=False, all_factors=True)
                 deriv_num = (norm_right - norm_left) / (2 * eps)
 
                 self.assertAlmostEqual(deriv_ana, deriv_num, places=6)

@@ -184,7 +184,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["int_energy"].append(self.system.int_energy)
         self.obsdict["mass_energy"].append(self.system.mass_energy)
         self.obsdict["chem_energy"].append(self.system.chem_energy)
-        self.obsdict["norm"].append(np.sum(self.system.calculate_lognormvec(incremental=False, all_factors=True)))
+        self.obsdict["norm"].append(self.system.calculate_lognorm(incremental=False, all_factors=True))
         if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
             self.obsdict["average_occupation"].append(self.system.average_occupation())
             self.obsdict["all_occupations"].append(self.system.occupations_before_ph)
@@ -467,7 +467,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["int_energy"].append(self.system.int_energy)
         self.obsdict["mass_energy"].append(self.system.mass_energy)
         self.obsdict["chem_energy"].append(self.system.chem_energy)
-        self.obsdict["norm"].append(np.sum(self.system.calculate_lognormvec(incremental=False, all_factors=True)))
+        self.obsdict["norm"].append(self.system.calculate_lognorm(incremental=False, all_factors=True))
         if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
             self.obsdict["average_occupation"].append(self.system.average_occupation())
             self.obsdict["all_occupations"].append(self.system.occupations_before_ph)
@@ -504,7 +504,7 @@ class NEVMC_Evaluator(Evaluator):
         self.obsdict["int_energy"].append(self.system.int_energy)
         self.obsdict["mass_energy"].append(self.system.mass_energy)
         self.obsdict["chem_energy"].append(self.system.chem_energy)
-        self.obsdict["norm"].append(np.sum(self.system.calculate_lognormvec(incremental=False, all_factors=True)))
+        self.obsdict["norm"].append(self.system.calculate_lognorm(incremental=False, all_factors=True))
         if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations if there are fermionic layers
             self.obsdict["average_occupation"].append(self.system.average_occupation())
             self.obsdict["all_occupations"].append(self.system.occupations_before_ph)
