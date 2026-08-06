@@ -32,29 +32,6 @@ def derivative_pfaffian_numpy(mat: np.ndarray, d_mat: np.ndarray, pfaval: Option
         return 0.0
 
 
-def calculate_lognormvec_numpy(
-    gamma_in_sys_vec: np.ndarray,
-    mat_d_vec: np.ndarray,
-    all_factors: bool = False,
-) -> np.ndarray:
-    # This is still the plain formula, without any update mechanism
-    nlayer = mat_d_vec.shape[0]
-    n = mat_d_vec[0].shape[0]
-
-    prod_vec = gamma_in_sys_vec @ mat_d_vec
-    eye_vec = np.broadcast_to(np.eye(n), (nlayer, n, n))
-
-    sign_vec, logval_vec = np.linalg.slogdet((eye_vec - prod_vec))
-    if all_factors:
-        logval_vec -= n * np.log(2)
-    else:
-        # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
-        pass
-
-    # The factor 1/2 is the square-root
-    return logval_vec / 2
-
-
 def pfaffian_LTL_stack(A, overwrite_a=False):
     """
     This is a vectorized implementation of the LTL algorithm for computing the Pfaffian of a batch of
@@ -174,7 +151,3 @@ class BackendNumpy(BackendBase):
     @staticmethod
     def pfaffian_vectorized(mat):
         return pfaffian_LTL_stack(mat)
-
-    @staticmethod
-    def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
-        return calculate_lognormvec_numpy(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)

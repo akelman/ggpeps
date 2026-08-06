@@ -1488,7 +1488,7 @@ class System2DBase(ABC):
         )
 
     def calculate_lognormvec(self, all_factors: bool = False) -> xnp.ndarray:
-        """Compute the logarithm of the norm for each layer
+        """Compute the logarithm of the norm for each layer from scratch (not incrementally).
 
         Args:
             all_factors (bool, optional): Include all constant prefactors. Defaults to False.
@@ -1496,7 +1496,31 @@ class System2DBase(ABC):
         Returns:
             float: Logarithm of the norm
         """
-        return backend.calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
+        return self._calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
+
+    @maybe_jit(static_argnames=["all_factors"])
+    def _calculate_lognormvec(
+        gamma_in_sys_vec: xnp.ndarray,
+        mat_d_vec: xnp.ndarray,
+        all_factors: bool = False,
+    ) -> xnp.ndarray:
+
+        # This is still the plain formula, without any update mechanism
+        nlayer = mat_d_vec.shape[0]
+        n = mat_d_vec[0].shape[0]
+
+        prod_vec = gamma_in_sys_vec @ mat_d_vec
+        eye_vec = xnp.broadcast_to(xnp.eye(n), (nlayer, n, n))
+
+        sign_vec, logval_vec = xnp.linalg.slogdet((eye_vec - prod_vec))
+        if all_factors:
+            logval_vec -= n * xnp.log(2)
+        else:
+            # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
+            pass
+
+        # The factor 1/2 is the square-root
+        return logval_vec / 2
 
     @staticmethod
     @maybe_jit(static_argnames=["n", "all_factors"])

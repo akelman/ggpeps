@@ -35,42 +35,6 @@ def derivative_pfaffian_jax(mat: jnp.ndarray, d_mat: jnp.ndarray, pfaval: Option
     return 0.5 * pfaval * jnp.trace(jnp.linalg.inv(mat) @ d_mat)
 
 
-@jit
-def calculate_lognormvec_jit(gamma_in_sys: jnp.ndarray, mat_d: jnp.ndarray) -> float:
-    # This is still the plain formula, without any update mechanism
-    # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
-    sign, logval = jnp.linalg.slogdet((jnp.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d))
-    return logval
-
-
-batch_calculate_lognormvec = jax.vmap(calculate_lognormvec_jit)
-
-
-@partial(jax.jit, static_argnames=["all_factors"])
-def calculate_lognormvec_jax(
-    gamma_in_sys_vec: jnp.ndarray,
-    mat_d_vec: jnp.ndarray,
-    all_factors: bool = False,
-) -> jnp.ndarray:
-
-    # This is still the plain formula, without any update mechanism
-    nlayer = mat_d_vec.shape[0]
-    n = mat_d_vec[0].shape[0]
-
-    prod_vec = gamma_in_sys_vec @ mat_d_vec
-    eye_vec = jnp.broadcast_to(jnp.eye(n), (nlayer, n, n))
-
-    sign_vec, logval_vec = jnp.linalg.slogdet((eye_vec - prod_vec))
-    if all_factors:
-        logval_vec -= n * jnp.log(2)
-    else:
-        # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
-        pass
-
-    # The factor 1/2 is the square-root
-    return logval_vec / 2
-
-
 @jax.jit
 def jax_pfaffian(mat):
     # The jax pfaffian implementation does not properly guard against singular matrices, in which case
@@ -122,7 +86,3 @@ class BackendJax(BackendBase):
     @staticmethod
     def pfaffian_vectorized(mat):
         return pfaffian_batched(mat)
-
-    @staticmethod
-    def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
-        return calculate_lognormvec_jax(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
