@@ -287,8 +287,8 @@ class TestZ2C2SystemMethods(unittest.TestCase):
 
                 # This is a single layer construction, we always use layer 0 to test.
                 deriv_ana = system_z2_2_2.grad_over_norm_vec[lay, uc_ind, ind]
-                norm_left = system_z2_2_2_left.calculate_lognorm(incremental=False, all_factors=True)
-                norm_right = system_z2_2_2_right.calculate_lognorm(incremental=False, all_factors=True)
+                norm_left = system_z2_2_2_left.calculate_lognorm(incremental=True, all_factors=True)
+                norm_right = system_z2_2_2_right.calculate_lognorm(incremental=True, all_factors=True)
                 deriv_num = (norm_right - norm_left) / (2 * eps)
 
                 self.assertAlmostEqual(deriv_ana, deriv_num, places=5)

@@ -851,8 +851,8 @@ class TestZ2System(unittest.TestCase):
         system_z2 = system.Z2System2D(cfg)
         system_z2.cfg.enforce_parameter_conditions(system_z2.cfg.paramvec)
 
-        # Test various obvservables
-        norm_vec = system_z2.calculate_lognormvec(incremental=False, all_factors=True)
+        # Test various observables
+        norm_vec = system_z2.calculate_lognormvec(incremental=True, all_factors=True)
         self.assertTrue(np.allclose(norm_vec[1], norm_vec[2]))
         for group_element_idx in range(len(system_z2.cfg.gaugemgr.group_elements_for_el_energy)):
             el_op_vec = system_z2.el_energy_op_vec[group_element_idx]
@@ -1491,8 +1491,8 @@ class TestTransVariance(unittest.TestCase):
                         system_z2_2_2_left.update_gauge_full_system(config)
                         system_z2_2_2_right.update_gauge_full_system(config)
 
-                        val_left = system_z2_2_2_left.calculate_lognorm(incremental=False, all_factors=True)
-                        val_right = system_z2_2_2_right.calculate_lognorm(incremental=False, all_factors=True)
+                        val_left = system_z2_2_2_left.calculate_lognorm(incremental=True, all_factors=True)
+                        val_right = system_z2_2_2_right.calculate_lognorm(incremental=True, all_factors=True)
 
                         deriv_num = (val_right - val_left) / (2 * eps)
 
