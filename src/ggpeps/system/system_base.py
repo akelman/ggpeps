@@ -1723,7 +1723,7 @@ class System2DBase(ABC):
         return np.array(generate_permutation_matrix(copy_then_color_order, color_then_copy_order))
 
     @classmethod
-    @maybe_jit(static_argnames=["cls", "mod_link_inds", "nvirtmodes_link", "dir", "defer_mod"])
+    @maybe_jit(static_argnames=["cls", "mod_link_inds", "nvirtmodes_link", "dir", "defer_mod", "check_guard"])
     def _update_gauge_ind(
         cls,
         gamma_in_sys_vec: xnp.ndarray,
@@ -1741,6 +1741,7 @@ class System2DBase(ABC):
         nvirtmodes_link: int,
         dir: Direction,
         defer_mod: bool,
+        check_guard: bool,
     ) -> tuple:
         """Pure single-link update of gamma_in_sys and all incremental trackers.
 
@@ -1770,8 +1771,13 @@ class System2DBase(ABC):
         weight = 0.5 * xnp.sum(incdet_vec)
         wi_gamma_in_vec = utils.WoodburyInverter.update_index(wi_gamma_in_vec, update_arr, ind_mat, ind_mat)
         wi_gamma_out_vec = utils.WoodburyInverter.update_index(wi_gamma_out_vec, -update_arr, ind_mat, ind_mat)
+
         # Largest entry of any updated inverse, for the refresh magnitude guard.
-        inv_mags = [xnp.max(xnp.abs(wi_gamma_in_vec)), xnp.max(xnp.abs(wi_gamma_out_vec))]
+        # Only necessary for Dn
+        # TODO: this is very hacky, and all controls for resetting the trackers should be moved to the evaluators
+        inv_mags = [0, 0]
+        if check_guard:
+            inv_mags = [xnp.max(xnp.abs(wi_gamma_in_vec)), xnp.max(xnp.abs(wi_gamma_out_vec))]
 
         # --- Incrementally update the modified (open-link) family - gamma_in_sys_mod and its
         # trackers -- batched over layers. The local update is shifted by the carved-out link when
@@ -1810,8 +1816,10 @@ class System2DBase(ABC):
                 wi_gamma_in_mod_vec = backend.array_assign(wi_gamma_in_mod_vec, (slice(None), ind), new_in)
                 new_out = utils.WoodburyInverter.update_index(wi_gamma_out_mod_vec[:, ind], -update, pos, pos)
                 wi_gamma_out_mod_vec = backend.array_assign(wi_gamma_out_mod_vec, (slice(None), ind), new_out)
-                inv_mags.append(xnp.max(xnp.abs(new_in)))
-                inv_mags.append(xnp.max(xnp.abs(new_out)))
+
+                if check_guard:
+                    inv_mags.append(xnp.max(xnp.abs(new_in)))
+                    inv_mags.append(xnp.max(xnp.abs(new_out)))
 
         max_inv_mag = xnp.max(xnp.asarray(inv_mags))
         return (
@@ -1868,6 +1876,7 @@ class System2DBase(ABC):
                 nvirtmodes_link=self.cfg.nvirtmodes_link,
                 dir=dir,
                 defer_mod=defer_mod,
+                check_guard=self.cfg.lattice.nlinks < 10,
             )
             self._gamma_in_sys_vec, self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec, self.weight = res[
                 :5
