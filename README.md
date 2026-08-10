@@ -260,6 +260,16 @@ The exception is related to caching, which can interfere with the randomness as 
 The repo includes several scripts to help with running many jobs on a computing cluster.
 It can also interpret signals, e.g. as sent by slurm, to automatically cache and end a computation.
 
+Note on shared nodes and Ray: on clusters that pack several jobs onto the same node, all Ray instances (used by `--nrunner`) store their session files in the shared `/tmp/ray` by default. A job script that cleans up with `rm -rf /tmp/ray` will crash every other job still running on that node. Instead, give each job a private temp dir and remove only it:
+```bash
+export TMPDIR=/tmp/ray_$SLURM_JOB_ID
+mkdir -p $TMPDIR
+srun python manager.py ...
+RC=$?
+rm -rf $TMPDIR
+exit $RC
+```
+
 
 ### Data Analysis / Exploration
 
