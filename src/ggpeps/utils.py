@@ -3,9 +3,10 @@ import re
 import sys
 import gzip
 import pickle
+import shutil
 import logging
 import functools
-import subprocess  # Start process for git hash
+import subprocess
 from typing import Mapping, Optional, Sequence, Union
 
 import numba as nb
@@ -542,8 +543,10 @@ def get_git_hash() -> str:
     """Get the git hash of the current commit in the repository.
 
     Returns:
-        str: git hash
+        str: git hash, or "unknown" on machines without a git executable
     """
+    if shutil.which("git") is None:
+        return "unknown"
     # This assumes that .git is in the parent folder of util.py
     packagedir = os.path.dirname(os.path.realpath(__file__))
     srcdir = os.path.join(packagedir, os.path.pardir)
