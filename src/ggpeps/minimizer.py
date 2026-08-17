@@ -50,7 +50,14 @@ class MinimizerResult:
 
 class MinimizerConfig:
 
-    def __init__(self, max_iter: int = 100, tol: float = 1e-5, alpha: float = 1e-2, method: str = "CG") -> None:
+    def __init__(
+        self,
+        max_iter: int = 100,
+        tol: float = 1e-5,
+        alpha: float = 1e-2,
+        method: str = "CG",
+        save_each_eval: bool = False,
+    ) -> None:
         """Initialize a MinimizerConfig
 
         Args:
@@ -58,11 +65,14 @@ class MinimizerConfig:
             tol (float, optional): Convergence tolerance. Defaults to 1e-5.
             alpha (float, optional): Learning rate. Defaults to 1e-2.
             method (str, optional): Minimization algorithm. Defaults to "CG".
+            save_each_eval (bool, optional): Save the cache to file after every evaluation,
+                so interrupted runs can resume from it. Defaults to False.
         """
         self.max_iter: int = max_iter
         self.tol: float = tol
         self.alpha: float = alpha
         self._method: str = method
+        self.save_each_eval: bool = save_each_eval
 
     @property
     def method(self) -> str:
@@ -300,10 +310,10 @@ class Minimizer:
             #   so that if the computation is interrupted (which loses the last_paramvec),
             #   we can still use the cached values
             energy = utils.get_obs_mean_df(self.last_result, "energy")
-            self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy)
+            self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy, save_to_file=self.cfg.save_each_eval)
             if self.evaluator_manager.cfg.compute_grads:
                 parametergrad = utils.get_obs_mean_df(self.last_result, "energy_grad")
-                self.cache.add_obs_to_cache(flattened_paramvec, "energy_grad", parametergrad)
+                self.cache.add_obs_to_cache(flattened_paramvec, "energy_grad", parametergrad, save_to_file=self.cfg.save_each_eval)
             # logger.debug(f"Calculated energy: {energy}")
 
             # Save the best result
@@ -344,9 +354,9 @@ class Minimizer:
 
             # Save to cache
             energy = utils.get_obs_mean_df(self.last_result, "energy")
-            self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy)
+            self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy, save_to_file=self.cfg.save_each_eval)
             parametergrad = utils.get_obs_mean_df(self.last_result, "energy_grad")
-            self.cache.add_obs_to_cache(flattened_paramvec, "energy_grad", parametergrad)
+            self.cache.add_obs_to_cache(flattened_paramvec, "energy_grad", parametergrad, save_to_file=self.cfg.save_each_eval)
 
             # Save the best result
             if self.best_result is None or energy < utils.get_obs_mean_df(self.best_result, "energy"):

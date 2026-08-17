@@ -599,6 +599,7 @@ def main(args):
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
         min_cfg.tol = args.tol
+        min_cfg.save_each_eval = args.save_each_eval and args.save_cache_dest is not None
         mc_config.compute_grads = compute_grads
 
         mc_mgr = EvaluatorManager(
@@ -667,6 +668,7 @@ def main(args):
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
         min_cfg.tol = args.tol
+        min_cfg.save_each_eval = args.save_each_eval and args.save_cache_dest is not None
         ec_config.compute_grads = compute_grads
 
         ex_mgr = EvaluatorManager(
@@ -720,6 +722,7 @@ def main(args):
         min_cfg.max_iter = args.maxiter
         min_cfg.alpha = args.alpha
         min_cfg.use_metric = args.use_metric
+        min_cfg.save_each_eval = args.save_each_eval and args.save_cache_dest is not None
 
         start = timer()
         resultvec = []
@@ -1004,6 +1007,13 @@ if __name__ == "__main__":
         default=None,  # Default value when argument is not used
         type=str,
         help="Save cache to the specified file. This will overwrite the old one if it exists.",
+    )
+    parser.add_argument(
+        "--save_each_eval",
+        action="store_true",
+        default=False,
+        help="Save the cache file after every evaluation, so interrupted runs can resume from it. "
+        + "Requires --save_cache_dest.",
     )
     parser.add_argument(
         "--ignore_cache",
