@@ -170,7 +170,6 @@ class System2DBase(ABC):
         # the last incremental step left a near-singular tracked inverse (its largest entry exceeds
         # TRACKER_INV_MAG_THRESH).
         self.steps_since_refresh: int = 0
-        self.tracker_refresh_interval: int = getattr(self.cfg, "tracker_refresh_interval", 0)
 
         # When True (set by the evaluator around the warmup loop), _update_gauge_ind skips maintaining the
         # open-link ("mod") family (gamma_in_sys_mod + wi_gamma_*_mod + incdet_mod), which is consumed only
@@ -1820,7 +1819,7 @@ class System2DBase(ABC):
             incdet_mod_vec,
         )
 
-    def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray) -> None:
+    def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray, tracker_interval: int = -1) -> None:
         """Update a gauge field at a given link index by a new value.
         This function can be called from outside the system, and so accepts a gauge field value as np.ndarray.
         We convert here to xnp.ndarray. The heavy per-step work runs in the jitted classmethod
@@ -1830,6 +1829,7 @@ class System2DBase(ABC):
         Args:
             link_ind (int): Link index of the gauge field to be updated
             gauge_val (np.ndarray): New value for the gauge field
+            tracker_interval (int): Policy for resetting trackers
 
         Returns:
             None
@@ -1878,7 +1878,7 @@ class System2DBase(ABC):
             # Invalidate gauge dependent quantities
             self.invalidate_gauge_update()
 
-            self.check_and_refresh_trackers(self.tracker_refresh_interval)
+            self.check_and_refresh_trackers(tracker_interval)
 
     def check_and_refresh_trackers(self, interval: int) -> None:
         """Check the health of the tracked quantities, and if necessary, recompute both tracker families
@@ -1915,25 +1915,29 @@ class System2DBase(ABC):
         if periodic_due or unhealthy_trackers:
             self.refresh_trackers(self.defer_mod_trackers)
 
-    def update_gauge_full_system(self, gaugeconfig: list[np.ndarray]) -> None:
+    def update_gauge_full_system(self, gaugeconfig: list[np.ndarray], tracker_interval: int = -1) -> None:
         """Replace all gauge fields on the links by the values given in gaugeconfig.
 
         Args:
             gaugeconfig (list[np.ndarray]): Array of new values for the gauge field
+            tracker_interval (int): Policy for resetting trackers
         """
         for link_ind, gauge_val in enumerate(gaugeconfig):
-            self.update_gauge_ind(link_ind, gauge_val)
+            self.update_gauge_ind(link_ind, gauge_val, tracker_interval=tracker_interval)
 
-    def update_gauge_coord(self, coord: tuple[int, int], dir: Direction, gauge_val: np.ndarray) -> None:
-        """Update a gauge field at a given coordinate and direction by a new value
+    def update_gauge_coord(
+        self, coord: tuple[int, int], dir: Direction, gauge_val: np.ndarray, tracker_interval: int = -1
+    ) -> None:
+        """Update a gauge field at a given coordinate and direction with a new value.
 
         Args:
             coord (tuple): Coordinate of the vertex
             dir (Direction): Direction of the link
-            theta (np.array): New value for the gauge field
+            gauge_val (np.array): New value for the gauge field
+            tracker_interval (int): Policy for resetting trackers
         """
         ind = self.cfg.lattice.coord2ind_dir(coord, dir)
-        self.update_gauge_ind(ind, gauge_val)
+        self.update_gauge_ind(ind, gauge_val, tracker_interval=tracker_interval)
 
     @staticmethod
     def calculate_update_gamma_in(offset: int, update_mat: xnp.ndarray, gamma_in_sys: xnp.ndarray) -> xnp.ndarray:
