@@ -62,7 +62,7 @@ class GaugeGroup(ABC):
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
     @abstractmethod
-    def get_possible_irrep_labels(self) -> list:
+    def get_possible_irrep_labels(self) -> list[int]:
         """Return all irrep labels for this gauge group.
 
         Returns:
@@ -217,7 +217,7 @@ class ZNGauge(GaugeGroup):
         theta = self.get_angle(group_element)
         return np.array([[np.exp(1.0j * theta * irrep_label)]])
 
-    def get_possible_irrep_labels(self) -> list:
+    def get_possible_irrep_labels(self) -> list[int]:
         """
         Generate all irrep labels representations of the Z_N group.
 
@@ -493,7 +493,7 @@ class D2nGauge(GaugeGroup):
             else:
                 raise ValueError("Invalid irrep label for D2n group")
 
-    def get_possible_irrep_labels(self) -> list:
+    def get_possible_irrep_labels(self) -> list[int]:
         """
         Generate all irrep labels representations of the D_2N group.
         The irreps are labelled as follows:
@@ -763,14 +763,14 @@ class Z2RepGauge2D(GaugeGroup):
     def get_irrep_dimension(self, irrep_label: int) -> int:
         return 1
 
-    def get_possible_irrep_labels(self) -> list:
+    def get_possible_irrep_labels(self) -> list[int]:
         return [0, 1]
 
     def get_electric_energy_factor(self, irrep_label: int) -> float:
         # f_j = 2 cos(2*pi*j / N), N=2
         return 2.0 if irrep_label == 0 else 0.0
 
-    def get_group_elements_and_factors_for_el_energy(self):
+    def get_group_elements_and_factors_for_el_energy(self) -> tuple[float, tuple[np.ndarray, ...]]:
         """Return (el_mult_factor, group elements used for the electric energy).
 
         For Z_2 the single non-neutral element gives pref(h) = 2 (same as ZNGauge(2)).
