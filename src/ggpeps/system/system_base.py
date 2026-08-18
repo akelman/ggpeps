@@ -22,6 +22,12 @@ from ggpeps.system import overlap as ov
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
+# Magnitude guard: recompute immediately if the largest entry of a tracked inverse exceeds this
+# threshold. A large inverse <=> a near-singular tracked matrix, where the incremental Woodbury
+# update loses precision; the from-scratch recompute is backward-stable and matches even
+# where the inverse is genuinely large.
+TRACKER_INV_MAG_THRESH: float = 1e2
+
 
 def maybe_jit(*jit_args, **jit_kwargs):
     """Apply jax.jit iff using the jax backend."""
@@ -163,8 +169,7 @@ class System2DBase(ABC):
         # scratch (a) periodically every ``tracker_refresh_interval`` gauge steps and (b) whenever
         # the last incremental step left a near-singular tracked inverse (its largest entry exceeds
         # TRACKER_INV_MAG_THRESH).
-        self._steps_since_refresh: int = 0
-        self._last_step_max_inv_mag: float = 0.0
+        self.steps_since_refresh: int = 0
         self.tracker_refresh_interval: int = getattr(self.cfg, "tracker_refresh_interval", 0)
 
         # When True (set by the evaluator around the warmup loop), _update_gauge_ind skips maintaining the
@@ -173,12 +178,6 @@ class System2DBase(ABC):
         self.defer_mod_trackers: bool = False
 
         return
-
-    # Magnitude guard: recompute immediately if the largest entry of a tracked inverse exceeds this
-    # threshold. A large inverse <=> a near-singular tracked matrix, where the incremental Woodbury
-    # update loses precision; the from-scratch recompute is backward-stable and matches even
-    # where the inverse is genuinely large.
-    TRACKER_INV_MAG_THRESH: float = 1e2
 
     def invalidate_gauge_update(self) -> None:
         """Reset the values of computed quantitities to avoid spillover from previous computations.
@@ -892,7 +891,7 @@ class System2DBase(ABC):
         # Build both tracker families from scratch and reset the drift-control counter
         closed_trackers = self._compute_closed_trackers()
         mod_trackers = self._compute_mod_trackers()
-        self._steps_since_refresh = 0
+        self.steps_since_refresh = 0
 
         return (gamma_in_sys_vec, closed_trackers, mod_trackers)
 
@@ -1050,7 +1049,7 @@ class System2DBase(ABC):
 
     # ---------------- Incremental tracker update + drift control ----------------
 
-    def refresh_trackers(self) -> None:
+    def refresh_trackers(self, defer_mod_trackers: bool) -> None:
         """Recompute BOTH the closed and modified incremental trackers from scratch.
 
         The closed (`wi_gamma_in/out_vec`, `incdet_vec`) and modified (`wi_gamma_*_mod_vec`,
@@ -1067,13 +1066,13 @@ class System2DBase(ABC):
         self.weight = 0.5 * np.sum(self._incdet_vec)
         # During warmup the mod family is deferred (see defer_mod_trackers). Don't recompute it here
         # either - it is rebuilt once when warmup ends (recompute_mod_trackers).
-        if not self.defer_mod_trackers:
+        if not defer_mod_trackers:
             (
                 self._wi_gamma_in_mod_vec,
                 self._wi_gamma_out_mod_vec,
                 self._incdet_mod_vec,
             ) = self._compute_mod_trackers()
-        self._steps_since_refresh = 0
+        self.steps_since_refresh = 0
 
     def recompute_mod_trackers(self) -> None:
         """Recompute the open-link ("mod") family from scratch from the CURRENT gamma_in_sys.
@@ -1879,35 +1878,42 @@ class System2DBase(ABC):
             # Invalidate gauge dependent quantities
             self.invalidate_gauge_update()
 
+            self.check_and_refresh_trackers(self.tracker_refresh_interval)
+
+    def check_and_refresh_trackers(self, interval: int) -> None:
+        """Check the health of the tracked quantities, and if necessary, recompute both tracker families
+        from scratch to bound the incremental Woodbury/IncDet drift.
+
+        Three modes depending on `interval`:
+            > 0 : periodic every `interval` steps AND the magnitude guard (default; 1 == every step)
+            == 0: magnitude guard only, no periodic recomputation ("no_periodic")
+            <  0: no refresh at all -- pure incremental, even if a tracked inverse blows up
+        """
+
+        periodic_due = False
+        unhealthy_trackers = False
+        if interval > 0:
+            self.steps_since_refresh += 1
+            periodic_due = self.steps_since_refresh >= interval
+        if interval >= 0 and not periodic_due:  # only check health (which is expensive) if periodic is False
+
             # Check tracker health
             check_guard = self.cfg.lattice.nlinks < 10
             if check_guard:
                 max1 = xnp.max(xnp.abs(self._wi_gamma_in_vec))
                 max2 = xnp.max(xnp.abs(self._wi_gamma_out_vec))
                 maxes = [max1, max2]
-                if not defer_mod:
+                if self._wi_gamma_in_mod_vec is not None:  # trackers are in use
                     max3 = xnp.max(xnp.abs(self._wi_gamma_in_mod_vec))
                     max4 = xnp.max(xnp.abs(self._wi_gamma_out_mod_vec))
                     maxes.extend([max3, max4])
-                self._last_step_max_inv_mag = float(max(maxes))
-            self._maybe_refresh_trackers()
+                last_step_max_inv_mag = float(max(maxes))
 
-    def _maybe_refresh_trackers(self) -> None:
-        """Recompute both tracker families from scratch to bound the incremental Woodbury/IncDet
-        drift. Three modes via tracker_refresh_interval (set per run from EvaluatorManager /
-        --tracker_refresh_interval):
-          > 0 : periodic every `interval` steps AND the magnitude guard (default; 1 == every step)
-          == 0: magnitude guard only, no periodic recomputation ("no_periodic")
-          <  0: no refresh at all -- pure incremental, even if a tracked inverse blows up
-        """
-        interval = self.tracker_refresh_interval
-        if interval >= 0:
-            periodic_due = False
-            if interval > 0:
-                self._steps_since_refresh += 1
-                periodic_due = self._steps_since_refresh >= interval
-            if periodic_due or self._last_step_max_inv_mag > self.TRACKER_INV_MAG_THRESH:
-                self.refresh_trackers()
+                if last_step_max_inv_mag > TRACKER_INV_MAG_THRESH:
+                    unhealthy_trackers = True
+
+        if periodic_due or unhealthy_trackers:
+            self.refresh_trackers(self.defer_mod_trackers)
 
     def update_gauge_full_system(self, gaugeconfig: list[np.ndarray]) -> None:
         """Replace all gauge fields on the links by the values given in gaugeconfig.

@@ -276,7 +276,7 @@ class U1System2D(System2DBase):
 
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
-        self._maybe_refresh_trackers()
+        # self._maybe_refresh_trackers()
 
     ################## Observables ######################
     def _compute_mass_energy_op_vec(self, use_trans_inv=True):
