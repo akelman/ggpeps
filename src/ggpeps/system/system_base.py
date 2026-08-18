@@ -1897,11 +1897,17 @@ class System2DBase(ABC):
             periodic_due = self.steps_since_refresh >= interval
         if interval >= 0 and not periodic_due:  # only check health (which is expensive) if periodic is False
 
+            assert self._wi_gamma_in_vec is not None  # for mypy
+            assert self._wi_gamma_out_vec is not None
+
             # Check tracker health
             max1 = xnp.max(xnp.abs(self._wi_gamma_in_vec))
             max2 = xnp.max(xnp.abs(self._wi_gamma_out_vec))
             maxes = [max1, max2]
             if self._wi_gamma_in_mod_vec is not None:  # trackers are in use
+                assert self._wi_gamma_in_mod_vec is not None
+                assert self._wi_gamma_out_mod_vec is not None
+
                 max3 = xnp.max(xnp.abs(self._wi_gamma_in_mod_vec))
                 max4 = xnp.max(xnp.abs(self._wi_gamma_out_mod_vec))
                 maxes.extend([max3, max4])
