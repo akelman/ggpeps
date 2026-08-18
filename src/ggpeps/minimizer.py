@@ -99,7 +99,8 @@ class Minimizer:
         self.min_result: Optional[MinimizerResult] = None
 
         # Cache for the energy values and gradients
-        self.cache: Cache = ggpeps.global_vars["cache"]
+        cache = ggpeps.global_vars.get("cache")
+        self.cache: Cache = cache if cache is not None else Cache(disable_cache=True)
 
     def minimize(self) -> Optional[MinimizerResult]:
         if self.cfg.method == "CUSTOM":
@@ -313,7 +314,9 @@ class Minimizer:
             self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy, save_to_file=self.cfg.save_each_eval)
             if self.evaluator_manager.cfg.compute_grads:
                 parametergrad = utils.get_obs_mean_df(self.last_result, "energy_grad")
-                self.cache.add_obs_to_cache(flattened_paramvec, "energy_grad", parametergrad, save_to_file=self.cfg.save_each_eval)
+                self.cache.add_obs_to_cache(
+                    flattened_paramvec, "energy_grad", parametergrad, save_to_file=self.cfg.save_each_eval
+                )
             # logger.debug(f"Calculated energy: {energy}")
 
             # Save the best result
@@ -356,7 +359,9 @@ class Minimizer:
             energy = utils.get_obs_mean_df(self.last_result, "energy")
             self.cache.add_obs_to_cache(flattened_paramvec, "energy", energy, save_to_file=self.cfg.save_each_eval)
             parametergrad = utils.get_obs_mean_df(self.last_result, "energy_grad")
-            self.cache.add_obs_to_cache(flattened_paramvec, "energy_grad", parametergrad, save_to_file=self.cfg.save_each_eval)
+            self.cache.add_obs_to_cache(
+                flattened_paramvec, "energy_grad", parametergrad, save_to_file=self.cfg.save_each_eval
+            )
 
             # Save the best result
             if self.best_result is None or energy < utils.get_obs_mean_df(self.best_result, "energy"):
