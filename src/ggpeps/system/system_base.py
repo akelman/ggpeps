@@ -1741,7 +1741,6 @@ class System2DBase(ABC):
         nvirtmodes_link: int,
         dir: Direction,
         defer_mod: bool,
-        check_guard: bool,
     ) -> tuple:
         """Pure single-link update of gamma_in_sys and all incremental trackers.
 
@@ -1771,13 +1770,6 @@ class System2DBase(ABC):
         weight = 0.5 * xnp.sum(incdet_vec)
         wi_gamma_in_vec = utils.WoodburyInverter.update_index(wi_gamma_in_vec, update_arr, ind_mat, ind_mat)
         wi_gamma_out_vec = utils.WoodburyInverter.update_index(wi_gamma_out_vec, -update_arr, ind_mat, ind_mat)
-
-        # Largest entry of any updated inverse, for the refresh magnitude guard.
-        # Only necessary for Dn
-        # TODO: this is very hacky, and all controls for resetting the trackers should be moved to the evaluators
-        inv_mags = [0, 0]
-        if check_guard:
-            inv_mags = [xnp.max(xnp.abs(wi_gamma_in_vec)), xnp.max(xnp.abs(wi_gamma_out_vec))]
 
         # --- Incrementally update the modified (open-link) family - gamma_in_sys_mod and its
         # trackers -- batched over layers. The local update is shifted by the carved-out link when
@@ -1817,11 +1809,6 @@ class System2DBase(ABC):
                 new_out = utils.WoodburyInverter.update_index(wi_gamma_out_mod_vec[:, ind], -update, pos, pos)
                 wi_gamma_out_mod_vec = backend.array_assign(wi_gamma_out_mod_vec, (slice(None), ind), new_out)
 
-                if check_guard:
-                    inv_mags.append(xnp.max(xnp.abs(new_in)))
-                    inv_mags.append(xnp.max(xnp.abs(new_out)))
-
-        max_inv_mag = xnp.max(xnp.asarray(inv_mags))
         return (
             gamma_in_sys_vec,
             wi_gamma_in_vec,
@@ -1832,7 +1819,6 @@ class System2DBase(ABC):
             wi_gamma_in_mod_vec,
             wi_gamma_out_mod_vec,
             incdet_mod_vec,
-            max_inv_mag,
         )
 
     def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray) -> None:
@@ -1860,6 +1846,7 @@ class System2DBase(ABC):
             rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
 
             defer_mod = self.defer_mod_trackers
+
             res = self._update_gauge_ind(
                 self.gamma_in_sys_vec,
                 self.gamma_gauge_neutral_vec,
@@ -1876,7 +1863,6 @@ class System2DBase(ABC):
                 nvirtmodes_link=self.cfg.nvirtmodes_link,
                 dir=dir,
                 defer_mod=defer_mod,
-                check_guard=self.cfg.lattice.nlinks < 10,
             )
             self._gamma_in_sys_vec, self._wi_gamma_in_vec, self._wi_gamma_out_vec, self._incdet_vec, self.weight = res[
                 :5
@@ -1889,12 +1875,21 @@ class System2DBase(ABC):
                     self._wi_gamma_out_mod_vec,
                     self._incdet_mod_vec,
                 ) = res[5:9]
-            # float() = sync point: pull the tracker max from GPU for the refresh guard
-            self._last_step_max_inv_mag = float(res[9])
 
             # Invalidate gauge dependent quantities
             self.invalidate_gauge_update()
 
+            # Check tracker health
+            check_guard = self.cfg.lattice.nlinks < 10
+            if check_guard:
+                max1 = xnp.max(xnp.abs(self._wi_gamma_in_vec))
+                max2 = xnp.max(xnp.abs(self._wi_gamma_out_vec))
+                maxes = [max1, max2]
+                if not defer_mod:
+                    max3 = xnp.max(xnp.abs(self._wi_gamma_in_mod_vec))
+                    max4 = xnp.max(xnp.abs(self._wi_gamma_out_mod_vec))
+                    maxes.extend([max3, max4])
+                self._last_step_max_inv_mag = float(max(maxes))
             self._maybe_refresh_trackers()
 
     def _maybe_refresh_trackers(self) -> None:
