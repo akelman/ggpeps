@@ -1721,7 +1721,7 @@ class System2DBase(ABC):
         return np.array(generate_permutation_matrix(copy_then_color_order, color_then_copy_order))
 
     @classmethod
-    @maybe_jit(static_argnames=["cls", "mod_link_inds", "nvirtmodes_link", "dir", "defer_mod", "check_guard"])
+    @maybe_jit(static_argnames=["cls", "mod_link_inds", "nvirtmodes_link", "dir", "defer_mod"])
     def _update_gauge_ind(
         cls,
         gamma_in_sys_vec: xnp.ndarray,
