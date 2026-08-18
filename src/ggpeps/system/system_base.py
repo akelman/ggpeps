@@ -1898,19 +1898,17 @@ class System2DBase(ABC):
         if interval >= 0 and not periodic_due:  # only check health (which is expensive) if periodic is False
 
             # Check tracker health
-            check_guard = self.cfg.lattice.nlinks < 10
-            if check_guard:
-                max1 = xnp.max(xnp.abs(self._wi_gamma_in_vec))
-                max2 = xnp.max(xnp.abs(self._wi_gamma_out_vec))
-                maxes = [max1, max2]
-                if self._wi_gamma_in_mod_vec is not None:  # trackers are in use
-                    max3 = xnp.max(xnp.abs(self._wi_gamma_in_mod_vec))
-                    max4 = xnp.max(xnp.abs(self._wi_gamma_out_mod_vec))
-                    maxes.extend([max3, max4])
-                last_step_max_inv_mag = float(max(maxes))
+            max1 = xnp.max(xnp.abs(self._wi_gamma_in_vec))
+            max2 = xnp.max(xnp.abs(self._wi_gamma_out_vec))
+            maxes = [max1, max2]
+            if self._wi_gamma_in_mod_vec is not None:  # trackers are in use
+                max3 = xnp.max(xnp.abs(self._wi_gamma_in_mod_vec))
+                max4 = xnp.max(xnp.abs(self._wi_gamma_out_mod_vec))
+                maxes.extend([max3, max4])
+            last_step_max_inv_mag = float(max(maxes))
 
-                if last_step_max_inv_mag > TRACKER_INV_MAG_THRESH:
-                    unhealthy_trackers = True
+            if last_step_max_inv_mag > TRACKER_INV_MAG_THRESH:
+                unhealthy_trackers = True
 
         if periodic_due or unhealthy_trackers:
             self.refresh_trackers(self.defer_mod_trackers)
