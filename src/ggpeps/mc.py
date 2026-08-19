@@ -86,11 +86,11 @@ class MonteCarloEvaluatorConfig:
             "Request to set the state directly was ignored."
         )
 
-    def get_rng_state_internal_repr(self) -> dict:
+    def get_rng_state_internal_repr(self) -> tuple:
         """Get the state of the RNG.
 
         Returns:
-            dict
+            tuple
         """
         rng_state = self.rng_state  # this will initialize the RNG if it is not set
         return rng_state.get_state()
@@ -270,7 +270,7 @@ class MonteCarloEvaluator(Evaluator):
 
         return
 
-    def energy_gradient_mc(self) -> np.ndarray:
+    def energy_gradient_mc(self) -> Union[float, np.ndarray]:
         # Compute the energy gradient from the MC results
         meas_grad_over_norm = self.obsdict["grad_norm"]
 
