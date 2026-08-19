@@ -3,7 +3,7 @@ import numpy as np
 import jax.numpy as jnp
 import ggpeps.utils as utils
 from ggpeps import xnp as xnp
-from typing import Union, Optional
+from typing import Sequence, Union, Optional
 
 
 class Measurement:
@@ -46,7 +46,7 @@ class Measurement:
         else:
             self.counter += 1
 
-    def extend(self, data: Union[list[xnp.ndarray], list[float]]) -> None:
+    def extend(self, data: Sequence[Union[float, xnp.ndarray]]) -> None:
         """Extend the internal datavec directly without binning
 
         Args:
