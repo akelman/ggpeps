@@ -86,11 +86,11 @@ class MonteCarloEvaluatorConfig:
             "Request to set the state directly was ignored."
         )
 
-    def get_rng_state_internal_repr(self) -> dict:
+    def get_rng_state_internal_repr(self) -> tuple:
         """Get the state of the RNG.
 
         Returns:
-            dict
+            tuple
         """
         rng_state = self.rng_state  # this will initialize the RNG if it is not set
         return rng_state.get_state()
@@ -230,7 +230,7 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict["mag_energy"].append(float(self.system.mag_energy))
             self.obsdict["int_energy"].append(float(self.system.int_energy))
             self.obsdict["mass_energy"].append(float(self.system.mass_energy))
-            self.obsdict["lognorm"].append(float(self.system.calculate_lognorm_inc(all_factors=True)))
+            self.obsdict["lognorm"].append(float(self.system.calculate_lognorm(incremental=True, all_factors=True)))
             if self.system.cfg.num_fermionic_layer > 0:  # We only compute occupations for fermionic layers
                 self.obsdict["all_occupations"].append(np.asarray(self.system.occupations_before_ph))
                 self.obsdict["average_occupation"].append(np.asarray(self.system.average_occupation()))
@@ -270,7 +270,7 @@ class MonteCarloEvaluator(Evaluator):
 
         return
 
-    def energy_gradient_mc(self) -> np.ndarray:
+    def energy_gradient_mc(self) -> Union[float, np.ndarray]:
         # Compute the energy gradient from the MC results
         meas_grad_over_norm = self.obsdict["grad_norm"]
 

@@ -101,7 +101,7 @@ class TestOverlapNormCrosscheck(unittest.TestCase):
 
         gamma_in = np.asarray(sysobj.gamma_in_sys_vec)  # (nlayer, dim, dim)
         mat_d = np.asarray(sysobj.mat_d_vec)  # (nlayer, dim, dim)
-        lognormvec = np.asarray(sysobj.calculate_lognormvec(all_factors=True))  # per layer
+        lognormvec = np.asarray(sysobj.calculate_lognormvec(incremental=False, all_factors=True))  # per layer
 
         for lay in range(sysobj.cfg.nlayer):
             m1 = -gamma_in[lay]

@@ -305,7 +305,7 @@ class U1System2D(System2DBase):
     def _compute_el_energy_op_and_grad_gaussian(self, use_trans_inv=True):
         link_ind = self.cfg.mod_link_inds[0]  # this function only supports calculating electric energy on one link
         if use_trans_inv:
-            lognormvec_default_inc = self.calculate_lognormvec_inc(all_factors=True)
+            lognormvec_default_inc = self.calculate_lognormvec(incremental=True, all_factors=True)
             # This is the usual norm without any modifications
             lognorm_default = np.sum(lognormvec_default_inc)
             # Number of fermions = # of sites
@@ -332,12 +332,14 @@ class U1System2D(System2DBase):
                 covmat_out = mat_a + mat_b @ self.wi_gamma_out_mod_vec[layerind] @ np.transpose(mat_b)
                 covmat_out_virt = covmat_out[-single_link_offset:, -single_link_offset:]
                 # For the modified norm, we still have to take into account the contributions from the unmodified parts
-                norm_mod = self._calculate_lognorm_inc(
+                norm_mod_vec = self._calculate_lognormvec_inc(
                     [self.incdet_mod_vec[layerind]],
                     [self.det_mat_d_mod_vec[layerind]],
                     gamma_in_sys_mod.shape[0],
                     all_factors=True,
                 )
+                norm_mod = xnp.sum(norm_mod_vec)
+
                 # norm_mod = calculate_lognorm(gamma_in_sys_mod, [mat_d],
                 # all_factors=True)
                 norm_mod += np.sum(utils.select_except(lognormvec_default_inc, layerind))

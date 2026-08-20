@@ -104,7 +104,7 @@ class System2DBase(ABC):
         self._covmat_out_mod_vec: Optional[xnp.ndarray] = None
         self._norm_mod_vec: Optional[xnp.ndarray] = None
         self._el_pfaffians: Optional[xnp.ndarray] = None
-        self._lognorm_default_vec: Optional[xnp.ndarray] = None
+        self._lognormvec_default: Optional[xnp.ndarray] = None
 
         # Management of the gauge fields
         # vec for layers (choices of projectors may be different for each layer), dirs for directions
@@ -210,7 +210,7 @@ class System2DBase(ABC):
         self._covmat_out_mod_vec = None
         self._norm_mod_vec = None
         self._el_pfaffians = None
-        self._lognorm_default_vec = None
+        self._lognormvec_default = None
         return
 
     @property
@@ -795,37 +795,37 @@ class System2DBase(ABC):
         This is a get function.
 
         Returns:
-            list[float]: a vector of modified normalization factors
+            xnp.ndarray: a vector of modified normalization factors
         """
         if self._norm_mod_vec is None:
-            norm_mod_layervec_linkvec = []
-            lognormvec_default = self.lognorm_default_vec
+            norm_mod_layervec_linkvec = xnp.zeros((self.cfg.nlayer, len(self.cfg.mod_link_inds)))
+            lognormvec_default = self.lognormvec_default
 
             for layerind in range(self.cfg.nlayer):
 
-                norm_mod_linkvec = []
+                norm_mod_linkvec = xnp.zeros(len(self.cfg.mod_link_inds))
 
                 # TODO: this is not yet actually vectorized
                 for ind, link_ind in enumerate(self.cfg.mod_link_inds):
 
                     # For the modified norm, we still have to take into account the other contributions
                     # from the unmodified parts
-                    norm_mod = self._calculate_lognorm_inc(
-                        [self.incdet_mod_vec[layerind][ind]],
-                        [self.det_mat_d_mod_vec[layerind, ind]],
+                    norm_mod_vec = self._calculate_lognormvec_inc(
+                        xnp.expand_dims(self.incdet_mod_vec[layerind, ind], axis=0),
+                        xnp.expand_dims(self.det_mat_d_mod_vec[layerind, ind], axis=0),
                         self.gamma_in_sys_mod_vec[layerind, ind].shape[0],
                         all_factors=True,
                     )
-
+                    norm_mod = xnp.sum(norm_mod_vec)
                     norm_mod += utils.add_except(lognormvec_default, layerind)
-                    norm_mod_linkvec.append(norm_mod)
-                norm_mod_layervec_linkvec.append(norm_mod_linkvec)
 
-            self._norm_mod_vec = xnp.asarray(norm_mod_layervec_linkvec)
+                    norm_mod_linkvec = backend.array_assign(norm_mod_linkvec, ind, norm_mod)
+                norm_mod_layervec_linkvec = backend.array_assign(norm_mod_layervec_linkvec, layerind, norm_mod_linkvec)
+            self._norm_mod_vec = norm_mod_layervec_linkvec
         return self._norm_mod_vec
 
     @property
-    def lognorm_default_vec(self) -> xnp.ndarray:
+    def lognormvec_default(self) -> xnp.ndarray:
         """Compute the log of the norm of the state, with no modifications (e.g. those of the electric energy),
         including all factors.
         This function returns a vector over layers of these norms.
@@ -834,9 +834,9 @@ class System2DBase(ABC):
         Returns:
             array: a vector of norms
         """
-        if self._lognorm_default_vec is None:
-            self._lognorm_default_vec = self.calculate_lognormvec_inc(all_factors=True)
-        return self._lognorm_default_vec
+        if self._lognormvec_default is None:
+            self._lognormvec_default = self.calculate_lognormvec(incremental=True, all_factors=True)
+        return self._lognormvec_default
 
     def initialize_gamma_in_and_trackers(self) -> tuple:
         """Initialize gamma_in (the covariance matrix of the projectors),
@@ -899,7 +899,6 @@ class System2DBase(ABC):
     def _compute_closed_trackers(self) -> tuple:
         """Recompute the closed (full-system) Woodbury inverses and incremental determinant from
         scratch from the CURRENT ``gamma_in_sys_vec``.
-
 
         Returns:
             tuple: ``(wi_gamma_in_vec, wi_gamma_out_vec, incdet_vec)`` -- the closed Woodbury
@@ -1413,7 +1412,7 @@ class System2DBase(ABC):
             float: Weight of the MC configuration
         """
         if self._weight is None:
-            self._weight = self.calculate_lognorm_inc()
+            self._weight = self.calculate_lognorm(incremental=True)
         return self._weight
 
     @weight.setter
@@ -1486,43 +1485,74 @@ class System2DBase(ABC):
             incdet_vec, wi_gamma_in_vec, gamma_in_sys_vec, mat_d_vec, ind_mat, updates, all_factors
         )
 
+    def calculate_lognorm(self, incremental: bool, all_factors: bool = False) -> float:
+        """Compute the logarithm of the norm.
+
+        Args:
+            incremental (bool): Whether to use the incremental trackers.
+            all_factors (bool, optional): Include all pre-factors in the computation. Defaults to False.
+
+        Returns:
+            float: Logarithm of the norm
+        """
+        lognormvec = self.calculate_lognormvec(incremental=incremental, all_factors=all_factors)
+        return xnp.sum(lognormvec)
+
+    def calculate_lognormvec(self, incremental: bool, all_factors: bool = False) -> xnp.ndarray:
+        """Compute the logarithm of the norm for each layer.
+
+        Args:
+            incremental (bool): Whether to use the incremental trackers.
+            all_factors (bool, optional): Include all constant prefactors. Defaults to False.
+
+        Returns:
+            float: Logarithm of the norm
+        """
+        if incremental:
+            res = self._calculate_lognormvec_inc(
+                self.incdet_vec,
+                self.det_mat_d_vec,
+                self.gamma_in_sys_vec[0].shape[0],
+                all_factors=all_factors,
+            )
+        else:
+            res = self._calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
+        return res
+
     @staticmethod
     @maybe_jit(static_argnames=["all_factors"])
-    def _calculate_lognorm(gamma_in_sys_vec: xnp.ndarray, mat_d_vec: xnp.ndarray, all_factors: bool = False) -> float:
+    def _calculate_lognormvec(
+        gamma_in_sys_vec: xnp.ndarray,
+        mat_d_vec: xnp.ndarray,
+        all_factors: bool = False,
+    ) -> xnp.ndarray:
+        """Calculate the lognormvec from scratch (not incrementally)."""
+
         # This is still the plain formula, without any update mechanism
-        normvec = backend.calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
-        return xnp.sum(normvec)
+        nlayer = mat_d_vec.shape[0]
+        n = mat_d_vec[0].shape[0]
 
-    def calculate_lognorm(self, all_factors: bool = False) -> float:
-        """Compute the logarithm of the norm
+        prod_vec = gamma_in_sys_vec @ mat_d_vec
+        eye_vec = xnp.broadcast_to(xnp.eye(n), (nlayer, n, n))
 
-        Args:
-            all_factors (bool, optional): Include all constant prefactors. Defaults to False.
+        sign_vec, logval_vec = xnp.linalg.slogdet((eye_vec - prod_vec))
+        if all_factors:
+            logval_vec -= n * xnp.log(2)
+        else:
+            # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
+            pass
 
-        Returns:
-            float: Logarithm of the norm
-        """
-        return self._calculate_lognorm(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
-
-    def calculate_lognormvec(self, all_factors: bool = False) -> xnp.ndarray:
-        """Compute the logarithm of the norm for each layer
-
-        Args:
-            all_factors (bool, optional): Include all constant prefactors. Defaults to False.
-
-        Returns:
-            float: Logarithm of the norm
-        """
-        return backend.calculate_lognormvec(self.gamma_in_sys_vec, self.mat_d_vec, all_factors=all_factors)
-
-    @classmethod
-    def _calculate_lognorm_inc(cls, incdet_vec, det_mat_d_vec, n: int, all_factors: bool = False):
-        lognormvec = cls._calculate_lognormvec_inc(incdet_vec, det_mat_d_vec, n, all_factors=all_factors)
-        return xnp.sum(lognormvec)
+        # The factor 1/2 is the square-root
+        return logval_vec / 2
 
     @staticmethod
     @maybe_jit(static_argnames=["n", "all_factors"])
-    def _calculate_lognormvec_inc(det_vec, det_mat_d_vec, n: int, all_factors: bool = False) -> xnp.ndarray:
+    def _calculate_lognormvec_inc(
+        det_vec: xnp.ndarray, det_mat_d_vec: xnp.ndarray, n: int, all_factors: bool = False
+    ) -> xnp.ndarray:
+        """Calculate the lognormvec incrementally, i.e. by incrementally updating the previous value
+        (using IncDet and Woodbury)."""
+
         dest = []
         for ind in range(len(det_vec)):
             detval = det_vec[ind]
@@ -1533,36 +1563,6 @@ class System2DBase(ABC):
             # The addition of the cumval is the multiplication of the indpendent PEPS
             dest.append(0.5 * detval)
         return xnp.array(dest)
-
-    def calculate_lognormvec_inc(self, all_factors: bool = False) -> xnp.ndarray:
-        """Compute the logarithm of the norm for all layers by incrementally updating the previous value
-        (using IncDet and Woodbury)
-
-        Args:
-            all_factors (bool, optional): Include all pre-factors in the computation. Defaults to False.
-
-        Returns:
-            xnp.ndarray: Vector of the incrementally updated norms for all layers
-        """
-        res = self._calculate_lognormvec_inc(
-            self.incdet_vec,
-            self.det_mat_d_vec,
-            self.gamma_in_sys_vec[0].shape[0],
-            all_factors=all_factors,
-        )
-        return res
-
-    def calculate_lognorm_inc(self, all_factors: bool = False) -> float:
-        """Update the logarithm of the norm incrementally (using IncDet and Woodbury)
-
-        Args:
-            all_factors (bool, optional): Include all pre-factors in the computation. Defaults to False.
-
-        Returns:
-            float: Logarithm of the norm (computed from IncDet and Woodbury)
-        """
-        normvec = self.calculate_lognormvec_inc(all_factors=all_factors)
-        return xnp.sum(normvec)
 
     @staticmethod
     @maybe_jit(static_argnames=["all_factors"])
@@ -2569,7 +2569,7 @@ class System2DBase(ABC):
                 self._el_energy_op_vec = self._compute_el_energy_op_vec_overlap()
             else:
                 self._el_energy_op_vec = self._compute_el_energy_op_vec(
-                    self.lognorm_default_vec,
+                    self.lognormvec_default,
                     self.cfg.mod_link_inds,
                     self.cfg.nlayer,
                     self.el_pfaffians,
@@ -2734,7 +2734,7 @@ class System2DBase(ABC):
                 self.covmat_out_mod_vec,
                 self.el_pfaffians,
                 self.norm_mod_vec,
-                self.lognorm_default_vec,
+                self.lognormvec_default,
                 self.wi_gamma_out_mod_vec,
                 d_mat_a_vec_vec,
                 d_mat_b_vec_vec,

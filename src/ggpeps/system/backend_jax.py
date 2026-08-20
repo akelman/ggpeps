@@ -1,6 +1,5 @@
 ############## JAX VERSIONS ##############
 from typing import Optional
-from functools import partial
 
 import jax
 import jax.numpy as jnp
@@ -33,34 +32,6 @@ def derivative_pfaffian_jax(mat: jnp.ndarray, d_mat: jnp.ndarray, pfaval: Option
         pfaval = py_pfaffian.jax.pfaffian(mat)
 
     return 0.5 * pfaval * jnp.trace(jnp.linalg.inv(mat) @ d_mat)
-
-
-@jit
-def calculate_lognormvec_jit(gamma_in_sys: jnp.ndarray, mat_d: jnp.ndarray) -> float:
-    # This is still the plain formula, without any update mechanism
-    # We are skipping a global factor of 2**(-n) here, to get a reasonable size of the norm
-    sign, logval = jnp.linalg.slogdet((jnp.eye(mat_d.shape[0]) - gamma_in_sys @ mat_d))
-    return logval
-
-
-batch_calculate_lognormvec = jax.vmap(calculate_lognormvec_jit)
-
-
-@partial(jax.jit, static_argnames=["all_factors"])
-def calculate_lognormvec_jax(
-    gamma_in_sys_vec: jnp.ndarray,
-    mat_d_vec: jnp.ndarray,
-    all_factors: bool = False,
-) -> jnp.ndarray:
-
-    dest = batch_calculate_lognormvec(jnp.array(gamma_in_sys_vec), mat_d_vec)
-
-    if all_factors:
-        # add back in global factor of 2**(-n)
-        dest = dest - mat_d_vec[0].shape[0] * jnp.log(2)
-
-    # The factor 1/2 is the square-root
-    return dest / 2
 
 
 @jax.jit
@@ -114,7 +85,3 @@ class BackendJax(BackendBase):
     @staticmethod
     def pfaffian_vectorized(mat):
         return pfaffian_batched(mat)
-
-    @staticmethod
-    def calculate_lognormvec(gamma_in_sys_vec, mat_d_vec, all_factors=False):
-        return calculate_lognormvec_jax(gamma_in_sys_vec, mat_d_vec, all_factors=all_factors)
