@@ -22,6 +22,12 @@ from ggpeps.system import overlap as ov
 
 logger = logging.getLogger(ggpeps.LOGGER_NAME)
 
+# Magnitude guard: recompute immediately if the largest entry of a tracked inverse exceeds this
+# threshold. A large inverse <=> a near-singular tracked matrix, where the incremental Woodbury
+# update loses precision; the from-scratch recompute is backward-stable and matches even
+# where the inverse is genuinely large.
+TRACKER_INV_MAG_THRESH: float = 1e2
+
 
 def maybe_jit(*jit_args, **jit_kwargs):
     """Apply jax.jit iff using the jax backend."""
@@ -163,9 +169,7 @@ class System2DBase(ABC):
         # scratch (a) periodically every ``tracker_refresh_interval`` gauge steps and (b) whenever
         # the last incremental step left a near-singular tracked inverse (its largest entry exceeds
         # TRACKER_INV_MAG_THRESH).
-        self._steps_since_refresh: int = 0
-        self._last_step_max_inv_mag: float = 0.0
-        self.tracker_refresh_interval: int = getattr(self.cfg, "tracker_refresh_interval", 0)
+        self.steps_since_refresh: int = 0
 
         # When True (set by the evaluator around the warmup loop), _update_gauge_ind skips maintaining the
         # open-link ("mod") family (gamma_in_sys_mod + wi_gamma_*_mod + incdet_mod), which is consumed only
@@ -173,12 +177,6 @@ class System2DBase(ABC):
         self.defer_mod_trackers: bool = False
 
         return
-
-    # Magnitude guard: recompute immediately if the largest entry of a tracked inverse exceeds this
-    # threshold. A large inverse <=> a near-singular tracked matrix, where the incremental Woodbury
-    # update loses precision; the from-scratch recompute is backward-stable and matches even
-    # where the inverse is genuinely large.
-    TRACKER_INV_MAG_THRESH: float = 1e2
 
     def invalidate_gauge_update(self) -> None:
         """Reset the values of computed quantitities to avoid spillover from previous computations.
@@ -892,7 +890,7 @@ class System2DBase(ABC):
         # Build both tracker families from scratch and reset the drift-control counter
         closed_trackers = self._compute_closed_trackers()
         mod_trackers = self._compute_mod_trackers()
-        self._steps_since_refresh = 0
+        self.steps_since_refresh = 0
 
         return (gamma_in_sys_vec, closed_trackers, mod_trackers)
 
@@ -1050,7 +1048,7 @@ class System2DBase(ABC):
 
     # ---------------- Incremental tracker update + drift control ----------------
 
-    def refresh_trackers(self) -> None:
+    def refresh_trackers(self, defer_mod_trackers: bool) -> None:
         """Recompute BOTH the closed and modified incremental trackers from scratch.
 
         The closed (`wi_gamma_in/out_vec`, `incdet_vec`) and modified (`wi_gamma_*_mod_vec`,
@@ -1067,13 +1065,13 @@ class System2DBase(ABC):
         self.weight = 0.5 * np.sum(self._incdet_vec)
         # During warmup the mod family is deferred (see defer_mod_trackers). Don't recompute it here
         # either - it is rebuilt once when warmup ends (recompute_mod_trackers).
-        if not self.defer_mod_trackers:
+        if not defer_mod_trackers:
             (
                 self._wi_gamma_in_mod_vec,
                 self._wi_gamma_out_mod_vec,
                 self._incdet_mod_vec,
             ) = self._compute_mod_trackers()
-        self._steps_since_refresh = 0
+        self.steps_since_refresh = 0
 
     def recompute_mod_trackers(self) -> None:
         """Recompute the open-link ("mod") family from scratch from the CURRENT gamma_in_sys.
@@ -1770,8 +1768,6 @@ class System2DBase(ABC):
         weight = 0.5 * xnp.sum(incdet_vec)
         wi_gamma_in_vec = utils.WoodburyInverter.update_index(wi_gamma_in_vec, update_arr, ind_mat, ind_mat)
         wi_gamma_out_vec = utils.WoodburyInverter.update_index(wi_gamma_out_vec, -update_arr, ind_mat, ind_mat)
-        # Largest entry of any updated inverse, for the refresh magnitude guard.
-        inv_mags = [xnp.max(xnp.abs(wi_gamma_in_vec)), xnp.max(xnp.abs(wi_gamma_out_vec))]
 
         # --- Incrementally update the modified (open-link) family - gamma_in_sys_mod and its
         # trackers -- batched over layers. The local update is shifted by the carved-out link when
@@ -1810,10 +1806,7 @@ class System2DBase(ABC):
                 wi_gamma_in_mod_vec = backend.array_assign(wi_gamma_in_mod_vec, (slice(None), ind), new_in)
                 new_out = utils.WoodburyInverter.update_index(wi_gamma_out_mod_vec[:, ind], -update, pos, pos)
                 wi_gamma_out_mod_vec = backend.array_assign(wi_gamma_out_mod_vec, (slice(None), ind), new_out)
-                inv_mags.append(xnp.max(xnp.abs(new_in)))
-                inv_mags.append(xnp.max(xnp.abs(new_out)))
 
-        max_inv_mag = xnp.max(xnp.asarray(inv_mags))
         return (
             gamma_in_sys_vec,
             wi_gamma_in_vec,
@@ -1824,10 +1817,9 @@ class System2DBase(ABC):
             wi_gamma_in_mod_vec,
             wi_gamma_out_mod_vec,
             incdet_mod_vec,
-            max_inv_mag,
         )
 
-    def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray) -> None:
+    def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray, tracker_interval: int = -1) -> None:
         """Update a gauge field at a given link index by a new value.
         This function can be called from outside the system, and so accepts a gauge field value as np.ndarray.
         We convert here to xnp.ndarray. The heavy per-step work runs in the jitted classmethod
@@ -1837,6 +1829,7 @@ class System2DBase(ABC):
         Args:
             link_ind (int): Link index of the gauge field to be updated
             gauge_val (np.ndarray): New value for the gauge field
+            tracker_interval (int): Policy for resetting trackers
 
         Returns:
             None
@@ -1852,6 +1845,7 @@ class System2DBase(ABC):
             rotmat = self.generate_rotmat(self.cfg.ncopy, theta, coord, dir)
 
             defer_mod = self.defer_mod_trackers
+
             res = self._update_gauge_ind(
                 self.gamma_in_sys_vec,
                 self.gamma_gauge_neutral_vec,
@@ -1880,50 +1874,74 @@ class System2DBase(ABC):
                     self._wi_gamma_out_mod_vec,
                     self._incdet_mod_vec,
                 ) = res[5:9]
-            # float() = sync point: pull the tracker max from GPU for the refresh guard
-            self._last_step_max_inv_mag = float(res[9])
 
             # Invalidate gauge dependent quantities
             self.invalidate_gauge_update()
 
-            self._maybe_refresh_trackers()
+            self.check_and_refresh_trackers(tracker_interval)
 
-    def _maybe_refresh_trackers(self) -> None:
-        """Recompute both tracker families from scratch to bound the incremental Woodbury/IncDet
-        drift. Three modes via tracker_refresh_interval (set per run from EvaluatorManager /
-        --tracker_refresh_interval):
-          > 0 : periodic every `interval` steps AND the magnitude guard (default; 1 == every step)
-          == 0: magnitude guard only, no periodic recomputation ("no_periodic")
-          <  0: no refresh at all -- pure incremental, even if a tracked inverse blows up
+    def check_and_refresh_trackers(self, interval: int) -> None:
+        """Check the health of the tracked quantities, and if necessary, recompute both tracker families
+        from scratch to bound the incremental Woodbury/IncDet drift.
+
+        Three modes depending on `interval`:
+            > 0 : periodic every `interval` steps AND the magnitude guard (default; 1 == every step)
+            == 0: magnitude guard only, no periodic recomputation ("no_periodic")
+            <  0: no refresh at all -- pure incremental, even if a tracked inverse blows up
         """
-        interval = self.tracker_refresh_interval
-        if interval >= 0:
-            periodic_due = False
-            if interval > 0:
-                self._steps_since_refresh += 1
-                periodic_due = self._steps_since_refresh >= interval
-            if periodic_due or self._last_step_max_inv_mag > self.TRACKER_INV_MAG_THRESH:
-                self.refresh_trackers()
 
-    def update_gauge_full_system(self, gaugeconfig: list[np.ndarray]) -> None:
+        periodic_due = False
+        unhealthy_trackers = False
+        if interval > 0:
+            self.steps_since_refresh += 1
+            periodic_due = self.steps_since_refresh >= interval
+        if interval >= 0 and not periodic_due:  # only check health (which is expensive) if periodic is False
+
+            assert self._wi_gamma_in_vec is not None  # for mypy
+            assert self._wi_gamma_out_vec is not None
+
+            # Check tracker health
+            max1 = xnp.max(xnp.abs(self._wi_gamma_in_vec))
+            max2 = xnp.max(xnp.abs(self._wi_gamma_out_vec))
+            maxes = [max1, max2]
+            if self._wi_gamma_in_mod_vec is not None:  # trackers are in use
+                assert self._wi_gamma_in_mod_vec is not None
+                assert self._wi_gamma_out_mod_vec is not None
+
+                max3 = xnp.max(xnp.abs(self._wi_gamma_in_mod_vec))
+                max4 = xnp.max(xnp.abs(self._wi_gamma_out_mod_vec))
+                maxes.extend([max3, max4])
+            last_step_max_inv_mag = float(max(maxes))
+
+            if last_step_max_inv_mag > TRACKER_INV_MAG_THRESH:
+                unhealthy_trackers = True
+
+        if periodic_due or unhealthy_trackers:
+            self.refresh_trackers(self.defer_mod_trackers)
+
+    def update_gauge_full_system(self, gaugeconfig: list[np.ndarray], tracker_interval: int = -1) -> None:
         """Replace all gauge fields on the links by the values given in gaugeconfig.
 
         Args:
             gaugeconfig (list[np.ndarray]): Array of new values for the gauge field
+            tracker_interval (int): Policy for resetting trackers
         """
         for link_ind, gauge_val in enumerate(gaugeconfig):
-            self.update_gauge_ind(link_ind, gauge_val)
+            self.update_gauge_ind(link_ind, gauge_val, tracker_interval=tracker_interval)
 
-    def update_gauge_coord(self, coord: tuple[int, int], dir: Direction, gauge_val: np.ndarray) -> None:
-        """Update a gauge field at a given coordinate and direction by a new value
+    def update_gauge_coord(
+        self, coord: tuple[int, int], dir: Direction, gauge_val: np.ndarray, tracker_interval: int = -1
+    ) -> None:
+        """Update a gauge field at a given coordinate and direction with a new value.
 
         Args:
             coord (tuple): Coordinate of the vertex
             dir (Direction): Direction of the link
-            theta (np.array): New value for the gauge field
+            gauge_val (np.array): New value for the gauge field
+            tracker_interval (int): Policy for resetting trackers
         """
         ind = self.cfg.lattice.coord2ind_dir(coord, dir)
-        self.update_gauge_ind(ind, gauge_val)
+        self.update_gauge_ind(ind, gauge_val, tracker_interval=tracker_interval)
 
     @staticmethod
     def calculate_update_gamma_in(offset: int, update_mat: xnp.ndarray, gamma_in_sys: xnp.ndarray) -> xnp.ndarray:

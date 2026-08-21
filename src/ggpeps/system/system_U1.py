@@ -206,7 +206,7 @@ class U1System2D(System2DBase):
             self.incdet_vec, self.wi_gamma_in_vec, self.gamma_in_sys_vec, self.mat_d_vec, ind_mat, updates, all_factors
         )
 
-    def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray) -> None:
+    def update_gauge_ind(self, link_ind: int, gauge_val: np.ndarray, tracker_interval: int = -1) -> None:
         # Overrides the base entirely: gamma_in_sys is shared by all layers here, so a single
         # update serves every tracker. Stateful and unjitted; the base's pure _update_gauge_ind
         # kernel is not used.
@@ -276,7 +276,10 @@ class U1System2D(System2DBase):
 
         # Invalidate gauge dependent quantities
         self.invalidate_gauge_update()
-        self._maybe_refresh_trackers()
+
+        if tracker_interval != -1:
+            logger.warning("U1 system does not support tracker reset policies.")
+        # self._maybe_refresh_trackers()
 
     ################## Observables ######################
     def _compute_mass_energy_op_vec(self, use_trans_inv=True):

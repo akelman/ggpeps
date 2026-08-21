@@ -39,6 +39,7 @@ class MonteCarloEvaluatorConfig:
         warmup_log_freq: int = 5000,
         run_log_freq: int = 20000,
         observables_mode: str = "all",
+        tracker_refresh_interval: int = -1,
     ) -> None:
 
         self.warmup_steps = warmup_steps
@@ -51,6 +52,10 @@ class MonteCarloEvaluatorConfig:
         if observables_mode not in ("all", "energy"):
             raise ValueError(f"observables_mode must be 'all' or 'energy', got {observables_mode!r}")
         self.observables_mode = observables_mode
+
+        # Single control point for the incremental-tracker refresh cadence.
+        # See update_gauge_ind() for the mode semantics.
+        self.tracker_refresh_interval = tracker_refresh_interval
 
         # Logging frequency
         self.warmup_log_freq: int = warmup_log_freq
@@ -419,7 +424,7 @@ class MonteCarloEvaluator(Evaluator):
             if np.exp(weight_new - weight_old) > self.cfg.rng_state.rand():
                 # Accept
                 self.obsdict["acceptance_prob"].append(1)
-                self.system.update_gauge_ind(link_ind, theta)
+                self.system.update_gauge_ind(link_ind, theta, tracker_interval=self.cfg.tracker_refresh_interval)
             else:
                 # Reject
                 self.obsdict["acceptance_prob"].append(0)

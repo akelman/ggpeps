@@ -157,24 +157,6 @@ def validate_inputs(args) -> bool:
     return True
 
 
-def default_tracker_refresh_interval(system_cfg) -> int:
-    """Per-ansatz default for the periodic tracker recompute cadence (the magnitude guard is always
-    on regardless). D6 uses 256 -- a cheap long-run heartbeat for the near-singular-prone non-Abelian
-    ansatz. All other ansaetze (incl. the well-conditioned Z2) default to 0 (guard-only): their
-    trackers drift only at machine precision over thousands of normal MC steps, so the guard alone
-    suffices.
-
-    Args:
-        system_cfg: The system configuration object.
-
-    Returns:
-        int: 256 for the D6 ansatz, 0 otherwise.
-    """
-    if isinstance(system_cfg, D6System2D_Config):
-        return 256
-    return 0
-
-
 def main(args):
     raw_command = " ".join(sys.argv)
     ind = raw_command.index("manager.py")
@@ -308,11 +290,14 @@ def main(args):
             warmup_log_freq=args.warmup_log_freq,
             run_log_freq=args.run_log_freq,
             observables_mode=observables_mode,
+            tracker_refresh_interval=args.tracker_refresh_interval,
         )
         mc_config.seed = seed
     else:
         # Set up EC config
-        ec_config = ExactEvaluatorConfig()
+        ec_config = ExactEvaluatorConfig(
+            tracker_refresh_interval=args.tracker_refresh_interval,
+        )
 
     # Log basic info
     logger.info(f"Git hash: {utils.get_git_hash()}")
@@ -426,14 +411,6 @@ def main(args):
             logger.error("The 'overlap' electric-energy method supports pure gauge only (num_fermionic_layer=0).")
             sys.exit(1)
 
-    # Resolve the incremental-tracker refresh cadence. The default is per-ansatz (see
-    # default_tracker_refresh_interval); a user-supplied --tracker_refresh_interval overrides it.
-    tracker_interval = (
-        args.tracker_refresh_interval
-        if args.tracker_refresh_interval is not None
-        else default_tracker_refresh_interval(system_cfg)
-    )
-
     # Switch to control the binning analysis on EOM (Error of mean)
     if args.no_bin_eom:
         Measurement.use_rebinning = False
@@ -509,6 +486,7 @@ def main(args):
         logger.info(f"Warmup steps: {mc_config.warmup_steps}")
         logger.info(f"Measurement steps: {mc_config.meas_steps}")
         logger.info(f"Bin size: {mc_config.binsize}")
+        logger.info(f"Tracker update policy: {mc_config.tracker_refresh_interval}")
         logger.info(f"Update size: {mc_config.update_size_per_step} (out of {2 * L ** 2} total links)")
         logger.info(f"Observables (other than gradients): {mc_config.observables_mode}")
         logger.info(f"Gradients: {compute_grads}")
@@ -575,7 +553,6 @@ def main(args):
                 system_cfg,
                 mc_config,
                 args.nrunner,
-                tracker_refresh_interval=tracker_interval,
             )
         ggpeps.global_vars["eval_manager"] = mc_mgr  # save for global access
 
@@ -602,9 +579,7 @@ def main(args):
         min_cfg.save_each_eval = args.save_each_eval and args.save_cache_dest is not None
         mc_config.compute_grads = compute_grads
 
-        mc_mgr = EvaluatorManager(
-            system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=tracker_interval
-        )
+        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
 
         minimizer = Minimizer(min_cfg, mc_mgr)
         ggpeps.global_vars["minimizer"] = minimizer  # save for global access
@@ -631,7 +606,10 @@ def main(args):
             mc_config.compute_grads = False
             mc_config.observables_mode = "all"
             mc_mgr = EvaluatorManager(
-                system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=tracker_interval
+                system_type,
+                system_cfg,
+                mc_config,
+                args.nrunner,
             )
 
             start = timer()
@@ -648,9 +626,7 @@ def main(args):
         # Evaluate observables for a given set of parameters with exact contraction
 
         ec_config.compute_grads = compute_grads
-        ex_eval = EvaluatorManager(
-            system_type, system_cfg, ec_config, args.nrunner, tracker_refresh_interval=tracker_interval
-        )
+        ex_eval = EvaluatorManager(system_type, system_cfg, ec_config, args.nrunner)
         ggpeps.global_vars["eval_manager"] = ex_eval
 
         start = timer()
@@ -671,9 +647,7 @@ def main(args):
         min_cfg.save_each_eval = args.save_each_eval and args.save_cache_dest is not None
         ec_config.compute_grads = compute_grads
 
-        ex_mgr = EvaluatorManager(
-            system_type, system_cfg, ec_config, args.nrunner, tracker_refresh_interval=tracker_interval
-        )
+        ex_mgr = EvaluatorManager(system_type, system_cfg, ec_config, args.nrunner)
 
         minimizer = Minimizer(min_cfg, ex_mgr)
         ggpeps.global_vars["minimizer"] = minimizer
@@ -687,9 +661,7 @@ def main(args):
         # Find the minimal energy (the optimal parameter vector) while evaluating the state with NEVMC
 
         mc_config.compute_grads = True
-        mc_mgr = EvaluatorManager(
-            system_type, system_cfg, mc_config, args.nrunner, tracker_refresh_interval=tracker_interval
-        )
+        mc_mgr = EvaluatorManager(system_type, system_cfg, mc_config, args.nrunner)
 
         # Set the parameters of the minimizer according to the command line
         min_cfg = MinimizerConfig()
@@ -927,6 +899,15 @@ if __name__ == "__main__":
         help="Electric-energy backend: 'pfaffian' (default) or 'overlap' (independent Bravyi-Gosset "
         "Gaussian three-state overlap; pure-gauge, exact-eval, energies only).",
     )
+    parser.add_argument(
+        "--tracker_refresh_interval",
+        type=int,
+        default=-1,
+        help="Control the from-scratch recomputing of the incremental Woodbury/IncDet trackers. "
+        ">0: recompute every N gauge steps AND on the magnitude guard (1 = always from scratch); "
+        "0: magnitude guard only, no periodic recompute; "
+        "<0: no refresh at all (pure incremental).",
+    )
 
     # Monte Carlo settings
     parser.add_argument(
@@ -1024,14 +1005,6 @@ if __name__ == "__main__":
 
     # Arguments for ray
     parser.add_argument("--nrunner", type=int, default=0, help="Number of parallel MC runners")
-    parser.add_argument(
-        "--tracker_refresh_interval",
-        type=int,
-        default=None,
-        help="Control the from-scratch recomputing of the incremental Woodbury/IncDet trackers. "
-        ">0: recompute every N gauge steps AND on the magnitude guard (1 = always from scratch); "
-        "0: magnitude guard only, no periodic recompute; <0: no refresh at all (pure incremental).",
-    )
 
     # Profiling
     parser.add_argument("--profile_jax", action="store_true", default=False, help="Profile the JAX execution")
