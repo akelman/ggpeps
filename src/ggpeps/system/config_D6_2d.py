@@ -383,7 +383,7 @@ class D6System2D_Config(Config2DBase):
 
     def generate_gamma_gauge_neutral_dict(self):
         r"""Generate the covariance matrix of the ungauged projectors.
-        The mode order is
+        The mode order (ncopy=2 example) is
         {l1_1_1,l1_2_1,r1_1_1,r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2,l1_2_2,r1_1_2,r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}
         /{d1_1_1,d1_2_1,u1_1_1,u1_2_1,d2_1_1,d2_2_1,u2_1_1,u2_2_1,d1_1_2,d1_2_2,u1_1_2,u1_2_2,d2_1_2,d2_2_2,u2_1_2,u2_2_2}.
         The naming convention here is <mode letter><number of copy>_<majorana mode>_<color>.
@@ -402,35 +402,19 @@ class D6System2D_Config(Config2DBase):
             list[xnp.ndarray]: Covariance matrices of the ungauged projector on a single link
         """
 
-        # 2 if for 2D lattice
+        # 2 is for 2D lattice
         dest_unmixed = [0] * 2  # does not mix copies
-        blockumixed_X = np.array(  # Block for a single color
-            [
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
-            ]
-        )
-        dest_unmixed[Direction.X] = block_diag(blockumixed_X, blockumixed_X)
-        # Creating the matrix in the mode order of
-        # {l1_1_1,l1_2_1,r1_1_1,r1_2_1,l2_1_1,l2_2_1,r2_1_1,r2_2_1,l1_1_2,l1_2_2,r1_1_2,r1_2_2,l2_1_2,l2_2_2,r2_1_2,r2_2_2}
-        blockumixed_Y = np.array(
-            [
-                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, -1.0, 0.0, -0.0, 0.0, 0.0],
-                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, -1.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-            ]
-        )
-        dest_unmixed[Direction.Y] = block_diag(blockumixed_Y, blockumixed_Y)
+
+        # Single-copy 4x4 blocks in the mode order {l_1, l_2, r_1, r_2} / {d_1, d_2, u_1, u_2}.
+        gamma_x_base = np.real_if_close(1.0j * np.kron(utils.pauliy, utils.paulix))
+        gamma_y_base = np.real_if_close(1.0j * np.kron(utils.pauliy, utils.pauliz))
+
+        # Identity in copy space (no copy mixing); a fermionic-specific projector would use
+        # a different copy-space matrix here.
+        unmixed_copy = make_sigma_matrix(self.ncopy, mix_copies=False)
+        block_x = np.real_if_close(np.kron(unmixed_copy, gamma_x_base))  # single-color block
+        block_y = np.real_if_close(np.kron(unmixed_copy, gamma_y_base))
+        dest_unmixed[Direction.X] = block_diag(*[block_x] * self.ncolors)
+        dest_unmixed[Direction.Y] = block_diag(*[block_y] * self.ncolors)
 
         return np.array([dest_unmixed] * self.num_pg_layer + [dest_unmixed] * self.num_fermionic_layer)
