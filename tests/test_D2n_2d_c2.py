@@ -741,6 +741,210 @@ class TestD6TmatColorStructure(unittest.TestCase):
                     self.assertFalse(np.allclose(psi1_to_color1, 0))
 
 
+class TestD6GeneralNcopy(unittest.TestCase):
+    """Pin the general-ncopy D6 config to the original hand-typed ncopy=2 artifacts,
+    and exercise ncopy=1 (vs the Z2 2-color 1-copy config) and ncopy=3 (odd)."""
+
+    @staticmethod
+    def _make_cfg(ncopy=2, num_pg_layer=2, num_fermionic_layer=0):
+        lat = lattice.Lattice2D(2, 2)
+        return system.D6System2D_Config(
+            lat,
+            1,
+            1,
+            0,
+            0,
+            None,
+            ncopy=ncopy,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
+        )
+
+    @staticmethod
+    def _subs_numeric(tmat_symb, symbolvec, values):
+        """Substitute real values for the symbols and return a complex numpy array."""
+        subs = dict(zip(symbolvec, values))
+        return np.array(sp.Matrix(tmat_symb).subs(subs)).astype(complex)
+
+    @staticmethod
+    def _reference_tmat_ncopy2(symbolvec):
+        """The original hand-typed ncopy=2 T-matrix, built from the config's own symbols by position."""
+        t1, y1, z1, t2, y2, z2, a, b, c, d = [symbolvec[i] + 1.0j * symbolvec[i + 10] for i in range(10)]
+        block = sp.Matrix(
+            [
+                [0, -1.0j * t1, 1.0j * t1, t1, -t1, -1.0j * t2, 1.0j * t2, t2, -t2],
+                [1.0j * t1, 0, 1.0j * y1, z1, 1.0j * z1, -1.0j * a, -1.0j * c, -1.0j * b, -1.0j * d],
+                [-1.0j * t1, -1.0j * y1, 0, -1.0j * z1, -z1, 1.0j * c, 1.0j * a, 1.0j * d, 1.0j * b],
+                [-t1, -z1, 1.0j * z1, 0, -y1, d, b, a, c],
+                [t1, -1.0j * z1, z1, y1, 0, -b, -d, -c, -a],
+                [1.0j * t2, 1.0j * a, -1.0j * c, -d, b, 0, 1.0j * y2, z2, 1.0j * z2],
+                [-1.0j * t2, 1.0j * c, -1.0j * a, -b, d, -1.0j * y2, 0, -1.0j * z2, -z2],
+                [-t2, 1.0j * b, -1.0j * d, -a, c, -z2, 1.0j * z2, 0, -y2],
+                [t2, 1.0j * d, -1.0j * b, -c, a, -1.0j * z2, z2, y2, 0],
+            ]
+        )
+        tmat = sp.Matrix(sp.BlockDiagMatrix(block, block))
+        wrong_order = ["Psi1"] + [f"{d_}_{c_}" for c_ in (1, 2) for d_ in "lrdu"]
+        wrong_order += ["Psi2"] + [f"{d_}_{c_}" for c_ in (3, 4) for d_ in "lrdu"]
+        correct_order = ["Psi1", "Psi2"] + [f"{d_}_{c_}" for c_ in (1, 2, 3, 4) for d_ in "lrdu"]
+        perm = np.array(generate_permutation_matrix(wrong_order, correct_order))
+        return np.transpose(perm) @ tmat @ perm
+
+    # The original hand-typed single-color 8x8 link-covariance blocks (ncopy=2).
+    _BLOCKUMIXED_X = np.array(
+        [
+            [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+        ]
+    )
+    _BLOCKUMIXED_Y = np.array(
+        [
+            [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0],
+            [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0],
+            [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+        ]
+    )
+
+    def test_symbol_names_ncopy2(self):
+        cfg = self._make_cfg()
+        names = [str(s) for s in cfg.symbolvec]
+        base = ["t1", "y1", "z1", "t2", "y2", "z2", "a12", "b12", "c12", "d12"]
+        self.assertEqual(names, [n + "r" for n in base] + [n + "i" for n in base])
+
+    def test_tmat_matches_handtyped_ncopy2(self):
+        cfg = self._make_cfg()
+        ref = self._reference_tmat_ncopy2(cfg.symbolvec)
+        vals = np.random.default_rng(0).standard_normal(20)
+        got_num = self._subs_numeric(cfg.tmat_symb, cfg.symbolvec, vals)
+        ref_num = self._subs_numeric(ref, cfg.symbolvec, vals)
+        self.assertTrue(np.allclose(got_num, ref_num))
+
+    def test_gamma_gauge_neutral_matches_handtyped_ncopy2(self):
+        cfg = self._make_cfg(num_pg_layer=2, num_fermionic_layer=1)
+        expected = {
+            lattice.Direction.X: block_diag(self._BLOCKUMIXED_X, self._BLOCKUMIXED_X),
+            lattice.Direction.Y: block_diag(self._BLOCKUMIXED_Y, self._BLOCKUMIXED_Y),
+        }
+        dest = cfg.generate_gamma_gauge_neutral_dict()
+        self.assertEqual(len(dest), cfg.nlayer)
+        for lay in range(cfg.nlayer):
+            for dir_ in (lattice.Direction.X, lattice.Direction.Y):
+                with self.subTest(layer=lay, direction=dir_):
+                    np.testing.assert_allclose(np.asarray(dest[lay][dir_], dtype=float), expected[dir_])
+
+    def test_zeroed_params_ncopy2(self):
+        cfg = self._make_cfg(num_pg_layer=2, num_fermionic_layer=1)
+        expected = {(lay, 0, ind) for lay in range(2) for ind in (0, 3, 10, 13)}
+        expected |= {(2, 0, ind) for ind in (3, 13, 1, 2, 4, 5, 11, 12, 14, 15)}
+        self.assertEqual(set(cfg.get_zeroed_params()), expected)
+
+    def test_ncopy1_structure(self):
+        """ncopy=1: T-matrix and gamma blocks match the hand-derived single-copy structures."""
+        cfg = self._make_cfg(ncopy=1, num_pg_layer=1)
+        self.assertEqual(cfg._nparams, 6)
+        self.assertEqual([str(s) for s in cfg.symbolvec], ["t1r", "y1r", "z1r", "t1i", "y1i", "z1i"])
+
+        # Hand-derived single-copy 5x5 per-color block (mode order Psi, l, r, d, u).
+        t1, y1, z1 = [cfg.symbolvec[i] + 1.0j * cfg.symbolvec[i + 3] for i in range(3)]
+        block = sp.Matrix(
+            [
+                [0, -1.0j * t1, 1.0j * t1, t1, -t1],
+                [1.0j * t1, 0, 1.0j * y1, z1, 1.0j * z1],
+                [-1.0j * t1, -1.0j * y1, 0, -1.0j * z1, -z1],
+                [-t1, -z1, 1.0j * z1, 0, -y1],
+                [t1, -1.0j * z1, z1, y1, 0],
+            ]
+        )
+        ref = sp.Matrix(sp.BlockDiagMatrix(block, block))
+        wrong_order = ["Psi1", "l_1", "r_1", "d_1", "u_1", "Psi2", "l_2", "r_2", "d_2", "u_2"]
+        correct_order = ["Psi1", "Psi2", "l_1", "r_1", "d_1", "u_1", "l_2", "r_2", "d_2", "u_2"]
+        perm = np.array(generate_permutation_matrix(wrong_order, correct_order))
+        ref = np.transpose(perm) @ ref @ perm
+
+        vals = np.random.default_rng(1).standard_normal(6)
+        got_num = self._subs_numeric(cfg.tmat_symb, cfg.symbolvec, vals)
+        ref_num = self._subs_numeric(ref, cfg.symbolvec, vals)
+        self.assertTrue(np.allclose(got_num, ref_num))
+
+        # Hand-derived single-copy 4x4 link-covariance blocks, one per color.
+        base_x = np.array([[0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 0.0], [0.0, -1.0, 0.0, 0.0], [-1.0, 0.0, 0.0, 0.0]])
+        base_y = np.array([[0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, -1.0], [-1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]])
+        expected = {lattice.Direction.X: block_diag(base_x, base_x), lattice.Direction.Y: block_diag(base_y, base_y)}
+        dest = cfg.generate_gamma_gauge_neutral_dict()
+        for dir_ in (lattice.Direction.X, lattice.Direction.Y):
+            with self.subTest(direction=dir_):
+                np.testing.assert_allclose(np.asarray(dest[0][dir_], dtype=float), expected[dir_])
+
+        self.assertEqual(set(cfg.get_zeroed_params()), {(0, 0, 0), (0, 0, 3)})
+
+    def test_ncopy1_embeds_in_ncopy2(self):
+        """With copy-2 and cross-copy params set to zero, the copy-1 rows/cols of the
+        ncopy=2 T-matrix equal the ncopy=1 T-matrix."""
+        cfg1 = self._make_cfg(ncopy=1, num_pg_layer=1)
+        cfg2 = self._make_cfg(ncopy=2, num_pg_layer=1)
+        vals = np.random.default_rng(3).standard_normal(6)
+
+        tmat1 = self._subs_numeric(cfg1.tmat_symb, cfg1.symbolvec, vals)
+        vals2 = np.zeros(20)
+        vals2[[0, 1, 2]] = vals[:3]  # t1, y1, z1 real
+        vals2[[10, 11, 12]] = vals[3:]  # t1, y1, z1 imag
+        tmat2 = self._subs_numeric(cfg2.tmat_symb, cfg2.symbolvec, vals2)
+
+        copy1_modes = [0, 1, 2, 3, 4, 5, 10, 11, 12, 13]  # Psi1, Psi2, copy-1 modes of each color
+        self.assertTrue(np.allclose(tmat2[np.ix_(copy1_modes, copy1_modes)], tmat1))
+
+    def test_zeroed_params_ncopy1_fermionic(self):
+        cfg = self._make_cfg(ncopy=1, num_pg_layer=1, num_fermionic_layer=1)
+        expected = {(0, 0, 0), (0, 0, 3)}  # PG layer: t1 zeroed
+        expected |= {(1, 0, ind) for ind in (1, 2, 4, 5)}  # fermionic layer: y1, z1 zeroed, t1 kept
+        self.assertEqual(set(cfg.get_zeroed_params()), expected)
+
+    def test_ncopy3_smoke(self):
+        """Odd ncopy: the T-matrix has the right shape, antisymmetry, and rotation invariance.
+        Skips the electric-energy term precompute (minutes at ncopy=3) — the T-matrix and
+        zeroed-params paths do not depend on it."""
+
+        class _NoElTermsConfig(system.D6System2D_Config):
+            def init_el_energy_terms(self):
+                pass
+
+        lat = lattice.Lattice2D(2, 2)
+        cfg = _NoElTermsConfig(lat, 1, 1, 0, 0, None, ncopy=3, num_pg_layer=2)
+        self.assertEqual(cfg._nparams, 42)
+
+        vals = np.random.default_rng(2).standard_normal(42)
+        tmat = self._subs_numeric(cfg.tmat_symb, cfg.symbolvec, vals)
+        self.assertEqual(tmat.shape, (26, 26))
+
+        # Rotation matrix: per copy l->d, r->u, d->r, u->l; identity on the physical mode.
+        perm4 = np.array([[0, 0, 1, 0], [0, 0, 0, 1], [0, 1, 0, 0], [1, 0, 0, 0]])
+        eta = np.exp(1j * np.pi / 4)
+        r_block = eta * block_diag(np.eye(1), perm4, perm4, perm4)
+        R = block_diag(r_block, r_block)
+        block_size = 1 + 4 * 3
+        color_outer = (
+            [1, 1 + block_size]
+            + list(range(2, block_size + 1))
+            + list(range(block_size + 2, 2 * block_size + 1))
+        )
+        permutation_mat = np.array(generate_permutation_matrix(list(range(1, 2 * block_size + 1)), color_outer))
+        R = np.transpose(permutation_mat) @ R @ permutation_mat
+
+        self.assertTrue(np.allclose(R.T @ tmat @ R - tmat, 0))
+        self.assertTrue(np.allclose(tmat + tmat.T, 0))
+
+
 # class TestTransVariance(unittest.TestCase):
 #     """Test the ansatz when it is not translationally invariant.
 #     This class only tests the case when even/odd sublattices have different parameters,
