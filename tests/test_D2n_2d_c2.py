@@ -90,35 +90,6 @@ class TestD2nSystem(unittest.TestCase):
         self.assertTrue(np.allclose(covmat_layer1, expected_covmat))
         self.assertTrue(np.allclose(covmat_layer2, expected_covmat))
 
-    @skip("This test needs adjusments and expected to pass after implementing physical fermionic layers.")
-    def test_covmat_with_fermions(self):
-        """Ensure the covariance matrix is not the pure-gauge one when t != 0.
-        This test must be done with a gauge configuration that includes some flux.
-        Only the fermionic layer should have a covariance matrix different than the pure-gauge one.
-        """  # TODO: Fix after implementing physical fermionic layers.
-        identity = self.system_D6.cfg.gaugemgr.get_neutral_gauge_value()
-        other_gauge = self.system_D6.cfg.gaugemgr.get_representaion(0, 1)
-        config = np.array([identity] * 7 + [other_gauge] * 1)
-        self.system_D6.update_gauge_full_system(config)
-
-        covmat_layer1 = self.system_D6.ferm_covmat_vec[0]
-        covmat_layer2 = self.system_D6.ferm_covmat_vec[1]
-        expected_covmat = np.array(
-            [
-                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0],
-            ]
-        )
-        expected_covmat = block_diag(expected_covmat, expected_covmat)
-        self.assertTrue(np.allclose(covmat_layer1, expected_covmat))
-        self.assertFalse(np.allclose(covmat_layer2, expected_covmat))
-
     def test_valid_covmat(self):
         """Ensure the covariance matrix satisfies the conditions to be a covariance matrix.
         This test is done with a gauge configuration that includes some flux.
@@ -667,6 +638,88 @@ class TestD2nSystem(unittest.TestCase):
         res = ex_eval.evaluate()
         FM = res["FM_1x1"]
         self.assertAlmostEqual(FM, FM_ed, places=2)
+
+
+class TestD2nSystemFermions(unittest.TestCase):
+    """Tests for the D6 ansatz with a physical fermionic layer (1 PG + 1 fermionic)."""
+
+    def setUp(self):
+        lat = lattice.Lattice2D(2, 2)
+        num_pg_layer = 1
+        num_fermionic_layer = 1
+        nlayer = num_pg_layer + num_fermionic_layer
+        unitcell_size = 1
+        paramvec = np.random.rand(nlayer, unitcell_size, 20)
+        cfg = system.D6System2D_Config(
+            lat,
+            1,
+            1,
+            1,
+            1,
+            None,
+            ncopy=2,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
+        )
+        cfg.paramvec = paramvec
+        self.system_D6 = system.D2nSystem2D(cfg)
+        self.system_D6.cfg.enforce_parameter_conditions(self.system_D6.cfg.paramvec)
+
+    def set_flux_gauge_config(self):
+        identity = self.system_D6.cfg.gaugemgr.get_neutral_gauge_value()
+        other_gauge = self.system_D6.cfg.gaugemgr.get_representation(0, 1)
+        config = np.array([identity] * 7 + [other_gauge] * 1)
+        self.system_D6.update_gauge_full_system(config)
+
+    def test_covmat_with_fermions(self):
+        """Ensure the covariance matrix is not the pure-gauge one when t != 0.
+        This test must be done with a gauge configuration that includes some flux.
+        Only the fermionic layer should have a covariance matrix different than the pure-gauge one.
+        """
+        self.set_flux_gauge_config()
+        covmat_pg = self.system_D6.ferm_covmat_vec[0]
+        covmat_ferm = self.system_D6.ferm_covmat_vec[1]
+        # decoupled physical modes: a [[0,1],[-1,0]] block per (site, color)
+        expected_covmat = block_diag(*[np.array([[0.0, 1.0], [-1.0, 0.0]])] * 8)
+        self.assertTrue(np.allclose(covmat_pg, expected_covmat))
+        self.assertFalse(np.allclose(covmat_ferm, expected_covmat))
+
+    def test_valid_covmat_with_fermions(self):
+        """The physical covariance matrix of every layer is a valid (pure-state) covmat under flux."""
+        self.set_flux_gauge_config()
+        for lay in range(self.system_D6.cfg.nlayer):
+            with self.subTest(layer=lay):
+                self.assertTrue(utils.is_covmat(self.system_D6.ferm_covmat_vec[lay]))
+
+    def test_occupation_t_zero(self):
+        """t = 0: no fermions -- per-color occupation is 0 after PH, and 0 (even) / 1 (odd) before PH."""
+        self.system_D6.cfg.make_pure_gauge()
+        cfg = self.system_D6.cfg
+        occ_after = self.system_D6.occupations_after_ph
+        occ_before = self.system_D6.occupations_before_ph
+        self.assertEqual(occ_after.shape, (cfg.num_fermionic_layer, cfg.lattice.size, cfg.ncolors))
+        for site, factor in enumerate(cfg.lattice.sublattice_factors):
+            for color in range(cfg.ncolors):
+                with self.subTest(site=site, color=color):
+                    self.assertAlmostEqual(occ_after[0, site, color], 0)
+                    self.assertAlmostEqual(occ_before[0, site, color], 0 if factor == 1 else 1)
+
+    def test_occupations(self):
+        """Check that the occupations (pre PH) are consistent with the mass and chem energy"""
+        self.set_flux_gauge_config()
+        mass_op = self.system_D6.mass_energy_op
+        chem_op = np.sum(self.system_D6.chem_energy_op_vec)
+        all_occupations = self.system_D6.occupations_before_ph
+
+        cfg = self.system_D6.cfg
+        even_sites = [s for s, f in enumerate(cfg.lattice.sublattice_factors) if f == 1]
+        odd_sites = [s for s, f in enumerate(cfg.lattice.sublattice_factors) if f == -1]
+        mass = 0.5 * cfg.ncolors * cfg.lattice.size * cfg.num_fermionic_layer
+        mass += np.sum(all_occupations[:, even_sites])
+        mass -= np.sum(all_occupations[:, odd_sites])
+        self.assertAlmostEqual(mass_op, mass)
+
+        self.assertAlmostEqual(chem_op, np.sum(all_occupations))
 
 
 class TestD6TmatColorStructure(unittest.TestCase):

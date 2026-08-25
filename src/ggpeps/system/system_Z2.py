@@ -46,7 +46,7 @@ class Z2System2D(System2DBase):
                 "Doing so gives negligible speedup, so we proceed without it."
             )
 
-        mass_energy_op = xnp.sum(occupations_after_ph, axis=1)  # sum over sites
+        mass_energy_op = xnp.sum(occupations_after_ph, axis=(1, 2))  # sum over sites and colors
 
         return mass_energy_op
 
@@ -249,7 +249,7 @@ class Z2System2D(System2DBase):
         occupations_before_ph: xnp.ndarray,
     ) -> xnp.ndarray:
 
-        chem_energy_op = xnp.sum(occupations_before_ph, axis=1)
+        chem_energy_op = xnp.sum(occupations_before_ph, axis=(1, 2))  # sum over sites and colors
 
         return chem_energy_op
 
@@ -343,8 +343,10 @@ class Z2System2D(System2DBase):
 
     @staticmethod
     @maybe_jit(static_argnames=["after_ph"])
-    def occupation(covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False) -> float:
-
+    def occupation(
+        covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False, color: int = 0
+    ) -> float:
+        # Z2 has a single color; the color argument only exists to match the base signature.
         site_ind = 2 * site  # index into covariance matrix
 
         x, y = site_coord

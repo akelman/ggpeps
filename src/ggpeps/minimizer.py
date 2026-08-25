@@ -657,7 +657,8 @@ def print_callback(x: int, minimizer: Minimizer) -> None:
             all_occupations = utils.get_obs_mean_df(res, "all_occupations")
             occ_str = ""
             for lay in range(len(all_occupations)):
-                occ_str += ", ".join([f"{val:.10f}" for val in all_occupations[lay]])
+                # one value per (site, color)
+                occ_str += ", ".join([f"{val:.10f}" for val in np.asarray(all_occupations[lay]).flatten()])
                 occ_str += " | "  # layer separator
         else:
             occ_str = "None"

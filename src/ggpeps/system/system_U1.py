@@ -522,5 +522,7 @@ class U1System2D(System2DBase):
 
     @staticmethod
     @maybe_jit(static_argnames=["after_ph"])
-    def occupation(covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False) -> float:
+    def occupation(
+        covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False, color: int = 0
+    ) -> float:
         return 0.0  # Not implemented

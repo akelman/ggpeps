@@ -36,11 +36,18 @@ class D2nSystem2D(System2DBase):
 
     # Observables
     @staticmethod
+    @maybe_jit(static_argnames=["use_trans_inv"])
     def _compute_mass_energy_op_vec(
         occupations_after_ph: xnp.ndarray,
-        use_trans_inv: bool = True,
+        use_trans_inv: bool = False,
     ) -> xnp.ndarray:
-        mass_energy_op = xnp.sum(occupations_after_ph, axis=1)  # currently, occupations do not support color!!
+        if use_trans_inv:
+            logger.warning(
+                "Translation invariance need not be assumed for the mass energy operator."
+                "Doing so gives negligible speedup, so we proceed without it."
+            )
+
+        mass_energy_op = xnp.sum(occupations_after_ph, axis=(1, 2))  # sum over sites and colors
         return mass_energy_op
 
     @staticmethod
@@ -93,10 +100,11 @@ class D2nSystem2D(System2DBase):
         return gradients
 
     @staticmethod
+    @maybe_jit(static_argnames=[])
     def _compute_chem_energy_op_vec(
         occupations_before_ph: xnp.ndarray,
     ) -> xnp.ndarray:
-        chem_energy_op = xnp.sum(occupations_before_ph, axis=1)  # currently, occupations do not support color!!
+        chem_energy_op = xnp.sum(occupations_before_ph, axis=(1, 2))  # sum over sites and colors
         return chem_energy_op
 
     @staticmethod
@@ -121,5 +129,17 @@ class D2nSystem2D(System2DBase):
 
     @staticmethod
     @maybe_jit(static_argnames=["after_ph"])
-    def occupation(covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False) -> float:
-        return 0.0
+    def occupation(
+        covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False, color: int = 0
+    ) -> float:
+        """Occupation of a single color at the given site (in [0, 1])."""
+        ncolors = 2  # the faithful D2n representation is 2-dimensional
+        site_ind = 2 * ncolors * site + 2 * color  # index into covariance matrix, 2 majorana modes per Dirac mode
+
+        x, y = site_coord
+        if after_ph:
+            site_factor = 1
+        else:
+            site_factor = (-1) ** (x + y)  # even or odd sublattice
+
+        return 0.5 * (1 + site_factor * covmat[site_ind + 1, site_ind])
