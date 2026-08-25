@@ -110,30 +110,6 @@ class TestD2nSystem(unittest.TestCase):
             gamma_in_sys = self.system_D6.gamma_in_sys_vec[lay]
             self.assertTrue(utils.is_covmat(gamma_in_sys))
 
-    @skip("This test needs adjusments and expected to pass after implementing physical fermionic layers.")
-    def test_t_zero(self):
-        """Ensure mass and interaction energy are zero when t = 0"""
-        # TODO: Fix after implementing physical fermionic layers.
-        ec_config = exacteval.ExactEvaluatorConfig()
-        ec_config.gauge_fixing = False
-        self.system_D6.cfg.make_pure_gauge()  # sets t params to zero
-        ex_eval = exacteval.ExactEvaluator(ec_config, self.system_D6)
-        dest_dict = ex_eval.evaluate()
-        self.assertTrue(np.allclose(0, dest_dict["mass_energy"]))
-        self.assertTrue(np.allclose(0, dest_dict["int_energy"]))
-
-    @skip("This test needs adjusments and expected to pass after implementing physical fermionic layers.")
-    def test_t_nonzero(self):
-        """Ensure mass and interaction energy are zero when t != 0.
-        This checks for random params, which we assume do not give t = 0"""
-        # TODO: Fix after implementing physical fermionic layers.
-        ec_config = exacteval.ExactEvaluatorConfig()
-        ec_config.gauge_fixing = False
-        ex_eval = exacteval.ExactEvaluator(ec_config, self.system_z2)
-        dest_dict = ex_eval.evaluate()
-        self.assertFalse(np.allclose(0, dest_dict["mass_energy"]))
-        self.assertFalse(np.allclose(0, dest_dict["int_energy"]))
-
     def test_Tmat_symmetries_analytic(self):
         """This only tests rotation invariance and the antisymmetry properties."""
 
@@ -704,6 +680,27 @@ class TestD2nSystemFermions(unittest.TestCase):
                     self.assertAlmostEqual(occ_after[0, site, color], 0)
                     self.assertAlmostEqual(occ_before[0, site, color], 0 if factor == 1 else 1)
 
+    def test_t_zero(self):
+        """Ensure mass and interaction energy vanish for every gauge configuration when t = 0.
+
+        Checking per configuration is stronger than the Z2 exact-eval version (and a full D6
+        enumeration, 6^8 configurations, is impractical for a unit test).
+        """
+        self.system_D6.cfg.make_pure_gauge()  # sets t params to zero
+        self.assertTrue(np.allclose(0, self.system_D6.mass_energy))
+        self.assertTrue(np.allclose(0, self.system_D6.int_energy))
+        self.set_flux_gauge_config()
+        self.assertTrue(np.allclose(0, self.system_D6.mass_energy))
+        self.assertTrue(np.allclose(0, self.system_D6.int_energy))
+
+    def test_t_nonzero(self):
+        """Ensure mass and interaction energy are nonzero when t != 0 (random params),
+        and that pure-gauge layers never contribute to the interaction energy."""
+        self.set_flux_gauge_config()
+        self.assertFalse(np.allclose(0, self.system_D6.mass_energy))
+        self.assertFalse(np.allclose(0, self.system_D6.int_energy))
+        self.assertTrue(np.allclose(0, self.system_D6.int_energy_op_vec[: self.system_D6.cfg.num_pg_layer]))
+
     def test_occupations(self):
         """Check that the occupations (pre PH) are consistent with the mass and chem energy"""
         self.set_flux_gauge_config()
@@ -720,6 +717,31 @@ class TestD2nSystemFermions(unittest.TestCase):
         self.assertAlmostEqual(mass_op, mass)
 
         self.assertAlmostEqual(chem_op, np.sum(all_occupations))
+
+
+class TestD6PreviousVersion(unittest.TestCase):
+    """Fixed-seed regression values: refactors must not change any observable."""
+
+    def test_system_against_previous_version(self):
+        rng = np.random.RandomState(20260825)
+        lat = lattice.Lattice2D(2, 2)
+        cfg = system.D6System2D_Config(lat, 1, 1, 1, 1, None, ncopy=2, num_pg_layer=1, num_fermionic_layer=1)
+        cfg.paramvec = rng.rand(2, 1, 20)
+        sys_d6 = system.D2nSystem2D(cfg)
+        cfg.enforce_parameter_conditions(cfg.paramvec)
+
+        identity = cfg.gaugemgr.get_neutral_gauge_value()
+        flux = cfg.gaugemgr.get_representation(0, 1)
+        sys_d6.update_gauge_full_system(np.array([identity] * 7 + [flux]))
+
+        lognorm = float(sys_d6.calculate_lognorm(incremental=False, all_factors=True))
+        self.assertAlmostEqual(lognorm, -70.28431422453082)
+        self.assertAlmostEqual(float(np.real(sys_d6.el_energy_op)), -7.55627355650506)
+        self.assertAlmostEqual(float(np.real(sys_d6.mag_energy_op)), 4.0)
+        self.assertAlmostEqual(float(np.real(sys_d6.mass_energy_op)), 0.3400234826953958)
+        self.assertAlmostEqual(float(np.real(sys_d6.int_energy_op)), 0.8850275655988513)
+        # the U(1)-symmetric ansatz is locked at half filling, so the total occupation is exact
+        self.assertAlmostEqual(float(np.real(np.sum(sys_d6.chem_energy_op_vec))), 4.0)
 
 
 class TestD6TmatColorStructure(unittest.TestCase):

@@ -445,8 +445,10 @@ class Testgaugefixing(unittest.TestCase):
         return out
 
     def _assert_per_config_gauge_invariance(self, make_system, seed, ntrials=4):
-        """Assert |psi(G)|^2 and the electric/magnetic operators are invariant under a lattice
+        """Assert |psi(G)|^2 and all the energy operators are invariant under a lattice
         gauge transformation U(x,k) -> V(x) U(x,k) V(x+k)^dagger, config by config.
+        The matter operators (mass, interaction, chemical) are included when the system
+        has fermionic layers.
 
         Args:
             make_system: zero-arg callable returning a fresh system (gauge field at identity).
@@ -462,26 +464,36 @@ class Testgaugefixing(unittest.TestCase):
             s = make_system()
             s.update_gauge_full_system(config)
             norm = s.calculate_lognorm(incremental=False, all_factors=True)
-            return (
-                float(norm),
-                float(np.real(s.el_energy_op)),
-                float(np.real(s.mag_energy_op)),
-            )
+            dest = {
+                "norm": float(norm),
+                "el": float(np.real(s.el_energy_op)),
+                "mag": float(np.real(s.mag_energy_op)),
+            }
+            if s.cfg.num_fermionic_layer > 0:
+                dest["mass"] = float(np.real(s.mass_energy_op))
+                dest["int"] = float(np.real(s.int_energy_op))
+                dest["chem"] = float(np.real(np.sum(s.chem_energy_op_vec)))
+            return dest
 
         for trial in range(ntrials):
             G = [vals[rng.randint(len(vals))].copy() for _ in range(lat.nlinks)]
             V = {(x, y): vals[rng.randint(len(vals))].copy() for y in range(lat.ny) for x in range(lat.nx)}
             GV = self._apply_gauge_transform(lat, G, V)
-            ln_G, el_G, mag_G = observables(G)
-            ln_V, el_V, mag_V = observables(GV)
-            with self.subTest(trial=trial):
-                self.assertAlmostEqual(ln_G, ln_V, places=6, msg="norm not gauge invariant")
-                self.assertAlmostEqual(el_G, el_V, places=5, msg="electric operator not gauge invariant")
-                self.assertAlmostEqual(mag_G, mag_V, places=6, msg="magnetic operator not gauge invariant")
+            obs_G = observables(G)
+            obs_V = observables(GV)
+            places = {"el": 5}  # the electric operator accumulates the most roundoff
+            for name in obs_G:
+                with self.subTest(trial=trial, observable=name):
+                    self.assertAlmostEqual(
+                        obs_G[name],
+                        obs_V[name],
+                        places=places.get(name, 6),
+                        msg=f"{name} operator not gauge invariant",
+                    )
 
     def test_z2_norm_and_observables_gauge_invariant(self):
-        """Z2 (abelian): the per-config norm and electric/magnetic operators must be gauge
-        invariant."""
+        """Z2 (abelian): the per-config norm and all energy operators (including the matter
+        ones -- the config has a fermionic layer) must be gauge invariant."""
         rng = np.random.RandomState(20260628)
         lat = lattice.Lattice2D(2, 2)
         paramvec = rng.rand(2, 20)
@@ -492,14 +504,17 @@ class Testgaugefixing(unittest.TestCase):
         self._assert_per_config_gauge_invariance(lambda: system.Z2System2D(cfg), seed=3)
 
     def test_d6_norm_and_observables_gauge_invariant(self):
-        """D6 (non-abelian): the per-config norm and electric/magnetic operators must be gauge
-        invariant.
+        """D6 (non-abelian): the per-config norm and all energy operators must be gauge
+        invariant. The fermionic layer includes the matter operators.
         """
         rng = np.random.RandomState(20260628)
-        num_pg_layer = 2
+        num_pg_layer = 1
+        num_fermionic_layer = 1
         lat = lattice.Lattice2D(2, 2)
-        cfg = system.D6System2D_Config(lat, 1, 1, 0, 0, None, num_pg_layer=num_pg_layer, num_fermionic_layer=0)
-        cfg.paramvec = rng.rand(num_pg_layer, 1, 20)
+        cfg = system.D6System2D_Config(
+            lat, 1, 1, 1, 1, None, num_pg_layer=num_pg_layer, num_fermionic_layer=num_fermionic_layer
+        )
+        cfg.paramvec = rng.rand(num_pg_layer + num_fermionic_layer, 1, 20)
         cfg.enforce_parameter_conditions(cfg.paramvec)
 
         self._assert_per_config_gauge_invariance(lambda: system.D2nSystem2D(cfg), seed=2)
