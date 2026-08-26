@@ -318,6 +318,12 @@ class Z2System2D(System2DBase):
         # TODO: it is a waste to calculate this for every gauge config - instead, this function should accept
         #       as input the start and end site indices
         start_site_ind, end_site_ind = self.cfg.lattice.get_path_endpoints(path)
+        sublattice_factors = self.cfg.lattice.sublattice_factors
+        if sublattice_factors[start_site_ind] != sublattice_factors[end_site_ind]:
+            raise NotImplementedError(
+                "Meson strings with endpoints on different sublattices are not implemented "
+                "(after the PH transformation the operator becomes a pair term)."
+            )
         site_ind_cov_in = 2 * start_site_ind
         site_ind_cov_fin = 2 * end_site_ind
 
@@ -337,7 +343,9 @@ class Z2System2D(System2DBase):
                 )
             )
 
-            # TODO: is the absolute value necessary? why?
+            # TODO: is the absolute value necessary? why? If it is dropped, odd-sublattice
+            # endpoints must be implemented separately from even ones (the value picks up a
+            # minus and a conjugation relative to the formula above).
             meson_op_vec = backend.array_assign(meson_op_vec, layer_ind, xnp.abs(layer_val))
         return meson_op_vec
 

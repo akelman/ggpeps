@@ -2947,18 +2947,29 @@ class System2DBase(ABC):
         val = self._compute_path(self.cfg.gaugemgr.get_neutral_gauge_value(), self.gaugefieldvec, path)
         return val
 
+    def compute_path_matrix(self, path: tuple[tuple[int, bool], ...]) -> xnp.ndarray:
+        """Compute the ordered product of group elements along the path (no trace)."""
+        return self._compute_path_matrix(self.cfg.gaugemgr.get_neutral_gauge_value(), self.gaugefieldvec, path)
+
     @staticmethod
     @maybe_jit(static_argnames=["path"])
-    def _compute_path(
+    def _compute_path_matrix(
         neutral_gauge_value: xnp.ndarray, gaugefieldvec: xnp.ndarray, path: tuple[tuple[int, bool], ...]
-    ) -> float:
+    ) -> xnp.ndarray:
         path_product = neutral_gauge_value
         for ind, conj in path:
             if conj:
                 path_product = path_product @ xnp.conjugate(xnp.transpose(gaugefieldvec[ind]))
             else:
                 path_product = path_product @ gaugefieldvec[ind]
-        return xnp.trace(path_product)
+        return path_product
+
+    @staticmethod
+    @maybe_jit(static_argnames=["path"])
+    def _compute_path(
+        neutral_gauge_value: xnp.ndarray, gaugefieldvec: xnp.ndarray, path: tuple[tuple[int, bool], ...]
+    ) -> float:
+        return xnp.trace(System2DBase._compute_path_matrix(neutral_gauge_value, gaugefieldvec, path))
 
     @staticmethod
     @maybe_jit(static_argnames=["lattice_size", "nphysmodes_site", "nlayer"])

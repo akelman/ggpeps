@@ -313,8 +313,49 @@ class D2nSystem2D(System2DBase):
         return gradients
 
     def _meson_string_vec(self, path: tuple[tuple[int, bool], ...]) -> xnp.ndarray:
+        """Meson string psi^dag_m(x) [prod of D(g) along the path]_mn psi_n(y): each color
+        pair contributes the single-color expression weighted by the path-matrix element."""
+        ncolors = 2  # the faithful D2n representation is 2-dimensional
         meson_op_vec = xnp.zeros(self.cfg.nlayer)
-        return xnp.array(meson_op_vec)
+
+        # value of the fields
+        path_matrix = self.compute_path_matrix(path)
+
+        # indices into the covariance matrices at the start and end of the path
+        start_site_ind, end_site_ind = self.cfg.lattice.get_path_endpoints(path)
+        sublattice_factors = self.cfg.lattice.sublattice_factors
+        if sublattice_factors[start_site_ind] != sublattice_factors[end_site_ind]:
+            raise NotImplementedError(
+                "Meson strings with endpoints on different sublattices are not implemented "
+                "(after the PH transformation the operator becomes a pair term)."
+            )
+
+        for layer_ind in range(self.cfg.num_pg_layer, self.cfg.nlayer):
+            covmat = self.ferm_covmat_vec[layer_ind]
+
+            # Since for the L-shaped strings considered here the endpoints are always on the same sublattice,
+            # we still have \psi^\dagger \psi after the PH transformation
+            layer_val = 0.0
+            for m in range(ncolors):
+                start_color_ind = 2 * ncolors * start_site_ind + 2 * m
+                for n in range(ncolors):
+                    end_color_ind = 2 * ncolors * end_site_ind + 2 * n
+                    layer_val += (
+                        0.25
+                        * path_matrix[m][n]
+                        * (
+                            -1j * covmat[start_color_ind, end_color_ind]
+                            - 1j * covmat[start_color_ind + 1, end_color_ind + 1]
+                            + covmat[start_color_ind + 1, end_color_ind]
+                            - covmat[start_color_ind, end_color_ind + 1]
+                        )
+                    )
+
+            # TODO: is the absolute value necessary? why? If it is dropped, odd-sublattice
+            # endpoints must be implemented separately from even ones (the value picks up a
+            # minus and a conjugation relative to the formula above).
+            meson_op_vec = backend.array_assign(meson_op_vec, layer_ind, xnp.abs(layer_val))
+        return meson_op_vec
 
     @staticmethod
     @maybe_jit(static_argnames=["after_ph"])

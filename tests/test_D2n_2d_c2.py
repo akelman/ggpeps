@@ -272,83 +272,6 @@ class TestD2nSystem(unittest.TestCase):
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
-    @skip("This test needs adjusments and mot expected to pass for now.")
-    def test_FM(self):
-
-        system_type = system.Z2System2D
-        lat = lattice.Lattice2D(2, 2)
-
-        # Compare with ED for g_int = 1, g = 1.1 m = 0
-        g_int0 = 1
-        g0 = 1.1
-        FM_ed = 0.056378472489371945
-        param = np.array(
-            [
-                [
-                    0.0,
-                    -2.40404381,
-                    0.06235486,
-                    0.0,
-                    -0.03930116,
-                    0.02570194,
-                    -0.86789621,
-                    1.63420534,
-                    -0.48050886,
-                    0.32365748,
-                    0.0,
-                    -0.57834489,
-                    0.67735453,
-                    0.0,
-                    -0.00508246,
-                    0.06794535,
-                    0.93614442,
-                    0.62925059,
-                    0.19743901,
-                    -0.80041006,
-                ],
-                [
-                    3.0479293,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.72591674,
-                    0.6554002,
-                    0.64491155,
-                    0.65708742,
-                    1.35546787,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    2.23331132,
-                    1.59756399,
-                    1.42258382,
-                    1.59441826,
-                ],
-            ]
-        )
-        system_cfg = system.Z2System2D_Config(
-            lat,
-            g0 / 2,
-            1 / (2 * g0),
-            g_int0,
-            0,
-            [0, 0],
-            num_pg_layer=1,
-            num_fermionic_layer=1,
-            ncopy=2,
-        )
-        system_cfg.paramvec = param
-        sys = system_type(system_cfg)
-        eval_config = exacteval.ExactEvaluatorConfig()
-        ex_eval = exacteval.ExactEvaluator(eval_config, sys)
-        res = ex_eval.evaluate()
-        FM = res["FM_1x1"]
-        self.assertAlmostEqual(FM, FM_ed, places=2)
-
 
 class TestD2nSystemFermions(unittest.TestCase):
     """Tests for the D6 ansatz with a physical fermionic layer (1 PG + 1 fermionic)."""
@@ -523,6 +446,23 @@ class TestD2nSystemFermions(unittest.TestCase):
             enforce_u1_symmetry=False,
         )
 
+    def test_meson_string_t_zero(self):
+        """t = 0: the physical modes are decoupled site-by-site, so a meson string between
+        distinct sites vanishes exactly."""
+        self.system_D6.cfg.make_pure_gauge()
+        self.set_flux_gauge_config()
+        path = self.system_D6.cfg.lattice.generate_L_string((0, 0), (1, 1))
+        self.assertTrue(np.allclose(0, self.system_D6.meson_string(path)))
+
+    def test_meson_string_t_nonzero(self):
+        """The meson string is nonzero for t != 0 on a flux configuration, and pure-gauge
+        layers never contribute."""
+        self.set_flux_gauge_config()
+        path = self.system_D6.cfg.lattice.generate_L_string((0, 0), (1, 1))
+        meson_vec = np.asarray(self.system_D6._meson_string_vec(path))
+        self.assertFalse(np.allclose(0, self.system_D6.meson_string(path)))
+        self.assertTrue(np.allclose(0, meson_vec[: self.system_D6.cfg.num_pg_layer]))
+
     def test_occupations(self):
         """Check that the occupations (pre PH) are consistent with the mass and chem energy"""
         self.set_flux_gauge_config()
@@ -564,6 +504,9 @@ class TestD6PreviousVersion(unittest.TestCase):
         self.assertAlmostEqual(float(np.real(sys_d6.int_energy_op)), 0.8850275655988513)
         # the U(1)-symmetric ansatz is locked at half filling, so the total occupation is exact
         self.assertAlmostEqual(float(np.real(np.sum(sys_d6.chem_energy_op_vec))), 4.0)
+
+        path = lat.generate_L_string((0, 0), (1, 1))
+        self.assertAlmostEqual(float(np.real(sys_d6.meson_string(path))), 0.03298867702645029)
 
         idx = (1, 0, 6)  # a12r in the fermionic layer
         self.assertAlmostEqual(float(np.real(sys_d6.mass_energy_op_grad_vec[idx])), 0.4235251539905968)
