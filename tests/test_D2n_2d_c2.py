@@ -272,272 +272,6 @@ class TestD2nSystem(unittest.TestCase):
                     # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
                     self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
-    @skip("This test needs adjusments and expected to pass after implementing mass energy.")
-    def test_grad_mass_energy_2C(self):
-        # This is comparison of the analytic derivative against the numeric derivative
-        # for the 2 copy fermionic ansatz
-        eps = 1e-5
-        paramvec = np.random.rand(2, 20)
-        lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_Config(lat_2x2, 0.0, 0.0, 0.0, 1.0, None, ncopy=2)
-        system_cfg.paramvec = paramvec
-        system_z2_2_2 = system.Z2System2D(system_cfg)
-
-        config = np.array([0] * 7 + [np.pi] * 1)
-        system_z2_2_2.update_gauge_full_system(config)
-
-        deriv_ana = system_z2_2_2.mass_energy_op_grad_vec
-        symbolvec = system_z2_2_2.symbolvec
-
-        uc_ind = 0
-
-        for layerind in range(2):
-            # we could skip the first layer, since the first layer does not contribute to the
-            # mass energy
-            for ind in range(len(symbolvec)):
-                with self.subTest(symbol=symbolvec[ind], layerind=layerind):
-                    paramvec_left = np.copy(paramvec)
-                    paramvec_right = np.copy(paramvec)
-                    paramvec_left[layerind, ind] -= eps
-                    paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None, ncopy=2)
-                    system_cfg_right = system.Z2System2D_Config(lat_2x2, 0.0, 0.0, 1.0, 1.0, None, ncopy=2)
-
-                    system_cfg_left.paramvec = paramvec_left
-                    system_cfg_right.paramvec = paramvec_right
-
-                    system_z2_2_2_left = system.Z2System2D(system_cfg_left)
-                    system_z2_2_2_right = system.Z2System2D(system_cfg_right)
-                    system_z2_2_2_left.update_gauge_full_system(config)
-                    system_z2_2_2_right.update_gauge_full_system(config)
-
-                    val_left = system_z2_2_2_left.mass_energy_op
-                    val_right = system_z2_2_2_right.mass_energy_op
-                    deriv_num = (val_right - val_left) / (2 * eps)
-
-                    # print(f"left: {val_left}, right: {val_right}")
-                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
-                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
-
-    @skip("This test needs adjusments and expected to pass after implementing mass energy.")
-    def test_grad_mass_energy_2flavor(self):
-        # This is comparison of the analytic derivative against the numeric derivative
-        # for the 2 copy fermionic ansatz with 2 physical flavors
-        eps = 1e-5
-        paramvec = np.random.rand(3, 20)
-        lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_Config(
-            lat_2x2, 0.0, 0.0, 0.0, 1.0, None, num_pg_layer=1, num_fermionic_layer=2,
-            ncopy=2,
-        )
-        system_cfg.paramvec = paramvec
-        system_z2_2_2 = system.Z2System2D(system_cfg)
-
-        config = np.array([0] * 7 + [np.pi] * 1)
-        system_z2_2_2.update_gauge_full_system(config)
-
-        deriv_ana = system_z2_2_2.mass_energy_op_grad_vec
-        symbolvec = system_z2_2_2.symbolvec
-
-        uc_ind = 0
-
-        for layerind in range(3):
-            # we could skip the first layer, since the first layer does not contribute to the
-            # mass energy
-            for ind in range(len(symbolvec)):
-                with self.subTest(symbol=symbolvec[ind], layerind=layerind):
-                    paramvec_left = np.copy(paramvec)
-                    paramvec_right = np.copy(paramvec)
-                    paramvec_left[layerind, ind] -= eps
-                    paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        1.0,
-                        1.0,
-                        None,
-                        num_pg_layer=1,
-                        num_fermionic_layer=2,
-                        ncopy=2,
-                    )
-                    system_cfg_right = system.Z2System2D_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        1.0,
-                        1.0,
-                        None,
-                        num_pg_layer=1,
-                        num_fermionic_layer=2,
-                        ncopy=2,
-                    )
-
-                    system_cfg_left.paramvec = paramvec_left
-                    system_cfg_right.paramvec = paramvec_right
-
-                    system_z2_2_2_left = system.Z2System2D(system_cfg_left)
-                    system_z2_2_2_right = system.Z2System2D(system_cfg_right)
-                    system_z2_2_2_left.update_gauge_full_system(config)
-                    system_z2_2_2_right.update_gauge_full_system(config)
-
-                    val_left = system_z2_2_2_left.mass_energy_op
-                    val_right = system_z2_2_2_right.mass_energy_op
-                    deriv_num = (val_right - val_left) / (2 * eps)
-
-                    # print(f"left: {val_left}, right: {val_right}")
-                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
-                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
-
-    @skip("This test needs adjusments and expected to pass after implementing intercation energy.")
-    def test_grad_int_energy_2C(self):
-        # This is comparison of the analytic derivative against the numeric derivative
-        # for the 2 copy fermionic ansatz
-        eps = 1e-5
-        paramvec = np.random.rand(2, 20)
-        lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_Config(
-            lat_2x2, 0.0, 0.0, 1.0, 0.0, None, num_pg_layer=1, num_fermionic_layer=1,
-            ncopy=2,
-        )
-        system_cfg.paramvec = paramvec
-        system_z2_2_2 = system.Z2System2D(system_cfg)
-
-        # the interaction energy vanishes for the default configuration (no flux on any link)
-        # so we choose a configuration where we know the interaction energy is not negligible
-        config = np.array([0] * 7 + [np.pi] * 1)
-        system_z2_2_2.update_gauge_full_system(config)
-
-        deriv_ana = system_z2_2_2.int_energy_op_grad_vec
-        symbolvec = system_z2_2_2.symbolvec
-
-        uc_ind = 0
-
-        for layerind in range(2):
-            # we could skip the first layer, since the first layer does not contribute to the
-            # interaction energy
-            for ind in range(len(symbolvec)):
-                with self.subTest(symbol=symbolvec[ind], layerind=layerind):
-                    paramvec_left = np.copy(paramvec)
-                    paramvec_right = np.copy(paramvec)
-                    paramvec_left[layerind, ind] -= eps
-                    paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        1.0,
-                        0.0,
-                        None,
-                        num_pg_layer=1,
-                        num_fermionic_layer=1,
-                        ncopy=2,
-                    )
-                    system_cfg_right = system.Z2System2D_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        1.0,
-                        0.0,
-                        None,
-                        num_pg_layer=1,
-                        num_fermionic_layer=1,
-                        ncopy=2,
-                    )
-
-                    system_cfg_left.paramvec = paramvec_left
-                    system_cfg_right.paramvec = paramvec_right
-
-                    system_z2_2_2_left = system.Z2System2D(system_cfg_left)
-                    system_z2_2_2_right = system.Z2System2D(system_cfg_right)
-                    system_z2_2_2_left.update_gauge_full_system(config)
-                    system_z2_2_2_right.update_gauge_full_system(config)
-
-                    val_left = system_z2_2_2_left.int_energy_op
-                    val_right = system_z2_2_2_right.int_energy_op
-                    deriv_num = (val_right - val_left) / (2 * eps)
-
-                    # print(f"left: {val_left}, right: {val_right}")
-                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
-                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
-
-    @skip("This test needs adjusments and expected to pass after implementing chmical energy.")
-    def test_grad_chem_energy_2flavor(self):
-        # This is comparison of the analytic derivative against the numeric derivative
-        # for the 2 copy fermionic ansatz with 2 physical flavors
-        eps = 1e-5
-        g_chem = [0, -0.4, 2]
-        paramvec = np.random.rand(3, 20)
-        lat_2x2 = lattice.Lattice2D(2, 2)
-        system_cfg = system.Z2System2D_Config(
-            lat_2x2,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            g_chem,
-            num_pg_layer=1,
-            num_fermionic_layer=2,
-            ncopy=2,
-        )
-        system_cfg.paramvec = paramvec
-        system_z2_2_2 = system.Z2System2D(system_cfg)
-
-        config = np.array([0] * 7 + [np.pi] * 1)
-        system_z2_2_2.update_gauge_full_system(config)
-
-        uc_ind = 0
-
-        deriv_ana = system_z2_2_2.chem_energy_op_grad_vec
-        # Scale the gradients by the appropriate chemical potential
-        for lay in range(3):
-            deriv_ana[lay, :, :] *= g_chem[lay]
-        symbolvec = system_z2_2_2.symbolvec
-        for layerind in range(3):
-            # we could skip the pure gauge layers, since they do not contribute
-            for ind in range(len(symbolvec)):
-                with self.subTest(symbol=symbolvec[ind], layerind=layerind):
-                    paramvec_left = np.copy(paramvec)
-                    paramvec_right = np.copy(paramvec)
-                    paramvec_left[layerind, ind] -= eps
-                    paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.Z2System2D_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        g_chem,
-                        num_pg_layer=1,
-                        num_fermionic_layer=2,
-                        ncopy=2,
-                    )
-                    system_cfg_right = system.Z2System2D_Config(
-                        lat_2x2,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        g_chem,
-                        num_pg_layer=1,
-                        num_fermionic_layer=2,
-                        ncopy=2,
-                    )
-
-                    system_cfg_left.paramvec = paramvec_left
-                    system_cfg_right.paramvec = paramvec_right
-
-                    system_z2_2_2_left = system.Z2System2D(system_cfg_left)
-                    system_z2_2_2_right = system.Z2System2D(system_cfg_right)
-                    system_z2_2_2_left.update_gauge_full_system(config)
-                    system_z2_2_2_right.update_gauge_full_system(config)
-
-                    val_left = system_z2_2_2_left.chem_energy
-                    val_right = system_z2_2_2_right.chem_energy
-                    deriv_num = (val_right - val_left) / (2 * eps)
-
-                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
-
     @skip("This test needs adjusments and mot expected to pass for now.")
     def test_FM(self):
 
@@ -701,6 +435,94 @@ class TestD2nSystemFermions(unittest.TestCase):
         self.assertFalse(np.allclose(0, self.system_D6.int_energy))
         self.assertTrue(np.allclose(0, self.system_D6.int_energy_op_vec[: self.system_D6.cfg.num_pg_layer]))
 
+    def _assert_matter_grad_matches_fd(self, op_value, grad_name, num_fermionic_layer, enforce_u1_symmetry=True):
+        """Compare the analytic parameter gradient of a matter operator against a central
+        finite difference, for a random 3-symbol subset on every layer.
+
+        Args:
+            op_value: callable extracting the operator value from a system.
+            grad_name: name of the analytic gradient property.
+            num_fermionic_layer: number of fermionic layers (on top of one pure-gauge layer).
+            enforce_u1_symmetry: forwarded to the config.
+        """
+        eps = 1e-5
+        nlayer = 1 + num_fermionic_layer
+        lat = lattice.Lattice2D(2, 2)
+        paramvec = np.random.rand(nlayer, 1, 20)
+        cfg = system.D6System2D_Config(
+            lat,
+            1,
+            1,
+            1,
+            1,
+            None,
+            ncopy=2,
+            num_pg_layer=1,
+            num_fermionic_layer=num_fermionic_layer,
+            enforce_u1_symmetry=enforce_u1_symmetry,
+        )
+        identity = cfg.gaugemgr.get_neutral_gauge_value()
+        flux = cfg.gaugemgr.get_representation(0, 1)
+        config = np.array([identity] * 7 + [flux])
+
+        def build_system(pv):
+            # the config is reused; a fresh system recomputes everything from the new paramvec
+            cfg.paramvec = pv
+            sys_d6 = system.D2nSystem2D(cfg)
+            sys_d6.update_gauge_full_system(config)
+            return sys_d6
+
+        deriv_ana = np.asarray(getattr(build_system(np.copy(paramvec)), grad_name))
+        symbolvec = cfg.symbolvec
+        uc_ind = 0
+
+        # test a random subset of the parameters, since testing all of them is too slow
+        inds = np.random.choice(len(symbolvec), size=3, replace=False)
+
+        for layer_ind in range(nlayer):
+            for ind in inds:
+                with self.subTest(symbol=symbolvec[ind], layerind=layer_ind):
+                    paramvec_left = np.copy(paramvec)
+                    paramvec_right = np.copy(paramvec)
+                    paramvec_left[layer_ind, uc_ind, ind] -= eps
+                    paramvec_right[layer_ind, uc_ind, ind] += eps
+                    val_left = op_value(build_system(paramvec_left))
+                    val_right = op_value(build_system(paramvec_right))
+                    deriv_num = (val_right - val_left) / (2 * eps)
+                    self.assertAlmostEqual(deriv_ana[layer_ind, uc_ind, ind], deriv_num, places=5)
+
+    def test_grad_mass_energy_2C(self):
+        """Analytic vs numeric mass-energy gradient (1 fermionic layer)."""
+        self._assert_matter_grad_matches_fd(
+            lambda s: float(np.real(s.mass_energy_op)), "mass_energy_op_grad_vec", num_fermionic_layer=1
+        )
+
+    def test_grad_mass_energy_2flavor(self):
+        """Analytic vs numeric mass-energy gradient (2 fermionic layers)."""
+        self._assert_matter_grad_matches_fd(
+            lambda s: float(np.real(s.mass_energy_op)), "mass_energy_op_grad_vec", num_fermionic_layer=2
+        )
+
+    def test_grad_int_energy_2C(self):
+        """Analytic vs numeric interaction-energy gradient (1 fermionic layer)."""
+        self._assert_matter_grad_matches_fd(
+            lambda s: float(np.real(s.int_energy_op)), "int_energy_op_grad_vec", num_fermionic_layer=1
+        )
+
+    def test_grad_chem_energy_2flavor(self):
+        """Analytic vs numeric chemical-potential gradient (2 fermionic layers).
+
+        At unitcell_size = 1 the total pre-PH occupation is exactly half filling for any
+        parameters (even with flux and relaxed U(1)), so both sides are zero here; the
+        comparison still catches a chem gradient that is spuriously nonzero. A
+        magnitude-sensitive version needs unitcell_size = 2."""
+        self._assert_matter_grad_matches_fd(
+            lambda s: float(np.real(np.sum(s.chem_energy_op_vec))),
+            "chem_energy_op_grad_vec",
+            num_fermionic_layer=2,
+            enforce_u1_symmetry=False,
+        )
+
     def test_occupations(self):
         """Check that the occupations (pre PH) are consistent with the mass and chem energy"""
         self.set_flux_gauge_config()
@@ -742,6 +564,13 @@ class TestD6PreviousVersion(unittest.TestCase):
         self.assertAlmostEqual(float(np.real(sys_d6.int_energy_op)), 0.8850275655988513)
         # the U(1)-symmetric ansatz is locked at half filling, so the total occupation is exact
         self.assertAlmostEqual(float(np.real(np.sum(sys_d6.chem_energy_op_vec))), 4.0)
+
+        idx = (1, 0, 6)  # a12r in the fermionic layer
+        self.assertAlmostEqual(float(np.real(sys_d6.mass_energy_op_grad_vec[idx])), 0.4235251539905968)
+        self.assertAlmostEqual(float(np.real(sys_d6.int_energy_op_grad_vec[idx])), -2.266898110058638)
+        # at unitcell_size = 1 the chem operator is constant (exact half filling), so its
+        # gradient vanishes
+        self.assertAlmostEqual(float(np.real(sys_d6.chem_energy_op_grad_vec[idx])), 0.0)
 
 
 class TestD6TmatColorStructure(unittest.TestCase):

@@ -52,6 +52,17 @@ class D2nSystem2D(System2DBase):
         return mass_energy_op
 
     @staticmethod
+    @maybe_jit(
+        static_argnames=[
+            "lattice_size",
+            "symbolvec",
+            "unitcell_size",
+            "use_trans_inv",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "zeroed_params",
+        ],
+    )
     def _compute_mass_energy_grad(
         lattice_size: int,
         num_pg_layer: int,
@@ -62,10 +73,34 @@ class D2nSystem2D(System2DBase):
         zeroed_params: tuple,
         use_trans_inv: bool = True,
     ) -> xnp.ndarray:
+
+        if not use_trans_inv:
+            raise NotImplementedError("Translation invariance must be set to True.")
+
+        ncolors = 2  # the faithful D2n representation is 2-dimensional
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
-
         gradients = xnp.zeros(param_shape)
+
+        for layer_ind in range(num_pg_layer, nlayer):
+            # only the fermionic layers directly contribute to the mass
+
+            for site_ind in range(lattice_size):
+                for uc_ind in range(unitcell_size):
+                    for symbol_ind, symbol in enumerate(symbolvec):
+                        # we can skip parameters that are forced by the ansatz to be zero
+                        if (layer_ind, uc_ind, symbol_ind) not in zeroed_params:
+
+                            d_gamma_out = d_gamma_out_symbolvec[layer_ind, uc_ind, symbol_ind]
+                            grad = 0.0
+                            for color in range(ncolors):
+                                color_ind = 2 * ncolors * site_ind + 2 * color
+                                grad += 0.5 * d_gamma_out[color_ind + 1, color_ind]
+                            gradients = backend.array_add(gradients, (layer_ind, uc_ind, symbol_ind), grad)
+
+                    # further terms of the derivative are included higher up in the computation stack
+                    # because computing them requires knowing various expectation values, which are not available here
+
         return gradients
 
     @staticmethod
@@ -138,6 +173,18 @@ class D2nSystem2D(System2DBase):
         return int_energy_op
 
     @staticmethod
+    @maybe_jit(
+        static_argnames=[
+            "lattice_size",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "unitcell_size",
+            "nparams",
+            "horizontal_neighbor_data",
+            "vertical_neighbor_data",
+            "zeroed_params",
+        ],
+    )
     def _compute_int_energy_grad(
         lattice_size: int,
         num_pg_layer: int,
@@ -150,9 +197,61 @@ class D2nSystem2D(System2DBase):
         vertical_neighbor_data: tuple,
         zeroed_params: tuple,
     ) -> xnp.ndarray:
+        """Same color-contracted hopping formula as _compute_int_energy_op_vec, with the
+        covariance matrix replaced by its parameter derivative (also assumes a real
+        faithful representation)."""
+        ncolors = 2  # the faithful D2n representation is 2-dimensional
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, nparams)
         gradients = xnp.zeros(param_shape)
+
+        for layer_ind in range(num_pg_layer, nlayer):
+
+            for site_ind in range(lattice_size):
+                site_ind_cov = 2 * ncolors * site_ind  # index into covariance matrix
+
+                # Horizontal link
+                hor_link_ind = horizontal_neighbor_data[site_ind][0]
+                neighborX_ind = 2 * ncolors * horizontal_neighbor_data[site_ind][1]
+                gaugefield_hor = xnp.real(gaugefieldvec[hor_link_ind])  # D(g) of the link, real 2x2
+
+                # Vertical link
+                vert_link_ind = vertical_neighbor_data[site_ind][0]
+                neighborY_ind = 2 * ncolors * vertical_neighbor_data[site_ind][1]
+                gaugefield_vert = xnp.real(gaugefieldvec[vert_link_ind])
+
+                # Calculate derivatives
+                for uc_ind in range(unitcell_size):
+                    for symbol_ind in range(nparams):
+                        # we can skip parameters that are forced by the ansatz to be zero
+                        if (layer_ind, uc_ind, symbol_ind) not in zeroed_params:
+
+                            d_gamma_out = d_gamma_out_symbolvec[layer_ind, uc_ind, symbol_ind]
+                            grad = 0.0
+                            for m in range(ncolors):
+                                site_color_ind = site_ind_cov + 2 * m
+                                for n in range(ncolors):
+                                    neighborX_color_ind = neighborX_ind + 2 * n
+                                    neighborY_color_ind = neighborY_ind + 2 * n
+
+                                    grad += (
+                                        0.5
+                                        * gaugefield_hor[m][n]
+                                        * (
+                                            d_gamma_out[site_color_ind, neighborX_color_ind]
+                                            - d_gamma_out[site_color_ind + 1, neighborX_color_ind + 1]
+                                        )
+                                    )
+                                    grad += (
+                                        -0.5
+                                        * gaugefield_vert[m][n]
+                                        * (
+                                            d_gamma_out[site_color_ind, neighborY_color_ind + 1]
+                                            + d_gamma_out[site_color_ind + 1, neighborY_color_ind]
+                                        )
+                                    )
+                            gradients = backend.array_add(gradients, (layer_ind, uc_ind, symbol_ind), grad)
+
         return gradients
 
     @staticmethod
@@ -164,6 +263,17 @@ class D2nSystem2D(System2DBase):
         return chem_energy_op
 
     @staticmethod
+    @maybe_jit(
+        static_argnames=[
+            "lattice_size",
+            "num_pg_layer",
+            "num_fermionic_layer",
+            "unitcell_size",
+            "symbolvec",
+            "sublattice_factors",
+            "zeroed_params",
+        ],
+    )
     def _compute_chem_energy_grad(
         lattice_size: int,
         num_pg_layer: int,
@@ -174,9 +284,32 @@ class D2nSystem2D(System2DBase):
         zeroed_params: tuple,
         d_gamma_out_vec: xnp.ndarray,
     ) -> xnp.ndarray:
+        ncolors = 2  # the faithful D2n representation is 2-dimensional
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
         gradients = xnp.zeros(param_shape)
+
+        for layer_ind in range(num_pg_layer, nlayer):
+            # only the fermionic layers directly contribute to the chemical potential
+
+            for site_ind in range(lattice_size):
+                site_factor = sublattice_factors[site_ind]  # even or odd sublattice
+
+                for uc_ind in range(unitcell_size):
+                    for symbol_ind, symbol in enumerate(symbolvec):
+                        # we can skip parameters that are forced by the ansatz to be zero
+                        if (layer_ind, uc_ind, symbol_ind) not in zeroed_params:
+
+                            d_gamma_out = d_gamma_out_vec[layer_ind, uc_ind, symbol_ind]
+                            grad = 0.0
+                            for color in range(ncolors):
+                                color_ind = 2 * ncolors * site_ind + 2 * color
+                                grad += 0.5 * site_factor * d_gamma_out[color_ind + 1, color_ind]
+                            gradients = backend.array_add(gradients, (layer_ind, uc_ind, symbol_ind), grad)
+
+                    # further terms of the derivative are included higher up in the computation stack
+                    # because computing them requires knowing various expectation values, which are not available here
+
         return gradients
 
     def _meson_string_vec(self, path: tuple[tuple[int, bool], ...]) -> xnp.ndarray:
