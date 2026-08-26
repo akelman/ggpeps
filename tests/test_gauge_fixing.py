@@ -473,6 +473,7 @@ class Testgaugefixing(unittest.TestCase):
                 dest["mass"] = float(np.real(s.mass_energy_op))
                 dest["int"] = float(np.real(s.int_energy_op))
                 dest["chem"] = float(np.real(np.sum(s.chem_energy_op_vec)))
+                dest["meson"] = float(np.real(s.meson_string(lat.generate_L_string((0, 0), (1, 1)))))
             return dest
 
         for trial in range(ntrials):
