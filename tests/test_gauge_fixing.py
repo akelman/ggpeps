@@ -202,7 +202,7 @@ class Testgaugefixing(unittest.TestCase):
             cfg.make_pure_gauge()
             cfg.enforce_parameter_conditions(cfg.paramvec)
             sys_ = system.Z2System2D(cfg)
-            ec = ExactEvaluatorConfig()
+            ec = ExactEvaluatorConfig(tracker_refresh_interval=0)
             ec.compute_grads = False
             ev = exacteval.ExactEvaluator(ec, sys_)
             ev.evaluate()
@@ -254,13 +254,13 @@ class Testgaugefixing(unittest.TestCase):
             return system.Z2System2D(cfg)
 
         persistent = build()  # driven incrementally through the whole traversal
-        evaluator = exacteval.ExactEvaluator(ExactEvaluatorConfig(), persistent)
+        evaluator = exacteval.ExactEvaluator(ExactEvaluatorConfig(tracker_refresh_interval=0), persistent)
 
         max_drift = 0.0
         for config in evaluator.generate_config_vec():
-            persistent.update_gauge_full_system(config)
+            persistent.update_gauge_full_system(config, tracker_interval=0)
             fresh = build()
-            fresh.update_gauge_full_system(config)
+            fresh.update_gauge_full_system(config, tracker_interval=1)
             drift = np.max(
                 np.abs(np.asarray(persistent.norm_mod_vec, dtype=float) - np.asarray(fresh.norm_mod_vec, dtype=float))
             )
@@ -302,14 +302,14 @@ class Testgaugefixing(unittest.TestCase):
         modified covariance matrix, not just its norm.
         """
         persistent = self._build_explosive_pure_gauge_system(-1)
-        evaluator = exacteval.ExactEvaluator(ExactEvaluatorConfig(), persistent)
+        evaluator = exacteval.ExactEvaluator(ExactEvaluatorConfig(tracker_refresh_interval=0), persistent)
 
         max_norm_drift = 0.0
         max_cov_drift = 0.0
         for config in evaluator.generate_config_vec():
-            persistent.update_gauge_full_system(config)
+            persistent.update_gauge_full_system(config, tracker_interval=0)
             fresh = self._build_explosive_pure_gauge_system(-1)
-            fresh.update_gauge_full_system(config)
+            fresh.update_gauge_full_system(config, tracker_interval=1)
 
             max_norm_drift = max(
                 max_norm_drift,
@@ -338,13 +338,13 @@ class Testgaugefixing(unittest.TestCase):
         recomputation over the long incremental chain of a full traversal.
         """
         persistent = self._build_explosive_pure_gauge_system(-1)
-        evaluator = exacteval.ExactEvaluator(ExactEvaluatorConfig(), persistent)
+        evaluator = exacteval.ExactEvaluator(ExactEvaluatorConfig(tracker_refresh_interval=0), persistent)
 
         max_incdet_drift = 0.0
         max_wi_in_drift = 0.0
         max_wi_out_drift = 0.0
         for config in evaluator.generate_config_vec():
-            persistent.update_gauge_full_system(config)
+            persistent.update_gauge_full_system(config, tracker_interval=0)
             # Ground truth: rebuild the closed trackers from scratch from the exact gamma_in_sys.
             wi_in_fresh, wi_out_fresh, incdet_fresh = persistent._compute_closed_trackers()
 
@@ -379,13 +379,13 @@ class Testgaugefixing(unittest.TestCase):
         """
         persistent = self._build_explosive_pure_gauge_system(-1)
         persistent.tracker_refresh_interval = 10**9  # disable periodic refresh; rely on the guard
-        evaluator = exacteval.ExactEvaluator(ExactEvaluatorConfig(), persistent)
+        evaluator = exacteval.ExactEvaluator(ExactEvaluatorConfig(tracker_refresh_interval=0), persistent)
 
         max_drift = 0.0
         for config in evaluator.generate_config_vec():
-            persistent.update_gauge_full_system(config)
+            persistent.update_gauge_full_system(config, tracker_interval=0)
             fresh = self._build_explosive_pure_gauge_system(-1)
-            fresh.update_gauge_full_system(config)
+            fresh.update_gauge_full_system(config, tracker_interval=1)
             max_drift = max(
                 max_drift,
                 float(
@@ -424,8 +424,8 @@ class Testgaugefixing(unittest.TestCase):
         cfg.make_pure_gauge()
         cfg.enforce_parameter_conditions(cfg.paramvec)
 
-        mgr = EvaluatorManager(system.Z2System2D, cfg, ExactEvaluatorConfig(), 0, tracker_refresh_interval=7)
-        self.assertEqual(mgr.evaluator.system.tracker_refresh_interval, 7)
+        mgr = EvaluatorManager(system.Z2System2D, cfg, ExactEvaluatorConfig(tracker_refresh_interval=7), 0)
+        self.assertEqual(mgr.evaluator.cfg.tracker_refresh_interval, 7)
 
     # ----------------------------------------------- per-config gauge invariance (Z2 & D6)
 

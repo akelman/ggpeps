@@ -119,7 +119,6 @@ class Config2DBase(ABC):
     nvirtmodes_link: int
     nphysmodes_site: int  # number of physical modes per site
     ncolors: int
-    tracker_refresh_interval: int
 
     def __init__(
         self,

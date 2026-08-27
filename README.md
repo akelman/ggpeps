@@ -2,7 +2,7 @@
 
 
 This repository contains the code for simulations of lattice gauge theories (LGTs) with Gauged Gaussian Fermionic Projected Entangled Pair States (GGFPEPS).
-Currently, $\mathbb{Z}_2$ theories are fully operational, and $D_n$ theories are a work in progress. The $U(1)$ implementation is not functional.
+Currently, $\mathbb{Z}_2$ theories are fully operational, and $\mathbb{Z}_N$ and $D_n$ theories are a work in progress. The $U(1)$ implementation is not functional.
 
 The purpose of this README is to provide:
 1. a source of information for new team members;
@@ -48,8 +48,8 @@ For the rest of the tutorial, we assume it to be in `~/.pyenv/`.
     cd ~/.pyenv
     python -m venv ggpeps
     ```
-    Assuming you are using `bash` or `zsh`, you can activate the environment with `source ~/.pyenv/ggpeps/bin/activate`. If you are using `csh`, instead use `source ~/.pyenv/ggpeps/bin/activate.csh`.
-    Upon activation, you will notice that your prompt changes. As long as it is prefixed by `(ggpeps)` the virtual environment is active.
+    Assuming you are using `bash` or `zsh`, you can activate the environment with `source ~/.pyenv/ggpeps/bin/activate`. If you are using `csh`, use `source ~/.pyenv/ggpeps/bin/activate.csh` instead.
+    Upon activation, you will notice that your prompt changes. If it is prefixed by `(ggpeps)` the virtual environment is active.
     The virtual environment can be deactivated with `deactivate`.
 <br/>
 2. **Clone the code**
@@ -57,7 +57,7 @@ You can obtain the code by cloning the repo with:
 ```git clone <repo_url>```
 <br/>
 3. **Install the package**
-For the next step, please navigate into the repo that you just downloaded and activate the empty environment that we created in step 1.
+For the next step, navigate into the repo that you just downloaded and activate the empty environment that we created in step 1.
 (If you intend to be able to use GPUs, see the note below.)
 
     To install all required packages for the simulation, execute
@@ -66,7 +66,7 @@ For the next step, please navigate into the repo that you just downloaded and ac
     ```
     This command installs the package as an editable package, i.e. all changes in the source code will be directly reflected in the installed package.
 
-    If you wish to install the optional dependencies, instead run
+    If you wish to install the optional dependencies, run
     ```
     pip install  -e .[dev,test]
     ```
@@ -76,7 +76,7 @@ For the next step, please navigate into the repo that you just downloaded and ac
     pip install .
     ```
 
-    All commands will install the package `ggpeps` into your environment (and the necessary dependencies).
+    All commands will install the package `ggpeps` (and the necessary dependencies) into your environment.
 
 You can test your installation by opening a python console (just type `python`) and executing
 ```python
@@ -105,9 +105,9 @@ NOTE: It may be necessary to do this installation on a node that has access to t
 
 ### Structure of the Code
 
-The repository is split into two main parts: the package `ggpeps` and utility scripts in the main folder.
+The repository is split into several main parts: the package `ggpeps`, tests, and utility scripts in the main folder.
 
-The package is contained in `src/ggpeps/` and contains the simulation code, i.e. the actual implementation of the physical problem.
+The package is contained in `src/ggpeps/` and contains the simulation code, i.e. the actual implementation of the physical problem and GGPEPS ansatz.
 All scripts in the main folder call parts of the package and provide the infrastructure to manage the simulations. This includes `tests/`, `tools/` which contains various bash and python scripts (especially to help manage batches of simulations on a cluster), and `plot/` with various plotting scripts.
 
 The package `ggpeps` is divided into several parts:
@@ -159,8 +159,9 @@ python -m unittest tests/test_lattice.py
 ```
 
 #### Testing across multiple architectures
-The package supports CPU and GPU operation.
-To test both these modes independently, the tests are run with `nox` to run in different environments.
+The package supports CPU and GPU operation, as well as different linear algebra backends.
+To test these modes independently, the tests are run with `nox` to run with 
+different backends.
 Additionally, it enables testing of the environment, coverage, type hints, and lint testing.
 
 The full `nox` test suite can be executed with
@@ -195,7 +196,7 @@ Pull requests would be appreciated for minor improvements; for  major updates we
 The script `manager.py` is the central point for data generation. It supports different modes: `eval` and `min` where both can be evaluated with `exact` and `mc`.
 
 To run with JAX (whether on CPU or GPU), first export the environment variable: `export GGPEPS_BACKEND=jax` (it can also be set to `numpy`, but numpy will also be used by default regardless).
-If using multiple runners in conjunction with a GPU (we have not tested using multiple GPUs simultaneously, though this should only require small changes), memory issues can arise. JAX preallocates 75% of GPU memory upon startup; with multiple runners, each runner tries to allocate this memory, causing a crash. This can be solved using an environment variable: `XLA_PYTHON_CLIENT_MEM_FRACTION=.XX` where `XX` should be $1/n_\text{runner}$, rounded down if necessary. Note that this only addresses preallocation, and the program may crash if a runner tries to request more memory. See the [JAX documentation on GPU Memory Allocation](https://docs.jax.dev/en/latest/gpu_memory_allocation.html) for more information.
+If using multiple runners in conjunction with a GPU (we have not tested using multiple GPUs simultaneously, though this should only require small changes), memory issues can arise. JAX preallocates 75% of GPU memory upon startup; with multiple runners, each runner tries to allocate this memory, causing a crash. This can be solved using an environment variable: `XLA_PYTHON_CLIENT_MEM_FRACTION=.XX` where `.XX` should be $1/n_\text{runner}$, rounded down if necessary. Note that this only addresses preallocation, and the program may crash if a runner tries to request more memory. See the [JAX documentation on GPU Memory Allocation](https://docs.jax.dev/en/latest/gpu_memory_allocation.html) for more information.
 
 All modes write log files to disk and to console. 
 The files are named according to the parameters that were provided via the commandline. 
@@ -247,7 +248,7 @@ For small systems, we can substitute the Monte Carlo evaluation part in the mini
 python manager.py min-exact Z2 --L 2 --g 1.0 
 ```
 
-For an overview of all command line parameters call `python manager.py --help`.
+For an overview of all command line parameters, run `python manager.py --help`.
 
 ### Reproducibility
 Successive runs produce identical output, provided they use the same version of the code with the same command-line arguments, and also use the same seed (if the parameters are provided, and no Monte Carlo is used, randomness should have no effect, and so the seed does not matter).
@@ -260,7 +261,7 @@ The exception is related to caching, which can interfere with the randomness as 
 The repo includes several scripts to help with running many jobs on a computing cluster.
 It can also interpret signals, e.g. as sent by slurm, to automatically cache and end a computation.
 
-Note on shared nodes and Ray: on clusters that pack several jobs onto the same node, all Ray instances (used by `--nrunner`) store their session files in the shared `/tmp/ray` by default. A job script that cleans up with `rm -rf /tmp/ray` will crash every other job still running on that node. Instead, give each job a private temp dir and remove only it:
+Note on shared nodes and Ray: on clusters that pack several jobs onto the same node, all Ray instances (used if `--nrunner` is provided with a nonzero value) store their session files in the shared `/tmp/ray` by default. A slurm job script that cleans up with `rm -rf /tmp/ray` will crash every other job still running on that node. Instead, give each job a private temp dir and remove only the correct directory:
 ```bash
 export TMPDIR=/tmp/ray_$SLURM_JOB_ID
 mkdir -p $TMPDIR

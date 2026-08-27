@@ -22,8 +22,12 @@ class ExactEvaluatorConfig:
     It is more convenient than passing an extensive number of parameters to the constructor.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, tracker_refresh_interval: int = -1) -> None:
         self.compute_grads: bool = True
+
+        # Single control point for the incremental-tracker refresh cadence.
+        # See update_gauge_ind() for the mode semantics.
+        self.tracker_refresh_interval = tracker_refresh_interval
 
 
 class ExactEvaluator(Evaluator):
@@ -109,7 +113,7 @@ class ExactEvaluator(Evaluator):
                 data[f"square_string_0-0_{k}x{k}"] = []
 
             for ind, config in enumerate(configvec):
-                self.system.update_gauge_full_system(config)
+                self.system.update_gauge_full_system(config, tracker_interval=self.cfg.tracker_refresh_interval)
                 # logger.debug(f"Configuration: {config}")
 
                 data["energy"].append(self.system.energy)
