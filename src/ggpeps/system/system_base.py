@@ -2276,7 +2276,7 @@ class System2DBase(ABC):
         symbolvec: tuple,
         d_gamma_out_symbolvec: xnp.ndarray,
         zeroed_params: tuple,
-        use_trans_inv: bool = True,
+        use_trans_inv: bool = False,
         ncolors: int = 1,
     ) -> xnp.ndarray:
         """Compute the mass energy gradient.
@@ -2792,7 +2792,7 @@ class System2DBase(ABC):
                 tuple(self.cfg.symbolvec),
                 self.d_gamma_out_symbolvec,
                 self.cfg.zeroed_params,
-                use_trans_inv=True,
+                use_trans_inv=False,
                 ncolors=self.cfg.ncolors,
             )
         return self._mass_energy_op_grad_vec

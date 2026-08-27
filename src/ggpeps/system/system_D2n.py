@@ -72,12 +72,15 @@ class D2nSystem2D(System2DBase):
         symbolvec: tuple,
         d_gamma_out_symbolvec: xnp.ndarray,
         zeroed_params: tuple,
-        use_trans_inv: bool = True,
+        use_trans_inv: bool = False,
         ncolors: int = 1,
     ) -> xnp.ndarray:
 
-        if not use_trans_inv:
-            raise NotImplementedError("Translation invariance must be set to True.")
+        if use_trans_inv:
+            logger.warning(
+                "Translation invariance need not be assumed for the mass energy grad operator."
+                "Doing so gives negligible speedup, so we proceed without it."
+            )
 
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
