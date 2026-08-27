@@ -186,6 +186,9 @@ def main(args):
                 # Show errors for MC
                 if type_ == "MC":
                     error = group["err"]  # this will not work for array observables
+                    if isinstance(error.iloc[0], np.ndarray):
+                        # Handle case where chosen values are an array
+                        error = error.apply(lambda x: x[*idx])
                 else:
                     error = None
 
@@ -229,9 +232,9 @@ def main(args):
     # Output
     if not args.no_save:
         if args.diff:
-            f.savefig(f"summary_diff_{'-'.join(args.obs)}.pdf")
+            f.savefig(f"{args.title}_summary_diff_{'-'.join(args.obs)}.pdf")
         else:
-            f.savefig(f"summary_{'-'.join(args.obs)}.pdf")
+            f.savefig(f"{args.title}_summary_{'-'.join(args.obs)}.pdf")
     if args.show:
         plt.show()
 
