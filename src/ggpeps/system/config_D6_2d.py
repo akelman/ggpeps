@@ -102,23 +102,23 @@ class D6System2D_Config(Config2DBase):
         idx_vec = []
         coeffs_vec = []
         constants_vec = []
-        drop_real = False
+        drop_im = False
         if self.nlayer == 1:
-            drop_real = True
+            drop_im = True
 
         for group_element in self.gaugemgr.group_elements_for_el_energy:
             # Pure Gauge (PG) ---
             idxarr_pg_h_0, const_pg_h_0 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.X, group_element, site=0, drop_imag=drop_real
+                self.ncopy, self.ncolors, False, Direction.X, group_element, site=0, drop_imag=drop_im
             )
             idxarr_pg_h_1, const_pg_h_1 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.X, group_element, site=1, drop_imag=drop_real
+                self.ncopy, self.ncolors, False, Direction.X, group_element, site=1, drop_imag=drop_im
             )
             idxarr_pg_v_0, const_pg_v_0 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=0, drop_imag=drop_real
+                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=0, drop_imag=drop_im
             )
             idxarr_pg_v_1, const_pg_v_1 = generate_gauged_projector_terms(
-                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=1, drop_imag=drop_real
+                self.ncopy, self.ncolors, False, Direction.Y, group_element, site=1, drop_imag=drop_im
             )
 
             # generate fermionic terms
@@ -366,9 +366,7 @@ class D6System2D_Config(Config2DBase):
         correct_order = [f"Psi{m}" for m in range(1, self.ncolors + 1)]
         for m in range(1, self.ncolors + 1):
             link_labels = [
-                f"{d}_{(m - 1) * self.ncopy + cop}"
-                for cop in range(1, self.ncopy + 1)
-                for d in ("l", "r", "d", "u")
+                f"{d}_{(m - 1) * self.ncopy + cop}" for cop in range(1, self.ncopy + 1) for d in ("l", "r", "d", "u")
             ]
             wrong_order += [f"Psi{m}"] + link_labels
             correct_order += link_labels
