@@ -210,67 +210,45 @@ class TestD2nSystem(unittest.TestCase):
 
     ###### Test Energy Gradients ######
     def test_grad_el_energy_2C(self):
-        # This is comparison of the analytic derivative against the numeric derivative
-        # for the 2 copy fermionic ansatz
+        """Analytic vs numeric electric-energy gradient, with one pure-gauge and one
+        fermionic layer so both layer types' el terms and derivatives are covered, on a
+        flux configuration."""
         eps = 1e-5
-        paramvec = np.random.rand(2, 20)
+        nlayer = 2
         lat_2x2 = lattice.Lattice2D(2, 2)
+        paramvec = np.random.rand(nlayer, 1, 20)
         system_cfg = system.D6System2D_Config(
-            lat_2x2,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            None,
-            ncopy=2,
+            lat_2x2, 1.0, 0.0, 0.0, 0.0, None, ncopy=2, num_pg_layer=1, num_fermionic_layer=1
         )
-        system_cfg.paramvec = paramvec
-        system_z2_2_2 = system.D2nSystem2D(system_cfg)
-        deriv_ana = system_z2_2_2.el_energy_op_grad_vec
-        symbolvec = system_z2_2_2.symbolvec
+        identity = system_cfg.gaugemgr.get_neutral_gauge_value()
+        flux = system_cfg.gaugemgr.get_representation(0, 1)
+        config = np.array([identity] * 7 + [flux])
 
+        def build_system(pv):
+            # the config is reused; a fresh system recomputes everything from the new paramvec
+            system_cfg.paramvec = pv
+            sys_d6 = system.D2nSystem2D(system_cfg)
+            sys_d6.update_gauge_full_system(config)
+            return sys_d6
+
+        deriv_ana = np.real(np.asarray(build_system(np.copy(paramvec)).el_energy_op_grad_vec))
+        symbolvec = system_cfg.symbolvec
         uc_ind = 0
-        idxs = np.random.randint(0, len(symbolvec), size=2)
 
-        for layerind in range(2):
-            for ind in idxs:
-                with self.subTest(symbol=symbolvec[ind], layerind=layerind):
+        # test a random subset of the parameters, since testing all of them is too slow
+        inds = np.random.choice(len(symbolvec), size=2, replace=False)
+
+        for layer_ind in range(nlayer):
+            for ind in inds:
+                with self.subTest(symbol=symbolvec[ind], layerind=layer_ind):
                     paramvec_left = np.copy(paramvec)
                     paramvec_right = np.copy(paramvec)
-                    paramvec_left[layerind, ind] -= eps
-                    paramvec_right[layerind, ind] += eps
-                    system_cfg_left = system.D6System2D_Config(
-                        lat_2x2,
-                        1.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        None,
-                        ncopy=2,
-                    )
-                    system_cfg_right = system.D6System2D_Config(
-                        lat_2x2,
-                        1.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        None,
-                        ncopy=2,
-                    )
-
-                    system_cfg_left.paramvec = paramvec_left
-                    system_cfg_right.paramvec = paramvec_right
-
-                    system_z2_2_2_left = system.D2nSystem2D(system_cfg_left)
-                    system_z2_2_2_right = system.D2nSystem2D(system_cfg_right)
-
-                    val_left = system_z2_2_2_left.el_energy_op
-                    val_right = system_z2_2_2_right.el_energy_op
+                    paramvec_left[layer_ind, uc_ind, ind] -= eps
+                    paramvec_right[layer_ind, uc_ind, ind] += eps
+                    val_left = float(np.real(build_system(paramvec_left).el_energy_op))
+                    val_right = float(np.real(build_system(paramvec_right).el_energy_op))
                     deriv_num = (val_right - val_left) / (2 * eps)
-
-                    # print(f"left: {val_left}, right: {val_right}")
-                    # print(f"symbol: {symbolvec[ind]}, analytic: {deriv_ana[layerind,ind]}, numerical: {deriv_num}")
-                    self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
+                    self.assertAlmostEqual(deriv_ana[layer_ind, uc_ind, ind], deriv_num, places=5)
 
 
 def assert_matter_grad_matches_fd(
