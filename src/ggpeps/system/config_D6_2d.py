@@ -1,4 +1,3 @@
-import sys
 import sympy
 import logging
 
