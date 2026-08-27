@@ -273,6 +273,75 @@ class TestD2nSystem(unittest.TestCase):
                     self.assertAlmostEqual(deriv_ana[layerind, uc_ind, ind], deriv_num, places=5)
 
 
+def assert_matter_grad_matches_fd(
+    testcase,
+    op_value,
+    grad_name,
+    num_fermionic_layer,
+    unitcell_size=1,
+    enforce_u1_symmetry=True,
+    g_chem=None,
+):
+    """Compare the analytic parameter gradient of a matter operator against a central
+    finite difference, for a random 3-symbol subset on every layer and unit cell.
+
+    Args:
+        testcase: the calling TestCase (for assertions).
+        op_value: callable extracting the operator value from a system.
+        grad_name: name of the analytic gradient property.
+        num_fermionic_layer: number of fermionic layers (on top of one pure-gauge layer).
+        unitcell_size: forwarded to the config.
+        enforce_u1_symmetry: forwarded to the config.
+        g_chem: forwarded to the config.
+    """
+    eps = 1e-5
+    nlayer = 1 + num_fermionic_layer
+    lat = lattice.Lattice2D(2, 2)
+    paramvec = np.random.rand(nlayer, unitcell_size, 20)
+    cfg = system.D6System2D_Config(
+        lat,
+        1,
+        1,
+        1,
+        1,
+        g_chem,
+        ncopy=2,
+        num_pg_layer=1,
+        num_fermionic_layer=num_fermionic_layer,
+        unitcell_size=unitcell_size,
+        enforce_u1_symmetry=enforce_u1_symmetry,
+    )
+    identity = cfg.gaugemgr.get_neutral_gauge_value()
+    flux = cfg.gaugemgr.get_representation(0, 1)
+    config = np.array([identity] * 7 + [flux])
+
+    def build_system(pv):
+        # the config is reused; a fresh system recomputes everything from the new paramvec
+        cfg.paramvec = pv
+        sys_d6 = system.D2nSystem2D(cfg)
+        sys_d6.update_gauge_full_system(config)
+        return sys_d6
+
+    deriv_ana = np.asarray(getattr(build_system(np.copy(paramvec)), grad_name))
+    symbolvec = cfg.symbolvec
+
+    # test a random subset of the parameters, since testing all of them is too slow
+    inds = np.random.choice(len(symbolvec), size=3, replace=False)
+
+    for layer_ind in range(nlayer):
+        for uc_ind in range(unitcell_size):
+            for ind in inds:
+                with testcase.subTest(symbol=symbolvec[ind], layerind=layer_ind, uc_ind=uc_ind):
+                    paramvec_left = np.copy(paramvec)
+                    paramvec_right = np.copy(paramvec)
+                    paramvec_left[layer_ind, uc_ind, ind] -= eps
+                    paramvec_right[layer_ind, uc_ind, ind] += eps
+                    val_left = op_value(build_system(paramvec_left))
+                    val_right = op_value(build_system(paramvec_right))
+                    deriv_num = (val_right - val_left) / (2 * eps)
+                    testcase.assertAlmostEqual(deriv_ana[layer_ind, uc_ind, ind], deriv_num, places=5)
+
+
 class TestD2nSystemFermions(unittest.TestCase):
     """Tests for the D6 ansatz with a physical fermionic layer (1 PG + 1 fermionic)."""
 
@@ -358,78 +427,22 @@ class TestD2nSystemFermions(unittest.TestCase):
         self.assertFalse(np.allclose(0, self.system_D6.int_energy))
         self.assertTrue(np.allclose(0, self.system_D6.int_energy_op_vec[: self.system_D6.cfg.num_pg_layer]))
 
-    def _assert_matter_grad_matches_fd(self, op_value, grad_name, num_fermionic_layer, enforce_u1_symmetry=True):
-        """Compare the analytic parameter gradient of a matter operator against a central
-        finite difference, for a random 3-symbol subset on every layer.
-
-        Args:
-            op_value: callable extracting the operator value from a system.
-            grad_name: name of the analytic gradient property.
-            num_fermionic_layer: number of fermionic layers (on top of one pure-gauge layer).
-            enforce_u1_symmetry: forwarded to the config.
-        """
-        eps = 1e-5
-        nlayer = 1 + num_fermionic_layer
-        lat = lattice.Lattice2D(2, 2)
-        paramvec = np.random.rand(nlayer, 1, 20)
-        cfg = system.D6System2D_Config(
-            lat,
-            1,
-            1,
-            1,
-            1,
-            None,
-            ncopy=2,
-            num_pg_layer=1,
-            num_fermionic_layer=num_fermionic_layer,
-            enforce_u1_symmetry=enforce_u1_symmetry,
-        )
-        identity = cfg.gaugemgr.get_neutral_gauge_value()
-        flux = cfg.gaugemgr.get_representation(0, 1)
-        config = np.array([identity] * 7 + [flux])
-
-        def build_system(pv):
-            # the config is reused; a fresh system recomputes everything from the new paramvec
-            cfg.paramvec = pv
-            sys_d6 = system.D2nSystem2D(cfg)
-            sys_d6.update_gauge_full_system(config)
-            return sys_d6
-
-        deriv_ana = np.asarray(getattr(build_system(np.copy(paramvec)), grad_name))
-        symbolvec = cfg.symbolvec
-        uc_ind = 0
-
-        # test a random subset of the parameters, since testing all of them is too slow
-        inds = np.random.choice(len(symbolvec), size=3, replace=False)
-
-        for layer_ind in range(nlayer):
-            for ind in inds:
-                with self.subTest(symbol=symbolvec[ind], layerind=layer_ind):
-                    paramvec_left = np.copy(paramvec)
-                    paramvec_right = np.copy(paramvec)
-                    paramvec_left[layer_ind, uc_ind, ind] -= eps
-                    paramvec_right[layer_ind, uc_ind, ind] += eps
-                    val_left = op_value(build_system(paramvec_left))
-                    val_right = op_value(build_system(paramvec_right))
-                    deriv_num = (val_right - val_left) / (2 * eps)
-                    self.assertAlmostEqual(deriv_ana[layer_ind, uc_ind, ind], deriv_num, places=5)
-
     def test_grad_mass_energy_2C(self):
         """Analytic vs numeric mass-energy gradient (1 fermionic layer)."""
-        self._assert_matter_grad_matches_fd(
-            lambda s: float(np.real(s.mass_energy_op)), "mass_energy_op_grad_vec", num_fermionic_layer=1
+        assert_matter_grad_matches_fd(
+            self, lambda s: float(np.real(s.mass_energy_op)), "mass_energy_op_grad_vec", num_fermionic_layer=1
         )
 
     def test_grad_mass_energy_2flavor(self):
         """Analytic vs numeric mass-energy gradient (2 fermionic layers)."""
-        self._assert_matter_grad_matches_fd(
-            lambda s: float(np.real(s.mass_energy_op)), "mass_energy_op_grad_vec", num_fermionic_layer=2
+        assert_matter_grad_matches_fd(
+            self, lambda s: float(np.real(s.mass_energy_op)), "mass_energy_op_grad_vec", num_fermionic_layer=2
         )
 
     def test_grad_int_energy_2C(self):
         """Analytic vs numeric interaction-energy gradient (1 fermionic layer)."""
-        self._assert_matter_grad_matches_fd(
-            lambda s: float(np.real(s.int_energy_op)), "int_energy_op_grad_vec", num_fermionic_layer=1
+        assert_matter_grad_matches_fd(
+            self, lambda s: float(np.real(s.int_energy_op)), "int_energy_op_grad_vec", num_fermionic_layer=1
         )
 
     def test_grad_chem_energy_2flavor(self):
@@ -439,7 +452,8 @@ class TestD2nSystemFermions(unittest.TestCase):
         parameters (even with flux and relaxed U(1)), so both sides are zero here; the
         comparison still catches a chem gradient that is spuriously nonzero. A
         magnitude-sensitive version needs unitcell_size = 2."""
-        self._assert_matter_grad_matches_fd(
+        assert_matter_grad_matches_fd(
+            self,
             lambda s: float(np.real(np.sum(s.chem_energy_op_vec))),
             "chem_energy_op_grad_vec",
             num_fermionic_layer=2,
@@ -479,6 +493,90 @@ class TestD2nSystemFermions(unittest.TestCase):
         self.assertAlmostEqual(mass_op, mass)
 
         self.assertAlmostEqual(chem_op, np.sum(all_occupations))
+
+
+class TestD2nTransVariance(unittest.TestCase):
+    """Tests for the D6 ansatz with a two-site unit cell (different parameters on the
+    even and odd sublattices)."""
+
+    def setUp(self):
+        lat = lattice.Lattice2D(2, 2)
+        num_pg_layer = 1
+        num_fermionic_layer = 2
+        nlayer = num_pg_layer + num_fermionic_layer
+        unitcell_size = 2
+        cfg = system.D6System2D_Config(
+            lat,
+            1,
+            1,
+            1,
+            1,
+            [1.0, 2.0],
+            ncopy=2,
+            num_pg_layer=num_pg_layer,
+            num_fermionic_layer=num_fermionic_layer,
+            unitcell_size=unitcell_size,
+            enforce_u1_symmetry=False,
+        )
+        cfg.paramvec = np.random.rand(nlayer, unitcell_size, 20)
+        self.system_D6 = system.D2nSystem2D(cfg)
+        self.system_D6.cfg.enforce_parameter_conditions(self.system_D6.cfg.paramvec)
+
+    def test_tmat_layervec_sitevec(self):
+        """Sites map to unit-cell parameters by sublattice: all even sites share one tmat,
+        all odd sites share another, and the two differ for random parameters."""
+        for lay in range(self.system_D6.cfg.nlayer):
+            tmats = self.system_D6.tmat_layervec_sitevec[lay]
+            for site in range(self.system_D6.cfg.lattice.size):
+                x, y = self.system_D6.cfg.lattice.ind2coord(site)
+                reference = tmats[1] if (x + y) % 2 else tmats[0]
+                self.assertTrue(np.allclose(tmats[site], reference))
+            self.assertFalse(np.allclose(tmats[0], tmats[1]))
+
+    def test_occupations(self):
+        """The mass/chem-occupation consistency identity also holds with a two-site unit cell."""
+        identity = self.system_D6.cfg.gaugemgr.get_neutral_gauge_value()
+        flux = self.system_D6.cfg.gaugemgr.get_representation(0, 1)
+        self.system_D6.update_gauge_full_system(np.array([identity] * 7 + [flux]))
+
+        mass_op = self.system_D6.mass_energy_op
+        chem_op = np.sum(self.system_D6.chem_energy_op_vec)
+        all_occupations = self.system_D6.occupations_before_ph
+
+        cfg = self.system_D6.cfg
+        even_sites = [s for s, f in enumerate(cfg.lattice.sublattice_factors) if f == 1]
+        odd_sites = [s for s, f in enumerate(cfg.lattice.sublattice_factors) if f == -1]
+        mass = 0.5 * cfg.ncolors * cfg.lattice.size * cfg.num_fermionic_layer
+        mass += np.sum(all_occupations[:, even_sites])
+        mass -= np.sum(all_occupations[:, odd_sites])
+        self.assertAlmostEqual(mass_op, mass)
+
+        self.assertAlmostEqual(chem_op, np.sum(all_occupations))
+
+    def test_grad_mass_energy(self):
+        """Analytic vs numeric mass-energy gradient with a two-site unit cell."""
+        assert_matter_grad_matches_fd(
+            self,
+            lambda s: float(np.real(s.mass_energy_op)),
+            "mass_energy_op_grad_vec",
+            num_fermionic_layer=2,
+            unitcell_size=2,
+            enforce_u1_symmetry=False,
+            g_chem=[1.0, 2.0],
+        )
+
+    def test_grad_chem_energy(self):
+        """Analytic vs numeric chemical-potential gradient with a two-site unit cell
+        (the first magnitude-sensitive chem comparison: at unitcell 1 the operator is constant)."""
+        assert_matter_grad_matches_fd(
+            self,
+            lambda s: float(np.real(np.sum(s.chem_energy_op_vec))),
+            "chem_energy_op_grad_vec",
+            num_fermionic_layer=2,
+            unitcell_size=2,
+            enforce_u1_symmetry=False,
+            g_chem=[1.0, 2.0],
+        )
 
 
 class TestD6PreviousVersion(unittest.TestCase):
@@ -781,9 +879,7 @@ class TestD6GeneralNcopy(unittest.TestCase):
         R = block_diag(r_block, r_block)
         block_size = 1 + 4 * 3
         color_outer = (
-            [1, 1 + block_size]
-            + list(range(2, block_size + 1))
-            + list(range(block_size + 2, 2 * block_size + 1))
+            [1, 1 + block_size] + list(range(2, block_size + 1)) + list(range(block_size + 2, 2 * block_size + 1))
         )
         permutation_mat = np.array(generate_permutation_matrix(list(range(1, 2 * block_size + 1)), color_outer))
         R = np.transpose(permutation_mat) @ R @ permutation_mat

@@ -90,10 +90,10 @@ class D6System2D_Config(Config2DBase):
         )
 
         # Translation invariance (or variance)
-        if self.unitcell_size not in [1]:
-            logger.error("For Dn groups this ansatz only supports unitcell_size = 1. \
+        if self.unitcell_size not in [1, 2, -1]:
+            logger.error("This ansatz only supports unitcell_size = 1, 2, or -1 (all sites independent). \
                 This can be adapted by adding in a specification in the config to map sites to parameters.")
-            sys.exit(1)
+            raise ValueError("Invalid unitcell_size.")
 
         self.init_el_energy_terms()
 
