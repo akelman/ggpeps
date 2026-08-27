@@ -71,6 +71,7 @@ class Z2System2D(System2DBase):
         d_gamma_out_symbolvec: xnp.ndarray,
         zeroed_params: tuple,
         use_trans_inv: bool = True,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
 
         if not use_trans_inv:
@@ -119,6 +120,7 @@ class Z2System2D(System2DBase):
         ferm_covmat_vec: xnp.ndarray,
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
         """
         Note: this function assumes that U = U^dagger, which is only valid for Z2.
@@ -183,6 +185,7 @@ class Z2System2D(System2DBase):
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
         zeroed_params: tuple,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
         """
         Note: this function assumes that U = U^dagger, which is only valid for Z2.
@@ -274,6 +277,7 @@ class Z2System2D(System2DBase):
         sublattice_factors: tuple,
         zeroed_params: tuple,
         d_gamma_out_vec: xnp.ndarray,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
 
         nlayer = num_pg_layer + num_fermionic_layer
@@ -350,11 +354,16 @@ class Z2System2D(System2DBase):
         return meson_op_vec
 
     @staticmethod
-    @maybe_jit(static_argnames=["after_ph"])
+    @maybe_jit(static_argnames=["after_ph", "ncolors"])
     def occupation(
-        covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False, color: int = 0
+        covmat: xnp.ndarray,
+        site: int,
+        site_coord: tuple[int, int],
+        after_ph: bool = False,
+        color: int = 0,
+        ncolors: int = 1,
     ) -> float:
-        # Z2 has a single color; the color argument only exists to match the base signature.
+        # Z2 has a single color; the color/ncolors arguments only exist to match the base signature.
         site_ind = 2 * site  # index into covariance matrix
 
         x, y = site_coord

@@ -2259,6 +2259,7 @@ class System2DBase(ABC):
         d_gamma_out_symbolvec: xnp.ndarray,
         zeroed_params: tuple,
         use_trans_inv: bool = True,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
         """Compute the mass energy gradient.
 
@@ -2266,6 +2267,7 @@ class System2DBase(ABC):
 
         Args:
             use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
+            ncolors (int, optional): number of colors. Defaults to 1.
 
         Returns:
             array: gradients of the mass energy
@@ -2282,6 +2284,7 @@ class System2DBase(ABC):
         ferm_covmat_vec: xnp.ndarray,
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
         """Compute the interaction energy (per layer) - the energy due to the interaction of the
         physical fermions with the gauge fields.
@@ -2303,6 +2306,7 @@ class System2DBase(ABC):
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
         zeroed_params: tuple,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
         """Compute the interaction energy gradient.
         This is an abstract method and has to be overwritten in a subclass.
@@ -2330,6 +2334,7 @@ class System2DBase(ABC):
         sublattice_factors: tuple,
         zeroed_params: tuple,
         d_gamma_out_vec: xnp.ndarray,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
         """Compute the chemical potential energy gradient.
         This is an abstract method and has to be overwritten in a subclass.
@@ -2612,6 +2617,7 @@ class System2DBase(ABC):
                 self.ferm_covmat_vec,
                 self.cfg.lattice.horizontal_neighbor_data,
                 self.cfg.lattice.vertical_neighbor_data,
+                ncolors=self.cfg.ncolors,
             )
         return self._int_energy_op_vec
 
@@ -2769,6 +2775,7 @@ class System2DBase(ABC):
                 self.d_gamma_out_symbolvec,
                 self.cfg.zeroed_params,
                 use_trans_inv=True,
+                ncolors=self.cfg.ncolors,
             )
         return self._mass_energy_op_grad_vec
 
@@ -2792,6 +2799,7 @@ class System2DBase(ABC):
                 self.cfg.lattice.horizontal_neighbor_data,
                 self.cfg.lattice.vertical_neighbor_data,
                 self.cfg.zeroed_params,
+                ncolors=self.cfg.ncolors,
             )
         return self._int_energy_op_grad_vec
 
@@ -2813,6 +2821,7 @@ class System2DBase(ABC):
                 self.cfg.lattice.sublattice_factors,
                 self.cfg.zeroed_params,
                 self.d_gamma_out_symbolvec,
+                ncolors=self.cfg.ncolors,
             )
         return self._chem_energy_op_grad_vec
 
@@ -2820,9 +2829,14 @@ class System2DBase(ABC):
 
     @staticmethod
     @abstractmethod
-    @maybe_jit(static_argnames=["after_ph"])
+    @maybe_jit(static_argnames=["after_ph", "ncolors"])
     def occupation(
-        covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False, color: int = 0
+        covmat: xnp.ndarray,
+        site: int,
+        site_coord: tuple[int, int],
+        after_ph: bool = False,
+        color: int = 0,
+        ncolors: int = 1,
     ) -> float:
         """Compute the occupation number for the given layer, site and color.
         # TODO: support specification of flavor (multiple physical fermions per color)
@@ -2834,6 +2848,7 @@ class System2DBase(ABC):
             after_ph (bool, optional): If True, compute the occupation number using the operators
                                        defined after the particle-hole transformation. Defaults to False.
             color (int, optional): Color index (0-based). Defaults to 0.
+            ncolors (int, optional): number of colors. Defaults to 1.
 
         Returns:
             float: the occupation number for the given layer, site and color
@@ -2858,7 +2873,12 @@ class System2DBase(ABC):
                 site_coord = self.cfg.lattice.ind2coord(site)
                 for color in range(self.cfg.ncolors):
                     layer_val += self.occupation(
-                        self.ferm_covmat_vec[lay], site, site_coord, after_ph=after_ph, color=color
+                        self.ferm_covmat_vec[lay],
+                        site,
+                        site_coord,
+                        after_ph=after_ph,
+                        color=color,
+                        ncolors=self.cfg.ncolors,
                     )
             total_occ.append(layer_val / self.cfg.lattice.size)
         return xnp.array(total_occ)
@@ -2889,7 +2909,12 @@ class System2DBase(ABC):
                             self._occupations_before_ph,
                             (lay - self.cfg.num_pg_layer, site, color),
                             self.occupation(
-                                self.ferm_covmat_vec[lay], site, site_coord, after_ph=after_ph, color=color
+                                self.ferm_covmat_vec[lay],
+                                site,
+                                site_coord,
+                                after_ph=after_ph,
+                                color=color,
+                                ncolors=self.cfg.ncolors,
                             ),
                         )
         return self._occupations_before_ph
@@ -2920,7 +2945,12 @@ class System2DBase(ABC):
                             self._occupations_after_ph,
                             (lay - self.cfg.num_pg_layer, site, color),
                             self.occupation(
-                                self.ferm_covmat_vec[lay], site, site_coord, after_ph=after_ph, color=color
+                                self.ferm_covmat_vec[lay],
+                                site,
+                                site_coord,
+                                after_ph=after_ph,
+                                color=color,
+                                ncolors=self.cfg.ncolors,
                             ),
                         )
         return self._occupations_after_ph

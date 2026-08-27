@@ -61,6 +61,7 @@ class D2nSystem2D(System2DBase):
             "num_pg_layer",
             "num_fermionic_layer",
             "zeroed_params",
+            "ncolors",
         ],
     )
     def _compute_mass_energy_grad(
@@ -72,12 +73,12 @@ class D2nSystem2D(System2DBase):
         d_gamma_out_symbolvec: xnp.ndarray,
         zeroed_params: tuple,
         use_trans_inv: bool = True,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
 
         if not use_trans_inv:
             raise NotImplementedError("Translation invariance must be set to True.")
 
-        ncolors = 2  # the faithful D2n representation is 2-dimensional
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
         gradients = xnp.zeros(param_shape)
@@ -111,6 +112,7 @@ class D2nSystem2D(System2DBase):
             "num_fermionic_layer",
             "horizontal_neighbor_data",
             "vertical_neighbor_data",
+            "ncolors",
         ],
     )
     def _compute_int_energy_op_vec(
@@ -121,6 +123,7 @@ class D2nSystem2D(System2DBase):
         ferm_covmat_vec: xnp.ndarray,
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
         """
         Hopping energy: each color pair (m, n) contributes the single-color bilinear weighted
@@ -128,8 +131,6 @@ class D2nSystem2D(System2DBase):
         Note: assumes a real faithful representation (true for D2n); a complex representation
         would contribute additional imaginary-part terms.
         """
-        ncolors = 2  # the faithful D2n representation is 2-dimensional
-
         nlayer = num_pg_layer + num_fermionic_layer
         int_energy_op = xnp.zeros(nlayer)
 
@@ -183,6 +184,7 @@ class D2nSystem2D(System2DBase):
             "horizontal_neighbor_data",
             "vertical_neighbor_data",
             "zeroed_params",
+            "ncolors",
         ],
     )
     def _compute_int_energy_grad(
@@ -196,11 +198,11 @@ class D2nSystem2D(System2DBase):
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
         zeroed_params: tuple,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
         """Same color-contracted hopping formula as _compute_int_energy_op_vec, with the
         covariance matrix replaced by its parameter derivative (also assumes a real
         faithful representation)."""
-        ncolors = 2  # the faithful D2n representation is 2-dimensional
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, nparams)
         gradients = xnp.zeros(param_shape)
@@ -272,6 +274,7 @@ class D2nSystem2D(System2DBase):
             "symbolvec",
             "sublattice_factors",
             "zeroed_params",
+            "ncolors",
         ],
     )
     def _compute_chem_energy_grad(
@@ -283,8 +286,8 @@ class D2nSystem2D(System2DBase):
         sublattice_factors: tuple,
         zeroed_params: tuple,
         d_gamma_out_vec: xnp.ndarray,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
-        ncolors = 2  # the faithful D2n representation is 2-dimensional
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
         gradients = xnp.zeros(param_shape)
@@ -315,7 +318,7 @@ class D2nSystem2D(System2DBase):
     def _meson_string_vec(self, path: tuple[tuple[int, bool], ...]) -> xnp.ndarray:
         """Meson string psi^dag_m(x) [prod of D(g) along the path]_mn psi_n(y): each color
         pair contributes the single-color expression weighted by the path-matrix element."""
-        ncolors = 2  # the faithful D2n representation is 2-dimensional
+        ncolors = self.cfg.ncolors
         meson_op_vec = xnp.zeros(self.cfg.nlayer)
 
         # value of the fields
@@ -358,12 +361,16 @@ class D2nSystem2D(System2DBase):
         return meson_op_vec
 
     @staticmethod
-    @maybe_jit(static_argnames=["after_ph"])
+    @maybe_jit(static_argnames=["after_ph", "ncolors"])
     def occupation(
-        covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False, color: int = 0
+        covmat: xnp.ndarray,
+        site: int,
+        site_coord: tuple[int, int],
+        after_ph: bool = False,
+        color: int = 0,
+        ncolors: int = 1,
     ) -> float:
         """Occupation of a single color at the given site (in [0, 1])."""
-        ncolors = 2  # the faithful D2n representation is 2-dimensional
         site_ind = 2 * ncolors * site + 2 * color  # index into covariance matrix, 2 majorana modes per Dirac mode
 
         x, y = site_coord
