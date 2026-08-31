@@ -299,7 +299,7 @@ Further information about the capabilities of `plot_summary.py` can be obtained 
 ## Papers
 
 The following is a list of papers that have used (versions of) this code:
-1. Emonts et al., _Finding the ground state of a lattice gauge theory with fermionic tensor networks: A $2+1\mathrm{D}$ ${\mathbb{Z}}_{2}$ demonstration_, PRD, vol 107 (2023).
+1. Emonts et al., *Finding the ground state of a lattice gauge theory with fermionic tensor networks: A $2+1\mathrm{D}$ ${\mathbb{Z}}_{2}$ demonstration*, PRD, vol 107 (2023).
 2. Kelman et al., _Projected Entangled Pair States for Lattice Gauge Theories with Dynamical Fermions_, Communications Physics, vol 9 (2026).
 3. Gomelski et al., _Algorithmic Aspects of Gauged Gaussian Fermionic Projected Entangled Pair States_, PRR, vol 8 (2026).
 
