@@ -44,35 +44,37 @@ To make sure that all requirements of the package are fulfilled, the easiest way
 1. **Create a virtual environment**
 You can create the environment in a folder of your choice. 
 For the rest of the tutorial, we assume it to be in `~/.pyenv/`.
-    ```
+    ```bash
     cd ~/.pyenv
     python -m venv ggpeps
     ```
     Assuming you are using `bash` or `zsh`, you can activate the environment with `source ~/.pyenv/ggpeps/bin/activate`. If you are using `csh`, use `source ~/.pyenv/ggpeps/bin/activate.csh` instead.
     Upon activation, you will notice that your prompt changes. If it is prefixed by `(ggpeps)` the virtual environment is active.
     The virtual environment can be deactivated with `deactivate`.
-<br/>
+
 2. **Clone the code**
 You can obtain the code by cloning the repo with:
-```git clone <repo_url>```
-<br/>
+    ```bash
+    git clone <repo_url>
+    ```
+
 3. **Install the package**
-For the next step, navigate into the repo that you just downloaded and activate the empty environment that we created in step 1.
-(If you intend to be able to use GPUs, see the note below.)
+    For the next step, navigate into the repo that you just downloaded and activate the empty environment that we created in step 1.
+    (If you intend to be able to use GPUs, see the note below.)
 
     To install all required packages for the simulation, execute
-    ```
+    ```bash
     pip install -e .
     ```
     This command installs the package as an editable package, i.e. all changes in the source code will be directly reflected in the installed package.
 
     If you wish to install the optional dependencies, run
-    ```
+    ```bash
     pip install  -e .[dev,test]
     ```
 
     If you do not intend to edit the code, you can install with
-    ```
+    ```bash
     pip install .
     ```
 
