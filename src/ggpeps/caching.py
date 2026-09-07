@@ -89,6 +89,14 @@ class Cache:
 
         return
 
+    def best_energy_entry(self):
+        """Return (paramvec, energy) of the lowest-energy cached evaluation, or None if empty."""
+        energy_cache = self.cache_data["energy"]
+        if self.disable_cache or not energy_cache:
+            return None
+        key = min(energy_cache, key=energy_cache.get)
+        return self.key2paramvec(key), energy_cache[key]
+
     def load_cache_file(self, cache_file: str) -> bool:
         # TODO: once we include other objects in the cache,
         #       this function should check that cached objects have the same configs

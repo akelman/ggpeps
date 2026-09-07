@@ -401,17 +401,30 @@ class Minimizer:
         message = f"{min_result.message} "
         message += f"Total iters: {min_result.nit}, function evals: {min_result.nfev}, jac evals: {num_jac_evals}"
 
-        # helps with static type checking
-        assert self.best_result is not None
-
-        dest = MinimizerResult(
-            utils.get_obs_mean_df(self.best_result, "energy", column="paramvec"),
-            utils.get_obs_mean_df(self.best_result, "energy_grad"),
-            self.cfg.method,
-            utils.get_obs_mean_df(self.best_result, "energy"),
-            converged,
-            message,
-        )
+        if self.best_result is None:
+            # A warm cache can serve every evaluation, so no fresh evaluation
+            # ever sets best_result. Recover the result from the cache.
+            best_entry = self.cache.best_energy_entry()
+            if best_entry is None:
+                raise RuntimeError("Minimization made no evaluations and the cache is empty.")
+            best_paramvec, best_energy = best_entry
+            dest = MinimizerResult(
+                np.reshape(best_paramvec, self.evaluator_manager.system_cfg.param_shape()),
+                self.cache.load_obs_from_local_cache(best_paramvec, "energy_grad"),
+                self.cfg.method,
+                best_energy,
+                converged,
+                message + " (recovered from cache: all evaluations were cache hits)",
+            )
+        else:
+            dest = MinimizerResult(
+                utils.get_obs_mean_df(self.best_result, "energy", column="paramvec"),
+                utils.get_obs_mean_df(self.best_result, "energy_grad"),
+                self.cfg.method,
+                utils.get_obs_mean_df(self.best_result, "energy"),
+                converged,
+                message,
+            )
         self.min_result = dest
         return dest
 
