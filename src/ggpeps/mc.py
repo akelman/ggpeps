@@ -145,6 +145,13 @@ class MonteCarloEvaluator(Evaluator):
         lat = self.system.cfg.lattice
         self._polyakov_loop = lat.generate_polyakov_loop((0, 0), lattice.Direction.X)
 
+        # Parallel x-winding Polyakov loops at rows 1..ny//2, correlated with the row-0 loop
+        self._polyakov_pair_seps = list(range(1, lat.ny // 2 + 1))
+        self._polyakov_pair_loops = [
+            lat.generate_polyakov_loop((0, d), lattice.Direction.X) for d in self._polyakov_pair_seps
+        ]
+        self._polyakov_pair_names = [f"polyakov_corr_x_{d}" for d in self._polyakov_pair_seps]
+
         self._wilson_sizes = lat.generate_allowed_loop_dimensions()
         self._wilson_loops = lat.generate_all_wilson_loops((0, 0), self._wilson_sizes)
         self._wilson_names = [f"wilson_loop_0-0_{size[0]}x{size[1]}" for size in self._wilson_sizes]
@@ -184,6 +191,8 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict["int_energy"] = Measurement("Interaction Energy", binsize)
             self.obsdict["mass_energy"] = Measurement("Mass Energy", binsize)
             self.obsdict["polyakov_00_x"] = Measurement("Polyakov (0,0) x", binsize)
+            for name, d in zip(self._polyakov_pair_names, self._polyakov_pair_seps):
+                self.obsdict[name] = Measurement(f"Polyakov correlator rows 0,{d}", binsize)
             self.obsdict["lognorm"] = Measurement("LogNorm", binsize)
             if self.system.cfg.num_fermionic_layer > 0:
                 self.obsdict["all_occupations"] = Measurement("All Occupations (after PH)", binsize)
@@ -227,7 +236,10 @@ class MonteCarloEvaluator(Evaluator):
             self.obsdict["chem_energy"].append(float(self.system.chem_energy))
 
         if self.cfg.observables_mode != "energy":
-            self.obsdict["polyakov_00_x"].append(np.real(self.system.compute_path(self._polyakov_loop)))
+            polyakov0 = self.system.compute_path(self._polyakov_loop)
+            self.obsdict["polyakov_00_x"].append(np.real(polyakov0))
+            for name, loop_path in zip(self._polyakov_pair_names, self._polyakov_pair_loops):
+                self.obsdict[name].append(np.real(polyakov0 * np.conj(self.system.compute_path(loop_path))))
             # self.obsdict["cov_ferm"].append(self.system.ferm_covmat_vec)
 
             # Most of these values could be calculated in a post-processing step
