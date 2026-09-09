@@ -179,7 +179,7 @@ class ExactEvaluator(Evaluator):
                     normvec,
                 )
                 dest["all_occupations"] = self.compute_expval(
-                    np.transpose(data["all_occupations"], [1, 2, 0]), normvec
+                    np.transpose(data["all_occupations"], [1, 2, 3, 0]), normvec
                 )
 
             # Wilson loops

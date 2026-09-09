@@ -2276,7 +2276,8 @@ class System2DBase(ABC):
         symbolvec: tuple,
         d_gamma_out_symbolvec: xnp.ndarray,
         zeroed_params: tuple,
-        use_trans_inv: bool = True,
+        use_trans_inv: bool = False,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
         """Compute the mass energy gradient.
 
@@ -2284,6 +2285,7 @@ class System2DBase(ABC):
 
         Args:
             use_trans_inv (bool, optional): Use translationally invariant implementation. Defaults to True.
+            ncolors (int, optional): number of colors. Defaults to 1.
 
         Returns:
             array: gradients of the mass energy
@@ -2300,6 +2302,7 @@ class System2DBase(ABC):
         ferm_covmat_vec: xnp.ndarray,
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
         """Compute the interaction energy (per layer) - the energy due to the interaction of the
         physical fermions with the gauge fields.
@@ -2321,6 +2324,7 @@ class System2DBase(ABC):
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
         zeroed_params: tuple,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
         """Compute the interaction energy gradient.
         This is an abstract method and has to be overwritten in a subclass.
@@ -2348,6 +2352,7 @@ class System2DBase(ABC):
         sublattice_factors: tuple,
         zeroed_params: tuple,
         d_gamma_out_vec: xnp.ndarray,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
         """Compute the chemical potential energy gradient.
         This is an abstract method and has to be overwritten in a subclass.
@@ -2630,6 +2635,7 @@ class System2DBase(ABC):
                 self.ferm_covmat_vec,
                 self.cfg.lattice.horizontal_neighbor_data,
                 self.cfg.lattice.vertical_neighbor_data,
+                ncolors=self.cfg.ncolors,
             )
         return self._int_energy_op_vec
 
@@ -2786,7 +2792,8 @@ class System2DBase(ABC):
                 tuple(self.cfg.symbolvec),
                 self.d_gamma_out_symbolvec,
                 self.cfg.zeroed_params,
-                use_trans_inv=True,
+                use_trans_inv=False,
+                ncolors=self.cfg.ncolors,
             )
         return self._mass_energy_op_grad_vec
 
@@ -2810,6 +2817,7 @@ class System2DBase(ABC):
                 self.cfg.lattice.horizontal_neighbor_data,
                 self.cfg.lattice.vertical_neighbor_data,
                 self.cfg.zeroed_params,
+                ncolors=self.cfg.ncolors,
             )
         return self._int_energy_op_grad_vec
 
@@ -2831,6 +2839,7 @@ class System2DBase(ABC):
                 self.cfg.lattice.sublattice_factors,
                 self.cfg.zeroed_params,
                 self.d_gamma_out_symbolvec,
+                ncolors=self.cfg.ncolors,
             )
         return self._chem_energy_op_grad_vec
 
@@ -2838,10 +2847,17 @@ class System2DBase(ABC):
 
     @staticmethod
     @abstractmethod
-    @maybe_jit(static_argnames=["after_ph"])
-    def occupation(covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False) -> float:
-        """Compute the occupation number for the given layer and site.
-        # TODO: make this method also support specification of flavor, for use with non-Abelian gauge groups
+    @maybe_jit(static_argnames=["after_ph", "ncolors"])
+    def occupation(
+        covmat: xnp.ndarray,
+        site: int,
+        site_coord: tuple[int, int],
+        after_ph: bool = False,
+        color: int = 0,
+        ncolors: int = 1,
+    ) -> float:
+        """Compute the occupation number for the given layer, site and color.
+        # TODO: support specification of flavor (multiple physical fermions per color)
 
         Args:
             covmat (ndarray): The covariance matrix for the layer
@@ -2849,9 +2865,11 @@ class System2DBase(ABC):
             site_coord (tuple): Coordinate of the site. Provided to remove reliance on lattice inside jitted function.
             after_ph (bool, optional): If True, compute the occupation number using the operators
                                        defined after the particle-hole transformation. Defaults to False.
+            color (int, optional): Color index (0-based). Defaults to 0.
+            ncolors (int, optional): number of colors. Defaults to 1.
 
         Returns:
-            float: the occupation number for the given layer and site
+            float: the occupation number for the given layer, site and color
         """
         raise NotImplementedError("This is an abstract method. Implement in child class please.")
 
@@ -2871,7 +2889,15 @@ class System2DBase(ABC):
             layer_val = 0.0
             for site in range(self.cfg.lattice.size):
                 site_coord = self.cfg.lattice.ind2coord(site)
-                layer_val += self.occupation(self.ferm_covmat_vec[lay], site, site_coord, after_ph=after_ph)
+                for color in range(self.cfg.ncolors):
+                    layer_val += self.occupation(
+                        self.ferm_covmat_vec[lay],
+                        site,
+                        site_coord,
+                        after_ph=after_ph,
+                        color=color,
+                        ncolors=self.cfg.ncolors,
+                    )
             total_occ.append(layer_val / self.cfg.lattice.size)
         return xnp.array(total_occ)
 
@@ -2881,24 +2907,34 @@ class System2DBase(ABC):
         for all layers and sites in the system.
 
         Returns:
-            array: the occupation number for all layers and sites, as a 2D array
+            array: the occupation number for all layers, sites and colors, as a 3D array
         """
         if self._occupations_before_ph is None:
 
             # Initialize shape
             # this ensures that is has the proper shape even when there are no fermionic layers
             # (which is needed for transposes, etc. higher up in the stack)
-            self._occupations_before_ph = xnp.zeros((self.cfg.num_fermionic_layer, self.cfg.lattice.size))
+            self._occupations_before_ph = xnp.zeros(
+                (self.cfg.num_fermionic_layer, self.cfg.lattice.size, self.cfg.ncolors)
+            )
 
             after_ph = False
             for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
                 for site in range(self.cfg.lattice.size):
                     site_coord = self.cfg.lattice.ind2coord(site)
-                    self._occupations_before_ph = backend.array_assign(
-                        self._occupations_before_ph,
-                        (lay - self.cfg.num_pg_layer, site),
-                        self.occupation(self.ferm_covmat_vec[lay], site, site_coord, after_ph=after_ph),
-                    )
+                    for color in range(self.cfg.ncolors):
+                        self._occupations_before_ph = backend.array_assign(
+                            self._occupations_before_ph,
+                            (lay - self.cfg.num_pg_layer, site, color),
+                            self.occupation(
+                                self.ferm_covmat_vec[lay],
+                                site,
+                                site_coord,
+                                after_ph=after_ph,
+                                color=color,
+                                ncolors=self.cfg.ncolors,
+                            ),
+                        )
         return self._occupations_before_ph
 
     @property
@@ -2907,24 +2943,34 @@ class System2DBase(ABC):
         for all layers and sites in the system.
 
         Returns:
-            array: the occupation number for all layers and sites, as a 2D array
+            array: the occupation number for all layers, sites and colors, as a 3D array
         """
         if self._occupations_after_ph is None:
 
             # Initialize shape
             # this ensures that is has the proper shape even when there are no fermionic layers
             # (which is needed for transposes, etc. higher up in the stack)
-            self._occupations_after_ph = xnp.zeros((self.cfg.num_fermionic_layer, self.cfg.lattice.size))
+            self._occupations_after_ph = xnp.zeros(
+                (self.cfg.num_fermionic_layer, self.cfg.lattice.size, self.cfg.ncolors)
+            )
 
             after_ph = True
             for lay in range(self.cfg.num_pg_layer, self.cfg.nlayer):
                 for site in range(self.cfg.lattice.size):
                     site_coord = self.cfg.lattice.ind2coord(site)
-                    self._occupations_after_ph = backend.array_assign(
-                        self._occupations_after_ph,
-                        (lay - self.cfg.num_pg_layer, site),
-                        self.occupation(self.ferm_covmat_vec[lay], site, site_coord, after_ph=after_ph),
-                    )
+                    for color in range(self.cfg.ncolors):
+                        self._occupations_after_ph = backend.array_assign(
+                            self._occupations_after_ph,
+                            (lay - self.cfg.num_pg_layer, site, color),
+                            self.occupation(
+                                self.ferm_covmat_vec[lay],
+                                site,
+                                site_coord,
+                                after_ph=after_ph,
+                                color=color,
+                                ncolors=self.cfg.ncolors,
+                            ),
+                        )
         return self._occupations_after_ph
 
     def meson_string(self, path: tuple[tuple[int, bool], ...]) -> float:
@@ -2949,18 +2995,29 @@ class System2DBase(ABC):
         val = self._compute_path(self.cfg.gaugemgr.get_neutral_gauge_value(), self.gaugefieldvec, path)
         return val
 
+    def compute_path_matrix(self, path: tuple[tuple[int, bool], ...]) -> xnp.ndarray:
+        """Compute the ordered product of group elements along the path (no trace)."""
+        return self._compute_path_matrix(self.cfg.gaugemgr.get_neutral_gauge_value(), self.gaugefieldvec, path)
+
     @staticmethod
     @maybe_jit(static_argnames=["path"])
-    def _compute_path(
+    def _compute_path_matrix(
         neutral_gauge_value: xnp.ndarray, gaugefieldvec: xnp.ndarray, path: tuple[tuple[int, bool], ...]
-    ) -> float:
+    ) -> xnp.ndarray:
         path_product = neutral_gauge_value
         for ind, conj in path:
             if conj:
                 path_product = path_product @ xnp.conjugate(xnp.transpose(gaugefieldvec[ind]))
             else:
                 path_product = path_product @ gaugefieldvec[ind]
-        return xnp.trace(path_product)
+        return path_product
+
+    @staticmethod
+    @maybe_jit(static_argnames=["path"])
+    def _compute_path(
+        neutral_gauge_value: xnp.ndarray, gaugefieldvec: xnp.ndarray, path: tuple[tuple[int, bool], ...]
+    ) -> float:
+        return xnp.trace(System2DBase._compute_path_matrix(neutral_gauge_value, gaugefieldvec, path))
 
     @staticmethod
     @maybe_jit(static_argnames=["lattice_size", "nphysmodes_site", "nlayer"])

@@ -524,6 +524,13 @@ class U1System2D(System2DBase):
         return xnp.array(meson_op_vec)
 
     @staticmethod
-    @maybe_jit(static_argnames=["after_ph"])
-    def occupation(covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False) -> float:
+    @maybe_jit(static_argnames=["after_ph", "ncolors"])
+    def occupation(
+        covmat: xnp.ndarray,
+        site: int,
+        site_coord: tuple[int, int],
+        after_ph: bool = False,
+        color: int = 0,
+        ncolors: int = 1,
+    ) -> float:
         return 0.0  # Not implemented

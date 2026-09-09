@@ -448,7 +448,8 @@ class TestZ2System(unittest.TestCase):
         expected_mass_energy = 2.424562098759527
         expected_chem_energy = 0.39645909509164884
         expected_total_energy = 17.517434733268754
-        expected_occupations = np.asarray([[0.86458734, 0.08913085, 0.17018682, 0.85839047]])
+        # one value per (site, color); Z2 has a single color
+        expected_occupations = np.asarray([[[0.86458734], [0.08913085], [0.17018682], [0.85839047]]])
         expected_wilson_loop = -1.0
         expected_norm_grad = 0.7750323190625908
         expected_el_grad = -0.7271555189284034

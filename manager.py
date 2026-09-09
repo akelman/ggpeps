@@ -147,13 +147,6 @@ def validate_inputs(args) -> bool:
     if args.L % 2 != 0:
         logger.error("The lattice dimension must currently be an even number.")  # this is important when staggering
         return False
-    if args.ncopy == 1 and args.g_mass != 0:
-        logger.error("Not Implemented: the mass term has not yet been implemented for the 1 copy case.")
-        return False
-    if not (args.ncopy == 1 or args.ncopy % 2 == 0):
-        logger.error("Not Implemented: Z2 currently supports ncopy=1 or even ncopy values.")
-        return False
-
     return True
 
 
@@ -333,20 +326,29 @@ def main(args):
     # Since they all share the same interface, we do not care much about the details of the system after this point
     if args.gauge_group == "Z2":
         system_type = Z2System2D
+        cfg_class = Z2System2D_Config
+        if args.ncopy is None:
+            args.ncopy = 1
+        if not (args.ncopy == 1 or args.ncopy % 2 == 0):
+            logger.error("Not Implemented: Z2 currently supports ncopy=1 or even ncopy values.")
+            sys.exit(1)
         if args.ncopy == 1:
             if not args.relax_u1 and args.num_fermionic_layer != 0:
                 logger.warning(
                     "Using 1 copy without relaxing the U(1) symmetry does not allow virtual-virtual coupling."
                 )
-        cfg_class = Z2System2D_Config
     elif args.gauge_group == "D6":
         system_type = D2nSystem2D
         cfg_class = D6System2D_Config
+        if args.ncopy is None:
+            args.ncopy = 2
     elif args.gauge_group == "Z2_2col":
         # Diagnostic ansatz: Z_2 gauge group represented as 2x2 matrices, 2 colors.
         # T-matrix is color-diagonal with the standard Z_2 block repeated.
         # --ncopy selects the number of copies (1 or 2).
         system_type = D2nSystem2D
+        if args.ncopy is None:
+            args.ncopy = 1
         if args.ncopy == 1:
             cfg_class = Z2System2D_2col_1copy_Config
         elif args.ncopy == 2:
@@ -359,6 +361,10 @@ def main(args):
         sys.exit(1)
     else:
         logger.error("Not Implemented: Only the gauge groups Z2 and D6 are implemented and working.")
+        sys.exit(1)
+
+    if args.ncopy == 1 and args.g_mass != 0:
+        logger.error("Not Implemented: the mass term has not yet been implemented for the 1 copy case.")
         sys.exit(1)
 
     # Create the system configuration of the appropriate type
@@ -816,9 +822,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--ncopy",
-        default=1,
+        default=None,
         type=int,
-        help="Number of virtual fermions on the links per layer",
+        help="Number of virtual fermions on the links per layer (default: 2 for D2n, 1 otherwise)",
     )
 
     parser.add_argument(

@@ -486,19 +486,20 @@ def make_sigma(ncopy: int, mix_copies: bool) -> tuple[int, ...]:
     Build the link-pairing permutation ("sigma" in our notes) for a single layer.
 
     Args:
-        ncopy (int): Number of copies (must be 1 or even).
+        ncopy (int): Number of copies (must be 1 or even when mix_copies is True).
         mix_copies (bool): if True, mix copies: swaps (2a-1 <-> 2a) for a = 1..k/2, i.e. sigma(1)=2 and sigma(2)=1
                             if False, don't mix copies: identity, sigma(c) = c
 
     Returns:
         tuple[int, ...]: 1-based permutation list where entry j equals sigma(j).
     """
-    if not (ncopy == 1 or ncopy % 2 == 0):
-        # TODO: odd ncopy >1 could be allowed for unmixed copies
-        raise ValueError("ncopy must be 1 or even (odd ncopy >1 is not supported).")
-    elif not mix_copies:
+    if not mix_copies:
+        # TODO: odd ncopy >1 could be allowed for unmixed copies in Z2
+
         permutation = tuple(range(1, ncopy + 1))
-    elif mix_copies:
+    else:
+        if not (ncopy == 1 or ncopy % 2 == 0):
+            raise ValueError("ncopy must be 1 or even when mixing copies (pairwise swaps need an even ncopy).")
         if ncopy == 1:
             return (1,)
         s = [0] * ncopy
@@ -519,7 +520,7 @@ def make_sigma_matrix(ncopy: int, mix_copies: bool) -> np.ndarray:
     identity. For ncopy == 1 both choices reduce to the 1x1 identity matrix.
 
     Args:
-        ncopy (int): Number of copies (must be 1 or even).
+        ncopy (int): Number of copies (must be 1 or even when mix_copies is True).
         mix_copies (bool): Whether to use the mixed-copy pairing convention.
 
     Returns:

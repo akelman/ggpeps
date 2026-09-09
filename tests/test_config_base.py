@@ -584,8 +584,7 @@ class TestMajoranaAlgebraHelpers(_PolyAssertMixin, unittest.TestCase):
         self.assertEqual(config_base.make_sigma(2, True), (2, 1))
         self.assertEqual(config_base.make_sigma(4, False), (1, 2, 3, 4))
         self.assertEqual(config_base.make_sigma(4, True), (2, 1, 4, 3))
-        with self.assertRaises(ValueError):
-            config_base.make_sigma(3, False)
+        self.assertEqual(config_base.make_sigma(3, False), (1, 2, 3))
 
     def test_get_cov_matrix_idx_matches_documented_ordering(self):
         for ncolors, ncopies in [(1, 1), (1, 2), (2, 1), (2, 2)]:

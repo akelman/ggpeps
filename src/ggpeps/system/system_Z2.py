@@ -46,7 +46,7 @@ class Z2System2D(System2DBase):
                 "Doing so gives negligible speedup, so we proceed without it."
             )
 
-        mass_energy_op = xnp.sum(occupations_after_ph, axis=1)  # sum over sites
+        mass_energy_op = xnp.sum(occupations_after_ph, axis=(1, 2))  # sum over sites and colors
 
         return mass_energy_op
 
@@ -70,11 +70,15 @@ class Z2System2D(System2DBase):
         symbolvec: tuple,
         d_gamma_out_symbolvec: xnp.ndarray,
         zeroed_params: tuple,
-        use_trans_inv: bool = True,
+        use_trans_inv: bool = False,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
 
-        if not use_trans_inv:
-            raise NotImplementedError("Translation invariance must be set to True.")
+        if use_trans_inv:
+            logger.warning(
+                "Translation invariance need not be assumed for the mass energy grad operator."
+                "Doing so gives negligible speedup, so we proceed without it."
+            )
 
         nlayer = num_pg_layer + num_fermionic_layer
         param_shape = (nlayer, unitcell_size, len(symbolvec))
@@ -119,6 +123,7 @@ class Z2System2D(System2DBase):
         ferm_covmat_vec: xnp.ndarray,
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
         """
         Note: this function assumes that U = U^dagger, which is only valid for Z2.
@@ -183,6 +188,7 @@ class Z2System2D(System2DBase):
         horizontal_neighbor_data: tuple,
         vertical_neighbor_data: tuple,
         zeroed_params: tuple,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
         """
         Note: this function assumes that U = U^dagger, which is only valid for Z2.
@@ -249,7 +255,7 @@ class Z2System2D(System2DBase):
         occupations_before_ph: xnp.ndarray,
     ) -> xnp.ndarray:
 
-        chem_energy_op = xnp.sum(occupations_before_ph, axis=1)
+        chem_energy_op = xnp.sum(occupations_before_ph, axis=(1, 2))  # sum over sites and colors
 
         return chem_energy_op
 
@@ -274,6 +280,7 @@ class Z2System2D(System2DBase):
         sublattice_factors: tuple,
         zeroed_params: tuple,
         d_gamma_out_vec: xnp.ndarray,
+        ncolors: int = 1,
     ) -> xnp.ndarray:
 
         nlayer = num_pg_layer + num_fermionic_layer
@@ -318,6 +325,12 @@ class Z2System2D(System2DBase):
         # TODO: it is a waste to calculate this for every gauge config - instead, this function should accept
         #       as input the start and end site indices
         start_site_ind, end_site_ind = self.cfg.lattice.get_path_endpoints(path)
+        sublattice_factors = self.cfg.lattice.sublattice_factors
+        if sublattice_factors[start_site_ind] != sublattice_factors[end_site_ind]:
+            raise NotImplementedError(
+                "Meson strings with endpoints on different sublattices are not implemented "
+                "(after the PH transformation the operator becomes a pair term)."
+            )
         site_ind_cov_in = 2 * start_site_ind
         site_ind_cov_fin = 2 * end_site_ind
 
@@ -337,14 +350,23 @@ class Z2System2D(System2DBase):
                 )
             )
 
-            # TODO: is the absolute value necessary? why?
+            # TODO: is the absolute value necessary? why? If it is dropped, odd-sublattice
+            # endpoints must be implemented separately from even ones (the value picks up a
+            # minus and a conjugation relative to the formula above).
             meson_op_vec = backend.array_assign(meson_op_vec, layer_ind, xnp.abs(layer_val))
         return meson_op_vec
 
     @staticmethod
-    @maybe_jit(static_argnames=["after_ph"])
-    def occupation(covmat: xnp.ndarray, site: int, site_coord: tuple[int, int], after_ph: bool = False) -> float:
-
+    @maybe_jit(static_argnames=["after_ph", "ncolors"])
+    def occupation(
+        covmat: xnp.ndarray,
+        site: int,
+        site_coord: tuple[int, int],
+        after_ph: bool = False,
+        color: int = 0,
+        ncolors: int = 1,
+    ) -> float:
+        # Z2 has a single color; the color/ncolors arguments only exist to match the base signature.
         site_ind = 2 * site  # index into covariance matrix
 
         x, y = site_coord
