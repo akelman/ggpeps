@@ -91,7 +91,7 @@ class MonteCarloEvaluatorConfig:
             "Request to set the state directly was ignored."
         )
 
-    def get_rng_state_internal_repr(self) -> tuple:
+    def get_rng_state_internal_repr(self) -> Union[dict, tuple]:
         """Get the state of the RNG.
 
         Returns:
