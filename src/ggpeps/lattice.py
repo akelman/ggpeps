@@ -395,8 +395,8 @@ class Lattice2D:
         """
         Generate all allowed rectangular loop dimensions.
 
-        The maximum loop size is limited to half the lattice size due to periodic
-        boundary conditions.
+        Extents go up to the lattice size minus one: an extent equal to the full
+        (periodic) lattice would wrap the loop onto itself.
 
         Args:
             include_all (bool, optional): If True, include rotated loops
@@ -405,10 +405,9 @@ class Lattice2D:
         Returns:
             list[tuple[int, int]]: Allowed loop sizes as (extent_x, extent_y).
         """
-        # TODO: Check/Test why are we limited to half the system size, and not the full system size.
         sizes = []
-        max_x = self.nx // 2  # due to periodic boundary conditions, loops should only go up to half the system size
-        max_y = self.ny // 2
+        max_x = self.nx - 1
+        max_y = self.ny - 1
 
         for size_x in range(1, max_x + 1):
             for size_y in range(1, max_y + 1):
