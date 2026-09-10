@@ -149,7 +149,7 @@ class TestLattice(unittest.TestCase):
         )
         # Convert refs to index form
         refs_ind = tuple([lat.links_coord_to_index(loop) for loop in refs])
-        paths = lat.generate_all_wilson_loops((0, 0))
+        paths = lat.generate_all_wilson_loops((0, 0), [(1, 1), (2, 1), (2, 2)])
         self.assertEqual(refs_ind, paths)
 
     def test_wilson_loop_generation_5x5_lattice(self):
@@ -195,8 +195,20 @@ class TestLattice(unittest.TestCase):
         """
         # Convert refs to index form
         refs_ind = tuple([lat.links_coord_to_index(loop) for loop in refs])
-        paths = lat.generate_all_wilson_loops((0, 0))
+        paths = lat.generate_all_wilson_loops((0, 0), [(1, 1), (2, 1), (2, 2)])
         self.assertEqual(refs_ind, paths)
+
+    def test_allowed_loop_dimensions(self):
+        """Loop extents go up to the lattice size minus one."""
+        self.assertEqual(lattice.Lattice2D(2, 2).generate_allowed_loop_dimensions(), [(1, 1)])
+        self.assertEqual(
+            lattice.Lattice2D(4, 4).generate_allowed_loop_dimensions(),
+            [(1, 1), (2, 1), (2, 2), (3, 1), (3, 2), (3, 3)],
+        )
+        self.assertEqual(
+            lattice.Lattice2D(3, 3).generate_allowed_loop_dimensions(include_all=True),
+            [(1, 1), (1, 2), (2, 1), (2, 2)],
+        )
 
     def test_polyakov_loop_hor(self):
         ref = (
