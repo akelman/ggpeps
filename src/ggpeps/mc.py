@@ -195,7 +195,7 @@ class MonteCarloEvaluator(Evaluator):
                 self.obsdict[name] = Measurement(f"Polyakov correlator rows 0,{d}", binsize)
             self.obsdict["lognorm"] = Measurement("LogNorm", binsize)
             if self.system.cfg.num_fermionic_layer > 0:
-                self.obsdict["all_occupations"] = Measurement("All Occupations (after PH)", binsize)
+                self.obsdict["all_occupations"] = Measurement("All Occupations (before PH)", binsize)
                 self.obsdict["average_occupation"] = Measurement("Average Occupation", binsize)
                 self.obsdict["variance_occupation"] = Measurement("Variance Occupation", binsize)
 
